@@ -71,3 +71,12 @@ const (
 // BattleDays 是一場戰役最多打幾天。**這個有出處**：
 // 手冊 p.35「守方能堅持抗戰滿卅天，且城池未被奪去就算衛郡成功」。
 const BattleDays = 30
+
+// RiceForCampaign 是這麼多兵打滿三十天要多少米。
+//
+// 原版出兵時會把這個數字算給玩家看：`30日須耗用%d米`
+// （`AA.EXE` `0x4f60c`，`docs/re/04` §5）。
+//
+// **與 `EndDay` 的每日耗用出自同一條算式**——兩邊各寫一次的話，
+// 畫面上說夠、打起來卻餓死，而那要打完三十天才發現。
+func RiceForCampaign(soldiers int) int { return soldiers / 100 * BattleDays }

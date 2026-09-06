@@ -41,6 +41,7 @@ type app struct {
 	view  ui.View
 	menu  byte // 展開中的類別；0 表示在主選單
 	pick  []pickItem
+	num   *numEntry
 	dirty bool
 
 	// fight 非 nil 表示正在打一場玩家親自指揮的戰役。
@@ -52,20 +53,39 @@ type app struct {
 	aiMode ai.Mode
 }
 
-// conscriptStep 是按一次「徵兵」募多少人。
-//
-// **原版是輸入數字，這裡先用固定量**。要問數字得有文字輸入框，
-// 那是另一件事；固定量讓迴圈先跑得起來，而且不會假裝自己是原版行為。
-const conscriptStep = 100
-
 func (a *app) Update() error {
 	if a.fight != nil {
 		return a.updateBattle()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		a.menu, a.view.Menu, a.view.Items, a.pick = 0, "", nil, nil
+		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
 		a.view.Prompt, a.view.Page = "", nil
 		a.dirty = true
+		return nil
+	}
+	if a.num != nil {
+		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
+			a.num.value /= 10
+			a.showNumber()
+			a.dirty = true
+			return nil
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
+			inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
+			n := a.num
+			a.num = nil
+			a.menu, a.view.Menu, a.view.Items = 0, "", nil
+			n.then(n.value)
+			a.dirty = true
+			return nil
+		}
+		for k := ebiten.Key0; k <= ebiten.Key9; k++ {
+			if inpututil.IsKeyJustPressed(k) {
+				a.numberKey(byte('0' + (k - ebiten.Key0)))
+				a.dirty = true
+				return nil
+			}
+		}
 		return nil
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
@@ -144,6 +164,54 @@ func (a *app) press(k byte) {
 		return
 	}
 	a.begin(a.menu, k)
+}
+
+// numEntry 是「請輸入一個數字」。
+//
+// 原版問數字的地方很多：徵兵幾人、賞賜多少金、攜帶多少金米、
+// 延遲時間。**那些都不是固定量**，用固定量等於把玩家的決定拿掉了。
+type numEntry struct {
+	title string
+	hint  string
+	max   int
+	value int
+	then  func(int)
+}
+
+// askNumber 開一個數字輸入。0 也是合法的答案。
+func (a *app) askNumber(title, hint string, max int, then func(int)) {
+	if max < 0 {
+		max = 0
+	}
+	a.num = &numEntry{title: title, hint: hint, max: max, then: then}
+	a.showNumber()
+}
+
+// showNumber 把目前輸入的數字畫到選單欄上。
+func (a *app) showNumber() {
+	n := a.num
+	if n == nil {
+		return
+	}
+	a.view.Menu = n.title
+	a.view.Items = []ui.Command{
+		{Key: '=', Name: fmt.Sprintf("%d", n.value)},
+		{Key: ' ', Name: fmt.Sprintf("上限 %d", n.max)},
+	}
+	a.view.Prompt = n.hint + "　數字鍵輸入、Backspace 刪一位、Enter 確定、Esc 取消"
+}
+
+// numberKey 收數字輸入的一個按鍵。
+func (a *app) numberKey(k byte) {
+	n := a.num
+	v := n.value*10 + int(k-'0')
+	// **超過上限就停在上限**，不要讓它捲成一個小數字：
+	// 玩家多按一位卻換來「只徵了三個兵」是最難查的那種意外。
+	if v > n.max {
+		v = n.max
+	}
+	n.value = v
+	a.showNumber()
 }
 
 // pickItem 是挑選清單的一個項目。id 是它代表的人物槽號或郡編號。
@@ -236,14 +304,35 @@ func (a *app) begin(cat, item byte) {
 				}
 				force = append(force, x.Index)
 			}
-			// **玩家親自指揮**：進主戰場，不自動決勝。
-			// 電腦諸侯的戰役還是走 AttackOrder → Auto。
+			// **玩家親自指揮**：先問攜帶的錢糧（原版 `攜帶多少金`／
+			// `攜帶多少米`，而且把三十天要多少米算給你看），
+			// 再進主戰場。電腦諸侯的戰役還是走 AttackOrder → Auto。
 			closeMenu()
-			a.startBattle(sel, to, force)
+			p := g.Prefecture(sel)
+			men := g.CampaignForce(force)
+			need := game.RiceForCampaign(men)
+			a.askNumber("攜帶多少金", fmt.Sprintf("本郡有 %d 金", p.Gold), p.Gold,
+				func(gold int) {
+					a.askNumber("攜帶多少米",
+						fmt.Sprintf("本郡有 %d 米，%d 兵 30 日須耗用 %d 米",
+							p.Rice, men, need), p.Rice,
+						func(rice int) {
+							a.startBattle(sel, to, force,
+								game.Supply{Gold: gold, Rice: rice})
+						})
+				})
 		})
 	case cat == '2' && item == '3':
 		a.askOwn("送到哪個郡", func(to int) {
-			a.run(game.TransportOrder{At: sel, To: to, Gold: 500, Rice: 500})
+			p := g.Prefecture(sel)
+			a.askNumber("送多少金", fmt.Sprintf("本郡有 %d 金", p.Gold), p.Gold,
+				func(gold int) {
+					a.askNumber("送多少米", fmt.Sprintf("本郡有 %d 米", p.Rice), p.Rice,
+						func(rice int) {
+							a.run(game.TransportOrder{At: sel, To: to,
+								Gold: gold, Rice: rice})
+						})
+				})
 		})
 
 	// ---- 3. 兵士 ----
@@ -251,7 +340,23 @@ func (a *app) begin(cat, item byte) {
 		a.askGeneral("訓練誰的部隊", func(gi int) { a.run(game.TrainOrder{At: sel, General: gi}) })
 	case cat == '3' && item == '2':
 		a.askGeneral("誰去募兵", func(gi int) {
-			a.run(game.ConscriptOrder{At: sel, General: gi, Count: conscriptStep})
+			x := g.General(gi)
+			cap := 0
+			if x != nil {
+				cap = x.TroopCap() - x.Soldiers
+			}
+			room := g.Prefecture(sel).Population - game.MinPopulationToConscript
+			if room < 0 {
+				room = 0
+			}
+			if cap > room {
+				cap = room
+			}
+			a.askNumber("徵多少兵",
+				fmt.Sprintf("本郡人口 %d，徵一人耗一金", g.Prefecture(sel).Population),
+				cap, func(n int) {
+					a.run(game.ConscriptOrder{At: sel, General: gi, Count: n})
+				})
 		})
 	case cat == '3' && item == '3':
 		a.askGeneral("誰去購械", func(gi int) {
@@ -291,7 +396,14 @@ func (a *app) begin(cat, item byte) {
 		a.askFree("登用誰", func(gi int) { a.run(game.RecruitOrder{At: sel, Target: gi}) })
 	case cat == '6' && item == '3':
 		a.askGeneral("賞賜誰", func(gi int) {
-			a.run(game.RewardOrder{At: sel, Target: gi, Gold: game.MaxReward})
+			// 原版問的是「賞賜%s多少金」，上限 100（手冊 p.23）。
+			max := game.MaxReward
+			if p := g.Prefecture(sel); p != nil && p.Gold < max {
+				max = p.Gold
+			}
+			a.askNumber("賞賜多少金", "上限 100（手冊 p.23）", max, func(n int) {
+				a.run(game.RewardOrder{At: sel, Target: gi, Gold: n})
+			})
 		})
 	case cat == '6' && item == '4':
 		a.askGeneral("撤誰的職", func(gi int) { a.run(game.DismissOrder{At: sel, Target: gi}) })

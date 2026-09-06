@@ -90,13 +90,27 @@ func (p *Pending) Battle() *battle.Battle { return p.B }
 
 // fight 把一場戰役交給戰術層打完，並把結果搬回局面。
 func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *BattleResult {
-	p := g.prepare(from, to, att, def, by)
+	p := g.prepare(from, to, att, def, by, HalfSupply())
 	p.B.Auto()
 	return g.settle(p)
 }
 
+// Supply 是出兵時攜帶的錢糧。
+//
+// 原版會問：`攜帶多少金`、`攜帶多少米`，而且把三十天要多少米算給玩家看
+// （`docs/re/04` §5）。負數或超過原郡庫存的部分會被夾住。
+type Supply struct {
+	Gold, Rice int
+
+	// Auto 為真表示照舊帶原郡的一半——電腦諸侯用這個。
+	Auto bool
+}
+
+// HalfSupply 是「帶一半」，電腦諸侯出兵時用的預設。
+func HalfSupply() Supply { return Supply{Auto: true} }
+
 // prepare 把雙方擺上戰場，扣掉隨軍帶走的錢糧，但**不打**。
-func (g *State) prepare(from, to int, att, def []*General, by state.FactionID) *Pending {
+func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, sup Supply) *Pending {
 	dst := g.Prefecture(to)
 	r := &BattleResult{From: from, To: to}
 
@@ -109,10 +123,22 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID) *
 	src := g.Prefecture(from)
 	if src != nil {
 		// 「除了主守軍之外的軍隊都必須從己郡攜帶金、米」（說明書 p.28）。
-		// 帶一半，留一半給郡治理。
-		setup.AttackerGold, setup.AttackerRice = src.Gold/2, src.Rice/2
-		src.Gold -= setup.AttackerGold
-		src.Rice -= setup.AttackerRice
+		gold, rice := sup.Gold, sup.Rice
+		if sup.Auto {
+			// 帶一半，留一半給郡治理。
+			gold, rice = src.Gold/2, src.Rice/2
+		}
+		gold = clampTo(gold, src.Gold)
+		rice = clampTo(rice, src.Rice)
+		if gold < 0 {
+			gold = 0
+		}
+		if rice < 0 {
+			rice = 0
+		}
+		setup.AttackerGold, setup.AttackerRice = gold, rice
+		src.Gold -= gold
+		src.Rice -= rice
 	}
 	if dst != nil {
 		setup.DefenderGold, setup.DefenderRice = dst.Gold, dst.Rice
@@ -210,15 +236,29 @@ func (g *State) settle(p *Pending) *BattleResult {
 // ⚠ **開打就已經動到局面**：攻方帶走的錢糧當場從原郡扣掉，
 // 主事者親征也已經交接。中途放棄不會回到開打前——原版也是這樣，
 // 出兵是不能反悔的。
-func (g *State) BeginAttack(from, to int, attackers []int, by state.FactionID) (*Pending, error) {
+func (g *State) BeginAttack(from, to int, attackers []int, by state.FactionID, sup Supply) (*Pending, error) {
 	att, def, err := g.musterAttack(from, to, attackers, by)
 	if err != nil {
 		return nil, err
 	}
-	p := g.prepare(from, to, att, def, by)
+	p := g.prepare(from, to, att, def, by, sup)
 	p.Player = true
 	return p, nil
 }
+
+// CampaignForce 是這批將領帶出去的總兵力，用來算三十天要多少米。
+func (g *State) CampaignForce(attackers []int) int {
+	n := 0
+	for _, i := range attackers {
+		if x := g.General(i); x != nil {
+			n += x.Soldiers
+		}
+	}
+	return n
+}
+
+// RiceForCampaign 是這批兵打滿三十天要多少米（原版 `30日須耗用%d米`）。
+func RiceForCampaign(soldiers int) int { return battle.RiceForCampaign(soldiers) }
 
 // FinishAttack 把打完的戰役搬回局面。
 func (g *State) FinishAttack(p *Pending) *BattleResult {

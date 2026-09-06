@@ -121,3 +121,66 @@ func TestInspectCostsTenGold(t *testing.T) {
 		t.Error("那裡沒有部隊，查看應該失敗")
 	}
 }
+
+// TestCampMovesWithoutSpendingMoves 釘住紮營不扣移動力、不看距離。
+//
+// 原版是開戰前逐隊指定位置（`(%2d%s)%s之%s請%s將軍紮寨`），
+// 那是佈陣不是行軍。
+func TestCampMovesWithoutSpendingMoves(t *testing.T) {
+	f := flat(Plain)
+	b := arena(f)
+	u := place(b, MainAttacker, Centre, FromOffset(2, 2), lead("甲", 50, 50, 1000))
+	other := place(b, MainAttacker, Left, FromOffset(3, 3), lead("乙", 50, 50, 1000))
+	move := u.Move
+
+	far := FromOffset(18, 12)
+	if err := b.Camp(u, far); err != nil {
+		t.Fatalf("紮營到遠處失敗：%v", err)
+	}
+	if u.At != far {
+		t.Errorf("紮營之後在 %v，應該是 %v", u.At, far)
+	}
+	if u.Move != move {
+		t.Errorf("紮營扣了移動力：%d → %d", move, u.Move)
+	}
+	// 有人的格子紮不了。
+	if err := b.Camp(u, other.At); err == nil {
+		t.Error("那一格有人卻紮得了營")
+	}
+	// 過不去的地形紮不了。
+	f.Set(FromOffset(5, 5), Mountain)
+	if err := b.Camp(u, FromOffset(5, 5)); err == nil {
+		t.Error("大山上紮得了營")
+	}
+	// 出界紮不了。
+	if err := b.Camp(u, FromOffset(-1, 0)); err == nil {
+		t.Error("界外紮得了營")
+	}
+	// 開戰之後就不能再紮營了。
+	place(b, MainDefender, Centre, FromOffset(10, 10), lead("守", 50, 50, 1000))
+	b.Rice[MainAttacker] = 10000
+	b.EndDay()
+	if err := b.Camp(u, FromOffset(4, 4)); err == nil {
+		t.Error("第二天還紮得了營")
+	}
+}
+
+// TestCampAreaMatchesCamp 釘住畫面問的與規則答的是同一件事。
+func TestCampAreaMatchesCamp(t *testing.T) {
+	f := flat(Plain)
+	f.Set(FromOffset(4, 4), Mountain)
+	b := arena(f)
+	u := place(b, MainAttacker, Centre, FromOffset(2, 2), lead("甲", 50, 50, 1000))
+	place(b, MainAttacker, Left, FromOffset(3, 3), lead("乙", 50, 50, 1000))
+	for _, at := range []Hex{FromOffset(4, 4), FromOffset(3, 3), FromOffset(-1, 0),
+		FromOffset(6, 6), FromOffset(2, 2)} {
+		want := b.Camp(u, at) == nil
+		// Camp 成功會把部隊移過去，移回來再問。
+		if want {
+			u.At = FromOffset(2, 2)
+		}
+		if got := b.CampArea(u, at); got != want {
+			t.Errorf("%v：畫面說 %v，規則說 %v", at, got, want)
+		}
+	}
+}

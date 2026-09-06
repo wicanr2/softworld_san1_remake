@@ -155,6 +155,43 @@ func (b *Battle) formUp(side Side, pool []Leader, base Hex) []*Unit {
 	return units
 }
 
+// Camp 把一支部隊移到指定的格子上——**紮營，不是移動**：
+// 不扣移動力、不看距離，但落點要走得進去而且沒有人。
+//
+// 原版逐隊問位置：`(%2d%s)%s之%s請%s將軍紮寨`（`AA.EXE` `0x46b67`，
+// `docs/re/04` §5）。
+func (b *Battle) Camp(u *Unit, at Hex) error {
+	if u == nil || !u.Alive() {
+		return fmt.Errorf("battle: 這支部隊不在場上")
+	}
+	if b.Day != 1 {
+		return fmt.Errorf("battle: 紮營只在開戰前")
+	}
+	if !b.Field.InBounds(at) {
+		return fmt.Errorf("battle: 出界了")
+	}
+	if !b.Field.At(at).Passable() {
+		return fmt.Errorf("battle: %s 紮不了營", b.Field.At(at))
+	}
+	if x := b.UnitAt(at); x != nil && x != u {
+		return fmt.Errorf("battle: 那一格已經有 %s", x.Name())
+	}
+	u.At = at
+	if at == b.Field.CityAt {
+		b.CityHeld = u.Side
+	}
+	return nil
+}
+
+// CampArea 回報一支部隊能不能在這一格紮營，給畫面先擋掉不能選的格子。
+func (b *Battle) CampArea(u *Unit, at Hex) bool {
+	if !b.Field.InBounds(at) || !b.Field.At(at).Passable() {
+		return false
+	}
+	x := b.UnitAt(at)
+	return x == nil || x == u
+}
+
 func (b *Battle) occupied(h Hex) bool {
 	for _, u := range b.Units {
 		if u.Alive() && u.At == h {

@@ -357,7 +357,7 @@ func TestBeginAttackDefersTheFight(t *testing.T) {
 	ownerBefore := g.Prefecture(to).Owner
 	menBefore := g.Soldiers(to)
 
-	p, err := g.BeginAttack(from, to, att, owner)
+	p, err := g.BeginAttack(from, to, att, owner, HalfSupply())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +399,7 @@ func TestBeginAttackChecksTheSameConditions(t *testing.T) {
 		t.Skip("洛陽沒有守將")
 	}
 	target := g.Prefecture(15).Neighbours[0]
-	if _, err := g.BeginAttack(15, target, all, 5); !errors.Is(err, ErrNoGovernor) {
+	if _, err := g.BeginAttack(15, target, all, 5, HalfSupply()); !errors.Is(err, ErrNoGovernor) {
 		t.Errorf("傾巢而出回 %v，應該是 ErrNoGovernor", err)
 	}
 	to := 0
@@ -412,7 +412,7 @@ func TestBeginAttackChecksTheSameConditions(t *testing.T) {
 	if to == 0 {
 		t.Skip("洛陽與所有郡都相鄰")
 	}
-	if _, err := g.BeginAttack(15, to, all[:1], 5); !errors.Is(err, ErrNotAdjacent) {
+	if _, err := g.BeginAttack(15, to, all[:1], 5, HalfSupply()); !errors.Is(err, ErrNotAdjacent) {
 		t.Errorf("打不相鄰的郡回 %v，應該是 ErrNotAdjacent", err)
 	}
 }
@@ -446,7 +446,7 @@ func TestPlayerCommandedBattle(t *testing.T) {
 	if from == 0 {
 		t.Skip("找不到可以出兵的郡")
 	}
-	p, err := g.BeginAttack(from, to, force, owner)
+	p, err := g.BeginAttack(from, to, force, owner, HalfSupply())
 	if err != nil {
 		t.Fatal(err)
 	}

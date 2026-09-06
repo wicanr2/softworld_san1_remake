@@ -33,6 +33,9 @@ type fight struct {
 	// engage 為真表示在單位層（原版的「對戰」）。
 	engage bool
 
+	// camping 是還沒紮完營的部隊（開戰前逐隊指定位置）。
+	camping []*battle.Unit
+
 	view ui.BattleView
 }
 
@@ -43,11 +46,12 @@ const (
 	waitDir                    // 等方向
 	waitPlot                   // 等計謀編號
 	waitEngage                 // 等單位層的指令
+	waitCamp                   // 開戰前紮營
 )
 
 // startBattle 開一場由玩家指揮的戰役。
-func (a *app) startBattle(from, to int, force []int) {
-	p, err := a.s.G.BeginAttack(from, to, force, a.s.Player)
+func (a *app) startBattle(from, to int, force []int, sup game.Supply) {
+	p, err := a.s.G.BeginAttack(from, to, force, a.s.Player, sup)
 	if err != nil {
 		a.view.Prompt = fmt.Sprintf("出兵失敗：%v", err)
 		return
@@ -59,7 +63,33 @@ func (a *app) startBattle(from, to int, force []int) {
 		return s.Attacking()
 	})
 	a.fight = f
-	a.nextActor()
+	// 開戰前逐隊紮營（原版 `(%2d%s)%s之%s請%s將軍紮寨`）。
+	for _, u := range p.Battle().Units {
+		if u.Side.Attacking() && u.Alive() {
+			f.camping = append(f.camping, u)
+		}
+	}
+	a.nextCamp()
+}
+
+// nextCamp 問下一支部隊要紮在哪裡；紮完就開打。
+func (a *app) nextCamp() {
+	f := a.fight
+	for len(f.camping) > 0 && !f.camping[0].Alive() {
+		f.camping = f.camping[1:]
+	}
+	if len(f.camping) == 0 {
+		f.view.Menu, f.view.Items = "", nil
+		a.nextActor()
+		return
+	}
+	u := f.camping[0]
+	f.acting = u
+	f.waiting = waitCamp
+	f.view.Acting = u
+	f.view.Cursor = ui.Hexer{At: u.At, Shown: true}
+	f.view.Menu, f.view.Items = "紮寨", []string{"方向鍵移動", "0 定位", "9 全部自動"}
+	f.view.Prompt = fmt.Sprintf("請 %s 紮寨（還有 %d 隊）", u.Name(), len(f.camping))
 }
 
 // nextActor 推進到下一支要玩家下令的部隊；沒有就收尾。
@@ -115,6 +145,22 @@ func (a *app) battleKey(k byte) {
 	}
 
 	switch f.waiting {
+	case waitCamp:
+		switch k {
+		case '9':
+			// 剩下的照 formUp 排好的位置紮，直接開打。
+			f.camping = nil
+			a.nextCamp()
+		case '0':
+			if err := b.Camp(f.acting, f.view.Cursor.At); err != nil {
+				say("%v", err)
+				return
+			}
+			f.camping = f.camping[1:]
+			a.nextCamp()
+		default:
+			say("方向鍵移動、0 定位、9 全部自動")
+		}
 	case waitCommand:
 		a.battleCommand(k, done, say)
 	case waitEngage:
