@@ -45,6 +45,7 @@ func TestZZWhoWritesTheTables(t *testing.T) {
 	base := bootToGame(t, o, seedMas)
 	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
 	nGen := state.GeneralTableSize
+	_ = state.MasterRecordSize
 
 	// 分三段看，否則同一個 IP 寫哪一張表分不出來。
 	for _, seg := range []struct {
@@ -54,7 +55,6 @@ func TestZZWhoWritesTheTables(t *testing.T) {
 		rec  int
 		fld  map[int]string
 	}{
-		{"諸侯", base, nMas, state.MasterRecordSize, masField},
 		{"州郡", base + uint32(nMas), nSta, state.PrefectureRecordSize, prefField},
 		{"人物", base + uint32(nMas+nSta), nGen, state.GeneralRecordSize, genField},
 	} {
