@@ -15,9 +15,11 @@
 | dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |
 | 反組譯 | **未開始** | |
 | 格式解析 | **未開始** | |
-| Go 程式 | `internal/assets` 容器讀取器、`internal/state` 劇本表讀取器，測試全綠 | 2026-09-06 |
+| Go 程式 | `assets`／`state`／`cells`／`font`／`ui` 五個套件 ＋ `cmd/san1`（Ebiten）＋ `cmd/san1dump`（CLI／PNG），測試全綠 | 2026-09-06 |
+| 引擎畫面 | 州郡一覽可渲染：42 郡名、零缺字，Ebiten 與無頭 PNG 走同一份畫面程式 | 2026-09-06 |
 
-里程碑定義在 `CLAUDE.md` §10。目前在 **M0**。
+里程碑定義在 `CLAUDE.md` §10。目前在 **M2–M3 之間**：M0 完成、M2（容器格式）實質完成、M3（文字與字型）畫面已通；
+M1（dosgolem 跑得動）卡在 overlay 載入段的參數（`dosgolem/docs/spec/010` §4）。
 
 ---
 
@@ -181,6 +183,7 @@ DATA1 的 round-trip 零逆序、無縫覆蓋。
 | `docs/re/` | 程式碼在哪（位址、bytes、xref）| `00` DOS 服務普查 |
 | `docs/formats/` | 資料長什麼樣 | `01` 容器、`02` 郡名、`03` 劇本表 |
 | `docs/spec/` | `DRAFT`／`READY`／`CONFORMED`／`SUPERSEDED` | `001` 容器、`002` 劇本表（皆 READY）|
+| `fonts/` | 自由授權點陣字型 ＋ LICENSE | unifont 16×16、ascii6x10 |
 | `docs/mechanics/` | 遊戲怎麼運作 | 空 |
 | `docs/playtest/` | 原版 vs remake 同狀態比較 | 空 |
 | `docs/reference/` | 說明書整理、社群資料 | `01-manual-*`（5 份）、`02-web-*`（4 份）|

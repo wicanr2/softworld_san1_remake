@@ -12,12 +12,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	imgpng "image/png"
 	"os"
 	"path/filepath"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
+	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
+	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
 
 func main() {
@@ -25,6 +28,8 @@ func main() {
 	slot := flag.String("slot", "001", "劇本或存檔槽：001..006、SV1..SV6")
 	what := flag.String("what", "all", "印什麼：pref／gen／master／all")
 	cols := flag.Int("cols", 6, "郡名槽位寬度（半形格），用來檢查裝不裝得下")
+	png := flag.String("png", "", "把畫面存成 PNG（無頭環境驗版面用）")
+	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型（-png 時才需要）")
 	flag.Parse()
 
 	if *root == "" {
@@ -41,6 +46,13 @@ func main() {
 		die(err)
 	}
 	fmt.Printf("劇本 %s（來源 %s）\n\n", *slot, *root)
+
+	if *png != "" {
+		if err := writePNG(*png, *fontPath, sc, *slot); err != nil {
+			die(err)
+		}
+		fmt.Printf("畫面存到 %s\n\n", *png)
+	}
 
 	if *what == "pref" || *what == "all" {
 		fmt.Printf("州郡（%d 個，編號 1-based）\n", len(sc.Prefectures()))
@@ -85,6 +97,41 @@ func main() {
 			fmt.Printf("  [%2d] % X\n", m.Index, m.Raw[:16])
 		}
 	}
+}
+
+// writePNG 把引擎會畫的那一張畫面存成圖。
+//
+// **和 cmd/san1 畫的是同一張**（都走 ui.DrawPrefectureList）。
+// 畫面 bug 測試看不到，但存成圖就看得到，而且無頭環境也產得出來。
+func writePNG(out, fontPath string, sc *state.Scenario, slot string) error {
+	fh, err := os.Open(fontPath)
+	if err != nil {
+		return err
+	}
+	face, err := font.ParseHexGz(fh, 16)
+	fh.Close()
+	if err != nil {
+		return err
+	}
+	c := ui.NewCanvas(ui.Cols, ui.Rows, face)
+	ui.DrawPrefectureList(c, sc, slot)
+	if n := len(c.Missing); n > 0 {
+		fmt.Fprintf(os.Stderr, "⚠ %d 個字沒有字模：%q\n", n, string(missingRunes(c)))
+	}
+	f, err := os.Create(out)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return imgpng.Encode(f, c.Img)
+}
+
+func missingRunes(c *ui.Canvas) []rune {
+	var rs []rune
+	for r := range c.Missing {
+		rs = append(rs, r)
+	}
+	return rs
 }
 
 // openData2 開 DATA2 容器。三個檔缺一不可。
