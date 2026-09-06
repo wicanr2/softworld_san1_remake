@@ -187,6 +187,7 @@ type General struct {
 	War      uint8 // 戰力
 	Charm    uint8 // 魅力
 	Rank     Rank  // 職位
+	Origin   uint8 // 出身郡（1..42）
 	// Loyalty 是忠誠。**在野者是 0xFF（NoValue）不是 0**——沒有主子就
 	// 沒有忠誠可言。實測 346 位裡 227 位是 0xFF，而且全部沒有勢力；
 	// 有勢力者的值域是 52–100。當成數值算下去會得到「在野者忠誠 255」。
@@ -304,6 +305,7 @@ func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
 			War:      rec[10],
 			Charm:    rec[11],
 			Rank:     Rank(rec[12]),
+			Origin:   rec[13],
 			Loyalty:  rec[16],
 			Status:   Status(rec[17]),
 			Faction:  rec[18],

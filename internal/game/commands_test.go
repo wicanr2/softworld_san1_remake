@@ -23,7 +23,7 @@ func TestMoveNeedsSuccessor(t *testing.T) {
 			x.Location = 15
 		}
 	}
-	g.syncSoldiers(dz.Location)
+
 	if err := g.Move(dz.Location, 15, dz.Index, 0, 0, 5); !errors.Is(err, ErrNoGovernor) {
 		t.Errorf("唯一的主事者移出回 %v，應該是 ErrNoGovernor", err)
 	}

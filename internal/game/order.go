@@ -22,26 +22,114 @@ type Order interface {
 	Prefecture() int
 }
 
-// ReclaimOrder 是開墾。
-type ReclaimOrder struct{ At int }
+// ReclaimOrder 是開墾。General 是負責的將領，−1 表示不指定（效果取最低）。
+type ReclaimOrder struct {
+	At      int
+	General int
+}
 
 func (o ReclaimOrder) Prefecture() int { return o.At }
 func (o ReclaimOrder) Apply(g *State, by state.FactionID) error {
-	return g.Reclaim(o.At, by)
+	return g.Reclaim(o.At, o.General, by)
 }
 func (o ReclaimOrder) Describe(g *State) string {
-	return fmt.Sprintf("開墾 %s", prefName(g, o.At))
+	return fmt.Sprintf("開墾 %s%s", prefName(g, o.At), byWhom(g, o.General))
 }
 
 // FloodControlOrder 是防洪。
-type FloodControlOrder struct{ At int }
+type FloodControlOrder struct {
+	At      int
+	General int
+}
 
 func (o FloodControlOrder) Prefecture() int { return o.At }
 func (o FloodControlOrder) Apply(g *State, by state.FactionID) error {
-	return g.FloodControl(o.At, by)
+	return g.FloodControl(o.At, o.General, by)
 }
 func (o FloodControlOrder) Describe(g *State) string {
-	return fmt.Sprintf("防洪 %s", prefName(g, o.At))
+	return fmt.Sprintf("防洪 %s%s", prefName(g, o.At), byWhom(g, o.General))
+}
+
+// TrainOrder 是訓練兵士。
+type TrainOrder struct {
+	At      int
+	General int
+}
+
+func (o TrainOrder) Prefecture() int { return o.At }
+func (o TrainOrder) Apply(g *State, by state.FactionID) error {
+	return g.Train(o.At, o.General, by)
+}
+func (o TrainOrder) Describe(g *State) string {
+	return fmt.Sprintf("訓練 %s%s", prefName(g, o.At), byWhom(g, o.General))
+}
+
+// ReliefOrder 是開倉賑民。
+type ReliefOrder struct{ At int }
+
+func (o ReliefOrder) Prefecture() int { return o.At }
+func (o ReliefOrder) Apply(g *State, by state.FactionID) error {
+	return g.Relief(o.At, by)
+}
+func (o ReliefOrder) Describe(g *State) string {
+	return fmt.Sprintf("賑民 %s", prefName(g, o.At))
+}
+
+// SellRiceOrder／BuyRiceOrder 是米糧買賣。
+type SellRiceOrder struct{ At, Units int }
+
+func (o SellRiceOrder) Prefecture() int { return o.At }
+func (o SellRiceOrder) Apply(g *State, by state.FactionID) error {
+	return g.SellRice(o.At, o.Units, by)
+}
+func (o SellRiceOrder) Describe(g *State) string {
+	return fmt.Sprintf("賣米 %s %d 單位", prefName(g, o.At), o.Units)
+}
+
+type BuyRiceOrder struct{ At, Units int }
+
+func (o BuyRiceOrder) Prefecture() int { return o.At }
+func (o BuyRiceOrder) Apply(g *State, by state.FactionID) error {
+	return g.BuyRice(o.At, o.Units, by)
+}
+func (o BuyRiceOrder) Describe(g *State) string {
+	return fmt.Sprintf("買米 %s %d 單位", prefName(g, o.At), o.Units)
+}
+
+// RecruitOrder 是登用本地在野人才。
+type RecruitOrder struct{ At, Target int }
+
+func (o RecruitOrder) Prefecture() int { return o.At }
+func (o RecruitOrder) Apply(g *State, by state.FactionID) error {
+	return g.Recruit(o.At, o.Target, by)
+}
+func (o RecruitOrder) Describe(g *State) string {
+	return fmt.Sprintf("登用 %s%s", prefName(g, o.At), byWhom(g, o.Target))
+}
+
+// AttackOrder 是發動戰役。
+//
+// **結果不在 Describe 裡**：`Apply` 之後要拿結果的呼叫端應該直接用
+// `State.Attack`。命令層只保證「這一步做了什麼」。
+type AttackOrder struct {
+	At, To int
+	Force  []int
+}
+
+func (o AttackOrder) Prefecture() int { return o.At }
+func (o AttackOrder) Apply(g *State, by state.FactionID) error {
+	_, err := g.Attack(o.At, o.To, o.Force, by)
+	return err
+}
+func (o AttackOrder) Describe(g *State) string {
+	return fmt.Sprintf("%s 出兵攻 %s", prefName(g, o.At), prefName(g, o.To))
+}
+
+func byWhom(g *State, index int) string {
+	if x := g.General(index); x != nil && x.Name != "" {
+		return "（" + x.Name + "）"
+	}
+	return ""
 }
 
 // ConscriptOrder 是徵兵。

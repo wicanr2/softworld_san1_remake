@@ -61,14 +61,14 @@
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneDisasterBase` | 30 | 「天災多因人怨引起，民眾忠誠最好不要太低」|
+| `TuneDisasterBase` | 8（每月）| 「天災多因人怨引起，民眾忠誠最好不要太低」|
 | `TuneFloodWeight` | 50 | 洪水率的作用 |
 | `TuneQuakeLoss` | 10 | 「地震造成人口減少，財物和米糧的損失，及部隊兵力傷亡」|
 | `TuneFloodPopLoss` / `TuneFloodLandLoss` | 8／5 | 「人口和兵力都會減少，土地價值也會流失」|
 | `TunePlagueLoss` / `TunePlagueStamina` | 12／5 | 「人口和兵力銳減，將領的體能也不正常地下降」|
 | `TuneHarvestRicePerLand` / `TuneHarvestGoldPerLand` / `TuneHarvestLandDrop` | 2／1／2 | 「稅金入庫、米糧進倉」|
 | `TuneLocustRiceLoss` / `TuneLocustLandLoss` | 30／5 | 「米糧減少，土地價值也會下降」|
-| `TuneWinterGrowth` | 20 | 「人口增加」|
+| `TuneWinterGrowth` | 95（千分比）| 「人口增加」|
 | `TuneAgingStamina` | 1 | 「年齡增長，體能隨之逐漸減退」|
 | `TuneTributePerPrefecture` | 3 | 「領地越多，貢品越多」|
 
@@ -88,6 +88,19 @@
 | `TuneChiefWeight` / `TuneEnvoyWeight` / `TunePrestigeWeight` / `TuneEnemyChiefBonus` | 40／25／15／20 | 「成功率取決於四項：我方軍師智力、派遣使者魅力、我方君主人望、對方軍師智力」|
 | `PlotCost` | 100–300 | 平時的五種計謀手冊**沒給費用**；照戰場那一組的量級 |
 | `TuneForgeryLoyalty` / `TuneInciteLoss` | 15／20 | 「降低其部將忠誠」「減少米、金和人民忠誠」|
+
+### 災害與成長是一對
+
+`TuneDisasterBase` 與 `TuneWinterGrowth` 不能各自調——災害吃人口、
+冬季補回來，兩者的比例決定世界會不會慢慢死掉。
+
+判準寫成測試（`session.TestEconomyStaysSane`）：**二十年後的總人口要落在
+開局的一半到兩倍之間**。這是 remake 自己的設計意圖，手冊沒給成長率。
+
+> 量到過：第一版（災害 30／月、成長 20‰）跑二十年之後總人口從
+> 2,538,000 掉到 173,991——剩百分之七。而每一條規則單獨看都「照手冊做」，
+> 只有整局跑過才看得出來。同一輪也發現 AI 徵兵是 1:1 減人口卻不節制，
+> 一次抽到下限，下一次還會再抽。
 
 ## 4. 亂數
 

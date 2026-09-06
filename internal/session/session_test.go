@@ -50,6 +50,7 @@ func TestTwelveMonths(t *testing.T) {
 	s := newSession(t, ai.ModeEnhanced, 0) // 劉備
 	start := s.G.Date
 	before := *s.G.Prefecture(15) // 洛陽，董卓的地盤，由電腦經營
+	troops := s.G.Soldiers(15)
 	for i := 0; i < 12; i++ {
 		s.EndMonth()
 	}
@@ -58,7 +59,7 @@ func TestTwelveMonths(t *testing.T) {
 	}
 	after := *s.G.Prefecture(15)
 	if after.Gold == before.Gold && after.LandValue == before.LandValue &&
-		after.FloodRate == before.FloodRate && after.Soldiers == before.Soldiers {
+		after.FloodRate == before.FloodRate && s.G.Soldiers(15) == troops {
 		t.Error("洛陽跑了一年完全沒變——電腦諸侯沒有在做事")
 	}
 }

@@ -43,29 +43,34 @@ func (g *State) canOrder(prefectureID int, by state.FactionID) (*Prefecture, err
 	return p, nil
 }
 
-// Reclaim 是「開墾」：花 10 金提升土地價值（說明書 p.20）。
+// Reclaim 是「土地開發」（說明書 p.21）：每次 10 金，
+// **負責開墾的將領謀略越高，土地價值增加越多**。
 //
-// **提升多少還沒解。** 手冊只說「土地開發值越高則收成越好」，沒給數字。
-// 這裡先加 1，並在回傳值裡誠實報出來，等對拍量到真正的公式再換掉。
-func (g *State) Reclaim(prefectureID int, by state.FactionID) error {
+// 「若財庫已空則徒手開墾」——所以錢不夠不是錯誤，只是效果減半。
+func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
 	}
-	if p.Gold < CostReclaim {
-		return ErrNoGold
+	add := TuneReclaimBase
+	if x := g.General(generalIndex); x != nil && x.Faction == by &&
+		x.Location == prefectureID {
+		add += int(x.Intel) / TuneReclaimIntel
 	}
-	p.Gold -= CostReclaim
-	if p.LandValue < 100 {
-		p.LandValue++
+	if p.Gold >= CostReclaim {
+		p.Gold -= CostReclaim
+	} else {
+		add = (add + 1) / 2 // 徒手開墾
 	}
+	p.LandValue = uint8(clampTo(int(p.LandValue)+add, 100))
 	p.Commanded = true
 	return nil
 }
 
-// FloodControl 是「防洪」：花 10 金降低洪水率（說明書 p.20）。
-// 降多少同樣還沒解。
-func (g *State) FloodControl(prefectureID int, by state.FactionID) error {
+// FloodControl 是「洪水防治」（說明書 p.21）：每次 10 金，
+// **負責治水的將領謀略越高，洪水發生機率下降越多**。
+// 「沒錢就不能修浚」——與開墾不同，這一項錢不夠就是失敗。
+func (g *State) FloodControl(prefectureID, generalIndex int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
@@ -73,10 +78,13 @@ func (g *State) FloodControl(prefectureID int, by state.FactionID) error {
 	if p.Gold < CostFloodControl {
 		return ErrNoGold
 	}
-	p.Gold -= CostFloodControl
-	if p.FloodRate > 0 {
-		p.FloodRate--
+	drop := TuneFloodBase
+	if x := g.General(generalIndex); x != nil && x.Faction == by &&
+		x.Location == prefectureID {
+		drop += int(x.Intel) / TuneFloodIntel
 	}
+	p.Gold -= CostFloodControl
+	p.FloodRate = uint8(clampTo(int(p.FloodRate)-drop, 100))
 	p.Commanded = true
 	return nil
 }
@@ -124,7 +132,6 @@ func (g *State) Conscript(prefectureID, generalIndex, n int, by state.FactionID)
 	p.Gold -= cost
 	p.Population -= n
 	x.Soldiers = total
-	p.Soldiers += n
 	p.Commanded = true
 	return nil
 }

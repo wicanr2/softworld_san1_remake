@@ -20,10 +20,10 @@ func newGame(t *testing.T) *State {
 // TestOrdersRejectOtherPeoplesLand 釘住「不是你的郡不能下令」。
 func TestOrdersRejectOtherPeoplesLand(t *testing.T) {
 	g := newGame(t)
-	if err := g.Reclaim(11, 0); !errors.Is(err, ErrNotYours) { // 陳留是曹操的
+	if err := g.Reclaim(11, -1, 0); !errors.Is(err, ErrNotYours) { // 陳留是曹操的
 		t.Errorf("對別人的郡開墾回 %v，應該是 ErrNotYours", err)
 	}
-	if err := g.Reclaim(1, 0); !errors.Is(err, ErrNotYours) { // 遼東無主
+	if err := g.Reclaim(1, -1, 0); !errors.Is(err, ErrNotYours) { // 遼東無主
 		t.Errorf("對空白郡開墾回 %v，應該是 ErrNotYours", err)
 	}
 }
@@ -31,14 +31,14 @@ func TestOrdersRejectOtherPeoplesLand(t *testing.T) {
 // TestOneOrderPerMonth 釘住「每郡每月一次」（說明書 p.17）。
 func TestOneOrderPerMonth(t *testing.T) {
 	g := newGame(t)
-	if err := g.Reclaim(8, 0); err != nil {
+	if err := g.Reclaim(8, -1, 0); err != nil {
 		t.Fatalf("第一次開墾就失敗：%v", err)
 	}
-	if err := g.Reclaim(8, 0); !errors.Is(err, ErrAlreadyMoved) {
+	if err := g.Reclaim(8, -1, 0); !errors.Is(err, ErrAlreadyMoved) {
 		t.Errorf("同月第二次開墾回 %v，應該是 ErrAlreadyMoved", err)
 	}
 	g.EndMonth()
-	if err := g.Reclaim(8, 0); err != nil {
+	if err := g.Reclaim(8, -1, 0); err != nil {
 		t.Errorf("換月之後開墾還是失敗：%v", err)
 	}
 }
@@ -48,7 +48,7 @@ func TestReclaimCostsGold(t *testing.T) {
 	g := newGame(t)
 	p := g.Prefecture(8)
 	before, land := p.Gold, p.LandValue
-	if err := g.Reclaim(8, 0); err != nil {
+	if err := g.Reclaim(8, -1, 0); err != nil {
 		t.Fatal(err)
 	}
 	if p.Gold != before-CostReclaim {
@@ -57,10 +57,21 @@ func TestReclaimCostsGold(t *testing.T) {
 	if p.LandValue <= land {
 		t.Errorf("開墾後土地價值 %d 沒有比 %d 高", p.LandValue, land)
 	}
-	p.Gold = CostReclaim - 1
+	// 「若財庫已空則徒手開墾」（說明書 p.21）——**錢不夠不是失敗**，
+	// 只是效果減半。這與防洪不同（防洪「沒錢就不能修浚」）。
 	g.EndMonth()
-	if err := g.Reclaim(8, 0); !errors.Is(err, ErrNoGold) {
-		t.Errorf("錢不夠時開墾回 %v，應該是 ErrNoGold", err)
+	p.Gold = CostReclaim - 1
+	land2 := p.LandValue
+	if err := g.Reclaim(8, -1, 0); err != nil {
+		t.Errorf("財庫空時開墾回 %v，應該還是能徒手開墾", err)
+	}
+	if p.LandValue <= land2 {
+		t.Errorf("徒手開墾之後土地價值 %d 沒有比 %d 高", p.LandValue, land2)
+	}
+	g.EndMonth()
+	p.Gold = CostFloodControl - 1
+	if err := g.FloodControl(8, -1, 0); !errors.Is(err, ErrNoGold) {
+		t.Errorf("錢不夠時防洪回 %v，應該是 ErrNoGold", err)
 	}
 }
 
@@ -81,15 +92,15 @@ func TestConscriptRespectsCap(t *testing.T) {
 	if err := g.Conscript(8, lord.Index, room+1, 0); !errors.Is(err, ErrNoRoom) {
 		t.Errorf("募到超過上限回 %v，應該是 ErrNoRoom", err)
 	}
-	before := p.Soldiers
+	before := g.Soldiers(8)
 	if err := g.Conscript(8, lord.Index, room, 0); err != nil {
 		t.Fatalf("募到剛好上限卻失敗：%v", err)
 	}
 	if lord.Soldiers != lord.TroopCap() {
 		t.Errorf("募完之後 %s 有 %d 兵，應該是 %d", lord.Name, lord.Soldiers, lord.TroopCap())
 	}
-	if p.Soldiers != before+room {
-		t.Errorf("郡的總兵力 %d，應該是 %d", p.Soldiers, before+room)
+	if got := g.Soldiers(8); got != before+room {
+		t.Errorf("郡的總兵力 %d，應該是 %d", got, before+room)
 	}
 	if p.Gold != MaxGold-room*CostConscriptPerSoldier {
 		t.Errorf("募完之後庫銀 %d，應該是 %d", p.Gold, MaxGold-room*CostConscriptPerSoldier)

@@ -34,15 +34,27 @@ const (
 	TuneLocustRiceLoss = 30
 	TuneLocustLandLoss = 5
 	// TuneWinterGrowth 是冬季人口成長的千分比，隨土地價值與民眾忠誠加成。
-	TuneWinterGrowth = 20
+	//
+	// 與 TuneDisasterBase 是**一對**：災害吃人口、冬季補回來，兩者的
+	// 比例決定世界會不會慢慢死掉。判準在 `session.TestEconomyStaysSane`
+	// ——二十年後的總人口要落在開局的一半到兩倍之間。
+	TuneWinterGrowth = 95
 	// TuneAgingStamina 是每年體能的衰減基準；年紀越大掉越多。
 	TuneAgingStamina = 1
-	// TuneDisasterBase 是災害的基礎機率；民眾忠誠越低越高。
-	TuneDisasterBase = 30
+	// TuneDisasterBase 是災害的**每月**基礎機率；民眾忠誠越低越高。
+	// 夏天有三個月，所以一年的水患機率遠高於這個數字。
+	TuneDisasterBase = 8
 	// TuneFloodWeight 是洪水率對水患機率的權重（百分比）。
 	TuneFloodWeight = 50
 	// TuneTributePerPrefecture 是每幾個郡一年進貢一件寶物。
 	TuneTributePerPrefecture = 3
+
+	// TuneComingOfAge 是未登場的人物幾歲出頭。
+	//
+	// 手冊只說「新血出現：新將投效其親族朋友」（p.36），沒給年齡。
+	// 用二十歲的話，劇本 001 裡八歲的諸葛亮會在西元 201 年前後登場，
+	// 十四歲的孫策在 195 年——與史實的量級相符。
+	TuneComingOfAge = 20
 )
 
 // Event 是一則發生過的事件，給訊息列與測試用。
@@ -83,10 +95,14 @@ func (g *State) spring() []Event {
 	if g.Date.Month == 3 {
 		for i := range g.generals {
 			x := &g.generals[i]
-			if x.Name == "" || x.Age == 0 {
+			if x.Name == "" {
 				continue
 			}
 			x.Age++
+			// 未登場的人只長年紀，不受體能衰退與老死影響。
+			if x.Status == state.StatusUnborn {
+				continue
+			}
 			// 「越大體能越差」（說明書 p.18）：四十歲以後每年多掉一點。
 			drop := TuneAgingStamina
 			if x.Age > 40 {
@@ -101,6 +117,7 @@ func (g *State) spring() []Event {
 			x.Stamina -= uint8(drop)
 		}
 	}
+	out = append(out, g.comeOfAge()...)
 	for i := range g.prefectures {
 		p := &g.prefectures[i]
 		if !p.Owned() {
@@ -110,6 +127,43 @@ func (g *State) spring() []Event {
 			g.scale(p, 100-TuneQuakeLoss)
 			out = append(out, Event{p.ID, fmt.Sprintf("%s 地震", p.Name)})
 		}
+	}
+	return out
+}
+
+// comeOfAge 是春天的「新血出現」（說明書 p.36）。
+//
+// 未登場的人物（身分 11）年齡到了就在**出身郡**露面，成為在野將領。
+// 出身郡是 `BASEGEN` offset 13：劇本 001 的劉備是涿郡、孫堅是吳郡，
+// 與史實相符。
+//
+// ⚠ **沒有這一段的話，武將只死不生。** 實測：不補新血的話，四十七年後
+// 十四個勢力全部滅亡，天下無主——那不是「難度高」，是少了一條規則。
+func (g *State) comeOfAge() []Event {
+	var out []Event
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Status != state.StatusUnborn || x.Name == "" {
+			continue
+		}
+		if int(x.Age) < TuneComingOfAge {
+			continue
+		}
+		at := x.Origin
+		if at < 1 || at > len(g.prefectures) {
+			at = x.Location
+		}
+		if at < 1 || at > len(g.prefectures) {
+			continue
+		}
+		x.Location = at
+		x.Status = state.StatusAvailable
+		p := g.Prefecture(at)
+		name := ""
+		if p != nil {
+			name = p.Name
+		}
+		out = append(out, Event{at, fmt.Sprintf("%s 現身於 %s", x.Name, name)})
 	}
 	return out
 }
@@ -127,7 +181,7 @@ func (g *State) summer() []Event {
 			int(p.FloodRate)*TuneFloodWeight/100
 		if g.roll(int(Summer), p.ID, 1) < flood {
 			p.Population = p.Population * (100 - TuneFloodPopLoss) / 100
-			p.Soldiers = p.Soldiers * (100 - TuneFloodPopLoss) / 100
+			g.scaleTroops(p.ID, 100-TuneFloodPopLoss)
 			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneFloodLandLoss, 100))
 			// 「意外產生水災後，洪水率會立刻升到 100」（說明書 p.21）。
 			p.FloodRate = 100
@@ -136,7 +190,7 @@ func (g *State) summer() []Event {
 		}
 		if g.roll(int(Summer), p.ID, 2) < g.disasterChance(p)/2 {
 			p.Population = p.Population * (100 - TunePlagueLoss) / 100
-			p.Soldiers = p.Soldiers * (100 - TunePlagueLoss) / 100
+			g.scaleTroops(p.ID, 100-TunePlagueLoss)
 			for _, x := range g.Garrison(p.ID) {
 				x.Stamina = uint8(clampTo(int(x.Stamina)-TunePlagueStamina, 100))
 			}
@@ -214,15 +268,21 @@ func (g *State) winter() []Event {
 	return out
 }
 
+// scaleTroops 把一個郡所有駐軍的兵力按百分比縮放。
+//
+// **只動人不動郡**：郡的總兵力是導出值，動兩邊會讓它們分家。
+func (g *State) scaleTroops(prefectureID, pct int) {
+	for _, x := range g.Garrison(prefectureID) {
+		x.Soldiers = x.Soldiers * pct / 100
+	}
+}
+
 // scale 把一個郡的人口、金、米、兵按百分比縮放（災害用）。
 func (g *State) scale(p *Prefecture, pct int) {
 	p.Population = p.Population * pct / 100
 	p.Gold = p.Gold * pct / 100
 	p.Rice = p.Rice * pct / 100
-	p.Soldiers = p.Soldiers * pct / 100
-	for _, x := range g.Garrison(p.ID) {
-		x.Soldiers = x.Soldiers * pct / 100
-	}
+	g.scaleTroops(p.ID, pct)
 }
 
 // retire 把一位人物從舞台上移走（老死用）。
@@ -234,9 +294,6 @@ func (g *State) retire(x *General) {
 	at, faction := x.Location, x.Faction
 	wasGoverning := x.Status.Governs()
 	wasLord := x.Status == state.StatusLord
-	if p := g.Prefecture(at); p != nil {
-		p.Soldiers -= x.Soldiers
-	}
 	x.Soldiers = 0
 	x.Faction = state.NoFaction
 	x.Status = state.StatusIdle

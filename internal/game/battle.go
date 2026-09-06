@@ -97,6 +97,25 @@ func (g *State) Attack(from, to int, attackers []int, by state.FactionID) (*Batt
 	if g.leavesNobody(from, attackers, by) {
 		return nil, ErrNoGovernor
 	}
+	// **主事者親征的話，出發前要先把治理交出去。**
+	// 不交的話原郡在他離開之後就沒有主事者了，而那件事在畫面上
+	// 只看得出「這個郡的太守欄空了」——不會有任何錯誤。
+	for _, x := range att {
+		if !x.Status.Governs() {
+			continue
+		}
+		succ := g.successorForGoing(from, attackers, by)
+		if succ == nil {
+			return nil, ErrNoGovernor
+		}
+		succ.Status = state.StatusGovernor
+		if x.Status == state.StatusLord {
+			// 君主親征不卸君主身分，只是那個郡另有太守。
+			break
+		}
+		x.Status = state.StatusOfficer
+		break
+	}
 	var def []*General
 	for _, x := range g.Garrison(to) {
 		if x.Faction == dst.Owner {
@@ -105,6 +124,24 @@ func (g *State) Attack(from, to int, attackers []int, by state.FactionID) (*Batt
 	}
 	src.Commanded = true
 	return g.resolve(from, to, att, def, by), nil
+}
+
+// successorForGoing 從**留守的人**裡挑一位接手治理，魅力最高的優先。
+func (g *State) successorForGoing(prefectureID int, going []int, by state.FactionID) *General {
+	out := map[int]bool{}
+	for _, i := range going {
+		out[i] = true
+	}
+	var best *General
+	for _, x := range g.Garrison(prefectureID) {
+		if x.Faction != by || out[x.Index] {
+			continue
+		}
+		if best == nil || x.Charm > best.Charm {
+			best = x
+		}
+	}
+	return best
 }
 
 // leavesNobody 回報「這批人全部出征之後，這個郡是不是沒人治理」。
@@ -132,6 +169,27 @@ func unitPower(x *General) int {
 		int(x.Arms)*TuneArmsWeight/100 +
 		int(x.War)*TuneWarWeight/100
 	return base * quality / 100
+}
+
+// Power 是一支部隊的戰力，對外版本（AI 要用它估算勝算）。
+func Power(x *General) int { return unitPower(x) }
+
+// DefencePower 是某個郡的守方戰力，含城池與城寨的加成。
+func (g *State) DefencePower(prefectureID int) int {
+	p := g.Prefecture(prefectureID)
+	if p == nil {
+		return 0
+	}
+	n := 0
+	for _, x := range g.Garrison(prefectureID) {
+		if x.Faction == p.Owner {
+			n += unitPower(x)
+		}
+	}
+	if p.Owned() {
+		n = n * (100 + TuneDefenceBonus + p.Forts*TuneFortBonus) / 100
+	}
+	return n
 }
 
 func sumPower(units []*General) int {
@@ -176,6 +234,27 @@ func (g *State) resolve(from, to int, att, def []*General, by state.FactionID) *
 		return r.Captives[i].General < r.Captives[j].General
 	})
 
+	// 「獲勝軍若於戰後捉到敵軍君主，其寶物將全歸獲勝軍所有」（說明書 p.35）。
+	for _, c := range r.Captives {
+		x := g.General(c.General)
+		if x == nil || x.Status != state.StatusLord {
+			continue
+		}
+		loser, winner := g.Faction(x.Faction), g.Faction(by)
+		if !r.AttackerWon {
+			// 守方獲勝時，被擒的是攻方的君主。
+			winner = g.Faction(g.Prefecture(to).Owner)
+		}
+		if loser == nil || winner == nil || loser == winner {
+			continue
+		}
+		for i := range loser.Treasury {
+			winner.Treasury[i] += loser.Treasury[i]
+			loser.Treasury[i] = 0
+		}
+		r.Log = append(r.Log, fmt.Sprintf("%s 的寶物盡歸戰勝方", x.Name))
+	}
+
 	if r.AttackerWon {
 		g.takePrefecture(from, to, att, by)
 		r.PrefectureTook = true
@@ -187,8 +266,6 @@ func (g *State) resolve(from, to int, att, def []*General, by state.FactionID) *
 	for _, c := range r.Captives {
 		r.Log = append(r.Log, fmt.Sprintf("%s 被擒", c.Name))
 	}
-	g.syncSoldiers(from)
-	g.syncSoldiers(to)
 	return r
 }
 
@@ -208,6 +285,9 @@ func (g *State) takePrefecture(from, to int, att []*General, by state.FactionID)
 		x.Soldiers = 0
 	}
 	dst.Owner = by
+	// **剛攻下的郡這個月不能再下令。** 不擋的話同一個月可以一路連鎖
+	// 進攻，而每郡每月一次的限制就形同虛設（說明書 p.17）。
+	dst.Commanded = true
 	for i, x := range att {
 		x.Location = to
 		if i == 0 && !x.Status.Governs() {
@@ -218,22 +298,6 @@ func (g *State) takePrefecture(from, to int, att []*General, by state.FactionID)
 	if f := g.Faction(old); f != nil && len(g.Territory(old)) == 0 {
 		f.Alive = false
 	}
-}
-
-// syncSoldiers 讓郡的總兵力等於駐軍加總。
-//
-// **總兵力是導出值。** 手冊說它是「所有現役將麾下的兵力總合」（p.17），
-// 所以任何動到將領兵數的地方都要重算一次，否則兩個數字會分家。
-func (g *State) syncSoldiers(prefectureID int) {
-	p := g.Prefecture(prefectureID)
-	if p == nil {
-		return
-	}
-	n := 0
-	for _, x := range g.Garrison(prefectureID) {
-		n += x.Soldiers
-	}
-	p.Soldiers = n
 }
 
 // DisposeCaptive 是決勝之後對被擒敵將的處置（說明書 p.35）。
@@ -287,6 +351,5 @@ func (g *State) DisposeCaptive(at, generalIndex int, d Disposal, by state.Factio
 	default:
 		return fmt.Errorf("game: 沒有這種處置 %d", d)
 	}
-	g.syncSoldiers(at)
 	return nil
 }

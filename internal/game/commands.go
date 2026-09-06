@@ -66,8 +66,6 @@ func (g *State) Move(from, to, generalIndex, gold, rice int, by state.FactionID)
 		succ.Status = state.StatusGovernor
 		x.Status = state.StatusOfficer
 	}
-	src.Soldiers -= x.Soldiers
-	dst.Soldiers += x.Soldiers
 	src.Gold -= gold
 	dst.Gold += gold
 	src.Rice -= rice

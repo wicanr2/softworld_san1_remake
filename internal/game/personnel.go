@@ -147,7 +147,6 @@ func (g *State) Dismiss(prefectureID, targetIndex int, by state.FactionID) error
 		return ErrNoGold
 	}
 	p.Gold -= CostDismiss
-	p.Soldiers -= t.Soldiers
 	t.Soldiers = 0
 	t.Faction = state.NoFaction
 	t.Status = state.StatusAvailable
@@ -336,11 +335,7 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 		_ = old
 	} else {
 		// 人被挖走要離開原郡，回到挖角方的所在地。
-		if q := g.Prefecture(at); q != nil {
-			q.Soldiers -= t.Soldiers
-		}
 		t.Location = prefectureID
-		p.Soldiers += t.Soldiers
 		}
 	return nil
 }

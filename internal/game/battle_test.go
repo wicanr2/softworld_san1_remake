@@ -94,7 +94,7 @@ func TestAttackTakesPrefecture(t *testing.T) {
 	for _, x := range g.Garrison(empty) {
 		sum += x.Soldiers
 	}
-	if got := g.Prefecture(empty).Soldiers; got != sum {
+	if got := g.Soldiers(empty); got != sum {
 		t.Errorf("郡的總兵力 %d，駐軍加總 %d——兩個數字分家了", got, sum)
 	}
 }

@@ -180,7 +180,7 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 	line(6, "金", fmt.Sprintf("%d", p.Gold))
 	line(7, "米", fmt.Sprintf("%d", p.Rice))
 	line(8, "人口", fmt.Sprintf("%d", p.Population))
-	line(9, "兵士", fmt.Sprintf("%d", p.Soldiers))
+	line(9, "兵士", fmt.Sprintf("%d", g.Soldiers(p.ID)))
 
 	line(10, "現役將", fmt.Sprintf("%d / 在野 %d",
 		g.ActiveGenerals(p.ID), g.FreeGenerals(p.ID)))

@@ -14,25 +14,30 @@ import (
 //
 // 決策是**決定性的**：同一個局面永遠得到同一串命令。理由是對拍與重現——
 // 帶亂數的 AI 會讓「這一手為什麼不一樣」變成無法回答的問題。
-// 要隨機性的話應該從局面推導（例如以回合數與勢力編號當種子），
-// 而不是拿系統亂數。
 type enhanced struct{}
 
 func (e *enhanced) Mode() Mode    { return ModeEnhanced }
 func (e *enhanced) Name() string  { return "remake 強化 AI" }
 func (e *enhanced) Derived() bool { return false }
 
-// 內政的門檻。**這些是 remake 自己的判斷，不是原版的數字。**
+// 門檻。**這些是 remake 自己的判斷，不是原版的數字。**
 const (
-	// floodDanger 以上就優先防洪。說明書說洪水率越低越不易罹水患，
-	// 而且水災後立刻升到 100（p.36）。
-	floodDanger = 60
+	floodDanger = 60  // 洪水率到這裡就優先防洪
+	landTarget  = 70  // 土地價值低於這裡就開墾
+	loyaltyLow  = 70  // 民眾忠誠低於這裡就賑民
+	goldReserve = 200 // 不動用的存底
+	riceReserve = 800 // 不動用的存糧
 
-	// landTarget 以下就開墾。土地價值影響收成與人口增長（p.21）。
-	landTarget = 60
+	// attackEdge 是「戰力要領先多少倍才出兵」。守方有地利加成，
+	// 平手出兵是送死。
+	attackEdgeNum, attackEdgeDen = 3, 2
 
-	// goldReserve 是不動用的存底，免得把庫銀花光而無法應變。
-	goldReserve = 200
+	// sellRiceAbove 是米多到這裡就賣一些換金。
+	// conscriptShare：一次最多抽剩餘人口的幾分之一。
+	conscriptShare = 20
+
+	sellRiceAbove = 5000
+	sellRiceBatch = 1000
 )
 
 // Plan 對每一個自己的郡挑一件事做。每郡每月只能下一次令（說明書 p.17），
@@ -48,26 +53,51 @@ func (e *enhanced) Plan(g *game.State, f state.FactionID) []game.Order {
 			out = append(out, o)
 		}
 	}
-	// 依郡編號排序，讓輸出與遍歷順序無關。
 	sort.Slice(out, func(i, j int) bool { return out[i].Prefecture() < out[j].Prefecture() })
 	return out
 }
 
+// planOne 是單一郡的優先序。順序本身就是策略。
 func (e *enhanced) planOne(g *game.State, f state.FactionID, p *game.Prefecture) game.Order {
 	spendable := p.Gold - goldReserve
 
-	// 1. 水患優先：洪水率高的時候，收成與人口都保不住。
+	// 1. 水患優先：洪水率高的時候收成與人口都保不住。
 	if p.FloodRate >= floodDanger && spendable >= game.CostFloodControl {
-		return game.FloodControlOrder{At: p.ID}
+		if x := e.wisest(g, f, p.ID); x != nil {
+			return game.FloodControlOrder{At: p.ID, General: x.Index}
+		}
 	}
 
-	// 2. 兵力不足就募兵。判準是「這個郡的守將加起來離上限還差多少」，
-	//    而不是絕對數字——上限是官階決定的（說明書 p.18）。
-	if p.Population >= game.MinPopulationToConscript {
+	// 2. 打得贏的鄰郡就打——擴張是唯一的勝利路徑。
+	if o := e.attack(g, f, p); o != nil {
+		return o
+	}
+
+	// 3. 民怨高就賑民：天災多因人怨引起（說明書 p.36）。
+	if p.PublicLoyalty < loyaltyLow && p.Rice >= riceReserve+game.TuneReliefRice {
+		return game.ReliefOrder{At: p.ID}
+	}
+
+	// 4. 本地有在野人才就登用。
+	if spendable >= game.CostRecruit {
+		if t := e.freeTalent(g, p.ID); t != nil {
+			return game.RecruitOrder{At: p.ID, Target: t.Index}
+		}
+	}
+
+	// 5. 兵力不足就募兵。
+	//
+	// ⚠ **一次抽多少要有節制。** 徵兵是 1:1 減人口，抽到下限的話
+	// 這個郡的生產力就毀了，而下一次還會再抽——整個世界會慢慢空掉。
+	// 一次最多抽剩餘人口（扣掉下限）的 conscriptShare 分之一。
+	if p.Population >= game.MinPopulationToConscript*2 {
 		if x, room := e.weakestGarrison(g, f, p.ID); x != nil && room > 0 {
 			n := room
 			if n > spendable {
 				n = spendable
+			}
+			if max := (p.Population - game.MinPopulationToConscript) / conscriptShare; n > max {
+				n = max
 			}
 			if n > 0 {
 				return game.ConscriptOrder{At: p.ID, General: x.Index, Count: n}
@@ -75,11 +105,104 @@ func (e *enhanced) planOne(g *game.State, f state.FactionID, p *game.Prefecture)
 		}
 	}
 
-	// 3. 沒有急事就開墾。
+	// 6. 兵多但訓練差就練兵。不花錢，所以放在募兵之後。
+	if x := e.leastTrained(g, f, p.ID); x != nil && x.Training < 80 && x.Soldiers > 0 {
+		return game.TrainOrder{At: p.ID, General: x.Index}
+	}
+
+	// 7. 米太多就賣一些。
+	if p.Rice > sellRiceAbove && p.Gold < game.MaxGold-1000 {
+		return game.SellRiceOrder{At: p.ID, Units: sellRiceBatch}
+	}
+
+	// 8. 沒有急事就開墾。
 	if p.LandValue < landTarget && spendable >= game.CostReclaim {
-		return game.ReclaimOrder{At: p.ID}
+		if x := e.wisest(g, f, p.ID); x != nil {
+			return game.ReclaimOrder{At: p.ID, General: x.Index}
+		}
 	}
 	return nil
+}
+
+// attack 挑一個打得贏的鄰郡。
+//
+// 判準是**戰力比**而不是兵數比：守方有城池與城寨加成，
+// 而且訓練度與武裝度的差距可以很大。
+func (e *enhanced) attack(g *game.State, f state.FactionID, p *game.Prefecture) game.Order {
+	var force []int
+	mine := 0
+	var keep *game.General
+	for _, x := range g.Garrison(p.ID) {
+		if x.Faction != f {
+			continue
+		}
+		// 留一位治理——傾巢而出會被規則層擋下來。
+		if keep == nil {
+			keep = x
+			continue
+		}
+		force = append(force, x.Index)
+		mine += game.Power(x)
+	}
+	if len(force) == 0 {
+		return nil
+	}
+	best, bestGain := 0, 0
+	for _, n := range p.Neighbours {
+		q := g.Prefecture(n)
+		if q == nil || q.Owner == f {
+			continue
+		}
+		theirs := g.DefencePower(n)
+		if mine*attackEdgeDen <= theirs*attackEdgeNum {
+			continue
+		}
+		// 打分：優先拿人口多、開發好的郡。
+		gain := q.Population/1000 + int(q.LandValue)
+		if gain > bestGain {
+			best, bestGain = n, gain
+		}
+	}
+	if best == 0 {
+		return nil
+	}
+	return game.AttackOrder{At: p.ID, To: best, Force: force}
+}
+
+func (e *enhanced) wisest(g *game.State, f state.FactionID, id int) *game.General {
+	var best *game.General
+	for _, x := range g.Garrison(id) {
+		if x.Faction != f {
+			continue
+		}
+		if best == nil || x.Intel > best.Intel {
+			best = x
+		}
+	}
+	return best
+}
+
+func (e *enhanced) leastTrained(g *game.State, f state.FactionID, id int) *game.General {
+	var best *game.General
+	for _, x := range g.Garrison(id) {
+		if x.Faction != f || x.Soldiers == 0 {
+			continue
+		}
+		if best == nil || x.Training < best.Training {
+			best = x
+		}
+	}
+	return best
+}
+
+func (e *enhanced) freeTalent(g *game.State, id int) *game.General {
+	var best *game.General
+	for _, x := range g.Free(id) {
+		if best == nil || x.War+x.Intel > best.War+best.Intel {
+			best = x
+		}
+	}
+	return best
 }
 
 // weakestGarrison 回傳這個郡裡「離帶兵上限最遠」的守將，以及還差多少。

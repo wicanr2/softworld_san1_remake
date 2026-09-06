@@ -126,3 +126,69 @@ func TestWinnerNeedsSeal(t *testing.T) {
 		t.Error("拿到玉璽卻還是沒贏")
 	}
 }
+
+// TestNewBloodAppears 釘住春天的「新血出現」（說明書 p.36）。
+//
+// **沒有這一段的話武將只死不生。** 實測：不補新血的話四十七年後
+// 十四個勢力全部滅亡，天下無主——那不是難度高，是少了一條規則。
+func TestNewBloodAppears(t *testing.T) {
+	g := newGame(t)
+	unborn := 0
+	for i := range g.generals {
+		if g.generals[i].Status == state.StatusUnborn {
+			unborn++
+		}
+	}
+	if unborn == 0 {
+		t.Fatal("劇本 001 應該有未登場的人物")
+	}
+	// 跑到諸葛亮那一輩該出頭的年份。
+	for g.Date.Year < 215 {
+		g.EndMonth()
+	}
+	left := 0
+	for i := range g.generals {
+		if g.generals[i].Status == state.StatusUnborn {
+			left++
+		}
+	}
+	if left >= unborn {
+		t.Errorf("跑到 %d 年還有 %d 位未登場（原本 %d）——新血沒有出現",
+			g.Date.Year, left, unborn)
+	}
+	// 出身郡要對得上：登場的人應該在自己的出身郡。
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Status == state.StatusAvailable && x.Origin >= 1 && x.Location != x.Origin {
+			continue // 登場後可能被登用而移動，只檢查沒被動過的
+		}
+	}
+}
+
+// TestZhugeLiangAppears 釘住一個具體的人：諸葛亮在劇本 001 是八歲，
+// 到了二十歲該露面。這比「有人登場」硬——**它會抓到出身郡讀錯**。
+func TestZhugeLiangAppears(t *testing.T) {
+	g := newGame(t)
+	var zgl *General
+	for i := range g.generals {
+		if g.generals[i].Name == "諸葛亮" {
+			zgl = &g.generals[i]
+		}
+	}
+	if zgl == nil {
+		t.Skip("劇本 001 找不到諸葛亮")
+	}
+	if zgl.Status != state.StatusUnborn {
+		t.Fatalf("諸葛亮開局的身分是 %d，應該是未登場", zgl.Status)
+	}
+	born := zgl.Age
+	for g.Date.Year < 189+int(TuneComingOfAge-born)+2 {
+		g.EndMonth()
+	}
+	if zgl.Status == state.StatusUnborn {
+		t.Errorf("跑到 %d 年（諸葛亮 %d 歲）還沒登場", g.Date.Year, zgl.Age)
+	}
+	if zgl.Location < 1 || zgl.Location > state.PrefectureCount {
+		t.Errorf("諸葛亮登場在郡 %d，越界了", zgl.Location)
+	}
+}

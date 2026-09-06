@@ -68,10 +68,14 @@ type Prefecture struct {
 
 	Owner state.FactionID
 
-	// Population 與 Soldiers 是**實際值**，不是原版存的 ÷100。
+	// Population 是**實際值**，不是原版存的 ÷100。
 	// 換算在載入的唯一入口做完，規則層不再碰那個倍率。
 	Population int
-	Soldiers   int
+
+	// ⚠ **總兵力不存在這裡。** 手冊說它是「所有現役將麾下的兵力總合」
+	// （p.17），而原版的檔案也的確如此——四十二個郡逐一驗過，
+	// 郡的兵士欄與駐軍加總完全相等。存一份副本就會有兩個真相，
+	// 而災害的百分比縮放會讓它們慢慢分家。要數請用 State.Soldiers。
 
 	Gold int
 	Rice int
@@ -135,6 +139,7 @@ type General struct {
 	War      uint8
 	Charm    uint8
 	Rank     state.Rank
+	Origin   int // 出身郡（1..42），未登場者從這裡登場
 	Loyalty  uint8
 	Status   state.Status
 	Faction  state.FactionID
@@ -248,7 +253,6 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 			ID: p.ID, Name: p.Name,
 			Owner:      state.FactionID(p.Owner),
 			Population: p.People(),
-			Soldiers:   p.Troops(),
 			Gold:       int(p.Gold), Rice: int(p.Rice),
 			PublicLoyalty: p.PublicLoyalty, LandValue: p.LandValue,
 			FloodRate: p.FloodRate, PriceLevel: p.PriceLevel,
@@ -259,7 +263,7 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 		g.generals = append(g.generals, General{
 			Index: s.Index, Name: s.Name,
 			Age: s.Age, Stamina: s.Stamina, Intel: s.Intel, War: s.War, Charm: s.Charm,
-			Rank: s.Rank, Loyalty: s.Loyalty, Status: s.Status,
+			Rank: s.Rank, Origin: int(s.Origin), Loyalty: s.Loyalty, Status: s.Status,
 			Faction: state.FactionID(s.Faction), Location: int(s.Location),
 			Troop: s.Troop, Soldiers: int(s.Soldiers),
 			Training: s.Training, Arms: s.Arms,
@@ -422,6 +426,34 @@ func (g *State) FreeGenerals(prefectureID int) int {
 		}
 	}
 	return n
+}
+
+// Soldiers 是某個郡的總兵力：駐軍麾下兵力的總合。
+//
+// 手冊定義如此（p.17），原版的檔案也是——四十二個郡逐一驗過，
+// 郡的兵士欄與駐軍加總完全相等（`docs/spec/003` §3）。
+func (g *State) Soldiers(prefectureID int) int {
+	n := 0
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Employed() && x.Location == prefectureID {
+			n += x.Soldiers
+		}
+	}
+	return n
+}
+
+// Free 回傳某個郡露面的在野武將。
+func (g *State) Free(prefectureID int) []*General {
+	var out []*General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if !x.Employed() && x.Location == prefectureID &&
+			x.Status == state.StatusAvailable && x.Name != "" {
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 // Adjacent 回報兩個郡相不相鄰。
