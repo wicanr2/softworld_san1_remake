@@ -86,7 +86,12 @@ func (s *Session) EndMonth() {
 			s.note("%s 下了 %d 個命令", name, n)
 		}
 	}
+	wasAlive := s.PlayerAlive()
 	events := s.G.EndMonth()
+	if wasAlive && !s.PlayerAlive() {
+		s.note("✗ 你的勢力已被消滅")
+		s.Over = true
+	}
 	s.note("──── %d 年 %d 月 ────", s.G.Date.Year, s.G.Date.Month)
 	for _, e := range events {
 		s.note("%s", e.Text)
@@ -110,3 +115,14 @@ func (s *Session) EndMonth() {
 
 // PlayerTerritory 是玩家的郡編號。
 func (s *Session) PlayerTerritory() []int { return s.G.Territory(s.Player) }
+
+// PlayerAlive 回報玩家還在不在。
+//
+// **沒有這一個的話，被消滅之後畫面只是變成空白**——玩家會以為是壞掉。
+func (s *Session) PlayerAlive() bool {
+	if s.Player == state.NoFaction {
+		return true // 純觀戰
+	}
+	f := s.G.Faction(s.Player)
+	return f != nil && f.Alive
+}

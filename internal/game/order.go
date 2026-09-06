@@ -189,3 +189,168 @@ func (g *State) ApplyAll(orders []Order, by state.FactionID) (int, error) {
 	}
 	return len(orders), nil
 }
+
+// ---- 其餘的命令型別 ------------------------------------------------------
+
+type MoveOrder struct {
+	At, To, General int
+	Gold, Rice      int
+}
+
+func (o MoveOrder) Prefecture() int { return o.At }
+func (o MoveOrder) Apply(g *State, by state.FactionID) error {
+	return g.Move(o.At, o.To, o.General, o.Gold, o.Rice, by)
+}
+func (o MoveOrder) Describe(g *State) string {
+	return fmt.Sprintf("調動%s %s → %s", byWhom(g, o.General),
+		prefName(g, o.At), prefName(g, o.To))
+}
+
+type TransportOrder struct {
+	At, To     int
+	Gold, Rice int
+}
+
+func (o TransportOrder) Prefecture() int { return o.At }
+func (o TransportOrder) Apply(g *State, by state.FactionID) error {
+	return g.Transport(o.At, o.To, o.Gold, o.Rice, by)
+}
+func (o TransportOrder) Describe(g *State) string {
+	return fmt.Sprintf("運送 %s → %s（金 %d 米 %d）",
+		prefName(g, o.At), prefName(g, o.To), o.Gold, o.Rice)
+}
+
+type RedistributeOrder struct {
+	At    int
+	Units []int
+}
+
+func (o RedistributeOrder) Prefecture() int { return o.At }
+func (o RedistributeOrder) Apply(g *State, by state.FactionID) error {
+	return g.Redistribute(o.At, o.Units, by)
+}
+func (o RedistributeOrder) Describe(g *State) string {
+	return fmt.Sprintf("調整兵力 %s（%d 支部隊）", prefName(g, o.At), len(o.Units))
+}
+
+type BuildFortOrder struct{ At, General int }
+
+func (o BuildFortOrder) Prefecture() int { return o.At }
+func (o BuildFortOrder) Apply(g *State, by state.FactionID) error {
+	return g.BuildFort(o.At, o.General, by)
+}
+func (o BuildFortOrder) Describe(g *State) string {
+	return fmt.Sprintf("建寨 %s%s", prefName(g, o.At), byWhom(g, o.General))
+}
+
+type RestOrder struct{ At int }
+
+func (o RestOrder) Prefecture() int { return o.At }
+func (o RestOrder) Apply(g *State, by state.FactionID) error {
+	return g.Rest(o.At, by)
+}
+func (o RestOrder) Describe(g *State) string {
+	return fmt.Sprintf("休息 %s", prefName(g, o.At))
+}
+
+type SearchOrder struct{ At, General int }
+
+func (o SearchOrder) Prefecture() int { return o.At }
+func (o SearchOrder) Apply(g *State, by state.FactionID) error {
+	_, err := g.Search(o.At, o.General, by)
+	return err
+}
+func (o SearchOrder) Describe(g *State) string {
+	return fmt.Sprintf("尋訪 %s%s", prefName(g, o.At), byWhom(g, o.General))
+}
+
+type RewardOrder struct{ At, Target, Gold int }
+
+func (o RewardOrder) Prefecture() int { return o.At }
+func (o RewardOrder) Apply(g *State, by state.FactionID) error {
+	return g.Reward(o.At, o.Target, o.Gold, by)
+}
+func (o RewardOrder) Describe(g *State) string {
+	return fmt.Sprintf("賞賜%s %d 金", byWhom(g, o.Target), o.Gold)
+}
+
+type DismissOrder struct{ At, Target int }
+
+func (o DismissOrder) Prefecture() int { return o.At }
+func (o DismissOrder) Apply(g *State, by state.FactionID) error {
+	return g.Dismiss(o.At, o.Target, by)
+}
+func (o DismissOrder) Describe(g *State) string {
+	return fmt.Sprintf("撤職%s", byWhom(g, o.Target))
+}
+
+type AppointChiefOrder struct{ At, Target int }
+
+func (o AppointChiefOrder) Prefecture() int { return o.At }
+func (o AppointChiefOrder) Apply(g *State, by state.FactionID) error {
+	return g.AppointChief(o.At, o.Target, by)
+}
+func (o AppointChiefOrder) Describe(g *State) string {
+	return fmt.Sprintf("拜%s為軍師", byWhom(g, o.Target))
+}
+
+type AppointGovernorOrder struct{ At, Target int }
+
+func (o AppointGovernorOrder) Prefecture() int { return o.At }
+func (o AppointGovernorOrder) Apply(g *State, by state.FactionID) error {
+	return g.AppointGovernor(o.At, o.Target, by)
+}
+func (o AppointGovernorOrder) Describe(g *State) string {
+	return fmt.Sprintf("%s 的太守改為%s", prefName(g, o.At), byWhom(g, o.Target))
+}
+
+type AutonomyOrder struct {
+	At   int
+	Mode Autonomy
+}
+
+func (o AutonomyOrder) Prefecture() int { return o.At }
+func (o AutonomyOrder) Apply(g *State, by state.FactionID) error {
+	return g.SetAutonomy(o.At, o.Mode, by)
+}
+func (o AutonomyOrder) Describe(g *State) string {
+	return fmt.Sprintf("%s 改為%s型態", prefName(g, o.At), o.Mode)
+}
+
+type GiftOrder struct {
+	At, Target int
+	What       Treasure
+}
+
+func (o GiftOrder) Prefecture() int { return o.At }
+func (o GiftOrder) Apply(g *State, by state.FactionID) error {
+	return g.GiftTreasure(o.At, o.Target, o.What, by)
+}
+func (o GiftOrder) Describe(g *State) string {
+	return fmt.Sprintf("賞%s給%s", o.What, byWhom(g, o.Target))
+}
+
+type HeadhuntOrder struct{ At, Target int }
+
+func (o HeadhuntOrder) Prefecture() int { return o.At }
+func (o HeadhuntOrder) Apply(g *State, by state.FactionID) error {
+	return g.Headhunt(o.At, o.Target, by)
+}
+func (o HeadhuntOrder) Describe(g *State) string {
+	return fmt.Sprintf("挖角%s", byWhom(g, o.Target))
+}
+
+type PlotOrder struct {
+	At, To int
+	What   Plot
+	Envoy  int
+}
+
+func (o PlotOrder) Prefecture() int { return o.At }
+func (o PlotOrder) Apply(g *State, by state.FactionID) error {
+	_, err := g.UsePlot(o.At, o.To, o.What, o.Envoy, by)
+	return err
+}
+func (o PlotOrder) Describe(g *State) string {
+	return fmt.Sprintf("%s 對 %s 施「%s」", prefName(g, o.At), prefName(g, o.To), o.What)
+}

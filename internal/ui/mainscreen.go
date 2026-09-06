@@ -47,6 +47,14 @@ type View struct {
 
 	// Prompt 是提示列要顯示的一行字。
 	Prompt string
+
+	// Page 是覆蓋在地圖區的整頁內容（將軍列表、領土列表…）；
+	// 非空時蓋掉訊息紀錄。
+	PageTitle string
+	Page      []string
+
+	// Over 為真表示這一局結束了（勝、敗、或被消滅）。
+	Over bool
 }
 
 // DrawMainScreen 畫遊戲主畫面。
@@ -55,6 +63,9 @@ func DrawMainScreen(c *Canvas, g *game.State, sel int) {
 }
 
 // DrawSession 畫一局進行中的遊戲。log 可以是 nil。
+//
+// v.Over 為真時在提示列說出結局——**被消滅之後畫面只是變空白的話，
+// 玩家會以為是壞掉。**
 func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 	c.Fill(ColBG)
 	drawTimeColumn(c, g)
@@ -65,12 +76,39 @@ func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 	} else {
 		drawCommandPanel(c, v.Menu, v.Items)
 	}
-	drawLog(c, log)
+	if len(v.Page) > 0 {
+		drawPage(c, v.PageTitle, v.Page)
+	} else {
+		drawLog(c, log)
+	}
+	if v.Over {
+		c.DrawText(mapCol+2, Rows-3, "這一局結束了。訊息在下方。", ColWarn)
+	}
 	if v.Prompt != "" {
 		c.DrawText(mapCol+2, Rows-2, cells.Truncate(v.Prompt, panelCol-mapCol-4), ColSel)
 	}
 	if n := len(c.Missing); n > 0 {
 		c.DrawText(mapCol+2, Rows-1, fmt.Sprintf("⚠ %d 個字沒有字模", n), ColWarn)
+	}
+}
+
+// drawPage 用整頁內容蓋掉地圖區——列表型的指令（將軍列表、領土列表）
+// 要的空間比訊息列多。
+func drawPage(c *Canvas, title string, lines []string) {
+	w := panelCol - mapCol
+	c.DrawBox(mapCol, 0, w, Rows, ColFrame)
+	for y := 1; y < Rows-1; y++ {
+		for x := mapCol + 1; x < panelCol-1; x++ {
+			c.DrawText(x, y, " ", ColBG)
+		}
+	}
+	c.DrawText(mapCol+2, 0, title, ColSel)
+	for i, line := range lines {
+		if 1+i >= Rows-1 {
+			c.DrawText(mapCol+2, Rows-1, "…（還有更多）", ColDim)
+			break
+		}
+		c.DrawText(mapCol+2, 1+i, cells.Truncate(line, w-4), ColFG)
 	}
 }
 
@@ -159,6 +197,7 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 		c.DrawText(panelCol+2, 2, "（未選擇州郡）", ColDim)
 		return
 	}
+	_ = p
 	line := func(row int, label, value string) {
 		c.DrawText(panelCol+2, row, cells.Pad(label, 10), ColDim)
 		c.DrawText(panelCol+12, row, value, ColFG)
@@ -209,16 +248,34 @@ func drawCommandPanel(c *Canvas, title string, cmds []Command) {
 	}
 }
 
-// SubMenu 回傳某一類指令底下的項目。
+// SubMenu 回傳某一類指令底下的項目，編號與手冊相同
+// （`docs/reference/01-manual-10-commands.md`）。
 //
 // **只列已經實作的。** 列出來卻按不動的項目比沒列更糟——
 // 玩家會以為是自己按錯。沒實作的類別回 nil，呼叫端顯示理由。
 func SubMenu(key byte) (string, []Command) {
 	switch key {
+	case '1':
+		return "查看", []Command{{'2', "將軍列表"}, {'4', "領土列表"}, {'6', "君主物品"}}
+	case '2':
+		return "軍事", []Command{{'1', "調動軍隊"}, {'2', "發動戰役"}, {'3', "運送錢糧"}}
 	case '3':
-		return "兵士", []Command{{'1', "徵兵"}, {'2', "武器"}}
+		return "兵士", []Command{{'1', "訓練兵士"}, {'2', "徵兵"},
+			{'3', "購買武器"}, {'4', "調整兵力"}}
 	case '4':
-		return "內政", []Command{{'1', "開墾"}, {'2', "防洪"}}
+		return "內政", []Command{{'1', "土地開發"}, {'2', "洪水防治"},
+			{'3', "建築關寨"}, {'4', "休息"}}
+	case '5':
+		return "商業", []Command{{'1', "買入米糧"}, {'2', "賣出米糧"}, {'3', "開倉賑民"}}
+	case '6':
+		return "人事", []Command{{'1', "尋訪人才"}, {'2', "登用人才"},
+			{'3', "賞賜金帛"}, {'4', "撤職"}}
+	case '7':
+		return "君主", []Command{{'1', "指定軍師"}, {'2', "指定太守"},
+			{'3', "郡縣自治"}, {'4', "賞賜物品"}, {'5', "登用他國人才"}}
+	case '8':
+		return "謀略", []Command{{'1', "驅虎吞狼"}, {'2', "遠交近攻"},
+			{'3', "偽書使疑"}, {'4', "策反人民"}, {'5', "聯合出兵"}}
 	}
 	return "", nil
 }

@@ -149,7 +149,7 @@ func writePNG(out, fontPath string, sc *state.Scenario, slot, screen, aiMode str
 				sel = t[0]
 			}
 		}
-		ui.DrawSession(c, g, s.Log, ui.View{Sel: sel})
+		ui.DrawSession(c, g, s.Log, ui.View{Sel: sel, Over: s.Over})
 	case "list":
 		ui.DrawPrefectureList(c, sc, slot)
 	default:
