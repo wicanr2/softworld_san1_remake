@@ -335,6 +335,41 @@ func TestZZDispatch(t *testing.T) {
 					seen[fmt.Sprintf("  預算係數 等級%d %s", lv, strings.Join(row, "  "))] = 0
 				}
 			}
+			// 徵兵（`0xbeb8`）與調整兵力（`0xc2c4`）用到的常數與表。
+			if table == 0x5574 {
+				// 帶兵上限表：`es:[bx+0x666e]`，職位×2 索引，
+				// 段來自 `ds:[0xa5c6]`（`0xbf4a`／`0xc4bd`）。
+				capSeg := word(o, ds*16+0xa5c6)
+				var caps []string
+				for r := 0; r < 12; r++ {
+					caps = append(caps, fmt.Sprintf("職位%d=%d", r,
+						int16(word(o, capSeg*16+0x666e+uint32(r)*2))))
+				}
+				seen["  帶兵上限表 es:0x666e："+strings.Join(caps, " ")] = 0
+				// 徵兵的兩個 qword（`0xbee2` 的 fsub、`0xbf02` 的下限）
+				// 與兩個 dword（`0xbff7`／`0xc034` 的 fmul）。
+				for _, c := range []struct {
+					off  uint32
+					wide bool
+					what string
+				}{
+					{0xa5b0, true, "徵兵：人口減去的下限"},
+					{0xa5b8, true, "徵兵：夾住用的常數"},
+					{0xa5d0, false, "徵兵：訓練/武裝換算 A"},
+					{0xa5d4, false, "徵兵：訓練/武裝換算 B"},
+					{0xa5de, true, "調整兵力：份額的加項"},
+				} {
+					if c.wide {
+						b := o.Bytes(addr(ds*16+c.off), 8)
+						seen[fmt.Sprintf("  %s DS:%#04x ＝ %g（qword）", c.what, c.off,
+							math.Float64frombits(binary.LittleEndian.Uint64(b)))] = 0
+						continue
+					}
+					b := o.Bytes(addr(ds*16+c.off), 4)
+					seen[fmt.Sprintf("  %s DS:%#04x ＝ %g（dword）", c.what, c.off,
+						math.Float32frombits(binary.LittleEndian.Uint32(b)))] = 0
+				}
+			}
 			if table == 0x54d4 {
 				var w []string
 				for st := 0; st < 12; st++ {

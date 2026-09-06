@@ -197,25 +197,27 @@ func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID
 		units = append(units, x)
 		total += x.Soldiers
 		capSum += x.TroopCap()
-		wTrain += x.Soldiers * int(x.Training)
-		wArms += x.Soldiers * int(x.Arms)
+		// **原版是逐人先除以 100 再累加**（`0xc35b` 的
+		// `fmul qword ds:[0xa5c8]` ＝ ×0.01，然後轉整數才加進 32 位元的
+		// 累計）。放到最後才除會得到差一兩點的平均值。
+		wTrain += x.Soldiers * int(x.Training) / 100
+		wArms += x.Soldiers * int(x.Arms) / 100
 	}
 	if total > capSum {
 		return ErrNoRoom
 	}
 	train, arms := 0, 0
 	if total > 0 {
-		train, arms = wTrain/total, wArms/total
+		train, arms = wTrain*100/total, wArms*100/total
 	}
-	// 依各人的上限比例分配，餘數給第一位——**兵員必須完全分配下去**。
+	// **依各人的上限比例分配，四捨五入**（原版 `0xc2c4` 在轉回整數之前
+	// 加 `ds:[0xa5de]` ＝ 0.5，`L0`）。除得不盡時總數會差幾個人，
+	// 原版沒有補回去——郡的總兵力是導出值（駐軍加總），不會因此失衡。
 	left := total
-	for i, x := range units {
+	for _, x := range units {
 		n := 0
 		if capSum > 0 {
-			n = total * x.TroopCap() / capSum
-		}
-		if i == len(units)-1 {
-			n = left
+			n = (total*x.TroopCap()*2/capSum + 1) / 2
 		}
 		if n > x.TroopCap() {
 			n = x.TroopCap()
@@ -225,25 +227,23 @@ func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID
 		x.Arms = uint8(arms)
 		left -= n
 	}
-	if left > 0 { // 上限擋住了剩餘，塞回還有空間的人
-		for _, x := range units {
-			room := x.TroopCap() - x.Soldiers
-			if room <= 0 {
-				continue
-			}
-			take := left
-			if take > room {
-				take = room
-			}
-			x.Soldiers += take
-			left -= take
-			if left == 0 {
-				break
-			}
+	// 上限擋住的剩餘塞回還有空間的人。**只補不足，不削多餘**：
+	// 四捨五入會讓總數比原本多幾個，而原版就是這樣——它不做校正，
+	// 郡的總兵力是駐軍加總算出來的，不會因此失衡。
+	for _, x := range units {
+		if left <= 0 {
+			break
 		}
-	}
-	if left != 0 {
-		return fmt.Errorf("game: 有 %d 兵分配不出去", left)
+		room := x.TroopCap() - x.Soldiers
+		if room <= 0 {
+			continue
+		}
+		take := left
+		if take > room {
+			take = room
+		}
+		x.Soldiers += take
+		left -= take
 	}
 	p.Commanded = true
 	return nil

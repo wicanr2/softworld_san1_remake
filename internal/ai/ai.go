@@ -94,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 10, 18 }
+func (f *faithful) Coverage() (int, int) { return 11, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -193,6 +193,12 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
 		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
 		out = append(out, conscript(g, p, aiBudget(purse, g.AILevel(id), tableConscript))...)
+		// 調整兵力（表 `0x55b4`）：**不花錢，也不隨等級變**——六格全部
+		// thunk 到同一支 `0xc2c4`。它把整郡的兵按帶兵上限重新攤平，
+		// 訓練度與武裝度拉到全郡的加權平均。
+		if who := garrisonIndices(g, p); len(who) >= 2 {
+			out = append(out, game.RedistributeOrder{At: p, Units: who})
+		}
 	}
 	return out
 }
@@ -263,6 +269,15 @@ func conscript(g *game.State, prefecture, budget int) []game.Order {
 		budget -= n
 		people -= n
 		out = append(out, game.ConscriptOrder{At: prefecture, General: x.Index, Count: n})
+	}
+	return out
+}
+
+// garrisonIndices 是這一郡守軍的槽號，照清單順序。
+func garrisonIndices(g *game.State, prefecture int) []int {
+	var out []int
+	for _, x := range g.Garrison(prefecture) {
+		out = append(out, x.Index)
 	}
 	return out
 }
