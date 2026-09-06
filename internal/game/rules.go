@@ -72,3 +72,27 @@ func TroopCap(r state.Rank) int {
 	}
 	return 0
 }
+
+// TrainGain 是「訓練兵士」一次提升多少訓練度（`L0`、`[base]`）。
+//
+// 從原版的碼讀出來的。共用常式在線性 `0xbd70`，對清單裡的每一位算：
+//
+//	mov al, es:[bx+0x2219]   ; 智
+//	idiv 3
+//	mov al, es:[bx+0x221a]   ; 武
+//	idiv 2
+//	add                      ; 智/3 + 武/2
+//	idiv word [bp+6]         ; 除以呼叫端給的常數
+//	add 原本的訓練度
+//	上限 100
+//
+// 那個常數由兩個 thunk 決定：`0xbe94` 推 3、`0xbe80` 推 4，
+// 一個月裡 28 次走 3、4 次走 4，兩者的呼叫端是同一個分派點
+// （`docs/re/03` §1.3）。**分岔的條件還沒解**，這裡取 3。
+//
+// 說明書只說「各將的能力影響其麾下的訓練度提升」——方向對，係數是這裡
+// 才有的。
+func TrainGain(intel, war int) int {
+	const divisor = 3
+	return (intel/3 + war/2) / divisor
+}

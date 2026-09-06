@@ -20,8 +20,9 @@ const (
 	TuneFloodBase  = 1
 	TuneFloodIntel = 25
 
-	// TuneTrainBase／TuneTrainIntel：訓練提升的訓練度。
-	// 說明書 p.20 說「各將的能力影響其麾下的訓練度提升」。
+	// 訓練提升的訓練度**不是挑的，是從原版的碼讀出來的**（`L0`）：
+	// 見 `TrainGain`。這兩個常數留著只為了讓舊的存檔與說明保持可讀，
+	// 規則不再用它們。
 	TuneTrainBase  = 2
 	TuneTrainIntel = 25
 

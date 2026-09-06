@@ -52,6 +52,89 @@ func dumpImage(t *testing.T, o *oracle.Oracle, lo, hi uint32, name string) {
 		lo, hi, len(b), path, lo)
 }
 
+// TestZZDumpCode 只做一件事：開機到遊戲裡，把碼段寫成檔。
+//
+// 拆開來是因為**取碼段不必跑一個月**，而跑一個月會讓整條測試超過十分鐘
+// ——那個長度在這台機器上常常被記憶體守衛砍掉，砍掉就什麼都沒留下。
+func TestZZDumpCode(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	bootToGame(t, o, seedMas)
+	dumpImage(t, o, 0x00b000, 0x01f000, "code")
+}
+
+// TestZZHookTraining 攔「訓練兵士」那支常式，讀它的參數與呼叫端。
+//
+// 常式在線性 `0xbd70`（`docs/re/03` §1.3）。它對郡裡每一位守將算
+//
+//	訓練度 = min(100, 訓練度 + (智/3 + 武/2) / 參數)
+//
+// **參數是唯一還不知道的東西**，而呼叫端就是電腦諸侯的決策位址——
+// 一次攔截兩件事都拿得到。
+func TestZZHookTraining(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	bootToGame(t, o, seedMas)
+
+	seen := map[string]int{}
+	// `0xbd70` 是共用常式，`0xbe80`／`0xbe94` 是兩個 thunk——各自推一個
+	// 常數（4 與 3）再呼叫它。**決策端是呼叫 thunk 的人**，所以三個都攔。
+	for _, site := range []struct {
+		name string
+		lin  uint32
+	}{{"共用常式 0xbd70", 0xbd70}, {"thunk÷4 0xbe80", 0xbe80}, {"thunk÷3 0xbe94", 0xbe94}} {
+		name := site.name
+		o.OnCall(addr(site.lin), func(o *oracle.Oracle) {
+			c := o.Caller()
+			seen[fmt.Sprintf("%-18s ← 呼叫端 %04x:%04x（線性 %#06x）",
+				name, c.Seg, c.Off, uint32(c.Seg)*16+uint32(c.Off))]++
+		})
+	}
+	for _, keys := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(keys)
+		if err := o.Run(40_000_000 * 3); err != nil {
+			t.Fatalf("原版停止：%v", err)
+		}
+	}
+	if len(seen) == 0 {
+		t.Log("一個月裡沒有人呼叫 0xbd70——位址可能不是常式的進入點")
+		return
+	}
+	keys := make([]string, 0, len(seen))
+	for k := range seen {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		t.Logf("%s ×%d", k, seen[k])
+	}
+}
+
 // TestZZWhoWritesTheTables 跑一個月，列出寫三張表的程式位址。
 func TestZZWhoWritesTheTables(t *testing.T) {
 	root := origRoot(t)

@@ -280,3 +280,32 @@ func TestRedistributeAveragesWeighted(t *testing.T) {
 		t.Errorf("重編之後總兵力 %d，原本 %d——兵員必須完全分配下去", got, total)
 	}
 }
+
+// TestTrainGainMatchesTheOriginal 釘住訓練公式與原版的碼一致。
+//
+// 公式是從原版讀出來的（`L0`，`TrainGain` 的說明附了那幾行組語），
+// 所以這裡釘的是**算式本身**，不是 remake 的手感。整數除法的截斷要
+// 一起釘——`(智/3 + 武/2)/3` 與 `(智 + 1.5×武)/9` 差得出來。
+func TestTrainGainMatchesTheOriginal(t *testing.T) {
+	for _, c := range []struct{ intel, war, want int }{
+		{0, 0, 0},
+		{100, 100, 27}, // (33 + 50) / 3
+		{80, 90, 23},   // (26 + 45) / 3
+		{60, 60, 16},   // (20 + 30) / 3
+		{10, 10, 2},    // (3 + 5) / 3
+		{99, 1, 11},    // (33 + 0) / 3
+		// **這一個是判準**：逐項截斷 (3+5)/3 ＝ 2，一次算完
+		// (11 + 1.5×11)/9 ＝ 3.05 → 3。上面幾個案例兩種算法同值，
+		// 分辨不出來。
+		{11, 11, 2},
+	} {
+		got := TrainGain(c.intel, c.war)
+		if got != c.want {
+			t.Errorf("智 %d 武 %d：訓練提升 %d，應該是 %d",
+				c.intel, c.war, got, c.want)
+		}
+	}
+	if got := TrainGain(100, 100); got != (100/3+100/2)/3 {
+		t.Errorf("整數除法沒有逐項截斷：%d", got)
+	}
+}

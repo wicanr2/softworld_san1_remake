@@ -151,7 +151,7 @@ func (g *State) Train(prefectureID, generalIndex int, by state.FactionID) error 
 	if x == nil || x.Faction != by || x.Location != prefectureID {
 		return ErrUnknownUnit
 	}
-	add := TuneTrainBase + int(x.Intel)/TuneTrainIntel
+	add := TrainGain(int(x.Intel), int(x.War))
 	x.Training = uint8(clampTo(int(x.Training)+add, 100))
 	p.Commanded = true
 	return nil

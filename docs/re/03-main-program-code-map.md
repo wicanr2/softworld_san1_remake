@@ -71,6 +71,62 @@
 徵兵會拉低訓練與武裝、調整兵力讓訓練變成平均值、訓練與購買武器各自
 只動一項。
 
+## 1.3 「訓練兵士」整支讀出來了（`L0`、`[base]`）
+
+共用常式在線性 `0xbd70`。碼段取法在 §1.2；`objdump -b binary -m i8086
+--adjust-vma=0xb000`。
+
+```
+bd70:  push bp; mov bp,sp
+bd73:  mov ax,4; lcall 05c4:051c        ; MSC 的區域變數配置
+bd7b:  mov word [bp-4], 0               ; i = 0
+bd82:  mov ax,0x1e                      ; 30 ＝ 人物記錄大小
+       mov es,[0xa5a4]; mov bx,[bp-4]; shl bx
+       imul word es:[bx+0x58c]          ; 表[i] × 30 → 人物記錄位移
+       mov bx,ax; mov es,[0xa5a6]
+bd99:  mov al, es:[bx+0x2228]           ; 訓練度
+       cbw; mov cx,ax
+bda1:  mov al, es:[bx+0x2219]           ; 智
+       mov dx,cx                        ; DX ← 訓練度
+       mov cl,3; cbw; idiv cl; cbw      ; AX ＝ 智/3
+       mov cx,ax
+bdb0:  mov al, es:[bx+0x221a]           ; 武
+       mov bl,2; cbw; idiv bl; cbw      ; AX ＝ 武/2
+bdbb:  add ax,cx                        ; 智/3 ＋ 武/2
+       mov cx,dx                        ; CX ← 訓練度
+bdc0:  idiv word [bp+6]                 ; 除以呼叫端給的常數
+bdc3:  add cx,ax
+bdc8:  cmp word [bp-2],100; jle; mov 100 ; 上限 100
+bded:  mov es:[bx+0x2228], al           ; 寫回
+bdf2:  inc word [bp-4]                  ; i++
+```
+
+所以
+
+```
+訓練度 = min(100, 訓練度 + (智/3 + 武/2) / 參數)
+```
+
+**逐項截斷**：智與武各自先整數除，再相加，再除。`(智 + 1.5×武)/9`
+在多數輸入下同值，但 `智=武=11` 分得出來（2 對 3）。
+
+### 那個參數是 3 或 4
+
+兩個 thunk 各推一個常數再呼叫共用常式：
+
+| thunk | 推的值 | 一個月呼叫幾次 |
+|---|---|---|
+| `0xbe94` | 3 | 28 |
+| `0xbe80` | 4 | 4 |
+
+兩者的呼叫端是**同一個位址 `0x00e97f`**——那是指令分派器的間接呼叫點
+（§6 的「每輪十六個函式指標」）。**分岔的條件還沒解。**
+`internal/game` 取 3（`game.TrainGain`）。
+
+⚠ `MemWrite.IP` 指的是**指令的下一個位元組**，不是起點。
+`0xbdf2` 這個「寫訓練度的位址」實際上是 `26 88 87 28 22` 這道指令的
+結尾；指令從 `0xbded` 開始。查碼的時候要往回退。
+
 ## 1.2 下一步：從實作位址回推決策
 
 上面量到的是**命令的實作**，不是電腦諸侯選了哪一道。要拿到判斷式得
