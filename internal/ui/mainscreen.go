@@ -182,13 +182,8 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 	line(8, "人口", fmt.Sprintf("%d", p.Population))
 	line(9, "兵士", fmt.Sprintf("%d", p.Soldiers))
 
-	active := 0
-	for _, x := range g.Garrison(p.ID) {
-		if x.Faction == p.Owner {
-			active++
-		}
-	}
-	line(10, "現役將", fmt.Sprintf("%d", active))
+	line(10, "現役將", fmt.Sprintf("%d / 在野 %d",
+		g.ActiveGenerals(p.ID), g.FreeGenerals(p.ID)))
 	line(11, "土地/洪水", fmt.Sprintf("%d / %d", p.LandValue, p.FloodRate))
 }
 

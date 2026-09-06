@@ -75,14 +75,15 @@ func TestFaithfulModeSaysSo(t *testing.T) {
 	if !found {
 		t.Error("用還沒還原的 AI 開局，紀錄裡沒有講出來")
 	}
-	b := *s.G.Prefecture(15)
+	// **不能用「局面沒變」當判準**——季節事件本來就會改變局面。
+	// 要問的是「電腦諸侯有沒有下命令」。
 	for i := 0; i < 6; i++ {
 		s.EndMonth()
 	}
-	a := *s.G.Prefecture(15)
-	if a.Gold != b.Gold || a.LandValue != b.LandValue ||
-		a.FloodRate != b.FloodRate || a.Soldiers != b.Soldiers {
-		t.Error("還沒還原的 AI 卻改變了局面")
+	for _, line := range s.Log {
+		if strings.Contains(line, "下了") && strings.Contains(line, "個命令") {
+			t.Errorf("還沒還原的 AI 卻下了命令：%q", line)
+		}
 	}
 }
 

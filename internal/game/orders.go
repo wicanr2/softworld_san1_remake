@@ -81,18 +81,20 @@ func (g *State) FloodControl(prefectureID int, by state.FactionID) error {
 	return nil
 }
 
-// Conscript 是「徵兵」：一位將領募兵，每人 1 金（說明書 p.20）。
+// Conscript 是「徵兵」（說明書 p.20）：一位將領募兵，每人 1 金。
 //
-// 三個硬條件都有出處：
+// 條件都有出處：
 //
-//   - 人口少於 3000 就徵不到兵（p.20、p.37）
-//   - 每人 1 金（p.20）
+//   - 每人 1 金
 //   - 帶兵不得超過官階上限（p.18，而且與原版資料對得上）
+//   - **每州郡不得因徵兵而導致人口少於 3000 人**——手冊這樣寫，
+//     所以徵兵**會減少人口**，減的量就是募到的人數
+//   - 新兵毫無訓練，加入時會把部隊的訓練度拉低，武裝度也會降低
 //
-// **兵從哪裡來還沒解**：手冊說人口是兵力的主要來源，但沒說徵一個兵
-// 減多少人口。這裡先不動人口，等量到再補——**寧可少做也不要猜**，
-// 猜錯的人口衰減會讓整局的經濟慢慢偏掉而且看不出來。
-func (g *State) Conscript(prefectureID int, generalIndex, n int, by state.FactionID) error {
+// ⚠ **人口在原版檔案裡是以百為單位存的**（`docs/spec/003` §3）。
+// 局面裡存的是實際值，所以徵一百五十人減得掉；要存回原版格式時
+// 才需要處理進位，那是存檔的事。
+func (g *State) Conscript(prefectureID, generalIndex, n int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
@@ -100,7 +102,7 @@ func (g *State) Conscript(prefectureID int, generalIndex, n int, by state.Factio
 	if n <= 0 {
 		return fmt.Errorf("game: 徵兵人數要是正數，拿到 %d", n)
 	}
-	if p.Population < MinPopulationToConscript {
+	if p.Population-n < MinPopulationToConscript {
 		return ErrNoPeople
 	}
 	x := g.General(generalIndex)
@@ -114,8 +116,14 @@ func (g *State) Conscript(prefectureID int, generalIndex, n int, by state.Factio
 	if x.Soldiers+n > x.TroopCap() {
 		return ErrNoRoom
 	}
+	// 新兵拉低訓練度與武裝度：以兵數加權平均，新兵的值是 0。
+	total := x.Soldiers + n
+	x.Training = uint8((int(x.Training)*x.Soldiers + TuneNewSoldierTraining*n) / total)
+	x.Arms = uint8((int(x.Arms)*x.Soldiers + TuneNewSoldierArms*n) / total)
+
 	p.Gold -= cost
-	x.Soldiers += n
+	p.Population -= n
+	x.Soldiers = total
 	p.Soldiers += n
 	p.Commanded = true
 	return nil
@@ -150,14 +158,16 @@ func (g *State) BuyArms(prefectureID, generalIndex, units int, by state.FactionI
 	return nil
 }
 
-// EndMonth 把時間推到下個月，並清掉每郡的下令旗標。
-//
-// **季節事件與秋收還沒實作**（說明書 p.36–37 有清單但沒給公式）。
-// 這裡只做時間推進，讓迴圈跑得起來；缺的部分列在 `CONTEXT.md` 的
-// worklist，不用「差不多的公式」先頂著。
-func (g *State) EndMonth() {
+// EndMonth 把時間推到下個月，清掉每月一次的旗標，然後跑季節事件。
+// 回傳這個月發生了什麼（`events.go`）。
+func (g *State) EndMonth() []Event {
 	g.Date = g.Date.Next()
 	for i := range g.prefectures {
 		g.prefectures[i].Commanded = false
 	}
+	// 賞賜是每月每人一次（說明書 p.23）。
+	for i := range g.generals {
+		g.generals[i].Rewarded = false
+	}
+	return g.RunSeason()
 }

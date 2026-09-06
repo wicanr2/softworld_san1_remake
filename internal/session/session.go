@@ -23,6 +23,9 @@ type Session struct {
 
 	// MaxLog 是保留幾則；0 用預設。
 	MaxLog int
+
+	// Over 為真表示已經有人一統天下並拿到玉璽。
+	Over bool
 }
 
 // New 開一局。
@@ -83,8 +86,26 @@ func (s *Session) EndMonth() {
 			s.note("%s 下了 %d 個命令", name, n)
 		}
 	}
-	s.G.EndMonth()
+	events := s.G.EndMonth()
 	s.note("──── %d 年 %d 月 ────", s.G.Date.Year, s.G.Date.Month)
+	for _, e := range events {
+		s.note("%s", e.Text)
+	}
+	if f, seal, done := s.G.Winner(); done {
+		lord := s.G.Lord(f)
+		name := fmt.Sprintf("勢力 %d", f)
+		if lord != nil {
+			name = lord.Name
+		}
+		if seal {
+			s.note("★ %s 一 統 天 下", name)
+			s.Over = true
+		} else {
+			// 「在遊戲結束前一定要拿到玉璽，如果屆時玉璽尚未到手，
+			// 便須再多等候數月才能看到君臨天下的結局」（說明書 p.37）。
+			s.note("%s 已無敵手，但玉璽尚未到手", name)
+		}
+	}
 }
 
 // PlayerTerritory 是玩家的郡編號。

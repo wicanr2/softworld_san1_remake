@@ -96,19 +96,57 @@ func TestConscriptRespectsCap(t *testing.T) {
 	}
 }
 
-// TestConscriptNeedsPeople 釘住人口下限（說明書 p.20：少於 3000 不能徵兵）。
+// TestConscriptNeedsPeople 釘住人口下限。
+//
+// 手冊寫的是「**不得因徵兵而導致**人口少於 3000 人」（p.20）——
+// 所以徵兵會減人口，而且判準是**徵完之後**的人口，不是徵之前的。
+// 人口剛好 3000 時一個兵都徵不了。
 func TestConscriptNeedsPeople(t *testing.T) {
 	g := newGame(t)
 	lord := g.Lord(0)
 	p := g.Prefecture(8)
 	p.Gold = MaxGold
-	p.Population = MinPopulationToConscript - 1
-	if err := g.Conscript(8, lord.Index, 1, 0); !errors.Is(err, ErrNoPeople) {
-		t.Errorf("人口 %d 時徵兵回 %v，應該是 ErrNoPeople", p.Population, err)
-	}
+
 	p.Population = MinPopulationToConscript
-	if err := g.Conscript(8, lord.Index, 1, 0); err != nil {
-		t.Errorf("人口剛好 %d 時徵兵失敗：%v", p.Population, err)
+	if err := g.Conscript(8, lord.Index, 1, 0); !errors.Is(err, ErrNoPeople) {
+		t.Errorf("人口剛好 %d 時徵 1 人回 %v，應該是 ErrNoPeople", p.Population, err)
+	}
+	p.Population = MinPopulationToConscript + 10
+	if err := g.Conscript(8, lord.Index, 11, 0); !errors.Is(err, ErrNoPeople) {
+		t.Errorf("徵完會低於下限卻沒有擋下來")
+	}
+	before := p.Population
+	if err := g.Conscript(8, lord.Index, 10, 0); err != nil {
+		t.Fatalf("徵到剛好剩下限卻失敗：%v", err)
+	}
+	if p.Population != before-10 {
+		t.Errorf("徵 10 人之後人口 %d，應該是 %d——徵兵要減人口", p.Population, before-10)
+	}
+	if p.Population != MinPopulationToConscript {
+		t.Errorf("剩下的人口是 %d，應該剛好是下限 %d", p.Population, MinPopulationToConscript)
+	}
+}
+
+// TestConscriptLowersTraining 釘住「新兵毫無訓練，會把部隊拉低」（說明書 p.20）。
+func TestConscriptLowersTraining(t *testing.T) {
+	g := newGame(t)
+	lord := g.Lord(0)
+	p := g.Prefecture(8)
+	p.Gold = MaxGold
+	p.Population = 100000
+	lord.Soldiers = 100
+	lord.Training = 80
+	lord.Arms = 60
+
+	if err := g.Conscript(8, lord.Index, 100, 0); err != nil {
+		t.Fatal(err)
+	}
+	// 一百個訓練度 80 的老兵加一百個 0 的新兵 → 40。
+	if lord.Training != 40 {
+		t.Errorf("徵兵後訓練度 %d，應該是 40（加權平均）", lord.Training)
+	}
+	if lord.Arms != 30 {
+		t.Errorf("徵兵後武裝度 %d，應該是 30（加權平均）", lord.Arms)
 	}
 }
 

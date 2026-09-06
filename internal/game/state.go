@@ -83,8 +83,42 @@ type Prefecture struct {
 
 	Neighbours []int
 
+	// ⚠ **現役／在野武將數不存在這裡。** 原版的檔案有那兩欄，
+	// 而且我們驗過它與人物表逐郡吻合——但那是初始值。開始下令之後
+	// 存一份副本就會有兩個真相。要數請用 State.ActiveGenerals／FreeGenerals。
+
+	// Forts 是城寨數，每郡最多五座（說明書 p.21，不含城池）。
+	Forts int
+
+	// Autonomy 是郡縣自治的型態（說明書 p.23–24）。
+	Autonomy Autonomy
+
 	// Commanded 記這個月下過令了沒。原版是每郡每月一次（說明書 p.17）。
 	Commanded bool
+}
+
+// Autonomy 是郡縣自治的型態（說明書 p.23–24）。
+type Autonomy int
+
+const (
+	// AutoNormal 由諸侯下令，太守擇人施行。
+	AutoNormal Autonomy = iota
+	AutoCivil    // 內政：太守專心處理州郡內政
+	AutoMilitary // 軍事：太守全力加強軍事力量
+	AutoSelf     // 自治：依太守的能力決定型態
+)
+
+// String 讓型態印得出中文。
+func (a Autonomy) String() string {
+	switch a {
+	case AutoCivil:
+		return "內政"
+	case AutoMilitary:
+		return "軍事"
+	case AutoSelf:
+		return "自治"
+	}
+	return "正常"
 }
 
 // Owned 回報這個郡有沒有主。
@@ -109,13 +143,49 @@ type General struct {
 	Soldiers int
 	Training uint8
 	Arms     uint8
+
+	// Rewarded 記這個月被賞賜過了沒。原版是每郡每月可賞每人一次
+	// （說明書 p.23）。
+	Rewarded bool
 }
 
 // Employed 回報這位人物有沒有效力對象。
 func (g *General) Employed() bool { return g.Faction != state.NoFaction }
 
+// HasLoyalty 回報忠誠欄有沒有意義（在野者沒有，原版存 0xFF 哨兵）。
+func (g *General) HasLoyalty() bool { return g.Loyalty != state.NoValue }
+
 // TroopCap 是這位人物帶得動的最大兵力。
 func (g *General) TroopCap() int { return TroopCap(g.Rank) }
+
+// Treasure 是君主寶庫裡的一件寶物（說明書 p.24）。
+type Treasure int
+
+const (
+	TreasureSeal   Treasure = iota // 玉璽：只能諸侯持有，不能送人
+	TreasureBook                   // 兵書：謀略 +2
+	TreasureBlade                  // 寶刀：戰力 +3
+	TreasureBeauty                 // 美女：魅力 +5
+	TreasureHorse                  // 駿馬：戰力 +2、魅力 +3
+	treasureCount
+)
+
+// String 讓寶物印得出中文。
+func (t Treasure) String() string {
+	switch t {
+	case TreasureSeal:
+		return "玉璽"
+	case TreasureBook:
+		return "兵書"
+	case TreasureBlade:
+		return "寶刀"
+	case TreasureBeauty:
+		return "美女"
+	case TreasureHorse:
+		return "駿馬"
+	}
+	return "?"
+}
 
 // Faction 是一個勢力。
 type Faction struct {
@@ -126,6 +196,16 @@ type Faction struct {
 
 	// Alive 為假表示這個勢力已經沒有領地了。
 	Alive bool
+
+	// Treasury 是君主寶庫裡各種寶物的數量（說明書 p.19「君主物品」）。
+	//
+	// **初始內容還沒解**：原版的 `BASEMAS` 七十二個位元組裡只解出
+	// offset 2，寶庫在哪還不知道。這裡先全部從零開始。
+	Treasury [treasureCount]int
+
+	// Chief 是現任軍師的人物槽號，−1 表示沒有。
+	// 同時只能有一位（說明書 p.23）。
+	Chief int
 }
 
 // State 是一局進行中的遊戲。
@@ -192,9 +272,13 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 		if err != nil {
 			return nil, err
 		}
-		g.factions = append(g.factions, Faction{
-			ID: state.FactionID(f), Lord: lord.Index, Alive: true,
-		})
+		fa := Faction{ID: state.FactionID(f), Lord: lord.Index, Alive: true, Chief: -1}
+		for _, x := range sc.Retinue(f) {
+			if x.Status == state.StatusChief {
+				fa.Chief = x.Index
+			}
+		}
+		g.factions = append(g.factions, fa)
 		if state.FactionID(f) == player {
 			valid = true
 		}
@@ -226,6 +310,25 @@ func (g *State) General(index int) *General {
 
 // Factions 回傳實際在用的勢力。
 func (g *State) Factions() []Faction { return g.factions }
+
+// Faction 用勢力槽號取一個勢力。找不到回 nil。
+func (g *State) Faction(f state.FactionID) *Faction {
+	for i := range g.factions {
+		if g.factions[i].ID == f {
+			return &g.factions[i]
+		}
+	}
+	return nil
+}
+
+// Chief 回傳某個勢力現任的軍師；沒有回 nil。
+func (g *State) Chief(f state.FactionID) *General {
+	x := g.Faction(f)
+	if x == nil || x.Chief < 0 {
+		return nil
+	}
+	return g.General(x.Chief)
+}
 
 // Lord 回傳某個勢力的君主。
 func (g *State) Lord(f state.FactionID) *General {
@@ -287,6 +390,38 @@ func (g *State) Garrison(prefectureID int) []*General {
 		}
 	}
 	return out
+}
+
+// ActiveGenerals 是駐在某個郡的現役武將數（含主事者）。
+//
+// **算出來不存起來。** 這個數字在原版的檔案裡有一欄，而且我們驗過
+// 它與人物表逐郡吻合（`docs/spec/003` §3.1）——但那是**初始值**。
+// 開始下令之後，存一份副本就會有兩個真相，而它們遲早會不一致。
+func (g *State) ActiveGenerals(prefectureID int) int {
+	n := 0
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Employed() && x.Location == prefectureID && x.Name != "" {
+			n++
+		}
+	}
+	return n
+}
+
+// FreeGenerals 是某個郡露面的在野武將數。
+//
+// 只數身分為「在野而且在該郡露面」的人——原版的郡欄位就是這樣數的
+// （四十二個郡全對；不加這個條件只對得上二十六個）。
+func (g *State) FreeGenerals(prefectureID int) int {
+	n := 0
+	for i := range g.generals {
+		x := &g.generals[i]
+		if !x.Employed() && x.Location == prefectureID &&
+			x.Status == state.StatusAvailable && x.Name != "" {
+			n++
+		}
+	}
+	return n
 }
 
 // Adjacent 回報兩個郡相不相鄰。
