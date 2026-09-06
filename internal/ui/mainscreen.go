@@ -55,6 +55,10 @@ type View struct {
 
 	// Over 為真表示這一局結束了（勝、敗、或被消滅）。
 	Over bool
+
+	// Calendar 是年月的表示方式（原版「其他 → 年號」，手冊 p.26）。
+	// 零值是中曆，與原版的預設相同。
+	Calendar game.Calendar
 }
 
 // DrawMainScreen 畫遊戲主畫面。
@@ -68,7 +72,7 @@ func DrawMainScreen(c *Canvas, g *game.State, sel int) {
 // 玩家會以為是壞掉。**
 func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 	c.Fill(ColBG)
-	drawTimeColumn(c, g)
+	drawTimeColumn(c, g.Date, v.Calendar)
 	drawMap(c, g, v.Sel)
 	drawInfoPanel(c, g, v.Sel)
 	if v.Menu == "" {
@@ -131,22 +135,15 @@ func drawLog(c *Canvas, log []string) {
 	}
 }
 
-// drawTimeColumn 畫左側直排的年月。
+// drawTimeColumn 畫左側直排的年月，與原版同一個形狀（「中平六年元月」）。
 //
-// 原版顯示年號（「中平六年元月」）。**年號表還沒解**，所以這裡先用西元；
-// 換成年號是顯示層的事，不影響規則。
-func drawTimeColumn(c *Canvas, g *game.State) {
+// 中曆與西曆都逐字往下排：西曆的年份是四個阿拉伯數字，一位一列。
+func drawTimeColumn(c *Canvas, d game.Date, cal game.Calendar) {
 	c.DrawBox(timeCol, 0, timeW, Rows, ColFrame)
-	// 直排。數字逐位往下排，與原版左側的直排年號同一個形狀。
-	rows := []string{}
-	for _, ch := range fmt.Sprintf("%d", g.Date.Year) {
+	var rows []string
+	for _, ch := range d.Format(cal) {
 		rows = append(rows, string(ch))
 	}
-	rows = append(rows, "年", "")
-	for _, ch := range fmt.Sprintf("%d", g.Date.Month) {
-		rows = append(rows, string(ch))
-	}
-	rows = append(rows, "月")
 	for i, s := range rows {
 		if 2+i >= Rows-1 {
 			break

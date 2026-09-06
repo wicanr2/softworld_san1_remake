@@ -85,6 +85,9 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 	if p.Gold < CostRecruit {
 		return ErrNoGold
 	}
+	if g.ActiveGenerals(prefectureID) >= MaxGeneralsPerPrefecture {
+		return ErrTooManyGens
+	}
 	p.Gold -= CostRecruit
 	p.Commanded = true
 	charm := 50
@@ -310,6 +313,9 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 	}
 	if p.Gold < CostHeadhunt {
 		return ErrNoGold
+	}
+	if g.ActiveGenerals(prefectureID) >= MaxGeneralsPerPrefecture {
+		return ErrTooManyGens
 	}
 	p.Gold -= CostHeadhunt
 	p.Commanded = true

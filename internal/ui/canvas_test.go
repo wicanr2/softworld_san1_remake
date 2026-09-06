@@ -8,6 +8,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 )
 
 var (
@@ -222,6 +223,38 @@ func TestEveryMainCommandHasASubMenu(t *testing.T) {
 		title, items := SubMenu(c.Key)
 		if title == "" || len(items) == 0 {
 			t.Errorf("「%s」（%q）沒有子選單", c.Name, c.Key)
+		}
+	}
+}
+
+// TestTimeColumnShowsTheEra 釘住左側直排顯示的是年號，而且切得掉。
+//
+// 原版主畫面左側直排寫「中平六年元月」（F41）。這一條盯的是
+// **畫面上真的畫出那六個字**——`Date.Format` 對不代表有人叫它。
+func TestTimeColumnShowsTheEra(t *testing.T) {
+	face := testFace(t)
+	for _, c := range []struct {
+		cal  game.Calendar
+		text string
+	}{
+		{game.ChineseEra, "中平六年元月"},
+		{game.Western, "189年1月"},
+	} {
+		canvas := NewCanvas(Cols, Rows, face)
+		canvas.Fill(ColBG)
+		drawTimeColumn(canvas, game.Date{Year: 189, Month: 1}, c.cal)
+		// 逐字比：每個字畫在 timeCol+2 那一欄，從第 2 列往下。
+		for i, r := range []rune(c.text) {
+			row := 2 + i
+			if row >= Rows-1 {
+				break
+			}
+			if canvas.InkAt(timeCol+2, row, ColBG) == 0 {
+				t.Errorf("%s：第 %d 列（應該是 %q）沒有畫東西", c.cal.Name(), row, r)
+			}
+		}
+		if len(canvas.Missing) > 0 {
+			t.Errorf("%s：有畫不出來的字 %v", c.cal.Name(), canvas.Missing)
 		}
 	}
 }

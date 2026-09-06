@@ -23,7 +23,19 @@ var (
 	ErrCantGift     = fmt.Errorf("這件寶物不能送人")
 	ErrNoGovernor   = fmt.Errorf("移出之後這個郡沒有人治理")
 	ErrNoOne        = fmt.Errorf("找不到合適的人選")
+	ErrTooManyGens  = fmt.Errorf("本郡的將軍已達 50 人")
 )
+
+// MaxGeneralsPerPrefecture 是一個郡最多幾位現役將軍。
+//
+// **手冊沒寫這條，是原版自己說的**：`AA.EXE` 有 `本郡已有50位將軍`
+// （`0x4907f`，登用人才）與 `本郡將軍已達50人`（`0x49390`，登用他國人才）
+// 兩條訊息，另有開發時期留下的 `War Gen <1 or >50`
+// （`docs/re/04` §9、§15）。
+//
+// ⚠ **只在那兩個指令上擋。** 調動軍隊與戰役之後駐進來的部隊，
+// 原版有沒有一樣擋還沒有證據；沒有證據的地方不自己加規則。
+const MaxGeneralsPerPrefecture = 50
 
 // ---- 2. 軍事 ------------------------------------------------------------
 

@@ -158,6 +158,15 @@ func (a *app) begin(cat, item byte) {
 		a.askSlot("存到第幾個進度", true, func(slot int) {
 			_ = a.s.Save(a.saveDir, slot, "")
 		})
+	case cat == '9' && item == '7':
+		// 原版的提示是 `使用%s年號`（`docs/re/04` §3）。
+		if a.view.Calendar == game.Western {
+			a.view.Calendar = game.ChineseEra
+		} else {
+			a.view.Calendar = game.Western
+		}
+		a.view.Prompt = fmt.Sprintf("使用%s年號", a.view.Calendar.Name())
+		closeMenu()
 	case cat == '9' && item == '1':
 		// 「＊結束」在原版是回到主選單。這裡先提醒存檔——
 		// **沒存就離開是最貴的一次誤按**。
@@ -466,6 +475,7 @@ func main() {
 	root := flag.String("root", "", "原版遊戲目錄（必填，玩家自備）")
 	saveDir := flag.String("saves", "saves", "存檔目錄（remake 自己的，不寫回原版）")
 	load := flag.Int("load", 0, "開場就讀第幾個進度（1..6）；0 ＝ 開新局")
+	calendar := flag.String("calendar", "中曆", "年月的表示方式：中曆／西曆（原版「其他 → 年號」）")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型")
 	slot := flag.String("slot", "001", "劇本：001..006")
 	faction := flag.Int("faction", -1, "玩家的勢力槽號；−1 ＝ 第一個在用的")
@@ -535,6 +545,9 @@ func main() {
 		dirty:   true,
 		saveDir: *saveDir,
 		aiMode:  ai.Mode(*aiMode),
+	}
+	if *calendar == "西曆" {
+		a.view.Calendar = game.Western
 	}
 	if own := s.PlayerTerritory(); len(own) > 0 {
 		sort.Ints(own)
