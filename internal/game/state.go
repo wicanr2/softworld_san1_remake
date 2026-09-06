@@ -209,6 +209,13 @@ type Faction struct {
 	// Alive 為假表示這個勢力已經沒有領地了。
 	Alive bool
 
+	// AILevel 是原版的電腦諸侯等級，0–5（`BASEMAS` offset 4，`L0`）。
+	//
+	// **它挑的是一整套行為**：原版有九張指令分派表，每一張八個項目，
+	// 用這個等級當索引（`docs/re/03` §1.4）。已經解出來的是訓練兵士
+	// 那一張——等級越高除數越小、練得越快（`AITrainDivisor`）。
+	AILevel int
+
 	// Treasury 是君主寶庫裡各種寶物的數量（說明書 p.19「君主物品」）。
 	//
 	// **初始內容還沒解**：原版的 `BASEMAS` 七十二個位元組裡只解出
@@ -304,7 +311,8 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 		if err != nil {
 			return nil, err
 		}
-		fa := Faction{ID: state.FactionID(f), Lord: lord.Index, Alive: true, Chief: -1}
+		fa := Faction{ID: state.FactionID(f), Lord: lord.Index, Alive: true, Chief: -1,
+			AILevel: sc.AILevel(f)}
 		for _, x := range sc.Retinue(f) {
 			if x.Status == state.StatusChief {
 				fa.Chief = x.Index
@@ -354,6 +362,14 @@ func (g *State) Faction(f state.FactionID) *Faction {
 }
 
 // Chief 回傳某個勢力現任的軍師；沒有回 nil。
+// AILevel 回傳勢力的電腦諸侯等級（0–5）。查不到的勢力回 0。
+func (g *State) AILevel(f state.FactionID) int {
+	if x := g.Faction(f); x != nil {
+		return x.AILevel
+	}
+	return 0
+}
+
 func (g *State) Chief(f state.FactionID) *General {
 	x := g.Faction(f)
 	if x == nil || x.Chief < 0 {

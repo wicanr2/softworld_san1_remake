@@ -127,6 +127,74 @@ bdf2:  inc word [bp-4]                  ; i++
 `0xbdf2` 這個「寫訓練度的位址」實際上是 `26 88 87 28 22` 這道指令的
 結尾；指令從 `0xbded` 開始。查碼的時候要往回退。
 
+## 1.4 電腦諸侯有六個等級，等級挑一整套行為（`L0`、`[base]`）
+
+`0x00e8d2` 是**指令分派器**。它把參數夾在 0–5，存進 `es:[0x20f6]`，
+然後連續用它索引**九張 far pointer 表**：
+
+```
+e8de:  cmp word [bp+6],0 ; jge → mov word [bp+6],0     ; 下限
+e8e9:  cmp word [bp+6],5 ; jle → mov word [bp+6],5     ; 上限
+e8fb:  mov es:[0x20f6], ax
+...
+e91d:  mov bx, es:[0x20f6] ; shl bx ; shl bx           ; ×4（far pointer）
+e926:  lcall far ptr [bx+0x54d4]
+e937:  lcall far ptr [bx+0x5694]
+e948:  lcall far ptr [bx+0x5674]
+e959:  lcall far ptr [bx+0x5614]
+e96a:  lcall far ptr [bx+0x5634]
+e97b:  lcall far ptr [bx+0x5554]      ← 訓練兵士
+e98c:  lcall far ptr [bx+0x5534]
+e99d:  lcall far ptr [bx+0x56b4]
+e9fc:  lcall far ptr [bx+0x5594]
+```
+
+⚠ 那幾道 `lcall` **沒有 `26` 前綴，走 DS 不是 ES**。讀成 ES 會拿到
+看起來像位址的垃圾。
+
+表彼此相差 `0x20` ＝ 8 個 far pointer，所以表是八格的；但參數被夾在
+0–5，**第 7、8 格到不了**——實測那兩格都是 `xor ax,ax; lcall 堆疊檢查;
+lret` 的空操作，只為了把表補成 2 的冪。
+
+### 等級從哪裡來
+
+唯一的呼叫端在 `0x017504`：
+
+```
+1750f:  mov ax, 0xb0             ; 176 ＝ 州郡記錄大小
+17512:  imul word [bp+6]         ; 郡編號 × 176
+1751d:  imul byte es:[bx+0x49e]  ; 州郡 offset 30（所屬勢力）× 72（諸侯記錄大小）
+17528:  mov ax, es:[bx+0x4]      ; ← 諸侯記錄的 offset 4
+1752d:  push ax
+1752e:  lcall 0e8d:0002          ; → 分派器
+```
+
+**`BASEMAS` 的 offset 4（16 位元）就是那個勢力的電腦諸侯等級。**
+那張 72 位元組的表在此之前只解出 offset 2（君主的人物槽號）。
+
+資料側對得上：劇本 001 的存檔裡槽 0–8 是 5、槽 9–14 是 4，而一個月裡
+分派器收到 5 共 28 次、收到 4 共 4 次——正好是那兩群勢力所擁有、
+且會行動的郡數。
+
+### 訓練兵士那張表（`0x5554`）
+
+| 等級 | thunk | 推的常數（除數）|
+|---|---|---|
+| 0 | `0xbe30` | 5 |
+| 1 | `0xbe44` | 5 |
+| 2 | `0xbe58` | 5 |
+| 3 | `0xbe6c` | 4 |
+| 4 | `0xbe80` | 4 |
+| 5 | `0xbe94` | 3 |
+| 6 | `0xbea8` | 空操作 |
+| 7 | `0xbeb0` | 空操作 |
+
+配上 §1.3 的公式：**訓練度 ＋= (智/3 + 武/2) / 除數[等級]**，上限 100。
+等級越高練得越快。實作在 `game.TrainGain`／`game.AITrainDivisor`。
+
+**其餘八張表還沒解。** 位址在上面，做法一樣：讀表裡的 far pointer、
+反組譯目標。
+
 ## 1.2 下一步：從實作位址回推決策
 
 上面量到的是**命令的實作**，不是電腦諸侯選了哪一道。要拿到判斷式得

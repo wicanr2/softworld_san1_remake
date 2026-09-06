@@ -395,6 +395,7 @@ func priceSeries(paths []string) {
 // 存檔可能帶著**自創君主**，那種勢力不在劇本檔裡。判斷「這個槽有沒有
 // 在用」不能拿劇本檔比對，得看盤面自己說什麼。
 func showLords(sc *state.Scenario) {
+	mas, _, _ := sc.Tables()
 	owned := map[int]int{}
 	for _, p := range sc.Prefectures() {
 		if p.Owned() {
@@ -407,8 +408,11 @@ func showLords(sc *state.Scenario) {
 		case err != nil:
 			fmt.Printf("槽 %2d：查不到君主（%v）　領地 %d\n", i, err, owned[i])
 		default:
-			fmt.Printf("槽 %2d：君主槽號 %3d %q　是人 %v　領地 %d\n",
-				i, g.Index, g.Name, g.IsPerson, owned[i])
+			// offset 4 是 AI 等級（`docs/re/03` §1.4，`L0`）。
+			lv := int(mas[i*state.MasterRecordSize+4]) |
+				int(mas[i*state.MasterRecordSize+5])<<8
+			fmt.Printf("槽 %2d：君主槽號 %3d %q　是人 %v　領地 %2d　AI 等級 %d\n",
+				i, g.Index, g.Name, g.IsPerson, owned[i], lv)
 		}
 	}
 }

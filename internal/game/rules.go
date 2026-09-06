@@ -86,13 +86,34 @@ func TroopCap(r state.Rank) int {
 //	add 原本的訓練度
 //	上限 100
 //
-// 那個常數由兩個 thunk 決定：`0xbe94` 推 3、`0xbe80` 推 4，
-// 一個月裡 28 次走 3、4 次走 4，兩者的呼叫端是同一個分派點
-// （`docs/re/03` §1.3）。**分岔的條件還沒解**，這裡取 3。
+// **逐項截斷**：智與武各自先整數除，再相加，再除。
 //
-// 說明書只說「各將的能力影響其麾下的訓練度提升」——方向對，係數是這裡
-// 才有的。
-func TrainGain(intel, war int) int {
-	const divisor = 3
-	return (intel/3 + war/2) / divisor
+// 那個常數由勢力的 AI 等級選（`AITrainDivisor`），不是固定的
+// （`docs/re/03` §1.3–1.4）。說明書只說「各將的能力影響其麾下的訓練度
+// 提升」——方向對，係數是碼裡才有的。
+func TrainGain(intel, war, aiLevel int) int {
+	return (intel/3 + war/2) / AITrainDivisor(aiLevel)
+}
+
+// AITrainDivisor 是訓練提升的除數，由勢力的 AI 等級選（`L0`、`[base]`）。
+//
+// 原版的指令分派表 `0x5554` 有八個 far pointer，每一個是一個 thunk，
+// 推一個常數再呼叫共用常式：
+//
+//	等級 0 1 2 → 5
+//	等級 3 4   → 4
+//	等級 5     → 3
+//	等級 6 7   → 空操作（`xor ax,ax; lret`）
+//
+// **等級 6 與 7 到不了**：分派前 `[bp+6]` 被夾在 0–5，那兩格只是把表
+// 補成 2 的冪。所以除數越小（等級越高）練得越快。
+func AITrainDivisor(level int) int {
+	switch {
+	case level <= 2:
+		return 5
+	case level <= 4:
+		return 4
+	default:
+		return 3
+	}
 }

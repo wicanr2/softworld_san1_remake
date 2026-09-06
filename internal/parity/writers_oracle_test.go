@@ -216,3 +216,168 @@ func TestZZWhoWritesTheTables(t *testing.T) {
 		}
 	}
 }
+
+// TestZZDispatch 讀電腦諸侯的指令分派表。
+//
+// `0xe926`–`0xe9fc` 有九個分派點，形狀都一樣：
+//
+//	mov es, [0xa63a]
+//	mov bx, es:[0x20f6]      ; 索引
+//	shl bx; shl bx           ; ×4（far pointer）
+//	lcall far ptr [bx+0x55NN]
+//
+// 表的位址彼此相差 `0x20` ＝ 8 個 far pointer，所以**索引是 0–7**，
+// 也就是每種行為有八個版本。這一條把索引與解出來的目標位址讀下來
+// ——那份對應就是「哪一種電腦諸侯做哪一件事」。
+func TestZZDispatch(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	base := bootToGame(t, o, seedMas)
+	t.Logf("三張表的基底 %#x，難度 %q，索引來源 %#06x 現在是 %d",
+		base, envOr("SAN1_DIFFICULTY", "5"), 0x040736, o.Byte(addr(0x040736)))
+
+	sites := map[uint32]uint16{
+		0xe926: 0x54d4, 0xe937: 0x5694, 0xe948: 0x5674, 0xe959: 0x5614,
+		0xe96a: 0x5634, 0xe97b: 0x5554, 0xe98c: 0x5534, 0xe99d: 0x56b4,
+		0xe9fc: 0x5594,
+	}
+	// **表走 DS 不是 ES。** 那道 `ff 9f 54 55` 沒有 `26` 前綴，
+	// 預設段就是 DS；讀成 ES 會拿到看起來像位址的垃圾。
+	word := func(o *oracle.Oracle, lin uint32) uint32 {
+		return uint32(o.Byte(addr(lin))) | uint32(o.Byte(addr(lin+1)))<<8
+	}
+	seen := map[string]int{}
+	dumped := map[uint16]bool{}
+	for lin, tbl := range sites {
+		table := tbl
+		at := lin
+		o.OnCall(addr(lin), func(o *oracle.Oracle) {
+			ds := uint32(o.DSReg())
+			// 索引來自 `es:[0x20f6]`，而那個 ES 是前一道指令從變數載的。
+			// 把它印出來才知道那一格落在哪張表的哪個欄位。
+			ix := uint32(o.ES())*16 + 0x20f6
+			seen[fmt.Sprintf("分派點 %#06x 表 %#04x 索引 %d（來源線性 %#06x，距基底 %+d）",
+				at, table, o.BX()/4, ix, int(ix)-int(base))]++
+			if dumped[table] {
+				return
+			}
+			dumped[table] = true
+			// 八個項目一次讀完：表彼此相差 0x20 ＝ 8 個 far pointer。
+			for i := 0; i < 8; i++ {
+				ent := ds*16 + uint32(table) + uint32(i)*4
+				off := word(o, ent)
+				seg := word(o, ent+2)
+				tgt := seg*16 + off
+				// thunk 的形狀是 `33 c0 9a .. .. .. .. b8 K K 50 0e e8`
+				// ——推的常數在 `b8` 後面。
+				extra := ""
+				if o.Byte(addr(tgt)) == 0x33 && o.Byte(addr(tgt+7)) == 0xb8 {
+					extra = fmt.Sprintf("　推的常數 %d", word(o, tgt+8))
+				}
+				seen[fmt.Sprintf("  表 %#04x[%d] → %04x:%04x（線性 %#06x）%s",
+					table, i, seg, off, tgt, extra)] = 0
+			}
+		})
+	}
+	for _, keys := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(keys)
+		if err := o.Run(40_000_000 * 3); err != nil {
+			t.Fatalf("原版停止：%v", err)
+		}
+	}
+	keys := make([]string, 0, len(seen))
+	for k := range seen {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if n := seen[k]; n > 0 {
+			t.Logf("%s ×%d", k, n)
+		} else {
+			t.Log(k)
+		}
+	}
+}
+
+// TestZZIndexSource 找出分派索引是誰寫的、寫的是什麼。
+//
+// 索引在線性 `0x040736`，九個分派點共用它，取值只見過 4 與 5。
+// **難度不是它**（難度 5 與 8 得到相同的索引值）。所以直接看寫入端。
+func TestZZIndexSource(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	bootToGame(t, o, seedMas)
+
+	// 分派常式的進入點在 0xe8d2（`push bp; mov bp,sp`）。
+	// 參數就是等級，進去之後被夾在 0–5。
+	lv := map[string]int{}
+	o.OnCall(addr(0xe8d2), func(o *oracle.Oracle) {
+		c := o.Caller()
+		lv[fmt.Sprintf("等級 %d ← 呼叫端 %04x:%04x（線性 %#06x）",
+			int16(o.Arg(0)), c.Seg, c.Off, uint32(c.Seg)*16+uint32(c.Off))]++
+	})
+
+	const ix = 0x040736
+	log := o.WatchWritesAt(ix, ix+1)
+	for _, keys := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(keys)
+		if err := o.Run(40_000_000 * 3); err != nil {
+			t.Fatalf("原版停止：%v", err)
+		}
+	}
+	o.StopWatchingWrites()
+
+	seen := map[string]int{}
+	for _, w := range *log {
+		lin := uint32(w.IP.Seg)*16 + uint32(w.IP.Off)
+		seen[fmt.Sprintf("線性 %#06x 把 %#04x 位移的值寫成 %d（原本 %d）",
+			lin, w.Off, w.New, w.Old)]++
+	}
+	keys := make([]string, 0, len(seen))
+	for k := range seen {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	lk := make([]string, 0, len(lv))
+	for k := range lv {
+		lk = append(lk, k)
+	}
+	sort.Strings(lk)
+	for _, k := range lk {
+		t.Logf("分派常式 0xe8d2：%s ×%d", k, lv[k])
+	}
+	t.Logf("一個月裡 %#x 被寫了 %d 次，來自 %d 種寫法", ix, len(*log), len(seen))
+	for i, k := range keys {
+		if i >= 20 {
+			t.Logf("    …（還有 %d 種）", len(keys)-20)
+			break
+		}
+		t.Logf("    %s ×%d", k, seen[k])
+	}
+}

@@ -299,13 +299,25 @@ func TestTrainGainMatchesTheOriginal(t *testing.T) {
 		// 分辨不出來。
 		{11, 11, 2},
 	} {
-		got := TrainGain(c.intel, c.war)
+		got := TrainGain(c.intel, c.war, 5)
 		if got != c.want {
 			t.Errorf("智 %d 武 %d：訓練提升 %d，應該是 %d",
 				c.intel, c.war, got, c.want)
 		}
 	}
-	if got := TrainGain(100, 100); got != (100/3+100/2)/3 {
+	if got := TrainGain(100, 100, 5); got != (100/3+100/2)/3 {
 		t.Errorf("整數除法沒有逐項截斷：%d", got)
+	}
+
+	// 除數由 AI 等級選，等級越高練得越快（`docs/re/03` §1.4）。
+	for _, c := range []struct{ level, want int }{
+		{0, 5}, {1, 5}, {2, 5}, {3, 4}, {4, 4}, {5, 3},
+	} {
+		if got := AITrainDivisor(c.level); got != c.want {
+			t.Errorf("AI 等級 %d 的除數是 %d，應該是 %d", c.level, got, c.want)
+		}
+	}
+	if TrainGain(80, 90, 5) <= TrainGain(80, 90, 0) {
+		t.Error("等級高的練得應該比較快")
 	}
 }

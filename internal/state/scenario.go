@@ -562,3 +562,25 @@ func decodeBig5(b []byte) (string, error) {
 	}
 	return string(out), nil
 }
+
+// AILevel 是勢力的電腦諸侯等級（`BASEMAS` offset 4，`L0`、`[base]`）。
+//
+// 原版用它當索引挑一整套行為：九張指令分派表，每張八個 far pointer
+// （`docs/re/03` §1.4）。**進分派器之前會被夾在 0–5**，所以有效範圍是
+// 六級；表的第 7、8 格是空操作，只為了把表補成 2 的冪。
+//
+// 劇本 001 的存檔裡：槽 0–8 是 5，槽 9–14 是 4。
+func (s *Scenario) AILevel(faction int) int {
+	off := faction*masterSize + 4
+	if faction < 0 || off+1 >= len(s.rawMas) {
+		return 0
+	}
+	v := int(binary.LittleEndian.Uint16(s.rawMas[off:]))
+	if v < 0 {
+		return 0
+	}
+	if v > 5 {
+		return 5
+	}
+	return v
+}

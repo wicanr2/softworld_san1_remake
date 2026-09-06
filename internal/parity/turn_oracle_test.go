@@ -91,7 +91,13 @@ func bootToMain(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 
 	// **這個階段的提示讀掃描碼**，而且字元佇列的殘留要先清掉
 	//（`docs/re/02` §3）。送完等畫面動，動了才走下一步。
-	for i, keys := range []string{"1\r", "\r", "5\r", "\r", "\r"} {
+	// 難度可以換：`SAN1_DIFFICULTY`，預設 5。**換難度是個實驗手段**——
+	// 有些數值看起來像常數，其實是難度選出來的。
+	diff := "5"
+	if v := os.Getenv("SAN1_DIFFICULTY"); v != "" {
+		diff = v
+	}
+	for i, keys := range []string{"1\r", "\r", diff + "\r", "\r", "\r"} {
 		if err := o.Run(150_000_000); err != nil {
 			t.Fatalf("沉澱時停止：%v", err)
 		}
