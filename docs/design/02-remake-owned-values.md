@@ -59,7 +59,6 @@
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
 | `TuneSearchIntel` | 1 | 「謀略越高，成功的機率越大」|
-| `TuneRecruitCharm` | 1 | 「太守的魅力越高，成功的機會越大」|
 | `TuneRewardLoyalty` | 10 | 只給了賞金上限 100 |
 | `TuneHeadhuntBase` | 60 | 只給了費用 100 金 |
 | `TuneNewSoldierTraining` | 0 | 「新兵毫無訓練，加入時會把部隊的訓練度拉低」|
@@ -76,6 +75,7 @@
 | `TuneFloodBase`／`TuneFloodIntel` | `FloodDrop`：`智/10`，下限 0 | `0xba4c` ＋ 呼叫端 |
 | `TuneTrainBase`／`TuneTrainIntel` | `TrainGain`：`(智/3 + 武/2)/除數[等級]`，上限 100 | `0xbd70` |
 | `TuneNewSoldierArms` | `ArmsOf`／`Weapons`：武裝度是百分比，兵力一變就重算 | `0xc168` |
+| `TuneRecruitCharm` | `RecruitPersuasion`／`RecruitDifficulty`：說服力比難度，前面還有牽絆閘門 | `0xce8c` |
 
 **「智力低會不會變負」是這一批最容易做錯的地方**：呼叫端算的
 `(智−50)/12` 對低智力是負的，而常式先擋掉非正的量、改成擲 0 或 1。

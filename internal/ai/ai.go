@@ -146,8 +146,10 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		}
 		// 登用人才（表 `0x5634`）：掃本郡身分 8（在野露面）的人。
 		// **每郡最多 50 位將軍**（`0xced2` 的 `cmpw es:[0xc],50`）。
-		// ⚠ 成功率的公式還沒解——等級參數 (30,0)/(20,10)/(10,20)/(0,40)
-		// 被傳給另一支函式（`docs/re/03` §1.4）。
+		// 判定在 `game.Recruit`（`0xce8c`，`docs/re/03` §1.4）；
+		// 等級參數 (30,0)/(20,10)/(10,20)/(0,40) 是**費用與加成**。
+		// ⚠ 原版掃的是身分 8 **與 10**，而 10 是什麼還沒解；
+		// 有好幾位可選時它挑誰也還沒讀。
 		if len(g.Garrison(p)) < game.MaxGeneralsPerPrefecture {
 			if who := f.recruitTarget(g, p); who != nil {
 				out = append(out, game.RecruitOrder{At: p, Target: who.Index})

@@ -140,13 +140,17 @@ type General struct {
 	Index int
 	Name  string
 
-	Age      uint8
-	Stamina  uint8
-	Intel    uint8
-	War      uint8
-	Charm    uint8
-	Rank     state.Rank
-	Origin   int // 出身郡（1..42），未登場者從這裡登場
+	Age     uint8
+	Stamina uint8
+	Intel   uint8
+	War     uint8
+	Charm   uint8
+	Rank    state.Rank
+	Origin  int // 出身郡（1..42），未登場者從這裡登場
+
+	// Bond 是人物表 offset 14 指到的人物槽號，登用判定拿它當閘門
+	//（`state.General.Bond`）。指向自己表示沒有牽絆。
+	Bond     int
 	Loyalty  uint8
 	Status   state.Status
 	Faction  state.FactionID
@@ -316,7 +320,8 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 		g.generals = append(g.generals, General{
 			Index: s.Index, Name: s.Name,
 			Age: s.Age, Stamina: s.Stamina, Intel: s.Intel, War: s.War, Charm: s.Charm,
-			Rank: s.Rank, Origin: int(s.Origin), Loyalty: s.Loyalty, Status: s.Status,
+			Rank: s.Rank, Origin: int(s.Origin), Bond: s.Bond,
+			Loyalty: s.Loyalty, Status: s.Status,
 			Faction: state.FactionID(s.Faction), Location: int(s.Location),
 			Troop: s.Troop, Soldiers: int(s.Soldiers),
 			Training: s.Training, Arms: s.Arms,

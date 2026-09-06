@@ -94,8 +94,15 @@ func (g *State) Search(prefectureID, generalIndex int, by state.FactionID) (foun
 	return hidden, nil
 }
 
-// Recruit 是「登用人才」（說明書 p.22）：從本地在野將領中招用，
-// 每人 30 金，**太守魅力越高機會越大**。
+// Recruit 是「登用人才」（說明書 p.22）：從本地在野將領中招用。
+//
+// 判定照原版的 `0xce8c`（公式與推論等級見 `rules.go` 的
+// `RecruitPersuasion`／`RecruitDifficulty`）：說服力大於難度才成功，
+// 而難度前面有一道**牽絆閘門**——被登用者的 `Bond` 指到誰，
+// 就看那個人現在效力於誰。
+//
+// **「失敗」與「不能下令」是兩件事**：錢照付、命令照用掉，
+// 回傳的錯誤只是說他不肯來。
 func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
@@ -106,7 +113,8 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 		t.Status != state.StatusAvailable {
 		return ErrUnknownUnit
 	}
-	fee := g.price(by, CostRecruit)
+	level := g.aiLevelOf(by)
+	fee := g.price(by, RecruitFee(level))
 	if p.Gold < fee {
 		return ErrNoGold
 	}
@@ -115,18 +123,49 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 	}
 	p.Gold -= fee
 	p.Commanded = true
+
+	bonus := RecruitBonus(level)
 	charm := 50
 	if gov := g.Governor(prefectureID); gov != nil {
 		charm = int(gov.Charm)
 	}
-	if g.roll(prefectureID, targetIndex, charm) >= clampTo(charm/TuneRecruitCharm, 95) {
-		return fmt.Errorf("%s", tf("msg.declined", t.Name))
+	prestige := 0
+	if f := g.Faction(by); f != nil {
+		prestige = f.Prestige
+	}
+	say := RecruitPersuasion(prestige, charm, bonus)
+	if say <= g.recruitDifficulty(t, prefectureID, by) {
+		return fmt.Errorf("%s：%w", tf("msg.declined", t.Name), ErrDeclined)
+	}
+	loyalty := RecruitLoyalty(prestige,
+		g.Roll(max(prestige/2, 1), prefectureID, targetIndex, 0x5634), bonus)
+	if loyalty <= 0 {
+		return fmt.Errorf("%s：%w", tf("msg.declined", t.Name), ErrDeclined)
 	}
 	t.Faction = by
 	t.Status = state.StatusOfficer
 	t.Rank = state.RankJuniorGeneral
-	t.Loyalty = uint8(clampTo(charm, 100))
+	t.Loyalty = uint8(clampTo(loyalty, 100))
 	return nil
+}
+
+// recruitDifficulty 是登用判定裡「對方有多難請動」的那一半。
+//
+// 牽絆閘門蓋過能力值：`Bond` 指到的人效力於招募方就是零，
+// 效力於第三方就是一道牆。指向自己的人（346 筆裡 176 筆）在野時
+// 那一格自然是在野，所以走能力值那條。
+func (g *State) recruitDifficulty(t *General, prefectureID int, by state.FactionID) int {
+	if b := g.General(t.Bond); b != nil {
+		switch {
+		case b.Employed() && b.Faction == by:
+			return RecruitBondFree
+		case b.Employed():
+			return RecruitBondWall + g.Roll(10, prefectureID, t.Index, 0x5634)
+		}
+	}
+	return RecruitDifficulty(int(t.Intel), int(t.War),
+		g.Roll(4, prefectureID, t.Index, 1),
+		g.Roll(4, prefectureID, t.Index, 2))
 }
 
 // Reward 是「賞賜金帛」（說明書 p.23）：賞金上限 100，

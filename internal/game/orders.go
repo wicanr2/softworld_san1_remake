@@ -26,6 +26,13 @@ var (
 	ErrNoPeople     = fmt.Errorf("人口不足，徵不到兵")
 	ErrNoRoom       = fmt.Errorf("帶兵已達上限")
 	ErrUnknownUnit  = fmt.Errorf("找不到這位將領")
+
+	// ErrDeclined 是**成功執行了、但對方不從**。
+	//
+	// 它與上面那幾個不同類：那幾個是「這道命令不該下」，這一個是
+	// 「命令下出去了，判定沒過」——錢照付、命令照用掉。
+	// `ApplyAll` 因此不把它當成中斷的理由（見那裡的說明）。
+	ErrDeclined = fmt.Errorf("對方婉拒了")
 )
 
 // canOrder 檢查「這個郡現在收不收指令」。
@@ -49,6 +56,19 @@ func (g *State) canOrder(prefectureID int, by state.FactionID) (*Prefecture, err
 func (g *State) byComputer(id state.FactionID) bool {
 	f := g.Faction(id)
 	return f != nil && f.ByComputer
+}
+
+// aiLevelOf 是這個勢力的電腦等級；**玩家一律回 0**。
+//
+// 原版的等級參數表（登用的費用與加成、內政的範圍、訓練的除數）等級
+// 0–2 是同一組，而那一組的登用費用 30 金正是說明書給玩家的價目——
+// 所以玩家照 0 級那一組算（`L2`：玩家的常式沒有單獨讀過）。
+func (g *State) aiLevelOf(id state.FactionID) int {
+	f := g.Faction(id)
+	if f == nil || !f.ByComputer {
+		return 0
+	}
+	return f.AILevel
 }
 
 // price 是「這個勢力做這件事實際付多少」。

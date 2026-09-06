@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -178,15 +179,27 @@ func prefName(g *State, id int) string {
 
 // ApplyAll 依序套用一串命令，回傳套用成功的筆數與第一個錯誤。
 //
-// **不會跳過錯誤繼續跑。** AI 產出一個違規的命令是 bug，
+// **違規就停，不跳過。** AI 產出一個違規的命令是 bug，
 // 靜靜跳過會讓那個 bug 變成「AI 這回合比較保守」——看不出來。
+//
+// **`ErrDeclined` 不算違規**：登用被婉拒是判定的正常結果，命令本身
+// 執行成功了。把它當成中斷的理由，會讓一次登用失敗連帶吃掉同一輪
+// 後面所有的命令（指定太守就在後面），而外面只看得到「AI 這個月
+// 做得比較少」。
 func (g *State) ApplyAll(orders []Order, by state.FactionID) (int, error) {
+	n := 0
 	for i, o := range orders {
-		if err := o.Apply(g, by); err != nil {
+		err := o.Apply(g, by)
+		switch {
+		case err == nil:
+			n++
+		case errors.Is(err, ErrDeclined):
+			n++
+		default:
 			return i, fmt.Errorf(t("log.orderN"), i+1, o.Describe(g), err)
 		}
 	}
-	return len(orders), nil
+	return n, nil
 }
 
 // ---- 其餘的命令型別 ------------------------------------------------------

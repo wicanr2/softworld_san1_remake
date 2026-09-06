@@ -197,3 +197,72 @@ func ArmsOf(weapons, soldiers int) int {
 func ArmsAfterPurchase(arms, soldiers, bought int) int {
 	return ArmsOf(Weapons(arms, soldiers)+bought, soldiers)
 }
+
+// 登用人才的判定（`L0`、`[base]`，常式 `0xce8c`）。
+//
+// 原版把它拆成「說服力」與「難度」兩個數，說服力大於難度才成功：
+//
+//	說服力 ＝ (人望 × 3 ＋ 太守魅力) ÷ 3 ＋ 加成
+//	難度   ＝ 謀略 ÷ (RND(4)+3) ＋ 戰力 ÷ (RND(4)+3)
+//
+// 難度前面還有一道**牽絆閘門**，蓋過能力值（`General.Bond`）：
+//
+//	Bond 指到的人效力於招募方   → 難度 0     ; 一定成功
+//	Bond 指到的人在野           → 照上面算
+//	效力於第三方                → 難度 160 + RND(10) ; 幾乎不可能
+//
+// 成功之後忠誠 ＝ 人望 ÷ 2 ＋ RND(人望 ÷ 2) ＋ 加成，夾到 1..100；
+// 算出來不到 1 就當沒成功。
+//
+// **加成與費用由電腦諸侯的等級決定**：(30,0) 等級 0–2、(20,10) 等級 3、
+// (10,20) 等級 4、(0,40) 等級 5——等級越高越便宜也越容易。
+// 等級 0–2 那一組的費用 30 金正是說明書給玩家的價目，所以玩家這一邊
+// 照 (30, 0) 算（`L2`：玩家的常式沒有單獨讀過）。
+const (
+	RecruitBondFree   = 0   // Bond 效力於招募方：難度 0
+	RecruitBondWall   = 160 // Bond 效力於第三方：難度 160 + RND(10)
+	RecruitAbilityDiv = 3   // 亂數除數的底：RND(4) + 3
+)
+
+// RecruitBonus 是電腦諸侯等級帶來的登用加成（第二個參數）。
+func RecruitBonus(level int) int {
+	switch {
+	case level <= 2:
+		return 0
+	case level == 3:
+		return 10
+	case level == 4:
+		return 20
+	default:
+		return 40
+	}
+}
+
+// RecruitFee 是電腦諸侯等級帶來的登用費用（第一個參數）。
+func RecruitFee(level int) int {
+	switch {
+	case level <= 2:
+		return 30
+	case level == 3:
+		return 20
+	case level == 4:
+		return 10
+	default:
+		return 0
+	}
+}
+
+// RecruitPersuasion 是說服力。
+func RecruitPersuasion(prestige, governorCharm, bonus int) int {
+	return (prestige*3+governorCharm)/3 + bonus
+}
+
+// RecruitDifficulty 是難度的能力值部分。r1、r2 是兩次 RND(4)。
+func RecruitDifficulty(intel, war, r1, r2 int) int {
+	return intel/(r1+RecruitAbilityDiv) + war/(r2+RecruitAbilityDiv)
+}
+
+// RecruitLoyalty 是登用成功之後的忠誠。r 是 RND(人望 ÷ 2)。
+func RecruitLoyalty(prestige, r, bonus int) int {
+	return prestige/2 + r + bonus
+}

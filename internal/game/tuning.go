@@ -35,7 +35,8 @@ const (
 	// TuneSearchIntel：尋訪人才的成功率 ＝ 謀略 ÷ intel（百分比上限 95）。
 	TuneSearchIntel = 1
 
-	// TuneRecruitCharm：登用人才的成功率 ＝ 魅力 ÷ charm。
+	// ⚠ TuneRecruitCharm 已被原版的公式取代（`L0`、`0xce8c`）：
+	// 登用比的是說服力與難度，見 `RecruitPersuasion`。
 	TuneRecruitCharm = 1
 
 	// TuneRewardLoyalty：賞金換忠誠的比率——每多少金加一點忠誠。

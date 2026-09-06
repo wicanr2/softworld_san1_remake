@@ -198,6 +198,17 @@ type General struct {
 	Training uint8     // 訓練度
 	Arms     uint8     // 武裝度
 
+	// Bond 是 offset 14 的人物槽號（`u16`）。
+	//
+	// **原版拿它當登用的閘門**（`0xce8c`，`L0`）：被登用者的 Bond 指到
+	// 誰，就看那個人現在效力於誰——效力於招募方就一定成功、在野就照
+	// 能力值判定、效力於第三方就幾乎不可能。346 筆裡 176 筆指向自己，
+	// 而指向自己的人在野時 Bond 那一格自然是在野，所以「沒有牽絆」。
+	//
+	// ⚠ 這一格代表什麼關係還沒定（`L2`）：舊主與親族都解釋得通，
+	// 而曹純指向孫乾（`docs/spec/003` §2.5）。**功能是 `L0`，語意是 `L2`**。
+	Bond int
+
 	// Faction 是效力的勢力槽號，NoFaction ＝ 在野。
 	// Location 是所在郡的編號（1..42），原版的標籤是「領地」。
 	//
@@ -340,6 +351,7 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 			Charm:    rec[11],
 			Rank:     Rank(rec[12]),
 			Origin:   rec[13],
+			Bond:     int(binary.LittleEndian.Uint16(rec[14:])),
 			Loyalty:  rec[16],
 			Status:   Status(rec[17]),
 			Faction:  rec[18],
