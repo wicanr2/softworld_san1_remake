@@ -38,6 +38,9 @@ func main() {
 	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫")
 	aiMode := flag.String("ai", "enhanced", "電腦 AI：base／plus／enhanced")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型（-png 時才需要）")
+	saveDir := flag.String("saves", "", "存檔目錄（配 -save／-load 用）")
+	saveTo := flag.Int("save", 0, "跑完 -months 之後存到第幾個進度（1..6）")
+	loadFrom := flag.Int("load", 0, "改成從第幾個進度開始（1..6）")
 	flag.Parse()
 
 	if *root == "" {
@@ -60,6 +63,12 @@ func main() {
 			die(err)
 		}
 		fmt.Printf("畫面存到 %s\n\n", *png)
+	}
+
+	if *saveTo > 0 || *loadFrom > 0 {
+		if err := runSaves(*saveDir, *loadFrom, *saveTo, sc, *aiMode, *faction, *months); err != nil {
+			die(err)
+		}
 	}
 
 	if *what == "pref" || *what == "all" {
@@ -191,4 +200,55 @@ func openData2(root string) (*assets.Container, error) {
 func die(err error) {
 	fmt.Fprintln(os.Stderr, "san1dump:", err)
 	os.Exit(1)
+}
+
+// runSaves 是存讀檔的無頭路徑。
+//
+// Ebiten 那一層要有視窗才跑得起來，而存讀檔是**最不該只有手動驗過**
+// 的功能之一：壞掉的時候玩家失去的是幾個小時的進度。
+func runSaves(dir string, load, saveTo int, sc *state.Scenario, aiMode string, faction, months int) error {
+	if dir == "" {
+		return fmt.Errorf("要用 -saves 指定存檔目錄")
+	}
+	var s *session.Session
+	if load > 0 {
+		var err error
+		s, err = session.Load(dir, load, ai.Mode(aiMode))
+		if err != nil {
+			return err
+		}
+		fmt.Printf("讀入第 %d 個進度：%d 年 %d 月\n", load, s.G.Date.Year, s.G.Date.Month)
+	} else {
+		f := faction
+		if f < 0 {
+			act := sc.ActiveFactions()
+			if len(act) == 0 {
+				return fmt.Errorf("這個劇本沒有在用的勢力")
+			}
+			f = act[0]
+		}
+		g, err := game.New(sc, state.FactionID(f), 5)
+		if err != nil {
+			return err
+		}
+		brain, err := ai.New(ai.Mode(aiMode))
+		if err != nil {
+			return err
+		}
+		s = session.New(g, brain, state.FactionID(f))
+	}
+	for i := 0; i < months; i++ {
+		s.EndMonth()
+	}
+	if saveTo > 0 {
+		if err := s.Save(dir, saveTo, ""); err != nil {
+			return err
+		}
+		fmt.Printf("存入第 %d 個進度：%d 年 %d 月\n", saveTo, s.G.Date.Year, s.G.Date.Month)
+	}
+	for _, info := range session.Saves(dir) {
+		fmt.Println("  " + info.Describe())
+	}
+	fmt.Println()
+	return nil
 }

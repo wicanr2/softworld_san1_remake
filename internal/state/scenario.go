@@ -234,6 +234,9 @@ type Scenario struct {
 	prefectures []Prefecture
 	generals    []General
 	masters     []Master
+
+	// 三張表的原始位元組。存檔要用它保住還沒解出來的欄位，見 Tables。
+	rawMas, rawSta, rawGen []byte
 }
 
 // LoadScenario 從 DATA2 容器讀一個槽。
@@ -241,8 +244,6 @@ type Scenario struct {
 // 定位一律用容器項目名，**不用絕對位移**——位移會隨版本漂移
 // （`DATA2.GRP` 兩版等長但內容不同），項目名不會。
 func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
-	s := &Scenario{Slot: slot}
-
 	mas, err := section(c, "BASEMAS."+string(slot), masterSize*masterCount)
 	if err != nil {
 		return nil, err
@@ -255,6 +256,32 @@ func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
+	return DecodeTables(slot, mas, sta, gen)
+}
+
+// TableSizes 是三張表各自該有的長度。存檔要照這個尺寸寫回去。
+const (
+	MasterTableSize     = masterSize * masterCount
+	PrefectureTableSize = prefSize * prefCount
+	GeneralTableSize    = generalSize * genCount
+)
+
+// DecodeTables 從三張表的原始位元組解出一個劇本或存檔。
+//
+// 與 LoadScenario 分開，是因為**存檔不從容器來**：remake 的存檔是
+// 三個獨立檔案，但版面與原版完全相同（`docs/formats/05`），
+// 所以解碼要走同一段程式碼——兩份解碼就會有兩個真相。
+func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
+	if len(mas) != MasterTableSize || len(sta) != PrefectureTableSize ||
+		len(gen) != GeneralTableSize {
+		return nil, fmt.Errorf("state: 三張表長度 %d/%d/%d，應該是 %d/%d/%d",
+			len(mas), len(sta), len(gen),
+			MasterTableSize, PrefectureTableSize, GeneralTableSize)
+	}
+	s := &Scenario{Slot: slot}
+	s.rawMas = append([]byte(nil), mas...)
+	s.rawSta = append([]byte(nil), sta...)
+	s.rawGen = append([]byte(nil), gen...)
 
 	s.masters = make([]Master, masterCount)
 	for i := range s.masters {
@@ -330,6 +357,17 @@ func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
 		s.generals[i] = g
 	}
 	return s, nil
+}
+
+// Tables 回傳三張表的原始位元組副本。
+//
+// **存檔要靠它保住還沒解出來的欄位**：州郡表 176 個位元組裡解出 24 個、
+// 人物表 30 個裡解出 20 個、諸侯表 72 個裡解出 2 個。存檔時把已知欄位
+// 蓋回去、其餘原封不動，未解的東西才不會在存讀一輪之後消失。
+func (s *Scenario) Tables() (mas, sta, gen []byte) {
+	return append([]byte(nil), s.rawMas...),
+		append([]byte(nil), s.rawSta...),
+		append([]byte(nil), s.rawGen...)
 }
 
 // Prefecture 用 1-based 的郡編號取一個郡。

@@ -21,8 +21,11 @@
 卅天判定。戰場的地形版面由 remake 決定性生成（原版的郡地理誌是未解的
 美術素材，`docs/design/03-battle.md`）。
 
+存讀檔做了六個進度（說明書 p.25）。存出來的三張表**與原版的版面
+逐位元組相同**，還沒解出來的欄位原封不動帶著走（`docs/formats/05`）。
+
 未實作：玩家親自指揮戰役（現在一律自動打完，逐日戰報看得到）；
-存讀檔；音樂音效。
+音樂音效；多語系。
 
 對拍那一側，原版現在能在 dosgolem 裡從頭跑到主選單——`AA.EXE` →
 `DATA0.GRP` → `DATA5.GRP` 三層 chain-load、`DATA1`／`DATA2`／`DATA3`
@@ -30,7 +33,9 @@
 
 ```sh
 # Ebiten 視窗：← → 選郡、0–9 指令、Enter 結束這個月、Esc 返回
-tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -faction 0 -ai enhanced
+# 存檔：其他（9）→ 儲存（2）→ 選一格；開場讀檔用 -load
+tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -faction 0 -ai enhanced \
+    -saves ~/.local/share/san1-remake/saves
 
 # 無頭：讓電腦跑 14 個月再把畫面存成 PNG
 tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
@@ -52,7 +57,7 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 | M3 文字與字型 | 進行中：CJK 畫布與字型涵蓋率已通 |
 | M4 靜態資料 | 完成：劇本三表、地圖圖形、資產目錄 |
 | M5 規則層 | 完成：平時十類指令、四季事件、戰役決勝、勝負判定 |
-| M6 引擎可玩 | 進行中：一局玩得完，戰役兩層都在；缺存讀檔與戰役的手動指揮 |
+| M6 引擎可玩 | 進行中：一局玩得完，戰役兩層都在，六個進度存得起來；缺戰役的手動指揮 |
 | M7 多語系 | 未開始 |
 | M8 發行 | 未開始 |
 
@@ -84,7 +89,7 @@ DOSBox-X 作為交叉驗證。
 | [`CLAUDE.md`](CLAUDE.md) | 專案規則與硬規則 |
 | [`CONTEXT.md`](CONTEXT.md) | 現況、已知事實、決策紀錄、worklist |
 | `docs/re/` | 反組譯筆記 |
-| `docs/formats/` | 檔案格式 |
+| `docs/formats/` | 檔案格式（含存檔）|
 | `docs/spec/` | 規格（只有 `READY` 能授權實作）|
 | `docs/mechanics/` | 遊戲機制（含中平六年開局的完整局面）|
 | `docs/playtest/` | 對拍紀錄 |

@@ -238,6 +238,9 @@ type State struct {
 	prefectures []Prefecture // 索引 0 是郡 1
 	generals    []General
 	factions    []Faction
+
+	// 開局時三張表的原始位元組。存檔要用它保住還沒解出來的欄位（tables.go）。
+	rawMas, rawSta, rawGen []byte
 }
 
 // DrainReports 取走並清空累積的戰報。
@@ -261,6 +264,7 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 	}
 
 	g := &State{Slot: sc.Slot, Date: start, Player: player, Difficulty: difficulty}
+	g.rawMas, g.rawSta, g.rawGen = sc.Tables()
 
 	for _, p := range sc.Prefectures() {
 		g.prefectures = append(g.prefectures, Prefecture{

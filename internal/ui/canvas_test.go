@@ -147,3 +147,41 @@ func TestDrawBox(t *testing.T) {
 		t.Error("左上角沒有框線")
 	}
 }
+
+// TestOtherSubMenuFollowsManual 釘住「其他」的八項（說明書 p.25）。
+//
+// **還沒做的也要列出來。** 選單少一項，玩家看不出是「還沒做」
+// 還是「原版沒有」；列出來按下去會說還沒實作，那是可以理解的狀態。
+func TestOtherSubMenuFollowsManual(t *testing.T) {
+	title, items := SubMenu('9')
+	if title != "其他" {
+		t.Errorf("第 9 類叫 %q，應該是「其他」", title)
+	}
+	want := []string{"＊結束", "儲存", "音樂", "音效", "延時", "戰役", "年號", "語音"}
+	if len(items) != len(want) {
+		t.Fatalf("其他有 %d 項，手冊列八項", len(items))
+	}
+	for i, w := range want {
+		if items[i].Name != w {
+			t.Errorf("第 %d 項是 %q，應該是 %q", i+1, items[i].Name, w)
+		}
+		if items[i].Key != byte('1'+i) {
+			t.Errorf("%q 的按鍵是 %q，應該是 %q", w, items[i].Key, byte('1'+i))
+		}
+	}
+}
+
+// TestEveryMainCommandHasASubMenu 釘住十個指令都有東西可按。
+//
+// 0 是「狀態」，原版直接顯示在畫面上不必展開。
+func TestEveryMainCommandHasASubMenu(t *testing.T) {
+	for _, c := range Commands() {
+		if c.Key == '0' {
+			continue
+		}
+		title, items := SubMenu(c.Key)
+		if title == "" || len(items) == 0 {
+			t.Errorf("「%s」（%q）沒有子選單", c.Name, c.Key)
+		}
+	}
+}

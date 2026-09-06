@@ -41,6 +41,11 @@ type app struct {
 	menu  byte // 展開中的類別；0 表示在主選單
 	pick  []pickItem
 	dirty bool
+
+	// saveDir 是存檔目錄，空字串表示這一局不能存。
+	saveDir string
+	// aiMode 記著讀檔要用哪一種電腦 AI。
+	aiMode ai.Mode
 }
 
 // conscriptStep 是按一次「徵兵」募多少人。
@@ -148,6 +153,17 @@ func (a *app) begin(cat, item byte) {
 	closeMenu := func() { a.menu, a.view.Menu, a.view.Items = 0, "", nil }
 
 	switch {
+	// ---- 9. 其他 ----
+	case cat == '9' && item == '2':
+		a.askSlot("存到第幾個進度", true, func(slot int) {
+			_ = a.s.Save(a.saveDir, slot, "")
+		})
+	case cat == '9' && item == '1':
+		// 「＊結束」在原版是回到主選單。這裡先提醒存檔——
+		// **沒存就離開是最貴的一次誤按**。
+		a.view.Prompt = "要離開請關視窗；離開前記得先存檔（其他 → 儲存）"
+		closeMenu()
+
 	// ---- 1. 查看（不耗指令）----
 	case cat == '1' && item == '2':
 		a.view.PageTitle, a.view.Page = ui.GeneralList(g, sel)
@@ -398,6 +414,29 @@ func (a *app) askOwn(title string, then func(int)) {
 	a.pickFrom(title, items)
 }
 
+// askSlot 讓玩家挑一個存檔槽。
+//
+// 空槽也列出來，而且**寫得出是空的**——原版的儲存畫面就是六格，
+// 看得到哪幾格可以蓋、哪幾格會被蓋掉。
+func (a *app) askSlot(title string, forSaving bool, then func(int)) {
+	if a.saveDir == "" {
+		a.view.Prompt = "這一局沒有存檔目錄（用 -saves 指定）"
+		return
+	}
+	var items []pickItem
+	for _, info := range session.Saves(a.saveDir) {
+		if !forSaving && !info.Exists {
+			continue
+		}
+		items = append(items, pickItem{info.Describe(), info.Slot, then})
+	}
+	if len(items) == 0 {
+		a.view.Prompt = "沒有可讀的進度"
+		return
+	}
+	a.pickFrom(title, items)
+}
+
 func commandName(k byte) string {
 	for _, c := range ui.Commands() {
 		if c.Key == k {
@@ -425,6 +464,8 @@ func (a *app) Layout(int, int) (int, int) {
 
 func main() {
 	root := flag.String("root", "", "原版遊戲目錄（必填，玩家自備）")
+	saveDir := flag.String("saves", "saves", "存檔目錄（remake 自己的，不寫回原版）")
+	load := flag.Int("load", 0, "開場就讀第幾個進度（1..6）；0 ＝ 開新局")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型")
 	slot := flag.String("slot", "001", "劇本：001..006")
 	faction := flag.Int("faction", -1, "玩家的勢力槽號；−1 ＝ 第一個在用的")
@@ -465,21 +506,35 @@ func main() {
 		}
 		f = act[0]
 	}
-	g, err := game.New(sc, state.FactionID(f), *difficulty)
-	if err != nil {
-		die(err)
+	var s *session.Session
+	var brain ai.Brain
+	var g *game.State
+	if *load > 0 {
+		s, err = session.Load(*saveDir, *load, ai.Mode(*aiMode))
+		if err != nil {
+			die(err)
+		}
+		g, brain = s.G, s.Brain
+		f = int(s.Player)
+	} else {
+		g, err = game.New(sc, state.FactionID(f), *difficulty)
+		if err != nil {
+			die(err)
+		}
+		brain, err = ai.New(ai.Mode(*aiMode))
+		if err != nil {
+			die(err)
+		}
+		s = session.New(g, brain, state.FactionID(f))
 	}
-	brain, err := ai.New(ai.Mode(*aiMode))
-	if err != nil {
-		die(err)
-	}
-	s := session.New(g, brain, state.FactionID(f))
 
 	a := &app{
-		canvas: ui.NewCanvas(ui.Cols, ui.Rows, face),
-		screen: ebiten.NewImage(ui.Cols*ui.CellW, ui.Rows*ui.CellH),
-		s:      s,
-		dirty:  true,
+		canvas:  ui.NewCanvas(ui.Cols, ui.Rows, face),
+		screen:  ebiten.NewImage(ui.Cols*ui.CellW, ui.Rows*ui.CellH),
+		s:       s,
+		dirty:   true,
+		saveDir: *saveDir,
+		aiMode:  ai.Mode(*aiMode),
 	}
 	if own := s.PlayerTerritory(); len(own) > 0 {
 		sort.Ints(own)

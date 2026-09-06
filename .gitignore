@@ -22,3 +22,6 @@ manual/
 # Go workspace（只在容器內成立）
 go.work
 go.work.sum
+
+# 存檔（玩家自己的進度，不進版控）
+/saves/
