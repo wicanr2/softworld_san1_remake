@@ -49,7 +49,7 @@ var noteFnum = [12]int{
 //
 // AdLib 的 `.ROL` 用一個 0..2 的倍率表示滑音，1.0 是不動；`思古` 裡
 // 有四個聲部的值是 0.85。原版把那四個聲部彈得比不滑音的低約 11 音分
-//（0x222 對 0x21F、0x266 對 0x262、0x1E6 對 0x1E3），倒推得到這個
+// （0x222 對 0x21F、0x266 對 0x262、0x1E6 對 0x1E3），倒推得到這個
 // 數字：七組量測裡六組完全相符，一組差一個 F-number。
 //
 // ⚠ **原版的算法還沒解出來。** 它的差值不是嚴格的等比——0x198 差 2
@@ -71,51 +71,81 @@ type voice struct {
 //
 // 沒有音色庫（bank 是 nil）就沒有東西可發聲，回傳空的。
 func Render(s *Song, b *Bank) []int16 {
-	c := NewOPL2()
-	var out []int16
-	if !drive(c, s, b, func(n int) { out = render(c, out, n) }) {
+	p := NewPlayer(s, b)
+	if p == nil {
 		return nil
 	}
+	out := make([]int16, 0, int(s.Duration()*OPLRate)+3*OPLRate)
+	for !p.Done() {
+		out = append(out, clip(p.Sample()*renderGain))
+	}
 	// 尾巴：讓還在響的音收乾淨，最多三秒。
-	for i := 0; i < 3 && !c.Silent(); i++ {
-		out = render(c, out, OPLRate)
+	for i := 0; i < 3*OPLRate && !p.chip.Silent(); i++ {
+		out = append(out, clip(p.Sample()*renderGain))
 	}
 	return out
 }
 
-// drive 把一首曲子的事件依序送進晶片。兩個事件之間呼叫 gap，
-// 交出中間要產生幾個取樣；只想看暫存器寫入的話 gap 什麼都不用做。
+// Player 是一首曲子的播放狀態：一顆晶片加上走到哪裡的指標。
 //
-// 沒有音色庫就沒有東西可發聲，回傳 false。
-func drive(c *OPL2, s *Song, b *Bank, gap func(n int)) bool {
+// 它是**拉的**——呼叫端要幾個取樣就走幾步，中間該送的事件自己會送。
+// 一次算完整首（`Render`）與邊播邊算（`Stream`）走的是同一段程式。
+type Player struct {
+	song *Song
+	bank *Bank
+	chip *OPL2
+
+	voices    [11]voice
+	rhythmReg byte
+	perTick   float64
+	next      int     // 下一個要送的事件
+	pos       float64 // 已經產生幾個取樣
+}
+
+// NewPlayer 起一個播放狀態。沒有音色庫就沒有東西可發聲，回 nil。
+func NewPlayer(s *Song, b *Bank) *Player {
 	if s == nil || b == nil || len(b.Instruments) == 0 || s.Tempo <= 0 {
-		return false
+		return nil
 	}
-	c.Write(0x01, 0x20) // 打開波形選擇，OPL2 才有四種波形
-	c.Write(0x08, 0x00)
-	rhythmReg := byte(0)
+	p := &Player{song: s, bank: b, chip: NewOPL2(),
+		perTick: float64(OPLRate) * 60 / (float64(s.Tempo) * TicksPerBeat)}
+	for i := range p.voices {
+		p.voices[i].inst = -1
+	}
+	p.chip.Write(0x01, 0x20) // 打開波形選擇，OPL2 才有四種波形
+	p.chip.Write(0x08, 0x00)
 	if s.Percussive {
-		rhythmReg = 0x20
-		c.Write(0xBD, rhythmReg)
+		p.rhythmReg = 0x20
+		p.chip.Write(0xBD, p.rhythmReg)
 	}
-	var vs [11]voice
-	for i := range vs {
-		vs[i].inst = -1
-	}
-	perTick := float64(OPLRate) * 60 / (float64(s.Tempo) * TicksPerBeat)
-	pos := 0.0
-	for _, e := range s.Events {
-		if n := int(float64(e.At)*perTick - pos); n > 0 {
-			gap(n)
-			pos += float64(n)
+	return p
+}
+
+// Chip 是這個播放狀態用的晶片，給對拍用。
+func (p *Player) Chip() *OPL2 { return p.chip }
+
+// Done 說事件是不是都送完了。送完之後還有殘響，不代表沒有聲音。
+func (p *Player) Done() bool { return p.next >= len(p.song.Events) }
+
+// Sample 走一步，回一個取樣。到時間的事件會先送進晶片。
+func (p *Player) Sample() float64 {
+	for p.next < len(p.song.Events) {
+		e := p.song.Events[p.next]
+		if float64(e.At)*p.perTick > p.pos {
+			break
 		}
-		v := e.Channel()
-		if v < 0 || v >= len(vs) {
-			continue
+		p.next++
+		if v := e.Channel(); v >= 0 && v < len(p.voices) {
+			apply(p.chip, &p.voices[v], v, e, p.bank, p.song.Percussive, &p.rhythmReg)
 		}
-		apply(c, &vs[v], v, e, b, s.Percussive, &rhythmReg)
 	}
-	return true
+	p.pos++
+	return p.chip.Sample()
+}
+
+// Rewind 從頭再來一次。曲子要循環播的時候用。
+func (p *Player) Rewind() {
+	*p = *NewPlayer(p.song, p.bank)
 }
 
 // renderGain 是合成值換成 16 位元取樣的倍率。
@@ -124,18 +154,15 @@ func drive(c *OPL2, s *Song, b *Bank, gap func(n int)) bool {
 // 留給沒量過的曲子（`MUSV` 那一首長的）足夠的餘裕。
 const renderGain = 6500
 
-// render 產生 n 個取樣接到後面。
-func render(c *OPL2, out []int16, n int) []int16 {
-	for i := 0; i < n; i++ {
-		v := c.Sample() * renderGain
-		if v > 32767 {
-			v = 32767
-		} else if v < -32768 {
-			v = -32768
-		}
-		out = append(out, int16(v))
+// clip 把合成值夾進 16 位元。
+func clip(v float64) int16 {
+	if v > 32767 {
+		return 32767
 	}
-	return out
+	if v < -32768 {
+		return -32768
+	}
+	return int16(v)
 }
 
 // apply 把一個事件送進晶片。

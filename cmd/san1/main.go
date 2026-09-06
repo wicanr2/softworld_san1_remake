@@ -11,20 +11,19 @@
 //	1–9              子選單與挑選清單
 //	Enter            結束這個月
 //	Esc              返回上一層
+//	M                換下一首配樂
 package main
 
 import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
-	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
@@ -51,6 +50,9 @@ type app struct {
 	saveDir string
 	// aiMode 記著讀檔要用哪一種電腦 AI。
 	aiMode ai.Mode
+
+	// jb 是配樂；沒有原版的 DATA1 就是 nil。
+	jb *jukebox
 }
 
 func (a *app) Update() error {
@@ -105,6 +107,18 @@ func (a *app) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyLeft) ||
 		inpututil.IsKeyJustPressed(ebiten.KeyUp) {
 		a.cycle(-1)
+		return nil
+	}
+	// M 換下一首配樂。原版的「其他」底下沒有這一格——那是主選單的
+	// 「音樂欣賞」，開局之後回不去——所以放在鍵盤上。
+	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
+		a.jb.Play(a.jb.Next())
+		if name := a.jb.Name(); name != "" {
+			a.view.Prompt = "配樂：" + name
+		} else {
+			a.view.Prompt = "沒有配樂"
+		}
+		a.dirty = true
 		return nil
 	}
 	for k := ebiten.Key0; k <= ebiten.Key9; k++ {
@@ -235,7 +249,24 @@ func (a *app) begin(cat, item byte) {
 		})
 	case cat == '9' && item == '3':
 		a.view.Prompt = g.Options.ToggleMusic()
+		// 開關要真的動到聲音——按下去什麼都不會變的選項，
+		// 與「這個功能還沒做」在畫面上長得一模一樣。
+		a.jb.SetSilent(g.Options.MusicOff)
+		if name := a.jb.Name(); name != "" && !g.Options.MusicOff {
+			a.view.Prompt += "　（" + name + "）"
+		}
 		closeMenu()
+	case cat == '9' && item == '5':
+		// 原版收 0–100，0 表示訊息停在畫面上等按鍵
+		//（`設定延遲時間(%d)\n0:等待按鍵(0-100):`，`docs/re/04` §3）。
+		a.askNumber("設定延遲時間", fmt.Sprintf("現在是 %d；0 ＝ 等待按鍵（0-100）",
+			g.Options.Delay()), 100, func(v int) {
+			if err := g.Options.SetDelay(v); err != nil {
+				a.view.Prompt = err.Error()
+				return
+			}
+			a.view.Prompt = fmt.Sprintf("設定延遲時間(%d)", v)
+		})
 	case cat == '9' && item == '4':
 		a.view.Prompt = g.Options.ToggleSound()
 		closeMenu()
@@ -663,6 +694,7 @@ func main() {
 		"電腦 AI：base（原版還原）／plus（加強版還原）／enhanced（remake 強化）")
 	difficulty := flag.Int("difficulty", 5, "難度 1..10")
 	scale := flag.Int("scale", 2, "視窗放大倍率（整數倍，不做非整數縮放）")
+	music := flag.Bool("music", true, "播配樂（從原版的 DATA1 邊播邊合成）")
 	flag.Parse()
 	if *root == "" {
 		fmt.Fprintln(os.Stderr, "san1: 要用 -root 指到原版目錄（本儲存庫不含原版檔案）")
@@ -680,7 +712,7 @@ func main() {
 		die(err)
 	}
 
-	c, err := openData2(*root)
+	c, err := openContainer(*root, "DATA2")
 	if err != nil {
 		die(err)
 	}
@@ -726,6 +758,10 @@ func main() {
 		saveDir: *saveDir,
 		aiMode:  ai.Mode(*aiMode),
 	}
+	if *music {
+		a.jb = newJukebox(*root)
+		a.jb.Play(0)
+	}
 	if *calendar == "西曆" {
 		g.Options.Calendar = game.Western
 	}
@@ -749,19 +785,6 @@ func main() {
 	if err := ebiten.RunGame(a); err != nil {
 		die(err)
 	}
-}
-
-func openData2(root string) (*assets.Container, error) {
-	base := filepath.Join(root, "DATA2")
-	var parts [3][]byte
-	for i, ext := range []string{".NAM", ".IDX", ".GRP"} {
-		b, err := os.ReadFile(base + ext)
-		if err != nil {
-			return nil, fmt.Errorf("讀 DATA2%s：%w", ext, err)
-		}
-		parts[i] = b
-	}
-	return assets.OpenContainer(parts[0], parts[1], parts[2])
 }
 
 func die(err error) {
