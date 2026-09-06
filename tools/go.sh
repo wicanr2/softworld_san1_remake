@@ -42,5 +42,6 @@ exec timeout "${SAN1_TIMEOUT:-30m}" docker run --rm --network none \
   -v "$ROOT/workplace/gocache:/gocache" \
   -v "$ROOT/workplace/gomodcache:/gomodcache" \
   -e GOCACHE=/gocache -e GOMODCACHE=/gomodcache \
+  -e GOPROXY=off -e GOSUMDB=off -e GOFLAGS=-mod=mod \
   -e HOME=/tmp -e GOFLAGS=-mod=mod \
   "${PASS[@]}" "${MOUNTS[@]}" -w /src "$IMAGE" go "$@"
