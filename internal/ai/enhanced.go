@@ -107,7 +107,7 @@ func (e *enhanced) planOne(g *game.State, f state.FactionID, p *game.Prefecture)
 
 	// 6. 兵多但訓練差就練兵。不花錢，所以放在募兵之後。
 	if x := e.leastTrained(g, f, p.ID); x != nil && x.Training < 80 && x.Soldiers > 0 {
-		return game.TrainOrder{At: p.ID, General: x.Index}
+		return game.TrainOrder{At: p.ID}
 	}
 
 	// 7. 米太多就賣一些。

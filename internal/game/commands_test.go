@@ -321,3 +321,46 @@ func TestTrainGainMatchesTheOriginal(t *testing.T) {
 		t.Error("等級高的練得應該比較快")
 	}
 }
+
+// TestTrainZerosUnitsWithNoTroops 釘住沒有兵的人訓練度歸零。
+//
+// 原版的訓練常式在算增量之前先看兵士數：是零就把訓練度設成 0
+// （`docs/re/03` §1.3，`L0`）。**說明書沒寫這一條**，而它會讓一支被
+// 打光的部隊在補到兵之前一直是零訓練——影響戰力，不只是顯示。
+func TestTrainZerosUnitsWithNoTroops(t *testing.T) {
+	g := newGame(t)
+	const pref = 15 // 洛陽
+	var empty, manned *General
+	for _, x := range g.Garrison(pref) {
+		if x.Soldiers > 0 && manned == nil {
+			manned = x
+		}
+	}
+	if manned == nil {
+		t.Skip("洛陽沒有帶兵的守將")
+	}
+	// 造一個沒有兵的守將出來。
+	empty = manned
+	for _, x := range g.Garrison(pref) {
+		if x != manned {
+			empty = x
+			break
+		}
+	}
+	if empty == manned {
+		t.Skip("洛陽只有一位守將")
+	}
+	empty.Soldiers = 0
+	empty.Training = 88
+	before := manned.Training
+
+	if err := g.Train(pref, g.Prefecture(pref).Owner); err != nil {
+		t.Fatal(err)
+	}
+	if empty.Training != 0 {
+		t.Errorf("沒有兵的守將訓練度是 %d，應該被歸零", empty.Training)
+	}
+	if manned.Training <= before {
+		t.Errorf("帶兵的守將訓練度沒有提升（%d → %d）", before, manned.Training)
+	}
+}

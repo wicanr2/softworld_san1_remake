@@ -367,7 +367,9 @@ func (a *app) begin(cat, item byte) {
 
 	// ---- 3. 兵士 ----
 	case cat == '3' && item == '1':
-		a.askGeneral(t("ask.train"), func(gi int) { a.run(game.TrainOrder{At: sel, General: gi}) })
+		// 原版是對整個守軍訓練，不挑人（`game.State.Train`，`L0`），
+		// 所以這裡不再問「訓練誰」。
+		a.run(game.TrainOrder{At: sel})
 	case cat == '3' && item == '2':
 		a.askGeneral(t("ask.conscript"), func(gi int) {
 			x := g.General(gi)

@@ -51,17 +51,16 @@ func (o FloodControlOrder) Describe(g *State) string {
 }
 
 // TrainOrder 是訓練兵士。
-type TrainOrder struct {
-	At      int
-	General int
-}
+//
+// **沒有 General 欄位**：原版對整個守軍跑一遍，不挑人（`State.Train`）。
+type TrainOrder struct{ At int }
 
 func (o TrainOrder) Prefecture() int { return o.At }
 func (o TrainOrder) Apply(g *State, by state.FactionID) error {
-	return g.Train(o.At, o.General, by)
+	return g.Train(o.At, by)
 }
 func (o TrainOrder) Describe(g *State) string {
-	return tf("log.train", prefName(g, o.At), byWhom(g, o.General))
+	return tf("log.trainAll", prefName(g, o.At))
 }
 
 // ReliefOrder 是開倉賑民。

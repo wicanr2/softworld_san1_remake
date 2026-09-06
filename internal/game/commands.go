@@ -140,19 +140,32 @@ func (g *State) Transport(from, to, gold, rice int, by state.FactionID) error {
 
 // ---- 3. 兵士 ------------------------------------------------------------
 
-// Train 是「訓練兵士」（說明書 p.20）：提高訓練度，
-// **各將的能力影響其麾下的訓練度提升**。不花錢。
-func (g *State) Train(prefectureID, generalIndex int, by state.FactionID) error {
+// Train 是「訓練兵士」（說明書 p.20）：提高訓練度，不花錢。
+//
+// **對整個守軍跑一遍，不是挑一位**（`L0`、`[base]`）。原版的常式
+// （線性 `0xbd70`）走一份清單，長度存在清單自己的前面：
+//
+//	cmp es:[0xc], ax                ; i 超過長度就結束
+//	cmp word es:[bx+0x2226], 0      ; 兵士數是不是零
+//	je  → mov word [bp-2], 0        ; 是 → 訓練度歸零
+//	否則 → 訓練度 += (智/3 + 武/2) / 除數，上限 100
+//
+// **沒有兵的人訓練度會被歸零**——一支沒有兵的部隊「操演」不出東西，
+// 而它下次拿到兵時是從零開始。這一條說明書沒寫。
+func (g *State) Train(prefectureID int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
 	}
-	x := g.General(generalIndex)
-	if x == nil || x.Faction != by || x.Location != prefectureID {
-		return ErrUnknownUnit
+	div := AITrainDivisor(g.AILevel(by))
+	for _, x := range g.Garrison(prefectureID) {
+		if x.Soldiers == 0 {
+			x.Training = 0
+			continue
+		}
+		add := (int(x.Intel)/3 + int(x.War)/2) / div
+		x.Training = uint8(clampTo(int(x.Training)+add, 100))
 	}
-	add := TrainGain(int(x.Intel), int(x.War), g.AILevel(by))
-	x.Training = uint8(clampTo(int(x.Training)+add, 100))
 	p.Commanded = true
 	return nil
 }

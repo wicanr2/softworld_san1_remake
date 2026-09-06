@@ -220,6 +220,7 @@
   "log.search": "Search: %s%s",
   "log.sell": "Sell rice: %s, %d units",
   "log.train": "Train: %s%s",
+  "log.trainAll": "Train all units at %s",
   "log.transport": "Transport %s → %s (gold %d, rice %d)",
   "lord.autonomy": "Grant Autonomy",
   "lord.chief": "Appoint Strategist",

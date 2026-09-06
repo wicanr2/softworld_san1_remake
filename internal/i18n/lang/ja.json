@@ -220,6 +220,7 @@
   "log.search": "探索 %s%s",
   "log.sell": "米を売る %s %d 単位",
   "log.train": "訓練 %s%s",
+  "log.trainAll": "%s の全軍を訓練",
   "log.transport": "輸送 %s → %s（金 %d 米 %d）",
   "lord.autonomy": "自治を許す",
   "lord.chief": "軍師任命",

@@ -220,6 +220,7 @@
   "log.search": "尋訪 %s%s",
   "log.sell": "賣米 %s %d 單位",
   "log.train": "訓練 %s%s",
+  "log.trainAll": "訓練 %s 全軍",
   "log.transport": "運送 %s → %s（金 %d 米 %d）",
   "lord.autonomy": "郡縣自冶",
   "lord.chief": "指定軍師",
