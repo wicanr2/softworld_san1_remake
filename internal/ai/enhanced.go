@@ -31,6 +31,11 @@ const (
 	goldReserve = 200 // 不動用的存底
 	riceReserve = 800 // 不動用的存糧
 
+	// TuneEnhancedRelief 是強化 AI 一次賑民撥出去的金。**remake 自選**：
+	// 原版那一邊的量是分派器算出來的回合預算（`docs/mechanics/70-ai`
+	// §2.14），強化 AI 沒有那條預算線。
+	TuneEnhancedRelief = 100
+
 	// attackEdge 是「戰力要領先多少倍才出兵」。守方有地利加成，
 	// 平手出兵是送死。
 	attackEdgeNum, attackEdgeDen = 3, 2
@@ -77,8 +82,10 @@ func (e *enhanced) planOne(g *game.State, f state.FactionID, p *game.Prefecture)
 	}
 
 	// 3. 民怨高就賑民：天災多因人怨引起（說明書 p.36）。
-	if p.PublicLoyalty < loyaltyLow && p.Rice >= riceReserve+game.TuneReliefRice {
-		return game.ReliefOrder{At: p.ID}
+	// **賑民付的是金**（`game.Relief`，原版 `0xc8f6`）；撥多少由這裡決定，
+	// 是 remake 自己挑的——原版的量來自分派器算的回合預算。
+	if p.PublicLoyalty < loyaltyLow && spendable >= TuneEnhancedRelief {
+		return game.ReliefOrder{At: p.ID, Gold: TuneEnhancedRelief}
 	}
 
 	// 4. 本地有在野人才就登用。

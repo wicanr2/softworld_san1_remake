@@ -64,12 +64,12 @@ func (o TrainOrder) Describe(g *State) string {
 	return tf("log.trainAll", prefName(g, o.At))
 }
 
-// ReliefOrder 是開倉賑民。
-type ReliefOrder struct{ At int }
+// ReliefOrder 是開倉賑民。Gold 是這次撥出去的金額。
+type ReliefOrder struct{ At, Gold int }
 
 func (o ReliefOrder) Prefecture() int { return o.At }
 func (o ReliefOrder) Apply(g *State, by state.FactionID) error {
-	return g.Relief(o.At, by)
+	return g.Relief(o.At, o.Gold, by)
 }
 func (o ReliefOrder) Describe(g *State) string {
 	return tf("log.relief", prefName(g, o.At))

@@ -94,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 11, 18 }
+func (f *faithful) Coverage() (int, int) { return 12, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -199,6 +199,12 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		if who := garrisonIndices(g, p); len(who) >= 2 {
 			out = append(out, game.RedistributeOrder{At: p, Units: who})
 		}
+		// 開倉賑民（表 `0x55f4`）：民眾忠誠低於「底 ＋ RND(20)」才做，
+		// 撥的是**整份預算**（郡的金的 10–20 %）。
+		if o, ok := relief(g, p, id, aiBudget(purse, g.AILevel(id), tableRelief)); ok {
+			out = append(out, o)
+			purse -= o.Gold
+		}
 	}
 	return out
 }
@@ -207,6 +213,7 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 const (
 	tableArms      = 0x5594 // 購置武器
 	tableConscript = 0x5574 // 徵兵
+	tableRelief    = 0x55f4 // 開倉賑民
 )
 
 // aiBudgetPercent 是「本回合預算佔郡的金的百分之幾」（`L0`、`[base]`）。
@@ -221,6 +228,7 @@ const (
 var aiBudgetPercent = map[int][6]int{
 	tableArms:      {2, 2, 2, 2, 2, 2},
 	tableConscript: {30, 30, 40, 50, 50, 50},
+	tableRelief:    {20, 20, 10, 10, 20, 20},
 }
 
 func aiBudget(gold, level, table int) int {
@@ -271,6 +279,26 @@ func conscript(g *game.State, prefecture, budget int) []game.Order {
 		out = append(out, game.ConscriptOrder{At: prefecture, General: x.Index, Count: n})
 	}
 	return out
+}
+
+// relief 是「開倉賑民」（表 `0x55f4`，常式 `0xc8f6`，`L0`、`[base]`）。
+//
+//	門檻 ＝ 門檻底[等級] ＋ RND(20)      ; 底 ＝ 80,80,70,60,80,80
+//	民眾忠誠 >= 門檻 → 這回合不做
+//	撥出整份預算，效果見 `game.ReliefGain`
+//
+// **等級 2、3 的門檻反而低**（70、60），做得比等級 0、1 少；
+// 等級 4、5 門檻回到 80，但每一分錢換到的忠誠多（除數 9 與 7）。
+func relief(g *game.State, prefecture int, id state.FactionID, budget int) (game.ReliefOrder, bool) {
+	p := g.Prefecture(prefecture)
+	if p == nil || budget <= 0 {
+		return game.ReliefOrder{}, false
+	}
+	bar := game.ReliefThreshold(g.AILevel(id)) + g.Roll(20, int(id), prefecture, tableRelief)
+	if int(p.PublicLoyalty) >= bar {
+		return game.ReliefOrder{}, false
+	}
+	return game.ReliefOrder{At: prefecture, Gold: budget}, true
 }
 
 // garrisonIndices 是這一郡守軍的槽號，照清單順序。

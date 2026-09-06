@@ -56,6 +56,11 @@ type app struct {
 	jb *jukebox
 }
 
+// uiReliefGold 是介面上「開倉賑民」一次撥出去的金。**remake 自選**：
+// 原版的量由電腦諸侯的回合預算決定，玩家那一邊的取值還沒讀
+// （`docs/mechanics/70-ai` §2.13.3）。
+const uiReliefGold = 100
+
 func (a *app) Update() error {
 	if a.fight != nil {
 		return a.updateBattle()
@@ -419,7 +424,7 @@ func (a *app) begin(cat, item byte) {
 	case cat == '5' && item == '2':
 		a.run(game.SellRiceOrder{At: sel, Units: 1000})
 	case cat == '5' && item == '3':
-		a.run(game.ReliefOrder{At: sel})
+		a.run(game.ReliefOrder{At: sel, Gold: uiReliefGold})
 
 	// ---- 6. 人事 ----
 	case cat == '6' && item == '1':

@@ -58,7 +58,7 @@ func FortCost(priceLevel uint8) int { return int(priceLevel) * 100 }
 //
 // 說明書 p.18 的「官階與帶兵上限」給的是同一組數字，劇本資料也對得上
 // ——346 位人物零人超標，九個職位裡有八個的實際最大兵數正好等於上限
-//（謀士那一格劇本裡最高只有 200，沒有頂到）。三條路各自獨立。
+// （謀士那一格劇本裡最高只有 200，沒有頂到）。三條路各自獨立。
 //
 // 職位的編號是原版字串表的順序，文官與武官成對：
 func TroopCap(r state.Rank) int {
@@ -269,4 +269,63 @@ func RecruitDifficulty(intel, war, r1, r2 int) int {
 // RecruitLoyalty 是登用成功之後的忠誠。r 是 RND(人望 ÷ 2)。
 func RecruitLoyalty(prestige, r, bonus int) int {
 	return prestige/2 + r + bonus
+}
+
+// 開倉賑民的判定與效果（`L0`、`[base]`，分派表 `0x55f4`／常式 `0xc8f6`）。
+//
+// 原版對每一個電腦諸侯的郡跑一次：
+//
+//	門檻 ＝ 門檻底[等級] ＋ RND(20)
+//	民眾忠誠 >= 門檻 → 這回合不做
+//	量   ＝ max((100 − 物價) ÷ 除數[等級], 5)
+//	增幅 ＝ min(量 × 花的金 ÷ (人口 ÷ 1200), 太守魅力 ÷ 2)
+//	民眾忠誠 ＝ min(民眾忠誠 ＋ 增幅, 100)
+//
+// **物價越低，同樣的金換到的忠誠越多**——那正是「拿金在當月物價買米
+// 發下去」的形狀，也是這條規則與商業選單放在一起的理由。
+// 說明書 p.22 寫的是撥米，而原版這一支扣的是金（`0xec24` 減的是
+// 州郡 offset 18）；**一手的碼贏二手的敘述**。
+//
+// 「太守魅力越高，效果越好」在公式裡是增幅的上限 `魅力 ÷ 2`。
+const ReliefMinRate = 5 // 量的下限（物價高到算出 0 時用它）
+
+// ReliefThreshold 是「民眾忠誠低於多少才賑」的底（再加 RND(20)）。
+func ReliefThreshold(level int) int {
+	switch level {
+	case 2:
+		return 70
+	case 3:
+		return 60
+	default:
+		return 80
+	}
+}
+
+// ReliefRate 是每一分錢換多少忠誠的係數的分母。
+func ReliefRate(level int) int {
+	switch level {
+	case 4:
+		return 9
+	case 5:
+		return 7
+	default:
+		return 10
+	}
+}
+
+// ReliefGain 是賑一次漲多少民眾忠誠。
+func ReliefGain(priceLevel, population, gold, governorCharm, level int) int {
+	rate := (100 - priceLevel) / ReliefRate(level)
+	if rate <= 0 {
+		rate = ReliefMinRate
+	}
+	per := population / 100 / 12
+	if per <= 0 {
+		return 0
+	}
+	gain := rate * gold / per
+	if cap := governorCharm / 2; gain > cap {
+		gain = cap
+	}
+	return gain
 }

@@ -337,20 +337,24 @@ func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 
 // Relief 是「開倉賑民」（說明書 p.22）：撥米賑濟百姓換民眾忠誠，
 // **太守魅力越高效果越好**。
-func (g *State) Relief(prefectureID int, by state.FactionID) error {
+func (g *State) Relief(prefectureID, gold int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
 	}
-	if p.Rice < TuneReliefRice {
-		return ErrNoRice
+	if gold <= 0 {
+		return fmt.Errorf("game: 賑民要撥出正的金額，拿到 %d", gold)
+	}
+	fee := g.price(by, gold)
+	if p.Gold < fee {
+		return ErrNoGold
 	}
 	charm := 50
 	if gov := g.Governor(prefectureID); gov != nil {
 		charm = int(gov.Charm)
 	}
-	p.Rice -= TuneReliefRice
-	add := TuneReliefLoyalty * charm / 50
+	p.Gold -= fee
+	add := ReliefGain(int(p.PriceLevel), p.Population, gold, charm, g.aiLevelOf(by))
 	p.PublicLoyalty = uint8(clampTo(int(p.PublicLoyalty)+add, 100))
 	p.Commanded = true
 	return nil

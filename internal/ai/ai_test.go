@@ -103,6 +103,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.ArmsOrder: // 購置武器（0x5594），已解
 			case game.ConscriptOrder: // 徵兵（0x5574），已解
 			case game.RedistributeOrder: // 調整兵力（0x55b4），已解
+			case game.ReliefOrder: // 開倉賑民（0x55f4），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}
