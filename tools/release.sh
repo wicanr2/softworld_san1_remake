@@ -25,10 +25,12 @@ echo "版本 $VER"
 
 # stage 把一個平台的產物擺成可以壓縮的樣子。
 stage() {
-  local name="$1" bin="$2"
+  local name="$1" bin="$2" as="${3:-}"
   local d="$OUT/stage/$name"
   mkdir -p "$d"
-  cp "$bin" "$d/"
+  # 包裡的執行檔一律叫 san1（Windows 是 san1.exe）：平台後綴是給
+  # 建置目錄用的，玩家打的指令不該因為平台不同而不一樣。
+  cp "$bin" "$d/${as:-$(basename "$bin")}"
   cp "$ROOT/LICENSE" "$d/"
   cp "$ROOT/README.md" "$d/"
   mkdir -p "$d/fonts"
@@ -70,7 +72,9 @@ if docker image inspect "$MAC_IMAGE" >/dev/null 2>&1; then
   for pair in "amd64 o64-clang darwin-amd64" "arm64 oa64-clang darwin-arm64"; do
     set -- $pair
     arch="$1" cc="$2" tag="$3"
-    docker run --rm --network none \
+    # macOS 這一段失敗不該拖垮另外兩個平台：那兩個已經建好了，
+    # 中途 set -e 掉出去的話連壓縮都不會跑，看起來像整個發行流程壞了。
+    if ! docker run --rm --network none \
       --memory 4g --cpus 2 --pids-limit 256 \
       --log-opt max-size=10m --log-opt max-file=3 \
       -u "$(id -u):$(id -g)" \
@@ -78,11 +82,16 @@ if docker image inspect "$MAC_IMAGE" >/dev/null 2>&1; then
       -v "$ROOT/workplace/gocache:/gocache" \
       -v "$ROOT/workplace/gomodcache:/gomodcache" \
       -e GOCACHE=/gocache -e GOMODCACHE=/gomodcache \
-      -e GOPROXY=file:///gomodcache/cache/download -e GOSUMDB=off -e GOFLAGS=-mod=mod \
+      -e GOPROXY=file:///gomodcache/cache/download -e GOSUMDB=off \
+      -e GOWORK=off \
       -e HOME=/tmp -w /src "$MAC_IMAGE" \
       env GOOS=darwin GOARCH="$arch" CGO_ENABLED=1 CC="$cc" \
       go build -trimpath -o "/src/workplace/release/san1-$tag" ./cmd/san1
-    stage "san1-$VER-$tag" "$OUT/san1-$tag"
+    then
+      echo "  ⚠ $tag 建置失敗，跳過（另外兩個平台不受影響）"
+      continue
+    fi
+    stage "san1-$VER-$tag" "$OUT/san1-$tag" san1
     rm -f "$OUT/san1-$tag"
   done
 else
