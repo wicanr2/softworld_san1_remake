@@ -163,3 +163,83 @@ func oneP(a, b []byte, at, rec int) string {
 	}
 	return "：" + out
 }
+
+// TestZZPriceProbe 把物價的自變數掃細。
+//
+// 粗掃已經看得出來**物價不是純亂數**：金與米怎麼改它都不動，
+// 地力與洪水率一改它就跟著走（地力 10/50/100 → 物價 38/42/52，
+// 洪水率 0/50/100 → 52/42/42）。三個點擬不出公式，所以這一條每十格
+// 掃一次。
+//
+// ⚠ **同一個快照展開的變體，亂數狀態是一樣的。** 所以這裡量到的是
+// 「其他條件相同時，這個欄位對物價的貢獻」，不是整條公式——隨機項
+// 在每個變體裡都是同一個值，看不出來。
+func TestZZPriceProbe(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	base := bootToGame(t, o, seedMas)
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	total := nMas + nSta + state.GeneralTableSize
+	board := o.Bytes(addr(base), total)
+	rec := state.PrefectureRecordSize
+
+	// 找一個有主的郡來掃。**同一個郡從頭掃到尾**，換郡會把郡別的差異
+	// 混進來。
+	pref := 0
+	for i := 1; i*rec < nSta; i++ {
+		if board[nMas+i*rec+30] != 0xFF {
+			pref = i
+			break
+		}
+	}
+	if pref == 0 {
+		t.Skip("盤面上沒有有主的郡")
+	}
+	at := nMas + pref*rec
+	const (
+		offLoyalty = 26
+		offLand    = 27
+		offFlood   = 28
+		offPrice   = 29
+	)
+	t.Logf("掃郡 %d：原本 地力=%d 洪水率=%d 民忠=%d 物價=%d",
+		pref, board[at+offLand], board[at+offFlood],
+		board[at+offLoyalty], board[at+offPrice])
+
+	snap := o.Save()
+	const settle = 40_000_000
+	sweep := func(name string, off int, vals []int) {
+		var line string
+		for _, v := range vals {
+			o.Restore(snap)
+			b := append([]byte(nil), board...)
+			b[at+off] = byte(v)
+			o.SetBytes(addr(base), b)
+			for _, keys := range []string{"4\r", "4\r", "Y"} {
+				o.Drain()
+				o.PressScan(keys)
+				if err := o.Run(settle * 3); err != nil {
+					t.Fatalf("%s=%d：原版停止 %v", name, v, err)
+				}
+			}
+			got := o.Bytes(addr(base), total)
+			line += fmt.Sprintf(" %d→%d", v, got[at+offPrice])
+		}
+		t.Logf("%s ⇒ 物價：%s", name, line)
+	}
+	sweep("地力", offLand, []int{0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100})
+	sweep("洪水率", offFlood, []int{0, 20, 40, 60, 80, 100})
+	sweep("民忠", offLoyalty, []int{0, 50, 100})
+}
