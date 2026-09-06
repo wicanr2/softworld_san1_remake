@@ -27,12 +27,13 @@ import (
 // TestZZAdvanceMonth 一路用「內政 → 休息」把每個郡的指令用掉，
 // 記錄盤面每一次變化。
 //
-// 休息是「不做任何事」而且帶 ＊（使用後即轉移控制權，說明書 p.42），
+// 休息是「不做任何事」而且帶 ＊（使用後即轉移控制權，說明書 p.42）。
+// 三段：`4` 內政 → `4` 休息 → `Y` 確認（原版會問「休息（Y/N）：」）。
 // 所以它是**把一個郡的回合用掉又不動盤面**最便宜的路。走完自己的郡
 // 之後輪到電腦諸侯，那時候盤面的變化就是要看的東西。
 //
 // 環境變數 `SAN1_TURNKEY` 換掉送的鍵（用 `|` 分段，每段之間留沉澱時間，
-// 預設 `4\r|4\r`），`SAN1_TURNS` 換輪數（預設 12）。
+// 預設 `4\r|4\r|Y`），`SAN1_TURNS` 換輪數（預設 16）。
 func TestZZAdvanceMonth(t *testing.T) {
 	root := origRoot(t)
 	c := openContainer(t, filepath.Join(root, "DATA2"))
@@ -52,8 +53,8 @@ func TestZZAdvanceMonth(t *testing.T) {
 	base := bootToMain(t, o, mas)
 	dumpScreen(t, o, "20-主畫面")
 
-	seq := strings.Split(envOr("SAN1_TURNKEY", "4\r|4\r"), "|")
-	turns := 12
+	seq := strings.Split(envOr("SAN1_TURNKEY", "4\r|4\r|Y"), "|")
+	turns := 16
 	if v, err := strconv.Atoi(os.Getenv("SAN1_TURNS")); err == nil && v > 0 {
 		turns = v
 	}
@@ -62,6 +63,7 @@ func TestZZAdvanceMonth(t *testing.T) {
 	const settle = 40_000_000
 	prevScr, mask := blinkMask(o, snap, settle, 3)
 	prev := o.Bytes(addr(base), total)
+	dumpTables(t, prev, "00-起點")
 
 	for i := 1; i <= turns; i++ {
 		for j, keys := range seq {
@@ -78,8 +80,31 @@ func TestZZAdvanceMonth(t *testing.T) {
 				pixelDiff(prevScr, scr, mask), differs8(prev, cur),
 				where(prev, cur, len(mas), len(sta)))
 			dumpScreen(t, o, fmt.Sprintf("21-第%02d輪-%d", i, j+1))
+			if differs8(prev, cur) > 0 {
+				dumpTables(t, cur, fmt.Sprintf("%02d-%d", i, j+1))
+			}
 			prev, prevScr = cur, scr
 		}
+	}
+	dumpTables(t, o.Bytes(addr(base), total), "99-終點")
+}
+
+// dumpTables 把三張表寫成檔，讓分析不必重跑六分鐘的開機。
+//
+// 寫進 `workplace/`（gitignore）。那是**遊戲執行期的盤面**，
+// 與原版的美術、音樂、字型一樣不散布。
+func dumpTables(t *testing.T, b []byte, name string) {
+	t.Helper()
+	dir := os.Getenv("SAN1_DUMP")
+	if dir == "" {
+		return
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Log(err)
+		return
+	}
+	if err := os.WriteFile(filepath.Join(dir, name+".bin"), b, 0o644); err != nil {
+		t.Log(err)
 	}
 }
 
