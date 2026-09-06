@@ -61,15 +61,15 @@ func TestEconomyStaysSane(t *testing.T) {
 		pop += p.Population
 		gold += p.Gold
 	}
-	// **世界不該崩潰也不該爆炸。** 這是 remake 自己的設計意圖
-	// （手冊沒給人口成長率），所以用一個寬的區間釘住：二十年後的
-	// 總人口要落在開局的一半到兩倍之間。
+	// **世界不該崩潰也不該爆炸。** 區間是 remake 自己的護欄，
+	// 不是平衡目標——成長率本身是從原版量出來的（年度 15%，
+	// `game.PopulationGrowthPercent`），災害與徵兵把它吃掉大半。
 	//
 	// 沒有這一條的話，災害與徵兵會把人口打到剩百分之七——而每一條
 	// 規則單獨看都「照手冊做」，只有整局跑過才看得出來。
 	const start = 2538000 // 劇本 001 的開局總人口
-	if pop < start/2 || pop > start*2 {
-		t.Errorf("二十年後總人口 %d，開局是 %d——落在一半到兩倍之外", pop, start)
+	if pop < start/2 || pop > start*3 {
+		t.Errorf("二十年後總人口 %d，開局是 %d——落在一半到三倍之外", pop, start)
 	}
 	t.Logf("二十年後：總人口 %d（開局 %d）、總庫銀 %d", pop, start, gold)
 }

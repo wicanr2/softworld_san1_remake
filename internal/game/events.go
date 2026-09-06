@@ -31,13 +31,14 @@ const (
 	// TuneLocustRiceLoss／TuneLocustLandLoss 是蝗害。
 	TuneLocustRiceLoss = 30
 	TuneLocustLandLoss = 5
-	// TuneWinterGrowth 是**年度**人口成長的千分比，隨土地價值與民眾忠誠
-	// 加成。一年只加一次（十月，`growthMonth`）。
+	// PopulationGrowthPercent 是年度人口成長率。
 	//
-	// 與 TuneDisasterBase 是**一對**：災害吃人口、冬季補回來，兩者的
-	// 比例決定世界會不會慢慢死掉。判準在 `session.TestEconomyStaysSane`
-	// ——二十年後的總人口要落在開局的一半到兩倍之間。
-	TuneWinterGrowth = 95
+	// **量出來的，不是挑的**：原版十月的成長是固定 15%、無條件捨去，
+	// 與土地價值和民眾忠誠都無關。兩個年度各驗一次，凡是低於 15% 的郡
+	// 都對得上同一個月的徵兵（兵士 +1 就少 1 個單位的人口）——
+	// 渤海 3844→4420、上黨 2443→2809、琅邪 2251→2588、下邳 2102→2417，
+	// 四個都剛好是 ×1.15 捨去（`docs/mechanics/60-economy.md` §1，`L1`）。
+	PopulationGrowthPercent = 15
 	// TuneAgingStamina 是每年體能的衰減基準；年紀越大掉越多。
 	TuneAgingStamina = 1
 	// TuneDisasterBase 是災害的**每月**基礎機率；民眾忠誠越低越高。
@@ -261,8 +262,7 @@ func (g *State) winter() []Event {
 			if !p.Owned() {
 				continue
 			}
-			rate := TuneWinterGrowth * (int(p.LandValue) + int(p.PublicLoyalty)) / 200
-			p.Population += p.Population * rate / 1000
+			p.Population += p.Population * PopulationGrowthPercent / 100
 		}
 	}
 	if g.Date.Month != tributeMonth {

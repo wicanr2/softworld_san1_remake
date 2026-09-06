@@ -71,22 +71,40 @@ func TestAgingKillsEventually(t *testing.T) {
 	}
 	old.Stamina = 1
 	old.Status = state.StatusOfficer
-	g.Date = Date{Year: 189, Month: 2}
-	g.EndMonth() // → 3 月，春天
+	g.Date = Date{Year: 189, Month: 12}
+	g.EndMonth() // → 元月，年齡增長那一個月
 	if old.Employed() {
 		t.Errorf("%s 體能只剩 1，過了一年還活著（體能 %d）", old.Name, old.Stamina)
 	}
 }
 
-// TestWinterGrowsPopulation 釘住冬季人口增加（說明書 p.37）。
-func TestWinterGrowsPopulation(t *testing.T) {
+// TestPopulationGrowsOnceAYear 釘住人口一年只長一次，在十月，長 15%。
+//
+// **三件事要一起釘**：月份、幅度、以及「其他月份不長」。只釘「有增加」
+// 的話，每個月都長 1% 也會綠——而那與原版差了一個數量級。
+// 數字是量出來的（`docs/mechanics/60-economy.md` §1，`L1`）。
+func TestPopulationGrowsOnceAYear(t *testing.T) {
 	g := newGame(t)
 	p := g.Prefecture(15)
-	g.Date = Date{Year: 189, Month: 11}
+
+	g.Date = Date{Year: 189, Month: 9}
 	before := p.Population
-	g.EndMonth() // → 12 月，冬季
-	if p.Population <= before {
-		t.Errorf("冬季人口 %d，原本 %d——應該增加", p.Population, before)
+	g.EndMonth() // → 十月
+	want := before + before*PopulationGrowthPercent/100
+	if p.Population != want {
+		t.Errorf("十月人口 %d，原本 %d，應該是 %d（＋%d%%）",
+			p.Population, before, want, PopulationGrowthPercent)
+	}
+
+	// 其他月份不長。
+	for _, m := range []int{10, 11, 12, 1} {
+		g.Date = Date{Year: 189, Month: m}
+		was := p.Population
+		g.EndMonth()
+		if p.Population > was {
+			t.Errorf("%d 月推到下個月，人口從 %d 長到 %d——只有十月該長",
+				m, was, p.Population)
+		}
 	}
 }
 

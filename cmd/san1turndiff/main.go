@@ -71,6 +71,7 @@ type prefDelta struct {
 	// 而物價每個月都在動——只印差值就把公式的自變數丟掉了。
 	priceBefore, priceAfter int
 	goldAfter, riceAfter    int
+	peopleAfter             int
 }
 
 func (d prefDelta) quiet() bool {
@@ -97,6 +98,7 @@ func report(a, b *state.Scenario, quiet bool) {
 			freeGen:     int(y.FreeGenerals) - int(x.FreeGenerals),
 			priceBefore: int(x.PriceLevel), priceAfter: int(y.PriceLevel),
 			goldAfter: int(y.Gold), riceAfter: int(y.Rice),
+			peopleAfter: int(y.Population),
 		}
 		deltas[y.ID] = d
 	}
@@ -168,13 +170,19 @@ func fields(d prefDelta) string {
 		name string
 		v    int
 	}{
-		{"金", d.gold}, {"米", d.rice}, {"人口", d.people}, {"兵士", d.soldiers},
+		{"金", d.gold}, {"米", d.rice}, {"兵士", d.soldiers},
 		{"地力", d.land}, {"水利", d.flood}, {"物價", d.price}, {"民忠", d.loyalty},
 		{"在職將", d.activeGen}, {"在野將", d.freeGen},
 	} {
 		if f.v != 0 {
 			out += fmt.Sprintf(" %s%+d", f.name, f.v)
 		}
+	}
+	if d.people != 0 {
+		// **人口存的是實際值 ÷ 100**（`docs/formats/03`）——只印差值會
+		// 讓成長率看起來像另一個數量級，所以把成長後的絕對值一起印。
+		out += fmt.Sprintf(" 人口%+d(→%d,%+.1f%%)", d.people, d.peopleAfter,
+			100*float64(d.people)/float64(d.peopleAfter-d.people))
 	}
 	for _, f := range []struct {
 		name string
