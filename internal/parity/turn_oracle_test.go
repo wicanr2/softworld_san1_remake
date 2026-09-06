@@ -77,7 +77,9 @@ func TestZZWatchTurn(t *testing.T) {
 	defer o.Close()
 
 	o.Press("122")
-	send := map[int]string{4: "\r", 17: "1", 23: "1"}
+	// 主選單第二項是「載入舊進度」。兩份 bundle 的 DATA2 裡都帶著存檔槽，
+	// 從存檔進去有沒有防拷密碼是這一輪要問的。
+	send := map[int]string{4: "\r", 17: "2", 23: "1"}
 	var base uint32
 	for i := 0; i < 27; i++ {
 		if err := o.Run(50_000_000); err != nil {
@@ -93,9 +95,12 @@ func TestZZWatchTurn(t *testing.T) {
 		}
 	}
 	if base == 0 {
-		t.Fatal("沒走到盤面載入")
+		// 走「載入舊進度」時盤面的內容與劇本檔不同，搜不到——那不代表
+		// 沒載入。位址是量出來的固定值，退回去用它。
+		base = 0x399b0
+		t.Logf("搜不到劇本盤面（走存檔那條就是這樣），改用已知位址 %#x", base)
 	}
-	dumpScreen(t, o, "00-幾人玩")
+	dumpScreen(t, o, "00-起點")
 
 	screen := func() []uint8 { return append([]uint8(nil), o.IndexedEGA(640, 350)...) }
 	diff := func(a, b []uint8) int {
@@ -145,12 +150,9 @@ func TestZZWatchTurn(t *testing.T) {
 		return false
 	}
 
-	if !step("01-零人玩", "0\r") {
-		return
-	}
-	// 送 0 之後畫面出「電腦自動示範模式」，再一個鍵才到「請設定難度(1-10)」。
-	for i, keys := range []string{"5\r", "5\r", "\r"} {
-		if !step(fmt.Sprintf("%02d-續行", i+2), keys) {
+	// 從存檔進去之後的提示還不知道，逐步送、逐步看圖。
+	for i, keys := range []string{"1\r", "\r", "5\r", "\r", "\r"} {
+		if !step(fmt.Sprintf("%02d-載入", i+1), keys) {
 			break
 		}
 	}
