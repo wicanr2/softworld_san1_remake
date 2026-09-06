@@ -12,6 +12,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
@@ -53,7 +54,7 @@ const (
 func (a *app) startBattle(from, to int, force []int, sup game.Supply) {
 	p, err := a.s.G.BeginAttack(from, to, force, a.s.Player, sup)
 	if err != nil {
-		a.view.Prompt = fmt.Sprintf("出兵失敗：%v", err)
+		a.view.Prompt = tf("bat.attackFailed", err)
 		return
 	}
 	f := &fight{pending: p}
@@ -88,8 +89,9 @@ func (a *app) nextCamp() {
 	f.waiting = waitCamp
 	f.view.Acting = u
 	f.view.Cursor = ui.Hexer{At: u.At, Shown: true}
-	f.view.Menu, f.view.Items = "紮寨", []string{"方向鍵移動", "0 定位", "9 全部自動"}
-	f.view.Prompt = fmt.Sprintf("請 %s 紮寨（還有 %d 隊）", u.Name(), len(f.camping))
+	f.view.Menu, f.view.Items = t("bat.camp"),
+		[]string{t("bat.arrowKeys"), t("bat.place"), t("bat.autoAll")}
+	f.view.Prompt = tf("bat.campWho", u.Name(), len(f.camping))
 }
 
 // nextActor 推進到下一支要玩家下令的部隊；沒有就收尾。
@@ -103,8 +105,8 @@ func (a *app) nextActor() {
 	}
 	f.view.Acting = f.acting
 	f.view.Cursor = ui.Hexer{At: f.acting.At, Shown: true}
-	f.view.Menu, f.view.Items = "指令", ui.BattleCommandLines()
-	f.view.Prompt = fmt.Sprintf("%s　餘步 %d", f.acting.Name(), f.acting.Move)
+	f.view.Menu, f.view.Items = t("page.command"), ui.BattleCommandLines()
+	f.view.Prompt = tf("bat.unitMoves", f.acting.Name(), f.acting.Move)
 	f.view.Page, f.view.PageTitle = nil, ""
 }
 
@@ -116,7 +118,7 @@ func (a *app) endBattle() {
 	if r != nil {
 		a.view.PageTitle, a.view.Page = ui.BattleReport(a.s.G, r)
 	}
-	a.view.Prompt = "戰役結束。Esc 收起戰報"
+	a.view.Prompt = t("bat.finished")
 }
 
 // battleKey 收戰場上的一個按鍵。
@@ -129,15 +131,15 @@ func (a *app) battleKey(k byte) {
 	say := func(format string, v ...any) { f.view.Prompt = fmt.Sprintf(format, v...) }
 	done := func(err error) {
 		if err != nil {
-			say("%v", err)
+			say("%s", game.ErrorText(err))
 			f.waiting = waitCommand
-			f.view.Menu, f.view.Items = "指令", ui.BattleCommandLines()
+			f.view.Menu, f.view.Items = t("page.command"), ui.BattleCommandLines()
 			return
 		}
 		// 一支部隊一天可以做好幾件事；移動之後還有餘步就繼續。
 		if f.acting.Alive() && f.acting.Move > 0 && f.cmd == battle.CmdMove {
 			f.waiting = waitDir
-			say("往哪個方向（4 5 6 / 1 2 3，0 結束）　餘步 %d", f.acting.Move)
+			say(tf("bat.dirMore", f.acting.Move))
 			return
 		}
 		f.runner.Done()
@@ -153,13 +155,13 @@ func (a *app) battleKey(k byte) {
 			a.nextCamp()
 		case '0':
 			if err := b.Camp(f.acting, f.view.Cursor.At); err != nil {
-				say("%v", err)
+				say("%s", game.ErrorText(err))
 				return
 			}
 			f.camping = f.camping[1:]
 			a.nextCamp()
 		default:
-			say("方向鍵移動、0 定位、9 全部自動")
+			say(t("bat.campHint"))
 		}
 	case waitCommand:
 		a.battleCommand(k, done, say)
@@ -173,22 +175,22 @@ func (a *app) battleKey(k byte) {
 		}
 		d, ok := dirFromKey(k)
 		if !ok {
-			say("方向是 4 5 6 / 1 2 3")
+			say(t("bat.dirBad"))
 			return
 		}
 		done(a.applyDir(d))
 	case waitPlot:
 		s := battle.Stratagem(k - '0')
 		if s < battle.Fire || s > battle.Siege {
-			say("計謀是 1–6")
+			say(t("bat.plotBad"))
 			return
 		}
-		t := b.UnitAt(f.view.Cursor.At)
-		if t == nil {
-			say("游標上沒有部隊——先用方向鍵移到目標上")
+		target := b.UnitAt(f.view.Cursor.At)
+		if target == nil {
+			say(t("bat.noTarget"))
 			return
 		}
-		done(b.UseStratagem(f.acting, s, t.At))
+		done(b.UseStratagem(f.acting, s, target.At))
 	}
 }
 
@@ -202,31 +204,29 @@ func (a *app) battleCommand(k byte, done func(error), say func(string, ...any)) 
 		done(b.Rest(f.acting))
 	case battle.CmdMove, battle.CmdQuick, battle.CmdDeath, battle.CmdArchery:
 		f.waiting = waitDir
-		f.view.Menu, f.view.Items = f.cmd.String(), []string{"4 5 6", "1 2 3"}
-		say("往哪個方向（4 5 6 / 1 2 3）")
+		f.view.Menu, f.view.Items = ui.CommandName(f.cmd), []string{"4 5 6", "1 2 3"}
+		say(t("bat.dir"))
 	case battle.CmdEngage:
 		f.engage = true
 		f.waiting = waitEngage
-		f.view.Menu, f.view.Items = "對戰", ui.BattleEngageLines()
-		say("對戰：1.行軍 2.單挑 3.攻擊 7.查看 0.休息")
+		f.view.Menu, f.view.Items = ui.CommandName(battle.CmdEngage), ui.BattleEngageLines()
+		say(tf("bat.engageHint", strings.Join(ui.BattleEngageLines(), "")))
 	case battle.CmdPlot:
 		f.waiting = waitPlot
-		f.view.Menu, f.view.Items = "策略", []string{
-			"1.火攻 2.水洽 3.陷阱", "4.誘敵 5.燒糧 6.圍攻",
-		}
-		say("對哪一支用計（先把游標移到目標上，再按 1–6）")
+		f.view.Menu, f.view.Items = ui.CommandName(battle.CmdPlot), ui.BattleStratagemLines()
+		say(t("bat.plotWho"))
 	case battle.CmdInspect:
 		u, err := b.Inspect(f.acting, f.view.Cursor.At)
 		if err != nil {
-			say("%v", err)
+			say("%s", game.ErrorText(err))
 			return
 		}
 		f.view.PageTitle, f.view.Page = ui.BattleUnitPage(u)
-		say("Esc 收起")
+		say(t("bat.close"))
 	case battle.CmdRetreat:
 		done(b.Retreat(f.acting))
 	default:
-		say("指令是 0–8")
+		say(t("bat.cmdBad"))
 	}
 }
 
@@ -240,25 +240,25 @@ func (a *app) battleEngage(k byte, done func(error), say func(string, ...any)) {
 	case '1':
 		f.cmd = battle.CmdMove
 		f.waiting = waitDir
-		say("行軍方向（4 5 6 / 1 2 3）　餘步 %d", f.acting.Move)
+		say(tf("bat.marchDir", f.acting.Move))
 	case '2':
 		f.cmd = battle.CmdEngage
 		f.waiting = waitDir
-		say("向哪個方向單挑（4 5 6 / 1 2 3）")
+		say(t("bat.duelDir"))
 	case '3':
 		f.cmd = battle.CmdQuick
 		f.waiting = waitDir
-		say("攻擊哪個方向（4 5 6 / 1 2 3）")
+		say(t("bat.strikeDir"))
 	case '7':
 		u, err := b.Inspect(f.acting, f.view.Cursor.At)
 		if err != nil {
-			say("%v", err)
+			say("%s", game.ErrorText(err))
 			return
 		}
 		f.view.PageTitle, f.view.Page = ui.BattleUnitPage(u)
-		say("Esc 收起")
+		say(t("bat.close"))
 	default:
-		say("對戰的指令是 1 2 3 7 0")
+		say(t("bat.engageBad"))
 	}
 }
 
@@ -284,7 +284,7 @@ func (a *app) applyDir(d battle.Dir) error {
 		// 「相間一格」：同一方向連走兩步。
 		return b.Archery(f.acting, f.acting.At.Step(d).Step(d))
 	}
-	return fmt.Errorf("這個指令不吃方向")
+	return fmt.Errorf("%s", t("bat.noDir"))
 }
 
 // dirFromKey 把數字鍵換成方向。原版的鍵盤是 `4 5 6 / 1 2 3`。

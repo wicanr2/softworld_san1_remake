@@ -120,6 +120,16 @@ func init() {
 	}
 }
 
+// Current 是目前的介面語系。
+//
+// **一份就好。** 畫面、提示、事件紀錄三層都要照同一個語系走；
+// 各自留一份的話，切語言只會換掉其中一層，看起來像譯文漏了。
+var Current = ZhHant
+
+// S／Sf 取一句目前語系的介面文字。
+func S(key string) string            { return T(Current, key) }
+func Sf(key string, a ...any) string { return Tf(Current, key, a...) }
+
 // T 取一句話。
 //
 // 找不到就退回原文（`ZhHant`）；原文也沒有就回鍵本身，**而且看得出來**

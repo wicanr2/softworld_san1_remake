@@ -148,8 +148,8 @@ func drawBattleSide(c *Canvas, b *battle.Battle, v BattleView) {
 		c.DrawText(col, row, cells.Truncate(s, Cols-col-2), fg)
 		row++
 	}
-	put(fmt.Sprintf("第 %d 日／%d", b.Day, battle.BattleDays), ColSel)
-	put(b.Weather.String(), ColFG)
+	put(tf("msg.day", b.Day, battle.BattleDays), ColSel)
+	put(WeatherName(b.Weather), ColFG)
 	row++
 
 	for _, s := range []battle.Side{battle.MainAttacker, battle.AidAttacker,
@@ -164,19 +164,19 @@ func drawBattleSide(c *Canvas, b *battle.Battle, v BattleView) {
 		if n == 0 {
 			continue
 		}
-		put(fmt.Sprintf("%s %d隊", s, n), sideColour(s))
-		put(fmt.Sprintf("  兵%d 金%d 米%d", men, b.Gold[s], b.Rice[s]), ColFG)
+		put(tf("bat.units", SideName(s), n), sideColour(s))
+		put(tf("bat.supply", men, b.Gold[s], b.Rice[s]), ColFG)
 	}
 	row++
 
 	if u := v.Acting; u != nil && u.Alive() {
-		put("── 輪到 ──", ColSel)
+		put("── "+t("msg.turnOf")+" ──", ColSel)
 		put(u.Name(), unitColour(u))
-		put(fmt.Sprintf("兵 %d　餘步 %d", u.Soldiers(), u.Move), ColFG)
+		put(tf("bat.unitLine", u.Soldiers(), u.Move), ColFG)
 		if ch := u.Chief(); ch != nil {
-			put(fmt.Sprintf("體能 %d　戰力 %d", ch.Stamina, ch.War), ColFG)
+			put(tf("bat.chiefLine", ch.Stamina, ch.War), ColFG)
 		}
-		put(fmt.Sprintf("箭 %d 次", u.Arrows()), ColFG)
+		put(tf("bat.arrowsLine", u.Arrows()), ColFG)
 	}
 	if v.Menu != "" {
 		row++
@@ -207,7 +207,7 @@ func BattleCommandLines() []string {
 	for i := 0; i < len(cmds); i += 3 {
 		line := ""
 		for _, c := range cmds[i:min3(i+3, len(cmds))] {
-			line += fmt.Sprintf("%d.%s ", int(c), c)
+			line += fmt.Sprintf("%d.%s ", int(c), CommandName(c))
 		}
 		out = append(out, line)
 	}
@@ -219,7 +219,32 @@ func BattleCommandLines() []string {
 //	1.行軍 2.單挑 3.攻擊
 //	7.查看 0.休息
 func BattleEngageLines() []string {
-	return []string{"1.行軍 2.單挑 3.攻擊", "7.查看 0.休息"}
+	engage := []battle.Command{battle.CmdMove, battle.CmdEngage, battle.CmdQuick}
+	rest := []battle.Command{battle.CmdInspect, battle.CmdRest}
+	out := ""
+	for _, c := range engage {
+		out += fmt.Sprintf("%d.%s ", int(c), CommandName(c))
+	}
+	tail := ""
+	for _, c := range rest {
+		tail += fmt.Sprintf("%d.%s ", int(c), CommandName(c))
+	}
+	return []string{out, tail}
+}
+
+// BattleStratagemLines 是六種計謀，排成兩行。編號與原版相同。
+func BattleStratagemLines() []string {
+	all := []battle.Stratagem{battle.Fire, battle.Flood, battle.Trap,
+		battle.Lure, battle.Burn, battle.Siege}
+	var out []string
+	for i := 0; i < len(all); i += 3 {
+		line := ""
+		for _, s := range all[i:min3(i+3, len(all))] {
+			line += fmt.Sprintf("%d.%s ", int(s), StratagemName(s))
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 func min3(a, b int) int {
@@ -235,9 +260,9 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 		return t("bat.inspect"), []string{t("msg.none")}
 	}
 	out := []string{
-		fmt.Sprintf("%s　兵 %d　餘步 %d", u.Name(), u.Soldiers(), u.Move),
-		fmt.Sprintf("訓練 %d　武裝 %d　兵種 %s　箭 %d 次",
-			u.AvgTraining(), u.AvgArms(), u.Troop(), u.Arrows()),
+		tf("bat.unitHead", u.Name(), u.Soldiers(), u.Move),
+		tf("bat.unitStats",
+			u.AvgTraining(), u.AvgArms(), TroopKindName(u.Troop()), u.Arrows()),
 		"",
 		cells.Pad(t("fld.name"), 8) + cells.Pad(t("fld.war"), 4) +
 			cells.Pad(t("fld.intel"), 4) + cells.Pad(t("fld.stamina"), 4) +
@@ -249,9 +274,9 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 		state := ""
 		switch {
 		case l.Dead:
-			state = "（歿）"
+			state = t("bat.dead")
 		case l.Captured:
-			state = "（被擒）"
+			state = t("bat.captured")
 		}
 		out = append(out, cells.Pad(l.Name+state, 8)+
 			cells.Pad(fmt.Sprintf("%d", l.War), 4)+
@@ -295,7 +320,7 @@ func TerrainPage(name string, f *battle.Field, gates map[int]battle.Hex) (string
 	sort.Ints(ns)
 	line := t("msg.gates")
 	for _, n := range ns {
-		line += fmt.Sprintf("%d 郡　", n)
+		line += tf("msg.gateN", n)
 	}
 	out = append(out, line)
 	out = append(out, t("msg.legend")+terrainLegend())

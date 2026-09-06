@@ -95,7 +95,7 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 		charm = int(gov.Charm)
 	}
 	if g.roll(prefectureID, targetIndex, charm) >= clampTo(charm/TuneRecruitCharm, 95) {
-		return fmt.Errorf("%s 婉拒了", t.Name)
+		return fmt.Errorf("%s", tf("msg.declined", t.Name))
 	}
 	t.Faction = by
 	t.Status = state.StatusOfficer
@@ -322,7 +322,7 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 
 	chance := clampTo(TuneHeadhuntBase-int(t.Loyalty)/2, 95)
 	if g.roll(prefectureID, targetIndex, int(t.Loyalty)) >= chance {
-		return fmt.Errorf("%s 不為所動", t.Name)
+		return fmt.Errorf("%s", tf("msg.unmoved", t.Name))
 	}
 	old := t.Faction
 	wasGovernor := t.Status.Governs()

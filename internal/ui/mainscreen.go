@@ -17,18 +17,15 @@ type Command struct {
 	Name string
 }
 
-// Lang 是介面文字的語系。
+// t 取一句介面文字。語系是 `i18n.Current`。
 //
-// **繁體中文是原文不是譯文**（`internal/i18n`）；這個變數只換譯文，
+// **繁體中文是原文不是譯文**（`internal/i18n`）；換語系只換譯文，
 // 不會動到遊戲資料裡的專有名詞（郡名、人名）——那是玩家自己那一份
 // 原版檔案的內容。
-var Lang = i18n.ZhHant
-
-// t 取一句介面文字。
-func t(key string) string { return i18n.T(Lang, key) }
+func t(key string) string { return i18n.S(key) }
 
 // tf 取一句帶參數的介面文字。
-func tf(key string, a ...any) string { return i18n.Tf(Lang, key, a...) }
+func tf(key string, a ...any) string { return i18n.Sf(key, a...) }
 
 // Commands 是主畫面右下的十類指令，順序與編號與原版相同。
 func Commands() []Command {
@@ -93,7 +90,7 @@ func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 	drawMap(c, g, v.Sel)
 	drawInfoPanel(c, g, v.Sel)
 	if v.Menu == "" {
-		drawCommandPanel(c, "指令", Commands())
+		drawCommandPanel(c, t("page.command"), Commands())
 	} else {
 		drawCommandPanel(c, v.Menu, v.Items)
 	}
@@ -103,13 +100,13 @@ func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 		drawLog(c, log)
 	}
 	if v.Over {
-		c.DrawText(mapCol+2, Rows-3, "這一局結束了。訊息在下方。", ColWarn)
+		c.DrawText(mapCol+2, Rows-3, t("msg.over"), ColWarn)
 	}
 	if v.Prompt != "" {
 		c.DrawText(mapCol+2, Rows-2, cells.Truncate(v.Prompt, panelCol-mapCol-4), ColSel)
 	}
 	if n := len(c.Missing); n > 0 {
-		c.DrawText(mapCol+2, Rows-1, fmt.Sprintf("⚠ %d 個字沒有字模", n), ColWarn)
+		c.DrawText(mapCol+2, Rows-1, tf("msg.noGlyph", n), ColWarn)
 	}
 }
 
@@ -126,7 +123,7 @@ func drawPage(c *Canvas, title string, lines []string) {
 	c.DrawText(mapCol+2, 0, title, ColSel)
 	for i, line := range lines {
 		if 1+i >= Rows-1 {
-			c.DrawText(mapCol+2, Rows-1, "…（還有更多）", ColDim)
+			c.DrawText(mapCol+2, Rows-1, t("msg.more"), ColDim)
 			break
 		}
 		c.DrawText(mapCol+2, 1+i, cells.Truncate(line, w-4), ColFG)
@@ -154,19 +151,38 @@ func drawLog(c *Canvas, log []string) {
 
 // drawTimeColumn 畫左側直排的年月，與原版同一個形狀（「中平六年元月」）。
 //
-// 中曆與西曆都逐字往下排：西曆的年份是四個阿拉伯數字，一位一列。
+// 直排是**漢字才成立的版面**：一個字剛好填滿一格，往下排讀得下去。
+// 譯成拼音之後同一個年號變成九個字母，四格寬的欄位一列放不下一個字，
+// 拆開往下排就成了每列一個字母的長條。所以拉丁字母的語系改成橫排，
+// 放在地圖區上緣——版面讓給可讀性。
 func drawTimeColumn(c *Canvas, d game.Date, cal game.Calendar) {
 	c.DrawBox(timeCol, 0, timeW, Rows, ColFrame)
-	var rows []string
-	for _, ch := range d.Format(cal) {
-		rows = append(rows, string(ch))
+	s := d.Format(cal)
+	if !hasWide(s) {
+		c.DrawText(mapCol+2, 0, s, ColFG)
+		return
 	}
-	for i, s := range rows {
+	i := 0
+	for _, ch := range s {
 		if 2+i >= Rows-1 {
 			break
 		}
-		c.DrawText(timeCol+2, 2+i, s, ColFG)
+		c.DrawText(timeCol+2, 2+i, string(ch), ColFG)
+		i++
 	}
+}
+
+// hasWide 說一段文字裡有沒有全形字。
+//
+// 判準是「有沒有」不是「全部是不是」：西曆的中文寫法是 `189年1月`，
+// 阿拉伯數字混著漢字，原版也是一位一列往下排。
+func hasWide(s string) bool {
+	for _, ch := range s {
+		if cells.Width(string(ch)) == 2 {
+			return true
+		}
+	}
+	return false
 }
 
 // drawMap 畫地圖區。
@@ -208,7 +224,7 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 	c.DrawBox(panelCol, 0, panelW, 13, ColFrame)
 	p := g.Prefecture(sel)
 	if p == nil {
-		c.DrawText(panelCol+2, 2, "（未選擇州郡）", ColDim)
+		c.DrawText(panelCol+2, 2, t("msg.noPrefecture"), ColDim)
 		return
 	}
 	_ = p
@@ -219,25 +235,25 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 	c.DrawText(panelCol+2, 1, fmt.Sprintf("%2d %s", p.ID, p.Name), ColSel)
 
 	if !p.Owned() {
-		c.DrawText(panelCol+2, 3, "空白郡", ColDim)
+		c.DrawText(panelCol+2, 3, t("msg.blankPref"), ColDim)
 	} else {
 		lord := g.Lord(p.Owner)
 		gov := g.Governor(p.ID)
 		if lord != nil {
-			line(3, "諸侯", lord.Name)
+			line(3, t("fld.lord"), lord.Name)
 		}
 		if gov != nil {
-			line(4, "太守", gov.Name)
+			line(4, t("fld.governor"), gov.Name)
 		}
 	}
-	line(6, "金", fmt.Sprintf("%d", p.Gold))
-	line(7, "米", fmt.Sprintf("%d", p.Rice))
-	line(8, "人口", fmt.Sprintf("%d", p.Population))
-	line(9, "兵士", fmt.Sprintf("%d", g.Soldiers(p.ID)))
+	line(6, t("fld.gold"), fmt.Sprintf("%d", p.Gold))
+	line(7, t("fld.rice"), fmt.Sprintf("%d", p.Rice))
+	line(8, t("fld.population"), fmt.Sprintf("%d", p.Population))
+	line(9, t("fld.soldiers"), fmt.Sprintf("%d", g.Soldiers(p.ID)))
 
-	line(10, "現役將", fmt.Sprintf("%d / 在野 %d",
+	line(10, t("fld.active"), tf("fld.activeFree",
 		g.ActiveGenerals(p.ID), g.FreeGenerals(p.ID)))
-	line(11, "土地/洪水", fmt.Sprintf("%d / %d", p.LandValue, p.FloodRate))
+	line(11, t("fld.landFlood"), fmt.Sprintf("%d / %d", p.LandValue, p.FloodRate))
 }
 
 // drawCommandPanel 畫右下的指令欄。原版是兩欄五列。
@@ -258,7 +274,7 @@ func drawCommandPanel(c *Canvas, title string, cmds []Command) {
 		c.DrawText(col+3, row, cmd.Name, ColFG)
 	}
 	if len(cmds) < len(Commands()) {
-		c.DrawText(panelCol+2, Rows-2, "ESC 返回", ColDim)
+		c.DrawText(panelCol+2, Rows-2, t("msg.back"), ColDim)
 	}
 }
 

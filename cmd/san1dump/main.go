@@ -22,6 +22,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/session"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
@@ -38,11 +39,17 @@ func main() {
 	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
 	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫；battle 畫面是先打幾天")
 	aiMode := flag.String("ai", "enhanced", "電腦 AI：base／plus／enhanced")
+	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型（-png 時才需要）")
 	saveDir := flag.String("saves", "", "存檔目錄（配 -save／-load 用）")
 	saveTo := flag.Int("save", 0, "跑完 -months 之後存到第幾個進度（1..6）")
 	loadFrom := flag.Int("load", 0, "改成從第幾個進度開始（1..6）")
 	flag.Parse()
+	if l, ok := i18n.Parse(*lang); ok {
+		i18n.Current = l
+	} else {
+		fmt.Fprintf(os.Stderr, "不認識的語言 %q，用繁體中文\n", *lang)
+	}
 
 	if *root == "" {
 		flag.Usage()

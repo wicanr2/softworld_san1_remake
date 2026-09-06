@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
@@ -298,7 +297,7 @@ func (g *State) seizeTreasures(r *BattleResult, by state.FactionID) {
 			loser.Treasury[i] = 0
 		}
 		if moved {
-			r.Log = append(r.Log, fmt.Sprintf("%s 的寶物盡歸戰勝方", x.Name))
+			r.Log = append(r.Log, tf("msg.spoils", x.Name))
 		}
 	}
 }

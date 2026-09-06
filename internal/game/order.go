@@ -33,7 +33,7 @@ func (o ReclaimOrder) Apply(g *State, by state.FactionID) error {
 	return g.Reclaim(o.At, o.General, by)
 }
 func (o ReclaimOrder) Describe(g *State) string {
-	return fmt.Sprintf("開墾 %s%s", prefName(g, o.At), byWhom(g, o.General))
+	return tf("log.reclaim", prefName(g, o.At), byWhom(g, o.General))
 }
 
 // FloodControlOrder 是防洪。
@@ -47,7 +47,7 @@ func (o FloodControlOrder) Apply(g *State, by state.FactionID) error {
 	return g.FloodControl(o.At, o.General, by)
 }
 func (o FloodControlOrder) Describe(g *State) string {
-	return fmt.Sprintf("防洪 %s%s", prefName(g, o.At), byWhom(g, o.General))
+	return tf("log.flood", prefName(g, o.At), byWhom(g, o.General))
 }
 
 // TrainOrder 是訓練兵士。
@@ -61,7 +61,7 @@ func (o TrainOrder) Apply(g *State, by state.FactionID) error {
 	return g.Train(o.At, o.General, by)
 }
 func (o TrainOrder) Describe(g *State) string {
-	return fmt.Sprintf("訓練 %s%s", prefName(g, o.At), byWhom(g, o.General))
+	return tf("log.train", prefName(g, o.At), byWhom(g, o.General))
 }
 
 // ReliefOrder 是開倉賑民。
@@ -72,7 +72,7 @@ func (o ReliefOrder) Apply(g *State, by state.FactionID) error {
 	return g.Relief(o.At, by)
 }
 func (o ReliefOrder) Describe(g *State) string {
-	return fmt.Sprintf("賑民 %s", prefName(g, o.At))
+	return tf("log.relief", prefName(g, o.At))
 }
 
 // SellRiceOrder／BuyRiceOrder 是米糧買賣。
@@ -83,7 +83,7 @@ func (o SellRiceOrder) Apply(g *State, by state.FactionID) error {
 	return g.SellRice(o.At, o.Units, by)
 }
 func (o SellRiceOrder) Describe(g *State) string {
-	return fmt.Sprintf("賣米 %s %d 單位", prefName(g, o.At), o.Units)
+	return tf("log.sell", prefName(g, o.At), o.Units)
 }
 
 type BuyRiceOrder struct{ At, Units int }
@@ -93,7 +93,7 @@ func (o BuyRiceOrder) Apply(g *State, by state.FactionID) error {
 	return g.BuyRice(o.At, o.Units, by)
 }
 func (o BuyRiceOrder) Describe(g *State) string {
-	return fmt.Sprintf("買米 %s %d 單位", prefName(g, o.At), o.Units)
+	return tf("log.buy", prefName(g, o.At), o.Units)
 }
 
 // RecruitOrder 是登用本地在野人才。
@@ -104,7 +104,7 @@ func (o RecruitOrder) Apply(g *State, by state.FactionID) error {
 	return g.Recruit(o.At, o.Target, by)
 }
 func (o RecruitOrder) Describe(g *State) string {
-	return fmt.Sprintf("登用 %s%s", prefName(g, o.At), byWhom(g, o.Target))
+	return tf("log.recruit", prefName(g, o.At), byWhom(g, o.Target))
 }
 
 // AttackOrder 是發動戰役。
@@ -122,7 +122,7 @@ func (o AttackOrder) Apply(g *State, by state.FactionID) error {
 	return err
 }
 func (o AttackOrder) Describe(g *State) string {
-	return fmt.Sprintf("%s 出兵攻 %s", prefName(g, o.At), prefName(g, o.To))
+	return tf("log.attack", prefName(g, o.At), prefName(g, o.To))
 }
 
 func byWhom(g *State, index int) string {
@@ -148,7 +148,7 @@ func (o ConscriptOrder) Describe(g *State) string {
 	if x := g.General(o.General); x != nil {
 		name = x.Name
 	}
-	return fmt.Sprintf("徵兵 %s／%s %d 人", prefName(g, o.At), name, o.Count)
+	return tf("log.conscript", prefName(g, o.At), name, o.Count)
 }
 
 // ArmsOrder 是購置武器。
@@ -167,14 +167,14 @@ func (o ArmsOrder) Describe(g *State) string {
 	if x := g.General(o.General); x != nil {
 		name = x.Name
 	}
-	return fmt.Sprintf("武器 %s／%s %d 單位", prefName(g, o.At), name, o.Units)
+	return tf("log.arms", prefName(g, o.At), name, o.Units)
 }
 
 func prefName(g *State, id int) string {
 	if p := g.Prefecture(id); p != nil {
 		return fmt.Sprintf("%d %s", p.ID, p.Name)
 	}
-	return fmt.Sprintf("郡 %d", id)
+	return tf("msg.prefN", id)
 }
 
 // ApplyAll 依序套用一串命令，回傳套用成功的筆數與第一個錯誤。
@@ -184,7 +184,7 @@ func prefName(g *State, id int) string {
 func (g *State) ApplyAll(orders []Order, by state.FactionID) (int, error) {
 	for i, o := range orders {
 		if err := o.Apply(g, by); err != nil {
-			return i, fmt.Errorf("第 %d 個命令（%s）：%w", i+1, o.Describe(g), err)
+			return i, fmt.Errorf(t("log.orderN"), i+1, o.Describe(g), err)
 		}
 	}
 	return len(orders), nil
@@ -202,7 +202,7 @@ func (o MoveOrder) Apply(g *State, by state.FactionID) error {
 	return g.Move(o.At, o.To, o.General, o.Gold, o.Rice, by)
 }
 func (o MoveOrder) Describe(g *State) string {
-	return fmt.Sprintf("調動%s %s → %s", byWhom(g, o.General),
+	return tf("log.move", byWhom(g, o.General),
 		prefName(g, o.At), prefName(g, o.To))
 }
 
@@ -216,7 +216,7 @@ func (o TransportOrder) Apply(g *State, by state.FactionID) error {
 	return g.Transport(o.At, o.To, o.Gold, o.Rice, by)
 }
 func (o TransportOrder) Describe(g *State) string {
-	return fmt.Sprintf("運送 %s → %s（金 %d 米 %d）",
+	return tf("log.transport",
 		prefName(g, o.At), prefName(g, o.To), o.Gold, o.Rice)
 }
 
@@ -230,7 +230,7 @@ func (o RedistributeOrder) Apply(g *State, by state.FactionID) error {
 	return g.Redistribute(o.At, o.Units, by)
 }
 func (o RedistributeOrder) Describe(g *State) string {
-	return fmt.Sprintf("調整兵力 %s（%d 支部隊）", prefName(g, o.At), len(o.Units))
+	return tf("log.balance", prefName(g, o.At), len(o.Units))
 }
 
 type BuildFortOrder struct{ At, General int }
@@ -240,7 +240,7 @@ func (o BuildFortOrder) Apply(g *State, by state.FactionID) error {
 	return g.BuildFort(o.At, o.General, by)
 }
 func (o BuildFortOrder) Describe(g *State) string {
-	return fmt.Sprintf("建寨 %s%s", prefName(g, o.At), byWhom(g, o.General))
+	return tf("log.fort", prefName(g, o.At), byWhom(g, o.General))
 }
 
 type RestOrder struct{ At int }
@@ -250,7 +250,7 @@ func (o RestOrder) Apply(g *State, by state.FactionID) error {
 	return g.Rest(o.At, by)
 }
 func (o RestOrder) Describe(g *State) string {
-	return fmt.Sprintf("休息 %s", prefName(g, o.At))
+	return tf("log.rest", prefName(g, o.At))
 }
 
 type SearchOrder struct{ At, General int }
@@ -261,7 +261,7 @@ func (o SearchOrder) Apply(g *State, by state.FactionID) error {
 	return err
 }
 func (o SearchOrder) Describe(g *State) string {
-	return fmt.Sprintf("尋訪 %s%s", prefName(g, o.At), byWhom(g, o.General))
+	return tf("log.search", prefName(g, o.At), byWhom(g, o.General))
 }
 
 type RewardOrder struct{ At, Target, Gold int }
@@ -271,7 +271,7 @@ func (o RewardOrder) Apply(g *State, by state.FactionID) error {
 	return g.Reward(o.At, o.Target, o.Gold, by)
 }
 func (o RewardOrder) Describe(g *State) string {
-	return fmt.Sprintf("賞賜%s %d 金", byWhom(g, o.Target), o.Gold)
+	return tf("log.reward", byWhom(g, o.Target), o.Gold)
 }
 
 type DismissOrder struct{ At, Target int }
@@ -281,7 +281,7 @@ func (o DismissOrder) Apply(g *State, by state.FactionID) error {
 	return g.Dismiss(o.At, o.Target, by)
 }
 func (o DismissOrder) Describe(g *State) string {
-	return fmt.Sprintf("撤職%s", byWhom(g, o.Target))
+	return tf("log.dismiss", byWhom(g, o.Target))
 }
 
 type AppointChiefOrder struct{ At, Target int }
@@ -291,7 +291,7 @@ func (o AppointChiefOrder) Apply(g *State, by state.FactionID) error {
 	return g.AppointChief(o.At, o.Target, by)
 }
 func (o AppointChiefOrder) Describe(g *State) string {
-	return fmt.Sprintf("拜%s為軍師", byWhom(g, o.Target))
+	return tf("log.chief", byWhom(g, o.Target))
 }
 
 type AppointGovernorOrder struct{ At, Target int }
@@ -301,7 +301,7 @@ func (o AppointGovernorOrder) Apply(g *State, by state.FactionID) error {
 	return g.AppointGovernor(o.At, o.Target, by)
 }
 func (o AppointGovernorOrder) Describe(g *State) string {
-	return fmt.Sprintf("%s 的太守改為%s", prefName(g, o.At), byWhom(g, o.Target))
+	return tf("log.governor", prefName(g, o.At), byWhom(g, o.Target))
 }
 
 type AutonomyOrder struct {
@@ -314,7 +314,7 @@ func (o AutonomyOrder) Apply(g *State, by state.FactionID) error {
 	return g.SetAutonomy(o.At, o.Mode, by)
 }
 func (o AutonomyOrder) Describe(g *State) string {
-	return fmt.Sprintf("%s 改為%s型態", prefName(g, o.At), o.Mode)
+	return tf("log.autonomy", prefName(g, o.At), AutonomyName(o.Mode))
 }
 
 type GiftOrder struct {
@@ -327,7 +327,7 @@ func (o GiftOrder) Apply(g *State, by state.FactionID) error {
 	return g.GiftTreasure(o.At, o.Target, o.What, by)
 }
 func (o GiftOrder) Describe(g *State) string {
-	return fmt.Sprintf("賞%s給%s", o.What, byWhom(g, o.Target))
+	return tf("log.gift", TreasureName(o.What), byWhom(g, o.Target))
 }
 
 type HeadhuntOrder struct{ At, Target int }
@@ -337,7 +337,7 @@ func (o HeadhuntOrder) Apply(g *State, by state.FactionID) error {
 	return g.Headhunt(o.At, o.Target, by)
 }
 func (o HeadhuntOrder) Describe(g *State) string {
-	return fmt.Sprintf("挖角%s", byWhom(g, o.Target))
+	return tf("log.headhunt", byWhom(g, o.Target))
 }
 
 type PlotOrder struct {
@@ -352,5 +352,5 @@ func (o PlotOrder) Apply(g *State, by state.FactionID) error {
 	return err
 }
 func (o PlotOrder) Describe(g *State) string {
-	return fmt.Sprintf("%s 對 %s 施「%s」", prefName(g, o.At), prefName(g, o.To), o.What)
+	return tf("log.plot", prefName(g, o.At), prefName(g, o.To), PlotName(o.What))
 }

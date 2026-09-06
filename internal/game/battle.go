@@ -66,11 +66,11 @@ type BattleResult struct {
 
 // Summary 是給紀錄用的一行結果。
 func (r *BattleResult) Summary(g *State) string {
-	side := "守方守住"
+	side := t("rep.defHeld")
 	if r.AttackerWon {
-		side = "攻方獲勝"
+		side = t("rep.won")
 	}
-	s := fmt.Sprintf("⚔ %s 攻 %s：%s（%d 日，攻方折損 %d、守方折損 %d）",
+	s := tf("rep.line",
 		prefName(g, r.From), prefName(g, r.To), side,
 		r.Days, r.AttackerLost, r.DefenderLost)
 	if len(r.Captives) > 0 {
@@ -78,7 +78,7 @@ func (r *BattleResult) Summary(g *State) string {
 		for _, c := range r.Captives {
 			names = append(names, c.Name)
 		}
-		s += "　擒 " + strings.Join(names, "、")
+		s += t("rep.took") + strings.Join(names, "、")
 	}
 	return s
 }

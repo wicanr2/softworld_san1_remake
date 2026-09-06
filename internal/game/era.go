@@ -1,6 +1,11 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+)
 
 // 年號（說明書 p.26：「其他 → 年號」，可用西曆或中曆）。
 //
@@ -115,19 +120,30 @@ func (c Calendar) Name() string {
 // 年號表涵蓋不到的年份自動退回西曆，不硬掰一個年號出來。
 func (d Date) Format(c Calendar) string {
 	if c == Western {
-		return fmt.Sprintf("%d年%d月", d.Year, d.Month)
+		return tf("date.western", d.Year, d.Month)
 	}
 	name, nth, ok := EraOf(d.Year)
 	if !ok {
-		return fmt.Sprintf("%d年%d月", d.Year, d.Month)
+		return tf("date.western", d.Year, d.Month)
 	}
-	year := Chinese(nth)
+	year := numeral(nth)
 	if nth == 1 {
-		year = "元"
+		year = t("date.first")
 	}
-	month := Chinese(d.Month)
+	month := numeral(d.Month)
 	if d.Month == 1 {
-		month = "元"
+		month = t("date.first")
 	}
-	return fmt.Sprintf("%s%s年%s月", name, year, month)
+	return tf("date.era", EraName(name), year, month)
+}
+
+// numeral 是年月在畫面上的寫法。
+//
+// 中曆是「中平六年元月」不是「中平6年1月」，所以中日文用中文數字；
+// 英文的年號名已經是拼音，數字跟著用阿拉伯數字才讀得下去。
+func numeral(n int) string {
+	if i18n.Current == i18n.En {
+		return strconv.Itoa(n)
+	}
+	return Chinese(n)
 }

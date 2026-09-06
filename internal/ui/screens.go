@@ -34,8 +34,8 @@ var (
 // 但存成圖就看得到。
 func DrawPrefectureList(c *Canvas, sc *state.Scenario, slot string) {
 	c.Fill(ColBG)
-	c.DrawText(2, 0, fmt.Sprintf("三國演義  劇本 %s  州郡一覽", slot), ColFG)
-	c.DrawText(2, 1, "（remake 的暫時畫面，不是原版版面）", ColDim)
+	c.DrawText(2, 0, tf("scr.list", slot), ColFG)
+	c.DrawText(2, 1, t("scr.provisional"), ColDim)
 	c.DrawBox(1, 2, c.Cols-2, c.Rows-3, ColFrame)
 
 	const slotW = 9 // 「NN 郡名」＝ 2 ＋ 1 ＋ 4，補到 9 格留間距
@@ -50,11 +50,10 @@ func DrawPrefectureList(c *Canvas, sc *state.Scenario, slot string) {
 		c.DrawText(col+3, row, cells.Pad(p.Name, slotW-3), ColFG)
 	}
 
-	c.DrawText(2, c.Rows-2, fmt.Sprintf("州郡 %d   人物 %d",
-		len(sc.Prefectures()), len(sc.People())), ColDim)
+	c.DrawText(2, c.Rows-2, tf("scr.counts", len(sc.Prefectures()), len(sc.People())), ColDim)
 
 	// 缺字要說出來。畫面上的空白看起來像排版問題，不像缺字。
 	if n := len(c.Missing); n > 0 {
-		c.DrawText(40, c.Rows-2, fmt.Sprintf("⚠ %d 個字沒有字模", n), ColWarn)
+		c.DrawText(40, c.Rows-2, tf("msg.noGlyph", n), ColWarn)
 	}
 }

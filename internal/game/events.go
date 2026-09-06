@@ -1,8 +1,6 @@
 package game
 
 import (
-	"fmt"
-
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -110,7 +108,7 @@ func (g *State) spring() []Event {
 			}
 			if int(x.Stamina) <= drop {
 				x.Stamina = 0
-				out = append(out, Event{x.Location, fmt.Sprintf("%s 病故", x.Name)})
+				out = append(out, Event{x.Location, tf("ev.death", x.Name)})
 				g.retire(x)
 				continue
 			}
@@ -125,7 +123,7 @@ func (g *State) spring() []Event {
 		}
 		if g.roll(int(Spring), p.ID) < g.disasterChance(p)/3 {
 			g.scale(p, 100-TuneQuakeLoss)
-			out = append(out, Event{p.ID, fmt.Sprintf("%s 地震", p.Name)})
+			out = append(out, Event{p.ID, tf("ev.quake", p.Name)})
 		}
 	}
 	return out
@@ -163,7 +161,7 @@ func (g *State) comeOfAge() []Event {
 		if p != nil {
 			name = p.Name
 		}
-		out = append(out, Event{at, fmt.Sprintf("%s 現身於 %s", x.Name, name)})
+		out = append(out, Event{at, tf("ev.appear", x.Name, name)})
 	}
 	return out
 }
@@ -185,7 +183,7 @@ func (g *State) summer() []Event {
 			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneFloodLandLoss, 100))
 			// 「意外產生水災後，洪水率會立刻升到 100」（說明書 p.21）。
 			p.FloodRate = 100
-			out = append(out, Event{p.ID, fmt.Sprintf("%s 水災", p.Name)})
+			out = append(out, Event{p.ID, tf("ev.flood", p.Name)})
 			continue
 		}
 		if g.roll(int(Summer), p.ID, 2) < g.disasterChance(p)/2 {
@@ -194,7 +192,7 @@ func (g *State) summer() []Event {
 			for _, x := range g.Garrison(p.ID) {
 				x.Stamina = uint8(clampTo(int(x.Stamina)-TunePlagueStamina, 100))
 			}
-			out = append(out, Event{p.ID, fmt.Sprintf("%s 瘟疫", p.Name)})
+			out = append(out, Event{p.ID, tf("ev.plague", p.Name)})
 		}
 	}
 	return out
@@ -214,7 +212,7 @@ func (g *State) autumn() []Event {
 		if g.roll(int(Autumn), p.ID) < g.disasterChance(p)/2 {
 			p.Rice = p.Rice * (100 - TuneLocustRiceLoss) / 100
 			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneLocustLandLoss, 100))
-			out = append(out, Event{p.ID, fmt.Sprintf("%s 蝗害", p.Name)})
+			out = append(out, Event{p.ID, tf("ev.locust", p.Name)})
 			continue
 		}
 		// 收成規模同時看土地價值與人口——人口是生產力的來源（說明書 p.20）。
@@ -225,7 +223,7 @@ func (g *State) autumn() []Event {
 		p.Gold = clampTo(p.Gold+gold, MaxGold)
 		p.LandValue = uint8(clampTo(int(p.LandValue)-TuneHarvestLandDrop, 100))
 		out = append(out, Event{p.ID,
-			fmt.Sprintf("%s 秋收　米 +%d　金 +%d", p.Name, rice, gold)})
+			tf("ev.harvest", p.Name, rice, gold)})
 	}
 	return out
 }
@@ -258,11 +256,11 @@ func (g *State) winter() []Event {
 		}
 		if n > 0 {
 			lord := g.Lord(f.ID)
-			name := fmt.Sprintf("勢力 %d", f.ID)
+			name := tf("fld.factionN", f.ID)
 			if lord != nil {
 				name = lord.Name
 			}
-			out = append(out, Event{0, fmt.Sprintf("%s 收到 %d 件貢品", name, n)})
+			out = append(out, Event{0, tf("ev.tribute", name, n)})
 		}
 	}
 	return out
