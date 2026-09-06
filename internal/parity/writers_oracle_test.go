@@ -3,7 +3,9 @@
 package parity
 
 import (
+	"encoding/binary"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -652,4 +654,82 @@ func keysOf(m map[int]bool) []int {
 	}
 	sort.Ints(out)
 	return out
+}
+
+// TestZZSpend 量「扣錢」那支常式的等級係數。
+//
+// `0e8d:0354`（線性 `0xec24`）把呼叫端給的金額乘上一個**以 AI 等級
+// 索引的浮點係數**，再從 AI 的本回合預算（`es:[0x3d16]`）與郡的金
+// （州郡 offset 18）各扣一次，兩邊都夾下限 0。
+//
+// 係數在浮點表裡，`objdump` 讀不到（MSC 的浮點模擬器指令流）——
+// **但量得到**：進場時的參數與轉回整數之後的 AX 配成一對就是係數。
+func TestZZSpend(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	bootToGame(t, o, seedMas)
+
+	var pending []int
+	pairs := map[string]int{}
+	o.OnCall(addr(0xec24), func(o *oracle.Oracle) {
+		pending = append(pending, int(int16(o.Arg(0))))
+	})
+	o.OnCall(addr(0xec49), func(o *oracle.Oracle) {
+		if len(pending) == 0 {
+			return
+		}
+		base := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		lv := o.Byte(addr(0x040736))
+		pairs[fmt.Sprintf("等級 %d：base %d → 扣 %d", lv, base, int(int16(o.AX())))]++
+	})
+	for _, keys := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(keys)
+		if err := o.Run(40_000_000 * 3); err != nil {
+			t.Fatalf("原版停止：%v", err)
+		}
+	}
+	// 係數表是 double 陣列（索引 ＝ 等級 × 8）。等級 5 量到 0.75，
+	// 所以直接在記憶體裡搜那個 double 的位元組，回頭讀整張表。
+	const f75 = "\x00\x00\x00\x00\x00\x00\xe8\x3f" // IEEE 754 的 0.75
+	for _, at := range o.Search([]byte(f75)) {
+		lo := at
+		if lo >= 40 {
+			lo -= 40
+		}
+		var vals []string
+		for k := 0; k < 8; k++ {
+			b := o.Bytes(addr(lo+uint32(k)*8), 8)
+			vals = append(vals, fmt.Sprintf("%.4g", math.Float64frombits(
+				binary.LittleEndian.Uint64(b))))
+		}
+		t.Logf("0.75 出現在 %#06x；%#06x 起的八個 double：%v", at, lo, vals)
+	}
+
+	ks := make([]string, 0, len(pairs))
+	for k := range pairs {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks)
+	t.Logf("一個月扣錢 %d 種組合：", len(ks))
+	for i, k := range ks {
+		if i >= 24 {
+			t.Logf("    …（還有 %d 種）", len(ks)-24)
+			break
+		}
+		t.Logf("    %s ×%d", k, pairs[k])
+	}
 }

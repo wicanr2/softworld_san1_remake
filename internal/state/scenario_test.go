@@ -485,3 +485,23 @@ func TestAdjacencyIsMapNotState(t *testing.T) {
 		}
 	}
 }
+
+// TestAICostFactor 釘住電腦諸侯的花費係數。
+//
+// 表是從原版記憶體讀出來的（`0x048074` 起的六個 double：
+// 1、1、1、1、0.9、0.75）。**判準是截斷取整的實際數字**——
+// 等級 5 那一列的十九個樣本都與 `×3/4` 相符。
+func TestAICostFactor(t *testing.T) {
+	for _, c := range []struct{ base, level, want int }{
+		{100, 0, 100}, {100, 3, 100}, {100, 4, 90}, {100, 5, 75},
+		// 原版量到的樣本（等級 5）
+		{14, 5, 10}, {17, 5, 12}, {18, 5, 13}, {2, 5, 1},
+		{21, 5, 15}, {323, 5, 242}, {33, 5, 24}, {5, 5, 3},
+		{6, 5, 4}, {81, 5, 60}, {9, 5, 6}, {92, 5, 69},
+	} {
+		if got := AICost(c.base, c.level); got != c.want {
+			t.Errorf("等級 %d 付 %d：算出 %d，原版是 %d",
+				c.level, c.base, got, c.want)
+		}
+	}
+}

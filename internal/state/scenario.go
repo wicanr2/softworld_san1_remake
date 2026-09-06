@@ -670,6 +670,31 @@ func (s *Scenario) ChiefIndex(faction int) int {
 // ChiefIntelFloor 是「換軍師」的智力下限（`L0`、`[base]`）。
 const ChiefIntelFloor = 79
 
+// AICostNumerator／AICostDenominator 是電腦諸侯的花費係數（`L0`、`[base]`）。
+//
+// 原版的「扣錢」常式（線性 `0xec24`）把金額乘上一個以 AI 等級索引的
+// 浮點係數再取整。表在記憶體 `0x048074` 起的六個 double：
+//
+//	等級 0–3 → 1、等級 4 → 0.9、等級 5 → 0.75
+//
+// 也就是**等級越高，同一個動作花的錢越少**。等級 5 量到 19 個樣本，
+// 每一個都與「×0.75 截斷」相符（`internal/parity` 的 `TestZZSpend`）。
+var (
+	aiCostNum = [6]int{1, 1, 1, 1, 9, 3}
+	aiCostDen = [6]int{1, 1, 1, 1, 10, 4}
+)
+
+// AICost 是等級 level 的電腦諸侯付一個 base 要多少（截斷取整）。
+func AICost(base, level int) int {
+	if level < 0 {
+		level = 0
+	}
+	if level >= len(aiCostNum) {
+		level = len(aiCostNum) - 1
+	}
+	return base * aiCostNum[level] / aiCostDen[level]
+}
+
 // GovernorIndex 是郡的太守（`BASESTA` offset 32，`u16`、`L2`）。
 //
 // 原版的常式拿它當人物槽號用，`0xFFFF` 是「沒有」。抽樣對得上：
