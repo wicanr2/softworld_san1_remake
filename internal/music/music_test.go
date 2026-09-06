@@ -1,0 +1,315 @@
+package music
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+)
+
+// data1 開原版的 DATA1 容器；沒有素材就 skip。
+// **本儲存庫不含原版檔案。**
+func data1(t *testing.T) map[string][]byte {
+	t.Helper()
+	root := os.Getenv("SAN1_ORIG")
+	if root == "" {
+		t.Skip("沒設 SAN1_ORIG，跳過（本儲存庫不含原版檔案）")
+	}
+	dir := filepath.Join(root, "三國演義")
+	read := func(ext string) []byte {
+		b, err := os.ReadFile(filepath.Join(dir, "DATA1."+ext))
+		if err != nil {
+			t.Skipf("讀不到 DATA1.%s：%v", ext, err)
+		}
+		return b
+	}
+	c, err := assets.OpenContainer(read("NAM"), read("IDX"), read("GRP"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string][]byte{}
+	for i := 0; i < c.Len(); i++ {
+		out[c.Entry(i).Name] = c.Data(i)
+	}
+	return out
+}
+
+// TestParseAllSongs 釘住六首曲子全部解得開。
+//
+// 解析器的自我檢查是**事件數要與表頭吻合**：走完事件流卻數不對，
+// 表示版面讀錯了——而一個讀錯版面的解析器照樣會吐出一串看似合理的音符。
+func TestParseAllSongs(t *testing.T) {
+	d := data1(t)
+	for _, c := range []struct {
+		idx, grp string
+		want     int
+	}{
+		{SongIndex, SongData, 5},
+	} {
+		tracks, err := ParseAll(d[c.idx], d[c.grp])
+		if err != nil {
+			t.Fatalf("%s：%v", c.grp, err)
+		}
+		if len(tracks) != c.want {
+			t.Errorf("%s 解出 %d 首，應該是 %d 首", c.grp, len(tracks), c.want)
+		}
+		for i, tr := range tracks {
+			if len(tr.Song.Events) == 0 {
+				t.Errorf("%s 第 %d 首沒有事件", c.grp, i)
+			}
+			if tr.Song.Tempo < 40 || tr.Song.Tempo > 240 {
+				t.Errorf("%s 第 %d 首的速度是 %d BPM", c.grp, i, tr.Song.Tempo)
+			}
+			if d := tr.Song.Duration(); d < 5 || d > 600 {
+				t.Errorf("%s 第 %d 首長 %.1f 秒", c.grp, i, d)
+			}
+			if len(tr.Bank.Instruments) == 0 {
+				t.Errorf("%s 第 %d 首沒有音色", c.grp, i)
+			}
+			t.Logf("%s #%d：%d 事件、%d BPM、%.1f 秒、%d 個音色",
+				c.grp, i, len(tr.Song.Events), tr.Song.Tempo,
+				tr.Song.Duration(), len(tr.Bank.Instruments))
+		}
+	}
+}
+
+// TestSongsUseOPL2Channels 釘住頻道編號落在 OPL2 放得下的範圍。
+//
+// OPL2 有兩種模式：旋律模式九個聲部（0..8），節奏模式六個旋律聲部
+// （0..5）加五個打擊樂器。資料裡的用法與後者吻合——用到 6 以上的曲子
+// 一定跳過 6，而且音色庫的後五個一定是 `bdrum1 snare1 tom1 cymbal1 hihat1`
+// 這一組（`docs/formats/06`）。所以頻道上限是 10，不是 8。
+func TestSongsUseOPL2Channels(t *testing.T) {
+	d := data1(t)
+	tracks, err := ParseAll(d[SongIndex], d[SongData])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, tr := range tracks {
+		used := map[int]bool{}
+		for _, e := range tr.Song.Events {
+			if ch := e.Channel(); ch >= 0 {
+				used[ch] = true
+			}
+		}
+		for ch := range used {
+			if ch > 10 {
+				t.Errorf("第 %d 首用到頻道 %d，OPL2 最多到 10（0..5 旋律 ＋ 6..10 打擊）", i, ch)
+			}
+		}
+		// 用到 6 以上就一定是節奏模式，那時 6 本身不會出現。
+		if used[7] || used[8] || used[9] || used[10] {
+			if used[6] && (used[9] || used[10]) {
+				t.Errorf("第 %d 首同時用到頻道 6 與 9/10——兩種模式混在一起", i)
+			}
+		}
+		if len(used) == 0 {
+			t.Errorf("第 %d 首一個頻道都沒用到", i)
+		}
+	}
+}
+
+// TestProgramChangesFitTheBank 釘住每個換音色事件指得到音色庫裡的一個。
+//
+// **這一條把兩個項目綁在一起**：曲子的 program number 與相鄰那個音色庫的
+// 音色數要對得起來，才證明「偶數是曲子、奇數是它的音色庫」這個配對成立。
+func TestProgramChangesFitTheBank(t *testing.T) {
+	d := data1(t)
+	for _, c := range [][2]string{{SongIndex, SongData}} {
+		tracks, err := ParseAll(d[c[0]], d[c[1]])
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, tr := range tracks {
+			n := len(tr.Bank.Instruments)
+			for _, e := range tr.Song.Events {
+				if e.Kind() != ProgramChange {
+					continue
+				}
+				if p := int(e.Data[0]); p >= n {
+					t.Errorf("%s 第 %d 首換到音色 %d，音色庫只有 %d 個",
+						c[1], i, p, n)
+				}
+			}
+		}
+	}
+}
+
+// TestInstrumentNamesAreAdlib 釘住音色名稱是 AdLib 的標準音色名。
+//
+// 名稱欄位讀錯的話會是一堆亂碼；讀對的話是 `piano1`、`oboe1`、
+// `bdrum1` 這種一眼認得出來的東西。
+func TestInstrumentNamesAreAdlib(t *testing.T) {
+	d := data1(t)
+	tracks, err := ParseAll(d[SongIndex], d[SongData])
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, tr := range tracks {
+		for _, in := range tr.Bank.Instruments {
+			if in.Name == "" {
+				t.Error("有音色沒有名字")
+				continue
+			}
+			for _, r := range in.Name {
+				if r < 0x20 || r > 0x7E {
+					t.Errorf("音色名 %q 有不可列印的字元", in.Name)
+					break
+				}
+			}
+			seen[in.Name] = true
+		}
+	}
+	// AdLib 的標準音色庫裡本來就有這幾個。
+	for _, want := range []string{"piano1", "oboe1", "bdrum1", "snare1"} {
+		if !seen[want] {
+			t.Errorf("五首曲子裡沒有用到 %q——名稱欄位可能讀錯了", want)
+		}
+	}
+}
+
+// TestBadDataIsRejected 釘住讀錯的東西要報錯，不要硬解。
+func TestBadDataIsRejected(t *testing.T) {
+	if _, err := ParseSong(make([]byte, 8)); err == nil {
+		t.Error("八個位元組也解得出曲子")
+	}
+	junk := make([]byte, 200)
+	if _, err := ParseSong(junk); err == nil {
+		t.Error("全零的資料解得出曲子——固定值沒有擋住")
+	}
+	if _, err := ParseBank(junk); err == nil {
+		t.Error("全零的資料解得出音色庫")
+	}
+	if _, err := split([]byte{1, 2, 3}, nil); err == nil {
+		t.Error("長度不是 4 的倍數的索引也收")
+	}
+}
+
+// TestLongSongIsStillOpen 記錄 `MUSV` 還沒解乾淨。
+//
+// 五首主要配樂（`MUS`）的事件數與表頭**完全吻合**；`MUSV` 那一首長曲
+// 走出來比表頭少六個。少的是什麼還不知道（`docs/formats/06` §5）。
+//
+// **這一條會在解出來的那一天變紅**，那正是它的用途：解決了就來改它，
+// 而不是讓一個過期的「已知問題」留在文件裡沒人發現。
+func TestLongSongIsStillOpen(t *testing.T) {
+	d := data1(t)
+	_, err := ParseAll(d[LongIndex], d[LongData])
+	if err == nil {
+		t.Fatal("MUSV 解得開了——請更新 docs/formats/06 §5 並刪掉這個測試")
+	}
+	if !strings.Contains(err.Error(), "6932") {
+		t.Errorf("MUSV 的錯誤變成 %v，與記錄的「少六個事件」不同", err)
+	}
+}
+
+// TestMIDIExportRoundTrips 釘住匯出的 MIDI 檔還原得回同一批音符。
+//
+// 匯出是**解析對不對的驗收方式**：解錯的資料播出來不會是音樂。
+// 這裡不播，改成把檔案再讀一遍，比對音符事件。
+func TestMIDIExportRoundTrips(t *testing.T) {
+	d := data1(t)
+	tracks, err := ParseAll(d[SongIndex], d[SongData])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, tr := range tracks {
+		blob := tr.Song.MIDI()
+		if string(blob[:4]) != "MThd" {
+			t.Fatalf("第 %d 首不是以 MThd 開頭", i)
+		}
+		// MThd 是 4（標記）＋ 4（長度）＋ 6（內容）＝ 14 個位元組。
+		if string(blob[14:18]) != "MTrk" {
+			t.Fatalf("第 %d 首在位移 14 不是 MTrk，而是 %q", i, blob[14:18])
+		}
+		if div := int(blob[12])<<8 | int(blob[13]); div != TicksPerBeat {
+			t.Errorf("第 %d 首的 division 是 %d，應該是 %d", i, div, TicksPerBeat)
+		}
+		// MThd 之後：14 bytes 表頭 ＋ MTrk 的 4 bytes 標記 ＋ 4 bytes 長度
+		n := int(blob[18])<<24 | int(blob[19])<<16 | int(blob[20])<<8 | int(blob[21])
+		if 22+n != len(blob) {
+			t.Fatalf("第 %d 首的 MTrk 說有 %d 個位元組，檔案有 %d", i, n, len(blob)-22)
+		}
+		body := blob[22:]
+		// 最後三個位元組是 end of track。
+		if string(body[len(body)-3:]) != "\xff\x2f\x00" {
+			t.Errorf("第 %d 首沒有 end of track", i)
+		}
+		// 音符數要一樣。
+		want := 0
+		for _, e := range tr.Song.Events {
+			if e.Kind() == NoteOn || e.Kind() == NoteOff {
+				want++
+			}
+		}
+		got := countNotes(t, body)
+		if got != want {
+			t.Errorf("第 %d 首匯出後有 %d 個音符事件，原本 %d 個", i, got, want)
+		}
+		if want == 0 {
+			t.Errorf("第 %d 首一個音符都沒有", i)
+		}
+	}
+}
+
+// countNotes 走一遍 MIDI track，數音符事件。
+func countNotes(t *testing.T, b []byte) int {
+	t.Helper()
+	n, i := 0, 0
+	var running byte
+	for i < len(b) {
+		_, sz, err := varLen(b[i:])
+		if err != nil {
+			t.Fatalf("時間差解不開：%v", err)
+		}
+		i += sz
+		if i >= len(b) {
+			break
+		}
+		st := b[i]
+		if st&0x80 != 0 {
+			i++
+			if st < 0xF0 {
+				running = st
+			}
+		} else {
+			st = running
+		}
+		switch {
+		case st == 0xFF: // meta
+			i++ // type
+			ln, sz, _ := varLen(b[i:])
+			i += sz + ln
+		case st == 0xF0:
+			ln, sz, _ := varLen(b[i:])
+			i += sz + ln
+		default:
+			size, err := eventSize(st)
+			if err != nil {
+				t.Fatalf("位移 %d 的狀態 %#02x：%v", i, st, err)
+			}
+			if st&0xF0 == NoteOn || st&0xF0 == NoteOff {
+				n++
+			}
+			i += size
+		}
+	}
+	return n
+}
+
+// TestVarBytes 釘住可變長度數值寫得回去也讀得回來。
+func TestVarBytes(t *testing.T) {
+	for _, v := range []int{0, 1, 127, 128, 255, 8192, 16383, 100000} {
+		b := varBytes(v)
+		got, n, err := varLen(b)
+		if err != nil {
+			t.Fatalf("%d 寫成 % X 之後讀不回來：%v", v, b, err)
+		}
+		if got != v || n != len(b) {
+			t.Errorf("%d 寫成 % X，讀回來是 %d（吃了 %d 個位元組）", v, b, got, n)
+		}
+	}
+}

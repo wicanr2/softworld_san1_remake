@@ -165,17 +165,22 @@ func (a *app) begin(cat, item byte) {
 		a.askSlot("存到第幾個進度", true, func(slot int) {
 			_ = a.s.Save(a.saveDir, slot, "")
 		})
+	case cat == '9' && item == '3':
+		a.view.Prompt = g.Options.ToggleMusic()
+		closeMenu()
+	case cat == '9' && item == '4':
+		a.view.Prompt = g.Options.ToggleSound()
+		closeMenu()
+	case cat == '9' && item == '8':
+		a.view.Prompt = g.Options.ToggleVoice()
+		closeMenu()
 	case cat == '9' && item == '7':
-		// 原版的提示是 `使用%s年號`（`docs/re/04` §3）。
-		if a.view.Calendar == game.Western {
-			a.view.Calendar = game.ChineseEra
-		} else {
-			a.view.Calendar = game.Western
-		}
-		a.view.Prompt = fmt.Sprintf("使用%s年號", a.view.Calendar.Name())
+		a.view.Prompt = g.Options.ToggleCalendar()
+		a.view.Calendar = g.Options.Calendar
 		closeMenu()
 	case cat == '9' && item == '6':
-		// 原版的 `查看電腦戰役%s` 是開關；這裡順便把最近幾場列出來。
+		// 原版的 `查看電腦戰役%s` 是開關；順便把最近幾場列出來。
+		a.view.Prompt = g.Options.ToggleAIWar()
 		a.view.PageTitle, a.view.Page = ui.BattleList(g, s.Battles())
 		closeMenu()
 	case cat == '9' && item == '1':
@@ -610,8 +615,9 @@ func main() {
 		aiMode:  ai.Mode(*aiMode),
 	}
 	if *calendar == "西曆" {
-		a.view.Calendar = game.Western
+		g.Options.Calendar = game.Western
 	}
+	a.view.Calendar = g.Options.Calendar
 	if own := s.PlayerTerritory(); len(own) > 0 {
 		sort.Ints(own)
 		a.view.Sel = own[0]

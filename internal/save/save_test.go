@@ -469,3 +469,36 @@ func loadSlot(t *testing.T, slot state.Slot) *state.Scenario {
 	}
 	return sc
 }
+
+// TestOptionsSurviveRoundTrip 釘住「其他」底下的開關存得回來。
+//
+// 玩家關掉音樂之後每次讀檔又響起來，與沒存過設定是同一件事。
+func TestOptionsSurviveRoundTrip(t *testing.T) {
+	g := newGame(t)
+	g.Options.ToggleMusic()
+	g.Options.ToggleVoice()
+	g.Options.ToggleCalendar()
+	if err := g.Options.SetDelay(0); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if err := save.Write(root, 1, g, ""); err != nil {
+		t.Fatal(err)
+	}
+	h, err := save.Read(root, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !h.Options.MusicOff || !h.Options.VoiceOff {
+		t.Error("音樂與語音的開關沒有存回來")
+	}
+	if h.Options.SoundOff {
+		t.Error("沒動過的音效開關被改掉了")
+	}
+	if h.Options.Calendar != game.Western {
+		t.Error("年號的設定沒有存回來")
+	}
+	if h.Options.Delay() != 0 {
+		t.Errorf("延時讀回來是 %d，存的是 0（等待按鍵）", h.Options.Delay())
+	}
+}

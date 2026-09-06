@@ -50,6 +50,19 @@ type meta struct {
 	Prefectures []prefMeta          `json:"prefectures"`
 	Rewarded    []int               `json:"rewarded"`
 	Factions    map[string]factMeta `json:"factions"`
+	Options     optMeta             `json:"options"`
+}
+
+// optMeta 是「其他」底下的開關。
+//
+// **要存**：玩家關掉音樂之後每次讀檔又響起來，那與沒存過設定是同一件事。
+type optMeta struct {
+	MusicOff  bool `json:"music_off"`
+	SoundOff  bool `json:"sound_off"`
+	VoiceOff  bool `json:"voice_off"`
+	SkipAIWar bool `json:"skip_ai_war"`
+	Calendar  int  `json:"calendar"`
+	Delay     int  `json:"delay"`
 }
 
 type prefMeta struct {
@@ -125,6 +138,11 @@ func Write(root string, slot int, g *game.State, name string) error {
 	}
 	m.Rewarded = append([]int(nil), e.Rewarded...)
 	sort.Ints(m.Rewarded)
+	m.Options = optMeta{
+		MusicOff: e.Options.MusicOff, SoundOff: e.Options.SoundOff,
+		VoiceOff: e.Options.VoiceOff, SkipAIWar: e.Options.SkipAIWar,
+		Calendar: int(e.Options.Calendar), Delay: e.Options.Delay(),
+	}
 	for id, f := range e.Factions {
 		m.Factions[fmt.Sprint(id)] = factMeta{f.Alive, f.Chief,
 			append([]int(nil), f.Treasury[:]...)}
@@ -210,6 +228,14 @@ func Read(root string, slot int) (*game.State, error) {
 			Forts: p.Forts, Autonomy: game.Autonomy(p.Autonomy), Commanded: p.Commanded,
 			Population: p.Population,
 		})
+	}
+	e.Options = game.Options{
+		MusicOff: m.Options.MusicOff, SoundOff: m.Options.SoundOff,
+		VoiceOff: m.Options.VoiceOff, SkipAIWar: m.Options.SkipAIWar,
+		Calendar: game.Calendar(m.Options.Calendar),
+	}
+	if err := e.Options.SetDelay(m.Options.Delay); err != nil {
+		return nil, fmt.Errorf("save: 存檔 %d 的延時：%w", slot, err)
 	}
 	for k, f := range m.Factions {
 		var id int

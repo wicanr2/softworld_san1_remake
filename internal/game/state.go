@@ -228,6 +228,9 @@ type State struct {
 	// Difficulty 是難度 1–10（原版開局時問「請設定難度(1-10)」）。
 	Difficulty int
 
+	// Options 是「其他」底下的開關（`options.go`）。
+	Options Options
+
 	// Reports 是還沒被讀走的戰報，舊的在前面。
 	//
 	// 戰役由命令層觸發（`AttackOrder.Apply` 只回錯誤），而電腦諸侯的

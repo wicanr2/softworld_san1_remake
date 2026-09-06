@@ -29,6 +29,9 @@ type Extra struct {
 
 	// Factions 依勢力槽號索引。
 	Factions map[state.FactionID]FactionExtra
+
+	// Options 是「其他」底下的開關。存了才不會每次讀檔都要重設一遍。
+	Options Options
 }
 
 // PrefectureExtra 是一個郡在三張表以外的狀態。
@@ -60,6 +63,7 @@ func (g *State) CaptureExtra() Extra {
 	e := Extra{
 		Year: g.Date.Year, Month: g.Date.Month,
 		Player: g.Player, Difficulty: g.Difficulty,
+		Options:  g.Options,
 		Factions: map[state.FactionID]FactionExtra{},
 	}
 	for i := range g.prefectures {
@@ -99,6 +103,7 @@ func Restore(sc *state.Scenario, e Extra) (*State, error) {
 	}
 	g.Date = Date{Year: e.Year, Month: e.Month}
 	g.Player = e.Player
+	g.Options = e.Options
 
 	if n := len(e.Prefectures); n != len(g.prefectures) {
 		return nil, fmt.Errorf("game: 存檔有 %d 個郡的補充資料，這一局有 %d 個",
