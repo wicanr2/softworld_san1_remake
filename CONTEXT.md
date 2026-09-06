@@ -33,6 +33,8 @@
 | **素材匯出** | `tools/assets.sh`：圖→PNG、劇本→JSON、配樂→OGG（Go 合成 WAV，容器裡的 ffmpeg 編碼），附來源雜湊的 manifest | 2026-09-06 |
 | **原版跑到遊戲主畫面** | 開機 → 選劇本 → 選君主 → 設難度 → 十個命令的主畫面。配方在 `docs/re/02` | 2026-09-06 |
 
+完成度的數字在 `VERIFICATION-MATRIX.md`（唯一來源）；文件放什麼在 `docs/INDEX.md`。
+
 里程碑定義在 `CLAUDE.md` §10。目前在 **M2–M3 之間**：M0 完成、M2（容器格式）實質完成且**得到原版行為背書**（F31）、
 M3（文字與字型）畫面已通。**M1（dosgolem 跑得動）達成**：原版走完
 `AA.EXE` → `DATA0.GRP` → `DATA5.GRP` 的 chain-load，載入 `DATA1`／`DATA2`／`DATA3`
