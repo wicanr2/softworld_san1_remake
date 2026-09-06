@@ -7,17 +7,26 @@
 
 ## 現在做到哪裡
 
-引擎已經能把原版的劇本資料讀出來並畫到畫面上（州郡一覽，42 個郡名、零缺字）。
-遊戲玩法還沒實作。
+引擎能載入原版劇本、畫出主畫面、接受指令、讓電腦諸侯行動、逐月推進。
+內政（開墾／防洪）與兵士（徵兵／武器）已可下令；軍事、外交、謀略、
+事件與戰役尚未實作。
 
 對拍那一側，原版現在能在 dosgolem 裡從頭跑到主選單——`AA.EXE` →
 `DATA0.GRP` → `DATA5.GRP` 三層 chain-load、`DATA1`／`DATA2`／`DATA3`
 三組容器載入、EGA 640×350 畫面輸出，全程無頭、決定性。
 
 ```sh
-tools/go.sh run ./cmd/san1     -root /path/to/三國演義   # Ebiten 視窗
-tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 -png out.png   # 無頭輸出
+# Ebiten 視窗：← → 選郡、0–9 指令、Enter 結束這個月、Esc 返回
+tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -faction 0 -ai enhanced
+
+# 無頭：讓電腦跑 14 個月再把畫面存成 PNG
+tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
+    -screen main -faction 0 -months 14 -png out.png
 ```
+
+電腦 AI 有三個版本：`base`（三國演義原版還原）、`plus`（加強版還原）、
+`enhanced`（remake 強化）。前兩個還沒從原版還原出來，選了會明白告訴你
+電腦諸侯不會行動——**不會拿一個「差不多的」策略頂著**（`docs/design/01`）。
 
 完成度的數字以 `VERIFICATION-MATRIX.md` 為準（尚未建立）；
 目前的實際狀態在 [`CONTEXT.md`](CONTEXT.md)。
@@ -28,9 +37,9 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 -png out.png   # 無�
 | M1 dosgolem 跑得動 | 完成：原版開機到主選單 |
 | M2 容器格式 | 實質完成（`docs/formats/01`–`03`）|
 | M3 文字與字型 | 進行中：CJK 畫布與字型涵蓋率已通 |
-| M4 靜態資料 | 未開始 |
-| M5 規則層 | 未開始 |
-| M6 引擎可玩 | 未開始 |
+| M4 靜態資料 | 完成：劇本三表、地圖圖形、資產目錄 |
+| M5 規則層 | 進行中：欄位版面已解，內政與兵士可下令，AI 三版本骨架就位 |
+| M6 引擎可玩 | 進行中：主畫面 ＋ 回合迴圈可跑 |
 | M7 多語系 | 未開始 |
 | M8 發行 | 未開始 |
 
@@ -64,6 +73,7 @@ DOSBox-X 作為交叉驗證。
 | `docs/re/` | 反組譯筆記 |
 | `docs/formats/` | 檔案格式 |
 | `docs/spec/` | 規格（只有 `READY` 能授權實作）|
-| `docs/mechanics/` | 遊戲機制 |
+| `docs/mechanics/` | 遊戲機制（含中平六年開局的完整局面）|
 | `docs/playtest/` | 對拍紀錄 |
+| `docs/design/` | remake 自己的設計決策 |
 | `docs/reference/` | 說明書整理、社群資料 |

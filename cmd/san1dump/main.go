@@ -19,7 +19,9 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
+	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/session"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
@@ -33,6 +35,8 @@ func main() {
 	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）")
 	faction := flag.Int("faction", -1, "main 畫面的玩家勢力；−1 ＝ 用第一個在用的勢力")
 	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
+	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫")
+	aiMode := flag.String("ai", "enhanced", "電腦 AI：base／plus／enhanced")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型（-png 時才需要）")
 	flag.Parse()
 
@@ -52,7 +56,7 @@ func main() {
 	fmt.Printf("劇本 %s（來源 %s）\n\n", *slot, *root)
 
 	if *png != "" {
-		if err := writePNG(*png, *fontPath, sc, *slot, *screen, *faction, *sel); err != nil {
+		if err := writePNG(*png, *fontPath, sc, *slot, *screen, *aiMode, *faction, *sel, *months); err != nil {
 			die(err)
 		}
 		fmt.Printf("畫面存到 %s\n\n", *png)
@@ -107,7 +111,7 @@ func main() {
 //
 // **和 cmd/san1 畫的是同一張**（都走 ui.DrawPrefectureList）。
 // 畫面 bug 測試看不到，但存成圖就看得到，而且無頭環境也產得出來。
-func writePNG(out, fontPath string, sc *state.Scenario, slot, screen string, faction, sel int) error {
+func writePNG(out, fontPath string, sc *state.Scenario, slot, screen, aiMode string, faction, sel, months int) error {
 	fh, err := os.Open(fontPath)
 	if err != nil {
 		return err
@@ -132,12 +136,20 @@ func writePNG(out, fontPath string, sc *state.Scenario, slot, screen string, fac
 		if err != nil {
 			return err
 		}
+		brain, err := ai.New(ai.Mode(aiMode))
+		if err != nil {
+			return err
+		}
+		s := session.New(g, brain, state.FactionID(f))
+		for i := 0; i < months; i++ {
+			s.EndMonth()
+		}
 		if sel == 0 {
 			if t := g.Territory(state.FactionID(f)); len(t) > 0 {
 				sel = t[0]
 			}
 		}
-		ui.DrawMainScreen(c, g, sel)
+		ui.DrawSession(c, g, s.Log, ui.View{Sel: sel})
 	case "list":
 		ui.DrawPrefectureList(c, sc, slot)
 	default:

@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
@@ -34,18 +35,61 @@ const (
 	panelW   = Cols - panelCol
 )
 
+// View 是畫面要顯示的東西。**畫面不決定任何規則**——它只讀 Session。
+type View struct {
+	Sel int // 訊息欄要顯示哪一個郡
+
+	// Menu 是目前展開的子選單；空字串表示在主選單。
+	Menu string
+
+	// Items 是子選單的項目（`Menu` 非空時才有意義）。
+	Items []Command
+
+	// Prompt 是提示列要顯示的一行字。
+	Prompt string
+}
+
 // DrawMainScreen 畫遊戲主畫面。
-//
-// sel 是訊息欄要顯示哪一個郡；0 或越界時只畫地圖與指令。
 func DrawMainScreen(c *Canvas, g *game.State, sel int) {
+	DrawSession(c, g, nil, View{Sel: sel})
+}
+
+// DrawSession 畫一局進行中的遊戲。log 可以是 nil。
+func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 	c.Fill(ColBG)
 	drawTimeColumn(c, g)
-	drawMap(c, g, sel)
-	drawInfoPanel(c, g, sel)
-	drawCommandPanel(c)
-
+	drawMap(c, g, v.Sel)
+	drawInfoPanel(c, g, v.Sel)
+	if v.Menu == "" {
+		drawCommandPanel(c, "指令", Commands())
+	} else {
+		drawCommandPanel(c, v.Menu, v.Items)
+	}
+	drawLog(c, log)
+	if v.Prompt != "" {
+		c.DrawText(mapCol+2, Rows-2, cells.Truncate(v.Prompt, panelCol-mapCol-4), ColSel)
+	}
 	if n := len(c.Missing); n > 0 {
-		c.DrawText(mapCol+1, Rows-1, fmt.Sprintf("⚠ %d 個字沒有字模", n), ColWarn)
+		c.DrawText(mapCol+2, Rows-1, fmt.Sprintf("⚠ %d 個字沒有字模", n), ColWarn)
+	}
+}
+
+// drawLog 畫地圖區下緣的訊息。**失敗的命令也要看得見**——
+// 靜靜地沒反應會讓玩家以為是按鍵沒進去。
+func drawLog(c *Canvas, log []string) {
+	const rows = 5
+	top := Rows - rows - 3
+	if len(log) > rows {
+		log = log[len(log)-rows:]
+	}
+	for i, line := range log {
+		// 失敗與警告用警示色。**不要只看第一個 byte**：`─`（U+2500）
+		// 與 `✗`（U+2717）的 UTF-8 首位元組都是 0xE2，分月線會整排變紅。
+		fg := ColDim
+		if strings.HasPrefix(line, "✗") || strings.HasPrefix(line, "⚠") {
+			fg = ColWarn
+		}
+		c.DrawText(mapCol+2, top+i, cells.Truncate(line, panelCol-mapCol-4), fg)
 	}
 }
 
@@ -149,15 +193,39 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 }
 
 // drawCommandPanel 畫右下的指令欄。原版是兩欄五列。
-func drawCommandPanel(c *Canvas) {
+func drawCommandPanel(c *Canvas, title string, cmds []Command) {
 	c.DrawBox(panelCol, 13, panelW, Rows-13, ColFrame)
-	cmds := Commands()
+	c.DrawText(panelCol+2, 13, title, ColSel)
+	per := 5
+	if len(cmds) <= 5 {
+		per = len(cmds)
+	}
 	for i, cmd := range cmds {
-		col := panelCol + 2 + (i/5)*13
-		row := 15 + i%5
+		col := panelCol + 2 + (i/per)*13
+		row := 15 + i%per
+		if row >= Rows-1 {
+			break
+		}
 		c.DrawText(col, row, fmt.Sprintf("%c.", cmd.Key), ColDim)
 		c.DrawText(col+3, row, cmd.Name, ColFG)
 	}
+	if len(cmds) < len(Commands()) {
+		c.DrawText(panelCol+2, Rows-2, "ESC 返回", ColDim)
+	}
+}
+
+// SubMenu 回傳某一類指令底下的項目。
+//
+// **只列已經實作的。** 列出來卻按不動的項目比沒列更糟——
+// 玩家會以為是自己按錯。沒實作的類別回 nil，呼叫端顯示理由。
+func SubMenu(key byte) (string, []Command) {
+	switch key {
+	case '3':
+		return "兵士", []Command{{'1', "徵兵"}, {'2', "武器"}}
+	case '4':
+		return "內政", []Command{{'1', "開墾"}, {'2', "防洪"}}
+	}
+	return "", nil
 }
 
 // ColSel 是選取中的顏色。
