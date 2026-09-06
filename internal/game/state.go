@@ -24,13 +24,20 @@ func (d Date) Next() Date {
 }
 
 // Season 回傳季節。原版的特殊事件按季節發生（說明書 p.36–37）。
+//
+// **分界照農曆不照西曆**：正月就是春天。原版主畫面左側直排寫年月與季節，
+// 三張畫面對出來的是元月春、四月夏、八月秋（`L1`、`[base]`，
+// `docs/mechanics/50-events.md` §1）。
+//
+// 西曆式的「三月才入春」會讓每一個季節事件晚兩個月發生——秋收、洪水、
+// 冬季人口成長全部錯位，而畫面上看起來只是「今年收成比較晚」。
 func (d Date) Season() Season {
 	switch {
-	case d.Month >= 3 && d.Month <= 5:
+	case d.Month <= 3:
 		return Spring
-	case d.Month >= 6 && d.Month <= 8:
+	case d.Month <= 6:
 		return Summer
-	case d.Month >= 9 && d.Month <= 11:
+	case d.Month <= 9:
 		return Autumn
 	default:
 		return Winter

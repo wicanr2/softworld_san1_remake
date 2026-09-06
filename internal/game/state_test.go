@@ -133,8 +133,8 @@ func TestDateAdvance(t *testing.T) {
 	for _, c := range []struct {
 		m int
 		s Season
-	}{{1, Winter}, {2, Winter}, {3, Spring}, {5, Spring}, {6, Summer},
-		{8, Summer}, {9, Autumn}, {11, Autumn}, {12, Winter}} {
+	}{{1, Spring}, {2, Spring}, {3, Spring}, {4, Summer}, {6, Summer},
+		{7, Autumn}, {9, Autumn}, {10, Winter}, {12, Winter}} {
 		if got := (Date{Year: 189, Month: c.m}).Season(); got != c.s {
 			t.Errorf("%d 月的季節是 %v，應該是 %v", c.m, got, c.s)
 		}

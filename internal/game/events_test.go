@@ -7,8 +7,14 @@ import (
 )
 
 // TestSeasons 釘住月份與季節的對應。
+//
+// **對照的是原版畫面**：主畫面左側直排寫年月與季節，三張畫面對出
+// 元月春、四月夏、八月秋（`L1`、`[base]`）。分界照農曆，正月就是春天。
 func TestSeasons(t *testing.T) {
-	for m, want := range map[int]Season{1: Winter, 3: Spring, 6: Summer, 9: Autumn, 12: Winter} {
+	for m, want := range map[int]Season{
+		1: Spring, 3: Spring, 4: Summer, 6: Summer,
+		7: Autumn, 8: Autumn, 9: Autumn, 10: Winter, 12: Winter,
+	} {
 		if got := (Date{Year: 200, Month: m}).Season(); got != want {
 			t.Errorf("%d 月是 %v，應該是 %v", m, got, want)
 		}

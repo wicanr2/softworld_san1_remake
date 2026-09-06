@@ -75,8 +75,13 @@
 | `TunePlagueLoss` / `TunePlagueStamina` | 12／5 | 「人口和兵力銳減，將領的體能也不正常地下降」|
 | `TuneHarvestRicePerLand` / `TuneHarvestGoldPerLand` / `TuneHarvestLandDrop` | 2／1／2 | 「稅金入庫、米糧進倉」|
 | `TuneLocustRiceLoss` / `TuneLocustLandLoss` | 30／5 | 「米糧減少，土地價值也會下降」|
-| `TuneWinterGrowth` | 95（千分比）| 「人口增加」|
+| `TuneWinterGrowth` | 95（千分比，**一年一次**）| 「人口增加」|
+| `harvestMonth` | 9 | 說明書只說秋收在秋天，沒說哪個月 |
+| `tributeMonth` | 12 | 說明書只說每年進貢一次 |
 | `TuneAgingStamina` | 1 | 「年齡增長，體能隨之逐漸減退」|
+
+`agingMonth`（元月）與 `growthMonth`（十月）**不在這張表裡**——
+那兩個是從原版量出來的，不是 remake 挑的（`docs/mechanics/50-events` §1）。
 | `TuneTributePerPrefecture` | 3 | 「領地越多，貢品越多」|
 
 ### 戰役

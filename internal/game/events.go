@@ -31,7 +31,8 @@ const (
 	// TuneLocustRiceLoss／TuneLocustLandLoss 是蝗害。
 	TuneLocustRiceLoss = 30
 	TuneLocustLandLoss = 5
-	// TuneWinterGrowth 是冬季人口成長的千分比，隨土地價值與民眾忠誠加成。
+	// TuneWinterGrowth 是**年度**人口成長的千分比，隨土地價值與民眾忠誠
+	// 加成。一年只加一次（十月，`growthMonth`）。
 	//
 	// 與 TuneDisasterBase 是**一對**：災害吃人口、冬季補回來，兩者的
 	// 比例決定世界會不會慢慢死掉。判準在 `session.TestEconomyStaysSane`
@@ -87,10 +88,12 @@ func (g *State) disasterChance(p *Prefecture) int {
 
 // spring 是春天：年齡增長、體能衰退、老死、地震。
 //
-// 年齡只在**每年的第一個春月**增長一次，不是每個春月都加。
+// 年齡一年只加一次，在**元月**——原版連走十六個月的觀測裡，
+// 人物表全部 350 筆的年齡欄只在第 4 與第 16 輪變動，而那兩輪的畫面
+// 分別是建安三年元月與建安四年元月（`L1`、`[base]`）。
 func (g *State) spring() []Event {
 	var out []Event
-	if g.Date.Month == 3 {
+	if g.Date.Month == agingMonth {
 		for i := range g.generals {
 			x := &g.generals[i]
 			if x.Name == "" {
@@ -198,10 +201,27 @@ func (g *State) summer() []Event {
 	return out
 }
 
-// autumn 是秋天：收成與蝗害。收成一年一次，在第一個秋月。
+// 年度事件落在哪一個月。
+//
+// **agingMonth 與 growthMonth 是量出來的。** 原版連走十六個月的觀測裡，
+// 全部 350 筆的年齡只在元月動；二三十個郡的人口只在十月一起動，
+// 兩者都十二個月後再來一次，其他月份沒有（`docs/mechanics/70-ai` §2.2）。
+//
+// harvestMonth 與 tributeMonth 是 **remake 挑的**：說明書只說秋收在秋天、
+// 進貢每年一次，沒說是哪個月，原版那一邊也還沒量到——米糧每個月都被
+// 電腦諸侯買賣，年度收成的尖峰埋在裡面看不出來
+//（`docs/design/02-remake-owned-values.md`）。
+const (
+	agingMonth   = 1
+	harvestMonth = 9
+	tributeMonth = 12
+	growthMonth  = 10
+)
+
+// autumn 是秋天：收成與蝗害。收成一年一次。
 func (g *State) autumn() []Event {
 	var out []Event
-	if g.Date.Month != 9 {
+	if g.Date.Month != harvestMonth {
 		return nil
 	}
 	for i := range g.prefectures {
@@ -228,18 +248,24 @@ func (g *State) autumn() []Event {
 	return out
 }
 
-// winter 是冬季：人口增加與進貢物品。進貢一年一次，在第一個冬月。
+// winter 是冬季：人口增加與進貢物品，兩者都一年一次。
+//
+// **人口成長不是每個冬月都來。** 原版十六個月的觀測裡，二三十個郡的
+// 人口只在十月一起變動，其他月份頂多動到幾個郡——那幾個是徵兵與賑民
+// 之類的個別動作，不是全境的成長。
 func (g *State) winter() []Event {
 	var out []Event
-	for i := range g.prefectures {
-		p := &g.prefectures[i]
-		if !p.Owned() {
-			continue
+	if g.Date.Month == growthMonth {
+		for i := range g.prefectures {
+			p := &g.prefectures[i]
+			if !p.Owned() {
+				continue
+			}
+			rate := TuneWinterGrowth * (int(p.LandValue) + int(p.PublicLoyalty)) / 200
+			p.Population += p.Population * rate / 1000
 		}
-		rate := TuneWinterGrowth * (int(p.LandValue) + int(p.PublicLoyalty)) / 200
-		p.Population += p.Population * rate / 1000
 	}
-	if g.Date.Month != 12 {
+	if g.Date.Month != tributeMonth {
 		return out
 	}
 	// 「各州郡每年進貢寶物給諸侯，領地越多，貢品越多」（說明書 p.37）。
