@@ -94,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 12, 18 }
+func (f *faithful) Coverage() (int, int) { return 13, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -205,6 +205,13 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 			out = append(out, o)
 			purse -= o.Gold
 		}
+		// 賞賜金帛（表 `0x5654`）：走守軍清單，君主自己不受賞，
+		// 每人上限 100 金，發到預算用完為止。
+		paid := rewardGold(g, p, id, aiBudget(purse, g.AILevel(id), tableReward))
+		out = append(out, paid...)
+		for _, o := range paid {
+			purse -= o.(game.RewardOrder).Gold
+		}
 	}
 	return out
 }
@@ -214,6 +221,7 @@ const (
 	tableArms      = 0x5594 // 購置武器
 	tableConscript = 0x5574 // 徵兵
 	tableRelief    = 0x55f4 // 開倉賑民
+	tableReward    = 0x5654 // 賞賜金帛
 )
 
 // aiBudgetPercent 是「本回合預算佔郡的金的百分之幾」（`L0`、`[base]`）。
@@ -229,6 +237,7 @@ var aiBudgetPercent = map[int][6]int{
 	tableArms:      {2, 2, 2, 2, 2, 2},
 	tableConscript: {30, 30, 40, 50, 50, 50},
 	tableRelief:    {20, 20, 10, 10, 20, 20},
+	tableReward:    {20, 20, 20, 15, 15, 15},
 }
 
 func aiBudget(gold, level, table int) int {
@@ -299,6 +308,30 @@ func relief(g *game.State, prefecture int, id state.FactionID, budget int) (game
 		return game.ReliefOrder{}, false
 	}
 	return game.ReliefOrder{At: prefecture, Gold: budget}, true
+}
+
+// rewardGold 是「賞賜金帛」（表 `0x5654`，常式 `0xd302`，`L0`、`[base]`）。
+//
+// 走守軍清單，**跳過身分 0（君主自己）**，每一位賞 `min(剩下的預算, 100)`
+// ——說明書 p.23 的賞金上限 100 就是常式裡的 `cmp ax, 100`。
+// 效果與反算回來的花費在 `game.Reward`。
+func rewardGold(g *game.State, prefecture int, id state.FactionID, budget int) []game.Order {
+	var out []game.Order
+	for _, x := range g.Garrison(prefecture) {
+		if budget <= 0 {
+			break
+		}
+		if x.Faction != id || x.Status == state.StatusLord || x.Rewarded {
+			continue
+		}
+		gold := budget
+		if gold > game.MaxReward {
+			gold = game.MaxReward
+		}
+		budget -= gold
+		out = append(out, game.RewardOrder{At: prefecture, Target: x.Index, Gold: gold})
+	}
+	return out
 }
 
 // garrisonIndices 是這一郡守軍的槽號，照清單順序。

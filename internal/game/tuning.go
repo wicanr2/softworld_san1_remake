@@ -39,9 +39,9 @@ const (
 	// 登用比的是說服力與難度，見 `RecruitPersuasion`。
 	TuneRecruitCharm = 1
 
-	// TuneRewardLoyalty：賞金換忠誠的比率——每多少金加一點忠誠。
-	// 說明書 p.23 只說賞金上限 100。
-	TuneRewardLoyalty = 10
+	// ⚠ TuneRewardLoyalty 已被原版的公式取代（`L0`、`0xd302`）：
+	// 增幅 ＝ (RND(加成/2) ＋ 太守魅力/3 ＋ 加成) × 金 ÷ 100，
+	// 見 `RewardEffect`。
 
 	// TuneHeadhuntBase：挖角成功率的基礎百分比，再依目標忠誠遞減。
 	TuneHeadhuntBase = 60

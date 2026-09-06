@@ -188,11 +188,24 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 	if p.Gold < gold {
 		return ErrNoGold
 	}
-	p.Gold -= gold
+	charm := 50
+	if gov := g.Governor(prefectureID); gov != nil {
+		charm = int(gov.Charm)
+	}
+	bonus := RewardBonus(g.aiLevelOf(by))
+	effect := RewardEffect(charm, bonus, g.Roll(max(bonus/2, 1), prefectureID, targetIndex, 0x5654))
 	t.Rewarded = true
 	if t.HasLoyalty() {
-		t.Loyalty = uint8(clampTo(int(t.Loyalty)+gold/TuneRewardLoyalty, 100))
+		was := int(t.Loyalty)
+		t.Loyalty = uint8(clampTo(was+RewardGain(effect, gold), 100))
+		// **只付真的換到的那一段**（原版 `0xd40e` 照增幅反算，`L0`）：
+		// 忠誠已經接近 100 時賞下去的錢跟著變少。
+		gold = RewardCost(effect, int(t.Loyalty)-was)
 	}
+	if gold > p.Gold {
+		gold = p.Gold
+	}
+	p.Gold -= g.price(by, gold)
 	return nil
 }
 

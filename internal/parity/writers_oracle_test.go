@@ -358,6 +358,9 @@ func TestZZDispatch(t *testing.T) {
 					{0xa5d0, false, "徵兵：訓練/武裝換算 A"},
 					{0xa5d4, false, "徵兵：訓練/武裝換算 B"},
 					{0xa5de, true, "調整兵力：份額的加項"},
+					{0xa5e6, true, "買米：存糧目標的夾值"},
+					{0xa604, true, "賞賜金帛：忠誠增幅的係數"},
+					{0xa60c, true, "賞賜金帛：反算花費的係數"},
 				} {
 					if c.wide {
 						b := o.Bytes(addr(ds*16+c.off), 8)

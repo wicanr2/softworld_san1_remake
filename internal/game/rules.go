@@ -329,3 +329,45 @@ func ReliefGain(priceLevel, population, gold, governorCharm, level int) int {
 	}
 	return gain
 }
+
+// 賞賜金帛的效果（`L0`、`[base]`，分派表 `0x5654`／常式 `0xd302`）。
+//
+//	金   ＝ min(本回合預算, 100)                    ; 說明書 p.23 的上限就在碼裡
+//	效果 ＝ RND(加成 ÷ 2) ＋ 太守魅力 ÷ 3 ＋ 加成
+//	增幅 ＝ 效果 × 金 ÷ 100                         ; 忠誠夾到 100
+//	花費 ＝ 實際增幅 × 100 ÷ 效果                   ; 只付真的換到的那一段
+//
+// **加成由電腦諸侯的等級決定**：0、0、0、10、30、40。
+// 兩個係數（`0.01` 與 `100`）從執行期記憶體讀出來。
+// 君主自己不受賞（呼叫端跳過身分 0）。
+//
+// 「花費按實際增幅反算」是這一版 AI 反覆出現的形狀：先用整份預算算出
+// 想要的效果，夾住之後再回頭付帳（開倉賑民也是，見 `ReliefGain`）。
+func RewardBonus(level int) int {
+	switch level {
+	case 3:
+		return 10
+	case 4:
+		return 30
+	case 5:
+		return 40
+	}
+	return 0
+}
+
+// RewardEffect 是一分錢換多少忠誠的係數（百分之一為單位）。
+// roll 是 `RND(加成 ÷ 2)`。
+func RewardEffect(governorCharm, bonus, roll int) int {
+	return roll + governorCharm/3 + bonus
+}
+
+// RewardGain 是賞 gold 金換到的忠誠（還沒夾上限）。
+func RewardGain(effect, gold int) int { return effect * gold / 100 }
+
+// RewardCost 是照實際增幅反算回來的花費。
+func RewardCost(effect, gain int) int {
+	if effect <= 0 {
+		return 0
+	}
+	return clampTo(gain*100/effect, MaxReward)
+}
