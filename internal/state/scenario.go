@@ -10,6 +10,7 @@
 package state
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strings"
 
@@ -41,14 +42,29 @@ const (
 	Scenario6 Slot = "006"
 )
 
+// NoFaction 是「沒有勢力」的哨兵值，原版用 0xFF。
+//
+// ⚠ **不要讓 0xFF 當成數值流進規則層。** 它是哨兵不是編號
+//（`CLAUDE.md` §7 第 11 條）；郡的 Owner 與人物的 Faction 都要在
+// 這一層問過 Owned／Employed 再用。
+const NoFaction = 0xFF
+
 // Prefecture 是一個郡。
 type Prefecture struct {
 	// ID 是郡編號，**1..42**。原版的筆 0 是啞元，所以編號與筆號相同，
 	// 也與手冊用 1–42 稱呼州郡一致。
 	ID   int
 	Name string // "遼東"
-	Raw  [prefSize]byte
+
+	// Owner 是所屬勢力的槽號（`BASEMAS` 的筆號），NoFaction ＝ 無主。
+	// 版面出處 `docs/spec/003` §2。
+	Owner uint8
+
+	Raw [prefSize]byte
 }
+
+// Owned 回報這個郡有沒有主。
+func (p Prefecture) Owned() bool { return p.Owner != NoFaction }
 
 // General 是人物表的一個槽。
 //
@@ -65,6 +81,15 @@ type General struct {
 	// Name 是姓名欄解出來的文字，原樣交出（填充槽會是標點）。
 	Name string
 
+	// Faction 是效力的勢力槽號，NoFaction ＝ 在野。
+	// Location 是所在郡的編號（1..42）。版面出處 `docs/spec/003` §2。
+	//
+	// 兩個一起驗過：346 位人物裡 108 位有勢力，**這 108 位的所在郡
+	// 全部歸屬於自己的勢力，零例外**。兩張表由不同欄位獨立編碼
+	// 同一件事而完全對得上，所以不是巧合。
+	Faction  uint8
+	Location uint8
+
 	// IsPerson 為真表示 Name 全部是漢字。這是目前唯一能把人物與填充槽
 	// 分開的判準，而且是從資料本身推的，不是從槽號硬編的。
 	IsPerson bool
@@ -72,10 +97,18 @@ type General struct {
 	Raw [generalSize]byte
 }
 
-// Master 是一位諸侯。姓名不在 offset 0，這一版不解任何欄位。
+// Master 是一位諸侯。
+//
+// ⚠ **諸侯記錄裡沒有姓名。** 名字要拿 LordIndex 去人物表查
+//（`docs/spec/003` §2）。16 個槽裡有兩個指向姓名是全形標點的填充筆，
+// 那是沒在用的槽——用 Active 過濾，不要硬編「前 14 個」。
 type Master struct {
 	Index int
-	Raw   [masterSize]byte
+
+	// LordIndex 是君主本人在人物表的槽號（`BASEMAS` offset 2）。
+	LordIndex int
+
+	Raw [masterSize]byte
 }
 
 // Scenario 是一個劇本或存檔槽的三張表。
@@ -110,6 +143,7 @@ func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
 	for i := range s.masters {
 		s.masters[i].Index = i
 		copy(s.masters[i].Raw[:], mas[i*masterSize:])
+		s.masters[i].LordIndex = int(binary.LittleEndian.Uint16(mas[i*masterSize+2:]))
 	}
 
 	// 郡：跳過筆 0 的啞元，ID 從 1 開始。
@@ -124,13 +158,14 @@ func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
 			return nil, fmt.Errorf("state: 郡 %d 的名稱解不出來：%w", p.ID, err)
 		}
 		p.Name = name
+		p.Owner = rec[30]
 		s.prefectures[i] = p
 	}
 
 	s.generals = make([]General, genCount)
 	for i := range s.generals {
 		rec := gen[i*generalSize:]
-		g := General{Index: i}
+		g := General{Index: i, Faction: rec[18], Location: rec[19]}
 		copy(g.Raw[:], rec)
 		// 姓名：offset 0，6 byte **空白補齊**（2–3 個漢字）。
 		// 兩字名前後各補一個空白，三字名剛好填滿。
@@ -163,6 +198,61 @@ func (s *Scenario) Prefecture(id int) (Prefecture, error) {
 // Prefectures 回傳 42 個郡，依編號排序。
 func (s *Scenario) Prefectures() []Prefecture { return s.prefectures }
 
+// Employed 回報這位人物有沒有效力對象。
+func (g General) Employed() bool { return g.Faction != NoFaction }
+
+// Masters 回傳 16 個諸侯槽，**含沒在用的**。
+func (s *Scenario) Masters() []Master { return s.masters }
+
+// Lord 回傳某個勢力的君主本人。
+func (s *Scenario) Lord(faction int) (General, error) {
+	if faction < 0 || faction >= len(s.masters) {
+		return General{}, fmt.Errorf("state: 勢力 %d 越界（有效範圍 0..%d）",
+			faction, len(s.masters)-1)
+	}
+	idx := s.masters[faction].LordIndex
+	if idx < 0 || idx >= len(s.generals) {
+		return General{}, fmt.Errorf("state: 勢力 %d 的君主索引 %d 越界", faction, idx)
+	}
+	return s.generals[idx], nil
+}
+
+// ActiveFactions 回傳實際在用的勢力槽號。
+//
+// **判準從資料推，不硬編 14。** 沒在用的槽指向姓名是全形標點的填充筆，
+// 所以「君主是不是人」就是判準——換劇本、換版本都成立。
+func (s *Scenario) ActiveFactions() []int {
+	var out []int
+	for i := range s.masters {
+		if g, err := s.Lord(i); err == nil && g.IsPerson {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// Territory 回傳某個勢力擁有的郡，依編號排序。
+func (s *Scenario) Territory(faction int) []Prefecture {
+	var out []Prefecture
+	for _, p := range s.prefectures {
+		if p.Owned() && int(p.Owner) == faction {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// Retinue 回傳效力於某個勢力的人物，依槽號排序。
+func (s *Scenario) Retinue(faction int) []General {
+	var out []General
+	for _, g := range s.generals {
+		if g.Employed() && int(g.Faction) == faction && g.IsPerson {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
 // Generals 回傳 350 個槽，**含填充槽**。索引就是原版的槽號。
 // 要人物請用 IsPerson 過濾，或用 People。
 func (s *Scenario) Generals() []General { return s.generals }
@@ -193,9 +283,6 @@ func allHan(s string) bool {
 	}
 	return true
 }
-
-// Masters 回傳 16 位諸侯。
-func (s *Scenario) Masters() []Master { return s.masters }
 
 // section 取一個容器項目並檢查長度。
 //

@@ -159,3 +159,116 @@ func TestMissingSlot(t *testing.T) {
 		t.Fatal("不存在的槽應該回錯誤")
 	}
 }
+
+// TestScenario1Factions 釘住 docs/spec/003 §2 那四個欄位。
+//
+// 十四行領地分佈是三件事同時成立才有的：`BASEMAS` off2 指到對的人、
+// `BASESTA` off30 指到對的勢力、而且兩者與原版畫面（「劉備 主公，請對(8)」，
+// 8 ＝ 齊郡）一致。**任何一個欄位偏移錯掉，這張表就會變成另一個
+// 自洽但錯的樣子**——所以整張比，不是抽一格比。
+func TestScenario1Factions(t *testing.T) {
+	c := loadData2(t, "三國演義")
+	sc, err := LoadScenario(c, Scenario1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := map[string][]string{
+		"劉備":  {"齊郡"},
+		"曹操":  {"陳留"},
+		"孫堅":  {"長沙"},
+		"袁紹":  {"渤海", "鄴郡"},
+		"袁術":  {"潁川", "南陽"},
+		"董卓":  {"上黨", "弘農", "洛陽", "京兆"},
+		"劉焉":  {"成都", "巴郡", "永昌"},
+		"馬騰":  {"武威"},
+		"劉表":  {"襄陽", "南郡", "宜都"},
+		"陶謙":  {"琅邪", "下邳"},
+		"公孫瓚": {"涿郡"},
+		"劉繇":  {"建業"},
+		"王朗":  {"吳郡"},
+		"孔融":  {"北海"},
+	}
+
+	active := sc.ActiveFactions()
+	if len(active) != len(want) {
+		t.Fatalf("實際在用的勢力有 %d 個，應該是 %d 個", len(active), len(want))
+	}
+	for _, f := range active {
+		lord, err := sc.Lord(f)
+		if err != nil {
+			t.Fatalf("勢力 %d 的君主取不到：%v", f, err)
+		}
+		exp, ok := want[lord.Name]
+		if !ok {
+			t.Errorf("勢力 %d 的君主是 %q，不在預期名單裡", f, lord.Name)
+			continue
+		}
+		var got []string
+		for _, p := range sc.Territory(f) {
+			got = append(got, p.Name)
+		}
+		if len(got) != len(exp) {
+			t.Errorf("%s 有 %v，應該是 %v", lord.Name, got, exp)
+			continue
+		}
+		for i := range got {
+			if got[i] != exp[i] {
+				t.Errorf("%s 有 %v，應該是 %v", lord.Name, got, exp)
+				break
+			}
+		}
+	}
+
+	// 無主的郡：42 − 24 ＝ 18。
+	free := 0
+	for _, p := range sc.Prefectures() {
+		if !p.Owned() {
+			free++
+		}
+	}
+	if free != 18 {
+		t.Errorf("無主的郡有 %d 個，應該是 18 個", free)
+	}
+}
+
+// TestRetinueLivesInOwnTerritory 釘住兩張表的一致性。
+//
+// 這一條**不看任何預期值**，只問「人物的所在郡歸不歸自己的勢力」。
+// off18／off19／off30 三個偏移只要有一個錯，一致率就會塌掉——
+// 而預期值型的測試看不出這件事，因為它只檢查自己列出來的那幾筆。
+func TestRetinueLivesInOwnTerritory(t *testing.T) {
+	for _, ver := range versions {
+		c := loadData2(t, ver)
+		for _, slot := range []Slot{Scenario1, Scenario2, Scenario3, Scenario4, Scenario5, Scenario6} {
+			sc, err := LoadScenario(c, slot)
+			if err != nil {
+				t.Fatalf("%s %s：%v", ver, slot, err)
+			}
+			owner := map[int]uint8{}
+			for _, p := range sc.Prefectures() {
+				owner[p.ID] = p.Owner
+			}
+			employed, bad := 0, 0
+			for _, g := range sc.People() {
+				if !g.Employed() {
+					continue
+				}
+				employed++
+				if owner[int(g.Location)] != g.Faction {
+					bad++
+					if bad <= 3 {
+						t.Errorf("%s %s：%s 效力於勢力 %d，卻在郡 %d（那個郡屬於 %d）",
+							ver, slot, g.Name, g.Faction, g.Location, owner[int(g.Location)])
+					}
+				}
+			}
+			if employed == 0 {
+				t.Errorf("%s %s：一位有勢力的人物都沒有——欄位大概讀錯了", ver, slot)
+			}
+			if bad > 0 {
+				t.Errorf("%s %s：%d/%d 位人物不在自己勢力的郡裡", ver, slot, bad, employed)
+			}
+		}
+	}
+}
