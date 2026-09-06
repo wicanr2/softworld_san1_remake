@@ -28,6 +28,16 @@ for v in GOOS GOARCH CGO_ENABLED SAN1_ORIG_DIR SAN1_SHOTS SAN1_DUMP \
   [[ -n "${!v:-}" ]] && PASS+=(-e "$v=${!v}")
 done
 
+# 素材在旁邊就預設掛進去。
+#
+# **沒掛的時候需要素材的測試會 skip 不會紅**，於是 `go test ./...` 印出
+# 一片 ok，而真正在跑的只有不碰原版的那些——「全綠」因此是假的。
+# 要刻意跑沒有素材的那一組，設 SAN1_ORIG= （空字串）。
+if [[ -z "${SAN1_ORIG+x}" && -d "$ROOT/org_game" ]]; then
+  SAN1_ORIG="$ROOT/org_game"
+  echo "tools/go.sh：自動掛上 org_game（要跑無素材的那一組請設 SAN1_ORIG=）" >&2
+fi
+
 MOUNTS=()
 if [[ -n "${SAN1_ORIG:-}" ]]; then
   MOUNTS+=(-v "$(cd "$SAN1_ORIG" && pwd):/orig:ro")
