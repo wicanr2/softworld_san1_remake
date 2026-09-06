@@ -62,10 +62,15 @@ func TestZZMonthParity(t *testing.T) {
 		t.Fatalf("原版記憶體裡的三張表解不開：%v", err)
 	}
 
-	// 玩家是誰：主畫面問的是 (41)南海，所以 41 郡的所屬就是玩家。
-	// **不要預設 0**——「玩家其實在控制別人」在畫面上看不出來。
-	player := state.FactionID(before[nMas+41*state.PrefectureRecordSize+30])
-	t.Logf("玩家勢力槽號 %d", player)
+	// 玩家是誰**盤面自己說**：諸侯記錄 offset 0，1 ＝ 玩家、2 ＝ 電腦、
+	// 0xFFFF ＝ 沒在用（`docs/formats/03`）。先前是拿主畫面問的那個郡
+	// 反推所屬——那只在「主畫面剛好停在玩家的郡」時成立。
+	players := sc.Players()
+	if len(players) == 0 {
+		t.Skip("這個盤面沒有玩家控制的勢力（電腦自動示範模式）")
+	}
+	player := state.FactionID(players[0])
+	t.Logf("玩家勢力槽號 %d（盤面上共 %d 個玩家）", player, len(players))
 
 	g, err := game.New(sc, player, 5)
 	if err != nil {

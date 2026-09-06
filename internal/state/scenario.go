@@ -617,3 +617,59 @@ func (s *Scenario) TreasuryOf(faction int) [5]int {
 	}
 	return out
 }
+
+// Controller 說一個勢力由誰控制（`BASEMAS` offset 0，`L0`／`L1`）。
+//
+// 原版的電腦諸侯常式（線性 `0xd652`）第一件事就是
+// `cmpw es:[bx+0x0], 1`，等於 1 就直接返回——**玩家的勢力不跑 AI**。
+//
+// 資料側對得上：存檔裡玩家那個槽是 1、其餘在用的勢力是 2、
+// 沒有領地的三個槽是 `0xFFFF`。
+const (
+	ControlledByPlayer   = 1
+	ControlledByComputer = 2
+	ControlledByNobody   = 0xFFFF
+)
+
+// Controller 回傳勢力的控制者。
+func (s *Scenario) Controller(faction int) int {
+	off := faction * masterSize
+	if faction < 0 || off+1 >= len(s.rawMas) {
+		return ControlledByNobody
+	}
+	return int(binary.LittleEndian.Uint16(s.rawMas[off:]))
+}
+
+// Players 回傳由玩家控制的勢力槽號。
+//
+// 原版問「請問有幾人玩(0-16)」，所以**可以不只一個**；
+// 零個就是電腦自動示範模式。
+func (s *Scenario) Players() []int {
+	var out []int
+	for i := range s.masters {
+		if s.Controller(i) == ControlledByPlayer {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// GovernorIndex 是郡的太守（`BASESTA` offset 32，`u16`、`L2`）。
+//
+// 原版的常式拿它當人物槽號用，`0xFFFF` 是「沒有」。抽樣對得上：
+// 勢力首都那幾郡的值就是該勢力君主的槽號。
+//
+// ⚠ 這一格與 `Governor()`（掃身分算出來的）是**兩條獨立的路徑**，
+// 兩邊不一致就表示其中一條讀錯了——`TestGovernorFieldMatchesStatus`
+// 盯著這件事。
+func (s *Scenario) GovernorIndex(prefectureID int) int {
+	i := prefectureID // 筆 0 是啞元，郡編號與筆號相同
+	off := i*prefSize + 32
+	if i < 1 || off+1 >= len(s.rawSta) {
+		return NoValue16
+	}
+	return int(binary.LittleEndian.Uint16(s.rawSta[off:]))
+}
+
+// NoValue16 是 16 位元欄位的「沒有」。
+const NoValue16 = 0xFFFF

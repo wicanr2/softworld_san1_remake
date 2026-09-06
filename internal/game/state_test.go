@@ -193,3 +193,54 @@ func TestSealHasExactlyOneHolder(t *testing.T) {
 		}
 	}
 }
+
+// TestGovernorFieldMatchesStatus 釘住兩條獨立的路徑對得上。
+//
+// 郡的太守有兩個來源：`BASESTA` offset 32 直接存人物槽號（`L2`），
+// 以及掃人物表的身分欄算出來（`Governor()`，`docs/spec/003`）。
+// **兩邊不一致就表示其中一條讀錯了**——而單獨看任何一條都不會露餡。
+func TestGovernorFieldMatchesStatus(t *testing.T) {
+	for _, slot := range []state.Slot{
+		state.Scenario1, state.Scenario2, state.Scenario3,
+		state.Scenario4, state.Scenario5, state.Scenario6,
+	} {
+		sc := loadScenario(t, slot)
+		g, err := New(sc, state.FactionID(firstPlayable(sc)), 5)
+		if err != nil {
+			t.Fatalf("劇本 %s 開不了局：%v", slot, err)
+		}
+		bad := 0
+		for _, p := range g.Prefectures() {
+			if !p.Owned() {
+				continue
+			}
+			want := sc.GovernorIndex(p.ID)
+			got := g.Governor(p.ID)
+			if want == state.NoValue16 {
+				continue
+			}
+			if got == nil || got.Index != want {
+				bad++
+				if bad <= 3 {
+					name := "（無）"
+					if got != nil {
+						name = got.Name
+					}
+					t.Errorf("劇本 %s 郡 %d：欄位說太守是槽 %d，掃身分算出來是 %s",
+						slot, p.ID, want, name)
+				}
+			}
+		}
+		if bad > 3 {
+			t.Errorf("劇本 %s：另有 %d 個郡不一致", slot, bad-3)
+		}
+	}
+}
+
+// firstPlayable 找一個能當玩家的勢力。
+func firstPlayable(sc *state.Scenario) int {
+	if ps := sc.Players(); len(ps) > 0 {
+		return ps[0]
+	}
+	return sc.ActiveFactions()[0]
+}
