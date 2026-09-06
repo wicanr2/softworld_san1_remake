@@ -158,6 +158,36 @@ func TestZZWatchTurn(t *testing.T) {
 	}
 	dumpScreen(t, o, "10-主畫面")
 
+	// **先問「有沒有人在讀鍵盤」再問「該送哪一個鍵」。**
+	// KeyWaits 是 0 的話，鍵送到哪一條路都沒用——沒有人在讀。
+	t.Logf("到主畫面為止：讀過 %d 個鍵、等鍵盤 %d 次", len(o.KeyReads()), o.KeyWaits())
+	if r := o.KeyReads(); len(r) > 0 {
+		for _, k := range r[max(0, len(r)-8):] {
+			t.Logf("    第 %d 道指令 走 %s 讀到 %#02x", k.Step, k.Via, k.Key)
+		}
+	}
+	if u := o.Unimplemented(); len(u) > 0 {
+		t.Logf("還沒實作的服務（%d）：%v", len(u), u[:min(len(u), 12)])
+	} else {
+		t.Log("沒有用到還沒實作的服務")
+	}
+	waitsBefore := o.KeyWaits()
+	readsBefore := len(o.KeyReads())
+	if err := o.Run(200_000_000); err != nil {
+		t.Logf("停止：%v", err)
+	}
+	t.Logf("在主畫面空轉兩億道：多等了 %d 次鍵盤、多讀了 %d 個鍵",
+		o.KeyWaits()-waitsBefore, len(o.KeyReads())-readsBefore)
+	t.Logf("硬體那條：佇列剩 %d 個掃描碼、IRQ1 送出 %d 次、其中 %d 次進到程式自己的常式",
+		o.KeyQueueLen(), o.IRQ1Delivered(), o.IRQ1ToProgram())
+	o.PressScan("9")
+	t.Logf("送一個 9 之後：佇列 %d", o.KeyQueueLen())
+	if err := o.Run(100_000_000); err != nil {
+		t.Logf("停止：%v", err)
+	}
+	t.Logf("跑一億道之後：佇列剩 %d、IRQ1 送出 %d 次、進到程式 %d 次",
+		o.KeyQueueLen(), o.IRQ1Delivered(), o.IRQ1ToProgram())
+
 	// 主畫面停在「請下您的命令」。**哪一個鍵會讓月份走下去？**
 	// 從同一個快照展開試，一輪就問得完（走到這裡要五分鐘）。
 	snap := o.Save()
