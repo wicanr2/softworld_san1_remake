@@ -12,6 +12,7 @@
 | 專案骨架 | 建立；`CLAUDE.md`／`LICENSE`／`.gitignore` 就位 | 2026-09-06 |
 | dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 `san1-msc-oracle`（基於 `origin/master`）| 2026-09-06 |
 | 說明書 | 46 頁解到 `workplace/manual/`，整理中 | 2026-09-06 |
+| dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |
 | 反組譯 | **未開始** | |
 | 格式解析 | **未開始** | |
 | Go 程式 | **未開始**（`internal/` 目前是空目錄）| |
@@ -45,6 +46,8 @@
 | F4 | `DATA0.GRP` 42,488 → 87,696；`DATA5.GRP` 145,378 → 287,590；`DATA2.GRP` 長度相同但內容不同 | `L0` | — | 同上 |
 | F5 | 加強版獨有 `NAME001`–`NAME006.SHA`、`SV.COM`、`CHKLIST.CPS`；原版獨有 `10/20/D5.GRP`、`PARTNSAV.FIL`、三個 `.BAT` | `L0` | — | 同上 |
 | F6 | 兩份 bundle 附的 `dosbox.conf` 皆 `machine=svga_s3`、`memsize=16`、`core=auto`、`cycles=auto` | `L0` | `[both]` | `.jsdos/dosbox.conf`，兩版只差 autoexec 末行的執行檔名 |
+| F7 | 兩版啟動時的 DOS 服務輪廓**逐項相同**（`AH=35`×12、`25`×11、`44`×5、`30`×2、`4A`×2、`48`×1），停止位址只差 `0x21` | `L0` | `[both]` | dosgolem probe，`docs/re/00` |
+| F8 | 兩支執行檔都在 `int 21h AH=08`（無回顯字元輸入）上空轉；dosgolem 未實作該服務 | `L0` | `[both]` | 同上，佔全部呼叫 99.99% |
 
 ### 3.1 待解的矛盾（最高優先）
 
@@ -60,6 +63,8 @@
 而且不會報錯（`CLAUDE.md` §7 第 18 條）。
 
 `DATA2.GRP` 兩版等長不同容，是逐位元組 diff 最划算的一份。
+
+另一條路是 dosgolem：probe 的「開過的檔」會直接說出原版用什麼順序、讀哪幾段取三件套，比靜態猜格式硬。前提是先補完 `AH=08`（F8）。
 
 ---
 
@@ -118,7 +123,9 @@
 - [ ] 兩版抽檔，每檔記 SHA-256，分開放 `workplace/orig/{base,plus}/`
 - [ ] `tools/ida.sh` 包裝器（照 sangokushi 的形狀），對兩支 EXE 產 `.i64`
 - [ ] `tools/go.sh` 包裝器 ＋ `docker/go/Dockerfile`（從 `rich2-go-ebiten` 起）
-- [ ] `dosgolem cmd/probe` 跑兩支 EXE，產未實作 DOS 服務清單
+- [x] `dosgolem cmd/probe` 跑兩支 EXE，產未實作 DOS 服務清單 → `docs/re/00`
+- [ ] **在 `dosgolem-san` 實作 `int 21h AH=08`**（阻塞式無回顯輸入）——目前擋住一切的那一步
+- [ ] 補完 `AH=08` 後用 `-keys` 重跑 probe，觀測開檔順序
 - [ ] 說明書整理成 `docs/reference/01-manual-*`
 - [ ] 社群資料整理成 `docs/reference/02-web-*`
 - [ ] **解 `.IDX` 索引什麼**（§3.1）
