@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/wicanr2/dosgolem/oracle"
@@ -23,10 +24,15 @@ import (
 // 指令（p.5）。所以**一路送 Enter 就會走完自己的回合**，接下來是電腦
 // 諸侯的回合，那正是 `docs/mechanics/70-ai` 要看的東西。
 
-// TestZZAdvanceMonth 一路送 Enter，記錄盤面每一次變化。
+// TestZZAdvanceMonth 一路用「內政 → 休息」把每個郡的指令用掉，
+// 記錄盤面每一次變化。
 //
-// 環境變數 `SAN1_TURNKEY` 可以換掉送的鍵（預設 `\r`），
-// `SAN1_TURNS` 換次數（預設 40）。
+// 休息是「不做任何事」而且帶 ＊（使用後即轉移控制權，說明書 p.42），
+// 所以它是**把一個郡的回合用掉又不動盤面**最便宜的路。走完自己的郡
+// 之後輪到電腦諸侯，那時候盤面的變化就是要看的東西。
+//
+// 環境變數 `SAN1_TURNKEY` 換掉送的鍵（用 `|` 分段，每段之間留沉澱時間，
+// 預設 `4\r|4\r`），`SAN1_TURNS` 換輪數（預設 12）。
 func TestZZAdvanceMonth(t *testing.T) {
 	root := origRoot(t)
 	c := openContainer(t, filepath.Join(root, "DATA2"))
@@ -46,11 +52,8 @@ func TestZZAdvanceMonth(t *testing.T) {
 	base := bootToMain(t, o, mas)
 	dumpScreen(t, o, "20-主畫面")
 
-	keys := os.Getenv("SAN1_TURNKEY")
-	if keys == "" {
-		keys = "\r"
-	}
-	turns := 40
+	seq := strings.Split(envOr("SAN1_TURNKEY", "4\r|4\r"), "|")
+	turns := 12
 	if v, err := strconv.Atoi(os.Getenv("SAN1_TURNS")); err == nil && v > 0 {
 		turns = v
 	}
@@ -61,23 +64,28 @@ func TestZZAdvanceMonth(t *testing.T) {
 	prev := o.Bytes(addr(base), total)
 
 	for i := 1; i <= turns; i++ {
-		o.Drain()
-		o.PressScan(keys)
-		if err := o.Run(settle * 3); err != nil {
-			t.Logf("第 %d 次停止：%v", i, err)
-			break
+		for j, keys := range seq {
+			o.Drain()
+			o.PressScan(keys)
+			if err := o.Run(settle * 3); err != nil {
+				t.Logf("第 %d 輪第 %d 段停止：%v", i, j+1, err)
+				return
+			}
+			cur := o.Bytes(addr(base), total)
+			scr := screenOf(o)
+			t.Logf("第 %2d 輪 %d/%d 送 %q：畫面差 %6d、盤面差 %4d%s",
+				i, j+1, len(seq), keys,
+				pixelDiff(prevScr, scr, mask), differs8(prev, cur),
+				where(prev, cur, len(mas), len(sta)))
+			dumpScreen(t, o, fmt.Sprintf("21-第%02d輪-%d", i, j+1))
+			prev, prevScr = cur, scr
 		}
-		cur := o.Bytes(addr(base), total)
-		scr := screenOf(o)
-		d := differs8(prev, cur)
-		px := pixelDiff(prevScr, scr, mask)
-		if d > 0 || px > 0 {
-			t.Logf("第 %2d 次送 %q：畫面差 %6d、盤面差 %4d%s",
-				i, keys, px, d, where(prev, cur, len(mas), len(sta)))
-			dumpScreen(t, o, fmt.Sprintf("21-第%02d次", i))
-		} else {
-			t.Logf("第 %2d 次送 %q：什麼都沒動", i, keys)
-		}
-		prev, prevScr = cur, scr
 	}
+}
+
+func envOr(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
 }

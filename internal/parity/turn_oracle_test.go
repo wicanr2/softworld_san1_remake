@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/wicanr2/dosgolem/oracle"
@@ -225,23 +226,53 @@ func TestZZWatchTurn(t *testing.T) {
 	o.Restore(snap)
 }
 
-// where 說變化落在哪一張表、哪些欄位位移。
+// 已知的欄位名（`internal/state` 的解碼器，`docs/formats/03`）。
+//
+// **位移印成名字才讀得下去。** 一輪走完會列出幾十筆變化，
+// 「29(×43)」與「物價(×43)」的差別是要不要回去翻文件。
+var (
+	prefField = map[int]string{
+		0: "郡名", 1: "郡名", 2: "郡名", 3: "郡名",
+		14: "人口", 15: "人口", 16: "兵士", 17: "兵士",
+		18: "金", 19: "金", 20: "米", 21: "米",
+		22: "在職將", 23: "在野將", 26: "民忠", 27: "地力",
+		28: "水利", 29: "物價", 30: "所屬",
+	}
+	genField = map[int]string{
+		7: "年齡", 8: "體力", 9: "智", 10: "武", 11: "魅",
+		12: "職位", 13: "出身郡", 16: "忠誠", 17: "身分", 18: "勢力",
+		19: "所在", 21: "兵種", 22: "兵力", 23: "兵力",
+		24: "訓練", 25: "武裝",
+	}
+	masField = map[int]string{2: "君主"}
+)
+
+// fieldName 把位移換成名字；還沒解出來的就印位移。
+func fieldName(m map[int]string, off int) string {
+	if n, ok := m[off]; ok {
+		return n
+	}
+	return fmt.Sprintf("+%d", off)
+}
+
+// where 說變化落在哪一張表、哪些欄位。
 func where(a, b []byte, nmas, nsta int) string {
 	tabs := []struct {
-		name string
-		lo   int
-		n    int
-		rec  int
+		name  string
+		lo    int
+		n     int
+		rec   int
+		field map[int]string
 	}{
-		{"諸侯", 0, nmas, state.MasterRecordSize},
-		{"州郡", nmas, nsta, state.PrefectureRecordSize},
-		{"人物", nmas + nsta, len(a) - nmas - nsta, state.GeneralRecordSize},
+		{"諸侯", 0, nmas, state.MasterRecordSize, masField},
+		{"州郡", nmas, nsta, state.PrefectureRecordSize, prefField},
+		{"人物", nmas + nsta, len(a) - nmas - nsta, state.GeneralRecordSize, genField},
 	}
 	out := ""
 	for _, x := range tabs {
 		offs := map[int]int{}
 		recs := map[int]bool{}
-		for i := 0; i < x.n; i++ {
+		for i := 0; i < x.n && x.lo+i < len(b); i++ {
 			if a[x.lo+i] != b[x.lo+i] {
 				offs[i%x.rec]++
 				recs[i/x.rec] = true
@@ -250,9 +281,25 @@ func where(a, b []byte, nmas, nsta int) string {
 		if len(offs) == 0 {
 			continue
 		}
+		keys := make([]int, 0, len(offs))
+		for k := range offs {
+			keys = append(keys, k)
+		}
+		sort.Ints(keys)
+		// 同一個欄位的高低位元組要併成一筆，否則一個 16 位元的值會
+		// 看起來像兩個欄位在動。
+		seen := map[string]int{}
+		order := []string{}
+		for _, k := range keys {
+			n := fieldName(x.field, k)
+			if _, ok := seen[n]; !ok {
+				order = append(order, n)
+			}
+			seen[n] += offs[k]
+		}
 		out += "\n    " + x.name + "："
-		for o2, n := range offs {
-			out += fmt.Sprintf(" %d(×%d)", o2, n)
+		for _, n := range order {
+			out += fmt.Sprintf(" %s(×%d)", n, seen[n])
 		}
 		out += fmt.Sprintf("　%d 筆", len(recs))
 	}
