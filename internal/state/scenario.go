@@ -132,7 +132,12 @@ type Prefecture struct {
 	FloodRate     uint8 // 洪水率
 	PriceLevel    uint8 // 物價
 
-	// Neighbours 是相鄰的郡編號，最多 8 個（原版 offset 45–52，`0xFF` 補齊）。
+	// Neighbours 是相鄰的郡編號（原版 offset 45–54，`0xFF` 補齊）。
+	//
+	// **欄位是 10 格**：原版建出兵候選清單的常式（`0xeee8`／`0xef5c`）
+	// 掃的是 `k < 10`。劇本 001 的第 9、10 格全部是 `0xFF`，鄰居最多的
+	// 洛陽只用到 8 格——所以只讀 8 格在這份資料上得到一樣的結果，
+	// 但那是資料剛好，不是欄位寬度。
 	//
 	// 這是**地圖幾何不是劇本狀態**：十二個槽位（六個劇本 ＋ 六個存檔）
 	// 的相鄰表完全相同。整張圖對稱（95 條邊、零條單向）而且全連通。
@@ -331,7 +336,7 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 		p.FloodRate = rec[28]
 		p.PriceLevel = rec[29]
 		p.Owner = rec[30]
-		for _, b := range rec[45:53] {
+		for _, b := range rec[45:55] {
 			if b >= 1 && b <= PrefectureCount {
 				p.Neighbours = append(p.Neighbours, int(b))
 			}
