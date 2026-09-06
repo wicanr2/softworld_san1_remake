@@ -167,3 +167,29 @@ func TestGovernorEverywhere(t *testing.T) {
 		}
 	}
 }
+
+// TestSealHasExactlyOneHolder 釘住玉璽在開局時只有一個人拿著。
+//
+// **這是 `BASEMAS` offset 14 是玉璽的判準**：十六個諸侯槽裡只有一個
+// 是 1，其餘全 0。六個劇本都要成立——只驗一個的話，那一格是別的東西
+// 而剛好長得像的機率不低。
+func TestSealHasExactlyOneHolder(t *testing.T) {
+	for _, slot := range []state.Slot{
+		state.Scenario1, state.Scenario2, state.Scenario3,
+		state.Scenario4, state.Scenario5, state.Scenario6,
+	} {
+		sc := loadScenario(t, slot)
+		holders, total := 0, 0
+		for f := 0; f < 16; f++ {
+			n := sc.TreasuryOf(f)[TreasureSeal]
+			if n > 0 {
+				holders++
+			}
+			total += n
+		}
+		if holders != 1 || total != 1 {
+			t.Errorf("劇本 %s：玉璽有 %d 個持有者、共 %d 個，應該是一個人拿一個",
+				slot, holders, total)
+		}
+	}
+}

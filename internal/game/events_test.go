@@ -117,6 +117,9 @@ func TestTributeYearly(t *testing.T) {
 	for _, n := range f.Treasury {
 		before += n
 	}
+	// **開局的寶庫不是空的**——`BASEMAS` offset 14–18 帶著初始內容
+	// （`state.TreasuryOf`），所以玉璽要比「有沒有增加」而不是「是不是零」。
+	sealBefore := f.Treasury[TreasureSeal]
 	g.Date = Date{Year: 189, Month: 11}
 	g.EndMonth() // → 12 月
 	after := 0
@@ -126,8 +129,9 @@ func TestTributeYearly(t *testing.T) {
 	if after <= before {
 		t.Errorf("董卓有四個郡，年底貢品卻沒有增加（%d → %d）", before, after)
 	}
-	if f.Treasury[TreasureSeal] > 0 {
-		t.Error("玉璽不該由進貢產生——它是勝利條件")
+	if f.Treasury[TreasureSeal] > sealBefore {
+		t.Errorf("玉璽不該由進貢產生（%d → %d）——它是勝利條件",
+			sealBefore, f.Treasury[TreasureSeal])
 	}
 }
 

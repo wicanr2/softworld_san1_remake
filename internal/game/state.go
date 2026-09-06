@@ -216,10 +216,15 @@ type Faction struct {
 	// 那一張——等級越高除數越小、練得越快（`AITrainDivisor`）。
 	AILevel int
 
+	// Prestige 是人望（`BASEMAS` offset 8，`L1`）。原版的郡資訊欄
+	// 顯示「君主〇〇〇　人望 %d」，用途還沒解。
+	Prestige int
+
 	// Treasury 是君主寶庫裡各種寶物的數量（說明書 p.19「君主物品」）。
 	//
-	// **初始內容還沒解**：原版的 `BASEMAS` 七十二個位元組裡只解出
-	// offset 2，寶庫在哪還不知道。這裡先全部從零開始。
+	// 開局內容從盤面讀：`BASEMAS` offset 14–18（`state.TreasuryOf`）。
+	// offset 14 是玉璽——十六個槽裡只有一個是 1，其餘全 0。
+	// **15–18 之間誰是誰還沒驗**（`L3`）。
 	Treasury [treasureCount]int
 
 	// Chief 是現任軍師的人物槽號，−1 表示沒有。
@@ -312,7 +317,12 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 			return nil, err
 		}
 		fa := Faction{ID: state.FactionID(f), Lord: lord.Index, Alive: true, Chief: -1,
-			AILevel: sc.AILevel(f)}
+			AILevel: sc.AILevel(f), Prestige: sc.Prestige(f)}
+		for i, n := range sc.TreasuryOf(f) {
+			if i < len(fa.Treasury) {
+				fa.Treasury[i] = n
+			}
+		}
 		for _, x := range sc.Retinue(f) {
 			if x.Status == state.StatusChief {
 				fa.Chief = x.Index

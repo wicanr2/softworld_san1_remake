@@ -584,3 +584,36 @@ func (s *Scenario) AILevel(faction int) int {
 	}
 	return v
 }
+
+// Prestige 是諸侯的人望（`BASEMAS` offset 8，`L1`、`[base]`）。
+//
+// 對照的是原版畫面：郡的資訊欄寫「君主〇〇〇　人望 87」，而該勢力的
+// offset 8 就是 87。
+func (s *Scenario) Prestige(faction int) int {
+	off := faction*masterSize + 8
+	if faction < 0 || off >= len(s.rawMas) {
+		return 0
+	}
+	return int(s.rawMas[off])
+}
+
+// TreasuryOf 是諸侯寶庫裡五種寶物的數量（`BASEMAS` offset 14–18）。
+//
+// 怎麼定位的：賞賜那張分派表（`0x56b4`）動的欄位裡除了人物的忠誠與
+// 能力值，還有諸侯的 offset 15–18（`docs/re/03` §1.4，`L1`）。
+// 而 offset 14 在十六個槽裡**只有一個是 1**，其餘全 0——那正是玉璽
+// 「只能一人持有」的形狀（`L2`）。
+//
+// ⚠ **15–18 之間誰是誰還沒驗**（`L3`）：這裡照 `Treasure` 的列舉順序
+// 對過去。要驗得從賞賜的碼裡讀出索引怎麼算。
+func (s *Scenario) TreasuryOf(faction int) [5]int {
+	var out [5]int
+	base := faction*masterSize + 14
+	if faction < 0 || base+5 > len(s.rawMas) {
+		return out
+	}
+	for i := range out {
+		out[i] = int(s.rawMas[base+i])
+	}
+	return out
+}
