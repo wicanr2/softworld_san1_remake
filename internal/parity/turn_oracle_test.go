@@ -156,21 +156,42 @@ func TestZZWatchTurn(t *testing.T) {
 			break
 		}
 	}
-	// 進到遊戲之後就讓它自己跑，看盤面什麼時候動。
-	prev := o.Bytes(addr(base), total)
-	for i := 0; i < 20; i++ {
-		if err := o.Run(50_000_000); err != nil {
-			t.Logf("停止：%v", err)
-			break
+	dumpScreen(t, o, "10-主畫面")
+
+	// 主畫面停在「請下您的命令」。**哪一個鍵會讓月份走下去？**
+	// 從同一個快照展開試，一輪就問得完（走到這裡要五分鐘）。
+	snap := o.Save()
+	for _, c := range []struct {
+		name string
+		play func(*oracle.Oracle)
+	}{
+		{"清空後 PressScan 9", func(o *oracle.Oracle) { o.Drain(); o.PressScan("9") }},
+		{"Type 9（不清空）", func(o *oracle.Oracle) { o.Type("9") }},
+		{"清空後 Type 9", func(o *oracle.Oracle) { o.Drain(); o.Type("9") }},
+		{"Press 9（不清空）", func(o *oracle.Oracle) { o.Press("9") }},
+		{"什麼都不送（對照組）", func(o *oracle.Oracle) {}},
+	} {
+		o.Restore(snap)
+		before := screen()
+		beforeTab := o.Bytes(addr(base), total)
+		c.play(o)
+		best, bestTab := 0, 0
+		for k := 0; k < 8; k++ {
+			if err := o.Run(50_000_000); err != nil {
+				break
+			}
+			if d := diff(before, screen()); d > best {
+				best = d
+			}
+			if d := differs8(beforeTab, o.Bytes(addr(base), total)); d > bestTab {
+				bestTab = d
+			}
 		}
-		cur := o.Bytes(addr(base), total)
-		if d := differs8(prev, cur); d > 0 {
-			t.Logf("自走 %d 億道：盤面動了 %d 個位元組%s",
-				(i+1)*5, d, where(prev, cur, len(mas), len(sta)))
-			prev = cur
-		}
+		t.Logf("%-22s → 畫面差 %6d、盤面差 %4d、佇列剩 %d%s",
+			c.name, best, bestTab, o.Pending(),
+			where(beforeTab, o.Bytes(addr(base), total), len(mas), len(sta)))
+		dumpScreen(t, o, "11-"+c.name)
 	}
-	dumpScreen(t, o, "99-最後")
 }
 
 // where 說變化落在哪一張表、哪些欄位位移。
