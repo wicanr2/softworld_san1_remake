@@ -10,6 +10,10 @@
 引擎已經能把原版的劇本資料讀出來並畫到畫面上（州郡一覽，42 個郡名、零缺字）。
 遊戲玩法還沒實作。
 
+對拍那一側，原版現在能在 dosgolem 裡從頭跑到主選單——`AA.EXE` →
+`DATA0.GRP` → `DATA5.GRP` 三層 chain-load、`DATA1`／`DATA2`／`DATA3`
+三組容器載入、EGA 640×350 畫面輸出，全程無頭、決定性。
+
 ```sh
 tools/go.sh run ./cmd/san1     -root /path/to/三國演義   # Ebiten 視窗
 tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 -png out.png   # 無頭輸出
@@ -21,7 +25,7 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 -png out.png   # 無�
 | 里程碑 | 狀態 |
 |---|---|
 | M0 環境 ＋ 素材 | 完成 |
-| M1 dosgolem 跑得動 | 進行中：過了裝置選單，卡在 overlay 載入段 |
+| M1 dosgolem 跑得動 | 完成：原版開機到主選單 |
 | M2 容器格式 | 實質完成（`docs/formats/01`–`03`）|
 | M3 文字與字型 | 進行中：CJK 畫布與字型涵蓋率已通 |
 | M4 靜態資料 | 未開始 |

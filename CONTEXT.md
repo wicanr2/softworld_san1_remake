@@ -13,15 +13,18 @@
 | dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 `san1-msc-oracle`（基於 `origin/master`）| 2026-09-06 |
 | 說明書 | 46 頁解到 `workplace/manual/`，整理中 | 2026-09-06 |
 | dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |
-| 反組譯 | **未開始** | |
+| 反組譯 | IDA 管線成立（`docs/re/01`）；主程式模組已用 objdump 逐段對讀 | 2026-09-06 |
 | 格式解析 | **未開始** | |
 | Go 程式 | `assets`／`state`／`cells`／`font`／`ui` 五個套件 ＋ `cmd/san1`（Ebiten）＋ `cmd/san1dump`（CLI／PNG），測試全綠 | 2026-09-06 |
 | 引擎畫面 | 州郡一覽可渲染：42 郡名、零缺字，Ebiten 與無頭 PNG 走同一份畫面程式 | 2026-09-06 |
 | **對拍框架** | **成立**：`internal/parity` 走 `-tags oracle`，go workspace 接 `dosgolem-san`。三個測試綠 | 2026-09-06 |
 
+| **原版跑到主選單** | dosgolem 下開機完成：EGA 10h、「三國演義」主選擇單六個項目 | 2026-09-06 |
+
 里程碑定義在 `CLAUDE.md` §10。目前在 **M2–M3 之間**：M0 完成、M2（容器格式）實質完成且**得到原版行為背書**（F31）、
-M3（文字與字型）畫面已通；M1（dosgolem 跑得動）已過 overlay 關卡，原版現在會載入資料容器，
-停在自己的 `TITFONT.IMG / ErrNo 888`。
+M3（文字與字型）畫面已通。**M1（dosgolem 跑得動）達成**：原版走完
+`AA.EXE` → `DATA0.GRP` → `DATA5.GRP` 的 chain-load，載入 `DATA1`／`DATA2`／`DATA3`
+三組容器，畫出主選單並停在等待輸入。
 
 ---
 
@@ -76,7 +79,15 @@ M3（文字與字型）畫面已通；M1（dosgolem 跑得動）已過 overlay �
 | F30 | 原版的主控台輸出是**緩衝**的：開檔那一刻只有三個回顯字元，提示文字更後面才沖出來 | `L0` | `[base]` | `internal/parity` |
 | F31 | 原版讀容器的順序是 **`.IDX` → `.NAM` → `.GRP`**，與 `docs/formats/01` 解出的格式一致——格式規格因此有原版行為背書 | `L1` | `[base]` | dosgolem 開檔紀錄 |
 | F32 | `DATA0.GRP` 是**自解壓縮**的 overlay：載到 `0110:0000` 後自己解壓再跑 MSC 啟動碼 | `L0` | `[base]` | 軌跡 ＋ `dosgolem/docs/spec/010` |
-| F33 | 原版走過啟動後會開 `DATA0.GRP` ＋ `DATA1` 三件套，然後停在自己的錯誤 `TITFONT.IMG / ErrNo 888`；該項目確實存在於 `DATA1`（第 28 項）、`DATA0`、`DATA4` | `L0` | `[base]` | probe |
+| F33 | 原版走過啟動後會開 `DATA0.GRP` ＋ `DATA1` 三件套；`TITFONT.IMG` 確實存在於 `DATA1`（第 28 項）、`DATA0`、`DATA4` | `L0` | `[base]` | probe |
+| F34 | **`DATA5.GRP` 是主程式不是資料容器**：145,378 bytes 的 MZ 映像，由 `DATA0.GRP` 用 `AH=4Bh AL=03` chain-load 到 `0110:0000` | `L0` | `[base]` | overlay 紀錄 |
+| F34b | `10.BAT`／`20.BAT` 做的是 `DEL DATA5.GRP` ＋ `COPY 10.GRP DATA5.GRP`。`10.GRP` 與出貨的 `DATA5.GRP` **逐位元組相同**；`20.GRP`（142,804）從第 3 個位元組起就不同，14 萬個位元組有差。兩者都是 MZ 且都經過壓縮，所以「差在哪」讀不出來 | `L0` | `[base]` | `cmp` |
+| F34c | `D5.GRP`（145,377，比 `10.GRP` 少一個位元組）也是 MZ，用途未知 | `L0` | `[base]` | `cmp` |
+| F35 | 開機鏈是 `AA.EXE` →（自解壓）→ `DATA0.GRP` → `DATA5.GRP`。每一層都是完整的 MSC 程式：自己縮 PSP 區塊、自己起 far heap、自己跑啟動碼 | `L0` | `[base]` | probe 軌跡 |
+| F36 | 主程式把容器分成三組（`File #0`／`#1`／`#2`）＝ `DATA1`／`DATA2`／`DATA3`，每組開 `.GRP`＋`.IDX`＋`.NAM`。開法是 `fopen("rb")` → `fclose` → `fopen("r+b")`——**第二次要的是讀寫** | `L0` | `[base]` | `05C4:AA5A` 一帶 |
+| F37 | 主程式的資料段有一張檔名表（`ds:9E14`）：`DATA1.GRP`／`DATA2.GRP`／`DATA3.GRP`／`DATA1.GRP`／`DATA2.GRP`／**`B:DATA3.GRP`**／三個 `.IDX`／三個 `.NAM`。第二組帶 `B:` 是雙磁碟機安裝的路徑 | `L0` | `[base]` | 記憶體 dump |
+| F38 | 武將的欄位標籤在主程式字串表裡：姓名／職位／忠誠／年齡／体能／謀略／戰力／魅力／等級／兵士／訓練／武裝／兵種（13 項）。另有 `謀略 %3d 兵士數 %4d`／`戰力 %3d 訓練度 %3d`／`魅力 %3d 武裝度 %3d` 三行格式 | `L0` | `[base]` | 記憶體 dump `0x47100` 一帶 |
+| F39 | 主選單六項：開始新遊戲／載入舊進度／使用楷書字／使用隸書字／音樂欣賞／回作業系統。**字體是遊戲內選項**，楷書與隸書兩套 | `L1` | `[base]` | 原版畫面 |
 
 ### 3.05 密碼表：唯一必須從執行檔取的東西
 
@@ -171,6 +182,31 @@ DATA1 的 round-trip 零逆序、無縫覆蓋。
 
 ---
 
+### R4（2026-09-06）：「原版從不釋放記憶體，`DATA5.GRP` 那一層是記憶體不夠」
+
+**原斷言**：整趟 `int 21h AH=48h` 十三次、`AH=49h` **零次**，程式握著 373 KB
+不放；它要 `0xFFFF` 段、拿到 122 KB 就收工，所以是數量問題。連帶把
+`R6009` 與 `TITFONT.IMG` 也歸成同一面牆的三次撞擊。
+
+**推翻的證據**：把 `0583:3068` 反組譯出來看，那個 `AH=48h BX=FFFF` 不是
+配置請求，是 **MCB 鏈走訪的起點**——下一道是 `cmp al,7`（只在意「鏈壞了沒」），
+接著從自己的 PSP 沿著鏈一格一格爬。原版釋放記憶體也走同一條鏈。
+dosgolem 當時只在載入時放了一條寫死的兩格鏈，配置器完全沒有同步它，
+所以原版找不到自己的區塊、也算錯可用總量。
+
+把鏈發布出去之後（`dosgolem/docs/spec/012`），同一份輸入的 `AH=49h`
+從 0 次變成 10 次，走到的指令數從 2.5 億變成 2.8 億，開過的檔從 6 個
+變成 16 個。
+
+**教訓**：**服務呼叫次數量到的是「程式做到了什麼」，不是「程式想做什麼」。**
+「一次都沒呼叫」與「呼叫的前置條件不成立」在計數上長得一模一樣。
+另外，一個診斷開關能讓症狀消失，不代表它指到了成因——
+`DOSGOLEM_FREE_ON_OVERLAY` 做的事（強制標成自由）恰好與真正缺的機制
+（讓程式自己找得到區塊去釋放）產生相同的可觀測結果，於是它同時
+證實了症狀、掩蓋了成因。
+
+---
+
 ## 5. 決策紀錄
 
 | 日期 | 決策 | 誰 |
@@ -227,12 +263,17 @@ DATA1 的 round-trip 零逆序、無縫覆蓋。
 - [x] 阻塞模型做好後重跑 probe → 過了啟動選單（F21、F22）
 - [x] 反組譯呼叫端 → 四題裝置選擇（F26）
 - [x] 查那 790 萬道指令 → 是解壓階段的記憶體翻攪，成因是 dosgolem 配置器不回收（F28）
-- [ ] **在 dosgolem 實作 `int 21h AH=4Bh AL=03`（載入 overlay）**——走到第一個畫面的唯一擋路者
+- [x] **在 dosgolem 實作 `int 21h AH=4Bh AL=03`（載入 overlay）** → `dosgolem/docs/spec/010`
 - [ ] probe 要能看 `B0000`（Hercules）——目前只看 `A0000` 與 `B8000`，選 Hercules 時會得到假零
 - [x] **對拍框架**：`internal/parity` ＋ go workspace ＋ `-tags oracle`，缺素材或缺 dosgolem 時 skip 不紅
 - [x] **解 overlay 的 R6009** → 是 dosgolem 配置器的 bug：`AH=4Ah` 縮小 PSP 區塊時 arena 沒跟著往下長，少記 190 KB（`dosgolem/docs/spec/009` 附錄二）
-- [ ] 追 `TITFONT.IMG / ErrNo 888`——該項目在 `DATA1` 第 28 項確實存在，所以是查找或讀取那一步的問題
-- [ ] `10.GRP`／`20.GRP`／`D5.GRP` 三個變體逐位元組 diff——同一個容器的三份不同內容，是解格式最便宜的槓桿
+- [x] 追 `TITFONT.IMG / ErrNo 888` → 根因是 dosgolem 沒把配置器狀態發布成 MCB 鏈（R4，`dosgolem/docs/spec/012`）
+- [x] **原版跑到主選單** → 還缺兩塊：MCB 鏈（`spec/012`）與 handle 號碼重用（`spec/013`）
+- [ ] 從主選單按「1. 開始新遊戲」走進遊戲，取劇本選擇與初始盤面
+- [ ] EGA 圖形控制器的寫入模式／Set-Reset／Bit Mask（`dosgolem/docs/spec/011` §4）——
+      目前畫面有一像素寬的直條雜訊，畫面對拍要先補這一塊
+- [ ] 主程式資料段的檔名表（F37）與武將欄位標籤（F38）→ 對照 `internal/state` 的 30 bytes/筆版面
+- [x] `10.GRP`／`20.GRP`／`D5.GRP` 逐位元組 diff → **三份都是 MZ 主程式映像**，不是容器變體（F34b、F34c）。都經過壓縮，diff 讀不出語意
 - [x] 從資料檔找 42 個郡名 → `docs/formats/02`
 - [x] 從 `DATA2.GRP` 取人物表 → 346 位（**不是手冊說的 342**，差 4 位未解釋）
 - [x] 對比 346 vs 342 → 差距被異體字與掃描誤讀蓋住，無法用字串比對解決；
