@@ -487,3 +487,78 @@ func TestZZTableMeaning(t *testing.T) {
 		t.Logf("表 %#04x → %s", tb, strings.Join(parts, " "))
 	}
 }
+
+// TestZZRandom 確認 `1058:058c` 是不是原版的亂數。
+//
+// 內政那支常式（`0xba9c`）的形狀是
+//
+//	r = f(K)      K ＝ 等級常數
+//	r == 0 → 土地開發
+//	r == 1 → 洪水防治
+//	否則   → 不做
+//
+// 如果 `f(n)` 回 0..n−1 而且分布平坦，那就是 `RND`——**這一支定位出來
+// 之後，其他常式裡的每一個「機率」都跟著讀得出來**。
+//
+// 判準是**回傳值的分布**，不是名字：只看「有被呼叫」證明不了什麼。
+func TestZZRandom(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	bootToGame(t, o, seedMas)
+
+	const rnd = 0x1058*16 + 0x058c
+	args := map[uint16]int{}
+	o.OnCall(addr(rnd), func(o *oracle.Oracle) { args[o.Arg(0)]++ })
+
+	// 回傳值要在呼叫端的下一道指令讀（`add sp,2` 之前 AX 還是回傳值）。
+	ret := map[string]int{}
+	for _, site := range []struct {
+		name string
+		lin  uint32
+	}{{"內政 r=f(K)", 0xbaac}, {"內政 第二次", 0xbae5}} {
+		name := site.name
+		o.OnCall(addr(site.lin), func(o *oracle.Oracle) {
+			ret[fmt.Sprintf("%s 回 %d", name, o.AX())]++
+		})
+	}
+	for _, keys := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(keys)
+		if err := o.Run(40_000_000 * 3); err != nil {
+			t.Fatalf("原版停止：%v", err)
+		}
+	}
+	ak := make([]int, 0, len(args))
+	for a := range args {
+		ak = append(ak, int(a))
+	}
+	sort.Ints(ak)
+	total := 0
+	for _, a := range ak {
+		total += args[uint16(a)]
+	}
+	t.Logf("%#06x 一個月被呼叫 %d 次，參數：", rnd, total)
+	for _, a := range ak {
+		t.Logf("    參數 %d ×%d", a, args[uint16(a)])
+	}
+	rk := make([]string, 0, len(ret))
+	for k := range ret {
+		rk = append(rk, k)
+	}
+	sort.Strings(rk)
+	for _, k := range rk {
+		t.Logf("    %s ×%d", k, ret[k])
+	}
+}

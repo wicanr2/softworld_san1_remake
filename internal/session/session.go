@@ -35,9 +35,14 @@ func New(g *game.State, brain ai.Brain, player state.FactionID) *Session {
 	s := &Session{G: g, Brain: brain, Player: player, MaxLog: 200}
 	s.note("%d 年 %d 月　開局", g.Date.Year, g.Date.Month)
 	if !brain.Derived() {
-		// ⚠ **這一行不能省。** 一個安靜地什麼都不做的電腦諸侯，
-		// 在畫面上看起來就只是「這個諸侯這回合沒動作」。
-		s.note("⚠ %s 還沒從原版還原出來，電腦諸侯不會行動", brain.Name())
+		// ⚠ **這一行不能省。** 一個只做一部分行為的電腦諸侯，在畫面上
+		// 看起來就只是「這個諸侯比較保守」——差別看不出來。
+		if done, total := brain.Coverage(); total > 0 {
+			s.note("⚠ %s 還原到 %d/%d 種行為，其餘的電腦諸侯不會做",
+				brain.Name(), done, total)
+		} else {
+			s.note("⚠ %s 不是還原，是 remake 自己的 AI", brain.Name())
+		}
 	}
 	return s
 }

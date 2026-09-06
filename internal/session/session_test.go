@@ -69,22 +69,30 @@ func TestFaithfulModeSaysSo(t *testing.T) {
 	s := newSession(t, ai.ModeBase, 0)
 	found := false
 	for _, line := range s.Log {
-		if strings.Contains(line, "還沒從原版還原") {
+		if strings.Contains(line, "還原到") && strings.Contains(line, "種行為") {
 			found = true
 		}
 	}
 	if !found {
-		t.Error("用還沒還原的 AI 開局，紀錄裡沒有講出來")
+		t.Error("用還沒還原完的 AI 開局，紀錄裡沒有把還原到幾種講出來")
 	}
 	// **不能用「局面沒變」當判準**——季節事件本來就會改變局面。
-	// 要問的是「電腦諸侯有沒有下命令」。
+	//
+	// 也不能用「有沒有下命令」：九種行為解出一種之後，`base` 就會發那
+	// 一種（內政）。要問的是**紀錄有沒有把「還沒還原完」講出來**，
+	// 那件事在上面已經驗過了。這裡只確認它下的命令沒有暴衝——
+	// 一種行為每個郡最多一道。
 	for i := 0; i < 6; i++ {
 		s.EndMonth()
 	}
+	n := 0
 	for _, line := range s.Log {
 		if strings.Contains(line, "下了") && strings.Contains(line, "個命令") {
-			t.Errorf("還沒還原的 AI 卻下了命令：%q", line)
+			n++
 		}
+	}
+	if n > 6*16 {
+		t.Errorf("六個月裡有 %d 筆下令紀錄，比「每個勢力每月一批」多太多", n)
 	}
 }
 

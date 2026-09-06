@@ -76,10 +76,25 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			t.Fatal(err)
 		}
 		if b.Derived() {
-			t.Errorf("%s 宣稱已經還原了——原版的決策程式碼還沒反組譯到", m)
+			t.Errorf("%s 宣稱已經完整還原了——九種行為還沒解完", m)
 		}
-		if orders := b.Plan(g, 1); len(orders) != 0 {
-			t.Errorf("%s 還沒還原卻下了 %d 個命令", m, len(orders))
+		done, total := b.Coverage()
+		if total != 9 {
+			t.Errorf("%s 的行為總數是 %d，原版的分派器是九張表", m, total)
+		}
+		// **只准發已經解出來的那幾種行為。** 判準不是「不准下命令」——
+		// 解出一種就該發一種，否則還原了也用不上；而是「下的命令要在
+		// 解出來的那幾種裡面」。
+		orders := b.Plan(g, 1)
+		if done == 0 && len(orders) != 0 {
+			t.Errorf("%s 一種行為都還沒解，卻下了 %d 個命令", m, len(orders))
+		}
+		for _, o := range orders {
+			switch o.(type) {
+			case game.ReclaimOrder, game.FloodControlOrder: // 內政，已解
+			default:
+				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
+			}
 		}
 	}
 }

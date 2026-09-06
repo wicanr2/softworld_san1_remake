@@ -43,6 +43,17 @@ func (g *State) roll(salt ...int) int {
 	return int(h % 100)
 }
 
+// Roll 是給 `internal/ai` 用的決定性亂數，回 0..n−1。
+//
+// **和規則層用的是同一顆**（`roll`），所以 AI 的選擇與事件的判定
+// 共用同一份決定性——存檔重播得出同一局。
+func (g *State) Roll(n int, salt ...int) int {
+	if n <= 0 {
+		return 0
+	}
+	return g.roll(salt...) % n
+}
+
 // ---- 6. 人事 ------------------------------------------------------------
 
 // Search 是「尋訪人才」（說明書 p.22）：每次 5 金，

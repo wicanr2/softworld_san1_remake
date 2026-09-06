@@ -43,12 +43,19 @@ type Brain interface {
 	// Name 是給人看的名字。
 	Name() string
 
-	// Derived 回報這個 AI 是不是已經從原版還原出來的。
+	// Derived 回報這個 AI 是不是已經**完整**從原版還原出來的。
 	//
-	// **false 表示它不會下棋**，不是「它比較弱」。呼叫端要把這件事
-	// 顯示出來——一個安靜地什麼都不做的電腦諸侯，在畫面上看起來
+	// **false 表示它還不會下完整的棋**，不是「它比較弱」。呼叫端要把
+	// 這件事顯示出來——一個安靜地什麼都不做的電腦諸侯，在畫面上看起來
 	// 就只是「這個諸侯這回合沒動作」。
 	Derived() bool
+
+	// Coverage 回報九種行為裡解出了幾種。
+	//
+	// 原版的電腦諸侯每個郡每回合把**九種行為都跑一遍**，每種各有自己的
+	// 條件（`docs/mechanics/70-ai`）——不是「從十道命令裡挑一道」。
+	// 所以進度是「九分之幾」，不是布林值。
+	Coverage() (done, total int)
 
 	// Plan 回傳某個勢力這個月要下的命令。**不改變局面**。
 	Plan(g *game.State, f state.FactionID) []game.Order
@@ -69,15 +76,64 @@ func New(m Mode) (Brain, error) {
 
 // faithful 是「以還原原版為目標」的 AI 的共同外殼。
 //
-// 原版的決策程式碼還沒反組譯到，所以它現在不下任何命令。
-// **這是刻意的空實作，不是佔位的假 AI**——填一個「差不多的」策略進去，
-// 之後就再也分不出哪些行為是還原的、哪些是我編的。
+// **只做已經從原版讀出來的行為。** 九種行為裡解出一種（內政）。
+// 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
+// 哪些行為是還原的、哪些是我編的。
 type faithful struct {
 	mode Mode
 	name string
 }
 
-func (f *faithful) Mode() Mode                                     { return f.mode }
-func (f *faithful) Name() string                                   { return f.name }
-func (f *faithful) Derived() bool                                  { return false }
-func (f *faithful) Plan(*game.State, state.FactionID) []game.Order { return nil }
+func (f *faithful) Mode() Mode                    { return f.mode }
+func (f *faithful) Name() string                  { return f.name }
+func (f *faithful) Derived() bool                 { return false }
+func (f *faithful) Coverage() (int, int)          { return 1, 9 }
+
+// Plan 只發出已經解出來的那一種行為。
+//
+// 內政（原版的分派表 `0x5534`，`docs/re/03` §1.4）：
+//
+//	r = RND(K)      K ＝ [4,4,4,3,3,2]，由勢力的 AI 等級選
+//	r == 0 → 土地開發
+//	r == 1 → 洪水防治
+//	否則   → 這回合不做
+//
+// **等級越高範圍越小、動手的機率越大**：等級 5 是 `RND(2)`，兩件事
+// 各半、從不閒著；等級 0 是 `RND(4)`，一半的回合什麼都不做。
+//
+// ⚠ **這裡只還原了「選哪一道」，沒有還原「做多少」。** 原版的量是
+// 地力 `+= (智 − 50)/12`、洪水率 `-= 智/10`，而 remake 的 `Reclaim`／
+// `FloodControl` 用的是自己的係數（`docs/design/02`）。要對拍得先把
+// 那兩個量也接過來。
+func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
+	var out []game.Order
+	k := internalAffairsRange(g.AILevel(id))
+	for _, p := range g.Territory(id) {
+		gov := g.Governor(p)
+		if gov == nil {
+			continue
+		}
+		switch g.Roll(k, int(id), p, 0x5534) {
+		case 0:
+			out = append(out, game.ReclaimOrder{At: p, General: gov.Index})
+		case 1:
+			out = append(out, game.FloodControlOrder{At: p, General: gov.Index})
+		}
+	}
+	return out
+}
+
+// internalAffairsRange 是內政那張分派表的亂數範圍（`L0`、`[base]`）。
+//
+// 六份常式是同一段碼，只有 `mov ax,K` 的常數不同：
+// 等級 0–2 是 `RND(4)`、3–4 是 `RND(3)`、5 是 `RND(2)`。
+func internalAffairsRange(level int) int {
+	switch {
+	case level <= 2:
+		return 4
+	case level <= 4:
+		return 3
+	default:
+		return 2
+	}
+}

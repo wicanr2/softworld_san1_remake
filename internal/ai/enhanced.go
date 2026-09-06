@@ -20,6 +20,9 @@ func (e *enhanced) Mode() Mode    { return ModeEnhanced }
 func (e *enhanced) Name() string  { return "remake 強化 AI" }
 func (e *enhanced) Derived() bool { return false }
 
+// Coverage 對 remake 自己的 AI 沒有意義——它不是在還原什麼。
+func (e *enhanced) Coverage() (int, int) { return 0, 0 }
+
 // 門檻。**這些是 remake 自己的判斷，不是原版的數字。**
 const (
 	floodDanger = 60  // 洪水率到這裡就優先防洪
