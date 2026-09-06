@@ -17,6 +17,7 @@
 | 格式解析 | **未開始** | |
 | Go 程式 | `assets`／`state`／`cells`／`font`／`ui` 五個套件 ＋ `cmd/san1`（Ebiten）＋ `cmd/san1dump`（CLI／PNG），測試全綠 | 2026-09-06 |
 | 引擎畫面 | 州郡一覽可渲染：42 郡名、零缺字，Ebiten 與無頭 PNG 走同一份畫面程式 | 2026-09-06 |
+| **對拍框架** | **成立**：`internal/parity` 走 `-tags oracle`，go workspace 接 `dosgolem-san`。三個測試綠 | 2026-09-06 |
 
 里程碑定義在 `CLAUDE.md` §10。目前在 **M2–M3 之間**：M0 完成、M2（容器格式）實質完成、M3（文字與字型）畫面已通；
 M1（dosgolem 跑得動）卡在 overlay 載入段的參數（`dosgolem/docs/spec/010` §4）。
@@ -70,6 +71,8 @@ M1（dosgolem 跑得動）卡在 overlay 載入段的參數（`dosgolem/docs/spe
 | F26 | 啟動是**四題裝置選擇**：標題、`Music`(No/AdLib)、`Graphic`(Hercules/EGA)、`Disk`(Floppy/HardDisk)，只收 `1`–`2` | `L0` | `[base]` | 反組譯 `0x290bd` ＋ 字串，`docs/re/00` 第四輪 |
 | F27 | `DATA0`／`4`／`5.GRP` 是 **overlay 模組**，遊戲用 `int 21h AH=4Bh AL=03` 載入 | `L1` | `[base]` | 同上 |
 | F28 | dosgolem 的配置器不回收，是遊戲以離開碼 255 結束的原因；修好後 `AH=4Ah` 從 19,846 次降到 7 次 | `L1` | — | `dosgolem/docs/spec/009` |
+| F29 | 原版把 Floppy 拼成 **`Floopy`**（原版自己的錯字，remake 照原樣保留）| `L0` | `[base]` | 對拍測試抓到 |
+| F30 | 原版的主控台輸出是**緩衝**的：開檔那一刻只有三個回顯字元，提示文字更後面才沖出來 | `L0` | `[base]` | `internal/parity` |
 
 ### 3.05 密碼表：唯一必須從執行檔取的東西
 
@@ -222,6 +225,8 @@ DATA1 的 round-trip 零逆序、無縫覆蓋。
 - [x] 查那 790 萬道指令 → 是解壓階段的記憶體翻攪，成因是 dosgolem 配置器不回收（F28）
 - [ ] **在 dosgolem 實作 `int 21h AH=4Bh AL=03`（載入 overlay）**——走到第一個畫面的唯一擋路者
 - [ ] probe 要能看 `B0000`（Hercules）——目前只看 `A0000` 與 `B8000`，選 Hercules 時會得到假零
+- [x] **對拍框架**：`internal/parity` ＋ go workspace ＋ `-tags oracle`，缺素材或缺 dosgolem 時 skip 不紅
+- [ ] 解 overlay 載入段（`dosgolem/docs/spec/010` §4）——原版走得更深，才有更多可對拍的東西
 - [ ] `10.GRP`／`20.GRP`／`D5.GRP` 三個變體逐位元組 diff——同一個容器的三份不同內容，是解格式最便宜的槓桿
 - [x] 從資料檔找 42 個郡名 → `docs/formats/02`
 - [x] 從 `DATA2.GRP` 取人物表 → 346 位（**不是手冊說的 342**，差 4 位未解釋）
