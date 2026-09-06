@@ -21,7 +21,7 @@ IMAGE="${SAN1_GO_IMAGE:-rich2-go-ebiten:latest}"
 mkdir -p "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"
 
 PASS=()
-for v in GOOS GOARCH CGO_ENABLED SAN1_ORIG_DIR; do
+for v in GOOS GOARCH CGO_ENABLED SAN1_ORIG_DIR SAN1_SHOTS; do
   [[ -n "${!v:-}" ]] && PASS+=(-e "$v=${!v}")
 done
 

@@ -212,7 +212,7 @@ func drawMap(c *Canvas, g *game.State, sel int) {
 		perRow = 1
 	}
 	step := 2
-	if rows := (len(prefs)+perRow-1)/perRow*step; rows > Rows-4 {
+	if rows := (len(prefs) + perRow - 1) / perRow * step; rows > Rows-4 {
 		step = 1
 	}
 	for i, p := range prefs {
