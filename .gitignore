@@ -1,0 +1,24 @@
+# 原版素材一律不進版控
+org_game/
+workplace/
+manual/
+*.rar
+*.zip
+*.i64
+*.asm
+*.EXE
+*.GRP
+*.IDX
+*.NAM
+*.SHA
+*.COM
+
+# 建置產物
+/dist/
+/dist-all/
+*.exe
+*.test
+
+# Go workspace（只在容器內成立）
+go.work
+go.work.sum
