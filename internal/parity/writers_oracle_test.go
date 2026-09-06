@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/wicanr2/dosgolem/oracle"
@@ -379,5 +380,110 @@ func TestZZIndexSource(t *testing.T) {
 			break
 		}
 		t.Logf("    %s ×%d", k, seen[k])
+	}
+}
+
+// TestZZTableMeaning 把九張分派表各自對應到哪些欄位。
+//
+// 做法是**時間軸歸屬**：分派點與盤面寫入都帶著執行到第幾道指令
+// （`MemWrite.Step`／`Oracle.Steps`），所以每一次寫入都可以歸給它前面
+// 最近的那一次分派。不必逐支反組譯。
+//
+// ⚠ 歸屬只在「分派之間不重疊」時成立。九個分派點是**順序**執行的
+// （`0xe926` 到 `0xe9fc` 一路往下），所以這個前提在這一層成立；
+// 但被呼叫的常式如果自己又轉呼叫別的東西，寫入還是算在它頭上——
+// 那正是我們要的。
+func TestZZTableMeaning(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	base := bootToGame(t, o, seedMas)
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	total := nMas + nSta + state.GeneralTableSize
+
+	type ev struct {
+		step  uint64
+		table uint16
+	}
+	var evs []ev
+	for lin, tbl := range map[uint32]uint16{
+		0xe926: 0x54d4, 0xe937: 0x5694, 0xe948: 0x5674, 0xe959: 0x5614,
+		0xe96a: 0x5634, 0xe97b: 0x5554, 0xe98c: 0x5534, 0xe99d: 0x56b4,
+		0xe9fc: 0x5594,
+	} {
+		table := tbl
+		o.OnCall(addr(lin), func(o *oracle.Oracle) {
+			evs = append(evs, ev{o.Steps(), table})
+		})
+	}
+	log := o.WatchWritesAt(base, base+uint32(total)-1)
+	for _, keys := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(keys)
+		if err := o.Run(40_000_000 * 3); err != nil {
+			t.Fatalf("原版停止：%v", err)
+		}
+	}
+	o.StopWatchingWrites()
+	sort.Slice(evs, func(i, j int) bool { return evs[i].step < evs[j].step })
+
+	fields := map[uint16]map[string]int{}
+	orphan := 0
+	for _, w := range *log {
+		i := sort.Search(len(evs), func(k int) bool { return evs[k].step > w.Step }) - 1
+		if i < 0 {
+			orphan++
+			continue
+		}
+		tbl := evs[i].table
+		if fields[tbl] == nil {
+			fields[tbl] = map[string]int{}
+		}
+		off := int(w.Off)
+		var name string
+		switch {
+		case off < nMas:
+			name = "諸侯." + fieldName(masField, off%state.MasterRecordSize)
+		case off < nMas+nSta:
+			name = "州郡." + fieldName(prefField, (off-nMas)%state.PrefectureRecordSize)
+		default:
+			name = "人物." + fieldName(genField, (off-nMas-nSta)%state.GeneralRecordSize)
+		}
+		fields[tbl][name]++
+	}
+	t.Logf("一個月：分派 %d 次、盤面寫入 %d 次（%d 次落在第一次分派之前）",
+		len(evs), len(*log), orphan)
+	tbls := make([]int, 0, len(fields))
+	for tb := range fields {
+		tbls = append(tbls, int(tb))
+	}
+	sort.Ints(tbls)
+	for _, tb := range tbls {
+		m := fields[uint16(tb)]
+		ks := make([]string, 0, len(m))
+		for k := range m {
+			ks = append(ks, k)
+		}
+		sort.Slice(ks, func(i, j int) bool { return m[ks[i]] > m[ks[j]] })
+		var parts []string
+		for i, k := range ks {
+			if i >= 8 {
+				parts = append(parts, "…")
+				break
+			}
+			parts = append(parts, fmt.Sprintf("%s×%d", k, m[k]))
+		}
+		t.Logf("表 %#04x → %s", tb, strings.Join(parts, " "))
 	}
 }
