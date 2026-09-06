@@ -323,30 +323,56 @@ func ParseSong(b []byte) (*Song, error) {
 // 每個事件是「可變長度的時間差 ＋ 狀態位元組 ＋ 參數」。
 // **running status 要支援**：省略狀態位元組沿用上一個，是 MIDI 的常規，
 // 不支援的話會把資料位元組當成狀態而整串走歪。
+//
+// **時間差是一個位元組，不是 MIDI 的可變長度數值。** 兩種讀法在 0–127
+// 完全一致，所以五首短曲怎麼讀都對；`MUSV` 那一首長曲有 0x96、0xB4
+// 這種一百多個 tick 的間隔，照可變長度讀就會把下一個位元組併進來。
+//
+// **即時訊息（0xF8–0xFF）可以插在任何地方**，包括時間差的中間、狀態
+// 位元組與參數之間、兩個參數之間；它們自己前面沒有時間差。這是 MIDI
+// 的規矩，`MUSV` 那一首長曲真的用上了。
+//
+// ⚠ 照「每個事件都以時間差開頭、參數是接下來的 n 個位元組」讀的話，
+// 一個插在中間的 `0xF8` 會被當成可變長度數字的第一個位元組或是一個
+// 力度值吃掉，**而且不會報錯**——吃進去的仍然是合法的數字，只是後面
+// 整串位移一格。錯法很安靜：事件數只少幾個，時間軸卻整個歪掉。
 func parseEvents(b []byte) ([]Event, error) {
 	var out []Event
 	at, i := 0, 0
 	var running byte
-	for i < len(b) {
-		delta, n, err := varLen(b[i:])
-		if err != nil {
-			return nil, fmt.Errorf("music: 位移 %d 的時間差：%w", i, err)
+
+	// realtime 把游標推過插進來的即時訊息，順手把它們收成事件，
+	// 回傳收了幾個。
+	realtime := func() int {
+		n := 0
+		for i < len(b) && b[i] >= 0xF8 {
+			out = append(out, Event{At: at, Status: b[i]})
+			i++
+			n++
 		}
-		i += n
-		at += delta
+		return n
+	}
+
+	for {
+		realtime()
+		if i >= len(b) {
+			break
+		}
+		at += int(b[i])
+		i++
+		// 曲子以「時間差 ＋ 停止」收尾，最後一個時間差後面就沒有事件了。
+		if realtime() > 0 && i >= len(b) {
+			break
+		}
 		if i >= len(b) {
 			return nil, fmt.Errorf("music: 位移 %d 之後沒有事件了", i)
 		}
 		status := b[i]
 		if status&0x80 != 0 {
 			i++
-			switch {
-			case status < 0xF0:
+			if status < 0xF0 {
 				running = status
-			case status >= 0xF8:
-				// 即時訊息（0xF8 時脈、0xFC 停止…）**不影響 running status**，
-				// 這是 MIDI 的規矩。清掉的話後面那個省略狀態的事件就沒得沿用。
-			default:
+			} else {
 				running = 0
 			}
 		} else {
@@ -359,30 +385,40 @@ func parseEvents(b []byte) ([]Event, error) {
 		if err != nil {
 			return nil, fmt.Errorf("music: 位移 %d：%w", i, err)
 		}
-		if status >= 0xF8 || status == 0xF6 || status == 0xF7 {
-			// 單一位元組的訊息，沒有參數。
+		if status == 0xF6 {
 			out = append(out, Event{At: at, Status: status})
 			continue
 		}
 		if status == SysEx {
-			end := i
-			for end < len(b) && b[end] != 0xF7 {
-				end++
+			var data []byte
+			for {
+				if i >= len(b) {
+					return nil, fmt.Errorf("music: 位移 %d 起的 SysEx 沒有結尾", i)
+				}
+				c := b[i]
+				i++
+				if c == 0xF7 {
+					break
+				}
+				if c >= 0xF8 {
+					out = append(out, Event{At: at, Status: c})
+					continue
+				}
+				data = append(data, c)
 			}
-			if end >= len(b) {
-				return nil, fmt.Errorf("music: 位移 %d 起的 SysEx 沒有結尾", i)
-			}
-			out = append(out, Event{At: at, Status: status,
-				Data: append([]byte(nil), b[i:end]...)})
-			i = end + 1
+			out = append(out, Event{At: at, Status: status, Data: data})
 			continue
 		}
-		if i+size > len(b) {
-			return nil, fmt.Errorf("music: 位移 %d 的事件 %#02x 少了參數", i, status)
+		data := make([]byte, 0, size)
+		for len(data) < size {
+			realtime()
+			if i >= len(b) {
+				return nil, fmt.Errorf("music: 位移 %d 的事件 %#02x 少了參數", i, status)
+			}
+			data = append(data, b[i])
+			i++
 		}
-		out = append(out, Event{At: at, Status: status,
-			Data: append([]byte(nil), b[i:i+size]...)})
-		i += size
+		out = append(out, Event{At: at, Status: status, Data: data})
 	}
 	return out, nil
 }
@@ -418,6 +454,9 @@ func eventSize(status byte) (int, error) {
 }
 
 // varLen 讀一個 MIDI 的可變長度數值。
+//
+// 事件流的時間差**不用它**（見 parseEvents）；留著是因為匯出的 SMF 用
+// 這個格式，兩邊要對得起來。
 func varLen(b []byte) (value, size int, err error) {
 	for size < len(b) && size < 4 {
 		c := b[size]

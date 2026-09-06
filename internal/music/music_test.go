@@ -3,7 +3,6 @@ package music
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
@@ -188,21 +187,50 @@ func TestBadDataIsRejected(t *testing.T) {
 	}
 }
 
-// TestLongSongIsStillOpen 記錄 `MUSV` 還沒解乾淨。
+// TestLongSongParses 釘住 `MUSV` 那一首長曲解得乾淨。
 //
-// 五首主要配樂（`MUS`）的事件數與表頭**完全吻合**；`MUSV` 那一首長曲
-// 走出來比表頭少六個。少的是什麼還不知道（`docs/formats/06` §5）。
-//
-// **這一條會在解出來的那一天變紅**，那正是它的用途：解決了就來改它，
-// 而不是讓一個過期的「已知問題」留在文件裡沒人發現。
-func TestLongSongIsStillOpen(t *testing.T) {
+// 它是唯一用得到兩件事的曲子：**時間差超過 127**，以及**即時訊息插在
+// 事件中間**。五首短曲兩件都沒有，所以短曲全部吻合不代表解析器對——
+// 這一條才擋得住那兩個坑（`docs/formats/06` §3）。
+func TestLongSongParses(t *testing.T) {
 	d := data1(t)
-	_, err := ParseAll(d[LongIndex], d[LongData])
-	if err == nil {
-		t.Fatal("MUSV 解得開了——請更新 docs/formats/06 §5 並刪掉這個測試")
+	tracks, err := ParseAll(d[LongIndex], d[LongData])
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(err.Error(), "6932") {
-		t.Errorf("MUSV 的錯誤變成 %v，與記錄的「少六個事件」不同", err)
+	if len(tracks) != 1 {
+		t.Fatalf("MUSV 解出 %d 首，應該是 1 首", len(tracks))
+	}
+	s := tracks[0].Song
+	t.Logf("MUSV：%d 事件、%d BPM、%.1f 秒、%d 個音色",
+		len(s.Events), s.Tempo, s.Duration(), len(tracks[0].Bank.Instruments))
+
+	// 時間差要有超過 127 的，否則這一條擋不住「照可變長度讀」那個錯法。
+	big, prev := 0, 0
+	for _, e := range s.Events {
+		if e.At-prev > 127 {
+			big++
+		}
+		prev = e.At
+	}
+	if big == 0 {
+		t.Error("沒有超過 127 的時間差——這一條就擋不住可變長度那個讀法了")
+	}
+	// 即時訊息要有，而且要有插在事件中間的（不在開頭也不在結尾）。
+	rt := 0
+	for i, e := range s.Events {
+		if e.Status >= 0xF8 && i > 0 && i < len(s.Events)-1 {
+			rt++
+		}
+	}
+	if rt == 0 {
+		t.Error("沒有插在中間的即時訊息——這一條就擋不住「每個事件都有時間差」那個讀法了")
+	}
+	t.Logf("  超過 127 的時間差 %d 個、插在中間的即時訊息 %d 個", big, rt)
+
+	// 最後一個事件不能超過表頭說的全曲長度。
+	if last := s.Events[len(s.Events)-1].At; last > s.Ticks {
+		t.Errorf("最後一個事件在 %d tick，表頭說全曲 %d tick", last, s.Ticks)
 	}
 }
 
