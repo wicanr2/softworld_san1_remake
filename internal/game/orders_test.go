@@ -179,7 +179,7 @@ func TestConscriptRejectsForeignGeneral(t *testing.T) {
 //
 // `Restore` 是拿 `NoFaction` 叫 `New` 的，所以每個勢力一開始都被標成
 // 電腦；玩家蓋回去之後那個旗標要重算。**漏掉不會有任何錯誤訊息**——
-// 只會讓讀檔之後的玩家一個月下得完九道令。
+// 只會讓讀檔之後的玩家一個月下得完十八道令。
 func TestRestoreKeepsThePlayerHuman(t *testing.T) {
 	sc := loadScenario(t, state.Scenario1)
 	g, err := New(sc, 0, 5)

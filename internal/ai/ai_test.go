@@ -75,14 +75,14 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// 九張表的判斷式都讀出來了，但 AI 的回合預算、賞賜的增幅與
-		// 排序鍵、原版的亂數都還沒量到。**結構對了不代表數值對了。**
+		// 十八張表裡解出九張，而且已讀的那幾張底下還有沒量到的量
+		//（賞賜的增幅與排序鍵、原版的亂數）。**結構對了不代表數值對了。**
 		if b.Derived() {
 			t.Errorf("%s 宣稱已經完整還原了——表底下還有沒量到的量", m)
 		}
 		done, total := b.Coverage()
-		if total != 9 {
-			t.Errorf("%s 的行為總數是 %d，原版的分派器是九張表", m, total)
+		if total != 18 {
+			t.Errorf("%s 的行為總數是 %d，原版的分派器是十八張表", m, total)
 		}
 		// **只准發已經解出來的那幾種行為。** 判準不是「不准下命令」——
 		// 解出一種就該發一種，否則還原了也用不上；而是「下的命令要在

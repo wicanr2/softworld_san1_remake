@@ -577,7 +577,7 @@ func decodeBig5(b []byte) (string, error) {
 
 // AILevel 是勢力的電腦諸侯等級（`BASEMAS` offset 4，`L0`、`[base]`）。
 //
-// 原版用它當索引挑一整套行為：九張指令分派表，每張八個 far pointer
+// 原版用它當索引挑一整套行為：十八張指令分派表，每張八個 far pointer
 // （`docs/re/03` §1.4）。**進分派器之前會被夾在 0–5**，所以有效範圍是
 // 六級；表的第 7、8 格是空操作，只為了把表補成 2 的冪。
 //

@@ -220,9 +220,29 @@ func TestZZWhoWritesTheTables(t *testing.T) {
 	}
 }
 
+// dispatchSites 是分派器裡**全部十八個**分派點，以及各自的表位址。
+//
+// **清單是拿位元組樣式掃出來的，不是順著讀出來的**：`ff 9f` ＝
+// `lcall far [bx+disp16]`。前八個間隔固定 `0x11`，第九個之後隔著一整段
+// 預算計算的碼——順著讀會在那裡停下來，那正是原本只數到九張的原因
+//（`CONTEXT.md` R10）。
+var dispatchSites = map[uint32]uint16{
+	0xe926: 0x54d4, 0xe937: 0x5694, 0xe948: 0x5674, 0xe959: 0x5614,
+	0xe96a: 0x5634, 0xe97b: 0x5554, 0xe98c: 0x5534, 0xe99d: 0x56b4,
+	0xe9fc: 0x5594, 0xea5b: 0x5574, 0xeaba: 0x5514, 0xeb19: 0x55f4,
+	0xeb78: 0x5654, 0xebd7: 0x56d4, 0xebe8: 0x56f4, 0xebf9: 0x55b4,
+	0xec0a: 0x55d4, 0xec1b: 0x54f4,
+}
+
+// budgetSites 是六個「呼叫之前先算本回合預算」的表，配上它在係數表
+// 一筆 12 byte 裡的位移（`docs/re/03` §1.4）。
+var budgetSites = map[uint16]int{
+	0x5594: 0, 0x5574: 2, 0x5514: 4, 0x55f4: 6, 0x5654: 8, 0x56d4: 10,
+}
+
 // TestZZDispatch 讀電腦諸侯的指令分派表。
 //
-// `0xe926`–`0xe9fc` 有九個分派點，形狀都一樣：
+// 十八個分派點形狀都一樣：
 //
 //	mov es, [0xa63a]
 //	mov bx, es:[0x20f6]      ; 索引
@@ -251,11 +271,7 @@ func TestZZDispatch(t *testing.T) {
 	t.Logf("三張表的基底 %#x，難度 %q，索引來源 %#06x 現在是 %d",
 		base, envOr("SAN1_DIFFICULTY", "5"), 0x040736, o.Byte(addr(0x040736)))
 
-	sites := map[uint32]uint16{
-		0xe926: 0x54d4, 0xe937: 0x5694, 0xe948: 0x5674, 0xe959: 0x5614,
-		0xe96a: 0x5634, 0xe97b: 0x5554, 0xe98c: 0x5534, 0xe99d: 0x56b4,
-		0xe9fc: 0x5594,
-	}
+	sites := dispatchSites
 	// **表走 DS 不是 ES。** 那道 `ff 9f 54 55` 沒有 `26` 前綴，
 	// 預設段就是 DS；讀成 ES 會拿到看起來像位址的垃圾。
 	word := func(o *oracle.Oracle, lin uint32) uint32 {
@@ -287,6 +303,36 @@ func TestZZDispatch(t *testing.T) {
 					b := o.Bytes(addr(ds*16+off), 8)
 					seen[fmt.Sprintf("  武裝度的浮點常數 DS:%#04x ＝ %g", off,
 						math.Float64frombits(binary.LittleEndian.Uint64(b)))] = 0
+				}
+			}
+			// 本回合的預算：六張表在呼叫前各寫一次 `es:[0x3d16]`，
+			// 值 ＝ 係數表[12×(4×等級 + es:[0x3f08] mod 4) + 位移]
+			// × 郡的金 × ds:[0xa632]（`docs/re/03` §1.4）。
+			// 這裡把係數表整張、常數、以及那個取 mod 4 的量一起讀出來。
+			if off, ok := budgetSites[table]; ok {
+				seen[fmt.Sprintf("  預算：表 %#04x 取係數位移 %+d，此刻 es:[0x3d16] ＝ %d",
+					table, off, int16(word(o, uint32(o.ES())*16+0x3d16)))]++
+			}
+			if table == 0x5594 {
+				c := o.Bytes(addr(ds*16+0xa632), 8)
+				seen[fmt.Sprintf("  預算的浮點常數 DS:0xa632 ＝ %g",
+					math.Float64frombits(binary.LittleEndian.Uint64(c)))] = 0
+				seen[fmt.Sprintf("  取 mod 4 的那個量 es:[0x3f08] ＝ %d（mod 4 ＝ %d）",
+					int16(word(o, uint32(o.ES())*16+0x3f08)),
+					int16(word(o, uint32(o.ES())*16+0x3f08))%4)]++
+				// 係數表 DS:0x5714：24 筆 × 6 個 word。
+				for lv := 0; lv < 6; lv++ {
+					var row []string
+					for ph := 0; ph < 4; ph++ {
+						k := lv*4 + ph
+						var six []string
+						for j := 0; j < 6; j++ {
+							six = append(six, fmt.Sprintf("%d",
+								int16(word(o, ds*16+0x5714+uint32(k*12+j*2)))))
+						}
+						row = append(row, "相位"+fmt.Sprint(ph)+":"+strings.Join(six, ","))
+					}
+					seen[fmt.Sprintf("  預算係數 等級%d %s", lv, strings.Join(row, "  "))] = 0
 				}
 			}
 			if table == 0x54d4 {
@@ -337,7 +383,7 @@ func TestZZDispatch(t *testing.T) {
 
 // TestZZIndexSource 找出分派索引是誰寫的、寫的是什麼。
 //
-// 索引在線性 `0x040736`，九個分派點共用它，取值只見過 4 與 5。
+// 索引在線性 `0x040736`，十八個分派點共用它，取值只見過 4 與 5。
 // **難度不是它**（難度 5 與 8 得到相同的索引值）。所以直接看寫入端。
 func TestZZIndexSource(t *testing.T) {
 	root := origRoot(t)
@@ -405,14 +451,14 @@ func TestZZIndexSource(t *testing.T) {
 	}
 }
 
-// TestZZTableMeaning 把九張分派表各自對應到哪些欄位。
+// TestZZTableMeaning 把分派表各自對應到哪些欄位。
 //
 // 做法是**時間軸歸屬**：分派點與盤面寫入都帶著執行到第幾道指令
 // （`MemWrite.Step`／`Oracle.Steps`），所以每一次寫入都可以歸給它前面
 // 最近的那一次分派。不必逐支反組譯。
 //
-// ⚠ 歸屬只在「分派之間不重疊」時成立。九個分派點是**順序**執行的
-// （`0xe926` 到 `0xe9fc` 一路往下），所以這個前提在這一層成立；
+// ⚠ 歸屬只在「分派之間不重疊」時成立。十八個分派點是**順序**執行的
+// （`0xe926` 到 `0xec1b` 一路往下，中間沒有分支），所以前提成立；
 // 但被呼叫的常式如果自己又轉呼叫別的東西，寫入還是算在它頭上——
 // 那正是我們要的。
 func TestZZTableMeaning(t *testing.T) {
@@ -439,11 +485,7 @@ func TestZZTableMeaning(t *testing.T) {
 		table uint16
 	}
 	var evs []ev
-	for lin, tbl := range map[uint32]uint16{
-		0xe926: 0x54d4, 0xe937: 0x5694, 0xe948: 0x5674, 0xe959: 0x5614,
-		0xe96a: 0x5634, 0xe97b: 0x5554, 0xe98c: 0x5534, 0xe99d: 0x56b4,
-		0xe9fc: 0x5594,
-	} {
+	for lin, tbl := range dispatchSites {
 		table := tbl
 		o.OnCall(addr(lin), func(o *oracle.Oracle) {
 			evs = append(evs, ev{o.Steps(), table})
@@ -588,7 +630,7 @@ func TestZZRandom(t *testing.T) {
 // TestZZDispatchScope 問一件事：分派器對哪些郡跑。
 //
 // `0x5674`（指定太守）開頭檢查「諸侯 offset 0 == 1 就跳過」——玩家的
-// 勢力不做；但 `0x5594`（武裝度）沒有那個檢查。**所以九張表裡可能有
+// 勢力不做；但 `0x5594`（武裝度）沒有那個檢查。**所以這些表裡可能有
 // 一部分是每月結算而不是 AI 決策**，而那決定 `internal/ai` 與
 // `internal/game` 的分工。
 //
@@ -650,9 +692,9 @@ func TestZZDispatchScope(t *testing.T) {
 	t.Logf("分派器一個月跑了 %d 個相異的郡、共 %d 次；其中玩家的郡 %d 次、別人的 %d 次",
 		len(seen), hitMine+hitOther, hitMine, hitOther)
 	if hitMine > 0 {
-		t.Log("→ **分派器對玩家的郡也跑**，所以九張表裡有一部分是每月結算")
+		t.Log("→ **分派器對玩家的郡也跑**，所以這些表裡有一部分是每月結算")
 	} else {
-		t.Log("→ 分派器只對電腦諸侯的郡跑，九張表全部是 AI 決策")
+		t.Log("→ 分派器只對電腦諸侯的郡跑，這些表全部是 AI 決策")
 	}
 }
 

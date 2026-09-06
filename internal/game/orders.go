@@ -45,7 +45,7 @@ func (g *State) canOrder(prefectureID int, by state.FactionID) (*Prefecture, err
 		return nil, ErrNotYours
 	}
 	// **「每郡每月一道令」只管玩家**（說明書 p.17）。原版的分派器對
-	// 每一個電腦的郡把九張表全部跑一遍，同一個月同一個郡的地力、
+	// 每一個電腦的郡把十八張表全部跑一遍，同一個月同一個郡的地力、
 	// 訓練度、身分、忠誠都會動（`Faction.ByComputer`）。
 	if p.Commanded && !g.byComputer(by) {
 		return nil, ErrAlreadyMoved

@@ -106,7 +106,7 @@ func Restore(sc *state.Scenario, e Extra) (*State, error) {
 	g.Options = e.Options
 	// `New` 是拿 `NoFaction` 叫的，所以它把每一個勢力都標成電腦。
 	// 玩家蓋回去之後要重算——**這個旗標會改規則**（「每郡每月一道令」
-	// 只擋玩家），漏掉的話讀檔之後玩家就能一個月下九道令。
+	// 只擋玩家），漏掉的話讀檔之後玩家就能一個月下十八道令。
 	for i := range g.factions {
 		g.factions[i].ByComputer = g.factions[i].ID != g.Player
 	}

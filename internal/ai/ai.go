@@ -49,17 +49,18 @@ type Brain interface {
 	// 這件事顯示出來——一個安靜地什麼都不做的電腦諸侯，在畫面上看起來
 	// 就只是「這個諸侯這回合沒動作」。
 	//
-	// ⚠ **`Coverage()` 回 9/9 也不等於 `Derived()` 為真。** 九張分派表
-	// 的判斷式都從碼讀出來了，但表底下還有沒量到的量：AI 的回合預算
-	// （`es:[0x3d16]` 怎麼算）、賞賜的忠誠增幅與挑人的排序鍵、
-	// 以及原版的亂數產生器。**結構對了不代表數值對了。**
+	// ⚠ **`Coverage()` 的分母是十八，不是九。** 分派器是一條直線，
+	// `0xe926`–`0xec1b` 連續十八個 `lcall far [bx+表]` 之後 `lret`，
+	// 中間沒有分支（`docs/re/03` §1.4）。而且**滿分也不等於
+	// `Derived()` 為真**：判斷式讀出來之後，表底下還有沒量到的量
+	// （賞賜的忠誠增幅與挑人的排序鍵、原版的亂數產生器）。
 	Derived() bool
 
-	// Coverage 回報九種行為裡解出了幾種。
+	// Coverage 回報十八種行為裡解出了幾種。
 	//
-	// 原版的電腦諸侯每個郡每回合把**九種行為都跑一遍**，每種各有自己的
-	// 條件（`docs/mechanics/70-ai`）——不是「從十道命令裡挑一道」。
-	// 所以進度是「九分之幾」，不是布林值。
+	// 原版的電腦諸侯每個郡每回合把**十八種行為都跑一遍**，每種各有
+	// 自己的條件（`docs/mechanics/70-ai`）——不是「從十道命令裡挑一道」。
+	// 所以進度是「十八分之幾」，不是布林值。
 	Coverage() (done, total int)
 
 	// Plan 回傳某個勢力這個月要下的命令。**不改變局面**。
@@ -81,7 +82,7 @@ func New(m Mode) (Brain, error) {
 
 // faithful 是「以還原原版為目標」的 AI 的共同外殼。
 //
-// **只做已經從原版讀出來的行為。** 九種行為裡解出三種
+// **只做已經從原版讀出來的行為。** 十八種行為裡解出三種
 // （內政、訓練兵士、指定太守、指定軍師、賞賜物品、尋訪人才、登用人才）。
 // 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
 // 哪些行為是還原的、哪些是我編的。
@@ -93,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 9, 9 }
+func (f *faithful) Coverage() (int, int) { return 9, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
