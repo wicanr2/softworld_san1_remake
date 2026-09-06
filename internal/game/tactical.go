@@ -62,8 +62,35 @@ func (g *State) fieldFor(at int) *battle.Field {
 	})
 }
 
+// Pending 是一場已經開打、還沒收尾的戰役。
+//
+// 玩家親自指揮時，開打與收尾之間隔著幾十次按鍵；那段時間裡
+// **戰場的狀態在 `internal/battle`，局面的狀態還沒動**。
+// 把中間需要記住的東西放這裡，收尾時一起搬回去。
+type Pending struct {
+	B *battle.Battle
+
+	// Player 為真表示這一場由玩家指揮。
+	Player bool
+
+	from, to int
+	by       state.FactionID
+	att, def []*General
+	result   *BattleResult
+}
+
+// Battle 是這一場的戰術層戰役。
+func (p *Pending) Battle() *battle.Battle { return p.B }
+
 // fight 把一場戰役交給戰術層打完，並把結果搬回局面。
 func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *BattleResult {
+	p := g.prepare(from, to, att, def, by)
+	p.B.Auto()
+	return g.settle(p)
+}
+
+// prepare 把雙方擺上戰場，扣掉隨軍帶走的錢糧，但**不打**。
+func (g *State) prepare(from, to int, att, def []*General, by state.FactionID) *Pending {
 	dst := g.Prefecture(to)
 	r := &BattleResult{From: from, To: to}
 
@@ -91,8 +118,23 @@ func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *Ba
 		setup.Defenders = append(setup.Defenders, toLeader(x))
 	}
 
-	b := battle.New(setup)
-	r.Days = b.Auto()
+	return &Pending{B: battle.New(setup), from: from, to: to, by: by,
+		att: att, def: def, result: r}
+}
+
+// settle 把打完的戰役搬回局面。
+//
+// **收尾只能做一次。** 做兩次的話傷亡會被重複套用，而那在畫面上
+// 只看得出「這一場死得特別多」。
+func (g *State) settle(p *Pending) *BattleResult {
+	b, r := p.B, p.result
+	from, to, by := p.from, p.to, p.by
+	att, def := p.att, p.def
+	dst := g.Prefecture(to)
+	if !b.Over {
+		b.Auto()
+	}
+	r.Days = b.Day
 	r.AttackerWon = b.AttackerWon
 	r.Log = append(r.Log, b.Log...)
 
@@ -154,6 +196,30 @@ func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *Ba
 	}
 	g.Reports = append(g.Reports, r)
 	return r
+}
+
+// BeginAttack 與 Attack 收同樣的條件，但**不打**：回傳一場擺好的戰役，
+// 讓呼叫端一步一步指揮（`battle.Runner`）。打完之後要叫 FinishAttack。
+//
+// ⚠ **開打就已經動到局面**：攻方帶走的錢糧當場從原郡扣掉，
+// 主事者親征也已經交接。中途放棄不會回到開打前——原版也是這樣，
+// 出兵是不能反悔的。
+func (g *State) BeginAttack(from, to int, attackers []int, by state.FactionID) (*Pending, error) {
+	att, def, err := g.musterAttack(from, to, attackers, by)
+	if err != nil {
+		return nil, err
+	}
+	p := g.prepare(from, to, att, def, by)
+	p.Player = true
+	return p, nil
+}
+
+// FinishAttack 把打完的戰役搬回局面。
+func (g *State) FinishAttack(p *Pending) *BattleResult {
+	if p == nil || p.result == nil {
+		return nil
+	}
+	return g.settle(p)
 }
 
 // seizeTreasures 是「獲勝軍若於戰後捉到敵軍君主，其寶物將全歸獲勝軍所有」

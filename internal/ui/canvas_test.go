@@ -3,12 +3,15 @@ package ui
 import (
 	"image/color"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
 var (
@@ -257,4 +260,98 @@ func TestTimeColumnShowsTheEra(t *testing.T) {
 			t.Errorf("%s：有畫不出來的字 %v", c.cal.Name(), canvas.Missing)
 		}
 	}
+}
+
+// TestGeneralPageShowsTheOriginalFields 釘住檢視將軍的欄位與原版對齊。
+//
+// 原版的檢視畫面是 `体能 %3d`／`謀略 %3d 兵士數 %4d`／
+// `戰力 %3d 訓練度 %3d`／`魅力 %3d 武裝度 %3d`（`docs/re/04` §7）。
+// **原版寫的是「体能」不是「體能」**，照它。
+func TestGeneralPageShowsTheOriginalFields(t *testing.T) {
+	g := loadGame(t)
+	title, lines := GeneralPage(g, 0)
+	if title != "檢視將軍" {
+		t.Errorf("標題是 %q", title)
+	}
+	body := strings.Join(lines, "\n")
+	for _, w := range []string{"体能", "謀略", "戰力", "魅力",
+		"兵士數", "訓練度", "武裝度", "忠心度", "人氏", "帶兵上限"} {
+		if !strings.Contains(body, w) {
+			t.Errorf("檢視頁沒有 %q", w)
+		}
+	}
+	if _, empty := GeneralPage(g, 99999); len(empty) == 0 {
+		t.Error("越界的槽號也該有一行說明")
+	}
+}
+
+// TestBattleReportPage 釘住戰報頁看得到勝負、天數、折損與逐日紀錄。
+func TestBattleReportPage(t *testing.T) {
+	g := loadGame(t)
+	r := &game.BattleResult{From: 15, To: 14, AttackerWon: true, Days: 12,
+		AttackerLost: 1200, DefenderLost: 3400,
+		Captives: []game.Captive{{General: 1, Name: "某將"}},
+		Log:      []string{"第 1 日　戰役開始（刮風）", "第 2 日　主攻軍先鋒 攻 主守軍中軍"}}
+	title, lines := BattleReport(g, r)
+	if title != "戰報" {
+		t.Errorf("標題是 %q", title)
+	}
+	body := strings.Join(lines, "\n")
+	for _, w := range []string{"攻方獲勝", "12 日", "1200", "3400", "某將", "戰役開始"} {
+		if !strings.Contains(body, w) {
+			t.Errorf("戰報頁沒有 %q", w)
+		}
+	}
+	if _, empty := BattleReport(g, nil); len(empty) == 0 {
+		t.Error("沒有戰役時也該有一行說明")
+	}
+}
+
+// TestBattleListNewestFirst 釘住戰役紀錄新的排前面。
+func TestBattleListNewestFirst(t *testing.T) {
+	g := loadGame(t)
+	rs := []*game.BattleResult{
+		{From: 1, To: 2, Days: 3},
+		{From: 15, To: 14, Days: 30, AttackerWon: true},
+	}
+	_, lines := BattleList(g, rs)
+	if len(lines) != 2 {
+		t.Fatalf("列出 %d 行", len(lines))
+	}
+	if !strings.Contains(lines[0], "30 日") {
+		t.Errorf("第一行是 %q，應該是最近的那一場", lines[0])
+	}
+	if _, empty := BattleList(g, nil); len(empty) == 0 {
+		t.Error("沒有紀錄時也該有一行說明")
+	}
+}
+
+// loadGame 開一局；沒有原版素材就 skip。**本儲存庫不含原版檔案。**
+func loadGame(t *testing.T) *game.State {
+	t.Helper()
+	root := os.Getenv("SAN1_ORIG")
+	if root == "" {
+		t.Skip("沒設 SAN1_ORIG，跳過（本儲存庫不含原版檔案）")
+	}
+	dir := filepath.Join(root, "三國演義")
+	read := func(ext string) []byte {
+		b, err := os.ReadFile(filepath.Join(dir, "DATA2."+ext))
+		if err != nil {
+			t.Skipf("讀不到 DATA2.%s：%v", ext, err)
+		}
+		return b
+	}
+	c, err := assets.OpenContainer(read("NAM"), read("IDX"), read("GRP"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc, err := state.LoadScenario(c, state.Scenario1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err := game.New(sc, 0, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return g
 }

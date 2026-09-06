@@ -88,34 +88,46 @@ func (r *BattleResult) Summary(g *State) string {
 // 進攻的部隊是指定的那幾位將領；**主守軍必須派出所有兵力**（p.27），
 // 所以守方自動是該郡的全部駐軍。
 func (g *State) Attack(from, to int, attackers []int, by state.FactionID) (*BattleResult, error) {
-	src, err := g.canOrder(from, by)
+	att, def, err := g.musterAttack(from, to, attackers, by)
 	if err != nil {
 		return nil, err
 	}
+	return g.fight(from, to, att, def, by), nil
+}
+
+// musterAttack 檢查出兵的條件並點齊雙方（說明書 p.19、p.27）。
+//
+// 抽出來是因為**玩家親征與電腦出兵走的是同一組條件**：
+// 相鄰、不打自己、至少一位將領、原郡留得下人治理、主事者親征要先交接。
+// 兩份檢查會慢慢分家，而分家的那一天只有一邊擋得住。
+func (g *State) musterAttack(from, to int, attackers []int, by state.FactionID) (att, def []*General, err error) {
+	src, err := g.canOrder(from, by)
+	if err != nil {
+		return nil, nil, err
+	}
 	dst := g.Prefecture(to)
 	if dst == nil {
-		return nil, fmt.Errorf("game: 郡編號 %d 越界", to)
+		return nil, nil, fmt.Errorf("game: 郡編號 %d 越界", to)
 	}
 	if dst.Owner == by {
-		return nil, fmt.Errorf("game: %s 已經是你的了", dst.Name)
+		return nil, nil, fmt.Errorf("game: %s 已經是你的了", dst.Name)
 	}
 	if !g.Adjacent(from, to) {
-		return nil, ErrNotAdjacent
+		return nil, nil, ErrNotAdjacent
 	}
 	if len(attackers) == 0 {
-		return nil, fmt.Errorf("game: 要派出至少一位將領")
+		return nil, nil, fmt.Errorf("game: 要派出至少一位將領")
 	}
-	var att []*General
 	for _, i := range attackers {
 		x := g.General(i)
 		if x == nil || x.Faction != by || x.Location != from {
-			return nil, ErrUnknownUnit
+			return nil, nil, ErrUnknownUnit
 		}
 		att = append(att, x)
 	}
 	// 主事者不能傾巢而出——留守的人要能治理（說明書 p.19）。
 	if g.leavesNobody(from, attackers, by) {
-		return nil, ErrNoGovernor
+		return nil, nil, ErrNoGovernor
 	}
 	// **主事者親征的話，出發前要先把治理交出去。**
 	// 不交的話原郡在他離開之後就沒有主事者了，而那件事在畫面上
@@ -126,7 +138,7 @@ func (g *State) Attack(from, to int, attackers []int, by state.FactionID) (*Batt
 		}
 		succ := g.successorForGoing(from, attackers, by)
 		if succ == nil {
-			return nil, ErrNoGovernor
+			return nil, nil, ErrNoGovernor
 		}
 		succ.Status = state.StatusGovernor
 		if x.Status == state.StatusLord {
@@ -136,14 +148,13 @@ func (g *State) Attack(from, to int, attackers []int, by state.FactionID) (*Batt
 		x.Status = state.StatusOfficer
 		break
 	}
-	var def []*General
 	for _, x := range g.Garrison(to) {
 		if x.Faction == dst.Owner {
 			def = append(def, x)
 		}
 	}
 	src.Commanded = true
-	return g.fight(from, to, att, def, by), nil
+	return att, def, nil
 }
 
 // successorForGoing 從**留守的人**裡挑一位接手治理，魅力最高的優先。

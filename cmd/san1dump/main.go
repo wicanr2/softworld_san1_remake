@@ -18,6 +18,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
@@ -32,10 +33,10 @@ func main() {
 	what := flag.String("what", "all", "印什麼：pref／gen／master／all")
 	cols := flag.Int("cols", 6, "郡名槽位寬度（半形格），用來檢查裝不裝得下")
 	png := flag.String("png", "", "把畫面存成 PNG（無頭環境驗版面用）")
-	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）")
+	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／battle（主戰場）")
 	faction := flag.Int("faction", -1, "main 畫面的玩家勢力；−1 ＝ 用第一個在用的勢力")
 	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
-	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫")
+	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫；battle 畫面是先打幾天")
 	aiMode := flag.String("ai", "enhanced", "電腦 AI：base／plus／enhanced")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型（-png 時才需要）")
 	saveDir := flag.String("saves", "", "存檔目錄（配 -save／-load 用）")
@@ -159,6 +160,43 @@ func writePNG(out, fontPath string, sc *state.Scenario, slot, screen, aiMode str
 			}
 		}
 		ui.DrawSession(c, g, s.Log, ui.View{Sel: sel, Over: s.Over})
+	case "battle":
+		// 用某個郡的地形開一場，讓電腦打 `months` 天再畫。
+		// **戰場的版面壞掉在無頭環境看不出來**，所以要有這一張。
+		at := sel
+		if at < 1 {
+			at = 15
+		}
+		p, err := sc.Prefecture(at)
+		if err != nil {
+			return err
+		}
+		b := sampleBattle(at, p.Neighbours)
+		r := battle.NewRunner(b, nil)
+		for d := 0; d < months && !b.Over; d++ {
+			for _, u := range b.Order() {
+				b.AutoTurn(u)
+			}
+			b.EndDay()
+		}
+		_ = r
+		var acting *battle.Unit
+		for _, u := range b.Units {
+			if u.Alive() {
+				acting = u
+				break
+			}
+		}
+		cur := ui.Hexer{}
+		if acting != nil {
+			cur = ui.Hexer{At: acting.At, Shown: true}
+		}
+		ui.DrawBattle(c, b, ui.BattleView{
+			Cursor: cur, Acting: acting,
+			Menu:   "指令",
+			Items:  ui.BattleCommandLines(),
+			Prompt: fmt.Sprintf("第 %d 郡的戰場（remake 生成的地形）", at),
+		})
 	case "list":
 		ui.DrawPrefectureList(c, sc, slot)
 	default:
@@ -251,4 +289,35 @@ func runSaves(dir string, load, saveTo int, sc *state.Scenario, aiMode string, f
 	}
 	fmt.Println()
 	return nil
+}
+
+// sampleBattle 開一場給畫面用的戰役。
+func sampleBattle(at int, neighbours []int) *battle.Battle {
+	mk := func(n int, name string, war uint8, men int, base int) []battle.Leader {
+		var out []battle.Leader
+		for i := 0; i < n; i++ {
+			out = append(out, battle.Leader{
+				Index: base + i, Name: name, War: war - uint8(i), Intel: 75,
+				Stamina: 100, Charm: 50, Soldiers: men, Training: 60, Arms: 60,
+				Troop: battle.TroopLand,
+			})
+		}
+		return out
+	}
+	from := 0
+	if len(neighbours) > 0 {
+		from = neighbours[0]
+	}
+	return battle.New(battle.Setup{
+		Field: battle.Generate(battle.Params{
+			Prefecture: at, Neighbours: neighbours, LandValue: 60, FloodRate: 40,
+		}),
+		Weather:      battle.Windy,
+		Seed:         uint32(at),
+		Attackers:    mk(8, "攻將", 90, 3000, 0),
+		Defenders:    mk(6, "守將", 80, 2500, 100),
+		FromGate:     from,
+		AttackerGold: 3000, AttackerRice: 9000,
+		DefenderGold: 2000, DefenderRice: 8000,
+	})
 }

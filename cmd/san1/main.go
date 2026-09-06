@@ -25,6 +25,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/session"
@@ -42,6 +43,9 @@ type app struct {
 	pick  []pickItem
 	dirty bool
 
+	// fight 非 nil 表示正在打一場玩家親自指揮的戰役。
+	fight *fight
+
 	// saveDir 是存檔目錄，空字串表示這一局不能存。
 	saveDir string
 	// aiMode 記著讀檔要用哪一種電腦 AI。
@@ -55,6 +59,9 @@ type app struct {
 const conscriptStep = 100
 
 func (a *app) Update() error {
+	if a.fight != nil {
+		return a.updateBattle()
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		a.menu, a.view.Menu, a.view.Items, a.pick = 0, "", nil, nil
 		a.view.Prompt, a.view.Page = "", nil
@@ -174,6 +181,16 @@ func (a *app) begin(cat, item byte) {
 		closeMenu()
 
 	// ---- 1. 查看（不耗指令）----
+	case cat == '1' && item == '1':
+		a.askOwn("看哪一個郡", func(id int) { a.view.Sel = id })
+	case cat == '1' && item == '3':
+		a.askGeneral("檢視那位", func(gi int) {
+			a.view.PageTitle, a.view.Page = ui.GeneralPage(g, gi)
+		})
+		closeMenu()
+	case cat == '1' && item == '5':
+		a.view.PageTitle, a.view.Page = ui.BattleList(g, s.Battles())
+		closeMenu()
 	case cat == '1' && item == '2':
 		a.view.PageTitle, a.view.Page = ui.GeneralList(g, sel)
 		closeMenu()
@@ -205,7 +222,10 @@ func (a *app) begin(cat, item byte) {
 				}
 				force = append(force, x.Index)
 			}
-			a.run(game.AttackOrder{At: sel, To: to, Force: force})
+			// **玩家親自指揮**：進主戰場，不自動決勝。
+			// 電腦諸侯的戰役還是走 AttackOrder → Auto。
+			closeMenu()
+			a.startBattle(sel, to, force)
 		})
 	case cat == '2' && item == '3':
 		a.askOwn("送到哪個郡", func(to int) {
@@ -459,12 +479,46 @@ func (a *app) Draw(dst *ebiten.Image) {
 	if a.dirty {
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
 		// 同一張圖無頭環境也產得出來（cmd/san1dump -png）。
-		a.view.Over = a.s.Over
-		ui.DrawSession(a.canvas, a.s.G, a.s.Log, a.view)
+		if a.fight != nil {
+			ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
+		} else {
+			a.view.Over = a.s.Over
+			ui.DrawSession(a.canvas, a.s.G, a.s.Log, a.view)
+		}
 		a.screen.WritePixels(a.canvas.Img.Pix)
 		a.dirty = false
 	}
 	dst.DrawImage(a.screen, nil)
+}
+
+// updateBattle 是戰場上的輸入。
+//
+// 方向鍵移游標（查看與用計要先指目標），數字鍵是指令，
+// Esc 收起覆蓋頁——**Esc 不會離開戰役**：出兵是不能反悔的。
+func (a *app) updateBattle() error {
+	defer func() { a.dirty = true }()
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		a.fight.view.Page, a.fight.view.PageTitle = nil, ""
+		return nil
+	}
+	for key, d := range map[ebiten.Key]battle.Dir{
+		ebiten.KeyUp:    battle.DirUp,
+		ebiten.KeyDown:  battle.DirDown,
+		ebiten.KeyLeft:  battle.DirUpLeft,
+		ebiten.KeyRight: battle.DirDownRight,
+	} {
+		if inpututil.IsKeyJustPressed(key) {
+			a.battleMove(d)
+			return nil
+		}
+	}
+	for k := ebiten.Key0; k <= ebiten.Key9; k++ {
+		if inpututil.IsKeyJustPressed(k) {
+			a.battleKey(byte('0' + (k - ebiten.Key0)))
+			return nil
+		}
+	}
+	return nil
 }
 
 func (a *app) Layout(int, int) (int, int) {

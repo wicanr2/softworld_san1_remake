@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
@@ -120,6 +121,25 @@ func RankName(r state.Rank) string {
 	return "?"
 }
 
+// StatusName 是身分的名稱（`BASEGEN` offset 17，`docs/spec/003` §2.2）。
+func StatusName(s state.Status) string {
+	switch s {
+	case state.StatusLord:
+		return "君主"
+	case state.StatusChief:
+		return "軍師"
+	case state.StatusGovernor:
+		return "太守"
+	case state.StatusOfficer:
+		return "武將"
+	case state.StatusAvailable, state.StatusIdle:
+		return "在野"
+	case state.StatusUnborn:
+		return "未登場"
+	}
+	return "?"
+}
+
 // TroopName 是兵種的名稱。
 func TroopName(t state.TroopType) string {
 	names := []string{"陸", "山", "水", "山陸", "水陸", "山水", "強力"}
@@ -127,4 +147,95 @@ func TroopName(t state.TroopType) string {
 		return names[t]
 	}
 	return "?"
+}
+
+// BattleReport 是一場戰役的逐日戰報。
+//
+// **戰役是遊戲裡最花時間的一件事**——三十天、數十支部隊、單挑與計謀。
+// 只給一行結果等於把過程丟掉；原版有「查看電腦戰役」這個開關
+// （`docs/re/04` §3），就是因為過程本身是內容。
+func BattleReport(g *game.State, r *game.BattleResult) (string, []string) {
+	if r == nil {
+		return "戰報", []string{"（沒有這一場）"}
+	}
+	side := "守方衛郡成功"
+	if r.AttackerWon {
+		side = "攻方獲勝"
+	}
+	out := []string{
+		fmt.Sprintf("%s 攻 %s　%s　共 %d 日",
+			prefName(g, r.From), prefName(g, r.To), side, r.Days),
+		fmt.Sprintf("攻方折損 %d　守方折損 %d", r.AttackerLost, r.DefenderLost),
+	}
+	if len(r.Captives) > 0 {
+		names := make([]string, 0, len(r.Captives))
+		for _, c := range r.Captives {
+			names = append(names, c.Name)
+		}
+		out = append(out, "被擒："+strings.Join(names, "、"))
+	}
+	out = append(out, "")
+	out = append(out, r.Log...)
+	return "戰報", out
+}
+
+// BattleList 是最近幾場戰役的一覽，給玩家挑一場來看。
+func BattleList(g *game.State, rs []*game.BattleResult) (string, []string) {
+	if len(rs) == 0 {
+		return "戰役紀錄", []string{"（還沒打過）"}
+	}
+	out := make([]string, 0, len(rs))
+	// 新的排前面：剛打完的那一場最可能是玩家要看的。
+	for i := len(rs) - 1; i >= 0; i-- {
+		out = append(out, fmt.Sprintf("%d. %s", len(rs)-i, rs[i].Summary(g)))
+	}
+	return "戰役紀錄", out
+}
+
+// prefName 取郡名；沒有這個郡就印編號。
+func prefName(g *game.State, id int) string {
+	if p := g.Prefecture(id); p != nil {
+		return p.Name
+	}
+	return fmt.Sprintf("郡%d", id)
+}
+
+// GeneralPage 是「檢視將軍」：一位人物的完整資料（說明書 p.18）。
+//
+// 欄位與原版的檢視畫面對齊（`docs/re/04` §7）：
+// `%s%s人氏`、`忠心度 %3d`、`現年%2d歲`、`体能／謀略／戰力／魅力`、
+// `兵士數`、`訓練度`、`武裝度`、兵種。
+func GeneralPage(g *game.State, index int) (string, []string) {
+	x := g.General(index)
+	if x == nil {
+		return "檢視將軍", []string{"（沒有這個人）"}
+	}
+	origin := "—"
+	if p := g.Prefecture(x.Origin); p != nil {
+		origin = p.Name + "人氏"
+	}
+	role := "在野"
+	if x.Employed() {
+		role = StatusName(x.Status) + "／" + RankName(x.Rank)
+	}
+	loyal := "—"
+	if x.HasLoyalty() {
+		loyal = fmt.Sprintf("%d", x.Loyalty)
+	}
+	where := "—"
+	if p := g.Prefecture(x.Location); p != nil {
+		where = p.Name
+	}
+	return "檢視將軍", []string{
+		fmt.Sprintf("%s　%s", x.Name, origin),
+		fmt.Sprintf("%s　現在 %s", role, where),
+		fmt.Sprintf("忠心度 %3s　現年 %2d 歲", loyal, x.Age),
+		"",
+		fmt.Sprintf("体能 %3d    兵種   %s", x.Stamina, TroopName(x.Troop)),
+		fmt.Sprintf("謀略 %3d    兵士數 %5d", x.Intel, x.Soldiers),
+		fmt.Sprintf("戰力 %3d    訓練度 %3d", x.War, x.Training),
+		fmt.Sprintf("魅力 %3d    武裝度 %3d", x.Charm, x.Arms),
+		"",
+		fmt.Sprintf("帶兵上限 %d（%s）", x.TroopCap(), RankName(x.Rank)),
+	}
 }

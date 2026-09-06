@@ -71,6 +71,12 @@ func (s *Session) Do(o game.Order) error {
 // 吃到跟局面本身一樣大。
 func (s *Session) Battles() []*game.BattleResult { return s.battles }
 
+// Drain 把剛打完的戰役記進紀錄。
+//
+// 玩家親自指揮的戰役由畫面那一層收尾（`game.FinishAttack`），
+// 不經過 Do 也不經過 EndMonth——**沒有這個出口，親征的戰報就掉了**。
+func (s *Session) Drain() { s.drainBattles() }
+
 // drainBattles 把剛打完的戰役記進紀錄。
 func (s *Session) drainBattles() {
 	for _, r := range s.G.DrainReports() {

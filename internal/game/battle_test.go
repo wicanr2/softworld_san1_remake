@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -321,5 +322,190 @@ func TestNonLordCaptureKeepsTreasures(t *testing.T) {
 	g.seizeTreasures(r, 5)
 	if loser.Treasury[0] != 3 {
 		t.Error("捉到的是部將不是君主，寶物不該易手")
+	}
+}
+
+// TestBeginAttackDefersTheFight 釘住 BeginAttack 只擺陣不打，
+// FinishAttack 才把結果搬回局面。
+//
+// 玩家親自指揮時，開打與收尾之間隔著幾十次按鍵；這中間**局面不能先動**，
+// 否則畫面上的兵力與戰場上的兵力會是兩個數字。
+func TestBeginAttackDefersTheFight(t *testing.T) {
+	g := newGame(t)
+	from, to := 0, 0
+	var owner state.FactionID = state.NoFaction
+	var att []int
+	for id := 1; id <= state.PrefectureCount && from == 0; id++ {
+		p := g.Prefecture(id)
+		if !p.Owned() {
+			continue
+		}
+		for _, n := range p.Neighbours {
+			q := g.Prefecture(n)
+			if !q.Owned() || q.Owner == p.Owner || len(g.Garrison(n)) == 0 {
+				continue
+			}
+			if a := attackersAt(g, id, p.Owner, true); len(a) > 0 {
+				from, to, owner, att = id, n, p.Owner, a
+				break
+			}
+		}
+	}
+	if from == 0 {
+		t.Skip("找不到可以出兵的郡")
+	}
+	ownerBefore := g.Prefecture(to).Owner
+	menBefore := g.Soldiers(to)
+
+	p, err := g.BeginAttack(from, to, att, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Battle() == nil {
+		t.Fatal("沒有拿到戰場")
+	}
+	if p.Battle().Over {
+		t.Error("BeginAttack 不該把戰役打完")
+	}
+	if g.Prefecture(to).Owner != ownerBefore || g.Soldiers(to) != menBefore {
+		t.Error("還沒打就動到目標郡的局面")
+	}
+	if len(g.Reports) != 0 {
+		t.Error("還沒收尾就有戰報")
+	}
+
+	// 交給自動作戰打完，再收尾。
+	p.Battle().Auto()
+	r := g.FinishAttack(p)
+	if r == nil {
+		t.Fatal("收尾沒有回傳結果")
+	}
+	if r.Days < 1 {
+		t.Errorf("戰役打了 %d 天", r.Days)
+	}
+	if len(g.DrainReports()) != 1 {
+		t.Error("收尾之後應該剛好留下一份戰報")
+	}
+	if r.AttackerLost == 0 && r.DefenderLost == 0 {
+		t.Error("打了一場雙方都沒有折損")
+	}
+}
+
+// TestBeginAttackChecksTheSameConditions 釘住親征與電腦出兵走同一組條件。
+func TestBeginAttackChecksTheSameConditions(t *testing.T) {
+	g := newGame(t)
+	all := attackersAt(g, 15, 5, false)
+	if len(all) == 0 {
+		t.Skip("洛陽沒有守將")
+	}
+	target := g.Prefecture(15).Neighbours[0]
+	if _, err := g.BeginAttack(15, target, all, 5); !errors.Is(err, ErrNoGovernor) {
+		t.Errorf("傾巢而出回 %v，應該是 ErrNoGovernor", err)
+	}
+	to := 0
+	for id := 1; id <= state.PrefectureCount; id++ {
+		if id != 15 && !g.Adjacent(15, id) {
+			to = id
+			break
+		}
+	}
+	if to == 0 {
+		t.Skip("洛陽與所有郡都相鄰")
+	}
+	if _, err := g.BeginAttack(15, to, all[:1], 5); !errors.Is(err, ErrNotAdjacent) {
+		t.Errorf("打不相鄰的郡回 %v，應該是 ErrNotAdjacent", err)
+	}
+}
+
+// TestPlayerCommandedBattle 釘住「玩家一步一步指揮」這條路走得完。
+//
+// 走的是 `cmd/san1` 用的那一組介面：BeginAttack → Runner → 逐支下令 →
+// FinishAttack。**Ebiten 那一層測不到**，所以這條路徑要在這裡走一遍，
+// 不然「按了沒反應」只有開視窗才發現。
+func TestPlayerCommandedBattle(t *testing.T) {
+	g := newGame(t)
+	from, to := 0, 0
+	var owner state.FactionID = state.NoFaction
+	var force []int
+	for id := 1; id <= state.PrefectureCount && from == 0; id++ {
+		p := g.Prefecture(id)
+		if !p.Owned() {
+			continue
+		}
+		for _, n := range p.Neighbours {
+			q := g.Prefecture(n)
+			if !q.Owned() || q.Owner == p.Owner || len(g.Garrison(n)) == 0 {
+				continue
+			}
+			if a := attackersAt(g, id, p.Owner, true); len(a) > 0 {
+				from, to, owner, force = id, n, p.Owner, a
+				break
+			}
+		}
+	}
+	if from == 0 {
+		t.Skip("找不到可以出兵的郡")
+	}
+	p, err := g.BeginAttack(from, to, force, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := p.Battle()
+	r := battle.NewRunner(b, func(s battle.Side) bool { return s.Attacking() })
+
+	turns, acted := 0, 0
+	for {
+		u := r.Next()
+		if u == nil {
+			break
+		}
+		turns++
+		if turns > 20000 {
+			t.Fatal("輪太多次，可能沒有前進")
+		}
+		// 玩家的行為：先試著往城池走，走不動就休息。
+		moved := false
+		for _, d := range battle.Dirs() {
+			if b.Move(u, d) == nil {
+				moved = true
+				acted++
+				break
+			}
+		}
+		if !moved {
+			if b.Rest(u) == nil {
+				acted++
+			}
+		}
+		r.Done()
+	}
+	if turns == 0 {
+		t.Fatal("一次都沒有輪到玩家")
+	}
+	if acted == 0 {
+		t.Error("輪到了卻一個動作都下不出去")
+	}
+	if !b.Over {
+		t.Error("跑完了卻沒有分勝負")
+	}
+
+	res := g.FinishAttack(p)
+	if res == nil {
+		t.Fatal("收尾沒有回傳結果")
+	}
+	if res.Days < 1 || res.Days > 31 {
+		t.Errorf("戰役打了 %d 天", res.Days)
+	}
+	// 收尾之後兵力要與戰場一致。
+	for _, u := range b.Units {
+		for _, l := range u.Leaders {
+			x := g.General(l.Index)
+			if x == nil || l.Dead || l.Captured {
+				continue
+			}
+			if x.Soldiers != l.Soldiers {
+				t.Errorf("%s 收尾後兵力 %d，戰場上是 %d", l.Name, x.Soldiers, l.Soldiers)
+			}
+		}
 	}
 }
