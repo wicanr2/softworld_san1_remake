@@ -11,6 +11,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -354,4 +355,31 @@ func loadGame(t *testing.T) *game.State {
 		t.Fatal(err)
 	}
 	return g
+}
+
+// TestFontCoversEveryLocale 釘住每個語系的每一個字都畫得出來。
+//
+// **缺字在畫面上是空白，而空白看起來像排版問題。** 譯文加一個字型
+// 沒有的字，跑起來只會少一格，不會有任何錯誤。
+func TestFontCoversEveryLocale(t *testing.T) {
+	face := testFace(t)
+	for _, l := range i18n.Locales() {
+		bad := map[rune]bool{}
+		for _, s := range i18n.All(l) {
+			for _, r := range face.Covers(s) {
+				// 格式動詞與標點不必畫。
+				if r == '%' || r == 'd' || r == 's' {
+					continue
+				}
+				bad[r] = true
+			}
+		}
+		if len(bad) > 0 {
+			var list []string
+			for r := range bad {
+				list = append(list, string(r))
+			}
+			t.Errorf("%s 有字型畫不出來的字：%v", l, list)
+		}
+	}
 }

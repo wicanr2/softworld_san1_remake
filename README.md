@@ -36,8 +36,16 @@
 偶數項是曲子、奇數項是它的 AdLib 音色庫；曲子是 MIDI 事件流，
 五首的事件數與表頭精準吻合。`cmd/san1music` 列得出來也匯得成標準 MIDI。
 
+原版的點陣圖也解出來了（`docs/formats/07`）：613 張 `.IMG`／`.FAC`
+全部同一個格式，表頭是高與寬、本體是四個位元平面。平面與顏色的對應
+拿 dosgolem 跑出來的原版畫面逐像素比對確認——`F000.FAC` 與 `F005.FAC`
+在君主選擇畫面上 **100% 相符**。
+
+介面文字放在 `internal/i18n/lang/*.json`（繁中／英／日），
+`cmd/san1assets` 把原版的圖轉成 PNG、劇本轉成 JSON、配樂轉成 MIDI。
+
 未實作：OPL2 合成（音色參數的對應還沒解乾淨，用錯的參數合出來的聲音
-是我們編的）；多語系。
+是我們編的）；`base`／`plus` 兩種 AI 的還原。
 
 對拍那一側，原版現在能在 dosgolem 裡從頭跑到主選單——`AA.EXE` →
 `DATA0.GRP` → `DATA5.GRP` 三層 chain-load、`DATA1`／`DATA2`／`DATA3`
@@ -70,7 +78,7 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 | M4 靜態資料 | 完成：劇本三表、地圖圖形、資產目錄 |
 | M5 規則層 | 完成：平時十類指令、四季事件、戰役決勝、勝負判定 |
 | M6 引擎可玩 | 進行中：一局玩得完，戰役可親自指揮，六個進度存得起來 |
-| M7 多語系 | 未開始 |
+| M7 多語系 | 進行中：介面文字全部收進 JSON，繁中／英／日三份齊備 |
 | M8 發行 | 未開始 |
 
 ## 需要原版
@@ -101,7 +109,7 @@ DOSBox-X 作為交叉驗證。
 | [`CLAUDE.md`](CLAUDE.md) | 專案規則與硬規則 |
 | [`CONTEXT.md`](CONTEXT.md) | 現況、已知事實、決策紀錄、worklist |
 | `docs/re/` | 反組譯筆記（含主程式的介面字串表）|
-| `docs/formats/` | 檔案格式（含存檔與配樂）|
+| `docs/formats/` | 檔案格式（含存檔、配樂、點陣圖）|
 | `docs/spec/` | 規格（只有 `READY` 能授權實作）|
 | `docs/mechanics/` | 遊戲機制（含中平六年開局的完整局面）|
 | `docs/playtest/` | 對拍紀錄 |

@@ -16,13 +16,15 @@ import (
 func GeneralList(g *game.State, prefectureID int) (string, []string) {
 	p := g.Prefecture(prefectureID)
 	if p == nil {
-		return "將軍列表", []string{"（沒有這個郡）"}
+		return t("page.generals"), []string{t("msg.none")}
 	}
 	out := []string{
-		cells.Pad("姓名", 8) + cells.Pad("職位", 6) + cells.Pad("忠", 4) +
-			cells.Pad("齡", 4) + cells.Pad("體", 4) + cells.Pad("謀", 4) +
-			cells.Pad("戰", 4) + cells.Pad("魅", 4) + cells.Pad("兵士", 7) +
-			cells.Pad("訓", 4) + "武",
+		cells.Pad(t("fld.name"), 8) + cells.Pad(t("fld.rank"), 6) +
+			cells.Pad(t("fld.loyalty"), 4) + cells.Pad(t("fld.age"), 4) +
+			cells.Pad(t("fld.stamina"), 4) + cells.Pad(t("fld.intel"), 4) +
+			cells.Pad(t("fld.war"), 4) + cells.Pad(t("fld.charm"), 4) +
+			cells.Pad(t("fld.soldiers"), 7) + cells.Pad(t("fld.training"), 4) +
+			t("fld.arms"),
 	}
 	for _, x := range g.Garrison(prefectureID) {
 		if x.Faction != p.Owner {
@@ -65,9 +67,11 @@ func TerritoryList(g *game.State, f state.FactionID) (string, []string) {
 	ids := g.Territory(f)
 	sort.Ints(ids)
 	out := []string{
-		cells.Pad("郡", 4) + cells.Pad("名稱", 6) + cells.Pad("太守", 8) +
-			cells.Pad("金", 7) + cells.Pad("米", 7) + cells.Pad("人口", 8) +
-			cells.Pad("兵士", 7) + cells.Pad("地", 4) + cells.Pad("洪", 4) + "民",
+		cells.Pad(t("fld.prefecture"), 4) + cells.Pad(t("fld.name"), 6) +
+			cells.Pad(t("fld.governor"), 8) + cells.Pad(t("fld.gold"), 7) +
+			cells.Pad(t("fld.rice"), 7) + cells.Pad(t("fld.population"), 8) +
+			cells.Pad(t("fld.soldiers"), 7) + cells.Pad(t("fld.landValue"), 4) +
+			cells.Pad(t("fld.floodRate"), 4) + t("fld.loyalty"),
 	}
 	for _, id := range ids {
 		p := g.Prefecture(id)
@@ -96,7 +100,7 @@ func TerritoryList(g *game.State, f state.FactionID) (string, []string) {
 func TreasuryList(g *game.State, f state.FactionID) (string, []string) {
 	x := g.Faction(f)
 	if x == nil {
-		return "君主物品", []string{"（沒有這個勢力）"}
+		return t("page.treasury"), []string{t("msg.none")}
 	}
 	var out []string
 	total := 0
@@ -108,15 +112,15 @@ func TreasuryList(g *game.State, f state.FactionID) (string, []string) {
 	if total == 0 {
 		out = append(out, "", "寶庫是空的。冬季各州郡會進貢，領地越多貢品越多。")
 	}
-	return "君主物品", out
+	return t("page.treasury"), out
 }
 
 // RankName 是職位的名稱。索引與原版的字串表相同（`docs/spec/003` §2.1）。
 func RankName(r state.Rank) string {
-	names := []string{"君主", "軍師", "參軍", "主簿", "謀士",
-		"大將", "副將", "裨將", "牙將"}
-	if int(r) < len(names) {
-		return names[r]
+	keys := []string{"rank.lord", "rank.strategist", "rank.staff", "rank.clerk",
+		"rank.advisor", "rank.general", "rank.vice", "rank.sub", "rank.junior"}
+	if int(r) < len(keys) {
+		return t(keys[r])
 	}
 	return "?"
 }
@@ -125,26 +129,27 @@ func RankName(r state.Rank) string {
 func StatusName(s state.Status) string {
 	switch s {
 	case state.StatusLord:
-		return "君主"
+		return t("status.lord")
 	case state.StatusChief:
-		return "軍師"
+		return t("status.chief")
 	case state.StatusGovernor:
-		return "太守"
+		return t("status.governor")
 	case state.StatusOfficer:
-		return "武將"
+		return t("status.officer")
 	case state.StatusAvailable, state.StatusIdle:
-		return "在野"
+		return t("status.free")
 	case state.StatusUnborn:
-		return "未登場"
+		return t("status.unborn")
 	}
 	return "?"
 }
 
 // TroopName 是兵種的名稱。
-func TroopName(t state.TroopType) string {
-	names := []string{"陸", "山", "水", "山陸", "水陸", "山水", "強力"}
-	if int(t) < len(names) {
-		return names[t]
+func TroopName(k state.TroopType) string {
+	keys := []string{"troop.land", "troop.mtn", "troop.water", "troop.mtnLand",
+		"troop.waterLand", "troop.mtnWater", "troop.mighty"}
+	if int(k) < len(keys) {
+		return t(keys[k])
 	}
 	return "?"
 }
@@ -156,7 +161,7 @@ func TroopName(t state.TroopType) string {
 // （`docs/re/04` §3），就是因為過程本身是內容。
 func BattleReport(g *game.State, r *game.BattleResult) (string, []string) {
 	if r == nil {
-		return "戰報", []string{"（沒有這一場）"}
+		return t("page.report"), []string{t("msg.none")}
 	}
 	side := "守方衛郡成功"
 	if r.AttackerWon {
@@ -176,20 +181,20 @@ func BattleReport(g *game.State, r *game.BattleResult) (string, []string) {
 	}
 	out = append(out, "")
 	out = append(out, r.Log...)
-	return "戰報", out
+	return t("page.report"), out
 }
 
 // BattleList 是最近幾場戰役的一覽，給玩家挑一場來看。
 func BattleList(g *game.State, rs []*game.BattleResult) (string, []string) {
 	if len(rs) == 0 {
-		return "戰役紀錄", []string{"（還沒打過）"}
+		return t("page.battles"), []string{t("msg.none")}
 	}
 	out := make([]string, 0, len(rs))
 	// 新的排前面：剛打完的那一場最可能是玩家要看的。
 	for i := len(rs) - 1; i >= 0; i-- {
 		out = append(out, fmt.Sprintf("%d. %s", len(rs)-i, rs[i].Summary(g)))
 	}
-	return "戰役紀錄", out
+	return t("page.battles"), out
 }
 
 // prefName 取郡名；沒有這個郡就印編號。
@@ -208,7 +213,7 @@ func prefName(g *game.State, id int) string {
 func GeneralPage(g *game.State, index int) (string, []string) {
 	x := g.General(index)
 	if x == nil {
-		return "檢視將軍", []string{"（沒有這個人）"}
+		return t("page.inspect"), []string{t("msg.none")}
 	}
 	origin := "—"
 	if p := g.Prefecture(x.Origin); p != nil {
@@ -226,7 +231,7 @@ func GeneralPage(g *game.State, index int) (string, []string) {
 	if p := g.Prefecture(x.Location); p != nil {
 		where = p.Name
 	}
-	return "檢視將軍", []string{
+	return t("page.inspect"), []string{
 		fmt.Sprintf("%s　%s", x.Name, origin),
 		fmt.Sprintf("%s　現在 %s", role, where),
 		fmt.Sprintf("忠心度 %3s　現年 %2d 歲", loyal, x.Age),

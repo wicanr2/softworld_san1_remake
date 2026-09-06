@@ -7,6 +7,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -16,12 +17,28 @@ type Command struct {
 	Name string
 }
 
+// Lang 是介面文字的語系。
+//
+// **繁體中文是原文不是譯文**（`internal/i18n`）；這個變數只換譯文，
+// 不會動到遊戲資料裡的專有名詞（郡名、人名）——那是玩家自己那一份
+// 原版檔案的內容。
+var Lang = i18n.ZhHant
+
+// t 取一句介面文字。
+func t(key string) string { return i18n.T(Lang, key) }
+
+// tf 取一句帶參數的介面文字。
+func tf(key string, a ...any) string { return i18n.Tf(Lang, key, a...) }
+
 // Commands 是主畫面右下的十類指令，順序與編號與原版相同。
 func Commands() []Command {
-	return []Command{
-		{'0', "狀態"}, {'1', "查看"}, {'2', "軍事"}, {'3', "兵士"}, {'4', "內政"},
-		{'5', "商業"}, {'6', "人事"}, {'7', "君主"}, {'8', "謀略"}, {'9', "其他"},
+	keys := []string{"cmd.status", "cmd.view", "cmd.military", "cmd.troops",
+		"cmd.civil", "cmd.trade", "cmd.people", "cmd.lord", "cmd.plot", "cmd.other"}
+	out := make([]Command, 0, len(keys))
+	for i, k := range keys {
+		out = append(out, Command{Key: byte('0' + i), Name: t(k)})
 	}
+	return out
 }
 
 // 版面（格）。原版把畫面分成左邊的時間、中間的地圖、右上的訊息欄與
@@ -260,34 +277,42 @@ func drawCommandPanel(c *Canvas, title string, cmds []Command) {
 // 還沒實作的項目**照樣列出來**：選單少一項，玩家看不出是沒做還是
 // 原版沒有；列出來按下去會說還沒實作，那是可以理解的狀態。
 func SubMenu(key byte) (string, []Command) {
+	var title string
+	var keys []string
 	switch key {
 	case '1':
-		return "查看", []Command{{'1', "選擇州郡"}, {'2', "將軍列表"},
-			{'3', "檢視將軍"}, {'4', "領土列表"}, {'5', "郡地理誌"}, {'6', "君主物品"}}
+		title, keys = "cmd.view", []string{"view.pick", "view.generals",
+			"view.inspect", "view.territory", "view.terrain", "view.treasury"}
 	case '2':
-		return "軍事", []Command{{'1', "調動軍隊"}, {'2', "發動戰役"}, {'3', "運送錢糧"}}
+		title, keys = "cmd.military", []string{"mil.move", "mil.attack", "mil.transport"}
 	case '3':
-		return "兵士", []Command{{'1', "訓練兵士"}, {'2', "徵兵"},
-			{'3', "購買武器"}, {'4', "調整兵力"}}
+		title, keys = "cmd.troops", []string{"tro.train", "tro.conscript",
+			"tro.arms", "tro.balance"}
 	case '4':
-		return "內政", []Command{{'1', "土地開發"}, {'2', "洪水防冶"},
-			{'3', "建築關寨"}, {'4', "休息"}}
+		title, keys = "cmd.civil", []string{"civ.reclaim", "civ.flood",
+			"civ.fort", "civ.rest"}
 	case '5':
-		return "商業", []Command{{'1', "買入米糧"}, {'2', "賣出米糧"}, {'3', "開倉賑民"}}
+		title, keys = "cmd.trade", []string{"trd.buy", "trd.sell", "trd.relief"}
 	case '6':
-		return "人事", []Command{{'1', "尋訪人才"}, {'2', "登用人才"},
-			{'3', "賞賜金帛"}, {'4', "撤職"}}
+		title, keys = "cmd.people", []string{"ppl.search", "ppl.recruit",
+			"ppl.reward", "ppl.dismiss"}
 	case '7':
-		return "君主", []Command{{'1', "指定軍師"}, {'2', "指定太守"},
-			{'3', "郡縣自冶"}, {'4', "賞賜物品"}, {'5', "登用他國人才"}}
+		title, keys = "cmd.lord", []string{"lord.chief", "lord.governor",
+			"lord.autonomy", "lord.gift", "lord.headhunt"}
 	case '8':
-		return "謀略", []Command{{'1', "驅虎吞狼"}, {'2', "遠交近攻"},
-			{'3', "偽書使疑"}, {'4', "策反人民"}, {'5', "聯合出兵"}}
+		title, keys = "cmd.plot", []string{"plot.tiger", "plot.distant",
+			"plot.forge", "plot.incite", "plot.joint"}
 	case '9':
-		return "其他", []Command{{'1', "結束"}, {'2', "儲存"}, {'3', "音樂"},
-			{'4', "音效"}, {'5', "延時"}, {'6', "戰役"}, {'7', "年號"}, {'8', "語音"}}
+		title, keys = "cmd.other", []string{"oth.quit", "oth.save", "oth.music",
+			"oth.sound", "oth.delay", "oth.war", "oth.era", "oth.voice"}
+	default:
+		return "", nil
 	}
-	return "", nil
+	items := make([]Command, 0, len(keys))
+	for i, k := range keys {
+		items = append(items, Command{Key: byte('1' + i), Name: t(k)})
+	}
+	return t(title), items
 }
 
 // ColSel 是選取中的顏色。

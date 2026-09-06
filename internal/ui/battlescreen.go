@@ -232,15 +232,17 @@ func min3(a, b int) int {
 // BattleUnitPage 是「查看」一支部隊的內容。
 func BattleUnitPage(u *battle.Unit) (string, []string) {
 	if u == nil {
-		return "查看", []string{"（沒有這一支）"}
+		return t("bat.inspect"), []string{t("msg.none")}
 	}
 	out := []string{
 		fmt.Sprintf("%s　兵 %d　餘步 %d", u.Name(), u.Soldiers(), u.Move),
 		fmt.Sprintf("訓練 %d　武裝 %d　兵種 %s　箭 %d 次",
 			u.AvgTraining(), u.AvgArms(), u.Troop(), u.Arrows()),
 		"",
-		cells.Pad("姓名", 8) + cells.Pad("戰", 4) + cells.Pad("謀", 4) +
-			cells.Pad("體", 4) + cells.Pad("兵士", 7) + cells.Pad("訓", 4) + "武",
+		cells.Pad(t("fld.name"), 8) + cells.Pad(t("fld.war"), 4) +
+			cells.Pad(t("fld.intel"), 4) + cells.Pad(t("fld.stamina"), 4) +
+			cells.Pad(t("fld.soldiers"), 7) + cells.Pad(t("fld.training"), 4) +
+			t("fld.arms"),
 	}
 	for i := range u.Leaders {
 		l := &u.Leaders[i]
@@ -259,7 +261,7 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 			cells.Pad(fmt.Sprintf("%d", l.Training), 4)+
 			fmt.Sprintf("%d", l.Arms))
 	}
-	return "查看", out
+	return t("bat.inspect"), out
 }
 
 // TerrainPage 是「郡地理誌」：某個郡的主戰場地形（說明書 p.19，
@@ -271,7 +273,7 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 // 「這個郡打起來長什麼樣」的可靠答案，只是不是原版的那一張。
 func TerrainPage(name string, f *battle.Field, gates map[int]battle.Hex) (string, []string) {
 	if f == nil {
-		return "郡地理誌", []string{"（沒有這個郡）"}
+		return t("page.terrain"), []string{t("msg.none")}
 	}
 	out := make([]string, 0, f.H+6)
 	for y := 0; y < f.H; y++ {
@@ -291,11 +293,30 @@ func TerrainPage(name string, f *battle.Field, gates map[int]battle.Hex) (string
 		ns = append(ns, n)
 	}
 	sort.Ints(ns)
-	line := "通往："
+	line := t("msg.gates")
 	for _, n := range ns {
 		line += fmt.Sprintf("%d 郡　", n)
 	}
 	out = append(out, line)
-	out = append(out, "地形：・平原 ﹕沙漠 山山丘 林樹林 水淺水 淵深水 城城池 寨關寨 巖大山")
-	return name + "　郡地理誌", out
+	out = append(out, t("msg.legend")+terrainLegend())
+	return name + "　" + t("page.terrain"), out
+}
+
+// terrainLegend 是地形圖例：一個字加上它的名字。
+func terrainLegend() string {
+	keys := []struct {
+		t   battle.Terrain
+		key string
+	}{
+		{battle.Plain, "ter.plain"}, {battle.Desert, "ter.desert"},
+		{battle.Hill, "ter.hill"}, {battle.Forest, "ter.forest"},
+		{battle.Shallow, "ter.shallow"}, {battle.Deep, "ter.deep"},
+		{battle.City, "ter.city"}, {battle.Fort, "ter.fort"},
+		{battle.Mountain, "ter.mountain"},
+	}
+	s := ""
+	for _, k := range keys {
+		s += terrainGlyph[k.t] + t(k.key) + " "
+	}
+	return s
 }
