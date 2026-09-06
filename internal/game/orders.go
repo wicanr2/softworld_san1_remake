@@ -176,5 +176,6 @@ func (g *State) EndMonth() []Event {
 	for i := range g.generals {
 		g.generals[i].Rewarded = false
 	}
+	g.repriceAll()
 	return g.RunSeason()
 }

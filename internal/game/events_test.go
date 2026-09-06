@@ -1,6 +1,7 @@
 package game
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -214,5 +215,48 @@ func TestZhugeLiangAppears(t *testing.T) {
 	}
 	if zgl.Location < 1 || zgl.Location > state.PrefectureCount {
 		t.Errorf("諸葛亮登場在郡 %d，越界了", zgl.Location)
+	}
+}
+
+// TestPriceMovesEveryMonth 釘住物價每個月都重抽，而且落在原版量到的範圍。
+//
+// **remake 原本完全不動這個欄位**，而原版每個月幾乎四十二個郡一起換
+// （連走十六個月的觀測，`L1`）。物價決定買賣米糧的匯率與城寨造價，
+// 不動的話那兩條規則整局都在同一個價位上運作。
+func TestPriceMovesEveryMonth(t *testing.T) {
+	g := newGame(t)
+	moved, total := 0, 0
+	seen := map[uint8]bool{}
+	for m := 0; m < 12; m++ {
+		before := make([]uint8, 0, len(g.Prefectures()))
+		for _, p := range g.Prefectures() {
+			before = append(before, p.PriceLevel)
+		}
+		g.EndMonth()
+		for i, p := range g.Prefectures() {
+			total++
+			if p.PriceLevel != before[i] {
+				moved++
+			}
+			seen[p.PriceLevel] = true
+			if p.PriceLevel < PriceMin || int(p.PriceLevel) > PriceMin+2*PriceSpread {
+				t.Fatalf("%s 的物價 %d 落在 %d–%d 之外",
+					p.Name, p.PriceLevel, PriceMin, PriceMin+2*PriceSpread)
+			}
+		}
+	}
+	// 原版每個月都是四十二個郡裡四十個上下在動，所以「幾乎全部」是判準。
+	if moved*100/total < 90 {
+		t.Errorf("十二個月裡只有 %d/%d 次物價有變動，原版是幾乎每個郡每個月都換",
+			moved, total)
+	}
+	// 分布要鋪得開；只有幾個值代表鹽或取模寫錯了。
+	if len(seen) < 20 {
+		var vs []int
+		for v := range seen {
+			vs = append(vs, int(v))
+		}
+		sort.Ints(vs)
+		t.Errorf("十二個月只出現 %d 種物價，範圍應該鋪得開：%v", len(seen), vs)
 	}
 }

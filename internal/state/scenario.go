@@ -419,9 +419,26 @@ func (s *Scenario) Lord(faction int) (General, error) {
 // **判準從資料推，不硬編 14。** 沒在用的槽指向姓名是全形標點的填充筆，
 // 所以「君主是不是人」就是判準——換劇本、換版本都成立。
 func (s *Scenario) ActiveFactions() []int {
+	owned := map[int]bool{}
+	for _, p := range s.prefectures {
+		if p.Owned() {
+			owned[int(p.Owner)] = true
+		}
+	}
 	var out []int
 	for i := range s.masters {
 		if g, err := s.Lord(i); err == nil && g.IsPerson {
+			out = append(out, i)
+			continue
+		}
+		// **自創君主的諸侯記錄指向人物表的填充筆**（名字是全形標點，
+		// `docs/formats/03` §4）。拿「君主是不是人」當唯一判準的話，
+		// 讀原版存檔時會把玩家自己排除掉——而錯誤訊息會說那個勢力
+		// 「沒有在用」，看起來像存檔壞了。
+		//
+		// 有領地就是在用。劇本檔那兩個指向填充筆的槽本來就沒有領地，
+		// 所以這一條不會讓它們混進來。
+		if owned[i] {
 			out = append(out, i)
 		}
 	}

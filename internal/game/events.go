@@ -212,12 +212,40 @@ func (g *State) summer() []Event {
 // 進貢每年一次，沒說是哪個月，原版那一邊也還沒量到——米糧每個月都被
 // 電腦諸侯買賣，年度收成的尖峰埋在裡面看不出來
 //（`docs/design/02-remake-owned-values.md`）。
+// 物價的範圍。**量出來的**：十六個月 × 四十二個郡，值全部落在 30–68。
+const (
+	PriceMin    = 30
+	PriceSpread = 19 // 兩個 0..19 相加 → 30..68
+)
+
+// priceSalt 讓物價的亂數與其他事件的亂數分開。
+// 共用鹽的話「物價高的郡也比較容易鬧災」會憑空成立。
+const priceSalt = 0x9E37
+
 const (
 	agingMonth   = 1
 	harvestMonth = 9
 	tributeMonth = 12
 	growthMonth  = 10
 )
+
+// repriceAll 每個月替每一個郡重抽物價。
+//
+// **原版每個月幾乎四十二個郡一起換**（連走十六個月，`L1`）。
+// 量到的範圍是 30–68，而值的分布在 44–50 隆起、兩端收斂——不是平的，
+// 所以不是單一個均勻亂數（`docs/mechanics/60-economy.md` §1.2）。
+//
+// 形狀與「兩個 0–19 的亂數相加」相符（峰值 49），這裡就照那個做。
+// **範圍是量出來的，生成方式是 remake 挑的**（`L3`）：原版的公式還沒
+// 反組譯到，兩端的觀測值比對稱三角分布略高，可能還有郡別的偏移。
+func (g *State) repriceAll() {
+	for i := range g.prefectures {
+		p := &g.prefectures[i]
+		a := g.roll(int(priceSalt), p.ID) % (PriceSpread + 1)
+		b := g.roll(int(priceSalt), p.ID, 1) % (PriceSpread + 1)
+		p.PriceLevel = uint8(PriceMin + a + b)
+	}
+}
 
 // autumn 是秋天：收成與蝗害。收成一年一次。
 func (g *State) autumn() []Event {

@@ -28,6 +28,18 @@ func (g *State) roll(salt ...int) int {
 	for _, v := range salt {
 		mix(v)
 	}
+	// **收尾的雪崩不能省。** FNV-1a 的最後一步是乘一個奇數，而乘奇數
+	// 保留低位元——所以 `roll(a, b)` 與 `roll(a, b, 1)` 的最低位元必然
+	// 相反，兩者相加永遠是奇數。
+	//
+	// 症狀不會是「亂數看起來怪」：拿去跟門檻比大小的地方完全正常，
+	// 只有把兩次抽樣加起來的地方會露出來——物價只出現奇數值
+	//（`TestPriceMovesEveryMonth`）。
+	h ^= h >> 16
+	h *= 0x7feb352d
+	h ^= h >> 15
+	h *= 0x846ca68b
+	h ^= h >> 16
 	return int(h % 100)
 }
 

@@ -24,7 +24,30 @@ import (
 
 func main() {
 	quiet := flag.Bool("quiet", false, "只印推論，不印逐欄位的差異")
+	price := flag.Bool("price", false, "印每個郡的物價時間序列（吃任意多個檔）")
+	lords := flag.Bool("lords", false, "印十六個諸侯槽的君主與領地")
 	flag.Parse()
+	if *price {
+		if flag.NArg() < 2 {
+			fmt.Fprintln(os.Stderr, "用法：san1turndiff -price 盤面1.bin 盤面2.bin …")
+			os.Exit(2)
+		}
+		priceSeries(flag.Args())
+		return
+	}
+	if *lords {
+		if flag.NArg() != 1 {
+			fmt.Fprintln(os.Stderr, "用法：san1turndiff -lords 盤面.bin")
+			os.Exit(2)
+		}
+		sc, err := load(flag.Arg(0))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		showLords(sc)
+		return
+	}
 	if flag.NArg() != 2 {
 		fmt.Fprintln(os.Stderr, "用法：san1turndiff [-quiet] 前.bin 後.bin")
 		os.Exit(2)
@@ -285,4 +308,107 @@ func guess(d prefDelta) string {
 		s += "／" + x
 	}
 	return s
+}
+
+// priceSeries 印每個郡的物價隨月份的變化。
+//
+// **remake 目前完全不動物價**，而原版每個月幾乎每一個郡都在動
+// （`docs/mechanics/70-ai` §2.2）。要還原那條規則得先看清楚它怎麼走：
+// 有沒有上下界、步幅多大、是不是均值回歸。
+func priceSeries(paths []string) {
+	var rows [][]int
+	var names []string
+	for i, p := range paths {
+		sc, err := load(p)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		var row []int
+		for _, x := range sc.Prefectures() {
+			row = append(row, int(x.PriceLevel))
+			if i == 0 {
+				names = append(names, x.Name)
+			}
+		}
+		rows = append(rows, row)
+	}
+
+	lo, hi := 255, 0
+	var steps []int
+	for j := range names {
+		fmt.Printf("%-6s", names[j])
+		for i := range rows {
+			v := rows[i][j]
+			fmt.Printf(" %3d", v)
+			if v < lo {
+				lo = v
+			}
+			if v > hi {
+				hi = v
+			}
+			if i > 0 {
+				steps = append(steps, v-rows[i-1][j])
+			}
+		}
+		fmt.Println()
+	}
+
+	// 步幅的分布比平均值有用：均值回歸與隨機漫步的平均都是零。
+	hist := map[int]int{}
+	for _, d := range steps {
+		hist[d]++
+	}
+	ks := make([]int, 0, len(hist))
+	for k := range hist {
+		ks = append(ks, k)
+	}
+	sort.Ints(ks)
+	// 值的分布比步幅更能分辨「每月重抽」與「隨機漫步」：
+	// 重抽會是平的，漫步會在中間隆起。
+	vals := map[int]int{}
+	for i := range rows {
+		for j := range rows[i] {
+			vals[rows[i][j]]++
+		}
+	}
+	vk := make([]int, 0, len(vals))
+	for k := range vals {
+		vk = append(vk, k)
+	}
+	sort.Ints(vk)
+	fmt.Print("\n值的分布：")
+	for _, k := range vk {
+		fmt.Printf(" %d×%d", k, vals[k])
+	}
+	fmt.Println()
+	fmt.Printf("物價範圍 %d–%d，%d 次變動\n", lo, hi, len(steps))
+	fmt.Print("步幅分布：")
+	for _, k := range ks {
+		fmt.Printf(" %+d×%d", k, hist[k])
+	}
+	fmt.Println()
+}
+
+// showLords 印十六個諸侯槽：君主是誰、認不認得出是人、有幾個郡。
+//
+// 存檔可能帶著**自創君主**，那種勢力不在劇本檔裡。判斷「這個槽有沒有
+// 在用」不能拿劇本檔比對，得看盤面自己說什麼。
+func showLords(sc *state.Scenario) {
+	owned := map[int]int{}
+	for _, p := range sc.Prefectures() {
+		if p.Owned() {
+			owned[int(p.Owner)]++
+		}
+	}
+	for i := 0; i < state.MasterTableSize/state.MasterRecordSize; i++ {
+		g, err := sc.Lord(i)
+		switch {
+		case err != nil:
+			fmt.Printf("槽 %2d：查不到君主（%v）　領地 %d\n", i, err, owned[i])
+		default:
+			fmt.Printf("槽 %2d：君主槽號 %3d %q　是人 %v　領地 %d\n",
+				i, g.Index, g.Name, g.IsPerson, owned[i])
+		}
+	}
 }
