@@ -266,6 +266,13 @@ const (
 	GeneralTableSize    = generalSize * genCount
 )
 
+// 一筆記錄的長度。對拍要按記錄走，所以這幾個數字要拿得到。
+const (
+	MasterRecordSize     = masterSize
+	PrefectureRecordSize = prefSize
+	GeneralRecordSize    = generalSize
+)
+
 // DecodeTables 從三張表的原始位元組解出一個劇本或存檔。
 //
 // 與 LoadScenario 分開，是因為**存檔不從容器來**：remake 的存檔是
