@@ -52,10 +52,10 @@ func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) erro
 	if err != nil {
 		return err
 	}
-	add := TuneReclaimBase
+	add := ReclaimGain(0, g.Roll(2, prefectureID, 0xba02))
 	if x := g.General(generalIndex); x != nil && x.Faction == by &&
 		x.Location == prefectureID {
-		add += int(x.Intel) / TuneReclaimIntel
+		add = ReclaimGain(int(x.Intel), g.Roll(2, prefectureID, 0xba02))
 	}
 	if p.Gold >= CostReclaim {
 		p.Gold -= CostReclaim
@@ -78,10 +78,10 @@ func (g *State) FloodControl(prefectureID, generalIndex int, by state.FactionID)
 	if p.Gold < CostFloodControl {
 		return ErrNoGold
 	}
-	drop := TuneFloodBase
+	drop := 0
 	if x := g.General(generalIndex); x != nil && x.Faction == by &&
 		x.Location == prefectureID {
-		drop += int(x.Intel) / TuneFloodIntel
+		drop = FloodDrop(int(x.Intel))
 	}
 	p.Gold -= CostFloodControl
 	p.FloodRate = uint8(clampTo(int(p.FloodRate)-drop, 100))

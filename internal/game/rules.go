@@ -117,3 +117,30 @@ func AITrainDivisor(level int) int {
 		return 3
 	}
 }
+
+// ReclaimGain 是「土地開發」一次增加多少地力（`L0`、`[base]`）。
+//
+// 原版的常式在線性 `0xba02`：
+//
+//	cmp word [bp+6], 0
+//	jg  用它                       ; 量 > 0 就照用
+//	mov ax,2; lcall RND            ; 否則改用 RND(2)，也就是 0 或 1
+//	add es:[bx+0x49b], al          ; 地力 += 量
+//	cmp es:[bx+0x49b], 100; 超過就設 100
+//
+// 呼叫端算的量是 `(智 − 50) / 12`（`docs/re/03` §1.4）。
+// **智力低的不會讓地力下降**——常式先擋掉非正的量，改成擲 0 或 1。
+// 說明書只寫「謀略越高，土地價值增加越多」。
+func ReclaimGain(intel, roll int) int {
+	n := (intel - 50) / 12
+	if n > 0 {
+		return n
+	}
+	return roll // RND(2)：0 或 1
+}
+
+// FloodDrop 是「洪水防治」一次降多少洪水率（`L0`、`[base]`）。
+//
+// 原版的常式在線性 `0xba4c`：讀州郡 offset 28（洪水率），減掉呼叫端
+// 給的量，**負的夾到 0**，寫回去。呼叫端算的量是 `智 / 10`。
+func FloodDrop(intel int) int { return intel / 10 }

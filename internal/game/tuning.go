@@ -11,20 +11,16 @@ package game
 //
 // 命名一律 `Tune` 開頭，用到的地方也就標示出來了。
 const (
-	// TuneReclaimBase／TuneReclaimIntel：開墾提升的土地價值
-	// ＝ base ＋ 謀略 ÷ intel。說明書 p.21 只說「謀略越高增加越多」。
+	// ⚠ **下面這六個已經被原版的公式取代，規則層不再用它們**
+	// （`ReclaimGain`／`FloodDrop`／`TrainGain`，都是 `L0`）。
+	// 留著是為了讓 `docs/design/02` 的對照表讀得下去——那張表記的是
+	// 「哪些數字曾經是 remake 自己挑的」，刪掉就看不出替換發生過。
 	TuneReclaimBase  = 1
 	TuneReclaimIntel = 25
-
-	// TuneFloodBase／TuneFloodIntel：防洪降低的洪水率，同上。
-	TuneFloodBase  = 1
-	TuneFloodIntel = 25
-
-	// 訓練提升的訓練度**不是挑的，是從原版的碼讀出來的**（`L0`）：
-	// 見 `TrainGain`。這兩個常數留著只為了讓舊的存檔與說明保持可讀，
-	// 規則不再用它們。
-	TuneTrainBase  = 2
-	TuneTrainIntel = 25
+	TuneFloodBase    = 1
+	TuneFloodIntel   = 25
+	TuneTrainBase    = 2
+	TuneTrainIntel   = 25
 
 	// TuneReliefRice／TuneReliefLoyalty：開倉賑民一次撥多少米、
 	// 民眾忠誠加多少（再乘太守魅力的加成）。說明書 p.22 只說

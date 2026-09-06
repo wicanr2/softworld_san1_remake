@@ -64,6 +64,22 @@
 | `TuneHeadhuntBase` | 60 | 只給了費用 100 金 |
 | `TuneNewSoldierTraining` / `TuneNewSoldierArms` | 0／0 | 「新兵毫無訓練，加入時會把部隊的訓練度拉低」|
 
+### 已經被原版取代的（不再是 remake 自選）
+
+這幾個當初是在「說明書只給方向、沒給數字」的前提下填的，現在有從原版
+的碼讀出來的公式了（`L0`）。常數留在 `tuning.go` 只為了讓這張表讀得
+下去——**刪掉就看不出替換發生過**。
+
+| 原本的常數 | 現在用的 | 出處 |
+|---|---|---|
+| `TuneReclaimBase`／`TuneReclaimIntel` | `ReclaimGain`：`max((智−50)/12, RND(2))`，上限 100 | `0xba02` ＋ 呼叫端 |
+| `TuneFloodBase`／`TuneFloodIntel` | `FloodDrop`：`智/10`，下限 0 | `0xba4c` ＋ 呼叫端 |
+| `TuneTrainBase`／`TuneTrainIntel` | `TrainGain`：`(智/3 + 武/2)/除數[等級]`，上限 100 | `0xbd70` |
+
+**「智力低會不會變負」是這一批最容易做錯的地方**：呼叫端算的
+`(智−50)/12` 對低智力是負的，而常式先擋掉非正的量、改成擲 0 或 1。
+只看呼叫端會做出一條錯的規則。
+
 ### 季節事件
 
 | 常數 | 值 | 手冊怎麼說 |

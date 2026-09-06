@@ -364,3 +364,32 @@ func TestTrainZerosUnitsWithNoTroops(t *testing.T) {
 		t.Errorf("帶兵的守將訓練度沒有提升（%d → %d）", before, manned.Training)
 	}
 }
+
+// TestReclaimAndFloodMatchTheOriginal 釘住開墾與防洪的量與原版一致。
+//
+// 兩個都是從碼讀出來的（`ReclaimGain`／`FloodDrop`，`L0`）。
+// **開墾那條的重點是「智力低不會變負」**：呼叫端算的是 `(智−50)/12`，
+// 而常式先擋掉非正的量、改成擲 0 或 1。只釘高智力的案例會漏掉這一段。
+func TestReclaimAndFloodMatchTheOriginal(t *testing.T) {
+	for _, c := range []struct{ intel, roll, want int }{
+		{100, 0, 4}, // (100−50)/12 = 4
+		{74, 1, 2},  // (74−50)/12 = 2
+		{62, 0, 1},  // (62−50)/12 = 1
+		{61, 0, 0},  // (61−50)/12 = 0 → 改用 RND(2)
+		{61, 1, 1},
+		{10, 1, 1}, // 智力很低也不會是負的
+		{10, 0, 0},
+	} {
+		if got := ReclaimGain(c.intel, c.roll); got != c.want {
+			t.Errorf("智 %d、擲 %d：開墾 +%d，應該是 +%d",
+				c.intel, c.roll, got, c.want)
+		}
+	}
+	for _, c := range []struct{ intel, want int }{
+		{100, 10}, {95, 9}, {50, 5}, {9, 0},
+	} {
+		if got := FloodDrop(c.intel); got != c.want {
+			t.Errorf("智 %d：防洪 −%d，應該是 −%d", c.intel, got, c.want)
+		}
+	}
+}
