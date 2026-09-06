@@ -174,6 +174,10 @@ func (a *app) begin(cat, item byte) {
 		}
 		a.view.Prompt = fmt.Sprintf("使用%s年號", a.view.Calendar.Name())
 		closeMenu()
+	case cat == '9' && item == '6':
+		// 原版的 `查看電腦戰役%s` 是開關；這裡順便把最近幾場列出來。
+		a.view.PageTitle, a.view.Page = ui.BattleList(g, s.Battles())
+		closeMenu()
 	case cat == '9' && item == '1':
 		// 「＊結束」在原版是回到主選單。這裡先提醒存檔——
 		// **沒存就離開是最貴的一次誤按**。
@@ -189,7 +193,12 @@ func (a *app) begin(cat, item byte) {
 		})
 		closeMenu()
 	case cat == '1' && item == '5':
-		a.view.PageTitle, a.view.Page = ui.BattleList(g, s.Battles())
+		name := fmt.Sprintf("郡 %d", sel)
+		if p := g.Prefecture(sel); p != nil {
+			name = p.Name
+		}
+		f := g.Field(sel)
+		a.view.PageTitle, a.view.Page = ui.TerrainPage(name, f, f.Gates)
 		closeMenu()
 	case cat == '1' && item == '2':
 		a.view.PageTitle, a.view.Page = ui.GeneralList(g, sel)

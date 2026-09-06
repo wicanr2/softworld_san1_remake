@@ -50,6 +50,12 @@ func (g *State) weatherFor(at int) battle.Weather {
 	return battle.Clear
 }
 
+// Field 是某個郡的主戰場地形（「郡地理誌」，說明書 p.19）。
+//
+// 生成器是決定性的：同一個郡永遠得到同一張圖，所以查看到的與
+// 真的打起來用的是同一張。
+func (g *State) Field(at int) *battle.Field { return g.fieldFor(at) }
+
 // fieldFor 生成某個郡的戰場。
 func (g *State) fieldFor(at int) *battle.Field {
 	p := g.Prefecture(at)

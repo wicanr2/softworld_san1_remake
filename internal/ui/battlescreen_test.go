@@ -147,3 +147,49 @@ func TestCursorIsVisible(t *testing.T) {
 		t.Error("游標所在的格與沒有游標時長得一樣")
 	}
 }
+
+// TestTerrainPageDrawsTheWholeField 釘住郡地理誌畫得出整張戰場，
+// 而且列得出通往鄰郡的通道（說明書 p.19）。
+func TestTerrainPageDrawsTheWholeField(t *testing.T) {
+	f := battle.Generate(battle.Params{
+		Prefecture: 15, Neighbours: []int{14, 16, 20}, LandValue: 60, FloodRate: 50,
+	})
+	title, lines := TerrainPage("洛陽", f, f.Gates)
+	if !strings.Contains(title, "洛陽") || !strings.Contains(title, "郡地理誌") {
+		t.Errorf("標題是 %q", title)
+	}
+	if len(lines) < f.H {
+		t.Fatalf("只畫了 %d 列，戰場有 %d 列", len(lines), f.H)
+	}
+	for y := 0; y < f.H; y++ {
+		got := len([]rune(strings.TrimLeft(lines[y], " ")))
+		if got != f.W {
+			t.Errorf("第 %d 列有 %d 格，戰場寬 %d", y, got, f.W)
+		}
+	}
+	body := strings.Join(lines, "\n")
+	for _, n := range []string{"14 郡", "16 郡", "20 郡"} {
+		if !strings.Contains(body, n) {
+			t.Errorf("沒有列出通往 %s 的通道", n)
+		}
+	}
+	if !strings.Contains(body, "城") {
+		t.Error("戰場上看不到城池")
+	}
+	if _, empty := TerrainPage("x", nil, nil); len(empty) == 0 {
+		t.Error("沒有戰場時也該有一行說明")
+	}
+}
+
+// TestTerrainPageIsStable 釘住同一個郡看兩次得到同一張圖。
+//
+// 郡地理誌與真的打起來用的必須是同一張——不然「先看地形再決定怎麼打」
+// 這件事就沒有意義。
+func TestTerrainPageIsStable(t *testing.T) {
+	p := battle.Params{Prefecture: 22, Neighbours: []int{21, 23}, LandValue: 40}
+	_, a := TerrainPage("x", battle.Generate(p), nil)
+	_, b := TerrainPage("x", battle.Generate(p), nil)
+	if strings.Join(a, "\n") != strings.Join(b, "\n") {
+		t.Error("同一個郡看兩次得到不同的地形")
+	}
+}

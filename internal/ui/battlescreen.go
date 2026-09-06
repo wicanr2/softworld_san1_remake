@@ -9,6 +9,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"sort"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
@@ -259,4 +260,42 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 			fmt.Sprintf("%d", l.Arms))
 	}
 	return "查看", out
+}
+
+// TerrainPage 是「郡地理誌」：某個郡的主戰場地形（說明書 p.19，
+// 查看選單的第 5 項）。
+//
+// ⚠ **這張圖是 remake 生成的**（`internal/battle/generate.go`）。
+// 原版那一張在 `.OKR` 裡，格式未解，而且是美術素材不重製
+// （`docs/design/03` §3）。同一個郡永遠得到同一張圖，所以它是
+// 「這個郡打起來長什麼樣」的可靠答案，只是不是原版的那一張。
+func TerrainPage(name string, f *battle.Field, gates map[int]battle.Hex) (string, []string) {
+	if f == nil {
+		return "郡地理誌", []string{"（沒有這個郡）"}
+	}
+	out := make([]string, 0, f.H+6)
+	for y := 0; y < f.H; y++ {
+		line := ""
+		if y%2 == 1 {
+			line = " "
+		}
+		for x := 0; x < f.W; x++ {
+			line += terrainGlyph[f.At(battle.FromOffset(x, y))]
+		}
+		out = append(out, line)
+	}
+	out = append(out, "")
+	// 「圖中的數字位置代表前往鄰近州郡的通道」（說明書 p.19）。
+	var ns []int
+	for n := range gates {
+		ns = append(ns, n)
+	}
+	sort.Ints(ns)
+	line := "通往："
+	for _, n := range ns {
+		line += fmt.Sprintf("%d 郡　", n)
+	}
+	out = append(out, line)
+	out = append(out, "地形：・平原 ﹕沙漠 山山丘 林樹林 水淺水 淵深水 城城池 寨關寨 巖大山")
+	return name + "　郡地理誌", out
 }
