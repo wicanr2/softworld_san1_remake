@@ -47,7 +47,11 @@
 | F5 | 加強版獨有 `NAME001`–`NAME006.SHA`、`SV.COM`、`CHKLIST.CPS`；原版獨有 `10/20/D5.GRP`、`PARTNSAV.FIL`、三個 `.BAT` | `L0` | — | 同上 |
 | F6 | 兩份 bundle 附的 `dosbox.conf` 皆 `machine=svga_s3`、`memsize=16`、`core=auto`、`cycles=auto` | `L0` | `[both]` | `.jsdos/dosbox.conf`，兩版只差 autoexec 末行的執行檔名 |
 | F7 | 兩版啟動時的 DOS 服務輪廓**逐項相同**（`AH=35`×12、`25`×11、`44`×5、`30`×2、`4A`×2、`48`×1），停止位址只差 `0x21` | `L0` | `[both]` | dosgolem probe，`docs/re/00` |
-| F8 | 兩支執行檔都在 `int 21h AH=08`（無回顯字元輸入）上空轉；dosgolem 未實作該服務 | `L0` | `[both]` | 同上，佔全部呼叫 99.99% |
+| F8 | 兩支執行檔都在 `int 21h AH=08`（無回顯字元輸入）上空轉 | `L0` | `[both]` | 同上，佔全部呼叫 99.99%。**成因是 dosgolem 沒有阻塞模型，不是遊戲卡住**——見 `docs/re/00` 第二輪 |
+| F9 | 原版的 `DATA5.GRP` 與 `10.GRP` **逐位元組相同**；`20.GRP`（142,804）與 `D5.GRP`（145,377）是另外兩個變體 | `L0` | `[base]` | SHA-256 比對 |
+| F10 | `10.BAT`／`20.BAT` 的內容是刪掉 `DATA5.GRP` 再從 `10.GRP`／`20.GRP` 複製一份回去 | `L0` | `[base]` | 檔案內容 |
+| F11 | `README.DOC`（兩版相同）說明增強版的變更，含難度擴充到 1–20、密碼只需輸入一次、以 `DATA5.GRP` 標示版本 | `L0` | — | `README.DOC` |
+| F12 | `ChineseSys` 是遊戲**自己的子系統名**，與 `FileSystem`／`AdLib`／`Music`／`Sound`／`Icon`／`Picture` 同在一張表（`AA.EXE` offset `0x47227` 附近）；不是外部中文系統偵測 | `L0` | `[both]` | 字串上下文 |
 
 ### 3.1 待解的矛盾（最高優先）
 
@@ -58,6 +62,12 @@
 - `L3` 定長槽，索引記的是槽號不是位移
 - `L3` `.GRP` 自帶內部檔頭／目錄，`.IDX` 索引的是更上層的東西
 - `L3` `.IDX` 索引的根本不是 `.GRP`，是 `.NAM`
+
+F9–F11 給了一條旁證：`DATA5.GRP` 是**可抽換的**（`10.BAT` 直接拿 `10.GRP`
+覆蓋上去），而 `DATA5.IDX` 兩版相同、也沒有任何 `.BAT` 去換它。
+一個能被整份抽換而索引不動的容器，內部大概率是**定長槽**或自帶目錄。
+這支持前兩個候選，但**還不是證據**——`10.GRP`（145,378）與加強版的
+`DATA5.GRP`（287,590）長度差一倍，定長槽說要解釋這個。
 
 **先解這個再碰 `.GRP` 解碼器。** 反過來做會得到自洽但錯的結果，
 而且不會報錯（`CLAUDE.md` §7 第 18 條）。
@@ -124,8 +134,11 @@
 - [ ] `tools/ida.sh` 包裝器（照 sangokushi 的形狀），對兩支 EXE 產 `.i64`
 - [ ] `tools/go.sh` 包裝器 ＋ `docker/go/Dockerfile`（從 `rich2-go-ebiten` 起）
 - [x] `dosgolem cmd/probe` 跑兩支 EXE，產未實作 DOS 服務清單 → `docs/re/00`
-- [ ] **在 `dosgolem-san` 實作 `int 21h AH=08`**（阻塞式無回顯輸入）——目前擋住一切的那一步
-- [ ] 補完 `AH=08` 後用 `-keys` 重跑 probe，觀測開檔順序
+- [x] 在 `dosgolem-san` 實作 `int 21h AH=01/07/08/0B` ＋ `KeyWaits` 計數
+- [ ] **dosgolem 要有阻塞模型**：佇列空時停機並回報「在等鍵盤」，而不是回一個值繼續跑。
+      這是 dosgolem 的設計決定（走它的 `docs/spec/`），不是本遊戲專屬。**目前擋住一切的就是這一步。**
+- [ ] 停機模型做好後重跑 probe，觀測第一個畫面與開檔順序
+- [ ] `10.GRP`／`20.GRP`／`D5.GRP` 三個變體逐位元組 diff——同一個容器的三份不同內容，是解格式最便宜的槓桿
 - [ ] 說明書整理成 `docs/reference/01-manual-*`
 - [ ] 社群資料整理成 `docs/reference/02-web-*`
 - [ ] **解 `.IDX` 索引什麼**（§3.1）
