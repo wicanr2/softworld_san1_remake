@@ -5,6 +5,7 @@ package parity
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/wicanr2/dosgolem/oracle"
@@ -82,7 +83,15 @@ func TestZZPassword(t *testing.T) {
 	changed := o.SearchChanged(atMain)
 	seen := map[int]bool{}
 	var cand []int
+	inVideo := 0
 	for _, a := range changed {
+		// **顯示記憶體要扣掉。** 密碼畫面重繪動了四萬多個像素，
+		// EGA 的四個平面加起來是幾萬個位元組——不扣的話候選清單
+		// 全是畫面，真正的變數被埋在裡面。
+		if a >= 0xA0000 && a < 0xC0000 {
+			inVideo++
+			continue
+		}
 		w := o.Word(addr(a))
 		// 純二進位的四位數
 		if w >= 1000 && w <= 9999 && !seen[int(w)] {
@@ -95,11 +104,15 @@ func TestZZPassword(t *testing.T) {
 			cand = append(cand, bcd)
 		}
 	}
-	t.Logf("主畫面 → 密碼畫面之間變了 %d 個位址，其中湊得出 %d 個相異的四位數",
-		len(changed), len(cand))
-	if len(cand) > 120 {
-		t.Logf("候選太多（%d），只試前 120 個", len(cand))
-		cand = cand[:120]
+	t.Logf("主畫面 → 密碼畫面之間變了 %d 個位址（其中 %d 個是顯示記憶體），"+
+		"扣掉之後湊得出 %d 個相異的四位數", len(changed), inVideo, len(cand))
+	// **先把清單印出來再試。** 一輪試完要十幾分鐘，中途被砍掉的話
+	// 清單還在，下一輪就不必重新找。
+	sort.Ints(cand)
+	t.Logf("候選：%v", cand)
+	if len(cand) > 60 {
+		t.Logf("候選太多（%d），這一輪只試前 60 個", len(cand))
+		cand = cand[:60]
 	}
 
 	for i, v := range cand {
@@ -121,8 +134,39 @@ func TestZZPassword(t *testing.T) {
 			return
 		}
 	}
-	t.Logf("%d 個候選都沒讓畫面換掉。下一步是換一種存法找候選，"+
-		"或反組譯 %s 的比較點", len(cand), "0x507ec 請輸入密碼")
+	t.Logf("%d 個候選都沒讓畫面換掉。", len(cand))
+
+	// 候選沒中的話，換一個角度：**輸入的四個字落在哪裡**。
+	// 比較的對象通常就在同一個結構或同一個堆疊框裡，印出鄰居就看得到。
+	o.Restore(atPwd)
+	o.Drain()
+	o.Press("2492")
+	if err := o.Run(settle * 2); err != nil {
+		t.Logf("打字時停止：%v", err)
+		return
+	}
+	hits := 0
+	for _, a := range o.SearchChanged(atPwd) {
+		if a >= 0xA0000 && a < 0xC0000 {
+			continue
+		}
+		// 只看真的存了我們打的字的位置
+		b := o.Bytes(addr(a), 4)
+		if string(b) != "2492" && !(b[0] == 0x24 && b[1] == 0x92) {
+			continue
+		}
+		lo := a
+		if lo >= 32 {
+			lo -= 32
+		}
+		t.Logf("輸入落在 %#06x，鄰居 %#06x：% x", a, lo, o.Bytes(addr(lo), 80))
+		if hits++; hits >= 6 {
+			break
+		}
+	}
+	if hits == 0 {
+		t.Log("記憶體裡找不到剛打進去的 2492——那條輸入路徑沒把字存下來")
+	}
 }
 
 // fromBCD 把 packed BCD 的字換成十進位數；有一個 nibble 大於 9 就不是 BCD。

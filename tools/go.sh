@@ -37,6 +37,14 @@ if [[ -d "$ROOT/../dosgolem-san" ]]; then
   MOUNTS+=(-v "$(cd "$ROOT/../dosgolem-san" && pwd):/dosgolem:ro")
 fi
 
+# `go test` 自己有一個**十分鐘**的預設逾時，外層的 SAN1_TIMEOUT 管不到它。
+# 兩個數字不一致時，長跑會在第十分鐘被 `panic: test timed out` 砍掉，
+# 而外層看起來只是「測試失敗」——所以這裡把兩邊對齊。
+ARGS=("$@")
+if [[ "${1:-}" == "test" ]] && [[ ! " $* " == *" -timeout"* ]]; then
+  ARGS=("test" "-timeout" "${SAN1_TIMEOUT:-30m}" "${@:2}")
+fi
+
 # GOPROXY 指向容器內的本地 module cache。GOPROXY=off 連本地 cache 都不查，
 # 會在「zip 明明就在那裡」的情況下說找不到模組；file:// 讓解析走本地，
 # 而且一樣零網路——容器本來就是 --network none。
@@ -51,4 +59,4 @@ exec timeout "${SAN1_TIMEOUT:-30m}" docker run --rm --network none \
   -e GOPROXY=file:///gomodcache/cache/download \
   -e GOSUMDB=off -e GONOSUMCHECK=1 -e GOPRIVATE='*' \
   -e HOME=/tmp \
-  "${PASS[@]}" "${MOUNTS[@]}" -w /src "$IMAGE" go "$@"
+  "${PASS[@]}" "${MOUNTS[@]}" -w /src "$IMAGE" go "${ARGS[@]}"
