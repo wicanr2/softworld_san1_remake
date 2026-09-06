@@ -272,3 +272,124 @@ func TestRetinueLivesInOwnTerritory(t *testing.T) {
 		}
 	}
 }
+
+// TestPrefectureGeneralCounts 用兩張表互相印證。
+//
+// 郡記著「現役武將數」與「在野武將數」，而那兩個數字**在人物表裡數得出來**。
+// 三個欄位（人物的勢力、所在郡、身分）與兩個欄位（郡的兩個計數）
+// 只要有一個偏移錯掉，數字就對不上——而預期值型的測試看不出這件事。
+//
+// 在野那一欄要加「身分 ＝ StatusAvailable」才數得對：不加條件時
+// 42 個郡只對得上 26 個（`docs/spec/003` §5）。
+func TestPrefectureGeneralCounts(t *testing.T) {
+	for _, ver := range versions {
+		c := loadData2(t, ver)
+		for _, slot := range []Slot{Scenario1, Scenario2, Scenario3, Scenario4, Scenario5, Scenario6} {
+			sc, err := LoadScenario(c, slot)
+			if err != nil {
+				t.Fatalf("%s %s：%v", ver, slot, err)
+			}
+			active := map[uint8]int{}
+			free := map[uint8]int{}
+			for _, g := range sc.People() {
+				if g.Location < 1 || g.Location > PrefectureCount {
+					continue
+				}
+				switch {
+				case g.Employed():
+					active[g.Location]++
+				case g.Status == StatusAvailable:
+					free[g.Location]++
+				}
+			}
+			for _, p := range sc.Prefectures() {
+				id := uint8(p.ID)
+				if int(p.ActiveGenerals) != active[id] {
+					t.Errorf("%s %s 郡 %d %s：現役武將表記 %d，數人物得到 %d",
+						ver, slot, p.ID, p.Name, p.ActiveGenerals, active[id])
+				}
+				if int(p.FreeGenerals) != free[id] {
+					t.Errorf("%s %s 郡 %d %s：在野武將表記 %d，數人物得到 %d",
+						ver, slot, p.ID, p.Name, p.FreeGenerals, free[id])
+				}
+			}
+		}
+	}
+}
+
+// TestOneRulerPerPrefecture 釘住身分欄的意義。
+//
+// 每個有主的郡剛好一位主事者：身分為君主或太守，兩者都不在時由軍師代理。
+// 六個劇本 × 兩版共 193 個有主的郡全部成立（代理出現兩次）。
+//
+// 這條同時檢查了身分、勢力、所在郡與郡的歸屬四個欄位——只要有一個
+// 偏移錯掉，「剛好一位」就會塌掉。
+func TestOneRulerPerPrefecture(t *testing.T) {
+	for _, ver := range versions {
+		c := loadData2(t, ver)
+		for _, slot := range []Slot{Scenario1, Scenario2, Scenario3, Scenario4, Scenario5, Scenario6} {
+			sc, err := LoadScenario(c, slot)
+			if err != nil {
+				t.Fatalf("%s %s：%v", ver, slot, err)
+			}
+			owned := 0
+			for _, p := range sc.Prefectures() {
+				if !p.Owned() {
+					continue
+				}
+				owned++
+				g, ok := sc.Governor(p.ID)
+				if !ok {
+					t.Errorf("%s %s：郡 %d %s 有主（勢力 %d）卻找不到唯一的主事者",
+						ver, slot, p.ID, p.Name, p.Owner)
+					continue
+				}
+				if g.Faction != p.Owner {
+					t.Errorf("%s %s：郡 %d %s 的主事者 %s 屬於勢力 %d，不是 %d",
+						ver, slot, p.ID, p.Name, g.Name, g.Faction, p.Owner)
+				}
+			}
+			if owned == 0 {
+				t.Errorf("%s %s：一個有主的郡都沒有——歸屬欄大概讀錯了", ver, slot)
+			}
+		}
+	}
+}
+
+// TestGeneralAttributeRanges 釘住四個屬性都在 0..100。
+//
+// **越界不會讓程式壞掉，只會讓數值悄悄失真。** 偏移錯一格時，
+// 讀到的多半仍是「一個看起來像數字的東西」。
+func TestGeneralAttributeRanges(t *testing.T) {
+	c := loadData2(t, "三國演義")
+	sc, err := LoadScenario(c, Scenario1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range sc.People() {
+		fields := []struct {
+			name string
+			v    uint8
+		}{{"體能", g.Stamina}, {"謀略", g.Intel}, {"戰力", g.War}, {"魅力", g.Charm}}
+		// 忠誠只在有主子時有意義；在野者是 0xFF 哨兵。
+		if g.HasLoyalty() {
+			fields = append(fields, struct {
+				name string
+				v    uint8
+			}{"忠誠", g.Loyalty})
+		} else if g.Employed() {
+			t.Errorf("%s 有勢力卻沒有忠誠值", g.Name)
+		}
+		for _, f := range fields {
+			if f.v > 100 {
+				t.Errorf("%s 的%s是 %d，超過 100", g.Name, f.name, f.v)
+			}
+		}
+		if g.Rank > RankJuniorGeneral {
+			t.Errorf("%s 的職位是 %d，字串表只有 9 格", g.Name, g.Rank)
+		}
+		if g.Troop > 6 {
+			t.Errorf("%s 的兵種是 %d，字串表只有 7 格", g.Name, g.Troop)
+		}
+	}
+}

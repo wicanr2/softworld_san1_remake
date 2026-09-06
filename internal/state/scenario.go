@@ -49,6 +49,54 @@ const (
 // 這一層問過 Owned／Employed 再用。
 const NoFaction = 0xFF
 
+// NoValue 是「這一格對這筆記錄沒有意義」的哨兵，原版同樣用 0xFF。
+//
+// ⚠ **哨兵不是數值。** 忠誠欄在在野者身上是 0xFF；當成 255 算下去
+// 不會報錯，只會讓在野武將變成全遊戲最忠誠的人。
+const NoValue = 0xFF
+
+// Rank 是人物的職位（`BASEGEN` offset 12）。原版用它索引一張九格的字串表。
+type Rank uint8
+
+// Status 是人物的身分（`BASEGEN` offset 17）。
+//
+// ⚠ **它不只是顯示用的分類，是規則**：郡的「在野武將數」只數
+// StatusAvailable 的人（`docs/spec/003` §2.2，42 個郡全對；
+// 不加這個條件只對得上 26 個）。
+type Status uint8
+
+// TroopType 是兵種（`BASEGEN` offset 21），索引一張七格的字串表。
+type TroopType uint8
+
+const (
+	RankLord Rank = iota // 君主
+	RankStrategist
+	RankStaff
+	RankClerk
+	RankAdvisor
+	RankGeneral
+	RankViceGeneral
+	RankSubGeneral
+	RankJuniorGeneral
+)
+
+const (
+	StatusLord     Status = 0  // 君主
+	StatusChief    Status = 1  // 軍師
+	StatusGovernor Status = 2  // 太守
+	StatusOfficer  Status = 3  // 一般武將
+	// StatusAvailable 是「在野而且在該郡露面」。**只有這一種算進
+	// 郡的在野武將數。**
+	StatusAvailable Status = 8
+	StatusIdle      Status = 9  // 在野，不列入郡的在野數
+	StatusUnborn    Status = 11 // 還沒登場（此時諸葛亮 8 歲）
+)
+
+// Governs 回報這個身分是不是郡的主事者。
+//
+// 君主與太守是常態；**軍師是代理**——`Governor` 才是完整的判斷。
+func (s Status) Governs() bool { return s == StatusLord || s == StatusGovernor }
+
 // Prefecture 是一個郡。
 type Prefecture struct {
 	// ID 是郡編號，**1..42**。原版的筆 0 是啞元，所以編號與筆號相同，
@@ -57,14 +105,38 @@ type Prefecture struct {
 	Name string // "遼東"
 
 	// Owner 是所屬勢力的槽號（`BASEMAS` 的筆號），NoFaction ＝ 無主。
-	// 版面出處 `docs/spec/003` §2。
+	// 版面出處 `docs/spec/003` §3。
 	Owner uint8
+
+	// ⚠ **Population 與 Soldiers 存的是實際值 ÷ 100。**
+	// 原版的格式字串是 `人口 %5d00`／`兵士%4d00`——把 `00` 直接接在
+	// 數字後面。存 800 顯示 80000。照存的數字當人口用會差兩個數量級，
+	// 而且不會報錯，所以這裡不做換算，由 People()／Troops() 給實際值。
+	Population uint16
+	Soldiers   uint16
+
+	Gold uint16 // 金
+	Rice uint16 // 米
+
+	ActiveGenerals uint8 // 現役武將數
+	FreeGenerals   uint8 // 在野武將數（只數身分為 StatusAvailable 的）
+
+	PublicLoyalty uint8 // 民眾忠誠
+	LandValue     uint8 // 土地價值
+	FloodRate     uint8 // 洪水率
+	PriceLevel    uint8 // 物價
 
 	Raw [prefSize]byte
 }
 
 // Owned 回報這個郡有沒有主。
 func (p Prefecture) Owned() bool { return p.Owner != NoFaction }
+
+// People 是實際人口（存的值 × 100）。
+func (p Prefecture) People() int { return int(p.Population) * 100 }
+
+// Troops 是實際兵士數（存的值 × 100）。
+func (p Prefecture) Troops() int { return int(p.Soldiers) * 100 }
 
 // General 是人物表的一個槽。
 //
@@ -81,8 +153,26 @@ type General struct {
 	// Name 是姓名欄解出來的文字，原樣交出（填充槽會是標點）。
 	Name string
 
+	// 欄位版面出處 `docs/spec/003` §2——是從原版自己的格式字串讀出來的
+	// （哪一個 byte 被推進 `printf`、配哪一個標籤），不是猜的。
+	Age      uint8 // 年齡
+	Stamina  uint8 // 體能
+	Intel    uint8 // 謀略
+	War      uint8 // 戰力
+	Charm    uint8 // 魅力
+	Rank     Rank  // 職位
+	// Loyalty 是忠誠。**在野者是 0xFF（NoValue）不是 0**——沒有主子就
+	// 沒有忠誠可言。實測 346 位裡 227 位是 0xFF，而且全部沒有勢力；
+	// 有勢力者的值域是 52–100。當成數值算下去會得到「在野者忠誠 255」。
+	Loyalty uint8
+	Status   Status
+	Troop    TroopType // 兵種
+	Soldiers uint16    // 兵士數
+	Training uint8     // 訓練度
+	Arms     uint8     // 武裝度
+
 	// Faction 是效力的勢力槽號，NoFaction ＝ 在野。
-	// Location 是所在郡的編號（1..42）。版面出處 `docs/spec/003` §2。
+	// Location 是所在郡的編號（1..42），原版的標籤是「領地」。
 	//
 	// 兩個一起驗過：346 位人物裡 108 位有勢力，**這 108 位的所在郡
 	// 全部歸屬於自己的勢力，零例外**。兩張表由不同欄位獨立編碼
@@ -158,6 +248,16 @@ func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
 			return nil, fmt.Errorf("state: 郡 %d 的名稱解不出來：%w", p.ID, err)
 		}
 		p.Name = name
+		p.Population = binary.LittleEndian.Uint16(rec[14:])
+		p.Soldiers = binary.LittleEndian.Uint16(rec[16:])
+		p.Gold = binary.LittleEndian.Uint16(rec[18:])
+		p.Rice = binary.LittleEndian.Uint16(rec[20:])
+		p.ActiveGenerals = rec[22]
+		p.FreeGenerals = rec[23]
+		p.PublicLoyalty = rec[26]
+		p.LandValue = rec[27]
+		p.FloodRate = rec[28]
+		p.PriceLevel = rec[29]
 		p.Owner = rec[30]
 		s.prefectures[i] = p
 	}
@@ -165,7 +265,23 @@ func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
 	s.generals = make([]General, genCount)
 	for i := range s.generals {
 		rec := gen[i*generalSize:]
-		g := General{Index: i, Faction: rec[18], Location: rec[19]}
+		g := General{
+			Index:    i,
+			Age:      rec[7],
+			Stamina:  rec[8],
+			Intel:    rec[9],
+			War:      rec[10],
+			Charm:    rec[11],
+			Rank:     Rank(rec[12]),
+			Loyalty:  rec[16],
+			Status:   Status(rec[17]),
+			Faction:  rec[18],
+			Location: rec[19],
+			Troop:    TroopType(rec[21]),
+			Soldiers: binary.LittleEndian.Uint16(rec[22:]),
+			Training: rec[24],
+			Arms:     rec[25],
+		}
 		copy(g.Raw[:], rec)
 		// 姓名：offset 0，6 byte **空白補齊**（2–3 個漢字）。
 		// 兩字名前後各補一個空白，三字名剛好填滿。
@@ -200,6 +316,9 @@ func (s *Scenario) Prefectures() []Prefecture { return s.prefectures }
 
 // Employed 回報這位人物有沒有效力對象。
 func (g General) Employed() bool { return g.Faction != NoFaction }
+
+// HasLoyalty 回報忠誠欄有沒有意義（在野者沒有）。
+func (g General) HasLoyalty() bool { return g.Loyalty != NoValue }
 
 // Masters 回傳 16 個諸侯槽，**含沒在用的**。
 func (s *Scenario) Masters() []Master { return s.masters }
@@ -240,6 +359,40 @@ func (s *Scenario) Territory(faction int) []Prefecture {
 		}
 	}
 	return out
+}
+
+// Governor 回傳某個郡的主事者。
+//
+// 常態是身分為君主或太守的那一位；**兩者都不在時由軍師代理**。
+// 六個劇本 × 193 個有主的郡全部剛好一位（原版資料裡代理出現兩次：
+// 劇本 004 的建業是周瑜、劇本 006 的南陽是司馬懿）。
+//
+// 郡無主、或找不到唯一的主事者時回 false。**不要回「第一個找到的」**
+// ——那會把資料異常變成一個看起來正常的答案。
+func (s *Scenario) Governor(prefectureID int) (General, bool) {
+	p, err := s.Prefecture(prefectureID)
+	if err != nil || !p.Owned() {
+		return General{}, false
+	}
+	var main, deputy []General
+	for _, g := range s.generals {
+		if !g.Employed() || int(g.Location) != prefectureID || g.Faction != p.Owner {
+			continue
+		}
+		switch {
+		case g.Status.Governs():
+			main = append(main, g)
+		case g.Status == StatusChief:
+			deputy = append(deputy, g)
+		}
+	}
+	if len(main) == 1 {
+		return main[0], true
+	}
+	if len(main) == 0 && len(deputy) == 1 {
+		return deputy[0], true
+	}
+	return General{}, false
 }
 
 // Retinue 回傳效力於某個勢力的人物，依槽號排序。
