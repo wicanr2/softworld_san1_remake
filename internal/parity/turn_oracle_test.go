@@ -18,30 +18,30 @@ import (
 
 // 觀測原版走一個月做了什麼。
 //
-// 電腦自動示範模式（零人玩）下原版自己把整局打完，所有決策都在那條路徑上。
-// 盤面在記憶體裡的位置已知（`tables_oracle_test.go`），所以**每隔一段
-// 指令把三張表讀下來，逐欄位比**，就看得到它改了什麼——不必反組譯。
+// 盤面在記憶體裡的位置已知（`tables_oracle_test.go`），所以**每送一次鍵
+// 就把三張表讀下來，逐欄位比**，就看得到它改了什麼——不必反組譯。
 //
 // 這一條是探索用的：它不斷言原版怎麼決定，只把「哪些欄位會動、什麼時候動」
 // 記錄下來。斷言要等看得懂那些變化再寫。
+
+const scrW, scrH = 640, 350
 
 // dumpScreen 把畫面存成 PNG。**每一步都存**：看得到停在哪個提示，
 // 就不必猜下一個鍵要送什麼。
 func dumpScreen(t *testing.T, o *oracle.Oracle, name string) {
 	t.Helper()
-	const w, h = 640, 350
-	pix := o.IndexedEGA(w, h)
-	if len(pix) < w*h {
+	pix := o.IndexedEGA(scrW, scrH)
+	if len(pix) < scrW*scrH {
 		t.Logf("畫面只有 %d 個像素，跳過存圖", len(pix))
 		return
 	}
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	img := image.NewRGBA(image.Rect(0, 0, scrW, scrH))
+	for y := 0; y < scrH; y++ {
+		for x := 0; x < scrW; x++ {
 			// **用 EGA 的十六色，不要用 DAC 的色盤**：EGA 的顏色在
 			// 屬性控制器不在 VGA 的 DAC，`Palette()` 在這個模式下是全黑
 			// ——存出來的圖會整張黑，看起來像畫面沒東西而不像色盤取錯。
-			img.Set(x, y, assets.EGAPalette[pix[y*w+x]&15])
+			img.Set(x, y, assets.EGAPalette[pix[y*scrW+x]&15])
 		}
 	}
 	dir := os.Getenv("SAN1_SHOTS")
@@ -60,25 +60,13 @@ func dumpScreen(t *testing.T, o *oracle.Oracle, name string) {
 	}
 }
 
-func TestZZWatchTurn(t *testing.T) {
-	root := origRoot(t)
-	c := openContainer(t, filepath.Join(root, "DATA2"))
-	sc, err := state.LoadScenario(c, state.Slot("001"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	mas, sta, gen := sc.Tables()
-	total := len(mas) + len(sta) + len(gen)
-
-	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer o.Close()
-
+// bootToMain 把原版開到遊戲主畫面，回傳三張表的基底與長度。
+//
+// 走的是「載入舊進度」那條（`docs/re/02` §3.3）：開新遊戲會問防拷密碼，
+// 而密碼表在說明書掃描裡判讀不出來。
+func bootToMain(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
+	t.Helper()
 	o.Press("122")
-	// 主選單第二項是「載入舊進度」。兩份 bundle 的 DATA2 裡都帶著存檔槽，
-	// 從存檔進去有沒有防拷密碼是這一輪要問的。
 	send := map[int]string{4: "\r", 17: "2", 23: "1"}
 	var base uint32
 	for i := 0; i < 27; i++ {
@@ -98,130 +86,143 @@ func TestZZWatchTurn(t *testing.T) {
 		// 走「載入舊進度」時盤面的內容與劇本檔不同，搜不到——那不代表
 		// 沒載入。位址是量出來的固定值，退回去用它。
 		base = 0x399b0
-		t.Logf("搜不到劇本盤面（走存檔那條就是這樣），改用已知位址 %#x", base)
-	}
-	dumpScreen(t, o, "00-起點")
-
-	screen := func() []uint8 { return append([]uint8(nil), o.IndexedEGA(640, 350)...) }
-	diff := func(a, b []uint8) int {
-		n := 0
-		for i := range a {
-			if a[i] != b[i] {
-				n++
-			}
-		}
-		return n
 	}
 
 	// **這個階段的提示讀掃描碼**，而且字元佇列的殘留要先清掉
 	//（`docs/re/02` §3）。送完等畫面動，動了才走下一步。
-	step := func(name, keys string) bool {
-		// **等提示畫完再送**：上一個畫面剛動不代表下一個提示準備好了，
-		// 送早了那個鍵沒人收——而畫面上看起來是「按了沒反應」。
+	for i, keys := range []string{"1\r", "\r", "5\r", "\r", "\r"} {
 		if err := o.Run(150_000_000); err != nil {
-			t.Logf("沉澱時停止：%v", err)
-			return false
+			t.Fatalf("沉澱時停止：%v", err)
 		}
-		before := screen()
-		beforeTab := o.Bytes(addr(base), total)
+		before := screenOf(o)
 		o.Drain()
 		o.PressScan(keys)
+		moved := false
 		for k := 0; k < 12; k++ {
 			if err := o.Run(50_000_000); err != nil {
-				t.Logf("停止：%v", err)
-				return false
+				t.Fatalf("停止：%v", err)
 			}
-			// 送完四億道還沒動就再送一次；有時第一次落在重畫的中間。
-			if k == 8 {
-				o.Drain()
-				o.PressScan(keys)
-			}
-			if d := diff(before, screen()); d > 200 {
-				tab := differs8(beforeTab, o.Bytes(addr(base), total))
-				t.Logf("✔ %s（送 %q）：%d 億道之後畫面動了 %d 像素、盤面 %d 位元組%s",
-					name, keys, (k+1)*5, d, tab,
-					where(beforeTab, o.Bytes(addr(base), total), len(mas), len(sta)))
-				dumpScreen(t, o, name)
-				return true
-			}
-		}
-		t.Logf("✗ %s（送 %q）：六億道之內畫面沒動", name, keys)
-		dumpScreen(t, o, name+"-卡住")
-		return false
-	}
-
-	// 從存檔進去之後的提示還不知道，逐步送、逐步看圖。
-	for i, keys := range []string{"1\r", "\r", "5\r", "\r", "\r"} {
-		if !step(fmt.Sprintf("%02d-載入", i+1), keys) {
-			break
-		}
-	}
-	dumpScreen(t, o, "10-主畫面")
-
-	// **先問「有沒有人在讀鍵盤」再問「該送哪一個鍵」。**
-	// KeyWaits 是 0 的話，鍵送到哪一條路都沒用——沒有人在讀。
-	t.Logf("到主畫面為止：讀過 %d 個鍵、等鍵盤 %d 次", len(o.KeyReads()), o.KeyWaits())
-	if r := o.KeyReads(); len(r) > 0 {
-		for _, k := range r[max(0, len(r)-8):] {
-			t.Logf("    第 %d 道指令 走 %s 讀到 %#02x", k.Step, k.Via, k.Key)
-		}
-	}
-	if u := o.Unimplemented(); len(u) > 0 {
-		t.Logf("還沒實作的服務（%d）：%v", len(u), u[:min(len(u), 12)])
-	} else {
-		t.Log("沒有用到還沒實作的服務")
-	}
-	waitsBefore := o.KeyWaits()
-	readsBefore := len(o.KeyReads())
-	if err := o.Run(200_000_000); err != nil {
-		t.Logf("停止：%v", err)
-	}
-	t.Logf("在主畫面空轉兩億道：多等了 %d 次鍵盤、多讀了 %d 個鍵",
-		o.KeyWaits()-waitsBefore, len(o.KeyReads())-readsBefore)
-	t.Logf("硬體那條：佇列剩 %d 個掃描碼、IRQ1 送出 %d 次、其中 %d 次進到程式自己的常式",
-		o.KeyQueueLen(), o.IRQ1Delivered(), o.IRQ1ToProgram())
-	o.PressScan("9")
-	t.Logf("送一個 9 之後：佇列 %d", o.KeyQueueLen())
-	if err := o.Run(100_000_000); err != nil {
-		t.Logf("停止：%v", err)
-	}
-	t.Logf("跑一億道之後：佇列剩 %d、IRQ1 送出 %d 次、進到程式 %d 次",
-		o.KeyQueueLen(), o.IRQ1Delivered(), o.IRQ1ToProgram())
-
-	// 主畫面停在「請下您的命令」。**哪一個鍵會讓月份走下去？**
-	// 從同一個快照展開試，一輪就問得完（走到這裡要五分鐘）。
-	snap := o.Save()
-	for _, c := range []struct {
-		name string
-		play func(*oracle.Oracle)
-	}{
-		{"清空後 PressScan 9", func(o *oracle.Oracle) { o.Drain(); o.PressScan("9") }},
-		{"Type 9（不清空）", func(o *oracle.Oracle) { o.Type("9") }},
-		{"清空後 Type 9", func(o *oracle.Oracle) { o.Drain(); o.Type("9") }},
-		{"Press 9（不清空）", func(o *oracle.Oracle) { o.Press("9") }},
-		{"什麼都不送（對照組）", func(o *oracle.Oracle) {}},
-	} {
-		o.Restore(snap)
-		before := screen()
-		beforeTab := o.Bytes(addr(base), total)
-		c.play(o)
-		best, bestTab := 0, 0
-		for k := 0; k < 8; k++ {
-			if err := o.Run(50_000_000); err != nil {
+			if pixelDiff(before, screenOf(o), nil) > 200 {
+				moved = true
 				break
 			}
-			if d := diff(before, screen()); d > best {
-				best = d
-			}
-			if d := differs8(beforeTab, o.Bytes(addr(base), total)); d > bestTab {
-				bestTab = d
+		}
+		if !moved {
+			dumpScreen(t, o, fmt.Sprintf("卡在第%d步", i+1))
+			t.Fatalf("載入序列第 %d 步（送 %q）畫面沒動", i+1, keys)
+		}
+	}
+	return base
+}
+
+func screenOf(o *oracle.Oracle) []uint8 {
+	return append([]uint8(nil), o.IndexedEGA(scrW, scrH)...)
+}
+
+// pixelDiff 數兩張畫面差幾個像素，`mask` 為真的位置不算。
+func pixelDiff(a, b []uint8, mask []bool) int {
+	n := 0
+	for i := range a {
+		if i >= len(b) {
+			break
+		}
+		if mask != nil && i < len(mask) && mask[i] {
+			continue
+		}
+		if a[i] != b[i] {
+			n++
+		}
+	}
+	return n
+}
+
+// blinkMask 找出「什麼都不按也會變」的像素。
+//
+// **游標閃爍會蓋掉一個字的回顯。** 主畫面上輸入一個數字只改動兩百多個
+// 像素，與游標閃爍同一個量級——不扣掉雜訊的話，「按了有反應」與
+// 「按了沒反應」量出來的數字一樣，於是每一種送法都會被判成沒反應。
+//
+// 執行器是決定性的：從同一個快照跑同樣的指令數，游標的相位一模一樣，
+// 所以扣掉這一份之後對照組的差應該是零。
+func blinkMask(o *oracle.Oracle, snap *oracle.State, steps uint64, rounds int) ([]uint8, []bool) {
+	o.Restore(snap)
+	base := screenOf(o)
+	mask := make([]bool, len(base))
+	for r := 0; r < rounds; r++ {
+		o.Restore(snap)
+		_ = o.Run(steps * uint64(r+1))
+		cur := screenOf(o)
+		for i := range base {
+			if i < len(cur) && base[i] != cur[i] {
+				mask[i] = true
 			}
 		}
-		t.Logf("%-22s → 畫面差 %6d、盤面差 %4d、佇列剩 %d%s",
-			c.name, best, bestTab, o.Pending(),
-			where(beforeTab, o.Bytes(addr(base), total), len(mas), len(sta)))
-		dumpScreen(t, o, "11-"+c.name)
 	}
+	o.Restore(snap)
+	return base, mask
+}
+
+func TestZZWatchTurn(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mas, sta, gen := sc.Tables()
+	total := len(mas) + len(sta) + len(gen)
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	base := bootToMain(t, o, mas)
+	dumpScreen(t, o, "10-主畫面")
+
+	polls, pressed := o.MouseActivity()
+	t.Logf("到主畫面為止：滑鼠被輪詢 %d 次（其中 %d 次有按鍵）、讀過 %d 個鍵、等鍵盤 %d 次",
+		polls, pressed, len(o.KeyReads()), o.KeyWaits())
+
+	// **一個數字要跟著 Enter 才算輸入完。** 說明書 p.5／p.17：
+	// 「下令用數字鍵 0–9」「先鍵入數字再按 Enter」「不輸入數字直接按
+	// Enter 結束該指令」。先前只送裸數字，回顯的那一個字被游標閃爍的
+	// 雜訊蓋過去，量起來就是「沒反應」。
+	snap := o.Save()
+	const settle = 50_000_000
+	beforeScr, mask := blinkMask(o, snap, settle, 3)
+	masked := 0
+	for _, b := range mask {
+		if b {
+			masked++
+		}
+	}
+	t.Logf("游標雜訊：%d 個像素會自己變（總共 %d）", masked, len(mask))
+
+	beforeTab := o.Bytes(addr(base), total)
+	for _, k := range []struct{ name, keys string }{
+		{"對照組（什麼都不送）", ""},
+		{"Enter", "\r"},
+		{"9 ＋ Enter", "9\r"},
+	} {
+		o.Restore(snap)
+		o.Drain()
+		if k.keys != "" {
+			o.PressScan(k.keys)
+		}
+		if err := o.Run(settle * 3); err != nil {
+			t.Logf("%s：停止 %v", k.name, err)
+			continue
+		}
+		after := screenOf(o)
+		tab := o.Bytes(addr(base), total)
+		t.Logf("%-22s → 扣掉雜訊還差 %5d 像素、盤面 %4d 位元組%s",
+			k.name, pixelDiff(beforeScr, after, mask), differs8(beforeTab, tab),
+			where(beforeTab, tab, len(mas), len(sta)))
+		dumpScreen(t, o, "11-"+k.name)
+	}
+	o.Restore(snap)
 }
 
 // where 說變化落在哪一張表、哪些欄位位移。
