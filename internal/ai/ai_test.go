@@ -75,8 +75,10 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// 九張表的判斷式都讀出來了，但 AI 的回合預算、賞賜的增幅與
+		// 排序鍵、原版的亂數都還沒量到。**結構對了不代表數值對了。**
 		if b.Derived() {
-			t.Errorf("%s 宣稱已經完整還原了——九種行為還沒解完", m)
+			t.Errorf("%s 宣稱已經完整還原了——表底下還有沒量到的量", m)
 		}
 		done, total := b.Coverage()
 		if total != 9 {
@@ -339,7 +341,7 @@ func TestArmsPurchaseFillsToFull(t *testing.T) {
 	pref := g.Prefecture(p)
 	pref.Gold = 30000 // 預算不設限，先看「買到滿編」這一半
 
-	orders := armsPurchase(g, p)
+	orders := armsPurchase(g, p, pref.Gold)
 	if len(orders) == 0 {
 		t.Fatalf("郡 %d 的守軍一個都不缺武器？", p)
 	}
@@ -367,10 +369,36 @@ func TestArmsPurchaseFillsToFull(t *testing.T) {
 		x.Arms = 0
 	}
 	total := 0
-	for _, o := range armsPurchase(g, p) {
+	for _, o := range armsPurchase(g, p, pref.Gold) {
 		total += o.(game.ArmsOrder).Units
 	}
 	if total > 1*game.ArmsPerGold {
 		t.Errorf("只有 1 金卻買了 %d 單位，上限是 %d", total, game.ArmsPerGold)
+	}
+}
+
+// TestFaithfulPlansAllApply 釘住「AI 送出的命令套得上去」。
+//
+// `ApplyAll` 遇到擋下來的命令會**中斷同一輪後面全部的命令**，所以一道
+// 送錯就少算一整個勢力的行動。而少算的結果長得跟「公式不準」一模一樣：
+// 對拍那一邊只看得到欄位對不上，看不到有一整串命令根本沒跑。
+//
+// 這一條不需要原版素材以外的東西，三秒跑完——`internal/parity` 那個
+// 三分鐘的對拍不該是第一個發現這件事的地方。
+func TestFaithfulPlansAllApply(t *testing.T) {
+	g := newGame(t, 0) // 劉備是玩家，其餘全是電腦
+	b, err := New(ModeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range g.Factions() {
+		if !f.Alive || f.ID == g.Player {
+			continue
+		}
+		orders := b.Plan(g, f.ID)
+		if n, err := g.ApplyAll(orders, f.ID); err != nil {
+			t.Errorf("勢力 %d 的 %d 道命令裡有 %d 道成立，然後：%v",
+				f.ID, len(orders), n, err)
+		}
 	}
 }

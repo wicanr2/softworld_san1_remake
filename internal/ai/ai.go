@@ -48,6 +48,11 @@ type Brain interface {
 	// **false 表示它還不會下完整的棋**，不是「它比較弱」。呼叫端要把
 	// 這件事顯示出來——一個安靜地什麼都不做的電腦諸侯，在畫面上看起來
 	// 就只是「這個諸侯這回合沒動作」。
+	//
+	// ⚠ **`Coverage()` 回 9/9 也不等於 `Derived()` 為真。** 九張分派表
+	// 的判斷式都從碼讀出來了，但表底下還有沒量到的量：AI 的回合預算
+	// （`es:[0x3d16]` 怎麼算）、賞賜的忠誠增幅與挑人的排序鍵、
+	// 以及原版的亂數產生器。**結構對了不代表數值對了。**
 	Derived() bool
 
 	// Coverage 回報九種行為裡解出了幾種。
@@ -88,7 +93,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 8, 9 }
+func (f *faithful) Coverage() (int, int) { return 9, 9 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -110,6 +115,21 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 	var out []game.Order
 	k := internalAffairsRange(g.AILevel(id))
 	for _, p := range g.Territory(id) {
+		// **錢包要跟著這一輪扣。** 原版每一支常式開頭都看一次本回合的
+		// 預算（`es:[0x3d16]`）；remake 這一邊沒有那個數，用郡的金頂著。
+		// 對著開局餘額規劃的話，後面幾道會被 `ErrNoGold` 擋下來，
+		// 而 `ApplyAll` 會連同再後面的命令一起作廢。
+		purse := 0
+		if x := g.Prefecture(p); x != nil {
+			purse = x.Gold
+		}
+		afford := func(cost int) bool {
+			if purse < cost {
+				return false
+			}
+			purse -= cost
+			return true
+		}
 		// **行動者不是太守**：表 `0x54d4` 按「智 ＋ 武 ＋ 加權表[身分]」
 		// 排序，取第一位——君主優先，其次軍師、太守、一般武將。
 		act := actor(g, id, p)
@@ -120,9 +140,13 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// 內政（表 `0x5534`）
 		switch g.Roll(k, int(id), p, 0x5534) {
 		case 0:
+			// 開墾不會因為錢不夠而失敗（「若財庫已空則徒手開墾」）。
+			purse -= min(purse, game.CostReclaim)
 			out = append(out, game.ReclaimOrder{At: p, General: gov.Index})
 		case 1:
-			out = append(out, game.FloodControlOrder{At: p, General: gov.Index})
+			if afford(game.CostFloodControl) {
+				out = append(out, game.FloodControlOrder{At: p, General: gov.Index})
+			}
 		}
 		// 訓練兵士（表 `0x5554`）：分派器每回合都跑，常式自己對整個
 		// 守軍算，沒有額外的條件。
@@ -139,10 +163,8 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		}
 		// 尋訪人才（表 `0x5614`）：`RND(10) > 7`，也就是 20 %。
 		// **機率不隨等級變**（六個項目都推 10）。
-		if g.Roll(10, int(id), p, 0x5614) > 7 {
-			if gov != nil {
-				out = append(out, game.SearchOrder{At: p, General: gov.Index})
-			}
+		if g.Roll(10, int(id), p, 0x5614) > 7 && afford(game.CostSearch) {
+			out = append(out, game.SearchOrder{At: p, General: gov.Index})
 		}
 		// 登用人才（表 `0x5634`）：掃本郡身分 8（在野露面）的人。
 		// **每郡最多 50 位將軍**（`0xced2` 的 `cmpw es:[0xc],50`）。
@@ -150,15 +172,16 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// 等級參數 (30,0)/(20,10)/(10,20)/(0,40) 是**費用與加成**。
 		// ⚠ 原版掃的是身分 8 **與 10**，而 10 是什麼還沒解；
 		// 有好幾位可選時它挑誰也還沒讀。
-		if len(g.Garrison(p)) < game.MaxGeneralsPerPrefecture {
+		if len(g.Garrison(p)) < game.MaxGeneralsPerPrefecture &&
+			afford(game.RecruitFee(g.AILevel(id))) {
 			if who := f.recruitTarget(g, p); who != nil {
 				out = append(out, game.RecruitOrder{At: p, Target: who.Index})
 			}
 		}
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
 		out = append(out, f.rewards(g, id, p)...)
-		// 購置武器（表 `0x5594`）：補到滿編為止。
-		out = append(out, armsPurchase(g, p)...)
+		// 購置武器（表 `0x5594`）：補到滿編為止，剩多少錢買多少。
+		out = append(out, armsPurchase(g, p, purse)...)
 	}
 	return out
 }
@@ -179,12 +202,7 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 // ⚠ **原版的預算是勢力層級的**（`es:[0x3d16]`，§2.12），它怎麼算出來
 // 還沒解（`L3`）。這裡拿郡的金當上限，因為那是 remake 這一邊唯一
 // 擋得住的東西——`ApplyAll` 遇到買不起會整串中斷，不是少買一點。
-func armsPurchase(g *game.State, prefecture int) []game.Order {
-	p := g.Prefecture(prefecture)
-	if p == nil {
-		return nil
-	}
-	budget := p.Gold
+func armsPurchase(g *game.State, prefecture, budget int) []game.Order {
 	var out []game.Order
 	for _, x := range g.Garrison(prefecture) {
 		gap := x.Soldiers - game.Weapons(int(x.Arms), x.Soldiers)
@@ -283,6 +301,11 @@ func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture in
 // ⚠ **「最後一位」跟著清單順序走，而清單順序還沒解**（`L3`）。
 // 這裡取 remake 自己的守軍順序中的最後一位，形狀對、人選不保證相同。
 func betterChief(g *game.State, id state.FactionID, prefecture int) *game.General {
+	// **君主不在就拜不了軍師**（`game.AppointChief` 的 `requireLordAt`）。
+	// 送出去只會被擋，然後同一輪後面的命令全部作廢。
+	if lord := g.Lord(id); lord == nil || lord.Location != prefecture {
+		return nil
+	}
 	floor := state.ChiefIntelFloor
 	if cur := g.Chief(id); cur != nil {
 		floor = int(cur.Intel)
@@ -342,6 +365,12 @@ func actor(g *game.State, id state.FactionID, prefecture int) *game.General {
 // 說明書只說「太守魅力越高，登用與賑民的效果越好」——這裡是 AI 實際
 // 用的判準。
 func mostCharming(g *game.State, id state.FactionID, prefecture int) *game.General {
+	// **君主在的郡不指太守**：`game.AppointGovernor` 擋這一種，而
+	// `ApplyAll` 把擋下來的命令當成違規、中斷同一輪後面全部的命令。
+	// AI 不該送出套不上去的命令（`order.go` 的 `ApplyAll`）。
+	if lord := g.Lord(id); lord != nil && lord.Location == prefecture {
+		return nil
+	}
 	var best *game.General
 	for _, x := range g.Garrison(prefecture) {
 		if x.Faction != id {
