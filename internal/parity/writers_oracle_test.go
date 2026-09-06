@@ -225,7 +225,7 @@ func TestZZWhoWritesTheTables(t *testing.T) {
 // **清單是拿位元組樣式掃出來的，不是順著讀出來的**：`ff 9f` ＝
 // `lcall far [bx+disp16]`。前八個間隔固定 `0x11`，第九個之後隔著一整段
 // 預算計算的碼——順著讀會在那裡停下來，那正是原本只數到九張的原因
-//（`CONTEXT.md` R10）。
+// （`CONTEXT.md` R10）。
 var dispatchSites = map[uint32]uint16{
 	0xe926: 0x54d4, 0xe937: 0x5694, 0xe948: 0x5674, 0xe959: 0x5614,
 	0xe96a: 0x5634, 0xe97b: 0x5554, 0xe98c: 0x5534, 0xe99d: 0x56b4,

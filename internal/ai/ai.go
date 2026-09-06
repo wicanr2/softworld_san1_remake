@@ -94,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 9, 18 }
+func (f *faithful) Coverage() (int, int) { return 10, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -181,8 +181,88 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		}
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
 		out = append(out, f.rewards(g, id, p)...)
-		// 購置武器（表 `0x5594`）：補到滿編為止，剩多少錢買多少。
-		out = append(out, armsPurchase(g, p, purse)...)
+		// 購置武器（表 `0x5594`）：預算是郡的金的 2 %。
+		bought := armsPurchase(g, p, aiBudget(purse, g.AILevel(id), tableArms))
+		out = append(out, bought...)
+		// **扣的是真的花掉的，不是配下去的額度**：原版每一支常式都重讀
+		// 一次郡的金，而金只被實際的支出扣減。
+		for _, o := range bought {
+			purse -= o.(game.ArmsOrder).Units / game.ArmsPerGold
+		}
+		// 徵兵（表 `0x5574`）：預算是**剩下的**金的 30–50 %。
+		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
+		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
+		out = append(out, conscript(g, p, aiBudget(purse, g.AILevel(id), tableConscript))...)
+	}
+	return out
+}
+
+// 分派表的位址，當識別碼用。
+const (
+	tableArms      = 0x5594 // 購置武器
+	tableConscript = 0x5574 // 徵兵
+)
+
+// aiBudgetPercent 是「本回合預算佔郡的金的百分之幾」（`L0`、`[base]`）。
+//
+// 分派器在呼叫這幾支之前先算一次 `es:[0x3d16]`：
+// `預算 ＝ 郡的金 × 係數 ÷ 100`，係數表在 `DS:0x5714`，
+// 24 筆 ＝ 6 個等級 × 4 個相位（`docs/mechanics/70-ai` §2.14）。
+//
+// **這兩張表的係數不隨相位變**，所以「相位是什麼」（`es:[0x3f08] mod 4`，
+// 還沒解）不影響這裡。會隨相位變的是 `0x5514` 與 `0x56d4`，
+// 而 `0x5514` 八格全是空操作。
+var aiBudgetPercent = map[int][6]int{
+	tableArms:      {2, 2, 2, 2, 2, 2},
+	tableConscript: {30, 30, 40, 50, 50, 50},
+}
+
+func aiBudget(gold, level, table int) int {
+	pct, ok := aiBudgetPercent[table]
+	if !ok || gold <= 0 {
+		return 0
+	}
+	if level < 0 {
+		level = 0
+	}
+	if level >= len(pct) {
+		level = len(pct) - 1
+	}
+	return gold * pct[level] / 100
+}
+
+// conscript 是「徵兵」（表 `0x5574`，常式 `0xbeb8`，`L0`、`[base]`）。
+//
+// 走守軍清單，對每一位徵到帶兵上限為止：
+//
+//	空額 ＝ 帶兵上限[職位] − 兵力
+//	人數 ＝ min(空額, 預算)                 ; 每人 1 金
+//	人數 ＝ min(人數, max(人口 − 3000, 0))  ; 人口下限
+//	人數 ≤ 0 → 這一位跳過
+//
+// 徵完人口等量減少，訓練度與武裝度都按新的兵力重算——**新兵沒受訓
+// 也沒武器**，兩個欄位走的是同一個加權平均（`game.ArmsOf`）。
+func conscript(g *game.State, prefecture, budget int) []game.Order {
+	p := g.Prefecture(prefecture)
+	if p == nil {
+		return nil
+	}
+	people := p.Population
+	var out []game.Order
+	for _, x := range g.Garrison(prefecture) {
+		n := x.TroopCap() - x.Soldiers
+		if n > budget {
+			n = budget
+		}
+		if room := people - game.MinPopulationToConscript; n > room {
+			n = room
+		}
+		if n <= 0 {
+			continue
+		}
+		budget -= n
+		people -= n
+		out = append(out, game.ConscriptOrder{At: prefecture, General: x.Index, Count: n})
 	}
 	return out
 }

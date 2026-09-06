@@ -101,6 +101,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.SearchOrder: // 尋訪人才（0x5614），已解
 			case game.RecruitOrder: // 登用人才（0x5634），已解
 			case game.ArmsOrder: // 購置武器（0x5594），已解
+			case game.ConscriptOrder: // 徵兵（0x5574），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}
@@ -400,5 +401,64 @@ func TestFaithfulPlansAllApply(t *testing.T) {
 			t.Errorf("勢力 %d 的 %d 道命令裡有 %d 道成立，然後：%v",
 				f.ID, len(orders), n, err)
 		}
+	}
+}
+
+// TestAIBudgetIsAPercentOfGold 釘住本回合預算的係數（`L0`、§2.14）。
+//
+// **判準是兩張表的比例差**：購置武器只拿 2 %，徵兵拿 30–50 %。
+// 只驗其中一張的話，係數表整個接錯位（六個 word 的位移）也看不出來。
+func TestAIBudgetIsAPercentOfGold(t *testing.T) {
+	for _, c := range []struct{ gold, level, table, want int }{
+		{1000, 0, tableArms, 20},
+		{1000, 5, tableArms, 20}, // 武器的係數不隨等級變
+		{1000, 0, tableConscript, 300},
+		{1000, 1, tableConscript, 300},
+		{1000, 2, tableConscript, 400},
+		{1000, 3, tableConscript, 500},
+		{1000, 5, tableConscript, 500},
+		{0, 5, tableConscript, 0},
+		{1000, 5, 0x54d4, 0}, // 不花錢的表沒有預算
+	} {
+		if got := aiBudget(c.gold, c.level, c.table); got != c.want {
+			t.Errorf("金 %d、等級 %d、表 %#04x：預算 %d，應該是 %d",
+				c.gold, c.level, c.table, got, c.want)
+		}
+	}
+}
+
+// TestConscriptFillsToCap 釘住徵兵徵到帶兵上限，並受預算與人口下限夾住。
+func TestConscriptFillsToCap(t *testing.T) {
+	const ai = state.FactionID(1) // 曹操
+	g := newGame(t, 2)
+	terr := g.Territory(ai)
+	if len(terr) == 0 {
+		t.Fatal("曹操一個郡都沒有")
+	}
+	p := terr[0]
+	pref := g.Prefecture(p)
+
+	// 預算與人口都不設限：每一位都該徵到滿編。
+	pref.Population = 100000
+	for _, o := range conscript(g, p, 1000000) {
+		c := o.(game.ConscriptOrder)
+		x := g.General(c.General)
+		if want := x.TroopCap() - x.Soldiers; c.Count != want {
+			t.Errorf("將 %d：徵 %d 人，空額是 %d", c.General, c.Count, want)
+		}
+	}
+	// **人口下限**：人口剛好在下限上，一個都徵不到。
+	pref.Population = game.MinPopulationToConscript
+	if n := conscript(g, p, 1000000); len(n) != 0 {
+		t.Errorf("人口只剩下限卻還徵了 %d 道", len(n))
+	}
+	// **預算**：每人 1 金，所以總人數不超過預算。
+	pref.Population = 100000
+	total := 0
+	for _, o := range conscript(g, p, 250) {
+		total += o.(game.ConscriptOrder).Count
+	}
+	if total > 250 {
+		t.Errorf("預算 250 金卻徵了 %d 人", total)
 	}
 }
