@@ -562,3 +562,83 @@ func TestZZRandom(t *testing.T) {
 		t.Logf("    %s ×%d", k, ret[k])
 	}
 }
+
+// TestZZDispatchScope 問一件事：分派器對哪些郡跑。
+//
+// `0x5674`（指定太守）開頭檢查「諸侯 offset 0 == 1 就跳過」——玩家的
+// 勢力不做；但 `0x5594`（武裝度）沒有那個檢查。**所以九張表裡可能有
+// 一部分是每月結算而不是 AI 決策**，而那決定 `internal/ai` 與
+// `internal/game` 的分工。
+//
+// 判準很直接：分派器的呼叫端（`0x017504`）第一個參數就是郡編號，
+// 看**玩家的郡有沒有出現在名單裡**。
+func TestZZDispatchScope(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	base := bootToGame(t, o, seedMas)
+	nMas := state.MasterTableSize
+	board := o.Bytes(addr(base), nMas+state.PrefectureTableSize)
+
+	// 誰是玩家、玩家有哪些郡。
+	player := -1
+	for i := 0; i < nMas/state.MasterRecordSize; i++ {
+		off := i * state.MasterRecordSize
+		if int(board[off])|int(board[off+1])<<8 == 1 {
+			player = i
+		}
+	}
+	mine := map[int]bool{}
+	rec := state.PrefectureRecordSize
+	for i := 1; i*rec < state.PrefectureTableSize; i++ {
+		if int(board[nMas+i*rec+30]) == player {
+			mine[i] = true
+		}
+	}
+	t.Logf("玩家是勢力 %d，擁有 %d 個郡：%v", player, len(mine), keysOf(mine))
+
+	seen := map[int]int{}
+	o.OnCall(addr(0x017504), func(o *oracle.Oracle) { seen[int(o.Arg(0))]++ })
+	for _, keys := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(keys)
+		if err := o.Run(40_000_000 * 3); err != nil {
+			t.Fatalf("原版停止：%v", err)
+		}
+	}
+	hitMine, hitOther := 0, 0
+	for p, n := range seen {
+		if mine[p] {
+			hitMine += n
+		} else {
+			hitOther += n
+		}
+	}
+	t.Logf("分派器一個月跑了 %d 個相異的郡、共 %d 次；其中玩家的郡 %d 次、別人的 %d 次",
+		len(seen), hitMine+hitOther, hitMine, hitOther)
+	if hitMine > 0 {
+		t.Log("→ **分派器對玩家的郡也跑**，所以九張表裡有一部分是每月結算")
+	} else {
+		t.Log("→ 分派器只對電腦諸侯的郡跑，九張表全部是 AI 決策")
+	}
+}
+
+func keysOf(m map[int]bool) []int {
+	out := make([]int, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Ints(out)
+	return out
+}
