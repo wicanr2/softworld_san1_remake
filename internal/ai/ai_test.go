@@ -95,6 +95,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.TrainOrder: // 訓練兵士（0x5554），已解
 			case game.AppointGovernorOrder: // 指定太守（0x5674），已解
 			case game.AppointChiefOrder: // 指定軍師（0x5694），已解
+			case game.GiftOrder: // 賞賜物品（0x56b4），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}
@@ -239,6 +240,45 @@ func TestBaseChiefNeedsEightyIntel(t *testing.T) {
 				t.Errorf("勢力 %d 指的軍師身分是 %d，原版只收太守與一般武將",
 					f.ID, x.Status)
 			}
+		}
+	}
+}
+
+// TestBaseRewardsOnlyAtLevelThree 釘住等級 0–2 完全不賞賜。
+//
+// 原版的分派表 `0x56b4` **前三格是空操作**（`xor ax,ax; lret`），
+// 所以低等級的電腦諸侯根本不做這件事。**這一條只有負面案例驗得到**
+// ——一個「總是賞賜」的 AI 在高等級的盤面上看起來一模一樣。
+func TestBaseRewardsOnlyAtLevelThree(t *testing.T) {
+	b, err := New(ModeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, level := range []int{0, 1, 2, 3, 4, 5} {
+		g := newGame(t, 1)
+		for i := range g.Factions() {
+			g.Factions()[i].AILevel = level
+			// 給滿寶庫，排除「沒東西可送」這個混淆。
+			for k := range g.Factions()[i].Treasury {
+				g.Factions()[i].Treasury[k] = 9
+			}
+		}
+		gifts := 0
+		for _, f := range g.Factions() {
+			if !f.Alive {
+				continue
+			}
+			for _, o := range b.Plan(g, f.ID) {
+				if _, ok := o.(game.GiftOrder); ok {
+					gifts++
+				}
+			}
+		}
+		if level < 3 && gifts != 0 {
+			t.Errorf("等級 %d 賞賜了 %d 次，原版那三格是空操作", level, gifts)
+		}
+		if level >= 3 && gifts == 0 {
+			t.Logf("等級 %d 這一輪沒賞賜（41%% 的機率閘，可能只是沒擲中）", level)
 		}
 	}
 }

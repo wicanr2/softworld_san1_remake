@@ -77,7 +77,7 @@ func New(m Mode) (Brain, error) {
 // faithful 是「以還原原版為目標」的 AI 的共同外殼。
 //
 // **只做已經從原版讀出來的行為。** 九種行為裡解出三種
-//（內政、訓練兵士、指定太守、指定軍師）。
+//（內政、訓練兵士、指定太守、指定軍師、賞賜物品）。
 // 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
 // 哪些行為是還原的、哪些是我編的。
 type faithful struct {
@@ -88,7 +88,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode                    { return f.mode }
 func (f *faithful) Name() string                  { return f.name }
 func (f *faithful) Derived() bool                 { return false }
-func (f *faithful) Coverage() (int, int)          { return 4, 9 }
+func (f *faithful) Coverage() (int, int)          { return 5, 9 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -134,8 +134,67 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		if best := mostCharming(g, id, p); best != nil && best.Index != gov.Index {
 			out = append(out, game.AppointGovernorOrder{At: p, Target: best.Index})
 		}
+		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
+		out = append(out, f.rewards(g, id, p)...)
 	}
 	return out
+}
+
+// rewards 是「賞賜物品」（表 `0x56b4`，`L0`、`[base]`）。
+//
+// 三種寶物各跑一次（諸侯 offset 16／17／18），每一次：
+//
+//	RND(100) > 40 → 跳過          ; 41 % 才進行
+//	存量 <= RND(2) + 2 → 跳過      ; 手上要夠多才送得出去
+//	排序守軍、挑一位**非君主**的
+//	該人忠誠上升，寶物存量 −1
+//
+// ⚠ **忠誠上升多少還沒解**（`L3`）——常式裡看得到 0–100 的夾取，
+// 增幅那一段在讀到的範圍之外。`game.GiftTreasure` 用的還是 remake
+// 自己的幅度。
+func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []game.Order {
+	if g.AILevel(id) < 3 {
+		return nil // 等級 0–2 那三格是空操作
+	}
+	fa := g.Faction(id)
+	if fa == nil {
+		return nil
+	}
+	var out []game.Order
+	// 只有 offset 16／17／18 那三格會被送出去；14 是玉璽（不能送人）。
+	for i, t := range []game.Treasure{
+		game.TreasureBlade, game.TreasureBeauty, game.TreasureHorse,
+	} {
+		if g.Roll(100, int(id), prefecture, i, 0x56b4) > 40 {
+			continue
+		}
+		if fa.Treasury[t] <= g.Roll(2, int(id), prefecture, i)+2 {
+			continue
+		}
+		who := f.rewardTarget(g, id, prefecture)
+		if who == nil {
+			continue
+		}
+		out = append(out, game.GiftOrder{At: prefecture, Target: who.Index, What: t})
+	}
+	return out
+}
+
+// rewardTarget 是賞賜的對象：守軍裡忠誠最低的非君主。
+//
+// 原版在挑人之前先排序清單並跳過身分 0（君主）。**排序的鍵還沒解**
+// （`L3`），這裡用「忠誠最低」——那是最合理的猜測，而且標了出來。
+func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture int) *game.General {
+	var pick *game.General
+	for _, x := range g.Garrison(prefecture) {
+		if x.Faction != id || x.Status == state.StatusLord {
+			continue
+		}
+		if pick == nil || x.Loyalty < pick.Loyalty {
+			pick = x
+		}
+	}
+	return pick
 }
 
 // betterChief 是守軍裡可以接任軍師的人（`L0`、`[base]`）。
