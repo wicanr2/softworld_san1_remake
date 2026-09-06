@@ -91,7 +91,9 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 		}
 		for _, o := range orders {
 			switch o.(type) {
-			case game.ReclaimOrder, game.FloodControlOrder: // 內政，已解
+			case game.ReclaimOrder, game.FloodControlOrder: // 內政（0x5534），已解
+			case game.TrainOrder: // 訓練兵士（0x5554），已解
+			case game.AppointGovernorOrder: // 指定太守（0x5674），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}
@@ -157,5 +159,44 @@ func TestEnhancedRespectsOnePerMonth(t *testing.T) {
 	// 套用之後再規劃一次，同一個月不該再有命令。
 	if again := b.Plan(g, 5); len(again) != 0 {
 		t.Errorf("同一個月又規劃出 %d 個命令", len(again))
+	}
+}
+
+// TestBaseAppointsTheMostCharming 釘住 AI 指的太守是魅力最高的那位。
+//
+// 原版在指定太守之前把守軍**按魅力由高到低排序**再取第一位
+// （`0xf600`，`docs/re/03` §1.4）。**判準是「魅力最高」不是「有指定」**
+// ——一個隨便指一位的 AI 在畫面上看起來一模一樣。
+func TestBaseAppointsTheMostCharming(t *testing.T) {
+	g := newGame(t, 1)
+	b, err := New(ModeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range g.Factions() {
+		if !f.Alive {
+			continue
+		}
+		for _, o := range b.Plan(g, f.ID) {
+			ap, ok := o.(game.AppointGovernorOrder)
+			if !ok {
+				continue
+			}
+			var best *game.General
+			for _, x := range g.Garrison(ap.At) {
+				if x.Faction == f.ID && (best == nil || x.Charm > best.Charm) {
+					best = x
+				}
+			}
+			if best == nil {
+				t.Errorf("郡 %d 沒有守將卻指了太守", ap.At)
+				continue
+			}
+			got := g.General(ap.Target)
+			if got == nil || got.Charm != best.Charm {
+				t.Errorf("郡 %d 指的太守魅力是 %v，該郡最高是 %d",
+					ap.At, got, best.Charm)
+			}
+		}
 	}
 }

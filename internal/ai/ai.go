@@ -76,7 +76,8 @@ func New(m Mode) (Brain, error) {
 
 // faithful 是「以還原原版為目標」的 AI 的共同外殼。
 //
-// **只做已經從原版讀出來的行為。** 九種行為裡解出一種（內政）。
+// **只做已經從原版讀出來的行為。** 九種行為裡解出三種
+//（內政、訓練兵士、指定太守）。
 // 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
 // 哪些行為是還原的、哪些是我編的。
 type faithful struct {
@@ -87,7 +88,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode                    { return f.mode }
 func (f *faithful) Name() string                  { return f.name }
 func (f *faithful) Derived() bool                 { return false }
-func (f *faithful) Coverage() (int, int)          { return 1, 9 }
+func (f *faithful) Coverage() (int, int)          { return 3, 9 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -113,14 +114,43 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		if gov == nil {
 			continue
 		}
+		// 內政（表 `0x5534`）
 		switch g.Roll(k, int(id), p, 0x5534) {
 		case 0:
 			out = append(out, game.ReclaimOrder{At: p, General: gov.Index})
 		case 1:
 			out = append(out, game.FloodControlOrder{At: p, General: gov.Index})
 		}
+		// 訓練兵士（表 `0x5554`）：分派器每回合都跑，常式自己對整個
+		// 守軍算，沒有額外的條件。
+		out = append(out, game.TrainOrder{At: p})
+		// 指定太守（表 `0x5674`）：守軍按魅力由高到低排序，第一位當
+		// 太守。**已經是他就不必再指一次**——原版那一段是直接寫欄位，
+		// remake 這一邊走命令，重複指定會白費一道紀錄。
+		if best := mostCharming(g, id, p); best != nil && best.Index != gov.Index {
+			out = append(out, game.AppointGovernorOrder{At: p, Target: best.Index})
+		}
 	}
 	return out
+}
+
+// mostCharming 是守軍裡魅力最高的一位。
+//
+// 原版在指定太守之前先把守軍清單**按魅力由高到低排序**
+//（`0xf600` 起的交換排序，比的是人物 offset 11），然後取第一位。
+// 說明書只說「太守魅力越高，登用與賑民的效果越好」——這裡是 AI 實際
+// 用的判準。
+func mostCharming(g *game.State, id state.FactionID, prefecture int) *game.General {
+	var best *game.General
+	for _, x := range g.Garrison(prefecture) {
+		if x.Faction != id {
+			continue
+		}
+		if best == nil || x.Charm > best.Charm {
+			best = x
+		}
+	}
+	return best
 }
 
 // internalAffairsRange 是內政那張分派表的亂數範圍（`L0`、`[base]`）。
