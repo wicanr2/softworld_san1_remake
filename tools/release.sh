@@ -19,8 +19,11 @@ VER="${1:-$(cd "$ROOT" && git describe --tags --always --dirty 2>/dev/null || ec
 OUT="$ROOT/workplace/release"
 MAC_IMAGE="${SAN1_MAC_IMAGE:-eob-remake-macos:1.26.7-ebiten2.9.9-audio}"
 
+# **舊版本的包要先清掉。** 檔名帶版本號，所以舊包不會被覆蓋而是留在旁邊，
+# 而最後的 sha256sum 掃的是整個目錄——校驗碼清單於是會混進上一次建的東西，
+# 而且看起來完全正常（每一行的雜湊都是對的，只是那個檔不屬於這一版）。
+rm -rf "$OUT"
 mkdir -p "$OUT"
-rm -rf "$OUT/stage"
 echo "版本 $VER"
 
 # stage 把一個平台的產物擺成可以壓縮的樣子。
