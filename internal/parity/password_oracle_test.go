@@ -181,3 +181,68 @@ func fromBCD(w uint16) (int, bool) {
 	}
 	return n, true
 }
+
+// TestPasswordAnswerIsRight 釘住密碼答案，**而且釘住錯的答案過不去**。
+//
+// 只驗「對的密碼會過」是不夠的：如果原版根本不檢查、或畫面本來就會
+// 重繪，那個測試在任何輸入下都會綠。所以負對照要一起量——
+// 同一個快照展開，錯的答案不能讓月份走下去。
+func TestPasswordAnswerIsRight(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mas, _, _ := sc.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	bootToMain(t, o, mas)
+	const settle = 40_000_000
+	for _, k := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(k)
+		if err := o.Run(settle * 3); err != nil {
+			t.Fatalf("觸發密碼關時停止：%v", err)
+		}
+	}
+	dumpScreen(t, o, "40-密碼關")
+	atPwd := o.Save()
+	pwdScr := screenOf(o)
+
+	try := func(answer string) int {
+		o.Restore(atPwd)
+		o.Drain()
+		o.Press(answer + "\r")
+		if err := o.Run(settle); err != nil {
+			t.Fatalf("作答時停止：%v", err)
+		}
+		o.Press("Y\r")
+		if err := o.Run(settle * 3); err != nil {
+			t.Fatalf("確認時停止：%v", err)
+		}
+		d := pixelDiff(pwdScr, screenOf(o), nil)
+		dumpScreen(t, o, "41-答"+answer)
+		return d
+	}
+
+	// 負對照先跑：錯的答案要留在密碼畫面。
+	for _, wrong := range []string{"1111", "0000"} {
+		if d := try(wrong); d > 20000 {
+			t.Errorf("錯的密碼 %s 也讓畫面換掉了（差 %d 像素）——"+
+				"這個判準量不出「過關」", wrong, d)
+		} else {
+			t.Logf("錯的密碼 %s：畫面差 %d，沒過（如預期）", wrong, d)
+		}
+	}
+	if d := try(passwordAnswer); d <= 20000 {
+		t.Errorf("密碼 %s 沒讓畫面換掉（差 %d 像素）", passwordAnswer, d)
+	} else {
+		t.Logf("密碼 %s：畫面差 %d，過了", passwordAnswer, d)
+	}
+}

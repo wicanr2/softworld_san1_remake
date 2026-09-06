@@ -48,7 +48,7 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	defer o.Close()
 
-	base := bootToMain(t, o, seedMas)
+	base := bootToGame(t, o, seedMas)
 	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
 	total := nMas + nSta + nGen
 

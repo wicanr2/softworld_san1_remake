@@ -50,8 +50,8 @@ func TestZZAdvanceMonth(t *testing.T) {
 	}
 	defer o.Close()
 
-	base := bootToMain(t, o, mas)
-	dumpScreen(t, o, "20-主畫面")
+	base := bootToGame(t, o, mas)
+	dumpScreen(t, o, "20-過關後的主畫面")
 
 	seq := strings.Split(envOr("SAN1_TURNKEY", "4\r|4\r|Y"), "|")
 	turns := 16

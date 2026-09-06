@@ -116,6 +116,39 @@ func bootToMain(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 	return base
 }
 
+// bootToGame 一路開到**過了防拷密碼**的主畫面。
+//
+// `bootToMain` 只走到主畫面，那時密碼關還沒跳出來——第一道帶 ＊ 的
+// 指令用掉之後才會（`docs/re/02` §3.3）。所以要真的讓月份走下去，
+// 得先把那一關過掉。
+//
+// 代價是**開頭那一個月已經走過去了**：觸發密碼關的那道「內政 → 休息」
+// 就是玩家那一個月的指令。回傳時遊戲停在下一個月的主畫面。
+func bootToGame(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
+	t.Helper()
+	base := bootToMain(t, o, mas)
+	const settle = 40_000_000
+	for _, k := range []string{"4\r", "4\r", "Y"} {
+		o.Drain()
+		o.PressScan(k)
+		if err := o.Run(settle * 3); err != nil {
+			t.Fatalf("觸發密碼關時停止：%v", err)
+		}
+	}
+	// 密碼那個提示**不吃掃描碼**（實測畫面差 240，與什麼都不送同級），
+	// 所以兩條路一起餵。
+	o.Drain()
+	o.Press(passwordAnswer + "\r")
+	if err := o.Run(settle); err != nil {
+		t.Fatalf("作答時停止：%v", err)
+	}
+	o.Press("Y\r")
+	if err := o.Run(settle * 3); err != nil {
+		t.Fatalf("確認時停止：%v", err)
+	}
+	return base
+}
+
 func screenOf(o *oracle.Oracle) []uint8 {
 	return append([]uint8(nil), o.IndexedEGA(scrW, scrH)...)
 }
