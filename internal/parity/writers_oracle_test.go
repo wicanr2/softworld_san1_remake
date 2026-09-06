@@ -3,6 +3,8 @@
 package parity
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -21,10 +23,34 @@ import (
 // 做法是讓執行器在寫入落進表的範圍時記下當時的 `CS:IP`，跑一個月，
 // 再按 IP 分組。**訓練度是誰改的、金是誰扣的**，答案就是那幾個位址。
 //
-// 位址換算：主程式映像載在 `0110:0000`，所以映像位移 ＝ 線性位址 − 0x1100
-// （`docs/re/01`）。這個位移是穩定的，可以直接拿去對 `objdump` 的輸出。
+// ⚠ **位址只到「這一次執行的線性位址」為止。** 現成的
+// `workplace/ida/OVL.BIN`（從 `0110:0000` 取的）裡連一次 `28 22` 都沒有
+// ——那是人物表訓練度欄的位移，所以含這些程式碼的那一層不在那份 dump
+// 裡。要對到映像位移，得從**同一次執行**把碼段取出來（`dumpImage`）。
 
-const imageBase = 0x1100 // DATA5.GRP 映像在記憶體裡的線性起點
+// dumpImage 把一段線性記憶體寫成檔，給 objdump 用。
+//
+// 寫進 `workplace/`（gitignore）。那是原版載入後的碼段，與原版執行檔
+// 一樣不散布。
+func dumpImage(t *testing.T, o *oracle.Oracle, lo, hi uint32, name string) {
+	t.Helper()
+	dir := os.Getenv("SAN1_DUMP")
+	if dir == "" {
+		return
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Log(err)
+		return
+	}
+	b := o.Bytes(addr(lo), int(hi-lo))
+	path := filepath.Join(dir, fmt.Sprintf("%s-%06x.bin", name, lo))
+	if err := os.WriteFile(path, b, 0o644); err != nil {
+		t.Log(err)
+		return
+	}
+	t.Logf("碼段 %#x–%#x（%d 個位元組）寫到 %s；objdump 的 --adjust-vma ＝ %#x",
+		lo, hi, len(b), path, lo)
+}
 
 // TestZZWhoWritesTheTables 跑一個月，列出寫三張表的程式位址。
 func TestZZWhoWritesTheTables(t *testing.T) {
@@ -43,6 +69,8 @@ func TestZZWhoWritesTheTables(t *testing.T) {
 	defer o.Close()
 
 	base := bootToGame(t, o, seedMas)
+	// **碼段和量到的位址要出自同一次執行**，否則對不上。
+	dumpImage(t, o, 0x00b000, 0x01f000, "code")
 	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
 	nGen := state.GeneralTableSize
 	_ = state.MasterRecordSize
@@ -101,8 +129,7 @@ func TestZZWhoWritesTheTables(t *testing.T) {
 				fs = append(fs, f)
 			}
 			sort.Strings(fs)
-			t.Logf("    映像 %#06x（線性 %#06x）寫了 %4d 次：%v",
-				a-imageBase, a, by[a].n, fs)
+			t.Logf("    線性 %#06x 寫了 %4d 次：%v", a, by[a].n, fs)
 		}
 	}
 }
