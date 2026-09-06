@@ -230,6 +230,8 @@ dosgolem 當時只在載入時放了一條寫死的兩格鏈，配置器完全�
 | 2026-09-06 | repo 名 `softworld_san1_remake`，private | 使用者 |
 | 2026-09-06 | dosgolem 上游加 `apps/san1` ＋ `runtime/msc`；本機另 clone `dosgolem-san`，獨立分支 | 使用者 |
 | 2026-09-06 | **人名與地名以遊戲資料為準**，手冊只當術語母本——手冊掃描轉錄有字形問題，資料是 `L0` | 分析結論 |
+| 2026-09-06 | **AI 三個版本並列**：`base`（原版還原）、`plus`（加強版還原）、`enhanced`（remake 強化）。前兩個是還原、第三個是創作，驗收標準不同不可混用（`docs/design/01`）| 使用者 |
+| 2026-09-06 | **反組譯結果整理成 markdown 進 repo**——專案的另一個目的是台灣電玩文化保存 | 使用者 |
 
 ---
 
@@ -237,14 +239,14 @@ dosgolem 當時只在載入時放了一條寫死的兩格鏈，配置器完全�
 
 | 目錄 | 內容 | 現況 |
 |---|---|---|
-| `docs/re/` | 程式碼在哪（位址、bytes、xref）| `00` DOS 服務普查、`01` IDA 管線、`02` 開機到遊戲設定 |
-| `docs/formats/` | 資料長什麼樣 | `01` 容器、`02` 郡名、`03` 劇本表 |
+| `docs/re/` | 程式碼在哪（位址、bytes、xref）| `00` DOS 服務普查、`01` IDA 管線、`02` 開機到遊戲設定、`03` 主程式碼地圖 |
+| `docs/formats/` | 資料長什麼樣 | `01` 容器、`02` 郡名、`03` 劇本表、`04` 資產目錄 |
 | `docs/spec/` | `DRAFT`／`READY`／`CONFORMED`／`SUPERSEDED` | `001` 容器、`002` 劇本表、`003` 劇本欄位（皆 READY）|
 | `fonts/` | 自由授權點陣字型 ＋ LICENSE | unifont 16×16、ascii6x10 |
-| `docs/mechanics/` | 遊戲怎麼運作 | 空 |
+| `docs/mechanics/` | 遊戲怎麼運作 | `01` 中平六年開局局面（十四勢力、四十二郡、各家武將）|
 | `docs/playtest/` | 原版 vs remake 同狀態比較 | 空 |
 | `docs/reference/` | 說明書整理、社群資料 | `01-manual-*`（5 份）、`02-web-*`（4 份）|
-| `docs/design/` | remake 自己的設計決策 | 空 |
+| `docs/design/` | remake 自己的設計決策 | `01` AI 三版本 |
 | `docs/release/` | 發行 | 空 |
 
 ---
