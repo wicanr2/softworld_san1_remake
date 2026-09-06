@@ -148,16 +148,56 @@ func TestDrawBox(t *testing.T) {
 	}
 }
 
-// TestOtherSubMenuFollowsManual 釘住「其他」的八項（說明書 p.25）。
+// TestSubMenusMatchTheOriginal 釘住子選單的文字與原版執行檔的字串表相同
+// （`docs/re/04` §2）。
 //
-// **還沒做的也要列出來。** 選單少一項，玩家看不出是「還沒做」
-// 還是「原版沒有」；列出來按下去會說還沒實作，那是可以理解的狀態。
-func TestOtherSubMenuFollowsManual(t *testing.T) {
+// ⚠ **不要照手冊改。** 手冊是二手轉錄，與程式有出入：「其他」的第一項
+// 原版寫 `結束`，手冊寫「＊結束」。原版自己的錯字（洪水防**冶**、
+// 郡縣自**冶**）也照原樣留著——這是保存專案，改正等於在還原品上留下
+// 一處與原版不同而沒人記得的地方（同 `Floopy`，F29）。
+func TestSubMenusMatchTheOriginal(t *testing.T) {
+	cases := []struct {
+		key   byte
+		title string
+		items []string
+	}{
+		{'1', "查看", []string{"選擇州郡", "將軍列表", "檢視將軍", "領土列表", "郡地理誌", "君主物品"}},
+		{'2', "軍事", []string{"調動軍隊", "發動戰役", "運送錢糧"}},
+		{'3', "兵士", []string{"訓練兵士", "徵兵", "購買武器", "調整兵力"}},
+		{'4', "內政", []string{"土地開發", "洪水防冶", "建築關寨", "休息"}},
+		{'5', "商業", []string{"買入米糧", "賣出米糧", "開倉賑民"}},
+		{'6', "人事", []string{"尋訪人才", "登用人才", "賞賜金帛", "撤職"}},
+		{'7', "君主", []string{"指定軍師", "指定太守", "郡縣自冶", "賞賜物品", "登用他國人才"}},
+		{'8', "謀略", []string{"驅虎吞狼", "遠交近攻", "偽書使疑", "策反人民", "聯合出兵"}},
+		{'9', "其他", []string{"結束", "儲存", "音樂", "音效", "延時", "戰役", "年號", "語音"}},
+	}
+	for _, c := range cases {
+		title, items := SubMenu(c.key)
+		if title != c.title {
+			t.Errorf("第 %q 類叫 %q，原版寫 %q", c.key, title, c.title)
+		}
+		if len(items) != len(c.items) {
+			t.Errorf("%s 有 %d 項，原版是 %d 項", c.title, len(items), len(c.items))
+			continue
+		}
+		for i, w := range c.items {
+			if items[i].Name != w {
+				t.Errorf("%s 第 %d 項是 %q，原版寫 %q", c.title, i+1, items[i].Name, w)
+			}
+			if items[i].Key != byte('1'+i) {
+				t.Errorf("%s 的 %q 按鍵是 %q，應該是 %q", c.title, w, items[i].Key, byte('1'+i))
+			}
+		}
+	}
+}
+
+// TestOtherSubMenuIsEightItems 釘住「其他」的八項。
+func TestOtherSubMenuIsEightItems(t *testing.T) {
 	title, items := SubMenu('9')
 	if title != "其他" {
 		t.Errorf("第 9 類叫 %q，應該是「其他」", title)
 	}
-	want := []string{"＊結束", "儲存", "音樂", "音效", "延時", "戰役", "年號", "語音"}
+	want := []string{"結束", "儲存", "音樂", "音效", "延時", "戰役", "年號", "語音"}
 	if len(items) != len(want) {
 		t.Fatalf("其他有 %d 項，手冊列八項", len(items))
 	}

@@ -14,8 +14,8 @@ func TestStratagemThresholdsAndCosts(t *testing.T) {
 	}{
 		{Fire, "火攻", 80, 600},
 		{Flood, "水淹", 75, 500},
-		{Lure, "誘敵", 60, 400},
 		{Trap, "陷阱", 60, 100},
+		{Lure, "誘敵", 60, 400},
 		{Burn, "燒糧", 70, 300},
 		{Siege, "圍攻", 65, 200},
 	}
@@ -30,9 +30,11 @@ func TestStratagemThresholdsAndCosts(t *testing.T) {
 			t.Errorf("%s 要 %d 金，手冊寫 %d", w.name, got, w.cost)
 		}
 	}
-	// 編號與手冊相同：1 火攻 … 6 圍攻。
-	if Fire != 1 || Flood != 2 || Lure != 3 || Trap != 4 || Burn != 5 || Siege != 6 {
-		t.Error("計謀編號要與手冊的 1–6 相同")
+	// 編號以原版執行檔的策略選單為準（`docs/re/04` §4）：
+	// 「1.火攻 2.水洽 3.陷阱／4.誘敵 5.燒糧 6.圍攻」。
+	// **手冊把誘敵排第 3、陷阱排第 4**，與程式不同；程式是實際跑的東西。
+	if Fire != 1 || Flood != 2 || Trap != 3 || Lure != 4 || Burn != 5 || Siege != 6 {
+		t.Error("計謀編號要與原版執行檔的策略選單相同")
 	}
 }
 

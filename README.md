@@ -88,7 +88,7 @@ DOSBox-X 作為交叉驗證。
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | 專案規則與硬規則 |
 | [`CONTEXT.md`](CONTEXT.md) | 現況、已知事實、決策紀錄、worklist |
-| `docs/re/` | 反組譯筆記 |
+| `docs/re/` | 反組譯筆記（含主程式的介面字串表）|
 | `docs/formats/` | 檔案格式（含存檔）|
 | `docs/spec/` | 規格（只有 `READY` 能授權實作）|
 | `docs/mechanics/` | 遊戲機制（含中平六年開局的完整局面）|

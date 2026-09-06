@@ -77,14 +77,20 @@ func (b *Battle) defeatInDuel(u *Unit, loser, winner *Leader) {
 	b.checkOver()
 }
 
-// Stratagem 是六種計謀（說明書 p.32–34）。編號與手冊相同。
+// Stratagem 是六種計謀（說明書 p.32–34）。
+//
+// ⚠ **編號以原版執行檔為準，不是手冊。** 原版的策略選單寫的是
+// 「1.火攻 2.水洽 3.陷阱／4.誘敵 5.燒糧 6.圍攻」
+//（`AA.EXE` 位移 `0x46df3`，`docs/re/04` §4），手冊把誘敵排第 3、
+// 陷阱排第 4。程式是實際跑的東西，手冊是二手轉錄。
+// 門檻與費用兩邊一致，只有第 3、4 兩項的次序不同。
 type Stratagem int
 
 const (
 	Fire  Stratagem = iota + 1 // 1 火攻
-	Flood                      // 2 水淹
-	Lure                       // 3 誘敵
-	Trap                       // 4 陷阱
+	Flood                      // 2 水淹（原版的選單寫成「水洽」）
+	Trap                       // 3 陷阱
+	Lure                       // 4 誘敵
 	Burn                       // 5 燒糧
 	Siege                      // 6 圍攻
 )
