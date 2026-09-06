@@ -144,3 +144,14 @@ func ReclaimGain(intel, roll int) int {
 // 原版的常式在線性 `0xba4c`：讀州郡 offset 28（洪水率），減掉呼叫端
 // 給的量，**負的夾到 0**，寫回去。呼叫端算的量是 `智 / 10`。
 func FloodDrop(intel int) int { return intel / 10 }
+
+// 尋訪人才的門檻（`L0`、`[base]`）。
+//
+// 原版：`門檻 = RND(65) + 30`，尋訪者的智要**大於**它才算成功
+// （`0xcd38`／`0xccd2`）。所以智 95 一定成功、智 30 一定失敗。
+//
+// 說明書只說「負責尋訪的將領謀略越高，成功的機率越大」。
+const (
+	SearchIntelFloor  = 30
+	SearchIntelSpread = 65
+)

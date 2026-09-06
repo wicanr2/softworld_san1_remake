@@ -99,7 +99,7 @@
 | 軍事與主戰場 | `mechanics/40` | `L2` | `internal/battle` | 有 |
 | 四季事件 | `mechanics/50` | `L1`（季節分界、年齡在元月、人口在十月）／`L2`（其餘）| `internal/game/events.go` | 有 |
 | 經濟 | `mechanics/60` | `L1`（人口年成長 15%、物價每月重抽 30–68）／`L2`（其餘）| `internal/game` | 有 |
-| **電腦 AI** | `mechanics/70` | **骨架 `L0`**（六個等級 × 九張分派表）／**九種行為解出五種**（訓練、內政、指定太守、指定軍師、賞賜物品）| `ai.base` 五種都發，`Coverage()` 回 5/9 | 有 |
+| **電腦 AI** | `mechanics/70` | **骨架 `L0`**（六個等級 × 九張分派表）／**九種行為解出六種**（訓練、內政、指定太守、指定軍師、賞賜物品、尋訪人才）| `ai.base` 六種都發，`Coverage()` 回 6/9 | 有 |
 | 勝負判定 | `mechanics/80` | `L2` | `internal/game/events.go` | 有 |
 | **兩版差異** | `mechanics/90` | `L0`（`DATA2` 已排除）| — | `cmd/san1diff` |
 

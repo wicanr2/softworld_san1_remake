@@ -96,6 +96,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.AppointGovernorOrder: // 指定太守（0x5674），已解
 			case game.AppointChiefOrder: // 指定軍師（0x5694），已解
 			case game.GiftOrder: // 賞賜物品（0x56b4），已解
+			case game.SearchOrder: // 尋訪人才（0x5614），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}

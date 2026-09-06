@@ -77,7 +77,7 @@ func New(m Mode) (Brain, error) {
 // faithful 是「以還原原版為目標」的 AI 的共同外殼。
 //
 // **只做已經從原版讀出來的行為。** 九種行為裡解出三種
-//（內政、訓練兵士、指定太守、指定軍師、賞賜物品）。
+//（內政、訓練兵士、指定太守、指定軍師、賞賜物品、尋訪人才）。
 // 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
 // 哪些行為是還原的、哪些是我編的。
 type faithful struct {
@@ -88,7 +88,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode                    { return f.mode }
 func (f *faithful) Name() string                  { return f.name }
 func (f *faithful) Derived() bool                 { return false }
-func (f *faithful) Coverage() (int, int)          { return 5, 9 }
+func (f *faithful) Coverage() (int, int)          { return 6, 9 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -133,6 +133,13 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// remake 這一邊走命令，重複指定會白費一道紀錄。
 		if best := mostCharming(g, id, p); best != nil && best.Index != gov.Index {
 			out = append(out, game.AppointGovernorOrder{At: p, Target: best.Index})
+		}
+		// 尋訪人才（表 `0x5614`）：`RND(10) > 7`，也就是 20 %。
+		// **機率不隨等級變**（六個項目都推 10）。
+		if g.Roll(10, int(id), p, 0x5614) > 7 {
+			if gov != nil {
+				out = append(out, game.SearchOrder{At: p, General: gov.Index})
+			}
 		}
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
 		out = append(out, f.rewards(g, id, p)...)
