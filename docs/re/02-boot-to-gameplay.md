@@ -153,6 +153,9 @@ DOSGOLEM_ORIG=~/cht/softworld_san/org_game tools/go.sh run ./cmd/probe \
 **答案沒有被存到第三個地方**，所以沒有可以拿來延後懲罰的狀態。
 這一條由 `internal/parity` 的 `TestPasswordAnswerDoesNotMatter` 釘住。
 
+整局也驗過：用 `4029` 與 `0000` 各連走十六個月，每個月倒一份三張表，
+**十八份逐位元組相同**。所以「沒有延後代價」不是從記憶體推的，是量的。
+
 ### 走存檔那條時盤面搜不到
 
 三張表的內容是存檔的不是劇本檔的，所以拿劇本檔的位元組去搜會落空。
