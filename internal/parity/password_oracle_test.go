@@ -128,7 +128,7 @@ func TestZZPassword(t *testing.T) {
 		}
 		d := pixelDiff(pwdScr, screenOf(o), nil)
 		if d > 20000 {
-			t.Logf("★ 第 %d 個候選 %04d 讓畫面整個換掉（差 %d 像素）——很可能就是密碼",
+			t.Logf("第 %d 個候選 %04d 讓畫面整個換掉（差 %d 像素）",
 				i+1, v, d)
 			dumpScreen(t, o, fmt.Sprintf("32-命中-%04d", v))
 			return
@@ -182,12 +182,16 @@ func fromBCD(w uint16) (int, bool) {
 	return n, true
 }
 
-// TestPasswordAnswerIsRight 釘住密碼答案，**而且釘住錯的答案過不去**。
+// TestPasswordAnswerDoesNotMatter 釘住**答案不影響後續狀態**。
 //
-// 只驗「對的密碼會過」是不夠的：如果原版根本不檢查、或畫面本來就會
-// 重繪，那個測試在任何輸入下都會綠。所以負對照要一起量——
-// 同一個快照展開，錯的答案不能讓月份走下去。
-func TestPasswordAnswerIsRight(t *testing.T) {
+// 密碼關本身擋不住任何東西：`1111`、`0000`、`4029` 都讓月份走下去。
+// 但「當下過得去」不等於「沒有代價」——有些防拷會讓程式繼續跑、
+// 過一陣子才把存檔或數值弄壞，而那種東西當 oracle 用會**安靜地**
+// 汙染每一次對拍。
+//
+// 所以判準不是畫面，是記憶體：從同一個快照用兩個不同的答案各跑同樣
+// 的指令數，`0xA0000` 以下要逐位元組相同（差的只該是輸入緩衝區本身）。
+func TestPasswordAnswerDoesNotMatter(t *testing.T) {
 	root := origRoot(t)
 	c := openContainer(t, filepath.Join(root, "DATA2"))
 	sc, err := state.LoadScenario(c, state.Slot("001"))
@@ -213,9 +217,10 @@ func TestPasswordAnswerIsRight(t *testing.T) {
 	}
 	dumpScreen(t, o, "40-密碼關")
 	atPwd := o.Save()
-	pwdScr := screenOf(o)
 
-	try := func(answer string) int {
+	// 低於 0xA0000 的整片記憶體。顯示記憶體不看——回顯的四個字本來就不同。
+	const lowMem = 0xA0000
+	answerThen := func(answer string) []byte {
 		o.Restore(atPwd)
 		o.Drain()
 		o.Press(answer + "\r")
@@ -226,23 +231,45 @@ func TestPasswordAnswerIsRight(t *testing.T) {
 		if err := o.Run(settle * 3); err != nil {
 			t.Fatalf("確認時停止：%v", err)
 		}
-		d := pixelDiff(pwdScr, screenOf(o), nil)
+		// 再往前跑一段，讓「延後的代價」有機會浮出來。
+		if err := o.Run(settle * 10); err != nil {
+			t.Fatalf("續跑時停止：%v", err)
+		}
 		dumpScreen(t, o, "41-答"+answer)
-		return d
+		return o.Bytes(addr(0), lowMem)
 	}
 
-	// 負對照先跑：錯的答案要留在密碼畫面。
-	for _, wrong := range []string{"1111", "0000"} {
-		if d := try(wrong); d > 20000 {
-			t.Errorf("錯的密碼 %s 也讓畫面換掉了（差 %d 像素）——"+
-				"這個判準量不出「過關」", wrong, d)
-		} else {
-			t.Logf("錯的密碼 %s：畫面差 %d，沒過（如預期）", wrong, d)
+	a := answerThen("0000")
+	b := answerThen("4029")
+
+	var runs [][2]int // 連續差異段：起點、長度
+	for i := 0; i < lowMem; i++ {
+		if a[i] == b[i] {
+			continue
 		}
+		j := i
+		for j < lowMem && a[j] != b[j] {
+			j++
+		}
+		runs = append(runs, [2]int{i, j - i})
+		i = j
 	}
-	if d := try(passwordAnswer); d <= 20000 {
-		t.Errorf("密碼 %s 沒讓畫面換掉（差 %d 像素）", passwordAnswer, d)
-	} else {
-		t.Logf("密碼 %s：畫面差 %d，過了", passwordAnswer, d)
+	n := 0
+	for _, r := range runs {
+		n += r[1]
+	}
+	t.Logf("兩個答案跑完之後，0xA0000 以下差 %d 個位元組、分成 %d 段", n, len(runs))
+	for i, r := range runs {
+		if i >= 12 {
+			t.Logf("    …（還有 %d 段）", len(runs)-12)
+			break
+		}
+		t.Logf("    %#07x 起 %d 個位元組：%q ／ %q",
+			r[0], r[1], a[r[0]:r[0]+min(r[1], 16)], b[r[0]:r[0]+min(r[1], 16)])
+	}
+	// 差的只該是輸入緩衝區本身（四個字元 ＋ 可能的副本）。
+	if n > 64 {
+		t.Errorf("差了 %d 個位元組，比「只有輸入緩衝區不同」多太多——"+
+			"答案可能真的有後果，不能隨便填", n)
 	}
 }

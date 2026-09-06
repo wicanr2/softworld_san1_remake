@@ -82,6 +82,8 @@ func TestZZAdvanceMonth(t *testing.T) {
 			dumpScreen(t, o, fmt.Sprintf("21-第%02d輪-%d", i, j+1))
 			if differs8(prev, cur) > 0 {
 				dumpTables(t, cur, fmt.Sprintf("%02d-%d", i, j+1))
+				t.Log(byPrefecture(prev, cur, len(mas), len(sta)))
+				t.Log(byGeneral(prev, cur, len(mas), len(sta)))
 			}
 			prev, prevScr = cur, scr
 		}

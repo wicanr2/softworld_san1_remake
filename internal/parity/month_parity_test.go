@@ -147,7 +147,10 @@ func byPrefecture(a, b []byte, nMas, nSta int) string {
 			names = append(names, n)
 		}
 		sort.Strings(names)
-		lines = append(lines, fmt.Sprintf("    郡 %2d：%s", i, strings.Join(names, " ")))
+		// **所屬要一起印。** 「哪個欄位變了」不接上「那是誰的郡」，
+		// 就分不出是電腦諸侯下的令還是每月結算。
+		lines = append(lines, fmt.Sprintf("    郡 %2d（勢力 %d）：%s",
+			i, b[lo+30], strings.Join(names, " ")))
 	}
 	if len(lines) == 0 {
 		return "    州郡表逐郡相同"
@@ -156,4 +159,37 @@ func byPrefecture(a, b []byte, nMas, nSta int) string {
 		lines = append(lines[:20], fmt.Sprintf("    …（還有 %d 個郡）", len(lines)-20))
 	}
 	return "州郡表逐郡：\n" + strings.Join(lines, "\n")
+}
+
+// byGeneral 把人物表的差異逐人列出來。
+//
+// 訓練度、武裝度、忠誠、所在——電腦諸侯下了什麼令，多半是從這裡看出來的。
+func byGeneral(a, b []byte, nMas, nSta int) string {
+	rec := state.GeneralRecordSize
+	lo0 := nMas + nSta
+	var lines []string
+	for i := 0; lo0+i*rec+rec <= len(a) && lo0+i*rec+rec <= len(b); i++ {
+		lo := lo0 + i*rec
+		var fields []string
+		for j := 0; j < rec; j++ {
+			if a[lo+j] != b[lo+j] {
+				n := fieldName(genField, j)
+				if len(fields) == 0 || fields[len(fields)-1] != n {
+					fields = append(fields, n)
+				}
+			}
+		}
+		if len(fields) == 0 {
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("    人物 %3d（勢力 %d、所在 %d）：%s",
+			i, b[lo+18], b[lo+19], strings.Join(fields, " ")))
+	}
+	if len(lines) == 0 {
+		return "    人物表逐筆相同"
+	}
+	if len(lines) > 24 {
+		lines = append(lines[:24], fmt.Sprintf("    …（還有 %d 人）", len(lines)-24))
+	}
+	return "人物表逐筆：\n" + strings.Join(lines, "\n")
 }
