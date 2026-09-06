@@ -19,6 +19,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
@@ -29,6 +30,9 @@ func main() {
 	what := flag.String("what", "all", "印什麼：pref／gen／master／all")
 	cols := flag.Int("cols", 6, "郡名槽位寬度（半形格），用來檢查裝不裝得下")
 	png := flag.String("png", "", "把畫面存成 PNG（無頭環境驗版面用）")
+	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）")
+	faction := flag.Int("faction", -1, "main 畫面的玩家勢力；−1 ＝ 用第一個在用的勢力")
+	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型（-png 時才需要）")
 	flag.Parse()
 
@@ -48,7 +52,7 @@ func main() {
 	fmt.Printf("劇本 %s（來源 %s）\n\n", *slot, *root)
 
 	if *png != "" {
-		if err := writePNG(*png, *fontPath, sc, *slot); err != nil {
+		if err := writePNG(*png, *fontPath, sc, *slot, *screen, *faction, *sel); err != nil {
 			die(err)
 		}
 		fmt.Printf("畫面存到 %s\n\n", *png)
@@ -103,7 +107,7 @@ func main() {
 //
 // **和 cmd/san1 畫的是同一張**（都走 ui.DrawPrefectureList）。
 // 畫面 bug 測試看不到，但存成圖就看得到，而且無頭環境也產得出來。
-func writePNG(out, fontPath string, sc *state.Scenario, slot string) error {
+func writePNG(out, fontPath string, sc *state.Scenario, slot, screen string, faction, sel int) error {
 	fh, err := os.Open(fontPath)
 	if err != nil {
 		return err
@@ -114,7 +118,31 @@ func writePNG(out, fontPath string, sc *state.Scenario, slot string) error {
 		return err
 	}
 	c := ui.NewCanvas(ui.Cols, ui.Rows, face)
-	ui.DrawPrefectureList(c, sc, slot)
+	switch screen {
+	case "main":
+		f := faction
+		if f < 0 {
+			act := sc.ActiveFactions()
+			if len(act) == 0 {
+				return fmt.Errorf("劇本 %s 裡沒有在用的勢力", slot)
+			}
+			f = act[0]
+		}
+		g, err := game.New(sc, state.FactionID(f), 5)
+		if err != nil {
+			return err
+		}
+		if sel == 0 {
+			if t := g.Territory(state.FactionID(f)); len(t) > 0 {
+				sel = t[0]
+			}
+		}
+		ui.DrawMainScreen(c, g, sel)
+	case "list":
+		ui.DrawPrefectureList(c, sc, slot)
+	default:
+		return fmt.Errorf("不認識的畫面 %q（收 list 或 main）", screen)
+	}
 	if n := len(c.Missing); n > 0 {
 		fmt.Fprintf(os.Stderr, "⚠ %d 個字沒有字模：%q\n", n, string(missingRunes(c)))
 	}

@@ -42,6 +42,12 @@ const (
 	Scenario6 Slot = "006"
 )
 
+// FactionID 是勢力的槽號（`BASEMAS` 的筆號），NoFaction ＝ 沒有勢力。
+//
+// 給它一個名字是為了讓「勢力編號」與「郡編號」在型別上分得開——
+// 兩者都是 1 到 40 幾的小整數，混用不會編譯錯誤。
+type FactionID uint8
+
 // NoFaction 是「沒有勢力」的哨兵值，原版用 0xFF。
 //
 // ⚠ **不要讓 0xFF 當成數值流進規則層。** 它是哨兵不是編號
