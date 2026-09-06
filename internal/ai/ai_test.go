@@ -98,6 +98,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.GiftOrder: // 賞賜物品（0x56b4），已解
 			case game.SearchOrder: // 尋訪人才（0x5614），已解
 			case game.RecruitOrder: // 登用人才（0x5634），已解
+			case game.ArmsOrder: // 購置武器（0x5594），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}
@@ -317,5 +318,59 @@ func TestActorIsHighestRank(t *testing.T) {
 	want := [12]int{2000, 1600, 1200, 800, 2000, 1600, 1200, 800, 0, 0, 400, 0}
 	if actorWeight != want {
 		t.Errorf("加權表是 %v，原版讀出來是 %v", actorWeight, want)
+	}
+}
+
+// TestArmsPurchaseFillsToFull 釘住原版買武器的兩件事：**買到滿編**、
+// **預算用完就停**（表 `0x5594`，常式 `0xc168`）。
+//
+// 判準不是「有沒有下購武器的命令」——那個一個門檻寫錯也照樣通過；
+// 是**買的量剛好等於缺口**，而缺口是「兵力 − 現有武器數」。
+func TestArmsPurchaseFillsToFull(t *testing.T) {
+	// **玩家不能是曹操**：這裡要看的是電腦諸侯的行為，而「每郡每月
+	// 一道令」只擋玩家（`game.Faction.ByComputer`）。
+	const ai = state.FactionID(1) // 曹操
+	g := newGame(t, 2)
+	terr := g.Territory(ai)
+	if len(terr) == 0 {
+		t.Fatal("曹操一個郡都沒有")
+	}
+	p := terr[0]
+	pref := g.Prefecture(p)
+	pref.Gold = 30000 // 預算不設限，先看「買到滿編」這一半
+
+	orders := armsPurchase(g, p)
+	if len(orders) == 0 {
+		t.Fatalf("郡 %d 的守軍一個都不缺武器？", p)
+	}
+	for _, o := range orders {
+		a, ok := o.(game.ArmsOrder)
+		if !ok {
+			t.Fatalf("下了 %T，應該是 game.ArmsOrder", o)
+		}
+		x := g.General(a.General)
+		want := x.Soldiers - game.Weapons(int(x.Arms), x.Soldiers)
+		if a.Units != want {
+			t.Errorf("將 %d：買了 %d 單位，缺口是 %d", a.General, a.Units, want)
+		}
+		if err := a.Apply(g, ai); err != nil {
+			t.Fatalf("套用失敗：%v", err)
+		}
+		if x.Arms != 100 {
+			t.Errorf("將 %d：補滿之後武裝度是 %d，應該是 100", a.General, x.Arms)
+		}
+	}
+
+	// **預算用完就停**：把金壓到只夠買 100 單位。
+	pref.Gold = 1
+	for _, x := range g.Garrison(p) {
+		x.Arms = 0
+	}
+	total := 0
+	for _, o := range armsPurchase(g, p) {
+		total += o.(game.ArmsOrder).Units
+	}
+	if total > 1*game.ArmsPerGold {
+		t.Errorf("只有 1 金卻買了 %d 單位，上限是 %d", total, game.ArmsPerGold)
 	}
 }

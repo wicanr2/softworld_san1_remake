@@ -67,10 +67,11 @@ func (g *State) Search(prefectureID, generalIndex int, by state.FactionID) (foun
 	if x == nil || x.Faction != by || x.Location != prefectureID {
 		return nil, ErrUnknownUnit
 	}
-	if p.Gold < CostSearch {
+	fee := g.price(by, CostSearch)
+	if p.Gold < fee {
 		return nil, ErrNoGold
 	}
-	p.Gold -= CostSearch
+	p.Gold -= fee
 	p.Commanded = true
 
 	// 這個郡有沒有人可找：身分是「在野但不列入該郡在野數」的那些人。
@@ -105,13 +106,14 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 		t.Status != state.StatusAvailable {
 		return ErrUnknownUnit
 	}
-	if p.Gold < CostRecruit {
+	fee := g.price(by, CostRecruit)
+	if p.Gold < fee {
 		return ErrNoGold
 	}
 	if g.ActiveGenerals(prefectureID) >= MaxGeneralsPerPrefecture {
 		return ErrTooManyGens
 	}
-	p.Gold -= CostRecruit
+	p.Gold -= fee
 	p.Commanded = true
 	charm := 50
 	if gov := g.Governor(prefectureID); gov != nil {
@@ -169,10 +171,11 @@ func (g *State) Dismiss(prefectureID, targetIndex int, by state.FactionID) error
 	if t.Status.Governs() {
 		return ErrNoGovernor
 	}
-	if p.Gold < CostDismiss {
+	fee := g.price(by, CostDismiss)
+	if p.Gold < fee {
 		return ErrNoGold
 	}
-	p.Gold -= CostDismiss
+	p.Gold -= fee
 	t.Soldiers = 0
 	t.Faction = state.NoFaction
 	t.Status = state.StatusAvailable
@@ -334,13 +337,14 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 	if t.Status == state.StatusLord {
 		return fmt.Errorf("game: 諸侯挖不動")
 	}
-	if p.Gold < CostHeadhunt {
+	fee := g.price(by, CostHeadhunt)
+	if p.Gold < fee {
 		return ErrNoGold
 	}
 	if g.ActiveGenerals(prefectureID) >= MaxGeneralsPerPrefecture {
 		return ErrTooManyGens
 	}
-	p.Gold -= CostHeadhunt
+	p.Gold -= fee
 	p.Commanded = true
 
 	chance := clampTo(TuneHeadhuntBase-int(t.Loyalty)/2, 95)

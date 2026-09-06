@@ -230,6 +230,19 @@ type Faction struct {
 	// Chief 是現任軍師的人物槽號，−1 表示沒有。
 	// 同時只能有一位（說明書 p.23）。
 	Chief int
+
+	// ByComputer 是「這個勢力由電腦操作」。
+	//
+	// **來源不是盤面的 offset 0**（`state.Controller`）：那一格記的是
+	// 開局選單當時誰選了誰，而 remake 這一邊由 `New` 的 `player`
+	// 參數決定，其餘全部是電腦。
+	//
+	// **它不只是標籤，會改規則**：說明書 p.17 的「每郡每月只能下一道令」
+	// 是玩家的限制，電腦諸侯不受它管——原版的分派器對每一個電腦的郡
+	// 把九張表**全部跑一遍**（一個月 288 次分派 ÷ 32 個郡 ＝ 9），
+	// 而且同一個月裡同一個郡的地力、訓練度、身分、忠誠都動過
+	// （`docs/re/03` §1.4，`L1`）。
+	ByComputer bool
 }
 
 // State 是一局進行中的遊戲。
@@ -317,7 +330,8 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 			return nil, err
 		}
 		fa := Faction{ID: state.FactionID(f), Lord: lord.Index, Alive: true, Chief: -1,
-			AILevel: sc.AILevel(f), Prestige: sc.Prestige(f)}
+			AILevel: sc.AILevel(f), Prestige: sc.Prestige(f),
+			ByComputer: state.FactionID(f) != player}
 		for i, n := range sc.TreasuryOf(f) {
 			if i < len(fa.Treasury) {
 				fa.Treasury[i] = n

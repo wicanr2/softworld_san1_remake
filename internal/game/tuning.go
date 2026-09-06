@@ -45,11 +45,13 @@ const (
 	// TuneHeadhuntBase：挖角成功率的基礎百分比，再依目標忠誠遞減。
 	TuneHeadhuntBase = 60
 
-	// TuneNewSoldierTraining／TuneNewSoldierArms：新兵沒有訓練，
-	// 加入時把部隊的訓練度與武裝度拉低（說明書 p.20）。
-	// 兩者都當成「新兵的數值是 0，全隊取加權平均」。
+	// TuneNewSoldierTraining：新兵沒受過訓，加入時把部隊的訓練度
+	// 拉低（說明書 p.20）——當成「新兵的訓練度是 0，全隊取加權平均」。
 	TuneNewSoldierTraining = 0
-	TuneNewSoldierArms     = 0
+
+	// ⚠ TuneNewSoldierArms 已被 `ArmsOf`／`Weapons` 取代（`L0`、`0xc168`）。
+	// **武裝度是百分比不是絕對數量**，新兵稀釋是換算的結果，不是另一條規則。
+	TuneNewSoldierArms = 0
 )
 
 // TreasureEffect 是寶物的效果（說明書 p.24，**這一組是原版的數字**）。

@@ -62,7 +62,7 @@
 | `TuneRecruitCharm` | 1 | 「太守的魅力越高，成功的機會越大」|
 | `TuneRewardLoyalty` | 10 | 只給了賞金上限 100 |
 | `TuneHeadhuntBase` | 60 | 只給了費用 100 金 |
-| `TuneNewSoldierTraining` / `TuneNewSoldierArms` | 0／0 | 「新兵毫無訓練，加入時會把部隊的訓練度拉低」|
+| `TuneNewSoldierTraining` | 0 | 「新兵毫無訓練，加入時會把部隊的訓練度拉低」|
 
 ### 已經被原版取代的（不再是 remake 自選）
 
@@ -75,10 +75,16 @@
 | `TuneReclaimBase`／`TuneReclaimIntel` | `ReclaimGain`：`max((智−50)/12, RND(2))`，上限 100 | `0xba02` ＋ 呼叫端 |
 | `TuneFloodBase`／`TuneFloodIntel` | `FloodDrop`：`智/10`，下限 0 | `0xba4c` ＋ 呼叫端 |
 | `TuneTrainBase`／`TuneTrainIntel` | `TrainGain`：`(智/3 + 武/2)/除數[等級]`，上限 100 | `0xbd70` |
+| `TuneNewSoldierArms` | `ArmsOf`／`Weapons`：武裝度是百分比，兵力一變就重算 | `0xc168` |
 
 **「智力低會不會變負」是這一批最容易做錯的地方**：呼叫端算的
 `(智−50)/12` 對低智力是負的，而常式先擋掉非正的量、改成擲 0 或 1。
 只看呼叫端會做出一條錯的規則。
+
+武裝度那條的替換與其他三條不同：**改掉的不是係數，是那個欄位的意思**。
+原本當成「加了幾點的絕對數值」，原版讀出來是「有武器的兵佔多少百分比」。
+兩種讀法在「只買武器」的情境下算出來一樣，只有兵力變動時才分得開——
+`TestArmsIsAPercentage` 的判準因此是稀釋，不是購買。
 
 ### 季節事件
 

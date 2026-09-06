@@ -155,3 +155,45 @@ const (
 	SearchIntelFloor  = 30
 	SearchIntelSpread = 65
 )
+
+// Weapons／ArmsOf 是武裝度與武器數之間的換算。
+//
+// **武裝度是「有武器的兵佔多少百分比」**，不是武器的絕對數量。
+// 原版把它存成百分比，實際運算時先還原成武器數、加減、再換回百分比——
+// 所以兵力一變，武裝度就跟著動。說明書「人員損耗後，其持有的軍械也隨同失去」
+// 講的就是這件事。
+// ArmsPerGold 是一金買得到幾單位武器（說明書 p.20；原版 `0xc168`
+// 用 `idiv 100` 把缺口換成金額，`L0`）。
+const ArmsPerGold = 100
+
+func Weapons(arms, soldiers int) int { return arms * soldiers / 100 }
+
+func ArmsOf(weapons, soldiers int) int {
+	if soldiers <= 0 {
+		return 0
+	}
+	return clampTo(weapons*100/soldiers, 100)
+}
+
+// ArmsAfterPurchase 是買武器之後的武裝度（`L0`、`[base]`）。
+//
+// 原版的常式（線性 `0xc168`）用浮點算，而 MSC 的浮點模擬器把 x87 指令
+// 編碼成 `INT 34h`–`3Bh` ＋ 原本的 modrm（對應 `D8`–`DF`，`3Ch` 是帶段
+// 前綴的形式）。還原出來的序列是
+//
+//	fild 武裝度 ; fild 兵力 ; fst qword [bp-12]
+//	fmulp                      ; 武裝度 × 兵力
+//	fmul qword ds:[0xa5c8]     ; × 0.01
+//	fiadd word [bp-2]          ; + 新增的武器
+//	fdiv qword [bp-12]         ; ÷ 兵力
+//	fmul qword ds:[0xa5a8]     ; × 100
+//
+// 兩個常數從執行期記憶體讀出來是 `0.01` 與 `100`（`TestZZDispatch`），
+// 所以整段就是「換成武器數 → 加上新買的 → 換回百分比」。
+// 兵力為零時武裝度歸零，那是同一支常式開頭的 `cmpw es:[bx+0x2226], 0`。
+//
+// ⚠ **原版的「兵力」與「新增的武器」各自的單位還沒量**（`L3`）：
+// 這裡照 remake 自己的單位算，兩邊的比例對得上才有意義。
+func ArmsAfterPurchase(arms, soldiers, bought int) int {
+	return ArmsOf(Weapons(arms, soldiers)+bought, soldiers)
+}

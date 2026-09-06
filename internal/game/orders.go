@@ -37,10 +37,34 @@ func (g *State) canOrder(prefectureID int, by state.FactionID) (*Prefecture, err
 	if !p.Owned() || p.Owner != by {
 		return nil, ErrNotYours
 	}
-	if p.Commanded {
+	// **「每郡每月一道令」只管玩家**（說明書 p.17）。原版的分派器對
+	// 每一個電腦的郡把九張表全部跑一遍，同一個月同一個郡的地力、
+	// 訓練度、身分、忠誠都會動（`Faction.ByComputer`）。
+	if p.Commanded && !g.byComputer(by) {
 		return nil, ErrAlreadyMoved
 	}
 	return p, nil
+}
+
+func (g *State) byComputer(id state.FactionID) bool {
+	f := g.Faction(id)
+	return f != nil && f.ByComputer
+}
+
+// price 是「這個勢力做這件事實際付多少」。
+//
+// **電腦諸侯有折扣**：原版所有 AI 的花費都走同一支常式（線性
+// `0xec24`），金額 ＝ base × 係數[AI 等級]，係數表 `[1,1,1,1,0.9,0.75]`
+// 是從記憶體讀出來的（`docs/mechanics/70-ai` §2.12，`L0`）。等級 5
+// 量到 19 個樣本，每一個都與「×0.75 截斷」相符。
+//
+// 玩家不打折——原版那支常式只有分派器底下的行為會呼叫。
+func (g *State) price(by state.FactionID, base int) int {
+	f := g.Faction(by)
+	if f == nil || !f.ByComputer {
+		return base
+	}
+	return state.AICost(base, f.AILevel)
 }
 
 // Reclaim 是「土地開發」（說明書 p.21）：每次 10 金，
@@ -52,13 +76,14 @@ func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) erro
 	if err != nil {
 		return err
 	}
+	fee := g.price(by, CostReclaim)
 	add := ReclaimGain(0, g.Roll(2, prefectureID, 0xba02))
 	if x := g.General(generalIndex); x != nil && x.Faction == by &&
 		x.Location == prefectureID {
 		add = ReclaimGain(int(x.Intel), g.Roll(2, prefectureID, 0xba02))
 	}
-	if p.Gold >= CostReclaim {
-		p.Gold -= CostReclaim
+	if p.Gold >= fee {
+		p.Gold -= fee
 	} else {
 		add = (add + 1) / 2 // 徒手開墾
 	}
@@ -75,7 +100,8 @@ func (g *State) FloodControl(prefectureID, generalIndex int, by state.FactionID)
 	if err != nil {
 		return err
 	}
-	if p.Gold < CostFloodControl {
+	fee := g.price(by, CostFloodControl)
+	if p.Gold < fee {
 		return ErrNoGold
 	}
 	drop := 0
@@ -83,7 +109,7 @@ func (g *State) FloodControl(prefectureID, generalIndex int, by state.FactionID)
 		x.Location == prefectureID {
 		drop = FloodDrop(int(x.Intel))
 	}
-	p.Gold -= CostFloodControl
+	p.Gold -= fee
 	p.FloodRate = uint8(clampTo(int(p.FloodRate)-drop, 100))
 	p.Commanded = true
 	return nil
@@ -117,17 +143,18 @@ func (g *State) Conscript(prefectureID, generalIndex, n int, by state.FactionID)
 	if x == nil || x.Faction != by || x.Location != prefectureID {
 		return ErrUnknownUnit
 	}
-	cost := n * CostConscriptPerSoldier
+	cost := g.price(by, n*CostConscriptPerSoldier)
 	if p.Gold < cost {
 		return ErrNoGold
 	}
 	if x.Soldiers+n > x.TroopCap() {
 		return ErrNoRoom
 	}
-	// 新兵拉低訓練度與武裝度：以兵數加權平均，新兵的值是 0。
+	// 新兵沒有武器也沒受過訓，加入之後**同一批武器攤在更多人頭上**，
+	// 武裝度自然下降（`ArmsOf`／`Weapons`，`rules.go`）。訓練度同理。
 	total := x.Soldiers + n
 	x.Training = uint8((int(x.Training)*x.Soldiers + TuneNewSoldierTraining*n) / total)
-	x.Arms = uint8((int(x.Arms)*x.Soldiers + TuneNewSoldierArms*n) / total)
+	x.Arms = uint8(ArmsOf(Weapons(int(x.Arms), x.Soldiers), total))
 
 	p.Gold -= cost
 	p.Population -= n
@@ -137,30 +164,29 @@ func (g *State) Conscript(prefectureID, generalIndex, n int, by state.FactionID)
 }
 
 // BuyArms 是「武器」：每 100 單位 1 金（說明書 p.20），提升武裝度。
+//
+// **價格是截斷除法**（`L0`、`0xc168` ＋ `0xec24`）：買 250 單位收 2 金，
+// 買 50 單位不用錢。原版的電腦諸侯就是這樣買的——它每次補到滿編，
+// 補的量不是 100 的倍數。這裡不擋不足 100 的零頭，是照原版的算術；
+// 玩家介面另外只給 100 的倍數選。
 func (g *State) BuyArms(prefectureID, generalIndex, units int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
 	}
-	if units <= 0 || units%100 != 0 {
-		return fmt.Errorf("game: 武器要以 100 單位為單位，拿到 %d", units)
+	if units <= 0 {
+		return fmt.Errorf("game: 武器數要是正數，拿到 %d", units)
 	}
 	x := g.General(generalIndex)
 	if x == nil || x.Faction != by || x.Location != prefectureID {
 		return ErrUnknownUnit
 	}
-	cost := units / 100 * CostArmsPer100
+	cost := g.price(by, units/100*CostArmsPer100)
 	if p.Gold < cost {
 		return ErrNoGold
 	}
 	p.Gold -= cost
-	// 武裝度以百分表示（說明書 p.18），所以上限是 100。
-	// **換算率還沒解**：這裡先當 100 單位加 1。
-	add := units / 100
-	if int(x.Arms)+add > 100 {
-		add = 100 - int(x.Arms)
-	}
-	x.Arms += uint8(add)
+	x.Arms = uint8(ArmsAfterPurchase(int(x.Arms), x.Soldiers, units))
 	p.Commanded = true
 	return nil
 }

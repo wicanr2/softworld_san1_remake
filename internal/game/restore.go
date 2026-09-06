@@ -104,6 +104,12 @@ func Restore(sc *state.Scenario, e Extra) (*State, error) {
 	g.Date = Date{Year: e.Year, Month: e.Month}
 	g.Player = e.Player
 	g.Options = e.Options
+	// `New` 是拿 `NoFaction` 叫的，所以它把每一個勢力都標成電腦。
+	// 玩家蓋回去之後要重算——**這個旗標會改規則**（「每郡每月一道令」
+	// 只擋玩家），漏掉的話讀檔之後玩家就能一個月下九道令。
+	for i := range g.factions {
+		g.factions[i].ByComputer = g.factions[i].ID != g.Player
+	}
 
 	if n := len(e.Prefectures); n != len(g.prefectures) {
 		return nil, fmt.Errorf("game: 存檔有 %d 個郡的補充資料，這一局有 %d 個",

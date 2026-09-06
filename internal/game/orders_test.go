@@ -174,3 +174,70 @@ func TestConscriptRejectsForeignGeneral(t *testing.T) {
 		t.Errorf("命令曹操募兵回 %v，應該是 ErrUnknownUnit", err)
 	}
 }
+
+// TestRestoreKeepsThePlayerHuman 釘住讀檔之後玩家仍受「每郡每月一道令」管。
+//
+// `Restore` 是拿 `NoFaction` 叫 `New` 的，所以每個勢力一開始都被標成
+// 電腦；玩家蓋回去之後那個旗標要重算。**漏掉不會有任何錯誤訊息**——
+// 只會讓讀檔之後的玩家一個月下得完九道令。
+func TestRestoreKeepsThePlayerHuman(t *testing.T) {
+	sc := loadScenario(t, state.Scenario1)
+	g, err := New(sc, 0, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := Restore(sc, g.CaptureExtra())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range back.Factions() {
+		if want := f.ID != back.Player; f.ByComputer != want {
+			t.Errorf("勢力 %d 的 ByComputer 是 %v，應該是 %v（玩家是 %d）",
+				f.ID, f.ByComputer, want, back.Player)
+		}
+	}
+	if err := back.Reclaim(8, -1, 0); err != nil {
+		t.Fatalf("讀檔之後第一次開墾就失敗：%v", err)
+	}
+	if err := back.Reclaim(8, -1, 0); !errors.Is(err, ErrAlreadyMoved) {
+		t.Errorf("讀檔之後同月第二次開墾回 %v，應該是 ErrAlreadyMoved", err)
+	}
+}
+
+// TestComputerLordsGetADiscount 釘住電腦諸侯的花費係數（`L0`、§2.12）。
+//
+// 判準是**兩邊比**：同一道命令，玩家付原價、等級 5 的電腦付 0.75 倍。
+// 只驗其中一邊的話，係數表整個接反了也看不出來。
+func TestComputerLordsGetADiscount(t *testing.T) {
+	sc := loadScenario(t, state.Scenario1)
+	g, err := New(sc, 0, 5) // 劉備是玩家
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := g.Faction(1) // 曹操由電腦操作
+	if f == nil || !f.ByComputer {
+		t.Fatal("曹操應該是電腦諸侯")
+	}
+	f.AILevel = 5
+	if got := g.price(0, 100); got != 100 {
+		t.Errorf("玩家挖角付 %d，應該是原價 100", got)
+	}
+	if got := g.price(1, 100); got != 75 {
+		t.Errorf("等級 5 的電腦挖角付 %d，應該是 100×0.75 ＝ 75", got)
+	}
+	f.AILevel = 4
+	if got := g.price(1, 100); got != 90 {
+		t.Errorf("等級 4 的電腦挖角付 %d，應該是 100×0.9 ＝ 90", got)
+	}
+	f.AILevel = 3
+	if got := g.price(1, 100); got != 100 {
+		t.Errorf("等級 3 的電腦挖角付 %d，應該是原價 100", got)
+	}
+	// **截斷不是四捨五入**：原版走 `idiv`，14 → 10、17 → 12。
+	f.AILevel = 5
+	for _, c := range [][2]int{{14, 10}, {17, 12}, {323, 242}, {92, 69}} {
+		if got := g.price(1, c[0]); got != c[1] {
+			t.Errorf("base %d 算出 %d，量到的是 %d", c[0], got, c[1])
+		}
+	}
+}

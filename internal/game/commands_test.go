@@ -398,3 +398,30 @@ func TestReclaimAndFloodMatchTheOriginal(t *testing.T) {
 		}
 	}
 }
+
+// TestArmsIsAPercentage 釘住武裝度是「有武器的兵的百分比」。
+//
+// 從原版的浮點序列還原出來的（`ArmsAfterPurchase`，`L0`）。
+// **判準是稀釋**：不買武器而兵力變多，武裝度要下降——一個把武裝度
+// 當成絕對數量的實作在「只買武器」的案例上看起來一模一樣，
+// 只有兵力變動的案例分得出兩者。
+func TestArmsIsAPercentage(t *testing.T) {
+	for _, c := range []struct{ arms, soldiers, bought, want int }{
+		{100, 1000, 0, 100}, // 全副武裝，什麼都不買
+		{50, 1000, 500, 100},
+		{50, 1000, 0, 50},
+		{0, 1000, 1000, 100},
+		{90, 1000, 500, 100}, // 買太多也不會超過 100
+		{0, 0, 500, 0},       // 沒有兵就沒有武裝度
+	} {
+		if got := ArmsAfterPurchase(c.arms, c.soldiers, c.bought); got != c.want {
+			t.Errorf("武裝 %d、兵力 %d、買 %d：算出 %d，應該是 %d",
+				c.arms, c.soldiers, c.bought, got, c.want)
+		}
+	}
+	// **稀釋**：武器數不變，兵力加倍，武裝度減半。
+	w := Weapons(100, 1000)
+	if got := ArmsOf(w, 2000); got != 50 {
+		t.Errorf("兵力從 1000 加倍到 2000、武器 %d 不變，武裝度是 %d，應該是 50", w, got)
+	}
+}

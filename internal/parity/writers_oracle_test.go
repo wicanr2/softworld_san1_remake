@@ -280,6 +280,15 @@ func TestZZDispatch(t *testing.T) {
 			// 順便把「行動者排序」的加權表讀出來：鍵是
 			// 智 ＋ 武 ＋ 表[身分]，表在 DS:0x5986，以身分×2 索引
 			// （`0xf1d7` 的 `add ax, [bx+0x5986]`，`docs/re/03` §1.4）。
+			if table == 0x5594 {
+				// 武裝度重算用的兩個浮點常數（`0xc24a` 的
+				// `fmul qword ds:[0xa5c8]`、`0xc257` 的 `ds:[0xa5a8]`）。
+				for _, off := range []uint32{0xa5a8, 0xa5c8} {
+					b := o.Bytes(addr(ds*16+off), 8)
+					seen[fmt.Sprintf("  武裝度的浮點常數 DS:%#04x ＝ %g", off,
+						math.Float64frombits(binary.LittleEndian.Uint64(b)))] = 0
+				}
+			}
 			if table == 0x54d4 {
 				var w []string
 				for st := 0; st < 12; st++ {

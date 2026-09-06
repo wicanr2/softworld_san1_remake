@@ -211,7 +211,7 @@ func (g *State) summer() []Event {
 // harvestMonth 與 tributeMonth 是 **remake 挑的**：說明書只說秋收在秋天、
 // 進貢每年一次，沒說是哪個月，原版那一邊也還沒量到——米糧每個月都被
 // 電腦諸侯買賣，年度收成的尖峰埋在裡面看不出來
-//（`docs/design/02-remake-owned-values.md`）。
+// （`docs/design/02-remake-owned-values.md`）。
 // 物價的範圍。**量出來的**：十六個月 × 四十二個郡，值全部落在 30–68。
 const (
 	PriceMin    = 30

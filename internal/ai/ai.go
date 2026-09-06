@@ -77,7 +77,7 @@ func New(m Mode) (Brain, error) {
 // faithful 是「以還原原版為目標」的 AI 的共同外殼。
 //
 // **只做已經從原版讀出來的行為。** 九種行為裡解出三種
-//（內政、訓練兵士、指定太守、指定軍師、賞賜物品、尋訪人才、登用人才）。
+// （內政、訓練兵士、指定太守、指定軍師、賞賜物品、尋訪人才、登用人才）。
 // 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
 // 哪些行為是還原的、哪些是我編的。
 type faithful struct {
@@ -85,10 +85,10 @@ type faithful struct {
 	name string
 }
 
-func (f *faithful) Mode() Mode                    { return f.mode }
-func (f *faithful) Name() string                  { return f.name }
-func (f *faithful) Derived() bool                 { return false }
-func (f *faithful) Coverage() (int, int)          { return 7, 9 }
+func (f *faithful) Mode() Mode           { return f.mode }
+func (f *faithful) Name() string         { return f.name }
+func (f *faithful) Derived() bool        { return false }
+func (f *faithful) Coverage() (int, int) { return 8, 9 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -155,6 +155,45 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		}
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
 		out = append(out, f.rewards(g, id, p)...)
+		// 購置武器（表 `0x5594`）：補到滿編為止。
+		out = append(out, armsPurchase(g, p)...)
+	}
+	return out
+}
+
+// armsPurchase 是「購置武器」（表 `0x5594`，常式 `0xc168`，`L0`、`[base]`）。
+//
+// 走守軍清單，對每一位算：
+//
+//	現有武器 ＝ 武裝度 × 兵力 ÷ 100
+//	缺口     ＝ 兵力 − 現有武器           ; 目標是人人有武器
+//	花費     ＝ 缺口 ÷ 100                ; 截斷
+//	花費 > 本回合預算 → 缺口 ＝ 預算 × 100 ; 買到錢用完為止
+//	缺口 <= 0 → 這一位跳過
+//
+// **目標一律是滿編**，沒有門檻也沒有機率——原版這一支不擲骰。
+// 缺口為零才跳過，所以武裝度已經 100 的人不會被重買。
+//
+// ⚠ **原版的預算是勢力層級的**（`es:[0x3d16]`，§2.12），它怎麼算出來
+// 還沒解（`L3`）。這裡拿郡的金當上限，因為那是 remake 這一邊唯一
+// 擋得住的東西——`ApplyAll` 遇到買不起會整串中斷，不是少買一點。
+func armsPurchase(g *game.State, prefecture int) []game.Order {
+	p := g.Prefecture(prefecture)
+	if p == nil {
+		return nil
+	}
+	budget := p.Gold
+	var out []game.Order
+	for _, x := range g.Garrison(prefecture) {
+		gap := x.Soldiers - game.Weapons(int(x.Arms), x.Soldiers)
+		if cost := gap / game.ArmsPerGold; cost > budget {
+			gap = budget * game.ArmsPerGold
+		}
+		if gap <= 0 {
+			continue
+		}
+		budget -= gap / game.ArmsPerGold
+		out = append(out, game.ArmsOrder{At: prefecture, General: x.Index, Units: gap})
 	}
 	return out
 }
@@ -297,7 +336,7 @@ func actor(g *game.State, id state.FactionID, prefecture int) *game.General {
 // mostCharming 是守軍裡魅力最高的一位。
 //
 // 原版在指定太守之前先把守軍清單**按魅力由高到低排序**
-//（`0xf600` 起的交換排序，比的是人物 offset 11），然後取第一位。
+// （`0xf600` 起的交換排序，比的是人物 offset 11），然後取第一位。
 // 說明書只說「太守魅力越高，登用與賑民的效果越好」——這裡是 AI 實際
 // 用的判準。
 func mostCharming(g *game.State, id state.FactionID, prefecture int) *game.General {

@@ -268,7 +268,7 @@ func (g *State) BuildFort(prefectureID, generalIndex int, by state.FactionID) er
 	if p.Forts >= MaxForts {
 		return ErrTooManyForts
 	}
-	cost := FortCost(p.PriceLevel)
+	cost := g.price(by, FortCost(p.PriceLevel))
 	if p.Gold < cost {
 		return ErrNoGold
 	}
@@ -305,6 +305,8 @@ func (g *State) BuyRice(prefectureID, units int, by state.FactionID) error {
 	if p.Rice+units > MaxRice {
 		return fmt.Errorf("game: 糧倉上限 %d，買不下 %d", MaxRice, units)
 	}
+	// **買米不套電腦諸侯的折扣**：那支折扣常式（`0xec24`）量到的是
+	// 分派表底下那幾種行為，市場交易走的是不是同一條還沒看過。
 	cost := units * int(p.PriceLevel) / 100
 	if p.Gold < cost {
 		return ErrNoGold
