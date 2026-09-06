@@ -22,9 +22,9 @@ const (
 	TuneTrainBase    = 2
 	TuneTrainIntel   = 25
 
-	// TuneReliefRice／TuneReliefLoyalty：開倉賑民一次撥多少米、
-	// 民眾忠誠加多少（再乘太守魅力的加成）。說明書 p.22 只說
-	// 「太守魅力越高，效果越好」。
+	// ⚠ TuneReliefRice／TuneReliefLoyalty 已被原版的公式取代
+	// （`L0`、`0xc8f6`）：賑民撥的是**金**不是米，增幅的上限是
+	// 太守魅力 ÷ 2，見 `ReliefGain`。
 	TuneReliefRice    = 500
 	TuneReliefLoyalty = 3
 

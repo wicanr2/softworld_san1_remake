@@ -50,7 +50,6 @@
 | `TuneReclaimBase` / `TuneReclaimIntel` | 1／25 | 「負責開墾的將領謀略越高，土地價值增加越多」|
 | `TuneFloodBase` / `TuneFloodIntel` | 1／25 | 「負責治水的將領謀略越高，洪水發生機率下降越多」|
 | `TuneTrainBase` / `TuneTrainIntel` | 2／25 | 「各將的能力影響其麾下的訓練度提升」|
-| `TuneReliefRice` / `TuneReliefLoyalty` | 500／3 | 「太守魅力越高，效果越好」|
 | `TuneTransportLoss` | 20 | 「太守魅力值越高，途中損耗越少」|
 | 米價換算（一單位米 ＝ 物價 ÷ 100 金）| — | 「依物價購米入倉」，沒給比率 |
 
@@ -59,7 +58,6 @@
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
 | `TuneSearchIntel` | 1 | 「謀略越高，成功的機率越大」|
-| `TuneRewardLoyalty` | 10 | 只給了賞金上限 100 |
 | `TuneHeadhuntBase` | 60 | 只給了費用 100 金 |
 | `TuneNewSoldierTraining` | 0 | 「新兵毫無訓練，加入時會把部隊的訓練度拉低」|
 
@@ -76,6 +74,8 @@
 | `TuneTrainBase`／`TuneTrainIntel` | `TrainGain`：`(智/3 + 武/2)/除數[等級]`，上限 100 | `0xbd70` |
 | `TuneNewSoldierArms` | `ArmsOf`／`Weapons`：武裝度是百分比，兵力一變就重算 | `0xc168` |
 | `TuneRecruitCharm` | `RecruitPersuasion`／`RecruitDifficulty`：說服力比難度，前面還有牽絆閘門 | `0xce8c` |
+| `TuneRewardLoyalty` | `RewardEffect`／`RewardGain`：增幅 ＝ (RND(加成/2)＋魅力/3＋加成) × 金 ÷ 100 | `0xd302` |
+| `TuneReliefRice`／`TuneReliefLoyalty` | `ReliefGain`：撥的是**金**不是米，增幅上限 ＝ 太守魅力 ÷ 2 | `0xc8f6` |
 
 **「智力低會不會變負」是這一批最容易做錯的地方**：呼叫端算的
 `(智−50)/12` 對低智力是負的，而常式先擋掉非正的量、改成擲 0 或 1。
