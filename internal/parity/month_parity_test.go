@@ -71,10 +71,20 @@ func TestZZMonthParity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("remake 這邊開不了局：%v", err)
 	}
+	// **年月要對齊，否則季節事件會比錯。** `game.New` 用的是劇本的起始
+	// 年月（中平六年元月），而這個存檔停在建安二年九月——年齡在元月加、
+	// 人口在十月加，差一個月就足以讓整組年度事件對不上
+	//（`docs/mechanics/50-events` §1）。
+	//
+	// 年月不在三張表裡（存檔的 `BASEPRO.SVn` 還沒解），所以先寫死，
+	// 出處是原版主畫面左側直排的「建安二年九月秋」。
+	g.Date = game.Date{Year: 197, Month: 9}
+	t.Logf("兩邊都從 %d 年 %d 月出發", g.Date.Year, g.Date.Month)
 
-	// 原版：一路「內政 → 休息 → Y」，把每個郡的指令用掉。
+	// 原版：走一個月。玩家只有一個郡，所以一次「內政 → 休息 → Y」
+	// 就把玩家的回合用掉，接著是電腦諸侯與每月結算。
 	seq := strings.Split(envOr("SAN1_TURNKEY", "4\r|4\r|Y"), "|")
-	turns := 20
+	turns := 1
 	if v, err := strconv.Atoi(os.Getenv("SAN1_TURNS")); err == nil && v > 0 {
 		turns = v
 	}

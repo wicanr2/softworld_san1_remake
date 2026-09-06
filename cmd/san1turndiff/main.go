@@ -1,0 +1,280 @@
+// san1turndiff 讀兩份原版執行期的盤面，說出中間那一個月發生了什麼。
+//
+// 輸入是 `internal/parity` 倒出來的 `.bin`：三張表首尾相接的 19,220 個
+// 位元組（諸侯 1,152 ＋ 州郡 7,568 ＋ 人物 10,500，`docs/formats/03`）。
+//
+// 輸出分兩層，**分開標**：
+//
+//	量到的   哪一個郡、哪一個人、哪一個欄位、差多少
+//	推出來的 那組差異看起來像哪一道命令
+//
+// 第二層是 `L3`。同一個欄位可以有好幾個來源——訓練度上升可能是「訓練
+// 兵士」，也可能是新兵加入把平均拉低之後又被別的動作抬回來。**不要把
+// 推論寫成觀測。**
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+	"sort"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
+)
+
+func main() {
+	quiet := flag.Bool("quiet", false, "只印推論，不印逐欄位的差異")
+	flag.Parse()
+	if flag.NArg() != 2 {
+		fmt.Fprintln(os.Stderr, "用法：san1turndiff [-quiet] 前.bin 後.bin")
+		os.Exit(2)
+	}
+	a, err := load(flag.Arg(0))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	b, err := load(flag.Arg(1))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	report(a, b, *quiet)
+}
+
+func load(path string) (*state.Scenario, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	const nMas, nSta = state.MasterTableSize, state.PrefectureTableSize
+	want := nMas + nSta + state.GeneralTableSize
+	if len(raw) != want {
+		return nil, fmt.Errorf("%s 是 %d 個位元組，三張表應該是 %d 個",
+			path, len(raw), want)
+	}
+	return state.DecodeTables(state.Scenario1, raw[:nMas], raw[nMas:nMas+nSta], raw[nMas+nSta:])
+}
+
+// prefDelta 是一個郡這個月的變化。
+type prefDelta struct {
+	id                                 int
+	name                               string
+	owner                              uint8
+	gold, rice, people, soldiers       int
+	land, flood, price, loyalty        int
+	activeGen, freeGen                 int
+	trainUp, armsUp, troopsUp, movedIn int
+	statUp, loyaltyUp, joined, left    int
+
+	// 交易要看絕對值不只看差值：米換金的比率由物價決定，
+	// 而物價每個月都在動——只印差值就把公式的自變數丟掉了。
+	priceBefore, priceAfter int
+	goldAfter, riceAfter    int
+}
+
+func (d prefDelta) quiet() bool {
+	return d.gold == 0 && d.rice == 0 && d.people == 0 && d.soldiers == 0 &&
+		d.land == 0 && d.flood == 0 && d.loyalty == 0 &&
+		d.trainUp == 0 && d.armsUp == 0 && d.troopsUp == 0 && d.movedIn == 0 &&
+		d.statUp == 0 && d.joined == 0 && d.left == 0
+}
+
+func report(a, b *state.Scenario, quiet bool) {
+	deltas := map[int]*prefDelta{}
+	ap, bp := a.Prefectures(), b.Prefectures()
+	for i := range ap {
+		x, y := ap[i], bp[i]
+		d := &prefDelta{id: y.ID, name: y.Name, owner: y.Owner,
+			gold: int(y.Gold) - int(x.Gold), rice: int(y.Rice) - int(x.Rice),
+			people:      int(y.Population) - int(x.Population),
+			soldiers:    int(y.Soldiers) - int(x.Soldiers),
+			land:        int(y.LandValue) - int(x.LandValue),
+			flood:       int(y.FloodRate) - int(x.FloodRate),
+			price:       int(y.PriceLevel) - int(x.PriceLevel),
+			loyalty:     int(y.PublicLoyalty) - int(x.PublicLoyalty),
+			activeGen:   int(y.ActiveGenerals) - int(x.ActiveGenerals),
+			freeGen:     int(y.FreeGenerals) - int(x.FreeGenerals),
+			priceBefore: int(x.PriceLevel), priceAfter: int(y.PriceLevel),
+			goldAfter: int(y.Gold), riceAfter: int(y.Rice),
+		}
+		deltas[y.ID] = d
+	}
+
+	ag, bg := a.Generals(), b.Generals()
+	for i := range ag {
+		x, y := ag[i], bg[i]
+		at := int(y.Location)
+		d := deltas[at]
+		if d == nil {
+			continue
+		}
+		if y.Training > x.Training {
+			d.trainUp++
+		}
+		if y.Arms > x.Arms {
+			d.armsUp++
+		}
+		if y.Soldiers > x.Soldiers {
+			d.troopsUp++
+		}
+		if y.Location != x.Location {
+			d.movedIn++
+		}
+		if y.Intel != x.Intel || y.War != x.War || y.Charm != x.Charm {
+			d.statUp++
+		}
+		if y.Loyalty != x.Loyalty {
+			d.loyaltyUp++
+		}
+		if y.Faction != x.Faction {
+			if y.Employed() {
+				d.joined++
+			} else {
+				d.left++
+			}
+		}
+	}
+
+	ids := make([]int, 0, len(deltas))
+	for id := range deltas {
+		ids = append(ids, id)
+	}
+	sort.Ints(ids)
+
+	acted := 0
+	for _, id := range ids {
+		d := deltas[id]
+		if d.quiet() {
+			continue
+		}
+		acted++
+		if !quiet {
+			fmt.Printf("郡 %2d %s（勢力 %d）%s\n", d.id, d.name, d.owner, fields(*d))
+		}
+		if t := trade(*d); t != "" {
+			fmt.Printf("    %s\n", t)
+		}
+		if g := guess(*d); g != "" {
+			fmt.Printf("    看起來像：%s（L3）\n", g)
+		}
+	}
+	fmt.Printf("\n有動靜的郡：%d／%d\n", acted, len(ids))
+}
+
+func fields(d prefDelta) string {
+	out := ""
+	for _, f := range []struct {
+		name string
+		v    int
+	}{
+		{"金", d.gold}, {"米", d.rice}, {"人口", d.people}, {"兵士", d.soldiers},
+		{"地力", d.land}, {"水利", d.flood}, {"物價", d.price}, {"民忠", d.loyalty},
+		{"在職將", d.activeGen}, {"在野將", d.freeGen},
+	} {
+		if f.v != 0 {
+			out += fmt.Sprintf(" %s%+d", f.name, f.v)
+		}
+	}
+	for _, f := range []struct {
+		name string
+		v    int
+	}{
+		{"人訓練↑", d.trainUp}, {"人武裝↑", d.armsUp}, {"人兵力↑", d.troopsUp},
+		{"人移入", d.movedIn}, {"人能力變", d.statUp}, {"人忠誠變", d.loyaltyUp},
+		{"人入仕", d.joined}, {"人離職", d.left},
+	} {
+		if f.v != 0 {
+			out += fmt.Sprintf(" %s%d", f.name, f.v)
+		}
+	}
+	return out
+}
+
+// trade 把米金交易的比率印出來，配上當月的物價。
+//
+// 「依物價購米入倉」「依物價以米換金」（說明書 p.22）——**公式沒給**。
+//
+// ⚠ **這個比率不是交易的匯率。** 同一個月裡金與米還被每月結算動過
+// （兵糧消耗、稅收），所以差值是「交易 ＋ 結算」的合。要解出匯率得用
+// 受控盤面：只讓一個郡動、其他欄位固定，再看單獨一次交易換到多少。
+// 這裡列出來是為了讓量級與物價的關係看得見，不是結論。
+func trade(d prefDelta) string {
+	if d.gold >= 0 || d.rice <= 0 {
+		if d.gold <= 0 || d.rice >= 0 {
+			return ""
+		}
+	}
+	g, r := d.gold, d.rice
+	if g < 0 {
+		g = -g
+	}
+	if r < 0 {
+		r = -r
+	}
+	if g == 0 {
+		return ""
+	}
+	dir := "買米"
+	if d.gold > 0 {
+		dir = "賣米"
+	}
+	return fmt.Sprintf("%s：Δ米/Δ金 ＝ %.2f，物價 %d→%d（米後 %d、金後 %d）",
+		dir, float64(r)/float64(g), d.priceBefore, d.priceAfter,
+		d.riceAfter, d.goldAfter)
+}
+
+// guess 猜這個郡下了哪一道命令。
+//
+// ⚠ **這是 `L3`。** 判準是「花費 ＋ 效果」的組合，來源是說明書的數值
+// （`docs/reference/01-manual-10-commands.md`）。同一個欄位可以有好幾個
+// 來源，所以列出來的是**候選**不是結論。
+func guess(d prefDelta) string {
+	var out []string
+	switch {
+	case d.gold < 0 && d.troopsUp > 0 && d.people < 0:
+		out = append(out, "徵兵（每人 1 金，人口跟著少）")
+	case d.gold < 0 && d.armsUp > 0:
+		out = append(out, "購買武器（每 100 單位 1 金）")
+	case d.trainUp > 0 && d.gold == 0:
+		out = append(out, "訓練兵士（不花錢）")
+	}
+	if d.gold == -10 && d.land > 0 {
+		out = append(out, "土地開發（10 金）")
+	}
+	if d.gold == -10 && d.flood < 0 {
+		out = append(out, "洪水防治（10 金）")
+	}
+	if d.gold < 0 && d.rice > 0 {
+		out = append(out, "買入米糧")
+	}
+	if d.gold > 0 && d.rice < 0 {
+		out = append(out, "賣出米糧")
+	}
+	if d.rice < 0 && d.loyalty > 0 {
+		out = append(out, "開倉賑民")
+	}
+	if d.gold <= -30 && d.joined > 0 {
+		out = append(out, "登用人才（30 金）")
+	}
+	if d.gold == -5 && d.freeGen > 0 {
+		out = append(out, "尋訪人才（5 金）")
+	}
+	if d.left > 0 {
+		out = append(out, "撤職（10 金遣散費）")
+	}
+	if d.loyaltyUp > 0 && d.gold < 0 {
+		out = append(out, "賞賜金帛（最高 100 金）")
+	}
+	if d.movedIn > 0 {
+		out = append(out, "調動軍隊")
+	}
+	if len(out) == 0 {
+		return ""
+	}
+	s := out[0]
+	for _, x := range out[1:] {
+		s += "／" + x
+	}
+	return s
+}
