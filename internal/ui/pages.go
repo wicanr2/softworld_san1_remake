@@ -8,6 +8,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -35,7 +36,7 @@ func GeneralList(g *game.State, prefectureID int) (string, []string) {
 		if x.HasLoyalty() {
 			loyal = fmt.Sprintf("%d", x.Loyalty)
 		}
-		out = append(out, cells.Pad(x.Name, 8)+cells.Pad(RankName(x.Rank), 6)+
+		out = append(out, cells.Pad(PersonName(x.Name), 8)+cells.Pad(RankName(x.Rank), 6)+
 			cells.Pad(loyal, 4)+cells.Pad(fmt.Sprintf("%d", x.Age), 4)+
 			cells.Pad(fmt.Sprintf("%d", x.Stamina), 4)+
 			cells.Pad(fmt.Sprintf("%d", x.Intel), 4)+
@@ -50,7 +51,7 @@ func GeneralList(g *game.State, prefectureID int) (string, []string) {
 		out = append(out, "", t("msg.freeList"))
 		line := "  "
 		for _, x := range free {
-			line += x.Name + "　"
+			line += PersonName(x.Name) + "　"
 			if cells.Width(line) > 40 {
 				out = append(out, line)
 				line = "  "
@@ -60,7 +61,7 @@ func GeneralList(g *game.State, prefectureID int) (string, []string) {
 			out = append(out, line)
 		}
 	}
-	return tf("page.generalsAt", p.ID, p.Name), out
+	return tf("page.generalsAt", p.ID, PlaceName(p.Name)), out
 }
 
 // TerritoryList 是「領土列表」：列出該軍所有領土基本資料（說明書 p.19）。
@@ -78,9 +79,9 @@ func TerritoryList(g *game.State, f state.FactionID) (string, []string) {
 		p := g.Prefecture(id)
 		gov := "—"
 		if x := g.Governor(id); x != nil {
-			gov = x.Name
+			gov = PersonName(x.Name)
 		}
-		out = append(out, cells.Pad(fmt.Sprintf("%d", id), 4)+cells.Pad(p.Name, 6)+
+		out = append(out, cells.Pad(fmt.Sprintf("%d", id), 4)+cells.Pad(PlaceName(p.Name), 6)+
 			cells.Pad(gov, 8)+cells.Pad(fmt.Sprintf("%d", p.Gold), 7)+
 			cells.Pad(fmt.Sprintf("%d", p.Rice), 7)+
 			cells.Pad(fmt.Sprintf("%d", p.Population), 8)+
@@ -92,7 +93,7 @@ func TerritoryList(g *game.State, f state.FactionID) (string, []string) {
 	lord := g.Lord(f)
 	name := tf("fld.factionN", f)
 	if lord != nil {
-		name = lord.Name
+		name = PersonName(lord.Name)
 	}
 	return tf("page.territoryOf", name, len(ids)), out
 }
@@ -144,6 +145,12 @@ func StatusName(s state.Status) string {
 	}
 	return "?"
 }
+
+// PersonName／PlaceName 把遊戲資料裡的專有名詞換成目前語系的寫法。
+//
+// **繁中是原文不是譯文**：這兩個函式在繁中原樣回傳，換語系才動。
+func PersonName(s string) string { return i18n.PersonName(s) }
+func PlaceName(s string) string  { return i18n.PlaceName(s) }
 
 // TroopName 是兵種的名稱。
 func TroopName(k state.TroopType) string {
@@ -237,7 +244,7 @@ func BattleReport(g *game.State, r *game.BattleResult) (string, []string) {
 	if len(r.Captives) > 0 {
 		names := make([]string, 0, len(r.Captives))
 		for _, c := range r.Captives {
-			names = append(names, c.Name)
+			names = append(names, PersonName(c.Name))
 		}
 		out = append(out, t("rep.captives")+strings.Join(names, "、"))
 	}
@@ -262,7 +269,7 @@ func BattleList(g *game.State, rs []*game.BattleResult) (string, []string) {
 // prefName 取郡名；沒有這個郡就印編號。
 func prefName(g *game.State, id int) string {
 	if p := g.Prefecture(id); p != nil {
-		return p.Name
+		return PlaceName(p.Name)
 	}
 	return tf("fld.prefN", id)
 }
@@ -279,7 +286,7 @@ func GeneralPage(g *game.State, index int) (string, []string) {
 	}
 	origin := "—"
 	if p := g.Prefecture(x.Origin); p != nil {
-		origin = tf("gen.origin", p.Name)
+		origin = tf("gen.origin", PlaceName(p.Name))
 	}
 	role := t("status.free")
 	if x.Employed() {
@@ -291,10 +298,10 @@ func GeneralPage(g *game.State, index int) (string, []string) {
 	}
 	where := "—"
 	if p := g.Prefecture(x.Location); p != nil {
-		where = p.Name
+		where = PlaceName(p.Name)
 	}
 	return t("page.inspect"), []string{
-		fmt.Sprintf("%s　%s", x.Name, origin),
+		fmt.Sprintf("%s　%s", PersonName(x.Name), origin),
 		tf("gen.where", role, where),
 		tf("gen.loyalAge", loyal, x.Age),
 		"",

@@ -127,7 +127,7 @@ func (o AttackOrder) Describe(g *State) string {
 
 func byWhom(g *State, index int) string {
 	if x := g.General(index); x != nil && x.Name != "" {
-		return "（" + x.Name + "）"
+		return "（" + personName(x.Name) + "）"
 	}
 	return ""
 }
@@ -146,7 +146,7 @@ func (o ConscriptOrder) Apply(g *State, by state.FactionID) error {
 func (o ConscriptOrder) Describe(g *State) string {
 	name := "?"
 	if x := g.General(o.General); x != nil {
-		name = x.Name
+		name = personName(x.Name)
 	}
 	return tf("log.conscript", prefName(g, o.At), name, o.Count)
 }
@@ -165,14 +165,14 @@ func (o ArmsOrder) Apply(g *State, by state.FactionID) error {
 func (o ArmsOrder) Describe(g *State) string {
 	name := "?"
 	if x := g.General(o.General); x != nil {
-		name = x.Name
+		name = personName(x.Name)
 	}
 	return tf("log.arms", prefName(g, o.At), name, o.Units)
 }
 
 func prefName(g *State, id int) string {
 	if p := g.Prefecture(id); p != nil {
-		return fmt.Sprintf("%d %s", p.ID, p.Name)
+		return fmt.Sprintf("%d %s", p.ID, placeName(p.Name))
 	}
 	return tf("msg.prefN", id)
 }

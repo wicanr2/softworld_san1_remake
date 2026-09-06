@@ -76,7 +76,7 @@ func (r *BattleResult) Summary(g *State) string {
 	if len(r.Captives) > 0 {
 		names := make([]string, 0, len(r.Captives))
 		for _, c := range r.Captives {
-			names = append(names, c.Name)
+			names = append(names, personName(c.Name))
 		}
 		s += t("rep.took") + strings.Join(names, "、")
 	}

@@ -193,10 +193,31 @@ func hasWide(s string) bool {
 // 而拓樸才是規則層要的東西。
 func drawMap(c *Canvas, g *game.State, sel int) {
 	c.DrawBox(mapCol, 0, panelCol-mapCol, Rows, ColFrame)
-	const cellW, perRow = 7, 6
-	for i, p := range g.Prefectures() {
+	prefs := g.Prefectures()
+
+	// 格子的大小由**最長的郡名**決定，不寫死。
+	//
+	// 中文的郡名一律兩個字（四格），拼音是七到九個字母；照中文的格寬排，
+	// `Xiangyang` 會被切成 `Xian`——而畫面上那看起來像資料壞掉，不像
+	// 版面不夠寬。放不下就把列距從兩列縮成一列，換得下來的寬度。
+	nameW := 0
+	for _, p := range prefs {
+		if w := cells.Width(PlaceName(p.Name)); w > nameW {
+			nameW = w
+		}
+	}
+	cellW := 3 + nameW
+	perRow := (panelCol - mapCol - 3) / cellW
+	if perRow < 1 {
+		perRow = 1
+	}
+	step := 2
+	if rows := (len(prefs)+perRow-1)/perRow*step; rows > Rows-4 {
+		step = 1
+	}
+	for i, p := range prefs {
 		col := mapCol + 2 + (i%perRow)*cellW
-		row := 2 + (i/perRow)*2
+		row := 2 + (i/perRow)*step
 		if row >= Rows-2 {
 			break
 		}
@@ -205,11 +226,11 @@ func drawMap(c *Canvas, g *game.State, sel int) {
 			fg = factionColour(p.Owner)
 		}
 		c.DrawText(col, row, fmt.Sprintf("%2d", p.ID), ColDim)
-		name := cells.Truncate(p.Name, 4)
+		name := cells.Truncate(PlaceName(p.Name), nameW)
 		if p.ID == sel {
 			// 選取中的郡用反白框標出來，不靠顏色——**顏色會與勢力衝突**。
 			c.DrawText(col+2, row, name, ColSel)
-			c.DrawBox(col+1, row, 6, 1, ColSel)
+			c.DrawBox(col+1, row, nameW+2, 1, ColSel)
 		} else {
 			c.DrawText(col+2, row, name, fg)
 		}
@@ -232,7 +253,7 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 		c.DrawText(panelCol+2, row, cells.Pad(label, 10), ColDim)
 		c.DrawText(panelCol+12, row, value, ColFG)
 	}
-	c.DrawText(panelCol+2, 1, fmt.Sprintf("%2d %s", p.ID, p.Name), ColSel)
+	c.DrawText(panelCol+2, 1, fmt.Sprintf("%2d %s", p.ID, PlaceName(p.Name)), ColSel)
 
 	if !p.Owned() {
 		c.DrawText(panelCol+2, 3, t("msg.blankPref"), ColDim)
@@ -240,10 +261,10 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 		lord := g.Lord(p.Owner)
 		gov := g.Governor(p.ID)
 		if lord != nil {
-			line(3, t("fld.lord"), lord.Name)
+			line(3, t("fld.lord"), PersonName(lord.Name))
 		}
 		if gov != nil {
-			line(4, t("fld.governor"), gov.Name)
+			line(4, t("fld.governor"), PersonName(gov.Name))
 		}
 	}
 	line(6, t("fld.gold"), fmt.Sprintf("%d", p.Gold))

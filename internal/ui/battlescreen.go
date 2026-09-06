@@ -278,7 +278,7 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 		case l.Captured:
 			state = t("bat.captured")
 		}
-		out = append(out, cells.Pad(l.Name+state, 8)+
+		out = append(out, cells.Pad(PersonName(l.Name)+state, 8)+
 			cells.Pad(fmt.Sprintf("%d", l.War), 4)+
 			cells.Pad(fmt.Sprintf("%d", l.Intel), 4)+
 			cells.Pad(fmt.Sprintf("%d", l.Stamina), 4)+

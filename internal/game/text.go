@@ -18,6 +18,14 @@ import (
 func t(key string) string            { return i18n.S(key) }
 func tf(key string, a ...any) string { return i18n.Sf(key, a...) }
 
+// personName／placeName 把遊戲資料裡的專有名詞換成目前語系的寫法。
+//
+// **原文欄位不動。** `General.Name` 與 `Prefecture.Name` 一律保持原版的
+// 位元組——存檔要照原版版面寫回去，測試也靠它。翻譯只發生在要顯示的
+// 那一刻，與 `ErrorText` 同一個道理。
+func personName(s string) string { return i18n.PersonName(s) }
+func placeName(s string) string  { return i18n.PlaceName(s) }
+
 // PlotName 是五種謀略的名稱（說明書 p.24–25）。
 func PlotName(p Plot) string {
 	keys := []string{"", "plot.tiger", "plot.distant", "plot.forge",

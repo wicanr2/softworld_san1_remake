@@ -108,7 +108,7 @@ func (g *State) spring() []Event {
 			}
 			if int(x.Stamina) <= drop {
 				x.Stamina = 0
-				out = append(out, Event{x.Location, tf("ev.death", x.Name)})
+				out = append(out, Event{x.Location, tf("ev.death", personName(x.Name))})
 				g.retire(x)
 				continue
 			}
@@ -123,7 +123,7 @@ func (g *State) spring() []Event {
 		}
 		if g.roll(int(Spring), p.ID) < g.disasterChance(p)/3 {
 			g.scale(p, 100-TuneQuakeLoss)
-			out = append(out, Event{p.ID, tf("ev.quake", p.Name)})
+			out = append(out, Event{p.ID, tf("ev.quake", placeName(p.Name))})
 		}
 	}
 	return out
@@ -161,7 +161,7 @@ func (g *State) comeOfAge() []Event {
 		if p != nil {
 			name = p.Name
 		}
-		out = append(out, Event{at, tf("ev.appear", x.Name, name)})
+		out = append(out, Event{at, tf("ev.appear", personName(x.Name), placeName(name))})
 	}
 	return out
 }
@@ -183,7 +183,7 @@ func (g *State) summer() []Event {
 			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneFloodLandLoss, 100))
 			// 「意外產生水災後，洪水率會立刻升到 100」（說明書 p.21）。
 			p.FloodRate = 100
-			out = append(out, Event{p.ID, tf("ev.flood", p.Name)})
+			out = append(out, Event{p.ID, tf("ev.flood", placeName(p.Name))})
 			continue
 		}
 		if g.roll(int(Summer), p.ID, 2) < g.disasterChance(p)/2 {
@@ -192,7 +192,7 @@ func (g *State) summer() []Event {
 			for _, x := range g.Garrison(p.ID) {
 				x.Stamina = uint8(clampTo(int(x.Stamina)-TunePlagueStamina, 100))
 			}
-			out = append(out, Event{p.ID, tf("ev.plague", p.Name)})
+			out = append(out, Event{p.ID, tf("ev.plague", placeName(p.Name))})
 		}
 	}
 	return out
@@ -212,7 +212,7 @@ func (g *State) autumn() []Event {
 		if g.roll(int(Autumn), p.ID) < g.disasterChance(p)/2 {
 			p.Rice = p.Rice * (100 - TuneLocustRiceLoss) / 100
 			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneLocustLandLoss, 100))
-			out = append(out, Event{p.ID, tf("ev.locust", p.Name)})
+			out = append(out, Event{p.ID, tf("ev.locust", placeName(p.Name))})
 			continue
 		}
 		// 收成規模同時看土地價值與人口——人口是生產力的來源（說明書 p.20）。
@@ -223,7 +223,7 @@ func (g *State) autumn() []Event {
 		p.Gold = clampTo(p.Gold+gold, MaxGold)
 		p.LandValue = uint8(clampTo(int(p.LandValue)-TuneHarvestLandDrop, 100))
 		out = append(out, Event{p.ID,
-			tf("ev.harvest", p.Name, rice, gold)})
+			tf("ev.harvest", placeName(p.Name), rice, gold)})
 	}
 	return out
 }
@@ -258,7 +258,7 @@ func (g *State) winter() []Event {
 			lord := g.Lord(f.ID)
 			name := tf("fld.factionN", f.ID)
 			if lord != nil {
-				name = lord.Name
+				name = personName(lord.Name)
 			}
 			out = append(out, Event{0, tf("ev.tribute", name, n)})
 		}
