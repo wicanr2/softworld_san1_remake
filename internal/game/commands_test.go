@@ -352,6 +352,7 @@ func TestTrainZerosUnitsWithNoTroops(t *testing.T) {
 	}
 	empty.Soldiers = 0
 	empty.Training = 88
+	empty.Arms = 77
 	before := manned.Training
 
 	if err := g.Train(pref, g.Prefecture(pref).Owner); err != nil {
@@ -359,6 +360,10 @@ func TestTrainZerosUnitsWithNoTroops(t *testing.T) {
 	}
 	if empty.Training != 0 {
 		t.Errorf("沒有兵的守將訓練度是 %d，應該被歸零", empty.Training)
+	}
+	// 武裝度同一個形狀（`0xc168` 的 `cmpw es:[bx+0x2226],0`）。
+	if empty.Arms != 0 {
+		t.Errorf("沒有兵的守將武裝度是 %d，應該被歸零", empty.Arms)
 	}
 	if manned.Training <= before {
 		t.Errorf("帶兵的守將訓練度沒有提升（%d → %d）", before, manned.Training)

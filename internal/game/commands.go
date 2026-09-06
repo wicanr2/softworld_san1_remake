@@ -160,7 +160,10 @@ func (g *State) Train(prefectureID int, by state.FactionID) error {
 	div := AITrainDivisor(g.AILevel(by))
 	for _, x := range g.Garrison(prefectureID) {
 		if x.Soldiers == 0 {
+			// 沒有兵的部隊訓練度與武裝度都歸零（`0xbd70`／`0xc168`，
+			// 兩支常式是同一個形狀）。
 			x.Training = 0
+			x.Arms = 0
 			continue
 		}
 		add := (int(x.Intel)/3 + int(x.War)/2) / div
