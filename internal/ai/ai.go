@@ -77,7 +77,7 @@ func New(m Mode) (Brain, error) {
 // faithful 是「以還原原版為目標」的 AI 的共同外殼。
 //
 // **只做已經從原版讀出來的行為。** 九種行為裡解出三種
-//（內政、訓練兵士、指定太守、指定軍師、賞賜物品、尋訪人才）。
+//（內政、訓練兵士、指定太守、指定軍師、賞賜物品、尋訪人才、登用人才）。
 // 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
 // 哪些行為是還原的、哪些是我編的。
 type faithful struct {
@@ -88,7 +88,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode                    { return f.mode }
 func (f *faithful) Name() string                  { return f.name }
 func (f *faithful) Derived() bool                 { return false }
-func (f *faithful) Coverage() (int, int)          { return 6, 9 }
+func (f *faithful) Coverage() (int, int)          { return 7, 9 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -141,6 +141,15 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 				out = append(out, game.SearchOrder{At: p, General: gov.Index})
 			}
 		}
+		// 登用人才（表 `0x5634`）：掃本郡身分 8（在野露面）的人。
+		// **每郡最多 50 位將軍**（`0xced2` 的 `cmpw es:[0xc],50`）。
+		// ⚠ 成功率的公式還沒解——等級參數 (30,0)/(20,10)/(10,20)/(0,40)
+		// 被傳給另一支函式（`docs/re/03` §1.4）。
+		if len(g.Garrison(p)) < game.MaxGeneralsPerPrefecture {
+			if who := f.recruitTarget(g, p); who != nil {
+				out = append(out, game.RecruitOrder{At: p, Target: who.Index})
+			}
+		}
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
 		out = append(out, f.rewards(g, id, p)...)
 	}
@@ -185,6 +194,19 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []
 		out = append(out, game.GiftOrder{At: prefecture, Target: who.Index, What: t})
 	}
 	return out
+}
+
+// recruitTarget 是登用的對象：本郡身分 8（在野露面）的人。
+//
+// 原版還收身分 10——**那個編碼 remake 沒有**，還沒解出是什麼
+// （`docs/mechanics/20-personnel`）。
+func (f *faithful) recruitTarget(g *game.State, prefecture int) *game.General {
+	for _, x := range g.Free(prefecture) {
+		if x.Status == state.StatusAvailable {
+			return x
+		}
+	}
+	return nil
 }
 
 // rewardTarget 是賞賜的對象：守軍裡忠誠最低的非君主。
