@@ -92,12 +92,12 @@
 | 機制 | 文件 | 最高等級 | 實作 | 測試 |
 |---|---|---|---|---|
 | 回合流程與十類指令 | `mechanics/10` | `L2` | `internal/game` | 有 |
-| 人物與人事 | `mechanics/20` | `L0`（欄位）／`L2`（規則）| `internal/game` | 有 |
+| 人物與人事 | `mechanics/20` | `L0`（欄位、**訓練公式**）／`L1`（徵兵 1:1 扣人口）／`L2`（其餘）| `internal/game` | 有 |
 | 謀略（戰略層五種）| `mechanics/30` | `L2` | `internal/game/plot.go` | 有 |
 | 軍事與主戰場 | `mechanics/40` | `L2` | `internal/battle` | 有 |
-| 四季事件 | `mechanics/50` | `L2` | `internal/game/events.go` | 有 |
-| 經濟 | `mechanics/60` | `L2` | `internal/game` | 有 |
-| **電腦 AI** | `mechanics/70` | **未解** | 空實作 | — |
+| 四季事件 | `mechanics/50` | `L1`（季節分界、年齡在元月、人口在十月）／`L2`（其餘）| `internal/game/events.go` | 有 |
+| 經濟 | `mechanics/60` | `L1`（人口年成長 15%、物價每月重抽 30–68）／`L2`（其餘）| `internal/game` | 有 |
+| **電腦 AI** | `mechanics/70` | **行為 `L1`**（連走十六個月 ＋ 受控實驗）／判斷式未解 | 空實作 | — |
 | 勝負判定 | `mechanics/80` | `L2` | `internal/game/events.go` | 有 |
 | **兩版差異** | `mechanics/90` | `L0`（`DATA2` 已排除）| — | `cmd/san1diff` |
 
