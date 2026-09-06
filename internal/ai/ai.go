@@ -77,7 +77,7 @@ func New(m Mode) (Brain, error) {
 // faithful 是「以還原原版為目標」的 AI 的共同外殼。
 //
 // **只做已經從原版讀出來的行為。** 九種行為裡解出三種
-//（內政、訓練兵士、指定太守）。
+//（內政、訓練兵士、指定太守、指定軍師）。
 // 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
 // 哪些行為是還原的、哪些是我編的。
 type faithful struct {
@@ -88,7 +88,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode                    { return f.mode }
 func (f *faithful) Name() string                  { return f.name }
 func (f *faithful) Derived() bool                 { return false }
-func (f *faithful) Coverage() (int, int)          { return 3, 9 }
+func (f *faithful) Coverage() (int, int)          { return 4, 9 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -124,6 +124,10 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// 訓練兵士（表 `0x5554`）：分派器每回合都跑，常式自己對整個
 		// 守軍算，沒有額外的條件。
 		out = append(out, game.TrainOrder{At: p})
+		// 指定軍師（表 `0x5694`）：跑在指定太守之前。
+		if x := betterChief(g, id, p); x != nil {
+			out = append(out, game.AppointChiefOrder{At: p, Target: x.Index})
+		}
 		// 指定太守（表 `0x5674`）：守軍按魅力由高到低排序，第一位當
 		// 太守。**已經是他就不必再指一次**——原版那一段是直接寫欄位，
 		// remake 這一邊走命令，重複指定會白費一道紀錄。
@@ -132,6 +136,36 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		}
 	}
 	return out
+}
+
+// betterChief 是守軍裡可以接任軍師的人（`L0`、`[base]`）。
+//
+// 原版的常式（`0xd7ae`）走守軍清單，條件是
+//
+//	智 > 門檻   且   身分 ∈ {太守, 一般武將}
+//
+// 門檻是**現任軍師的智**，沒有軍師時是 79——那正是說明書「受封軍師之人
+// 謀略不得低於 80」。門檻在迴圈裡**不更新**，所以原版取的是清單順序中
+// 最後一位合格者，不是智力最高的那位。
+//
+// ⚠ **「最後一位」跟著清單順序走，而清單順序還沒解**（`L3`）。
+// 這裡取 remake 自己的守軍順序中的最後一位，形狀對、人選不保證相同。
+func betterChief(g *game.State, id state.FactionID, prefecture int) *game.General {
+	floor := state.ChiefIntelFloor
+	if cur := g.Chief(id); cur != nil {
+		floor = int(cur.Intel)
+	}
+	var pick *game.General
+	for _, x := range g.Garrison(prefecture) {
+		if x.Faction != id || int(x.Intel) <= floor {
+			continue
+		}
+		if x.Status != state.StatusGovernor && x.Status != state.StatusOfficer {
+			continue
+		}
+		pick = x
+	}
+	return pick
 }
 
 // mostCharming 是守軍裡魅力最高的一位。

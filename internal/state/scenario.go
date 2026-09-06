@@ -654,6 +654,22 @@ func (s *Scenario) Players() []int {
 	return out
 }
 
+// ChiefIndex 是勢力的軍師（`BASEMAS` offset 6，`u16`、`L0`）。
+//
+// 原版的「指定軍師」常式（線性 `0xd7ae`）讀它當門檻：現任軍師的智就是
+// 換人的下限，**沒有軍師時（`0xFFFF`）門檻是 79**——那正是說明書
+// 「受封軍師之人謀略不得低於 80」。
+func (s *Scenario) ChiefIndex(faction int) int {
+	off := faction*masterSize + 6
+	if faction < 0 || off+1 >= len(s.rawMas) {
+		return NoValue16
+	}
+	return int(binary.LittleEndian.Uint16(s.rawMas[off:]))
+}
+
+// ChiefIntelFloor 是「換軍師」的智力下限（`L0`、`[base]`）。
+const ChiefIntelFloor = 79
+
 // GovernorIndex 是郡的太守（`BASESTA` offset 32，`u16`、`L2`）。
 //
 // 原版的常式拿它當人物槽號用，`0xFFFF` 是「沒有」。抽樣對得上：

@@ -94,6 +94,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.ReclaimOrder, game.FloodControlOrder: // 內政（0x5534），已解
 			case game.TrainOrder: // 訓練兵士（0x5554），已解
 			case game.AppointGovernorOrder: // 指定太守（0x5674），已解
+			case game.AppointChiefOrder: // 指定軍師（0x5694），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}
@@ -196,6 +197,47 @@ func TestBaseAppointsTheMostCharming(t *testing.T) {
 			if got == nil || got.Charm != best.Charm {
 				t.Errorf("郡 %d 指的太守魅力是 %v，該郡最高是 %d",
 					ap.At, got, best.Charm)
+			}
+		}
+	}
+}
+
+// TestBaseChiefNeedsEightyIntel 釘住軍師的智力門檻。
+//
+// 原版沒有軍師時門檻是 79（`智 > 79`，也就是說明書的「不得低於 80」）；
+// 已經有軍師時門檻是**現任軍師的智**——換人一定要更好。
+// **兩個門檻要分開釘**：只驗前者的話，一個「有人就換」的 AI 也會綠。
+func TestBaseChiefNeedsEightyIntel(t *testing.T) {
+	g := newGame(t, 1)
+	b, err := New(ModeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range g.Factions() {
+		if !f.Alive {
+			continue
+		}
+		floor := state.ChiefIntelFloor
+		if cur := g.Chief(f.ID); cur != nil {
+			floor = int(cur.Intel)
+		}
+		for _, o := range b.Plan(g, f.ID) {
+			ap, ok := o.(game.AppointChiefOrder)
+			if !ok {
+				continue
+			}
+			x := g.General(ap.Target)
+			if x == nil {
+				t.Errorf("勢力 %d 指了不存在的軍師 %d", f.ID, ap.Target)
+				continue
+			}
+			if int(x.Intel) <= floor {
+				t.Errorf("勢力 %d 指的軍師智力 %d，門檻是 %d",
+					f.ID, x.Intel, floor)
+			}
+			if x.Status != state.StatusGovernor && x.Status != state.StatusOfficer {
+				t.Errorf("勢力 %d 指的軍師身分是 %d，原版只收太守與一般武將",
+					f.ID, x.Status)
 			}
 		}
 	}
