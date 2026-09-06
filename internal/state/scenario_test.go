@@ -393,3 +393,95 @@ func TestGeneralAttributeRanges(t *testing.T) {
 		}
 	}
 }
+
+// TestAdjacencyIsSymmetricAndConnected 釘住地圖圖形。
+//
+// 相鄰表是**規則層的地基**（行軍、開戰、外交都靠它），而它壞掉的方式
+// 很安靜：單向的邊會讓部隊走得過去回不來，斷開的分量會讓一整塊地圖
+// 永遠打不到——兩者都不會報錯。
+func TestAdjacencyIsSymmetricAndConnected(t *testing.T) {
+	for _, ver := range versions {
+		c := loadData2(t, ver)
+		sc, err := LoadScenario(c, Scenario1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		edges := 0
+		for _, p := range sc.Prefectures() {
+			if len(p.Neighbours) == 0 {
+				t.Errorf("%s：郡 %d %s 沒有鄰居——它會變成孤島", ver, p.ID, p.Name)
+			}
+			for _, n := range p.Neighbours {
+				edges++
+				if !sc.Adjacent(n, p.ID) {
+					t.Errorf("%s：%d %s 說 %d 是鄰居，但反過來不成立", ver, p.ID, p.Name, n)
+				}
+				if n == p.ID {
+					t.Errorf("%s：郡 %d %s 把自己列為鄰居", ver, p.ID, p.Name)
+				}
+			}
+		}
+		if edges%2 != 0 {
+			t.Errorf("%s：邊的端點總數是奇數 %d——一定有單向的邊", ver, edges)
+		}
+
+		// 全連通：從 1 號郡走得到全部 42 個。
+		seen := map[int]bool{1: true}
+		stack := []int{1}
+		for len(stack) > 0 {
+			x := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			p, err := sc.Prefecture(x)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, n := range p.Neighbours {
+				if !seen[n] {
+					seen[n] = true
+					stack = append(stack, n)
+				}
+			}
+		}
+		if len(seen) != PrefectureCount {
+			t.Errorf("%s：從郡 1 只走得到 %d 個郡，應該是 %d 個",
+				ver, len(seen), PrefectureCount)
+		}
+	}
+}
+
+// TestAdjacencyIsMapNotState 釘住「相鄰表是地圖不是劇本狀態」。
+//
+// 六個劇本共用同一張圖。哪天不一樣了，代表這個欄位其實不是相鄰表，
+// 或者版本之間動過地圖——兩種都要知道。
+func TestAdjacencyIsMapNotState(t *testing.T) {
+	for _, ver := range versions {
+		c := loadData2(t, ver)
+		var base [][]int
+		for _, slot := range []Slot{Scenario1, Scenario2, Scenario3, Scenario4, Scenario5, Scenario6} {
+			sc, err := LoadScenario(c, slot)
+			if err != nil {
+				t.Fatalf("%s %s：%v", ver, slot, err)
+			}
+			var got [][]int
+			for _, p := range sc.Prefectures() {
+				got = append(got, p.Neighbours)
+			}
+			if base == nil {
+				base = got
+				continue
+			}
+			for i := range got {
+				if len(got[i]) != len(base[i]) {
+					t.Errorf("%s %s：郡 %d 的鄰居數與劇本 001 不同", ver, slot, i+1)
+					continue
+				}
+				for j := range got[i] {
+					if got[i][j] != base[i][j] {
+						t.Errorf("%s %s：郡 %d 的鄰居與劇本 001 不同", ver, slot, i+1)
+						break
+					}
+				}
+			}
+		}
+	}
+}

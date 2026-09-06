@@ -126,11 +126,31 @@ type Prefecture struct {
 	FloodRate     uint8 // 洪水率
 	PriceLevel    uint8 // 物價
 
+	// Neighbours 是相鄰的郡編號，最多 8 個（原版 offset 45–52，`0xFF` 補齊）。
+	//
+	// 這是**地圖幾何不是劇本狀態**：十二個槽位（六個劇本 ＋ 六個存檔）
+	// 的相鄰表完全相同。整張圖對稱（95 條邊、零條單向）而且全連通。
+	Neighbours []int
+
 	Raw [prefSize]byte
 }
 
 // Owned 回報這個郡有沒有主。
 func (p Prefecture) Owned() bool { return p.Owner != NoFaction }
+
+// Adjacent 回報兩個郡相不相鄰。
+func (s *Scenario) Adjacent(a, b int) bool {
+	pa, err := s.Prefecture(a)
+	if err != nil {
+		return false
+	}
+	for _, n := range pa.Neighbours {
+		if n == b {
+			return true
+		}
+	}
+	return false
+}
 
 // People 是實際人口（存的值 × 100）。
 func (p Prefecture) People() int { return int(p.Population) * 100 }
@@ -259,6 +279,11 @@ func LoadScenario(c *assets.Container, slot Slot) (*Scenario, error) {
 		p.FloodRate = rec[28]
 		p.PriceLevel = rec[29]
 		p.Owner = rec[30]
+		for _, b := range rec[45:53] {
+			if b >= 1 && b <= PrefectureCount {
+				p.Neighbours = append(p.Neighbours, int(b))
+			}
+		}
 		s.prefectures[i] = p
 	}
 
