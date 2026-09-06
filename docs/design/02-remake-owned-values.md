@@ -1,7 +1,8 @@
 # remake 自己定的數值
 
-`internal/game/tuning.go`、`events.go`、`battle.go`、`plot.go` 裡所有
-`Tune` 開頭的常數。**這些不是原版的數字。**
+`internal/game/tuning.go`、`events.go`、`battle.go`、`plot.go` 與
+`internal/battle/tuning.go` 裡所有 `Tune` 開頭的常數。
+**這些不是原版的數字。**
 
 說明書給了方向（「謀略越高，土地價值增加越多」）卻沒給係數；
 原版的公式還沒反組譯到。集中列出來，是為了讓「哪些是還原的、
@@ -13,7 +14,7 @@
 反組譯出真正的公式之後就得逐一去找——而且會漏。
 
 命名一律 `Tune` 開頭，用到的地方也就標示出來了：
-`grep -rn Tune internal/game` 得到的就是全部的清單。
+`grep -rn Tune internal/game internal/battle` 得到的就是全部的清單。
 
 ## 2. 有出處的數字（**不在**這一份裡）
 
@@ -30,7 +31,13 @@
 | 帶兵上限（君主 5000／軍師·大將 3000／參軍·副將 2500／主簿·裨將 2000／謀士·牙將 1500）| 說明書 p.18 **＋ 原版資料**（346 人零超標，九個職位裡八個頂到上限）|
 | 寶物效果（兵書 +2 謀略／寶刀 +3 戰力／美女 +5 魅力／駿馬 +2 戰力 +3 魅力）、賞賜上限 90 | 說明書 p.24 |
 | 戰場計謀的費用與智力門檻（火攻 600/80、水淹 500/75、誘敵 400/60、燒糧 300/70、圍攻 200/65、陷阱 100/60）| 說明書 p.32–34 |
-| 弓箭可射次數 ＝ 武裝度平均 ÷ 20 取整 | 說明書 p.32（含算例）|
+| 弓箭可射次數 ＝ 各單武裝度**算術**平均 ÷ 20 取整 | 說明書 p.32（含算例：(75+80+50+100)÷4＝76.25 → 三次）|
+| 戰役上限三十天、守方滿卅天且城池未失即衛郡成功 | 說明書 p.35 |
+| 休息一次增加移動力 2 | 說明書 p.29、p.30 |
+| 中陷阱九日內無法活動 | 說明書 p.33 |
+| 每個戰鬥組最多十名將領 | 說明書 p.27 |
+| 編隊、紮營、作戰的四張順序表 | 說明書 p.27–28 |
+| 九種地形攻防效應的**方向**（誰高誰低）、火攻與水淹的地形殺傷**排序** | 說明書 p.31–33 |
 | 洪水後洪水率立刻升到 100 | 說明書 p.21、p.36 |
 | 秋收後土地價值略降 | 說明書 p.21、p.37 |
 
@@ -74,12 +81,34 @@
 
 ### 戰役
 
+#### 戰略層（`internal/game/battle.go`）
+
+這一組只用來給 AI **估算**要不要出兵，不決定任何一場戰役的結果。
+
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
 | `TuneTrainingWeight` / `TuneArmsWeight` / `TuneWarWeight` | 60／40／50 | 「影響戰力的因素：訓練度、武裝度、兵數、地形、兵種及有無用計」|
 | `TuneDefenceBonus` / `TuneFortBonus` | 30／5 | 「城池能夠發揮部隊最大戰力，以及一流防禦工事」「關寨提供少許攻擊優勢，及簡陋的防禦工事」|
-| `TuneCasualty` / `TuneWinnerCasualty` | 60／20 | 沒給 |
-| `TuneCaptureChance` | 40 | 「被擒敵將的四種處置」，沒給機率 |
+
+#### 戰術層（`internal/battle/tuning.go`）
+
+| 常數 | 值 | 手冊怎麼說 |
+|---|---|---|
+| `TuneMoveBase` / `TuneMoveTraining` / `TuneMoveArmsPenalty` / `TuneMoveMin` | 4／25／50／2 | 「移動力來源是訓練度和兵種能否適應地形」「全副武裝將稍減移動力」，沒給公式 |
+| `TuneHitTraining` / `TuneHitArms` / `TuneHitWar` / `TuneHitBase` | 60／40／50／12 | 列了影響戰力的因素，沒給公式 |
+| `TuneArrowDamage` | 6 | 只給了**次數**公式，沒給單次殺傷 |
+| `TuneFireBase` / `TuneFloodBase` | 30／30 | 只給了地形之間的**排序**，沒給幅度 |
+| `TuneBurnLoss` | 40 | 「燒毀敵軍的糧食」，沒給比例 |
+| `TuneSiegeBonus` | 25 | 「聯合友軍圍攻」，沒給加成 |
+| `TuneEnragedPenalty` | 30 | 「來犯敵軍攻擊力暫時下降」，沒給幅度 |
+| `TuneDuelDamage` | 12 | 「體力降到 0 即告落敗」，沒給每回合消耗 |
+| `TuneRefuseDuelLoss` | 10 | 「麾下士兵將有部份逃跑」，沒給比例 |
+| `TuneCaptureOnDuel` | 60 | 「可能被擒，或死於刀下」，沒給機率 |
+| `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` / `TuneStratagemRange` | 140／20／30／3 | 自動作戰什麼時候該死戰、叫陣、退兵、用計——手冊是寫給玩家看的，沒有這一層 |
+
+地形的攻防修正幅度（`attackMod`／`defenceMod`）、地形的移動花費
+（`moveCost`）、戰場尺寸（21×15）同樣是 remake 選的；
+手冊只給了它們之間的相對關係。
 
 ### 謀略
 

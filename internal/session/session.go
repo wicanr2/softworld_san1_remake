@@ -26,6 +26,8 @@ type Session struct {
 
 	// Over 為真表示已經有人一統天下並拿到玉璽。
 	Over bool
+
+	battles []*game.BattleResult
 }
 
 // New 開一局。
@@ -55,11 +57,33 @@ func (s *Session) note(format string, a ...any) {
 func (s *Session) Do(o game.Order) error {
 	if err := o.Apply(s.G, s.Player); err != nil {
 		s.note("✗ %s：%v", o.Describe(s.G), err)
+		s.drainBattles()
 		return err
 	}
 	s.note("%s", o.Describe(s.G))
+	s.drainBattles()
 	return nil
 }
+
+// Battles 是最近打完的戰役，新的在後面。畫戰報那一頁要用完整的逐日紀錄。
+//
+// 只留最近幾場：一場三十天的主戰場動輒上百行，全部留著會把記憶體
+// 吃到跟局面本身一樣大。
+func (s *Session) Battles() []*game.BattleResult { return s.battles }
+
+// drainBattles 把剛打完的戰役記進紀錄。
+func (s *Session) drainBattles() {
+	for _, r := range s.G.DrainReports() {
+		s.note("%s", r.Summary(s.G))
+		s.battles = append(s.battles, r)
+	}
+	if n := len(s.battles); n > MaxBattles {
+		s.battles = append([]*game.BattleResult(nil), s.battles[n-MaxBattles:]...)
+	}
+}
+
+// MaxBattles 是保留幾場戰役的逐日戰報。
+const MaxBattles = 8
 
 // EndMonth 讓電腦諸侯行動，然後推進到下個月。
 //
@@ -72,6 +96,7 @@ func (s *Session) EndMonth() {
 		}
 		orders := s.Brain.Plan(s.G, f.ID)
 		n, err := s.G.ApplyAll(orders, f.ID)
+		s.drainBattles()
 		if err != nil {
 			// AI 產出違規命令是 bug。**記下來不要吞掉**——
 			// 吞掉會讓它看起來像「電腦這回合比較保守」。
@@ -88,6 +113,7 @@ func (s *Session) EndMonth() {
 	}
 	wasAlive := s.PlayerAlive()
 	events := s.G.EndMonth()
+	s.drainBattles()
 	if wasAlive && !s.PlayerAlive() {
 		s.note("✗ 你的勢力已被消滅")
 		s.Over = true

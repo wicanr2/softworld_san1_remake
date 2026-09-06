@@ -2,25 +2,26 @@ package game
 
 import (
 	"fmt"
-	"sort"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
 // 戰役（說明書 p.26–35）。
 //
-// 原版的戰役分三階段：**召集 → 對陣 → 決勝**，中間有一張六方向的
-// 主戰場與一層戰術對戰。這一版做的是**戰略層的決勝**：
-// 誰打誰、雙方戰力怎麼算、贏了誰接手、被擒的將領怎麼處置。
+// 原版的戰役分三階段：**召集 → 對陣 → 決勝**。
 //
-// ⚠ **戰術層（主戰場的格子、移動力、單挑、六種計謀）還沒做**，
-// 設計在 `docs/design/03-battle.md`。這一層的介面（`Attack` 的參數與
-// `BattleResult`）刻意留得住那一層：戰術層做出來之後，
-// 換掉的是 `resolve` 而不是呼叫端。
+// 這一檔是**戰略層**：誰打誰、贏了誰接手、被擒的將領怎麼處置。
+// 實際的交戰交給 `internal/battle`（主戰場的六方向格子、移動力、
+// 五種戰鬥隊伍、快戰死戰、弓箭、單挑、六種計謀、三十天判定）。
 //
-// 戰力的**因素**是手冊列的（p.31）：訓練度、武裝度、兵數、地形、兵種、
-// 有無用計。係數是 remake 選的（`Tune*`）。
+// 戰場的**地形版面是 remake 生成的**——原版的郡地理誌是美術素材，
+// 與主畫面地圖同理不重製也不散布。生成器是決定性的，所以整場戰役
+// 仍然可重現。其餘機制照手冊（`docs/design/03-battle.md`）。
 
+// 以下的權重是**估算**用的：AI 要在出兵之前判斷打不打得贏，
+// 而真正的勝負是主戰場打出來的（`internal/battle`）。
+// 估得準不準只影響電腦諸侯的選擇，不影響戰役本身。
 const (
 	// TuneTrainingWeight／TuneArmsWeight 是訓練度與武裝度對戰力的權重
 	// （百分比，100 表示「滿值時戰力加倍」）。
@@ -37,13 +38,6 @@ const (
 	// TuneFortBonus 是每座城寨給守方的加成百分比（p.32：關寨提供
 	//「少許攻擊優勢，及簡陋的防禦工事」）。
 	TuneFortBonus = 5
-
-	// TuneCasualty 是敗方的兵力損失百分比，TuneWinnerCasualty 是勝方的。
-	TuneCasualty       = 60
-	TuneWinnerCasualty = 20
-
-	// TuneCaptureChance 是敗方將領被擒的機率。
-	TuneCaptureChance = 40
 )
 
 // Captive 是一位被擒的將領。
@@ -56,11 +50,37 @@ type Captive struct {
 type BattleResult struct {
 	From, To       int
 	AttackerWon    bool
-	AttackerPower  int
-	DefenderPower  int
 	Captives       []Captive
 	PrefectureTook bool
-	Log            []string
+
+	// AttackerLost／DefenderLost 是雙方折損的兵。
+	AttackerLost, DefenderLost int
+
+	// Days 是這場戰役打了幾天（最多三十天，說明書 p.35）。
+	Days int
+
+	// Log 是主戰場的逐日戰報。**完整保留**：戰役是遊戲裡最花時間的
+	// 一件事，只給一行結果等於把三十天的過程丟掉。摘要在 Summary。
+	Log []string
+}
+
+// Summary 是給紀錄用的一行結果。
+func (r *BattleResult) Summary(g *State) string {
+	side := "守方守住"
+	if r.AttackerWon {
+		side = "攻方獲勝"
+	}
+	s := fmt.Sprintf("⚔ %s 攻 %s：%s（%d 日，攻方折損 %d、守方折損 %d）",
+		prefName(g, r.From), prefName(g, r.To), side,
+		r.Days, r.AttackerLost, r.DefenderLost)
+	if len(r.Captives) > 0 {
+		names := make([]string, 0, len(r.Captives))
+		for _, c := range r.Captives {
+			names = append(names, c.Name)
+		}
+		s += "　擒 " + strings.Join(names, "、")
+	}
+	return s
 }
 
 // Attack 是「發動戰役」（說明書 p.19）：由該州郡獨力進犯鄰郡。
@@ -123,7 +143,7 @@ func (g *State) Attack(from, to int, attackers []int, by state.FactionID) (*Batt
 		}
 	}
 	src.Commanded = true
-	return g.resolve(from, to, att, def, by), nil
+	return g.fight(from, to, att, def, by), nil
 }
 
 // successorForGoing 從**留守的人**裡挑一位接手治理，魅力最高的優先。
@@ -158,10 +178,12 @@ func (g *State) leavesNobody(prefectureID int, going []int, by state.FactionID) 
 	return true
 }
 
-// unitPower 是一支部隊的戰力。
+// unitPower 是一支部隊的**估計**戰力。
 //
 // 因素是手冊列的（p.31）：兵數、訓練度、武裝度、將領戰力。
-// 地形與兵種在戰術層才有意義，這一層先不計。
+// 地形、兵種、天氣、用計都要等部隊真的站到格子上才算得出來，
+// 那是 `internal/battle` 的事——所以這個數字只拿來比大小，
+// 不決定任何一場戰役的結果。
 func unitPower(x *General) int {
 	base := x.Soldiers
 	quality := 100 +
@@ -192,83 +214,6 @@ func (g *State) DefencePower(prefectureID int) int {
 	return n
 }
 
-func sumPower(units []*General) int {
-	n := 0
-	for _, x := range units {
-		n += unitPower(x)
-	}
-	return n
-}
-
-// resolve 打完一場，把結果套用到局面上。
-func (g *State) resolve(from, to int, att, def []*General, by state.FactionID) *BattleResult {
-	dst := g.Prefecture(to)
-	r := &BattleResult{From: from, To: to}
-	r.AttackerPower = sumPower(att)
-
-	dp := sumPower(def)
-	if dst.Owned() {
-		// 守方的地利：城池 ＋ 城寨（說明書 p.32）。
-		dp = dp * (100 + TuneDefenceBonus + dst.Forts*TuneFortBonus) / 100
-	}
-	r.DefenderPower = dp
-	r.AttackerWon = r.AttackerPower > dp
-
-	win, lose := att, def
-	if !r.AttackerWon {
-		win, lose = def, att
-	}
-	for _, x := range win {
-		x.Soldiers = x.Soldiers * (100 - TuneWinnerCasualty) / 100
-	}
-	for _, x := range lose {
-		x.Soldiers = x.Soldiers * (100 - TuneCasualty) / 100
-	}
-	// 敗方的將領可能被擒（說明書 p.35）。
-	for _, x := range lose {
-		if g.roll(from, to, x.Index) < TuneCaptureChance {
-			r.Captives = append(r.Captives, Captive{General: x.Index, Name: x.Name})
-		}
-	}
-	sort.Slice(r.Captives, func(i, j int) bool {
-		return r.Captives[i].General < r.Captives[j].General
-	})
-
-	// 「獲勝軍若於戰後捉到敵軍君主，其寶物將全歸獲勝軍所有」（說明書 p.35）。
-	for _, c := range r.Captives {
-		x := g.General(c.General)
-		if x == nil || x.Status != state.StatusLord {
-			continue
-		}
-		loser, winner := g.Faction(x.Faction), g.Faction(by)
-		if !r.AttackerWon {
-			// 守方獲勝時，被擒的是攻方的君主。
-			winner = g.Faction(g.Prefecture(to).Owner)
-		}
-		if loser == nil || winner == nil || loser == winner {
-			continue
-		}
-		for i := range loser.Treasury {
-			winner.Treasury[i] += loser.Treasury[i]
-			loser.Treasury[i] = 0
-		}
-		r.Log = append(r.Log, fmt.Sprintf("%s 的寶物盡歸戰勝方", x.Name))
-	}
-
-	if r.AttackerWon {
-		g.takePrefecture(from, to, att, by)
-		r.PrefectureTook = true
-		r.Log = append(r.Log, fmt.Sprintf("攻下 %s", dst.Name))
-	} else {
-		// 攻方退回原郡，兵力已經扣過。
-		r.Log = append(r.Log, fmt.Sprintf("%s 守住了", dst.Name))
-	}
-	for _, c := range r.Captives {
-		r.Log = append(r.Log, fmt.Sprintf("%s 被擒", c.Name))
-	}
-	return r
-}
-
 // takePrefecture 讓攻方接手一個郡：「若進攻順利，軍隊將駐進被攻下的
 // 州郡」（說明書 p.19）。
 func (g *State) takePrefecture(from, to int, att []*General, by state.FactionID) {
@@ -288,11 +233,32 @@ func (g *State) takePrefecture(from, to int, att []*General, by state.FactionID)
 	// **剛攻下的郡這個月不能再下令。** 不擋的話同一個月可以一路連鎖
 	// 進攻，而每郡每月一次的限制就形同虛設（說明書 p.17）。
 	dst.Commanded = true
-	for i, x := range att {
-		x.Location = to
-		if i == 0 && !x.Status.Governs() {
-			x.Status = state.StatusGovernor
+
+	// ⚠ **只有活著而且還效忠的人搬得進去。** 戰死或被擒的人已經被
+	// `retire` 或處置移出勢力了；把他們也算進來的話，剛攻下的郡會
+	// 掛著一個不存在的太守——而那件事在畫面上只看得出太守欄空了。
+	var alive []*General
+	for _, x := range att {
+		if x.Employed() && x.Faction == by {
+			alive = append(alive, x)
 		}
+	}
+	if len(alive) == 0 {
+		// 全軍覆沒卻「打贏了」：那個郡變成空白郡
+		//（「因任何事故所形成的空白郡均不屬任何諸侯」，說明書 p.19）。
+		dst.Owner = state.NoFaction
+		return
+	}
+	// 太守挑魅力最高的——「魅力高的人比較能勝任太守之職」（說明書 p.23）。
+	best := 0
+	for i, x := range alive {
+		x.Location = to
+		if x.Charm > alive[best].Charm {
+			best = i
+		}
+	}
+	if !alive[best].Status.Governs() {
+		alive[best].Status = state.StatusGovernor
 	}
 	// 舊主沒地了就退場。
 	if f := g.Faction(old); f != nil && len(g.Territory(old)) == 0 {
@@ -304,10 +270,10 @@ func (g *State) takePrefecture(from, to int, att []*General, by state.FactionID)
 type Disposal int
 
 const (
-	Behead  Disposal = iota // 斬首：即處死刑
-	Imprison                // 囚禁：成為戰場所在郡的在野將領
-	Release                 // 釋放：其人將逃至鄰郡
-	Enlist                  // 招降：成功便立刻成為部下
+	Behead   Disposal = iota // 斬首：即處死刑
+	Imprison                 // 囚禁：成為戰場所在郡的在野將領
+	Release                  // 釋放：其人將逃至鄰郡
+	Enlist                   // 招降：成功便立刻成為部下
 )
 
 // DisposeCaptive 處置一位被擒的將領。

@@ -1,0 +1,192 @@
+package game
+
+import (
+	"fmt"
+	"sort"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
+)
+
+// 戰略層與戰術層的接縫。
+//
+// `Attack` 把雙方的將領交給 `internal/battle` 打完，再把結果
+//（傷亡、被擒、誰佔了城池）搬回局面上。
+
+// toLeader 把一位人物換成戰場上的將領。
+func toLeader(x *General) battle.Leader {
+	return battle.Leader{
+		Index: x.Index, Name: x.Name,
+		War: x.War, Intel: x.Intel, Stamina: x.Stamina, Charm: x.Charm,
+		Soldiers: x.Soldiers, Training: x.Training, Arms: x.Arms,
+		Troop: battle.TroopKind(x.Troop),
+	}
+}
+
+// weatherFor 是這一場的天氣。
+//
+// 手冊沒說天氣怎麼決定，只說火攻要刮風、水淹要下雨（p.32–33）。
+// 這裡從年月與郡編號推——**決定性**，所以同一場戰役重跑天氣一樣。
+// 夏天多雨、秋天多風，與四季事件的取向一致。
+func (g *State) weatherFor(at int) battle.Weather {
+	r := g.roll(at, int(g.Date.Season()), 0x77ea)
+	switch g.Date.Season() {
+	case Summer:
+		if r < 45 {
+			return battle.Rainy
+		}
+	case Autumn:
+		if r < 40 {
+			return battle.Windy
+		}
+	default:
+		if r < 20 {
+			return battle.Windy
+		}
+		if r < 35 {
+			return battle.Rainy
+		}
+	}
+	return battle.Clear
+}
+
+// fieldFor 生成某個郡的戰場。
+func (g *State) fieldFor(at int) *battle.Field {
+	p := g.Prefecture(at)
+	if p == nil {
+		return battle.Generate(battle.Params{Prefecture: at})
+	}
+	return battle.Generate(battle.Params{
+		Prefecture: at, Neighbours: p.Neighbours, Forts: p.Forts,
+		LandValue: p.LandValue, FloodRate: p.FloodRate,
+	})
+}
+
+// fight 把一場戰役交給戰術層打完，並把結果搬回局面。
+func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *BattleResult {
+	dst := g.Prefecture(to)
+	r := &BattleResult{From: from, To: to}
+
+	setup := battle.Setup{
+		Field:    g.fieldFor(to),
+		Weather:  g.weatherFor(to),
+		Seed:     uint32(g.Date.Year*13 + g.Date.Month*7 + from*31 + to),
+		FromGate: from,
+	}
+	src := g.Prefecture(from)
+	if src != nil {
+		// 「除了主守軍之外的軍隊都必須從己郡攜帶金、米」（說明書 p.28）。
+		// 帶一半，留一半給郡治理。
+		setup.AttackerGold, setup.AttackerRice = src.Gold/2, src.Rice/2
+		src.Gold -= setup.AttackerGold
+		src.Rice -= setup.AttackerRice
+	}
+	if dst != nil {
+		setup.DefenderGold, setup.DefenderRice = dst.Gold, dst.Rice
+	}
+	for _, x := range att {
+		setup.Attackers = append(setup.Attackers, toLeader(x))
+	}
+	for _, x := range def {
+		setup.Defenders = append(setup.Defenders, toLeader(x))
+	}
+
+	b := battle.New(setup)
+	r.Days = b.Auto()
+	r.AttackerWon = b.AttackerWon
+	r.Log = append(r.Log, b.Log...)
+
+	// 傷亡與生死搬回局面。
+	byIndex := map[int]*General{}
+	for _, x := range att {
+		byIndex[x.Index] = x
+	}
+	for _, x := range def {
+		byIndex[x.Index] = x
+	}
+	for _, u := range b.Units {
+		for _, l := range u.Leaders {
+			x := byIndex[l.Index]
+			if x == nil {
+				continue
+			}
+			lost := x.Soldiers - l.Soldiers
+			if lost < 0 {
+				lost = 0
+			}
+			if u.Side.Attacking() {
+				r.AttackerLost += lost
+			} else {
+				r.DefenderLost += lost
+			}
+			x.Soldiers = l.Soldiers
+			x.Stamina = l.Stamina
+			switch {
+			case l.Dead:
+				g.retire(x)
+			case l.Captured:
+				r.Captives = append(r.Captives, Captive{General: l.Index, Name: l.Name})
+			}
+		}
+	}
+	sort.Slice(r.Captives, func(i, j int) bool {
+		return r.Captives[i].General < r.Captives[j].General
+	})
+	g.seizeTreasures(r, by)
+
+	// 撤退或全滅的攻方回原郡；沒被擒沒死的守方留在原地。
+	if r.AttackerWon {
+		g.takePrefecture(from, to, att, by)
+		r.PrefectureTook = true
+	}
+	// 隨軍剩下的錢糧回到落腳的郡。
+	back := from
+	if r.AttackerWon {
+		back = to
+	}
+	if p := g.Prefecture(back); p != nil {
+		p.Gold = clampTo(p.Gold+b.Gold[battle.MainAttacker], MaxGold)
+		p.Rice = clampTo(p.Rice+b.Rice[battle.MainAttacker], MaxRice)
+	}
+	if dst != nil {
+		dst.Gold = clampTo(b.Gold[battle.MainDefender], MaxGold)
+		dst.Rice = clampTo(b.Rice[battle.MainDefender], MaxRice)
+	}
+	g.Reports = append(g.Reports, r)
+	return r
+}
+
+// seizeTreasures 是「獲勝軍若於戰後捉到敵軍君主，其寶物將全歸獲勝軍所有」
+// （說明書 p.35）。
+//
+// 要在 takePrefecture 之前叫：郡易主之後就查不出守方原本是誰了。
+func (g *State) seizeTreasures(r *BattleResult, by state.FactionID) {
+	winner := g.Faction(by)
+	if !r.AttackerWon {
+		winner = g.Faction(g.Prefecture(r.To).Owner)
+	}
+	if winner == nil {
+		return
+	}
+	for _, c := range r.Captives {
+		x := g.General(c.General)
+		if x == nil || x.Status != state.StatusLord {
+			continue
+		}
+		loser := g.Faction(x.Faction)
+		if loser == nil || loser == winner {
+			continue
+		}
+		moved := false
+		for i := range loser.Treasury {
+			if loser.Treasury[i] > 0 {
+				moved = true
+			}
+			winner.Treasury[i] += loser.Treasury[i]
+			loser.Treasury[i] = 0
+		}
+		if moved {
+			r.Log = append(r.Log, fmt.Sprintf("%s 的寶物盡歸戰勝方", x.Name))
+		}
+	}
+}

@@ -51,7 +51,7 @@ type FactionID uint8
 // NoFaction 是「沒有勢力」的哨兵值，原版用 0xFF。
 //
 // ⚠ **不要讓 0xFF 當成數值流進規則層。** 它是哨兵不是編號
-//（`CLAUDE.md` §7 第 11 條）；郡的 Owner 與人物的 Faction 都要在
+// （`CLAUDE.md` §7 第 11 條）；郡的 Owner 與人物的 Faction 都要在
 // 這一層問過 Owned／Employed 再用。
 const NoFaction = 0xFF
 
@@ -87,10 +87,10 @@ const (
 )
 
 const (
-	StatusLord     Status = 0  // 君主
-	StatusChief    Status = 1  // 軍師
-	StatusGovernor Status = 2  // 太守
-	StatusOfficer  Status = 3  // 一般武將
+	StatusLord     Status = 0 // 君主
+	StatusChief    Status = 1 // 軍師
+	StatusGovernor Status = 2 // 太守
+	StatusOfficer  Status = 3 // 一般武將
 	// StatusAvailable 是「在野而且在該郡露面」。**只有這一種算進
 	// 郡的在野武將數。**
 	StatusAvailable Status = 8
@@ -181,17 +181,17 @@ type General struct {
 
 	// 欄位版面出處 `docs/spec/003` §2——是從原版自己的格式字串讀出來的
 	// （哪一個 byte 被推進 `printf`、配哪一個標籤），不是猜的。
-	Age      uint8 // 年齡
-	Stamina  uint8 // 體能
-	Intel    uint8 // 謀略
-	War      uint8 // 戰力
-	Charm    uint8 // 魅力
-	Rank     Rank  // 職位
-	Origin   uint8 // 出身郡（1..42）
+	Age     uint8 // 年齡
+	Stamina uint8 // 體能
+	Intel   uint8 // 謀略
+	War     uint8 // 戰力
+	Charm   uint8 // 魅力
+	Rank    Rank  // 職位
+	Origin  uint8 // 出身郡（1..42）
 	// Loyalty 是忠誠。**在野者是 0xFF（NoValue）不是 0**——沒有主子就
 	// 沒有忠誠可言。實測 346 位裡 227 位是 0xFF，而且全部沒有勢力；
 	// 有勢力者的值域是 52–100。當成數值算下去會得到「在野者忠誠 255」。
-	Loyalty uint8
+	Loyalty  uint8
 	Status   Status
 	Troop    TroopType // 兵種
 	Soldiers uint16    // 兵士數
@@ -217,7 +217,7 @@ type General struct {
 // Master 是一位諸侯。
 //
 // ⚠ **諸侯記錄裡沒有姓名。** 名字要拿 LordIndex 去人物表查
-//（`docs/spec/003` §2）。16 個槽裡有兩個指向姓名是全形標點的填充筆，
+// （`docs/spec/003` §2）。16 個槽裡有兩個指向姓名是全形標點的填充筆，
 // 那是沒在用的槽——用 Active 過濾，不要硬編「前 14 個」。
 type Master struct {
 	Index int

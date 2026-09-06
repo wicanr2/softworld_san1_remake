@@ -286,7 +286,7 @@ var ColSel = color.RGBA{0xFF, 0xD0, 0x60, 0xFF}
 // factionColours 給每個勢力一個顏色。
 //
 // **這不是原版的色盤。** 原版用 `EGAFILL.PAL`／`HERCFILL.PAL`
-//（`docs/formats/01` §3），那還沒解。這裡只求「相鄰的勢力看得出不同」，
+// （`docs/formats/01` §3），那還沒解。這裡只求「相鄰的勢力看得出不同」，
 // 解出來之後要換掉。
 var factionColours = []color.RGBA{
 	{0x60, 0xC0, 0x60, 0xFF}, {0x60, 0x90, 0xE0, 0xFF}, {0xE0, 0x80, 0x60, 0xFF},

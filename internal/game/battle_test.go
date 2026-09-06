@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -58,33 +59,46 @@ func TestAttackCannotLeaveNobody(t *testing.T) {
 }
 
 // TestAttackTakesPrefecture 釘住「進攻順利則軍隊駐進被攻下的州郡」
-//（說明書 p.19），以及守軍潰散成當地在野將領。
+// （說明書 p.19），以及守軍潰散成當地在野將領。
 func TestAttackTakesPrefecture(t *testing.T) {
 	g := newGame(t)
-	// 讓洛陽打一個空白鄰郡：無主的郡沒有守軍，必勝。
-	var empty int
-	for _, n := range g.Prefecture(15).Neighbours {
-		if !g.Prefecture(n).Owned() {
-			empty = n
-			break
+	// 找一個有空白鄰郡、而且留得下人看家的郡：無主的郡沒有守軍，必勝。
+	//
+	// ⚠ **不要寫死某一個郡。** 郡的歸屬是劇本資料，寫死的那一個
+	// 一旦不符條件就變成永久 t.Skip——測試還是綠的，但什麼都沒測到。
+	from, empty := 0, 0
+	var owner state.FactionID = state.NoFaction
+	var att []int
+	for id := 1; id <= state.PrefectureCount && from == 0; id++ {
+		p := g.Prefecture(id)
+		if !p.Owned() {
+			continue
+		}
+		for _, n := range p.Neighbours {
+			if g.Prefecture(n).Owned() {
+				continue
+			}
+			if a := attackersAt(g, id, p.Owner, true); len(a) > 0 {
+				from, empty, owner, att = id, n, p.Owner, a
+				break
+			}
 		}
 	}
-	if empty == 0 {
-		t.Skip("洛陽沒有空白鄰郡")
+	if from == 0 {
+		t.Skip("這個劇本沒有「有空白鄰郡又留得下人」的郡")
 	}
-	att := attackersAt(g, 15, 5, true)
-	if len(att) == 0 {
-		t.Skip("洛陽沒有可出征的守將")
-	}
-	r, err := g.Attack(15, empty, att, 5)
+	r, err := g.Attack(from, empty, att, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !r.AttackerWon || !r.PrefectureTook {
 		t.Fatalf("打空白郡竟然沒贏：%+v", r)
 	}
-	if p := g.Prefecture(empty); p.Owner != 5 {
-		t.Errorf("攻下之後郡 %d 屬於 %d，應該是 5", empty, p.Owner)
+	if p := g.Prefecture(empty); p.Owner != owner {
+		t.Errorf("攻下之後郡 %d 屬於 %d，應該是 %d", empty, p.Owner, owner)
+	}
+	if r.Days < 1 || r.Days > 31 {
+		t.Errorf("戰役打了 %d 天，應該落在 1..31（卅天判定，說明書 p.35）", r.Days)
 	}
 	if g.Governor(empty) == nil {
 		t.Error("攻下之後沒有主事者")
@@ -99,7 +113,11 @@ func TestAttackTakesPrefecture(t *testing.T) {
 	}
 }
 
-// TestDefenderBonus 釘住守方的地利：同樣的部隊，守方應該比攻方強。
+// TestDefenderBonus 釘住 AI 估算時算得到守方的地利：同樣的部隊，
+// 守方應該比攻方強。
+//
+// 真正的勝負由主戰場打出來（`internal/battle`）；這裡的數字只影響
+// 電腦諸侯出不出兵。
 func TestDefenderBonus(t *testing.T) {
 	g := newGame(t)
 	a := g.Garrison(15)[0]
@@ -187,5 +205,121 @@ func TestPlotCostsGold(t *testing.T) {
 	}
 	if p.Gold != before-PlotCost(PlotForgery) {
 		t.Errorf("用計之後庫銀 %d，應該是 %d", p.Gold, before-PlotCost(PlotForgery))
+	}
+}
+
+// TestBattleReportIsQueued 釘住每打完一場都留下戰報。
+//
+// **戰報是三十天主戰場唯一的出口**：命令層的 `Apply` 只回錯誤，
+// 電腦諸侯的戰役玩家更是從頭到尾沒經手。少了佇列，整場戰役
+// 在畫面上就只剩「某某出兵攻某某」一行。
+func TestBattleReportIsQueued(t *testing.T) {
+	g := newGame(t)
+	from, to := 0, 0
+	var owner state.FactionID = state.NoFaction
+	var att []int
+	for id := 1; id <= state.PrefectureCount && from == 0; id++ {
+		p := g.Prefecture(id)
+		if !p.Owned() {
+			continue
+		}
+		for _, n := range p.Neighbours {
+			// 要一場**真的有人守**的戰役：打空白郡是走進去，
+			// 不會有折損，也就問不到戰報記了什麼。
+			q := g.Prefecture(n)
+			if !q.Owned() || q.Owner == p.Owner || len(g.Garrison(n)) == 0 {
+				continue
+			}
+			if a := attackersAt(g, id, p.Owner, true); len(a) > 0 {
+				from, to, owner, att = id, n, p.Owner, a
+				break
+			}
+		}
+	}
+	if from == 0 {
+		t.Skip("找不到可以出兵的郡")
+	}
+	if len(g.Reports) != 0 {
+		t.Fatal("還沒打就有戰報")
+	}
+	r, err := g.Attack(from, to, att, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := g.DrainReports()
+	if len(got) != 1 || got[0] != r {
+		t.Fatalf("戰報佇列有 %d 筆，應該剛好是剛才那一場", len(got))
+	}
+	if len(g.DrainReports()) != 0 {
+		t.Error("取走之後佇列應該清空")
+	}
+	if len(r.Log) == 0 {
+		t.Error("打了一場卻沒有逐日戰報")
+	}
+	if r.AttackerLost < 0 || r.DefenderLost < 0 {
+		t.Errorf("折損是負的：攻 %d 守 %d", r.AttackerLost, r.DefenderLost)
+	}
+	if r.AttackerLost == 0 && r.DefenderLost == 0 {
+		t.Error("打了三十天雙方都沒有折損")
+	}
+	if s := r.Summary(g); !strings.Contains(s, "攻") {
+		t.Errorf("戰報摘要看不出誰打誰：%q", s)
+	}
+}
+
+// TestLordCaptureSeizesTreasures 釘住「獲勝軍若於戰後捉到敵軍君主，
+// 其寶物將全歸獲勝軍所有」（說明書 p.35）。
+func TestLordCaptureSeizesTreasures(t *testing.T) {
+	g := newGame(t)
+	lord := g.Lord(13) // 孔融
+	if lord == nil {
+		t.Skip("找不到孔融")
+	}
+	loser, winner := g.Faction(lord.Faction), g.Faction(5)
+	if loser == nil || winner == nil {
+		t.Skip("勢力不齊")
+	}
+	loser.Treasury[0] = 3
+	winner.Treasury[0] = 1
+
+	r := &BattleResult{From: 1, To: lord.Location, AttackerWon: true,
+		Captives: []Captive{{General: lord.Index, Name: lord.Name}}}
+	g.seizeTreasures(r, 5)
+
+	if loser.Treasury[0] != 0 {
+		t.Errorf("敗方還留著 %d 件寶物，應該盡歸勝方", loser.Treasury[0])
+	}
+	if winner.Treasury[0] != 4 {
+		t.Errorf("勝方拿到 %d 件寶物，應該是 1+3=4", winner.Treasury[0])
+	}
+	if len(r.Log) == 0 {
+		t.Error("寶物易手卻沒有留下紀錄")
+	}
+}
+
+// TestNonLordCaptureKeepsTreasures 釘住只有捉到**君主**才拿得到寶物。
+func TestNonLordCaptureKeepsTreasures(t *testing.T) {
+	g := newGame(t)
+	var subordinate *General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Employed() && x.Status != state.StatusLord && x.Faction != 5 {
+			subordinate = x
+			break
+		}
+	}
+	if subordinate == nil {
+		t.Skip("找不到非君主的部將")
+	}
+	loser, winner := g.Faction(subordinate.Faction), g.Faction(5)
+	if loser == nil || winner == nil {
+		t.Skip("勢力不齊")
+	}
+	loser.Treasury[0] = 3
+	r := &BattleResult{From: 1, To: subordinate.Location, AttackerWon: true,
+		Captives: []Captive{{General: subordinate.Index, Name: subordinate.Name}}}
+	g.seizeTreasures(r, 5)
+	if loser.Treasury[0] != 3 {
+		t.Error("捉到的是部將不是君主，寶物不該易手")
 	}
 }

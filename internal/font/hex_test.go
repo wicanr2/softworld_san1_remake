@@ -42,7 +42,10 @@ func TestParseHexMinimal(t *testing.T) {
 
 // TestParseHexRejects 釘住「不報錯就會安靜地錯下去」的幾種輸入。
 func TestParseHexRejects(t *testing.T) {
-	for _, tc := range []struct{ name, src string; h int }{
+	for _, tc := range []struct {
+		name, src string
+		h         int
+	}{
 		{"高度非正", "0041:FF00", 0},
 		{"沒有冒號", "0041FF00", 2},
 		{"碼位不是十六進位", "XYZ:FF00", 2},

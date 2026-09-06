@@ -336,6 +336,6 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 	} else {
 		// 人被挖走要離開原郡，回到挖角方的所在地。
 		t.Location = prefectureID
-		}
+	}
 	return nil
 }

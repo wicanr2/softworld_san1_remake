@@ -16,10 +16,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
-	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/session"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"

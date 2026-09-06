@@ -151,7 +151,7 @@ func TestRealContainers(t *testing.T) {
 	for _, ver := range []string{"三國演義", "三國演義1加強版"} {
 		for _, tc := range []struct {
 			n       int
-			wantLen int  // 期望項數；0 表示預期開不起來
+			wantLen int // 期望項數；0 表示預期開不起來
 			first   string
 		}{
 			{0, 0, ""}, // .GRP 是 MZ，且項數 43 vs 604

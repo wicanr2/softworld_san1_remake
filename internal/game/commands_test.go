@@ -251,7 +251,7 @@ func TestRewardOncePerMonth(t *testing.T) {
 }
 
 // TestRedistributeAveragesWeighted 釘住「調整兵力後訓練度成為平均值」
-//（說明書 p.21），而且是**以兵數加權**的平均。
+// （說明書 p.21），而且是**以兵數加權**的平均。
 func TestRedistributeAveragesWeighted(t *testing.T) {
 	g := newGame(t)
 	var us []*General

@@ -106,10 +106,10 @@ type Autonomy int
 
 const (
 	// AutoNormal 由諸侯下令，太守擇人施行。
-	AutoNormal Autonomy = iota
-	AutoCivil    // 內政：太守專心處理州郡內政
-	AutoMilitary // 軍事：太守全力加強軍事力量
-	AutoSelf     // 自治：依太守的能力決定型態
+	AutoNormal   Autonomy = iota
+	AutoCivil             // 內政：太守專心處理州郡內政
+	AutoMilitary          // 軍事：太守全力加強軍事力量
+	AutoSelf              // 自治：依太守的能力決定型態
 )
 
 // String 讓型態印得出中文。
@@ -228,9 +228,23 @@ type State struct {
 	// Difficulty 是難度 1–10（原版開局時問「請設定難度(1-10)」）。
 	Difficulty int
 
+	// Reports 是還沒被讀走的戰報，舊的在前面。
+	//
+	// 戰役由命令層觸發（`AttackOrder.Apply` 只回錯誤），而電腦諸侯的
+	// 戰役玩家根本沒經手——**沒有這個佇列，三十天的主戰場就只有
+	// 「某某出兵攻某某」一行**。呼叫端用 `DrainReports` 取走。
+	Reports []*BattleResult
+
 	prefectures []Prefecture // 索引 0 是郡 1
 	generals    []General
 	factions    []Faction
+}
+
+// DrainReports 取走並清空累積的戰報。
+func (g *State) DrainReports() []*BattleResult {
+	out := g.Reports
+	g.Reports = nil
+	return out
 }
 
 // New 從一個劇本開一局。

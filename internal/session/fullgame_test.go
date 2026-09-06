@@ -146,3 +146,50 @@ func TestLogMentionsWar(t *testing.T) {
 	}
 	t.Error("五年之內沒有任何一次出兵——AI 不會打仗")
 }
+
+// TestBattleReportReachesTheLog 釘住主戰場打出來的東西會被玩家看見。
+//
+// 命令層的 `Apply` 只回錯誤，電腦諸侯的戰役玩家更是完全沒經手——
+// **戰報沒有被取走的話，一場三十天的戰役在紀錄裡只剩一行「出兵攻」**，
+// 而那一行在功能正常與戰術層根本沒跑起來的時候長得一模一樣。
+func TestBattleReportReachesTheLog(t *testing.T) {
+	s := newSession(t, ai.ModeEnhanced, state.NoFaction)
+	s.MaxLog = 100000
+	for i := 0; i < 5*12 && len(s.Battles()) == 0; i++ {
+		s.EndMonth()
+	}
+	if len(s.Battles()) == 0 {
+		t.Fatal("五年之內一場戰役都沒打起來")
+	}
+	found := false
+	for _, line := range s.Log {
+		if strings.HasPrefix(line, "⚔") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("打過戰役，紀錄裡卻沒有任何一行戰報")
+	}
+	r := s.Battles()[0]
+	if len(r.Log) == 0 {
+		t.Error("留下來的戰役沒有逐日戰報")
+	}
+	if r.Days < 1 {
+		t.Errorf("戰役打了 %d 天", r.Days)
+	}
+}
+
+// TestBattleHistoryIsBounded 釘住逐日戰報不會無限累積。
+//
+// 一場三十天的主戰場動輒上百行；全部留著，跑完一局的記憶體會
+// 跟局面本身一樣大。
+func TestBattleHistoryIsBounded(t *testing.T) {
+	s := newSession(t, ai.ModeEnhanced, state.NoFaction)
+	for i := 0; i < 20*12; i++ {
+		s.EndMonth()
+	}
+	if n := len(s.Battles()); n > MaxBattles {
+		t.Errorf("留了 %d 場戰役的逐日戰報，上限是 %d", n, MaxBattles)
+	}
+}

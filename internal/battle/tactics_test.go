@@ -1,0 +1,367 @@
+package battle
+
+import "testing"
+
+// TestStratagemThresholdsAndCosts 釘住六種計謀的智力門檻與費用（說明書 p.32–34）。
+//
+// **這張表是手冊寫死的數字**，不是 remake 調得動的參數。
+func TestStratagemThresholdsAndCosts(t *testing.T) {
+	want := []struct {
+		s     Stratagem
+		name  string
+		intel int
+		cost  int
+	}{
+		{Fire, "火攻", 80, 600},
+		{Flood, "水淹", 75, 500},
+		{Lure, "誘敵", 60, 400},
+		{Trap, "陷阱", 60, 100},
+		{Burn, "燒糧", 70, 300},
+		{Siege, "圍攻", 65, 200},
+	}
+	for _, w := range want {
+		if w.s.String() != w.name {
+			t.Errorf("計謀 %d 叫 %s，應該是 %s", w.s, w.s, w.name)
+		}
+		if got := w.s.MinIntel(); got != w.intel {
+			t.Errorf("%s 的智力門檻是 %d，手冊寫 %d", w.name, got, w.intel)
+		}
+		if got := w.s.Cost(); got != w.cost {
+			t.Errorf("%s 要 %d 金，手冊寫 %d", w.name, got, w.cost)
+		}
+	}
+	// 編號與手冊相同：1 火攻 … 6 圍攻。
+	if Fire != 1 || Flood != 2 || Lure != 3 || Trap != 4 || Burn != 5 || Siege != 6 {
+		t.Error("計謀編號要與手冊的 1–6 相同")
+	}
+}
+
+// plotting 擺一個「用計方在左、目標在右」的局面。
+func plotting(terrain Terrain, w Weather, intel uint8, gold int) (*Battle, *Unit, *Unit) {
+	f := flat(terrain)
+	b := arena(f)
+	b.Weather = w
+	spot := FromOffset(6, 6)
+	u := place(b, MainAttacker, Centre, spot, lead("軍師", 50, intel, 2000))
+	t := place(b, MainDefender, Centre, spot.Step(DirDownRight), lead("敵", 50, 50, 2000))
+	b.Gold[MainAttacker] = gold
+	b.Gold[MainDefender] = 1000
+	b.Rice[MainDefender] = 1000
+	return b, u, t
+}
+
+// TestStratagemNeedsIntelAndGold 釘住門檻與「沒有帶錢就無法用計」（說明書 p.28）。
+func TestStratagemNeedsIntelAndGold(t *testing.T) {
+	b, u, e := plotting(Plain, Windy, 79, 10000)
+	if err := b.UseStratagem(u, Fire, e.At); err == nil {
+		t.Error("智力 79 不該用得了火攻（門檻 80）")
+	}
+
+	b, u, e = plotting(Plain, Windy, 80, 599)
+	if err := b.UseStratagem(u, Fire, e.At); err == nil {
+		t.Error("隨軍只有 599 金不該用得了火攻（要 600）")
+	}
+
+	b, u, e = plotting(Plain, Windy, 80, 600)
+	if err := b.UseStratagem(u, Fire, e.At); err != nil {
+		t.Fatalf("智力 80、帶 600 金、刮風天，火攻應該成立：%v", err)
+	}
+	if b.Gold[MainAttacker] != 0 {
+		t.Errorf("用完火攻剩 %d 金，600 應該扣光", b.Gold[MainAttacker])
+	}
+	if u.Move != 0 {
+		t.Error("用計之後這一回合就結束了")
+	}
+}
+
+// TestStratagemUsesSmartestLeader 釘住門檻看隊伍裡謀略最高的那一位。
+func TestStratagemUsesSmartestLeader(t *testing.T) {
+	f := flat(Plain)
+	b := arena(f)
+	b.Weather = Windy
+	spot := FromOffset(6, 6)
+	u := place(b, MainAttacker, Centre, spot,
+		lead("莽夫", 99, 10, 1000), lead("軍師", 20, 90, 1000))
+	e := place(b, MainDefender, Centre, spot.Step(DirDownRight), lead("敵", 50, 50, 2000))
+	b.Gold[MainAttacker] = 10000
+	if err := b.UseStratagem(u, Fire, e.At); err != nil {
+		t.Errorf("隊裡有智力 90 的軍師，火攻應該用得出來：%v", err)
+	}
+}
+
+// TestWeatherGates 釘住天氣限制（說明書 p.32–34）：
+// 火攻要刮風、水淹要下雨、燒糧下雨天不能用。
+func TestWeatherGates(t *testing.T) {
+	for _, w := range []Weather{Clear, Rainy} {
+		b, u, e := plotting(Plain, w, 100, 10000)
+		if err := b.UseStratagem(u, Fire, e.At); err == nil {
+			t.Errorf("%s 的時候不該用得了火攻", w)
+		}
+	}
+	for _, w := range []Weather{Clear, Windy} {
+		b, u, e := plotting(Shallow, w, 100, 10000)
+		if err := b.UseStratagem(u, Flood, e.At); err == nil {
+			t.Errorf("%s 的時候不該用得了水淹", w)
+		}
+	}
+	b, u, e := plotting(Plain, Rainy, 100, 10000)
+	if err := b.UseStratagem(u, Burn, e.At); err == nil {
+		t.Error("下雨天無法燒糧")
+	}
+	b, u, e = plotting(Plain, Clear, 100, 10000)
+	if err := b.UseStratagem(u, Burn, e.At); err != nil {
+		t.Errorf("晴天燒糧應該成立：%v", err)
+	}
+}
+
+// TestFloodNeedsWaterOrShore 釘住「目標必須在水上或岸邊」（說明書 p.33）。
+func TestFloodNeedsWaterOrShore(t *testing.T) {
+	// 一片乾地：不成立。
+	b, u, e := plotting(Plain, Rainy, 100, 10000)
+	if err := b.UseStratagem(u, Flood, e.At); err == nil {
+		t.Error("目標在乾地上不該水淹得了")
+	}
+	// 目標腳下就是水：成立。
+	b, u, e = plotting(Plain, Rainy, 100, 10000)
+	b.Field.Set(e.At, Shallow)
+	if err := b.UseStratagem(u, Flood, e.At); err != nil {
+		t.Errorf("目標在水上，水淹應該成立：%v", err)
+	}
+	// 岸邊也算。
+	b, u, e = plotting(Plain, Rainy, 100, 10000)
+	b.Field.Set(e.At.Step(DirUp), Deep)
+	if err := b.UseStratagem(u, Flood, e.At); err != nil {
+		t.Errorf("目標在岸邊，水淹應該成立：%v", err)
+	}
+}
+
+// TestBurnNotOnWater 釘住「也不能用於水上的敵軍」（說明書 p.34）。
+func TestBurnNotOnWater(t *testing.T) {
+	b, u, e := plotting(Plain, Clear, 100, 10000)
+	b.Field.Set(e.At, Deep)
+	if err := b.UseStratagem(u, Burn, e.At); err == nil {
+		t.Error("不能對水上的敵軍燒糧")
+	}
+}
+
+// TestBurnReducesSupplies 釘住燒糧燒的是對方的錢糧。
+func TestBurnReducesSupplies(t *testing.T) {
+	b, u, e := plotting(Plain, Clear, 100, 10000)
+	gold, rice := b.Gold[MainDefender], b.Rice[MainDefender]
+	if err := b.UseStratagem(u, Burn, e.At); err != nil {
+		t.Fatalf("燒糧失敗：%v", err)
+	}
+	if b.Gold[MainDefender] >= gold || b.Rice[MainDefender] >= rice {
+		t.Errorf("燒糧後對方錢糧是 %d/%d，原本 %d/%d",
+			b.Gold[MainDefender], b.Rice[MainDefender], gold, rice)
+	}
+	if e.Soldiers() != 2000 {
+		t.Error("燒糧燒的是補給，不該當場殺兵")
+	}
+}
+
+// TestTrapPlacementAndDuration 釘住「不得用在水上、城池或關寨中」
+// 與「中計的部隊在九日內無法活動」（說明書 p.33）。
+func TestTrapPlacementAndDuration(t *testing.T) {
+	for _, bad := range []Terrain{Shallow, Deep, City, Fort} {
+		b, u, e := plotting(Plain, Clear, 100, 10000)
+		b.Field.Set(e.At, bad)
+		if err := b.UseStratagem(u, Trap, e.At); err == nil {
+			t.Errorf("陷阱不該設在%s", bad)
+		}
+	}
+	b, u, e := plotting(Plain, Clear, 100, 10000)
+	if err := b.UseStratagem(u, Trap, e.At); err != nil {
+		t.Fatalf("平原設陷阱應該成立：%v", err)
+	}
+	if e.Trapped != 9 {
+		t.Errorf("困住 %d 天，手冊寫九日", e.Trapped)
+	}
+	if e.Soldiers() != 2000 {
+		t.Error("陷阱困住敵軍，不是當場殺兵")
+	}
+}
+
+// TestLureLowersAttack 釘住誘敵讓「來犯敵軍攻擊力暫時下降」（說明書 p.33）。
+func TestLureLowersAttack(t *testing.T) {
+	b, u, e := plotting(Plain, Clear, 100, 10000)
+	before := b.power(e)
+	if err := b.UseStratagem(u, Lure, e.At); err != nil {
+		t.Fatalf("誘敵失敗：%v", err)
+	}
+	if e.Enraged <= 0 {
+		t.Fatal("誘敵之後應該掛著效果")
+	}
+	if after := b.power(e); after >= before {
+		t.Errorf("中了誘敵的攻擊力是 %d，原本 %d，應該下降", after, before)
+	}
+}
+
+// TestSiegeNeedsAllyNextToTarget 釘住「目標旁邊必須尚有其他友軍」（說明書 p.34）。
+func TestSiegeNeedsAllyNextToTarget(t *testing.T) {
+	b, u, e := plotting(Plain, Clear, 100, 10000)
+	if err := b.UseStratagem(u, Siege, e.At); err == nil {
+		t.Error("目標旁邊沒有友軍，圍攻不該成立")
+	}
+	// 派一支友軍貼上去。
+	place(b, MainAttacker, Left, e.At.Step(DirDown), lead("友", 50, 50, 1000))
+	before := e.Soldiers()
+	if err := b.UseStratagem(u, Siege, e.At); err != nil {
+		t.Fatalf("旁邊有友軍，圍攻應該成立：%v", err)
+	}
+	if e.Soldiers() >= before {
+		t.Error("圍攻之後對方兵力沒有減少")
+	}
+}
+
+// TestSiegeGetsStrongerWithMoreAllies 釘住圍的人越多打得越重。
+func TestSiegeGetsStrongerWithMoreAllies(t *testing.T) {
+	loss := func(allies int) int {
+		b, u, e := plotting(Plain, Clear, 100, 10000)
+		dirs := []Dir{DirDown, DirUp, DirUpRight}
+		for i := 0; i < allies; i++ {
+			place(b, MainAttacker, Formation(i), e.At.Step(dirs[i]),
+				lead("友", 50, 50, 1000))
+		}
+		before := e.Soldiers()
+		if err := b.UseStratagem(u, Siege, e.At); err != nil {
+			t.Fatalf("%d 支友軍的圍攻失敗：%v", allies, err)
+		}
+		return before - e.Soldiers()
+	}
+	one, three := loss(1), loss(3)
+	if three <= one {
+		t.Errorf("三支友軍圍攻只打掉 %d，一支打掉 %d——人多應該打得重", three, one)
+	}
+}
+
+// TestFireDamageOrdering 釘住火攻的地形排序（說明書 p.32–33）：
+// 樹林殺傷力最強 ＞ 平原沙漠 ＞ 山丘關寨城池 ＞ 水上損失不大。
+func TestFireDamageOrdering(t *testing.T) {
+	if !(fireDamage(Forest) > fireDamage(Plain)) {
+		t.Error("火攻在樹林應該最強")
+	}
+	if fireDamage(Plain) != fireDamage(Desert) {
+		t.Error("火攻在平原與沙漠應該相同")
+	}
+	if !(fireDamage(Plain) > fireDamage(Hill)) {
+		t.Error("火攻在平原應該重於山丘")
+	}
+	for _, tr := range []Terrain{Hill, Fort, City} {
+		if fireDamage(tr) != fireDamage(Hill) {
+			t.Errorf("火攻在%s與山丘應該相同（手冊列在同一級）", tr)
+		}
+		if !(fireDamage(tr) > fireDamage(Deep)) {
+			t.Errorf("火攻在%s應該重於水上", tr)
+		}
+	}
+	if fireDamage(Shallow) != fireDamage(Deep) {
+		t.Error("火攻在淺水與深水應該相同")
+	}
+}
+
+// TestFloodDamageOrdering 釘住水淹的地形排序（說明書 p.33）：
+// 樹林最強 ＞ 平原沙漠城池 ＞ 山上關寨 ＞ 水上損失不大。
+//
+// ⚠ 與火攻的差別在**城池**：火攻算在「損失普通」那一級，
+// 水淹算在「傷害較大」那一級。這一條就是防止兩張表被寫成同一張。
+func TestFloodDamageOrdering(t *testing.T) {
+	if !(floodDamage(Forest) > floodDamage(Plain)) {
+		t.Error("水淹在樹林應該最強")
+	}
+	for _, tr := range []Terrain{Plain, Desert, City} {
+		if floodDamage(tr) != floodDamage(Plain) {
+			t.Errorf("水淹在%s應該與平原同一級", tr)
+		}
+	}
+	if !(floodDamage(City) > floodDamage(Hill)) {
+		t.Error("水淹在城池應該重於山上")
+	}
+	if floodDamage(Hill) != floodDamage(Fort) {
+		t.Error("水淹在山上與關寨應該相同")
+	}
+	if !(floodDamage(Fort) > floodDamage(Shallow)) {
+		t.Error("水淹在關寨應該重於水上")
+	}
+	// 城池那一格是兩張表分岔的地方。
+	if fireDamage(City) == floodDamage(City) {
+		t.Error("城池的火攻與水淹殺傷不該相同——手冊把它們列在不同級")
+	}
+}
+
+// TestDuelIsDecidedByWarNotSoldiers 釘住「依其戰力強弱分高下，
+// 與率領軍力大小無關」（說明書 p.30）。
+func TestDuelIsDecidedByWarNotSoldiers(t *testing.T) {
+	b := arena(flat(Plain))
+	spot := FromOffset(6, 6)
+	// 猛將帶五十人，庸將帶兩萬人。
+	a := place(b, MainAttacker, Vanguard, spot, lead("呂布", 100, 30, 50))
+	e := place(b, MainDefender, Centre, spot.Step(DirDownRight), lead("庸將", 10, 30, 20000))
+	if err := b.Duel(a, DirDownRight, true); err != nil {
+		t.Fatalf("單挑失敗：%v", err)
+	}
+	loser := &e.Leaders[0]
+	if !loser.Captured && !loser.Dead {
+		t.Errorf("戰力 10 對上 100 應該落敗（體能剩 %d）", loser.Stamina)
+	}
+	if loser.Stamina != 0 {
+		t.Errorf("落敗者體能是 %d，應該降到 0", loser.Stamina)
+	}
+	if a.Leaders[0].Captured || a.Leaders[0].Dead {
+		t.Error("戰力 100 的一方不該落敗")
+	}
+	if a.Move != 0 {
+		t.Error("單挑之後這一回合就結束了")
+	}
+}
+
+// TestRefusingDuelCostsSoldiers 釘住「若拒絕挑戰，麾下士兵將有部份逃跑」
+// （說明書 p.30）。
+func TestRefusingDuelCostsSoldiers(t *testing.T) {
+	b := arena(flat(Plain))
+	spot := FromOffset(6, 6)
+	a := place(b, MainAttacker, Vanguard, spot, lead("挑戰者", 90, 30, 1000))
+	e := place(b, MainDefender, Centre, spot.Step(DirDownRight), lead("怯戰", 20, 30, 1000))
+	if err := b.Duel(a, DirDownRight, false); err != nil {
+		t.Fatalf("拒絕單挑不該回錯誤：%v", err)
+	}
+	if e.Soldiers() != 900 {
+		t.Errorf("拒戰後剩 %d 兵，%d%% 逃跑應該剩 900",
+			e.Soldiers(), TuneRefuseDuelLoss)
+	}
+	if e.Leaders[0].Captured || e.Leaders[0].Dead {
+		t.Error("拒絕挑戰的人不會因此被擒或被斬")
+	}
+}
+
+// TestDuelRejectsFriendlyAndEmpty 釘住單挑一樣不能挑友軍或空氣。
+func TestDuelRejectsFriendlyAndEmpty(t *testing.T) {
+	b := arena(flat(Plain))
+	spot := FromOffset(6, 6)
+	a := place(b, MainAttacker, Vanguard, spot, lead("甲", 50, 50, 1000))
+	place(b, AidAttacker, Left, spot.Step(DirUp), lead("友", 50, 50, 1000))
+	if err := b.Duel(a, DirUp, true); err == nil {
+		t.Error("不該跟友軍單挑")
+	}
+	if err := b.Duel(a, DirDown, true); err == nil {
+		t.Error("那個方向沒有部隊，單挑應該失敗")
+	}
+}
+
+// TestStratagemRejectsFriendlyAndEmpty 釘住計謀的目標也要是敵軍。
+func TestStratagemRejectsFriendlyAndEmpty(t *testing.T) {
+	b := arena(flat(Plain))
+	spot := FromOffset(6, 6)
+	u := place(b, MainAttacker, Centre, spot, lead("軍師", 50, 100, 1000))
+	place(b, AidAttacker, Left, spot.Step(DirUp), lead("友", 50, 50, 1000))
+	b.Gold[MainAttacker] = 10000
+	if err := b.UseStratagem(u, Trap, spot.Step(DirUp)); err == nil {
+		t.Error("不該對友軍用計")
+	}
+	if err := b.UseStratagem(u, Trap, spot.Step(DirDown)); err == nil {
+		t.Error("那裡沒有部隊，用計應該失敗")
+	}
+	if b.Gold[MainAttacker] != 10000 {
+		t.Error("用計失敗不該扣錢")
+	}
+}

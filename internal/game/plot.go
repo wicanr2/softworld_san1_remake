@@ -17,11 +17,11 @@ import (
 type Plot int
 
 const (
-	PlotTigerWolf Plot = iota + 1 // 1 驅虎吞狼：教唆某郡發兵攻打他郡
-	PlotFarNear                   // 2 遠交近攻：計誘他郡與我合攻鄰郡
-	PlotForgery                   // 3 偽書使疑：造假離間他郡君臣，降低其部將忠誠
-	PlotIncite                    // 4 策反人民：鼓動他郡人民反叛，減少米、金和人民忠誠
-	PlotJointAttack               // 5 聯合出兵：聯絡我方二郡合攻鄰郡
+	PlotTigerWolf   Plot = iota + 1 // 1 驅虎吞狼：教唆某郡發兵攻打他郡
+	PlotFarNear                     // 2 遠交近攻：計誘他郡與我合攻鄰郡
+	PlotForgery                     // 3 偽書使疑：造假離間他郡君臣，降低其部將忠誠
+	PlotIncite                      // 4 策反人民：鼓動他郡人民反叛，減少米、金和人民忠誠
+	PlotJointAttack                 // 5 聯合出兵：聯絡我方二郡合攻鄰郡
 )
 
 // String 讓計謀印得出中文。

@@ -77,7 +77,7 @@ type faithful struct {
 	name string
 }
 
-func (f *faithful) Mode() Mode  { return f.mode }
-func (f *faithful) Name() string { return f.name }
-func (f *faithful) Derived() bool { return false }
+func (f *faithful) Mode() Mode                                     { return f.mode }
+func (f *faithful) Name() string                                   { return f.name }
+func (f *faithful) Derived() bool                                  { return false }
 func (f *faithful) Plan(*game.State, state.FactionID) []game.Order { return nil }

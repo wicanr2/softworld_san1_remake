@@ -34,13 +34,13 @@ const MinIntelForChief = 80
 
 // 各項花費，單位是金（說明書 p.20–34）。
 const (
-	CostConscriptPerSoldier = 1  // 徵兵，每人 1 金
-	CostArmsPer100          = 1  // 武器，每 100 單位 1 金
-	CostReclaim             = 10 // 開墾
-	CostFloodControl        = 10 // 防洪
-	CostSearch              = 5  // 尋訪
-	CostRecruit             = 30 // 登用
-	CostDismiss             = 10 // 撤職
+	CostConscriptPerSoldier = 1   // 徵兵，每人 1 金
+	CostArmsPer100          = 1   // 武器，每 100 單位 1 金
+	CostReclaim             = 10  // 開墾
+	CostFloodControl        = 10  // 防洪
+	CostSearch              = 5   // 尋訪
+	CostRecruit             = 30  // 登用
+	CostDismiss             = 10  // 撤職
 	CostHeadhunt            = 100 // 挖角
 	CostScoutEnemy          = 10  // 查看敵軍
 	MaxReward               = 100 // 賞賜上限

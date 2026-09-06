@@ -16,7 +16,7 @@ func TestSeasons(t *testing.T) {
 }
 
 // TestAutumnHarvest 釘住秋收：米糧進倉、稅金入庫、土地價值略降
-//（說明書 p.37、p.21）。
+// （說明書 p.37、p.21）。
 func TestAutumnHarvest(t *testing.T) {
 	g := newGame(t)
 	p := g.Prefecture(15) // 洛陽，人口最多

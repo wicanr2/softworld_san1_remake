@@ -59,7 +59,7 @@ const (
 
 // Event 是一則發生過的事件，給訊息列與測試用。
 type Event struct {
-	Prefecture int    // 0 表示不屬於特定郡
+	Prefecture int // 0 表示不屬於特定郡
 	Text       string
 }
 
