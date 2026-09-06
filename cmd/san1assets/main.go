@@ -294,15 +294,20 @@ type musicJSON struct {
 type trackRow struct {
 	Index       int      `json:"index"`
 	Name        string   `json:"name"`
-	File        string   `json:"file"`
+	MIDI        string   `json:"midi"`
+	Audio       string   `json:"audio"`
 	Tempo       int      `json:"tempo_bpm"`
 	Ticks       int      `json:"ticks"`
 	Seconds     float64  `json:"seconds"`
 	Events      int      `json:"events"`
+	Percussive  bool     `json:"percussive"`
 	Instruments []string `json:"instruments"`
 }
 
-// exportMusic 把配樂存成標準 MIDI ＋ 一份目錄。
+// exportMusic 把配樂存成標準 MIDI、OPL2 合成出來的波形，加一份目錄。
+//
+// 波形寫成 WAV；轉成 OGG 是 `tools/assets.sh` 的事——編碼器不進這個
+// 執行檔，容器裡的 ffmpeg 做這件事做得比較好。
 func exportMusic(c *assets.Container, out string, mf *manifest) (int, error) {
 	if c == nil {
 		return 0, fmt.Errorf("沒有 DATA1，讀不到配樂")
@@ -318,17 +323,44 @@ func exportMusic(c *assets.Container, out string, mf *manifest) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	from := make([]string, len(tracks))
+	for i := range tracks {
+		from[i] = fmt.Sprintf("MUS.GRP 第 %d 項", i*2)
+	}
+	// `MUSV` 是另外一首長的，容器與版面和五首短的一樣。
+	if long, err := music.ParseAll(get(music.LongIndex), get(music.LongData)); err == nil {
+		for i, tr := range long {
+			tracks = append(tracks, tr)
+			from = append(from, fmt.Sprintf("MUSV.GRP 第 %d 項", i*2))
+		}
+	}
+
 	dir := filepath.Join(out, "music")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return 0, err
 	}
-	cat := musicJSON{Note: "音高與節奏是原版的；音色不是——原版走 AdLib（OPL2），" +
-		"音色參數的對應還沒解（docs/formats/06 §6）"}
+	cat := musicJSON{Note: "音高、節奏、音色都是原版的：事件流照 AdLib 的聲部" +
+		"分配送進 OPL2，音色參數取自曲子自己的音色庫（docs/formats/06）。" +
+		"MIDI 是給編輯用的，音色不會是 OPL2 的聲音。"}
 	for i, tr := range tracks {
 		name := music.Name(i)
-		rel := filepath.Join("music", fmt.Sprintf("%d-%s.mid", i+1, name))
+		base := fmt.Sprintf("%d-%s", i+1, name)
+		midRel := filepath.Join("music", base+".mid")
 		blob := tr.Song.MIDI()
-		if err := os.WriteFile(filepath.Join(out, rel), blob, 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(out, midRel), blob, 0o644); err != nil {
+			return i, err
+		}
+		wavRel := filepath.Join("music", base+".wav")
+		pcm := music.Render(tr.Song, tr.Bank)
+		f, err := os.Create(filepath.Join(out, wavRel))
+		if err != nil {
+			return i, err
+		}
+		if err := music.WriteWAV(f, pcm, music.OPLRate); err != nil {
+			f.Close()
+			return i, err
+		}
+		if err := f.Close(); err != nil {
 			return i, err
 		}
 		var ins []string
@@ -336,16 +368,24 @@ func exportMusic(c *assets.Container, out string, mf *manifest) (int, error) {
 			ins = append(ins, in.Name)
 		}
 		cat.Tracks = append(cat.Tracks, trackRow{
-			Index: i + 1, Name: name, File: filepath.Base(rel),
+			Index: i + 1, Name: name,
+			MIDI: filepath.Base(midRel), Audio: base + ".ogg",
 			Tempo: tr.Song.Tempo, Ticks: tr.Song.Ticks,
 			Seconds: tr.Song.Duration(), Events: len(tr.Song.Events),
-			Instruments: ins,
+			Percussive: tr.Song.Percussive, Instruments: ins,
 		})
-		mf.Files = append(mf.Files, fileRecord{
-			Path: rel, From: "MUS.GRP 第 " + fmt.Sprint(i*2) + " 項",
-			Container: "DATA1", Bytes: len(blob), SHA256: sum(blob),
-			Note: "標準 MIDI；音色不是原版的 AdLib 音色",
-		})
+		mf.Files = append(mf.Files,
+			fileRecord{
+				Path: midRel, From: from[i], Container: "DATA1",
+				Bytes: len(blob), SHA256: sum(blob),
+				Note: "標準 MIDI；音色不是原版的 AdLib 音色",
+			},
+			fileRecord{
+				Path: wavRel, From: from[i], Container: "DATA1",
+				Bytes: len(pcm) * 2, SHA256: "",
+				Note: fmt.Sprintf("OPL2 合成，%d Hz 單聲道；tools/assets.sh 會轉成 OGG",
+					music.OPLRate),
+			})
 	}
 	b, err := json.MarshalIndent(cat, "", "  ")
 	if err != nil {

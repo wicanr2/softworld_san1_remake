@@ -313,3 +313,134 @@ func TestVarBytes(t *testing.T) {
 		}
 	}
 }
+
+// TestInstrumentFieldsAreInRange 釘住解出來的音色參數落在 OPL2 的值域。
+//
+// 版面（`docs/formats/06` §5）是拿原版填進 OPL2 的暫存器值比對出來的。
+// 值域檢查擋的是另一件事：**欄位挪一格仍然解得出「參數」**，
+// 只是那些數字會爆掉值域——十六種音色裡只要有一個 MULT 大於 15
+// 就表示版面錯了。
+func TestInstrumentFieldsAreInRange(t *testing.T) {
+	d := data1(t)
+	tracks, err := ParseAll(d[SongIndex], d[SongData])
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, perc := 0, 0
+	for _, tr := range tracks {
+		for _, in := range tr.Bank.Instruments {
+			// 單運算子的節奏音色，載波那一半是別的資料，不必落在值域裡。
+			if in.Percussive() {
+				perc++
+				continue
+			}
+			for _, c := range []struct {
+				tag string
+				op  Operator
+			}{{"調變", in.Modulator()}, {"載波", in.Carrier()}} {
+				op := c.op
+				for _, f := range []struct {
+					name  string
+					v, hi int
+				}{
+					{"KSL", op.KSL, 3}, {"MULT", op.Mult, 15}, {"FB", op.FB, 7},
+					{"AR", op.AR, 15}, {"SL", op.SL, 15}, {"EG", op.EG, 1},
+					{"DR", op.DR, 15}, {"RR", op.RR, 15}, {"TL", op.TL, 63},
+					{"AM", op.AM, 1}, {"VIB", op.VIB, 1}, {"KSR", op.KSR, 1},
+					{"Wave", op.Wave, 3},
+				} {
+					if f.v < 0 || f.v > f.hi {
+						t.Errorf("%s 的%s %s ＝ %d，值域是 0..%d",
+							in.Name, c.tag, f.name, f.v, f.hi)
+					}
+				}
+			}
+			n++
+		}
+	}
+	if n == 0 {
+		t.Fatal("一件音色都沒有")
+	}
+	t.Logf("%d 件音色的參數全部落在值域裡，另有 %d 件是單運算子", n, perc)
+}
+
+// TestRegistersRoundTrip 釘住參數組回暫存器再拆開是同一組數字。
+func TestRegistersRoundTrip(t *testing.T) {
+	op := Operator{KSL: 2, Mult: 9, FB: 5, AR: 14, SL: 7, EG: 1,
+		DR: 3, RR: 11, TL: 42, AM: 1, VIB: 0, KSR: 1, Wave: 2}
+	r20, r40, r60, r80, rE0 := op.Registers()
+	got := Operator{
+		AM: int(r20 >> 7 & 1), VIB: int(r20 >> 6 & 1), EG: int(r20 >> 5 & 1),
+		KSR: int(r20 >> 4 & 1), Mult: int(r20 & 15),
+		KSL: int(r40 >> 6), TL: int(r40 & 63),
+		AR: int(r60 >> 4), DR: int(r60 & 15),
+		SL: int(r80 >> 4), RR: int(r80 & 15),
+		Wave: int(rE0 & 3), FB: op.FB,
+	}
+	if got != op {
+		t.Errorf("組回暫存器再拆開變成 %+v，原本是 %+v", got, op)
+	}
+}
+
+// TestCarrierHasNoFeedback 釘住載波的回授固定是 0。
+//
+// OPL2 的回授只作用在調變器上；音色庫在載波那一格留的是垃圾值
+// （`piano1` 是 0x40F6、`bdrum1` 是 0x102F），照抄會讓合成出來的聲音
+// 完全不對。
+func TestCarrierHasNoFeedback(t *testing.T) {
+	d := data1(t)
+	tracks, err := ParseAll(d[SongIndex], d[SongData])
+	if err != nil {
+		t.Fatal(err)
+	}
+	junk := 0
+	for _, tr := range tracks {
+		for _, in := range tr.Bank.Instruments {
+			if in.Carrier().FB != 0 {
+				t.Errorf("%s 的載波回授不是 0", in.Name)
+			}
+			if in.Param(carrierBase+fieldFB) > 7 {
+				junk++
+			}
+		}
+	}
+	if junk == 0 {
+		t.Error("沒有任何音色在載波的 FB 那一格留下超出值域的值——" +
+			"那一格本來就該是垃圾，一個都沒有反而可疑")
+	}
+}
+
+// TestConnectionIsInverted 釘住 CON 的反相。
+//
+// 音色庫寫 1 代表調頻，OPL2 的 `0xC0` 位元 0 寫 1 代表相加。照抄會把
+// 兩個運算子從串接變成並聯，聽起來完全是另一件樂器。
+func TestConnectionIsInverted(t *testing.T) {
+	d := data1(t)
+	tracks, err := ParseAll(d[SongIndex], d[SongData])
+	if err != nil {
+		t.Fatal(err)
+	}
+	fm, additive := 0, 0
+	for _, tr := range tracks {
+		for _, in := range tr.Bank.Instruments {
+			c := in.Connection()
+			if int(c)>>1&7 != in.Modulator().FB&7 {
+				t.Errorf("%s 的回授沒有進 0xC0", in.Name)
+			}
+			if in.Param(fieldCON)&1 == 1 {
+				if c&1 != 0 {
+					t.Errorf("%s 的 CON 是 1（調變），0xC0 位元 0 該是 0", in.Name)
+				}
+				fm++
+			} else {
+				if c&1 != 1 {
+					t.Errorf("%s 的 CON 是 0（相加），0xC0 位元 0 該是 1", in.Name)
+				}
+				additive++
+			}
+		}
+	}
+	if fm == 0 || additive == 0 {
+		t.Errorf("兩種連接方式要各有樣本，得到調頻 %d、相加 %d", fm, additive)
+	}
+}

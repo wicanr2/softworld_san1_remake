@@ -27,6 +27,7 @@ const (
 	hdrTicks   = 0x26 // uint32，全曲長度（tick）
 	hdrDataLen = 0x2A // uint32，MIDI 資料的位元組數
 	hdrEvents  = 0x2E // uint32，事件數
+	hdrPercuss = 0x3A // uint8，1 ＝ 節奏模式
 	hdrTempo   = 0x3C // uint8，速度（BPM）
 	hdrSize    = 0x46 // MIDI 資料的起點
 
@@ -47,6 +48,18 @@ type Song struct {
 	// Tempo 是速度（BPM），Ticks 是全曲長度。
 	Tempo int
 	Ticks int
+
+	// Percussive 是 AdLib 的節奏模式：OPL2 的三個頻道改成五件打擊樂器，
+	// 旋律聲部從九個減成六個。
+	//
+	// 出處是表頭 `0x3A`，而五首曲子用到的聲部數量正好把它分成兩組：
+	// 這個位元組是 0 的兩首用到第七、八、九個聲部（`思古` 九個、
+	// `小徑` 七個），是 1 的三首旋律聲部都不超過六個，多出來的聲部
+	// 掛的是 `snare1`、`tom1`、`hihat3` 這些打擊音色。
+	//
+	// 擷取原版的埠寫入也對得上：節奏模式的曲子播放期間 `0xBD` 的
+	// 位元 5 是 1，換到 `思古` 之後整段是 0。
+	Percussive bool
 
 	// Events 是照時間排好的 MIDI 事件。
 	Events []Event
@@ -113,6 +126,109 @@ func (in Instrument) Param(i int) int {
 		return 0
 	}
 	return int(binary.LittleEndian.Uint16(in.Raw[i*2:]))
+}
+
+// 音色的欄位版面。
+//
+// 56 個位元組是 28 個小端 16 位元欄位，排成兩個運算子加兩個波形：
+//
+//	欄位 0–12   調變運算子：KSL MULT FB AR SL EG DR RR TL AM VIB KSR CON
+//	欄位 13–25  載波運算子：同樣的十三項
+//	欄位 26–27  兩個運算子的波形
+//
+// 十三項的順序與 AdLib Visual Composer 音色庫（`.BNK`）的運算子記錄
+// 相同，只是每一項從一個位元組加寬成一個字。
+//
+// 驗法是拿原版填進 OPL2 的暫存器值回頭比對（`cmd/san1opl`）：58 段
+// 音色載入裡，25 段的二十三個參數與音色庫逐項相同，涵蓋六件不同的
+// 音色；其餘 32 段是驅動程式重設時對九個頻道各填一次的內建預設音色，
+// 不來自音色庫。
+//
+// 兩個欄位不能照抄：
+//
+//   - **載波的 FB 是垃圾。** OPL2 的回授寫在 `0xC0`，一份是整個頻道
+//     共用的，音色庫在載波那一格留的是未初始化的值（`piano1` 是
+//     0x40F6、`bdrum1` 是 0x102F）。
+//   - **CON 與暫存器的位元相反。** 音色庫寫 1 代表調頻，而 `0xC0`
+//     的位元 0 是 1 代表相加。58 段載入全部符合這個關係。
+//
+// 節奏模式的小鼓、鈸、鈴鼓、通鼓在 OPL2 裡是單運算子，音色庫裡那一
+// 半沒有意義（`hihat1` 的載波整段是別的資料）。要用哪一半由聲部決定，
+// 不由音色決定。
+const (
+	fieldKSL  = 0
+	fieldMult = 1
+	fieldFB   = 2
+	fieldAR   = 3
+	fieldSL   = 4
+	fieldEG   = 5
+	fieldDR   = 6
+	fieldRR   = 7
+	fieldTL   = 8
+	fieldAM   = 9
+	fieldVIB  = 10
+	fieldKSR  = 11
+	fieldCON  = 12
+
+	// carrierBase 是載波那一組的起點。
+	carrierBase = 13
+	// waveMod／waveCar 是兩個波形欄位。
+	waveMod = 26
+	waveCar = 27
+)
+
+// Operator 是一個運算子的參數，欄位名與 OPL2 的暫存器一致。
+type Operator struct {
+	KSL, Mult, FB, AR, SL, EG, DR, RR, TL, AM, VIB, KSR, Wave int
+}
+
+// Modulator／Carrier 取兩個運算子的參數。載波的回授固定是 0。
+func (in Instrument) Modulator() Operator { return in.operator(0, waveMod) }
+func (in Instrument) Carrier() Operator {
+	op := in.operator(carrierBase, waveCar)
+	op.FB = 0
+	return op
+}
+
+func (in Instrument) operator(base, wave int) Operator {
+	p := func(i int) int { return in.Param(base + i) }
+	return Operator{
+		KSL: p(fieldKSL), Mult: p(fieldMult), FB: p(fieldFB),
+		AR: p(fieldAR), SL: p(fieldSL), EG: p(fieldEG),
+		DR: p(fieldDR), RR: p(fieldRR), TL: p(fieldTL),
+		AM: p(fieldAM), VIB: p(fieldVIB), KSR: p(fieldKSR),
+		Wave: in.Param(wave),
+	}
+}
+
+// Registers 把一個運算子的參數組成 OPL2 的五個暫存器值。
+//
+// 原版每個運算子固定寫 `40, C0, 60, 80, 20, E0` 六個；這裡回的是值，
+// 位址由呼叫端依頻道與運算子算。
+func (op Operator) Registers() (r20, r40, r60, r80, rE0 byte) {
+	r20 = byte(op.AM&1<<7 | op.VIB&1<<6 | op.EG&1<<5 | op.KSR&1<<4 | op.Mult&15)
+	r40 = byte(op.KSL&3<<6 | op.TL&63)
+	r60 = byte(op.AR&15<<4 | op.DR&15)
+	r80 = byte(op.SL&15<<4 | op.RR&15)
+	rE0 = byte(op.Wave & 3)
+	return
+}
+
+// Connection 是 `0xC0` 的值：回授取自調變器，連接位元是音色庫 CON 的反相。
+func (in Instrument) Connection() byte {
+	con := in.Param(fieldCON)
+	return byte(in.Modulator().FB&7<<1 | (1 - con&1))
+}
+
+// Percussive 說這件音色是不是只有調變那一半有意義。
+//
+// 判準是**載波的欄位有沒有爆出值域**：單運算子的節奏音色，音色庫在
+// 載波那一半留的是別的資料，MULT、AR 這些四位元欄位會出現上千的值。
+func (in Instrument) Percussive() bool {
+	op := in.Carrier()
+	return op.KSL > 3 || op.Mult > 15 || op.AR > 15 || op.SL > 15 ||
+		op.EG > 1 || op.DR > 15 || op.RR > 15 || op.TL > 63 ||
+		op.AM > 1 || op.VIB > 1 || op.KSR > 1 || op.Wave > 3
 }
 
 // Bank 是一首曲子用的音色庫。
@@ -186,8 +302,9 @@ func ParseSong(b []byte) (*Song, error) {
 		return nil, fmt.Errorf("music: 表頭說資料有 %d 個位元組，實際有 %d", dataLen, want)
 	}
 	s := &Song{
-		Tempo: int(b[hdrTempo]),
-		Ticks: int(binary.LittleEndian.Uint32(b[hdrTicks:])),
+		Tempo:      int(b[hdrTempo]),
+		Ticks:      int(binary.LittleEndian.Uint32(b[hdrTicks:])),
+		Percussive: b[hdrPercuss] != 0,
 	}
 	want := int(binary.LittleEndian.Uint32(b[hdrEvents:]))
 	events, err := parseEvents(b[hdrSize:])
