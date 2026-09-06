@@ -110,10 +110,13 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 	var out []game.Order
 	k := internalAffairsRange(g.AILevel(id))
 	for _, p := range g.Territory(id) {
-		gov := g.Governor(p)
-		if gov == nil {
+		// **行動者不是太守**：表 `0x54d4` 按「智 ＋ 武 ＋ 加權表[身分]」
+		// 排序，取第一位——君主優先，其次軍師、太守、一般武將。
+		act := actor(g, id, p)
+		if act == nil {
 			continue
 		}
+		gov := act
 		// 內政（表 `0x5534`）
 		switch g.Roll(k, int(id), p, 0x5534) {
 		case 0:
@@ -254,6 +257,41 @@ func betterChief(g *game.State, id state.FactionID, prefecture int) *game.Genera
 		pick = x
 	}
 	return pick
+}
+
+// actorWeight 是「這回合誰行動」的身分加權（`L0`、`[base]`）。
+//
+// 原版的排序鍵是 **`智 + 武 + 加權表[身分]`**（`0xf1d7` 的
+// `add ax, [bx+0x5986]`），表的內容從記憶體讀出來：
+//
+//	身分 0 君主 2000、1 軍師 1600、2 太守 1200、3 一般武將 800
+//	身分 4–7 重複 2000／1600／1200／800
+//	身分 8、9（在野）與 11（未登場）0、身分 10 是 400
+//
+// **權重完全壓過能力值**（智 ＋ 武 最多 200，而權重差是 400 的倍數），
+// 所以排序實際上是「先看身分，同身分再比智 ＋ 武」。
+var actorWeight = [12]int{2000, 1600, 1200, 800, 2000, 1600, 1200, 800, 0, 0, 400, 0}
+
+// actor 是這個郡這回合的行動者（表 `0x54d4` 選出來的那一位）。
+//
+// 分派器的第一個呼叫把它寫進全域，**後面八種行為讀的都是它**
+// （`docs/re/03` §1.4）。
+func actor(g *game.State, id state.FactionID, prefecture int) *game.General {
+	var best *game.General
+	bestKey := -1
+	for _, x := range g.Garrison(prefecture) {
+		if x.Faction != id {
+			continue
+		}
+		w := 0
+		if int(x.Status) < len(actorWeight) {
+			w = actorWeight[x.Status]
+		}
+		if k := int(x.Intel) + int(x.War) + w; k > bestKey {
+			best, bestKey = x, k
+		}
+	}
+	return best
 }
 
 // mostCharming 是守軍裡魅力最高的一位。

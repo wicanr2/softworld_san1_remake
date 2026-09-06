@@ -275,6 +275,17 @@ func TestZZDispatch(t *testing.T) {
 				return
 			}
 			dumped[table] = true
+			// 順便把「行動者排序」的加權表讀出來：鍵是
+			// 智 ＋ 武 ＋ 表[身分]，表在 DS:0x5986，以身分×2 索引
+			// （`0xf1d7` 的 `add ax, [bx+0x5986]`，`docs/re/03` §1.4）。
+			if table == 0x54d4 {
+				var w []string
+				for st := 0; st < 12; st++ {
+					w = append(w, fmt.Sprintf("身分%d=%d", st,
+						int16(word(o, ds*16+0x5986+uint32(st)*2))))
+				}
+				seen["  行動者排序的加權表 DS:0x5986："+strings.Join(w, " ")] = 0
+			}
 			// 八個項目一次讀完：表彼此相差 0x20 ＝ 8 個 far pointer。
 			for i := 0; i < 8; i++ {
 				ent := ds*16 + uint32(table) + uint32(i)*4

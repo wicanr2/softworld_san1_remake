@@ -284,3 +284,38 @@ func TestBaseRewardsOnlyAtLevelThree(t *testing.T) {
 		}
 	}
 }
+
+// TestActorIsHighestRank 釘住行動者的挑法。
+//
+// 原版的排序鍵是 `智 + 武 + 加權表[身分]`，而加權表的差是 400 的倍數、
+// 智 ＋ 武 最多 200——**權重壓過能力值**，所以身分高的一定排前面。
+// 判準要同時驗兩件事：跨身分時身分贏，同身分時智 ＋ 武 贏。
+func TestActorIsHighestRank(t *testing.T) {
+	g := newGame(t, 1)
+	for _, p := range g.Territory(1) {
+		a := actor(g, 1, p)
+		if a == nil {
+			continue
+		}
+		for _, x := range g.Garrison(p) {
+			if x.Faction != 1 || x == a {
+				continue
+			}
+			wa := actorWeight[a.Status]
+			wx := actorWeight[x.Status]
+			if wx > wa {
+				t.Errorf("郡 %d：選了身分 %d（權重 %d），但有身分 %d（權重 %d）",
+					p, a.Status, wa, x.Status, wx)
+			}
+			if wx == wa && int(x.Intel)+int(x.War) > int(a.Intel)+int(a.War) {
+				t.Errorf("郡 %d：同身分下選了智+武 %d，但有 %d",
+					p, int(a.Intel)+int(a.War), int(x.Intel)+int(x.War))
+			}
+		}
+	}
+	// 權重表本身也釘住——它是從記憶體讀出來的，不是推的。
+	want := [12]int{2000, 1600, 1200, 800, 2000, 1600, 1200, 800, 0, 0, 400, 0}
+	if actorWeight != want {
+		t.Errorf("加權表是 %v，原版讀出來是 %v", actorWeight, want)
+	}
+}
