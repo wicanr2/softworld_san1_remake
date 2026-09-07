@@ -96,6 +96,11 @@ const (
 	StatusAvailable Status = 8
 	StatusIdle      Status = 9  // 在野，不列入郡的在野數
 	StatusUnborn    Status = 11 // 還沒登場（此時諸葛亮 8 歲）
+
+	// StatusFallen 是**已故**。君主死掉時原版就是把身分寫成 12、
+	// 勢力與領地都寫成 `0xFF`（`0x14a5d`–`0x14a6a`），接著才處理繼承。
+	// 劇本 001 有一位這樣的人。
+	StatusFallen Status = 12
 )
 
 // Governs 回報這個身分是不是郡的主事者。

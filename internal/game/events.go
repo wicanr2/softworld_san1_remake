@@ -755,16 +755,17 @@ func (g *State) retire(x *General) {
 	if !wasGoverning {
 		return
 	}
-	if succ := g.successorFor(at, x.Index, faction); succ != nil {
-		succ.Status = state.StatusGovernor
-		if wasLord {
-			// 君主死了由繼承者接位——「只有在繼承君主時才會改變等級」
-			//（說明書 p.18）。
-			succ.Status = state.StatusLord
-			if f := g.Faction(faction); f != nil {
-				f.Lord = succ.Index
-			}
+	if wasLord {
+		// **死掉的君主身分是 12（已故）不是在野**——原版 `0x14a5d`
+		// 直接寫 12，而在野（9）的人還會被登用。
+		x.Status = state.StatusFallen
+		// 君主的繼承不看郡：原版掃**整個勢力**（`0x14a84` 的 350 筆迴圈）
+		// 依魅力挑，所以繼承者常常人在別的郡。
+		if g.SucceedLord(faction) != nil {
+			return
 		}
+	} else if succ := g.successorFor(at, x.Index, faction); succ != nil {
+		succ.Status = state.StatusGovernor
 		return
 	}
 	if p := g.Prefecture(at); p != nil {
@@ -800,4 +801,61 @@ func (g *State) Winner() (f state.FactionID, hasSeal bool, done bool) {
 	}
 	x := g.Faction(only)
 	return only, x != nil && x.Treasury[TreasureSeal] > 0, true
+}
+
+// SuccessionPrestigeScale 是繼承之後人望要乘的分母（原版是浮點的
+// `× 0.01` 再 `+ 0.5` 取整，`DS:0xa6f8`／`DS:0xa700`，`L0`）。
+const SuccessionPrestigeScale = 100
+
+// SuccessionPrestige 是繼承之後這個勢力剩多少人望（`L0`、`[base]`）：
+//
+//	新人望 = 四捨五入(繼承者魅力 × 原人望 ÷ 100)
+//
+// **魅力就是繼承的代價**：魅力 100 的世子保住全部人望，魅力 50 的
+// 一上任就折半。人望決定部下忠誠每年的漲跌（`Faction.Prestige`），
+// 所以一次糟糕的繼承會讓整個勢力慢慢離心。
+func SuccessionPrestige(charm, prestige int) int {
+	return (charm*prestige + SuccessionPrestigeScale/2) / SuccessionPrestigeScale
+}
+
+// SucceedLord 讓一個勢力的君主之位由部下接手（原版 `0x14a40`–`0x14ce6`，
+// `L0`、`[base]`）。找不到人回 nil，那就是「無人繼承」。
+//
+// 原版的順序：
+//
+//	死者身分 ← 12（已故）、勢力與領地 ← 0xFF
+//	候選 ＝ 掃全人物表，勢力欄等於這一方的人
+//	依**魅力**由高到低排序
+//	電腦取排頭；玩家自己挑（諸侯 offset 0 == 1 ＝ 玩家操縱）
+//	勢力人望 ← 四捨五入(繼承者魅力 × 原人望 ÷ 100)
+//	繼承者原本是軍師 → 軍師欄清空（一個人不能同時是君主與軍師）
+//	繼承者：職位 ← 0、兵種 ← 6、身分 ← 君主
+//
+// **候選不限於死者所在的郡**——掃的是整張人物表。只從同一個郡找的話，
+// 君主戰死在外地時會找不到人，而勢力就這樣無聲地滅了。
+func (g *State) SucceedLord(id state.FactionID) *General {
+	f := g.Faction(id)
+	if f == nil {
+		return nil
+	}
+	var heir *General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Faction != id || !x.Employed() {
+			continue
+		}
+		if heir == nil || x.Charm > heir.Charm {
+			heir = x
+		}
+	}
+	if heir == nil {
+		return nil
+	}
+	f.Prestige = SuccessionPrestige(int(heir.Charm), f.Prestige)
+	if f.Chief == heir.Index {
+		f.Chief = -1
+	}
+	heir.Status = state.StatusLord
+	f.Lord = heir.Index
+	return heir
 }

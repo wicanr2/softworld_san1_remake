@@ -724,3 +724,68 @@ func TestTreasuryIsCapped(t *testing.T) {
 		}
 	}
 }
+
+// TestSuccessionPicksTheMostCharming 釘住君主繼承照原版的規矩來：
+// 候選是**整個勢力**不限郡，依魅力挑，人望按繼承者的魅力打折。
+func TestSuccessionPicksTheMostCharming(t *testing.T) {
+	g := newGame(t)
+	var id state.FactionID = 1 // 曹操
+	f := g.Faction(id)
+	lord := g.Lord(id)
+	f.Prestige = 80
+
+	// **盤面自己擺**：曹操開局只有一個郡，照劇本挑就永遠測不到
+	// 「候選不限於死者所在的郡」這件事。把一位部將調去別的郡，
+	// 魅力設成全勢力最高。
+	var far *General
+	for _, x := range g.Garrison(lord.Location) {
+		if x.Faction != id || x.Index == lord.Index {
+			continue
+		}
+		if far == nil {
+			far = x
+			far.Location = lord.Location%state.PrefectureCount + 1
+			far.Charm = 90
+			continue
+		}
+		x.Charm = 60 // 留在原郡的都比不上他
+	}
+	if far == nil {
+		t.Fatal("曹操麾下只有他自己")
+	}
+	g.retire(lord)
+
+	if f.Lord != far.Index {
+		got := "（無）"
+		if x := g.General(f.Lord); x != nil {
+			got = x.Name
+		}
+		t.Errorf("繼位的是 %s，應該是魅力最高的 %s", got, far.Name)
+	}
+	if far.Status != state.StatusLord {
+		t.Errorf("繼位者的身分是 %d，應該是君主", far.Status)
+	}
+	if lord.Status != state.StatusFallen {
+		t.Errorf("死去的君主身分是 %d，應該是已故（12）", lord.Status)
+	}
+	// 人望 = 四捨五入(90 × 80 ÷ 100) = 72。
+	if f.Prestige != 72 {
+		t.Errorf("繼承後人望 %d，應該是 72", f.Prestige)
+	}
+}
+
+// TestSuccessionPrestigeRounds 釘住那條四捨五入。
+func TestSuccessionPrestigeRounds(t *testing.T) {
+	for _, c := range []struct{ charm, prestige, want int }{
+		{100, 80, 80}, // 魅力滿分保住全部
+		{50, 80, 40},
+		{90, 80, 72},
+		{55, 91, 50}, // 50.05 → 50
+		{57, 91, 52}, // 51.87 → 52
+	} {
+		if got := SuccessionPrestige(c.charm, c.prestige); got != c.want {
+			t.Errorf("魅力 %d、人望 %d：得到 %d，應該是 %d",
+				c.charm, c.prestige, got, c.want)
+		}
+	}
+}
