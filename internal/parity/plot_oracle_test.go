@@ -14,6 +14,27 @@ import (
 
 // 計略得手之後那五刀的對拍（`docs/mechanics/30-diplomacy` §1，`0x2d6e0`）。
 //
+// ⚠ **這一支目前跑不出樣本，會 skip。** 四輪都沒收到一次得手，
+// 分層計數把範圍縮到這裡：
+//
+//	等級 3–5 的計略常式被選中          182 次
+//	  RND(10/8/5) != 0                 擋掉大部分
+//	  諸侯 offset 6 ＝ 0xFFFF          （測試已備好軍師）
+//	  人物[軍師].領地 != 目前的郡      （軍師 ← 君主，一定在某個郡）
+//	走到 0xe608 的那道門                11 次，AX 恆為 6 → **過得去**
+//	得手（0x2d6e0）                     0 次
+//
+// 所以卡在 `0xe610` 之後、`0x2d6e0` 之前：挑目標（`0xe7aa`）、
+// 選使者、成敗判定（`0x2dd66`）那一段還沒逐支追。
+//
+// 走過的兩條岔路留在這裡免得重走：`0xe672` 是空殼沒錯，但它的 `AX`
+// 是 6 不是 0，那道門不是關卡；把**所有**電腦君主的謀略設成 100 也不行
+// ——成敗是 `我方 > 對方` 的硬碰硬，雙方都 100 就永遠打平。
+//
+// **效果那一側不受影響**：五刀的公式是 `L0`，`0x2d6e0` 的兩個呼叫端
+// （玩家的策反人民、電腦的計略）都傳人物 offset 11。這一支要驗的是
+// 「原版當場算出來的量」，不是公式本身有沒有讀對。
+//
 // 五刀的量全部跟著使者的魅力走，而且每一刀各擲一次：
 //
 //	忠誠     −RND(魅力 ÷ 10)     0x2d70c  sub cl
@@ -66,13 +87,28 @@ func TestSabotageMatchesTheOriginal(t *testing.T) {
 		}
 		o.SetWord(addr(base+uint32(i*72+4)), 5)            // AI 等級
 		o.SetWord(addr(base+uint32(i*72+6)), uint16(lord)) // 軍師 ← 君主
-		o.SetByte(addr(genBase+uint32(lord*30+9)), 100)    // 謀略
+		// ⚠ **不能全部設成 100。** 成敗是 `我方 > 對方` 的硬碰硬，
+		// 而目標是全圖隨機挑的——雙方都 100 就永遠打平，一次也不會得手。
+		// 一半當攻方（謀略 100）、一半當箭靶（謀略 30）。
+		if armed%2 == 0 {
+			o.SetByte(addr(genBase+uint32(lord*30+9)), 100)
+		} else {
+			o.SetByte(addr(genBase+uint32(lord*30+9)), 30)
+		}
 		armed++
 	}
-	t.Logf("替 %d 個電腦勢力備好等級、軍師與謀略", armed)
+	t.Logf("替 %d 個電腦勢力備好等級與軍師，謀略一半 100 一半 30", armed)
 
 	rnd := 0
 	o.OnCall(addr(0x1058*16+0x058c), func(*oracle.Oracle) { rnd++ })
+
+	// 分層診斷：常式有沒有被選中、三道門各擋掉多少、空殼那一道回什麼。
+	entered, gateAX := 0, map[uint16]int{}
+	for k, at := range map[int]uint32{3: 0x0e4a2, 4: 0x0e522, 5: 0x0e5a2} {
+		_ = k
+		o.OnCall(addr(at), func(*oracle.Oracle) { entered++ })
+	}
+	o.OnCall(addr(0x0e608), func(o *oracle.Oracle) { gateAX[o.AX()]++ })
 
 	charm, target := 0, 0
 	calls := 0
@@ -145,12 +181,13 @@ func TestSabotageMatchesTheOriginal(t *testing.T) {
 		}
 	}
 
-	t.Logf("六個月：亂數 %d 次、計略得手 %d 次、五刀共 %d 次，%d 次對不上",
-		rnd, calls, cuts, bad)
+	t.Logf("六個月：亂數 %d 次、計略常式進去 %d 次、"+
+		"空殼那道門的 AX 分布 %v、計略得手 %d 次、五刀共 %d 次，%d 次對不上",
+		rnd, entered, gateAX, calls, cuts, bad)
 	if rnd == 0 {
 		t.Fatal("連亂數都沒被呼叫：hook 沒掛上，或者按鍵序列沒推動月份")
 	}
 	if calls == 0 {
-		t.Skip("六個月裡電腦一次計略都沒得手——等級或軍師的條件沒滿足")
+		t.Skip("六個月裡電腦一次計略都沒得手——見檔頭，卡在 0xe610 之後那一段")
 	}
 }
