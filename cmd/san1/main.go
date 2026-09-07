@@ -765,6 +765,9 @@ func main() {
 		if err != nil {
 			die(err)
 		}
+		if err := ai.CheckEdition(ai.Mode(*aiMode), ed); err != nil {
+			die(err)
+		}
 		brain, err = ai.New(ai.Mode(*aiMode))
 		if err != nil {
 			die(err)

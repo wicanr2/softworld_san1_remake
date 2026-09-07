@@ -67,6 +67,31 @@ type Brain interface {
 	Plan(g *game.State, f state.FactionID) []game.Order
 }
 
+// Edition 是這個 AI 要還原的原版版本；`enhanced` 沒有對應的版本，回空字串。
+//
+// **`base` 的 AI 配加強版的規則是不相容的組合**：兩者的難度係數表不同，
+// 而且加強版收得下的難度原版的表放不下。呼叫端在開局時就要擋掉，不要等
+// 到電腦諸侯出兵才讀到表外的位元組——那時候看起來只是「AI 有點怪」。
+func (m Mode) Edition() state.Edition {
+	switch m {
+	case ModeBase:
+		return state.EditionBase
+	case ModePlus:
+		return state.EditionPlus
+	}
+	return ""
+}
+
+// CheckEdition 回報這個 AI 版本能不能跑在這一版規則上。
+func CheckEdition(m Mode, ed state.Edition) error {
+	want := m.Edition()
+	if want == "" || ed == "" || want == ed {
+		return nil
+	}
+	return fmt.Errorf("ai: %q 是還原 %s 的 AI，不能跑在 %s 的規則上（要還原就兩邊同版，要混搭請用 %q）",
+		m, want, ed, ModeEnhanced)
+}
+
 // New 依版本造一個 AI。
 func New(m Mode) (Brain, error) {
 	switch m {

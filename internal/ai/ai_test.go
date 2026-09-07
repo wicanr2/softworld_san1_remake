@@ -571,3 +571,33 @@ func TestPlusDifficultyTable(t *testing.T) {
 			state.EditionBase.MaxDifficulty(), state.EditionPlus.MaxDifficulty())
 	}
 }
+
+// TestFaithfulAINeedsItsOwnEdition 釘住「還原型 AI 要配同一版的規則」。
+//
+// **混搭不會報錯，只會安靜地算錯**：`base` 的係數表只有十格，配上加強版
+// 收得下的難度 15，出兵判斷讀到的是表外的位元組。所以要擋在開局。
+// `enhanced` 是 remake 自己的 AI，不宣稱還原哪一版，兩邊都能跑。
+func TestFaithfulAINeedsItsOwnEdition(t *testing.T) {
+	for _, c := range []struct {
+		m  Mode
+		ed state.Edition
+		ok bool
+	}{
+		{ModeBase, state.EditionBase, true},
+		{ModePlus, state.EditionPlus, true},
+		{ModeBase, state.EditionPlus, false},
+		{ModePlus, state.EditionBase, false},
+		{ModeEnhanced, state.EditionBase, true},
+		{ModeEnhanced, state.EditionPlus, true},
+		// 版本空字串（舊存檔）不擋——擋了會讓讀得回來的存檔突然讀不回來。
+		{ModePlus, "", true},
+	} {
+		err := CheckEdition(c.m, c.ed)
+		if c.ok && err != nil {
+			t.Errorf("%q ＋ %q 應該可以：%v", c.m, c.ed, err)
+		}
+		if !c.ok && err == nil {
+			t.Errorf("%q ＋ %q 應該擋下來", c.m, c.ed)
+		}
+	}
+}

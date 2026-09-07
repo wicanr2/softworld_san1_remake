@@ -44,6 +44,11 @@ func Load(dir string, slot int, mode ai.Mode) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 版本來自存檔，AI 版本來自旗標——**兩者可能不同版**。
+	// 還原型的 AI 配另一版的規則會安靜地算錯（`internal/ai` `CheckEdition`）。
+	if err := ai.CheckEdition(mode, g.Edition); err != nil {
+		return nil, err
+	}
 	brain, err := ai.New(mode)
 	if err != nil {
 		return nil, err
