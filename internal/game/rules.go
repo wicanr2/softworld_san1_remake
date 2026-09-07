@@ -390,3 +390,22 @@ func RicePerGold(priceLevel uint8) int {
 	}
 	return 1
 }
+
+// 挖角的候選條件（`L0`、`[base]`，分派表 `0x56d4`／挑人 `0xe0bc`／
+// 判定 `0x1dc0a`）。原版掃全部 350 人，收進候選清單的條件是：
+//
+//	有主（效力勢力 != 0xFF）
+//	不是招募方的人
+//	身分 != 0（君主挖不動）
+//	忠誠 < RND(15) + 80
+//	Bond 指向自己，或 Bond 指到的人**不在**他現在的勢力
+//
+// 最後那一條與登用是**同一道牽絆閘門的鏡像**（`RecruitBondFree`）：
+// 登用問「他的牽絆對象在不在我這邊」，挖角問「在不在他那邊」。
+const (
+	HeadhuntLoyaltyFloor  = 80 // 忠誠門檻的底
+	HeadhuntLoyaltySpread = 15 // 再加 RND(15)
+)
+
+// HeadhuntLoyaltyBar 是這一次挖角的忠誠門檻；忠誠不低於它就挖不動。
+func HeadhuntLoyaltyBar(roll int) int { return HeadhuntLoyaltyFloor + roll }

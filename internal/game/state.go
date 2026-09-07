@@ -371,6 +371,18 @@ func (g *State) Prefecture(id int) *Prefecture {
 func (g *State) Prefectures() []Prefecture { return g.prefectures }
 
 // General 用槽號取一個人物。越界回 nil。
+// AllGenerals 是整張人物表，照槽號順序。
+//
+// **原版有好幾支常式掃全表**（挖角挑人 `0xe0bc` 掃 350 筆），
+// 而 remake 這一邊沒有別的路走得到「不在自己地盤上的人」。
+func (g *State) AllGenerals() []*General {
+	out := make([]*General, 0, len(g.generals))
+	for i := range g.generals {
+		out = append(out, &g.generals[i])
+	}
+	return out
+}
+
 func (g *State) General(index int) *General {
 	if index < 0 || index >= len(g.generals) {
 		return nil

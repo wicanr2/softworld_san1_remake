@@ -209,6 +209,22 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 	return nil
 }
 
+// headhuntable 是「這個人挖不挖得動」（`L0`、`0xe0bc`／`0x1dc0a`）。
+//
+// 兩道閘門：**忠誠不低於 `RND(15) + 80` 就挖不動**，以及**牽絆對象
+// 還在他自己陣營裡就挖不動**——後者是登用那道閘門的鏡像。
+func (g *State) Headhuntable(t *General, prefectureID int) bool {
+	bar := HeadhuntLoyaltyBar(g.Roll(HeadhuntLoyaltySpread, prefectureID, t.Index, 0x56d4))
+	if int(t.Loyalty) >= bar {
+		return false
+	}
+	if b := g.General(t.Bond); b != nil && b.Index != t.Index &&
+		b.Employed() && b.Faction == t.Faction {
+		return false
+	}
+	return true
+}
+
 // Dismiss 是「撤職」（說明書 p.23）：免去部將職務成為在野將領，
 // 遣散費 10 金。**主事者不能撤**——撤了那個郡就沒人治理。
 func (g *State) Dismiss(prefectureID, targetIndex int, by state.FactionID) error {
@@ -389,19 +405,25 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 	if t.Status == state.StatusLord {
 		return fmt.Errorf("game: 諸侯挖不動")
 	}
-	fee := g.price(by, CostHeadhunt)
-	if p.Gold < fee {
+	// **挖角的 100 金是直接扣的**（原版 `0x1de7a` 的
+	// `subw es:[bx+0x492], 100`），不經過電腦諸侯的折扣常式。
+	if p.Gold < CostHeadhunt {
 		return ErrNoGold
 	}
 	if g.ActiveGenerals(prefectureID) >= MaxGeneralsPerPrefecture {
 		return ErrTooManyGens
 	}
-	p.Gold -= fee
+	if !g.Headhuntable(t, prefectureID) {
+		return fmt.Errorf("%s：%w", tf("msg.unmoved", t.Name), ErrDeclined)
+	}
+	p.Gold -= CostHeadhunt
 	p.Commanded = true
 
+	// ⚠ **最後這一擲還沒從原版讀出來**（`0x1dc62` 之後）：候選條件是
+	// `L0`，成功率仍是 remake 自己的（`TuneHeadhuntBase`）。
 	chance := clampTo(TuneHeadhuntBase-int(t.Loyalty)/2, 95)
 	if g.roll(prefectureID, targetIndex, int(t.Loyalty)) >= chance {
-		return fmt.Errorf("%s", tf("msg.unmoved", t.Name))
+		return fmt.Errorf("%s：%w", tf("msg.unmoved", t.Name), ErrDeclined)
 	}
 	old := t.Faction
 	wasGovernor := t.Status.Governs()

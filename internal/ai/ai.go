@@ -94,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 14, 18 }
+func (f *faithful) Coverage() (int, int) { return 15, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -218,6 +218,12 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 			out = append(out, o)
 			purse -= o.Units / game.RicePerGold(g.Prefecture(p).PriceLevel)
 		}
+		// 挖角（表 `0x56d4`）：**君主要在本郡**，機率隨等級 30／60／80 %，
+		// 預算要 ≥ 100，費用是直接扣的 100 金。
+		if o, ok := headhunt(g, p, id, purse); ok {
+			out = append(out, o)
+			purse -= game.CostHeadhunt
+		}
 	}
 	return out
 }
@@ -229,6 +235,7 @@ const (
 	tableRelief    = 0x55f4 // 開倉賑民
 	tableReward    = 0x5654 // 賞賜金帛
 	tableRice      = 0x55d4 // 買入米糧
+	tableHeadhunt  = 0x56d4 // 挖角
 )
 
 // aiBudgetPercent 是「本回合預算佔郡的金的百分之幾」（`L0`、`[base]`）。
@@ -377,6 +384,48 @@ func buyRice(g *game.State, prefecture int, id state.FactionID, purse int) (game
 		return game.BuyRiceOrder{}, false
 	}
 	return game.BuyRiceOrder{At: prefecture, Units: spend * rate}, true
+}
+
+// headhunt 是「挖角」（表 `0x56d4`，`L0`、`[base]`）。
+//
+//	等級 0–2 不做（三格空操作）
+//	君主的所在郡 != 本郡 → 不做
+//	RND(10) <= K → 不做            ; K ＝ 6／3／1，也就是 30 % / 60 % / 80 %
+//	本回合的錢 < 100 → 不做
+//	掃全部人物挑候選（`game.Headhunt` 的 `headhuntable`），取第一位
+//
+// 費用 100 金是**直接扣的**，不經過等級折扣。
+func headhunt(g *game.State, prefecture int, id state.FactionID, purse int) (game.HeadhuntOrder, bool) {
+	level := g.AILevel(id)
+	if level < 3 || purse < game.CostHeadhunt {
+		return game.HeadhuntOrder{}, false
+	}
+	if lord := g.Lord(id); lord == nil || lord.Location != prefecture {
+		return game.HeadhuntOrder{}, false
+	}
+	if g.Roll(10, int(id), prefecture, tableHeadhunt) <= headhuntBar(level) {
+		return game.HeadhuntOrder{}, false
+	}
+	for _, x := range g.AllGenerals() {
+		if !x.Employed() || x.Faction == id || x.Status == state.StatusLord {
+			continue
+		}
+		if g.Headhuntable(x, prefecture) {
+			return game.HeadhuntOrder{At: prefecture, Target: x.Index}, true
+		}
+	}
+	return game.HeadhuntOrder{}, false
+}
+
+// headhuntBar 是 `RND(10) > K` 裡的 K：等級 3／4／5 ＝ 6／3／1。
+func headhuntBar(level int) int {
+	switch level {
+	case 3:
+		return 6
+	case 4:
+		return 3
+	}
+	return 1
 }
 
 // garrisonIndices 是這一郡守軍的槽號，照清單順序。

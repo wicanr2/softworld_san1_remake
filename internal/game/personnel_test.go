@@ -99,3 +99,57 @@ func TestRecruitBondGate(t *testing.T) {
 		t.Errorf("新進的忠誠是 %d，應該落在 1..100", target.Loyalty)
 	}
 }
+
+// TestHeadhuntGates 釘住挖角的兩道閘門（`L0`、`0xe0bc`／`0x1dc0a`）。
+//
+// **忠誠門檻與牽絆閘門要各驗一次**：只驗忠誠的話，牽絆整個沒接上
+// 也照樣綠——多數人的 Bond 指向自己，那條路不會走到。
+func TestHeadhuntGates(t *testing.T) {
+	for _, c := range []struct{ roll, want int }{{0, 80}, {7, 87}, {14, 94}} {
+		if got := HeadhuntLoyaltyBar(c.roll); got != c.want {
+			t.Errorf("RND(15) ＝ %d：門檻 %d，應該是 %d", c.roll, got, c.want)
+		}
+	}
+
+	g := newGame(t)
+	at := 0
+	for _, p := range g.Prefectures() {
+		if p.Owned() && p.Owner == 0 {
+			at = p.ID
+			break
+		}
+	}
+	if at == 0 {
+		t.Fatal("劉備一個郡都沒有")
+	}
+	// 造一位敵方將領：忠誠低、牽絆指向自己 → 挖得動。
+	x := g.General(200)
+	if x == nil || x.Name == "" {
+		t.Fatal("找不到人物 200")
+	}
+	x.Faction, x.Status, x.Loyalty, x.Bond = 1, state.StatusOfficer, 50, x.Index
+	if !g.Headhuntable(x, at) {
+		t.Error("忠誠 50、無牽絆的敵將應該挖得動")
+	}
+	// **忠誠閘門**：忠誠 95 高於任何一次的門檻（上限 94）。
+	x.Loyalty = 95
+	if g.Headhuntable(x, at) {
+		t.Error("忠誠 95 超過門檻上限 94，不該挖得動")
+	}
+	// **牽絆閘門**：牽絆對象與他同一勢力 → 挖不動，跟忠誠無關。
+	x.Loyalty = 1
+	b := g.General(201)
+	if b == nil {
+		t.Fatal("找不到人物 201")
+	}
+	b.Faction, b.Status = 1, state.StatusOfficer
+	x.Bond = b.Index
+	if g.Headhuntable(x, at) {
+		t.Error("牽絆對象還在他自己陣營，不該挖得動")
+	}
+	// 牽絆對象跳槽到別處就挖得動了。
+	b.Faction = 2
+	if !g.Headhuntable(x, at) {
+		t.Error("牽絆對象已經不在他陣營，應該挖得動")
+	}
+}

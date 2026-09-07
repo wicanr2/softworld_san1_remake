@@ -106,6 +106,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.ReliefOrder: // 開倉賑民（0x55f4），已解
 			case game.RewardOrder: // 賞賜金帛（0x5654），已解
 			case game.BuyRiceOrder: // 買入米糧（0x55d4），已解
+			case game.HeadhuntOrder: // 挖角（0x56d4），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}
