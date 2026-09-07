@@ -176,3 +176,40 @@ func TestAdvisorWarns(t *testing.T) {
 		t.Errorf("謀略 83 有 %d/5 會勸，應該是 3", n)
 	}
 }
+
+// TestPrestigeMovesWithBattles 釘住戰役對人望的影響
+// （`0x204b4`／`0x204e0`，`L0`）：勝方 +2、敗方 −2，夾在 0–100。
+//
+// **人望不是裝飾**：它每年決定部下忠誠的漲跌（`LoyaltyDrift`），
+// 60 是分水嶺。所以連敗的諸侯會先掉人望，再一年一年掉忠誠。
+func TestPrestigeMovesWithBattles(t *testing.T) {
+	if PrestigeOnWin != 2 {
+		t.Errorf("勝負的人望增減是 %d，原版是 2", PrestigeOnWin)
+	}
+	g := newGame(t)
+	id := g.Factions()[0].ID
+	f := g.Faction(id)
+
+	f.Prestige = 50
+	g.shiftPrestige(id, PrestigeOnWin)
+	if f.Prestige != 52 {
+		t.Errorf("打贏之後人望 %d，應該是 52", f.Prestige)
+	}
+	g.shiftPrestige(id, -PrestigeOnWin)
+	if f.Prestige != 50 {
+		t.Errorf("打輸之後人望 %d，應該回到 50", f.Prestige)
+	}
+	// 夾在 0–100。
+	f.Prestige = 100
+	g.shiftPrestige(id, PrestigeOnWin)
+	if f.Prestige != 100 {
+		t.Errorf("人望上限是 100，得到 %d", f.Prestige)
+	}
+	f.Prestige = 1
+	g.shiftPrestige(id, -PrestigeOnWin)
+	if f.Prestige != 0 {
+		t.Errorf("人望下限是 0，得到 %d", f.Prestige)
+	}
+	// 無主的一方不算——空白郡沒有諸侯。
+	g.shiftPrestige(state.NoFaction, PrestigeOnWin)
+}

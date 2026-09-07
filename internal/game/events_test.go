@@ -509,3 +509,64 @@ func TestAnnualDecayKeepsUpkeepMeaningful(t *testing.T) {
 		t.Errorf("走完一年，%d 位滿訓練的將領一個都沒掉", len(picked))
 	}
 }
+
+// TestLoyaltyDriftsWithPrestige 釘住元月的忠誠漂移（`0x15fad`，`L0`）。
+//
+//	忠誠 ← 忠誠 + (人望 − 60) ÷ 2
+//
+// **60 是分水嶺**：人望不到 60 的諸侯，部下每年都在離心。這一條把
+// 「打勝仗」與「留得住人」接在一起——人望靠戰役累積（勝 +2、敗 −2）。
+//
+// 沒有它的話，忠誠只會被登用、賞賜、計謀動到，**一個從不打仗也從不
+// 賞賜的諸侯，部下的忠誠會永遠停在開局值**。
+func TestLoyaltyDriftsWithPrestige(t *testing.T) {
+	if got := LoyaltyDrift(50, 80, 3); got != 60 {
+		t.Errorf("忠誠 50、人望 80 → %d，應該是 60", got)
+	}
+	if got := LoyaltyDrift(50, 40, 3); got != 40 {
+		t.Errorf("忠誠 50、人望 40 → %d，應該是 40", got)
+	}
+	if got := LoyaltyDrift(50, LoyaltyPivot, 3); got != 50 {
+		t.Errorf("人望剛好 %d 應該不動，得到 %d", LoyaltyPivot, got)
+	}
+	if got := LoyaltyDrift(2, 0, 3); got != 3 {
+		t.Errorf("算出負的應該換成 RND(5)，得到 %d", got)
+	}
+	if got := LoyaltyDrift(99, 100, 0); got != 100 {
+		t.Errorf("上限是 100，得到 %d", got)
+	}
+
+	// 整年跑一次：人望低的勢力部下該掉忠誠。
+	g := newGame(t)
+	id := g.Factions()[0].ID
+	g.Faction(id).Prestige = 0
+	var watched []*General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Faction == id && x.Status != state.StatusLord && x.Loyalty > 40 {
+			watched = append(watched, x)
+		}
+	}
+	if len(watched) == 0 {
+		t.Skip("這個勢力沒有可觀察的部下")
+	}
+	before := make([]uint8, len(watched))
+	for i, x := range watched {
+		before[i] = x.Loyalty
+	}
+	g.Date = Date{Year: 189, Month: 12}
+	g.EndMonth() // → 元月
+	dropped := 0
+	for i, x := range watched {
+		if x.Loyalty < before[i] {
+			dropped++
+		}
+	}
+	if dropped == 0 {
+		t.Errorf("人望 0 的勢力，%d 位部下一個都沒掉忠誠", len(watched))
+	}
+	// 君主自己不受影響。
+	if lord := g.Lord(id); lord != nil && lord.Loyalty != 100 && lord.Loyalty == 0 {
+		t.Error("君主不該被人望影響")
+	}
+}

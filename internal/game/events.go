@@ -178,6 +178,15 @@ func (g *State) spring() []Event {
 				continue
 			}
 			x.Stamina -= uint8(drop)
+			// **忠誠每年跟著君主的人望漂移**（`0x15fc2`，`L0`）：
+			// `忠誠 += (人望 − 60) ÷ 2`。**君主自己不算**——
+			// 他不會對自己不忠。
+			if x.Status != state.StatusLord && x.Faction != state.NoFaction {
+				if f := g.Faction(x.Faction); f != nil {
+					x.Loyalty = uint8(LoyaltyDrift(int(x.Loyalty), f.Prestige,
+						g.roll(int(Spring), x.Index, 42)%LoyaltyFloorSpread))
+				}
+			}
 			// **訓練度與武裝度每年各自掉**（`0x16006`／`0x16025`，`L0`）：
 			// `−RND(值 ÷ 10)`，與土地價值同一個形狀。
 			//
@@ -217,6 +226,31 @@ func (g *State) spring() []Event {
 		}
 	}
 	return out
+}
+
+// 人望決定忠誠漲跌的分水嶺與下限（`0x15fc7`／`0x15fd8`，`L0`）。
+const (
+	LoyaltyPivot       = 60 // 人望高於它部下向心，低於它離心
+	LoyaltyFloorSpread = 5  // 算出負的就換成 RND(5)
+)
+
+// LoyaltyDrift 是元月的忠誠漂移（`0x15fad`–`0x16001`，`L0`）：
+//
+//	忠誠 ← 忠誠 + (人望 − 60) ÷ 2
+//	< 0   → RND(5)
+//	> 100 → 100
+//
+// **60 是分水嶺**：人望不到 60 的諸侯，部下每年都在離心。
+// 人望靠打勝仗累積（`PrestigeOnWin`）。
+func LoyaltyDrift(loyalty, prestige, floorRoll int) int {
+	n := loyalty + (prestige-LoyaltyPivot)/2
+	if n < 0 {
+		return floorRoll
+	}
+	if n > 100 {
+		return 100
+	}
+	return n
 }
 
 // AnnualDecay 是「值越高掉越多」的年度衰減（`L0`）：

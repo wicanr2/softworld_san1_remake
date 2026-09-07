@@ -218,6 +218,20 @@ func (g *State) settle(p *Pending) *BattleResult {
 	})
 	g.seizeTreasures(r, by)
 
+	// **人望：勝方 +2、敗方 −2**（`0x204b4`／`0x204e0`，`L0`），夾在 0–100。
+	// 人望決定部下忠誠每年的漲跌（`Faction.Prestige`），所以打贏仗的
+	// 諸侯不只多一個郡，麾下也更死心塌地。
+	var defender state.FactionID = state.NoFaction
+	if dst != nil {
+		defender = dst.Owner
+	}
+	winner, loser := by, defender
+	if !r.AttackerWon {
+		winner, loser = defender, by
+	}
+	g.shiftPrestige(winner, PrestigeOnWin)
+	g.shiftPrestige(loser, -PrestigeOnWin)
+
 	// 撤退或全滅的攻方回原郡；沒被擒沒死的守方留在原地。
 	if r.AttackerWon {
 		g.takePrefecture(from, to, att, by)
@@ -310,5 +324,22 @@ func (g *State) seizeTreasures(r *BattleResult, by state.FactionID) {
 		if moved {
 			r.Log = append(r.Log, tf("msg.spoils", x.Name))
 		}
+	}
+}
+
+// PrestigeOnWin 是打贏一場戰役的人望增減（`0x204b4`：`+2`／`−2`，`L0`）。
+const PrestigeOnWin = 2
+
+// shiftPrestige 調整一個勢力的人望，夾在 0–100。
+//
+// **無主的一方不算**：空白郡沒有諸侯，攻下它不加人望。
+func (g *State) shiftPrestige(id state.FactionID, delta int) {
+	f := g.Faction(id)
+	if f == nil {
+		return
+	}
+	f.Prestige = clampTo(f.Prestige+delta, 100)
+	if f.Prestige < 0 {
+		f.Prestige = 0
 	}
 }
