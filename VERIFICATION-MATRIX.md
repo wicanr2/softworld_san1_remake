@@ -96,7 +96,7 @@
 | 回合流程與十類指令 | `mechanics/10` | `L2` | `internal/game` | 有 |
 | 人物與人事 | `mechanics/20` | `L0`（欄位、**訓練公式**）／`L1`（徵兵 1:1 扣人口）／`L2`（其餘）| `internal/game` | 有 |
 | 謀略（戰略層五種）| `mechanics/30` | `L2` | `internal/game/plot.go` | 有 |
-| 軍事與主戰場 | `mechanics/40` | `L2` | `internal/battle` | 有 |
+| 軍事與主戰場 | `mechanics/40` | `L0`（**戰場地圖**、地形碼、移動花費、地形攻守值、兵種適性、移動力公式、將領戰力值、發動戰役的流程）／`L2`（合成與交戰損失）| `internal/battle` | 有 |
 | 四季事件 | `mechanics/50` | `L1`（季節分界、年齡在元月、人口在十月）／`L2`（其餘）| `internal/game/events.go` | 有 |
 | 經濟 | `mechanics/60` | `L1`（人口年成長 15%、物價每月重抽 30–68）／`L2`（其餘）| `internal/game` | 有 |
 | **電腦 AI** | `mechanics/70` | **骨架 `L0`**（六個等級 × **十八張**分派表，無條件依序跑完）／**十八種行為解出十六種**（判斷式從碼讀出，不是行為推測）；另一張是八格空操作，只剩交戰結算 | `ai.base` 十六種都發，`Coverage()` 回 16/18 | 有 |
