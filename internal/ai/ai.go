@@ -344,7 +344,7 @@ func SortieOdds(ed state.Edition, difficulty int) int {
 	return t[difficulty-1]
 }
 
-// sortie 是「出兵／移防」（表 `0x54f4`，`L0`、`[base]`）。
+// sortie 是「出兵／移防」（表 `0x54f4`，`L0`＋`L1`、`[base]`）。
 //
 // 四道門檻任何一道不過就整個不做（`0xb666`）：
 //
@@ -356,10 +356,11 @@ func SortieOdds(ed state.Edition, difficulty int) int {
 // 目標是 `RND(4)` 三選一（`0xb47a`）：0 無主的鄰郡（占領）、
 // 1 自己的鄰郡（移防）、2 與 3 敵國的鄰郡（進攻）。
 //
-// **出征的人是隨機的**（`0xb2b4`）：守軍清單洗牌之後從尾端往前挑，
-// 累計到兵力目標為止——不是挑最強的。兵力目標 `es:[0x2e62]` 取
-// 「本郡守軍裡最小的非零兵力」與「每一個敵國鄰郡的兵士」的最大值，
-// **所以規模至少要追上最強的敵鄰郡**。
+// **原版編兩次隊**：`0xb2b4` 在挑目標之前先編一次，那一次決定進攻要用的
+// 兵力；`0xb706` 在出發時**再洗一次牌重編**，實際走的是後面那一隊。兩次
+// 各自擲骰，所以評估的部隊與上路的部隊不是同一批。差別在收尾：
+// `0xb2b4` 允許整郡被留守吃光（清單長度收成 0 → 這次出兵作廢），
+// `0xb706` 的迴圈用 `jg`，位置 0 永遠留著，所以出發時至少有一個人。
 func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.Order, bool) {
 	if g.AILevel(id) < SortieMinLevel {
 		return nil, false
@@ -380,6 +381,13 @@ func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.
 	}
 
 	free, mine, foe := neighbourLists(g, p, id)
+	want := sortieTarget(g, prefecture, foe)
+
+	// 第一次編隊（`0xb2b4`）：留守吃光了就整次作廢。
+	if len(muster(g, prefecture, id, want, 2, false)) == 0 {
+		return nil, false
+	}
+
 	var targets []int
 	switch g.Roll(4, int(id), prefecture, tableSortie) {
 	case 0:
@@ -394,7 +402,8 @@ func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.
 	}
 	to := targets[g.Roll(len(targets), int(id), prefecture, tableSortie, 1)]
 
-	force := muster(g, prefecture, id, sortieTarget(g, prefecture, foe))
+	// 第二次編隊（`0xb706`）：另擲一輪，這一隊才是真的上路的。
+	force := muster(g, prefecture, id, want, 1000, true)
 	if len(force) == 0 {
 		return nil, false
 	}
@@ -405,41 +414,30 @@ func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.
 		}
 		force = force[:room]
 	}
-
-	if q := g.Prefecture(to); q != nil && q.Owned() && q.Owner != id {
-		// 進攻多一道兵力比較（`0xb47a`）。
-		sent := 0
-		for _, i := range force {
-			if x := g.General(i); x != nil {
-				sent += x.Soldiers
-			}
-		}
-		enemy := 0
-		for _, x := range g.Garrison(to) {
-			enemy += x.Soldiers
-		}
-		if SortieOdds(g.Edition, g.Difficulty)*(sent/100)/100 < enemy/100 {
-			return nil, false
-		}
-		return game.AttackOrder{At: prefecture, To: to, Force: force}, true
-	}
-	// 無主的郡與自己的郡是移防，不是戰役。**帶走的錢糧按兵力比例**
-	// （`0xb706`）：`郡的金 ÷ 兵士（百） × 出征兵力（百）`。
 	sent := 0
 	for _, i := range force {
 		if x := g.General(i); x != nil {
 			sent += x.Soldiers
 		}
 	}
-	share := func(total int) int {
-		if units <= 0 || total <= 0 {
-			return 0
+
+	if q := g.Prefecture(to); q != nil && q.Owned() && q.Owner != id {
+		// 進攻多一道兵力比較（`0xb47a`）。
+		enemy := 0
+		for _, x := range g.Garrison(to) {
+			enemy += x.Soldiers
 		}
-		return total / units * (sent / 100)
+		if game.SortieThreshold(SortieOdds(g.Edition, g.Difficulty), sent/100) < enemy/100 {
+			return nil, false
+		}
+		return game.AttackOrder{At: prefecture, To: to, Force: force}, true
 	}
+	// 無主的郡與自己的郡是移防，不是戰役。**帶走的錢糧按兵力比例**
+	// （`0xb706`）：`郡的金 ÷ 兵士（百） × 出征兵力（百）`，走浮點。
 	return game.MoveOrder{
 		At: prefecture, To: to, General: force[0],
-		Gold: min(share(purse), purse), Rice: min(share(p.Rice), p.Rice),
+		Gold: min(game.SortieShare(purse, units, sent/100), purse),
+		Rice: min(game.SortieShare(p.Rice, units, sent/100), p.Rice),
 	}, true
 }
 
@@ -463,13 +461,24 @@ func neighbourLists(g *game.State, p *game.Prefecture, id state.FactionID) (free
 	return
 }
 
-// sortieTarget 是出征兵力的目標（`es:[0x2e62]`，`L0`）：
-// 先取本郡守軍裡**最小的非零**兵力，再對每一個敵國的鄰郡取最大值。
+// SortieTargetFloor 是兵力目標的起始值（`0xeccb` 的 `movw $5`）。
+const SortieTargetFloor = 5
+
+// sortieTarget 是**留守**的兵力目標（`es:[0x2e62]`，`L0`＋`L1`）。
+//
+//	起始 5
+//	→ 本郡守將裡最小的非零 `兵力 ÷ 100`（只往下改，`0xede6`）
+//	→ 每一個敵國鄰郡的 `兵士（百）` 取最大（只往上改，`0xee99`）
+//
+// **整條都以「百」為單位**，編隊那一支再乘回 100。編隊從尾端拿人拿到
+// 累計兵力跨過這個數為止，拿掉的留在家裡、留下的出征——所以這個數是
+// 「家裡要留多少」，不是「要帶多少出去」。原版關掉出兵的三個地方
+// （`0xf0a9` 等）就是把它設成 9999，讓整郡的守將全部被留守吃掉。
 func sortieTarget(g *game.State, prefecture int, foe []int) int {
-	want := 0
+	want := SortieTargetFloor
 	for _, x := range g.Garrison(prefecture) {
-		if x.Soldiers > 0 && (want == 0 || x.Soldiers < want) {
-			want = x.Soldiers
+		if v := x.Soldiers / 100; v != 0 && v < want {
+			want = v
 		}
 	}
 	for _, id := range foe {
@@ -477,41 +486,46 @@ func sortieTarget(g *game.State, prefecture int, foe []int) int {
 		for _, x := range g.Garrison(id) {
 			total += x.Soldiers
 		}
-		if total > want {
-			want = total
+		if v := total / 100; v > want {
+			want = v
 		}
 	}
 	return want
 }
 
-// muster 編隊（`0xb2b4`）：守軍清單洗牌之後從尾端往前挑，
-// 累計兵力到目標為止。**挑中的是隨機的**。
-func muster(g *game.State, prefecture int, id state.FactionID, want int) []int {
+// muster 編隊（`0xb2b4`／`0xb706`，`L0`＋`L1`）。
+//
+// 守將清單先逐格與 `RND(n)` 交換洗牌，再**從尾端往前把人拿掉**，
+// 累計被拿掉的兵力到 `100 × want` 為止，然後把清單截到停下來的位置。
+// **留下來的頭段才是出征的部隊**：原版接著只掃 `0..長度−1` 求和，
+// 那個和是出征兵力，也是帶走錢糧的比例基準，還是 50 人上限要裁的對象
+// （`目標郡的現役將 ＋ 出征人數 <= 50`）。被拿掉的那一批留在原郡。
+//
+// `keepOne` 是兩支的唯一差別：規劃那一次（`0xb2b4`）用 `jge`，位置 0
+// 也會被拿掉，整郡吃光就回空；出發那一次（`0xb706`）用 `jg`，位置 0
+// 永遠留著。
+func muster(g *game.State, prefecture int, id state.FactionID, want, salt int, keepOne bool) []int {
 	who := garrisonIndices(g, prefecture)
 	if len(who) == 0 {
 		return nil
 	}
 	// 逐格與 RND(n) 交換——原版就是這樣洗的。
 	for i := range who {
-		j := g.Roll(len(who), int(id), prefecture, tableSortie, 2+i)
+		j := g.Roll(len(who), int(id), prefecture, tableSortie, salt+i)
 		who[i], who[j] = who[j], who[i]
 	}
-	var out []int
-	got := 0
-	for i := len(who) - 1; i >= 0 && got < want; i-- {
-		x := g.General(who[i])
-		if x == nil {
-			continue
+	stop := 0
+	if keepOne {
+		stop = 1
+	}
+	left, got := len(who), 0
+	for i := len(who) - 1; i >= stop && got < 100*want; i-- {
+		if x := g.General(who[i]); x != nil {
+			got += x.Soldiers
 		}
-		out = append(out, who[i])
-		got += x.Soldiers
+		left = i
 	}
-	// **原郡要留得下人治理**：全部帶走的話 game.Attack／Move 會擋，
-	// 而那一道擋下來會讓整批命令作廢。
-	if len(out) >= len(who) {
-		out = out[:len(who)-1]
-	}
-	return out
+	return who[:left]
 }
 
 // 分派表的位址，當識別碼用。

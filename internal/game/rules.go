@@ -720,3 +720,51 @@ const (
 func AdvisorWarns(chiefIntel, roll int) bool {
 	return AdvisorWarnFloor+roll < chiefIntel
 }
+
+// x87 建一個 64 位元有效位數、進位到最近偶數的暫存值。
+//
+// MSC 6.0 在沒有數學輔助處理器時把 x87 指令編成 `INT 34h`–`3Bh`，
+// 由它自己的軟體模擬器算——語意還是 8087 的**擴充精度**，不是 double。
+// 差別會走到整數上：`0.6` 的 double 比 0.6 小一點點，`0.6 × 140` 的
+// 精確值是 83.999…，截斷得 83；用 Go 的 `float64` 乘會把乘積再捨入回
+// double 而剛好變成 84.0，截斷得 84。**量到的二十次進攻判定二十次都差
+// 這一格。**
+func x87(v int64) *big.Float {
+	return new(big.Float).SetPrec(64).SetMode(big.ToNearestEven).SetInt64(v)
+}
+
+// SortieShare 是出征部隊帶走的錢糧（`0xb41d`–`0xb453`、`0xb8be`–`0xb907`）。
+//
+//	帶走的金 ＝ 郡的金 ÷ 郡的兵士（百） × 出征兵力（百）
+//
+// 米同一條式子。**先除再乘**，而且兩步都在 x87 的暫存器裡做完才截斷成
+// 16 位元；先乘再除或是中途落地成整數都會差幾塊。兵士為 0 時原版整段
+// 跳過，兩個值留在 0。
+func SortieShare(amount, units, force int) int {
+	if units <= 0 {
+		return 0
+	}
+	q := x87(int64(amount))
+	q.Quo(q, x87(int64(units)))
+	q.Mul(q, x87(int64(force)))
+	n, _ := q.Int64()
+	return int(int16(n))
+}
+
+// SortieThreshold 是電腦諸侯進攻前的兵力門檻（`0xb60b`–`0xb61e`）。
+//
+// `pct` 是難度係數，以百分比表示（原版的表在 `DS:0x5430`，一格 8 byte
+// 的 double，見 `docs/spec/004` §3）。算出來的門檻**小於目標郡的兵士
+// （百）就不打**，係數越小越保守。
+//
+// 係數本身是 double，所以先在 `float64` 裡把 `pct ÷ 100` 還原成原版表
+// 裡那個值，再進 x87 的精度乘上兵力——兩層精度不能混。
+func SortieThreshold(pct, force int) int {
+	if pct <= 0 || force <= 0 {
+		return 0
+	}
+	r := new(big.Float).SetPrec(64).SetMode(big.ToNearestEven).SetFloat64(float64(pct) / 100)
+	r.Mul(r, x87(int64(force)))
+	n, _ := r.Int64()
+	return int(int16(n))
+}
