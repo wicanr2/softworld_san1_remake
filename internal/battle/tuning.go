@@ -34,8 +34,6 @@ const (
 	// `0x2a224` 處理（帶一個 8 或 9 的參數），那一支還沒讀。
 	TuneLureDays = 3
 
-	// TuneDuelDamage 是單挑一回合對體能的傷害基準。
-	TuneDuelDamage = 12
 
 	// TuneRefuseDuelLoss 是拒絕單挑時逃跑的士兵百分比
 	//（說明書 p.30：「若拒絕挑戰，麾下士兵將有部份逃跑」）。

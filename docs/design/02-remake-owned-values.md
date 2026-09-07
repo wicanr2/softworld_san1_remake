@@ -127,7 +127,6 @@
 | `TuneArrowDamage` | 6 | 只給了**次數**公式，沒給單次殺傷（相對白刃相接的百分比）|
 | `TuneSiegeBonus` | 25 | 「聯合友軍圍攻」，沒給加成 |
 | `TuneEnragedPenalty` | 30 | 「來犯敵軍攻擊力暫時下降」，沒給幅度 |
-| `TuneDuelDamage` | 12 | 「體力降到 0 即告落敗」，沒給每回合消耗 |
 | `TuneRefuseDuelLoss` | 10 | 「麾下士兵將有部份逃跑」，沒給比例 |
 | `TuneCaptureOnDuel` | 60 | 「可能被擒，或死於刀下」，沒給機率 |
 | `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` / `TuneStratagemRange` | 140／20／30／3 | 自動作戰什麼時候該死戰、叫陣、退兵、用計——手冊是寫給玩家看的，沒有這一層 |

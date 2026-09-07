@@ -487,3 +487,44 @@ func TestDuelAccepted(t *testing.T) {
 		t.Error("對方兵力兩倍以上、戰力接近時，第二道應該讓它接受")
 	}
 }
+
+// TestDuelFormula 釘住單挑的兩條公式（`0x310b6`／`0x31170`，`L0`）。
+//
+// **期望值是「戰力差 − 6.5」**：戰力沒有高過對方七點左右就傷不了人。
+// 這一條擋的是「把傷害寫成一個固定值再乘戰力比」——那樣寫的話
+// 五十對五十也會分出勝負，而原版是打到回合用完平手。
+func TestDuelFormula(t *testing.T) {
+	// 回合數：RND((甲+乙)/2) + 甲/7 + 乙/7。
+	if got := DuelRounds(90, 70, 0); got != 12+10 {
+		t.Errorf("戰力 90 對 70、亂數 0 打 %d 回合，應該是 22", got)
+	}
+	if got := DuelRounds(90, 70, 79); got != 79+22 {
+		t.Errorf("亂數 79 時打 %d 回合，應該是 101", got)
+	}
+	// 每回合：RND(5) + 差 − RND(5) − RND(6) − 4，不小於 0。
+	if got := DuelBlow(90, 70, 4, 0, 0); got != 20 {
+		t.Errorf("差 20、亂數最有利時打掉 %d，應該是 4+20-0-0-4 ＝ 20", got)
+	}
+	if got := DuelBlow(90, 70, 0, 4, 5); got != 7 {
+		t.Errorf("差 20、亂數最不利時打掉 %d，應該是 0+20-4-5-4 ＝ 7", got)
+	}
+	// 戰力相同：最好的一次也只有 1，多數回合是 0。
+	best := 0
+	for a := 0; a < DuelBlowSpread; a++ {
+		for b := 0; b < DuelBlowSpread; b++ {
+			for c := 0; c < DuelBlowWide; c++ {
+				if n := DuelBlow(70, 70, a, b, c); n > best {
+					best = n
+				}
+			}
+		}
+	}
+	if best != 0 {
+		t.Errorf("戰力相同時最多打掉 %d，應該是 0——傷不了人", best)
+	}
+	// 方向要對：強的一方傷得了人，弱的一方傷不了。
+	if DuelBlow(76, 70, 4, 0, 0) != 6 || DuelBlow(70, 76, 4, 0, 0) != 0 {
+		t.Errorf("戰力差的方向不對：強方 %d、弱方 %d",
+			DuelBlow(76, 70, 4, 0, 0), DuelBlow(70, 76, 4, 0, 0))
+	}
+}

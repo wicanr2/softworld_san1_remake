@@ -33,32 +33,64 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 		b.note("%s 拒絕 %s 的挑戰，士兵逃散", ct.Name, ca.Name)
 		return nil
 	}
-	// 依戰力分高下，與兵力無關。體能降到 0 即落敗。
-	for round := 0; round < 100; round++ {
-		dmg := TuneDuelDamage * (100 + int(ca.War) - int(ct.War)) / 100
-		if dmg < 1 {
-			dmg = 1
-		}
-		if int(ct.Stamina) <= dmg {
+	// 依戰力分高下，與兵力無關。**體能就是血條**，降到 0 即落敗。
+	rounds := DuelRounds(int(ca.War), int(ct.War), b.roll(duelRoundSpread(int(ca.War), int(ct.War))))
+	for i := 0; i < rounds; i++ {
+		blow := DuelBlow(int(ca.War), int(ct.War),
+			b.roll(DuelBlowSpread), b.roll(DuelBlowSpread), b.roll(DuelBlowWide))
+		if int(ct.Stamina) <= blow {
 			ct.Stamina = 0
 			b.defeatInDuel(t, ct, ca)
 			return nil
 		}
-		ct.Stamina -= uint8(dmg)
+		ct.Stamina -= uint8(blow)
 
-		dmg = TuneDuelDamage * (100 + int(ct.War) - int(ca.War)) / 100
-		if dmg < 1 {
-			dmg = 1
-		}
-		if int(ca.Stamina) <= dmg {
+		blow = DuelBlow(int(ct.War), int(ca.War),
+			b.roll(DuelBlowSpread), b.roll(DuelBlowSpread), b.roll(DuelBlowWide))
+		if int(ca.Stamina) <= blow {
 			ca.Stamina = 0
 			b.defeatInDuel(a, ca, ct)
 			return nil
 		}
-		ca.Stamina -= uint8(dmg)
+		ca.Stamina -= uint8(blow)
 	}
 	b.note("%s 與 %s 大戰百合，不分勝負", ca.Name, ct.Name)
 	return nil
+}
+
+// 單挑的兩條公式（`0x310b6`／`0x31170`，`L0`、`[base]`）。
+//
+//	回合數 ＝ RND((甲戰力 + 乙戰力) ÷ 2) + 甲戰力 ÷ 7 + 乙戰力 ÷ 7
+//	每回合 ＝ max(0, RND(5) − RND(5) − RND(6) + (我方戰力 − 對方戰力) − 4)
+//
+// 打掉的是對方的**體能**（人物 offset 8），歸零就落敗。
+// **期望值是「戰力差 − 6.5」**：`RND(5) − RND(5)` 的平均是 0、
+// `RND(6)` 的平均是 2.5，所以戰力沒有高過對方七點左右就傷不了人
+// ——正是說明書說的「依其戰力強弱分高下」。
+const (
+	DuelBlowSpread  = 5 // 兩次 RND(5)
+	DuelBlowWide    = 6 // 一次 RND(6)
+	DuelBlowEdge    = 4 // 再扣掉的常數
+	DuelRoundDiv    = 7 // 回合數裡兩人戰力各除的數
+	DuelRoundHalf   = 2 // 亂數上限是兩人戰力和的一半
+	DuelStaminaBar  = 46 // 畫面上體能條的上限（0x2e），不影響判定
+)
+
+// duelRoundSpread 是回合數那個亂數的上限。
+func duelRoundSpread(warA, warB int) int { return (warA + warB) / DuelRoundHalf }
+
+// DuelRounds 是一場單挑打幾回合。
+func DuelRounds(warA, warB, roll int) int {
+	return roll + warA/DuelRoundDiv + warB/DuelRoundDiv
+}
+
+// DuelBlow 是一回合打掉對方多少體能。
+func DuelBlow(mine, theirs, roll5a, roll5b, roll6 int) int {
+	n := roll5a + (mine - theirs) - roll5b - roll6 - DuelBlowEdge
+	if n < 0 {
+		return 0
+	}
+	return n
 }
 
 // 接不接受單挑（`0x30c5b`–`0x30d5b`，`L0`、`[base]`）。
