@@ -56,6 +56,13 @@ const (
 	poemInk    = 11
 )
 
+// DrawImage 把一整張 640×350 的圖貼滿畫布。開場的三英圖
+// （`assets.TitleArt`）就只是一張圖，沒有疊字。
+func DrawImage(c *Canvas, im *assets.Image) {
+	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{}, draw.Src)
+}
+
 // DrawPoem 畫開場詞：底圖用原版的，字由右到左直排。
 //
 // 原版的字身 26×22，remake 的字庫是 16×16，所以字比原版小一圈；

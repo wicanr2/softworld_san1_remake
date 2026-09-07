@@ -7,6 +7,12 @@
 
 ## 畫面
 
+![開場的三英圖](docs/images/titleart.png)
+
+開機的第一張。原版把它切成四塊 160×400 的 `TITL0`–`TITL3` 存在 `DATA1`
+裡，並排成 640 寬再取上面 350 列；remake 照同一個擺法拼回去，與原版
+那一格 **224,000 格逐格相同**。
+
 ![開場詞](docs/images/poem.png)
 
 開場的〈臨江仙〉。底圖是原版的兩張 `SANTL`／`SANTR`，與原版還沒寫字的
@@ -139,8 +145,8 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 ```
 
 `-screen` 可以挑：`list`（州郡一覽）、`main`／`art`（主畫面，`art` 接原版
-素材）、`title`（主選單）、`poem`（開場詞）、`artfield`（戰場地形）、
-`artbattle`（整張主戰場）、`battle`（文字版主戰場）。
+素材）、`title`（主選單）、`titleart`（開場的三英圖）、`poem`（開場詞）、
+`artfield`（戰場地形）、`artbattle`（整張主戰場）、`battle`（文字版主戰場）。
 
 電腦 AI 有三個版本：`base`（三國演義原版還原）、`plus`（加強版還原）、
 `enhanced`（remake 強化）。前兩個只發已經從原版解出來的行為，

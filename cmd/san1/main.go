@@ -78,6 +78,9 @@ type app struct {
 	// quit 為真表示玩家選了「回作業系統」。
 	quit bool
 
+	// titlePic 非 nil 表示停在開場的三英圖，按任意鍵進開場詞。
+	titlePic *assets.Image
+
 	// poem 非 nil 表示停在開場詞那一張，按任意鍵進主選單。
 	poem *assets.Image
 }
@@ -90,6 +93,13 @@ const uiReliefGold = 100
 func (a *app) Update() error {
 	if a.quit {
 		return ebiten.Termination
+	}
+	if a.titlePic != nil {
+		if anyKeyPressed() {
+			a.titlePic = nil
+			a.dirty = true
+		}
+		return nil
 	}
 	if a.poem != nil {
 		if anyKeyPressed() {
@@ -686,6 +696,8 @@ func (a *app) Draw(dst *ebiten.Image) {
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
 		// 同一張圖無頭環境也產得出來（cmd/san1dump -png）。
 		switch {
+		case a.titlePic != nil:
+			ui.DrawImage(a.canvas, a.titlePic)
 		case a.poem != nil:
 			ui.DrawPoem(a.canvas, a.poem)
 		case a.menuScreen != nil:
@@ -845,6 +857,7 @@ func main() {
 	var artBattle *ui.ArtBattle
 	var titleScreen *ui.TitleScreen
 	var poem *assets.Image
+	var titlePic *assets.Image
 	if *useArt {
 		if c3, err := openContainer(*root, "DATA3"); err == nil {
 			if titleScreen, err = ui.NewTitleScreen(c3); err != nil {
@@ -865,6 +878,9 @@ func main() {
 				}
 				if poem, err = assets.PoemScreen(c1); err != nil {
 					poem = nil
+				}
+				if titlePic, err = assets.TitleArt(c1); err != nil {
+					titlePic = nil
 				}
 			}
 		} else {
@@ -897,6 +913,7 @@ func main() {
 	if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
 		a.startTitle(titleScreen, menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len()))
 		a.poem = poem
+		a.titlePic = titlePic
 	}
 	if *calendar == "西曆" {
 		g.Options.Calendar = game.Western

@@ -223,6 +223,41 @@ func PoemScreen(data1 *Container) (*Image, error) {
 	return im, nil
 }
 
+// 開場的三英圖是 `DATA1` 的 `TITL0`–`TITL3` 四塊，各 160×400。
+//
+// 四塊**並排**：`TITL<i>` 放在 x ＝ 160i，縱向從第 0 列取到第 349 列，
+// 資料裡多出來的 50 列畫面上看不到。原版跑到那一格倒出來的畫面
+// 224,000 格**逐格相同**（`internal/parity` 的
+// `TestTitleArtLayoutMatchesTheOriginal`）。
+const (
+	TitleArtPieceW = 160
+	TitleArtPieceH = 400
+	TitleArtPieces = 4
+)
+
+// TitleArt 拼出開場的三英圖。
+func TitleArt(data1 *Container) (*Image, error) {
+	im := &Image{W: ScreenW, H: ScreenH, Pix: make([]byte, ScreenW*ScreenH)}
+	for i := 0; i < TitleArtPieces; i++ {
+		name := fmt.Sprintf("TITL%d.IMG", i)
+		j, ok := data1.ByName(name)
+		if !ok {
+			return nil, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
+		}
+		p, err := DecodeImage(data1.Data(j))
+		if err != nil {
+			return nil, err
+		}
+		if p.W != TitleArtPieceW || p.H != TitleArtPieceH {
+			return nil, fmt.Errorf("assets: %s 是 %d×%d，三英圖的一塊應該是 %d×%d",
+				name, p.W, p.H, TitleArtPieceW, TitleArtPieceH)
+		}
+		// 高度比畫面多 50 列，Blit 會照畫面裁掉。
+		im.Blit(p, i*TitleArtPieceW, 0)
+	}
+	return im, nil
+}
+
 // 場地四周的階梯狀邊框。
 //
 // 原版每 96 像素（兩欄）畫一組：上緣 `0x21ee2`、下緣 `0x220f0`，

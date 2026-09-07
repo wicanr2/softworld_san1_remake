@@ -120,8 +120,8 @@ remake 先用自己的一組色號，登記在 `docs/design/02`。
 
 ### 6.1 六個選項接上行為
 
-`cmd/san1` 開機是**開場詞 → 主選單 → 遊戲**（`-title=false` 可以跳過，
-給截圖與腳本用；`-load`／`-orig-load` 也直接進遊戲）。
+`cmd/san1` 開機是**三英圖 → 開場詞 → 主選單 → 遊戲**（`-title=false`
+可以跳過，給截圖與腳本用；`-load`／`-orig-load` 也直接進遊戲）。
 
 | 項目 | remake 怎麼做 |
 |---|---|
@@ -316,6 +316,22 @@ go run ./cmd/san1dump -root path/to/三國演義 -screen artfield -sel 25 -png f
 
 `-art=false` 可以退回 remake 自己的文字版面（沒有原版素材時的樣子）。
 
+## 開場的三英圖
+
+`DATA1` 的 `TITL0`–`TITL3`，各 160×400，**並排**放在 x ＝ 0／160／320／480，
+縱向從第 0 列取到第 349 列（資料裡多出來的 50 列畫面上看不到）。
+判準是原版開場那一格的畫面，224,000 格**逐格相同**
+（`internal/parity` 的 `TestTitleArtLayoutMatchesTheOriginal`、
+`internal/assets` 的 `TestTitleArtMatchesTheOriginal`）。
+
+它上面沒有疊任何東西，所以 `assets.TitleArt` 回的就是整張畫面；
+`cmd/san1dump -screen titleart` 存得出來。
+
+原版讀這四張的時機量得到（`TestZZOpeningAssetNames`）：約 1.9 億條指令，
+落在開場的第三格與第四格之間。**開場所有的圖都是開機那 5,000 萬條指令
+裡一次讀完的**，之後只是從記憶體裡貼——所以「這張圖從哪裡來」不能靠
+「畫出來的那一刻在讀什麼檔」去問，要看整段開機的讀取序列。
+
 ## 開場詞
 
 底圖是 `DATA1` 的 `SANTL.IMG` 與 `SANTR.IMG`，各 320×295，畫在 (0,49)
@@ -326,10 +342,13 @@ go run ./cmd/san1dump -root path/to/三國演義 -screen artfield -sel 25 -png f
 字身 26×22，由右到左十一欄，最右邊是「詞曰」而且比詩低一列。
 字是**淺青（11）配黑影**——相減出來的像素只有這兩個顏色。
 
-詞的內容是楊慎的〈臨江仙〉。原版把這些字畫成點陣，`DATA0`–`DATA3`
-裡找不到對應的 Big5 字串（`DATA0.GRP` 是打包過的執行檔），所以
-remake 的那一份是照畫面謄的（`L1`，`internal/ui/poem.go`）。
-字用 remake 自己的字庫，16×16，比原版小一圈。
+詞的內容是楊慎的〈臨江仙〉。原版把這些字畫成點陣——就是 `DATA1` 的
+`TZUE.IMG`／`TZUE1.IMG`（464×166 兩張，同一段字的兩層）——容器裡沒有
+對應的 Big5 字串，所以 remake 的那一份是照畫面謄的（`L1`，
+`internal/ui/poem.go`）。字用 remake 自己的字庫，16×16，比原版小一圈。
+
+**謄字而不直接貼 `TZUE.IMG` 是為了多語系**：貼點陣圖英日兩版就沒得換。
+要逐格對原版的話，貼那兩張才是原版的做法。
 
 **沒有英日譯文**：這是作品的引文不是介面用語，不進 `internal/i18n` 的
 目錄，翻譯要另外處理。
