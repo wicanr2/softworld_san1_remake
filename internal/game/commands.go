@@ -182,6 +182,17 @@ func (g *State) Train(prefectureID int, by state.FactionID) error {
 //
 // 平均是**以兵數加權**的：一支一千人的精兵與一支十人的新兵混編，
 // 結果不該是兩者的算術平均。
+//
+// **名單不比對勢力**（`L0`＋`L1`）。原版的 `0xc2c4` 用
+// `buildRoster(郡, 2)`，模式 2 的條件只有「所在郡相同」與
+// 「身分 ∈ {0,1,2,3}」（`docs/re/07` §6）。同一個郡站得下兩個勢力的
+// 武將——郡的所屬是每回合掃全部 350 筆人物重算的，後寫的蓋前寫的
+// （`0x1e394`），所以有主的郡裡留著別人的敗兵是**表得出來的盤面**。
+// 種了外人再量，28 個混編的郡次原版 28 次都把他一起攤平
+// （`internal/parity/mixed_oracle_test.go`）。
+//
+// 多一道勢力比對的代價不是「比較安全」而是**整批命令中斷**：
+// `ApplyAll` 一道失敗就不跑後面的，於是少算一整個勢力的行動。
 func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
@@ -195,7 +206,7 @@ func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID
 	var wTrain, wArms int
 	for _, i := range indices {
 		x := g.General(i)
-		if x == nil || x.Faction != by || x.Location != prefectureID {
+		if x == nil || !x.Employed() || x.Location != prefectureID {
 			return ErrUnknownUnit
 		}
 		units = append(units, x)
