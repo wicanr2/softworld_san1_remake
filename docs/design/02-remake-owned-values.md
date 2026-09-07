@@ -136,9 +136,13 @@
 | `TuneCaptureOnDuel` | 60 | 「可能被擒，或死於刀下」，沒給機率 |
 | `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` / `TuneStratagemRange` | 140／20／30／3 | 自動作戰什麼時候該死戰、叫陣、退兵、用計——手冊是寫給玩家看的，沒有這一層 |
 
-地形的攻防修正幅度（`attackMod`／`defenceMod`）、地形的移動花費
-（`moveCost`）、戰場尺寸（21×15）同樣是 remake 選的；
-手冊只給了它們之間的相對關係。
+地形的攻防修正幅度（`attackMod`／`defenceMod`）仍然是 remake 選的：
+原版有兩張依地形索引的攻守表（`DS:0x85c2`／`DS:0x85e2`，
+`docs/re/05` §2.3），但**用它們的公式還沒讀出來**，所以數字先不搬。
+
+移動花費（`moveCost`）與戰場版面**已經不是 remake 的了**：
+移動力表量到在 `DS:0x7c42`，與說明書 p.29 逐格相同；戰場是 12 欄 × 10 列，
+每個郡的地圖存在州郡記錄 offset 55–174。
 
 ### 謀略
 

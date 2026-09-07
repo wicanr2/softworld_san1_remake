@@ -81,10 +81,18 @@ var defenceMod = [terrainCount]int{
 func AttackMod(t Terrain) int  { return attackMod[t] }
 func DefenceMod(t Terrain) int { return defenceMod[t] }
 
-// moveCost 是走進一格要花的移動力。大山是不可通行（見 Passable）。
+// moveCost 是走進一格要花的移動力。
+//
+// 原版的表在 `DS:0x7c42`，16 個字，用地形碼（那一格的低四位）索引：
+//
+//	1 大山 999   2 山丘 3   3 淺水 4   4 深水 6   5 城池 3
+//	6 關寨 3     7 平原 2   8 樹林 3   9 沙漠 2
+//
+// **與說明書 p.29 的表逐格相同**，兩份互為佐證（`L0`、`[base]`）。
+// 999 是原版自己寫的「過不去」，這裡照抄，判斷仍走 Passable。
 var moveCost = [terrainCount]int{
-	Plain: 1, Desert: 2, Hill: 3, Forest: 2,
-	Shallow: 3, Deep: 5, City: 1, Fort: 1, Mountain: 99,
+	Plain: 2, Desert: 2, Hill: 3, Forest: 3,
+	Shallow: 4, Deep: 6, City: 3, Fort: 3, Mountain: 999,
 }
 
 // Hex 是軸座標。六方向與手冊 p.5 的方向圖相同：
@@ -152,15 +160,51 @@ type Field struct {
 	W, H int
 	cell []Terrain
 
-	// Gates 是通往鄰郡的通道位置。
+	// Gates 是通往鄰郡的通道。索引是鄰郡的郡編號。
 	//
 	// 手冊 p.19：「圖中的數字位置代表前往鄰近州郡的通道，
 	// **也是鄰郡攻入時的發兵地點**」——所以它同時是進攻方的入口
-	// 與退兵的出口。索引是鄰郡的郡編號。
-	Gates map[int]Hex
+	// 與退兵的出口。
+	//
+	// **一個出口是一片格子不是一格**：原版的資料裡遼東通往鄰郡的
+	// 通道佔五格。要單一入口用 Gate。
+	Gates map[int][]Hex
 
 	// CityAt 是城池的位置。守方守的就是它（說明書 p.35）。
 	CityAt Hex
+
+	// Starts 是四個軍團的起點（原版每張圖各標一格，高四位 11–14）。
+	// 沒有標記的槽是 `{-1, -1}`。
+	Starts []Hex
+
+	// Neighbours 是這個郡的相鄰表，順序與原版相同。出口寫回原版格式時
+	// 要靠它把郡編號換回索引。
+	Neighbours []int
+
+	// off 記哪些格在圖外。**不能只靠地形是大山來判斷**：圖外與大山
+	// 走起來一樣，寫回原版格式時卻是兩個不同的位元組。
+	off []bool
+}
+
+// NoHex 是「沒有這一格」的哨兵值。城池、軍團起點、入口都用它表示缺席。
+var NoHex = Hex{Q: -1, R: -1}
+
+// Gate 是通往某個鄰郡的入口，取那片通道的第一格。
+// 沒有這個出口時回 NoHex。
+func (f *Field) Gate(n int) Hex {
+	if hs := f.Gates[n]; len(hs) > 0 {
+		return hs[0]
+	}
+	return NoHex
+}
+
+// Outside 回報這一格在不在圖外（原版寫 `0xFF` 的那些格）。
+func (f *Field) Outside(h Hex) bool {
+	x, y := f.offset(h)
+	if x < 0 || y < 0 || x >= f.W || y >= f.H {
+		return true
+	}
+	return f.off != nil && f.off[y*f.W+x]
 }
 
 // At 取一格的地形。越界回大山（不可通行），這樣邊界不必另外判斷。
@@ -181,15 +225,21 @@ func (f *Field) Set(h Hex, t Terrain) {
 	f.cell[y*f.W+x] = t
 }
 
-// offset 把軸座標換成矩形陣列的索引（奇數列右移半格）。
+// offset 把軸座標換成矩形陣列的索引。
+//
+// **版面是原版的**：12 欄 × 10 列，**奇數欄往下移半格**（odd-q）。
+// 畫面上一格 48 × 32 像素，`x ＝ 48欄 + 56`、`y ＝ 32列 + 36`，
+// 奇數欄再 `+16`（`0x22742`–`0x2276c`）。走訪鄰格的 dx／dy 表在
+// `DS:0x7c6a`／`DS:0x7c82`，依欄的奇偶各一組六向（`0x24c11`）——
+// 換算過來與 dirDelta 的六個軸向差**逐格相同**。
 func (f *Field) offset(h Hex) (int, int) {
-	y := h.R
-	x := h.Q + (h.R-(h.R&1))/2
+	x := h.Q
+	y := h.R + (h.Q-(h.Q&1))/2
 	return x, y
 }
 
-// FromOffset 把矩形座標換回軸座標。畫面與生成器用它。
-func FromOffset(x, y int) Hex { return Hex{Q: x - (y-(y&1))/2, R: y} }
+// FromOffset 把矩形座標換回軸座標。畫面與載入器用它。
+func FromOffset(x, y int) Hex { return Hex{Q: x, R: y - (x-(x&1))/2} }
 
 // InBounds 回報這一格在不在場上。
 func (f *Field) InBounds(h Hex) bool {
@@ -231,7 +281,7 @@ func (f *Field) String() string {
 // （說明書 p.30）。水軍在水上、山軍在山丘、陸軍在平地各自省力。
 func MoveCost(t Terrain, troop TroopKind) int {
 	c := moveCost[t]
-	if c >= 99 {
+	if c >= 999 {
 		return c
 	}
 	if troop.Suits(t) && c > 1 {

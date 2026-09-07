@@ -29,4 +29,5 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 某個數字是原版的還是 remake 選的 | `design/02`，或 `grep -rn Tune internal/` |
 | 現在完成到哪 | `VERIFICATION-MATRIX.md` |
 | 哪些斷言被推翻過 | `CONTEXT.md` §4 |
-| 原版某段文字在哪個位址 | `re/04` |
+| 原版某段文字在哪個位址 | `re/04`（檔案位移）、`re/05` §4（戰術層的 DS 位移）|
+| 戰場地圖、地形碼、軍團編成 | `re/05` |

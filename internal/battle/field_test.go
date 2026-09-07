@@ -121,12 +121,24 @@ func TestMoveCostSuitability(t *testing.T) {
 	if got := MoveCost(Hill, TroopMountain); got != 2 {
 		t.Errorf("山軍走山丘花 %d，應該少一點（3-1）", got)
 	}
-	if got := MoveCost(Deep, TroopWaterOnly); got != 4 {
-		t.Errorf("水軍走深水花 %d，應該是 4", got)
+	if got := MoveCost(Deep, TroopWaterOnly); got != 5 {
+		t.Errorf("水軍走深水花 %d，應該是 5（6-1）", got)
 	}
-	// 花費 1 的地形不會再減——不能出現零花費，否則移動力用不完。
+	// 適應也不會減到零：平原本來就是最便宜的 2。
 	if got := MoveCost(Plain, TroopLand); got != 1 {
-		t.Errorf("陸軍走平原花 %d，應該是 1", got)
+		t.Errorf("陸軍走平原花 %d，應該是 1（2-1）", got)
+	}
+	// 原版的表（`DS:0x7c42`）與說明書 p.29 逐格相同，這裡整張釘住。
+	for _, c := range []struct {
+		t    Terrain
+		want int
+	}{
+		{Plain, 2}, {Desert, 2}, {Hill, 3}, {Forest, 3}, {City, 3},
+		{Fort, 3}, {Shallow, 4}, {Deep, 6}, {Mountain, 999},
+	} {
+		if got := moveCost[c.t]; got != c.want {
+			t.Errorf("%s 的移動力消耗是 %d，原版是 %d", c.t, got, c.want)
+		}
 	}
 	// 大山誰都過不去。
 	for k := TroopLand; k <= TroopMighty; k++ {

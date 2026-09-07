@@ -30,8 +30,8 @@ func TestGenerateIsDeterministic(t *testing.T) {
 		if len(a.Gates) != len(b.Gates) {
 			t.Fatalf("第 %d 郡的通道數不一樣", id)
 		}
-		for n, h := range a.Gates {
-			if b.Gates[n] != h {
+		for n := range a.Gates {
+			if a.Gate(n) != b.Gate(n) {
 				t.Fatalf("第 %d 郡通往 %d 郡的通道位置不一樣", id, n)
 			}
 		}
@@ -68,7 +68,8 @@ func TestGenerateGates(t *testing.T) {
 			t.Errorf("第 %d 郡有 %d 個鄰郡卻開了 %d 個通道",
 				id, len(p.Neighbours), len(f.Gates))
 		}
-		for n, h := range f.Gates {
+		for n := range f.Gates {
+			h := f.Gate(n)
 			if !f.InBounds(h) {
 				t.Errorf("第 %d 郡通往 %d 郡的通道 %v 在場外", id, n, h)
 			}
@@ -126,7 +127,8 @@ func TestGenerateFortsCapped(t *testing.T) {
 func TestGenerateCityReachableFromEveryGate(t *testing.T) {
 	for id := 1; id <= 42; id++ {
 		f := Generate(params(id))
-		for n, gate := range f.Gates {
+		for n := range f.Gates {
+			gate := f.Gate(n)
 			if !reachable(f, gate, f.CityAt) {
 				t.Errorf("第 %d 郡：從通往 %d 郡的入口 %v 走不到城池\n%s",
 					id, n, gate, f)

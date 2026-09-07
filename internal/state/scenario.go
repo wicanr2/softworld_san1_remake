@@ -143,6 +143,20 @@ type Prefecture struct {
 	// 的相鄰表完全相同。整張圖對稱（95 條邊、零條單向）而且全連通。
 	Neighbours []int
 
+	// BattleField 是這個郡的**戰場地圖**（原版 offset 55–174，120 個位元組）。
+	//
+	// 12 欄 × 10 列，索引是 `列 × 12 + 欄`。每一格一個位元組：
+	//
+	//	低四位 = 地形（1 大山、2 山丘、3 淺水、4 深水、5 城池、
+	//	                6 關寨、7 平原、8 樹林、9 沙漠）
+	//	高四位 = 0–9 通往第幾個鄰郡（索引 Neighbours）、
+	//	         10 城池、11–14 四個軍團的起點、15 沒有標記
+	//	0xFF   = 圖外
+	//
+	// 出處是原版自己的碼：戰鬥入口 `0x20200` 進來就把這 120 個位元組
+	// 複製到工作區 `es:[0x163a]`（`docs/re/05` §1）。
+	BattleField []byte
+
 	Raw [prefSize]byte
 }
 
@@ -319,6 +333,7 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 		rec := sta[(i+1)*prefSize:]
 		p := Prefecture{ID: i + 1}
 		copy(p.Raw[:], rec)
+		p.BattleField = append([]byte(nil), rec[55:175]...)
 		// 郡名：offset 0，4 byte Big5 ＋ 1 byte NUL。
 		name, err := decodeBig5(rec[:4])
 		if err != nil {

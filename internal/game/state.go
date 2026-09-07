@@ -94,6 +94,10 @@ type Prefecture struct {
 
 	Neighbours []int
 
+	// BattleField 是這個郡的戰場地圖，原版州郡記錄 offset 55–174
+	// 的 120 個位元組原樣搬過來（`internal/battle`.Load 解讀）。
+	BattleField []byte
+
 	// ⚠ **現役／在野武將數不存在這裡。** 原版的檔案有那兩欄，
 	// 而且我們驗過它與人物表逐郡吻合——但那是初始值。開始下令之後
 	// 存一份副本就會有兩個真相。要數請用 State.ActiveGenerals／FreeGenerals。
@@ -314,7 +318,8 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, er
 			Gold:       int(p.Gold), Rice: int(p.Rice),
 			PublicLoyalty: p.PublicLoyalty, LandValue: p.LandValue,
 			FloodRate: p.FloodRate, PriceLevel: p.PriceLevel,
-			Neighbours: append([]int(nil), p.Neighbours...),
+			Neighbours:  append([]int(nil), p.Neighbours...),
+			BattleField: append([]byte(nil), p.BattleField...),
 		})
 	}
 	for _, s := range sc.Generals() {

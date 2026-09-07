@@ -10,12 +10,13 @@ import (
 	"fmt"
 	"image/color"
 	"sort"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 )
 
-// 戰場版面（格）。戰場 21×15 格，每格畫兩個半形位置，奇數列右移一格
+// 戰場版面（格）。戰場 12×10 格，每格畫兩個半形位置
 // ——六方向的格子在方形字格上就是這個排法。
 const (
 	fieldCol  = 1
@@ -292,24 +293,28 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 // TerrainPage 是「郡地理誌」：某個郡的主戰場地形（說明書 p.19，
 // 查看選單的第 5 項）。
 //
-// ⚠ **這張圖是 remake 生成的**（`internal/battle/generate.go`）。
-// 原版那一張在 `.OKR` 裡，格式未解，而且是美術素材不重製
-// （`docs/design/03` §3）。同一個郡永遠得到同一張圖，所以它是
-// 「這個郡打起來長什麼樣」的可靠答案，只是不是原版的那一張。
-func TerrainPage(name string, f *battle.Field, gates map[int]battle.Hex) (string, []string) {
+// 地圖是**原版的資料**：州郡記錄 offset 55–174 的 120 個位元組
+// （`internal/battle`.Load）。
+//
+// 文字版一格一個字，圖外留白。**原版是奇數欄往下移半格的六角格**，
+// 那個半格在字元格子裡表現不出來，所以這裡只排成矩陣；相鄰關係
+// 仍然照六角走（`Field.Step`），畫面版才按真的座標畫。
+func TerrainPage(name string, f *battle.Field, gates map[int][]battle.Hex) (string, []string) {
 	if f == nil {
 		return t("page.terrain"), []string{t("msg.none")}
 	}
 	out := make([]string, 0, f.H+6)
 	for y := 0; y < f.H; y++ {
 		line := ""
-		if y%2 == 1 {
-			line = " "
-		}
 		for x := 0; x < f.W; x++ {
-			line += terrainGlyph[f.At(battle.FromOffset(x, y))]
+			h := battle.FromOffset(x, y)
+			if f.Outside(h) {
+				line += "　"
+				continue
+			}
+			line += terrainGlyph[f.At(h)]
 		}
-		out = append(out, line)
+		out = append(out, strings.TrimRight(line, "　"))
 	}
 	out = append(out, "")
 	// 「圖中的數字位置代表前往鄰近州郡的通道」（說明書 p.19）。

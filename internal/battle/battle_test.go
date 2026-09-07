@@ -110,7 +110,8 @@ func TestRestAddsTwoMovePoints(t *testing.T) {
 // 與移動力不足時走不動。
 func TestMoveRules(t *testing.T) {
 	f := flat(Plain)
-	here := FromOffset(5, 5)
+	// 離城池遠一點：城池在正中央，而走上去要花 3 不是 2。
+	here := FromOffset(2, 6)
 	f.Set(here.Step(DirUp), Mountain)
 	b := arena(f)
 	u := place(b, MainAttacker, Centre, here, lead("甲", 50, 50, 1000))

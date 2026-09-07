@@ -31,16 +31,10 @@ type Params struct {
 	FloodRate uint8
 }
 
-// 戰場尺寸。手冊沒給；取一個「三十天走得完但走不快」的大小。
-const (
-	FieldW = 21
-	FieldH = 15
-)
-
 // Generate 造一張戰場。
 func Generate(p Params) *Field {
 	f := &Field{W: FieldW, H: FieldH, cell: make([]Terrain, FieldW*FieldH),
-		Gates: map[int]Hex{}}
+		Gates: map[int][]Hex{}}
 	rng := newRand(uint32(p.Prefecture)*2654435761 + 0x9E3779B9)
 
 	// 底：平原為主，土地價值越低沙漠越多。
@@ -134,7 +128,7 @@ func Generate(p Params) *Field {
 		if !f.At(h).Passable() {
 			f.Set(h, Plain)
 		}
-		f.Gates[n] = h
+		f.Gates[n] = []Hex{h}
 	}
 	return f
 }

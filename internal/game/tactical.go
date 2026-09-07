@@ -51,15 +51,24 @@ func (g *State) weatherFor(at int) battle.Weather {
 
 // Field 是某個郡的主戰場地形（「郡地理誌」，說明書 p.19）。
 //
-// 生成器是決定性的：同一個郡永遠得到同一張圖，所以查看到的與
-// 真的打起來用的是同一張。
+// **地圖是原版的資料**：州郡記錄 offset 55–174 的 120 個位元組，
+// 42 個郡各一張，沒有兩張相同。所以查看到的與真的打起來用的、
+// 以及原版畫出來的，是同一張。
 func (g *State) Field(at int) *battle.Field { return g.fieldFor(at) }
 
-// fieldFor 生成某個郡的戰場。
+// fieldFor 取某個郡的戰場。
+//
+// 劇本沒帶地圖時（自組的測試局面）退回生成器——它是決定性的，
+// 同一個郡永遠得到同一張圖，所以那條路徑也仍然可重現。
 func (g *State) fieldFor(at int) *battle.Field {
 	p := g.Prefecture(at)
 	if p == nil {
 		return battle.Generate(battle.Params{Prefecture: at})
+	}
+	if len(p.BattleField) == battle.FieldBytes {
+		if f, err := battle.Load(p.BattleField, p.Neighbours); err == nil {
+			return f
+		}
 	}
 	return battle.Generate(battle.Params{
 		Prefecture: at, Neighbours: p.Neighbours, Forts: p.Forts,

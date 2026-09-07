@@ -133,7 +133,7 @@ func TestCampMovesWithoutSpendingMoves(t *testing.T) {
 	other := place(b, MainAttacker, Left, FromOffset(3, 3), lead("乙", 50, 50, 1000))
 	move := u.Move
 
-	far := FromOffset(18, 12)
+	far := FromOffset(10, 8)
 	if err := b.Camp(u, far); err != nil {
 		t.Fatalf("紮營到遠處失敗：%v", err)
 	}

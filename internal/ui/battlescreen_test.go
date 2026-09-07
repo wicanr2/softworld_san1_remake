@@ -63,7 +63,7 @@ func TestDrawBattleFillsTheField(t *testing.T) {
 	}
 }
 
-// TestBattleFieldFitsTheCanvas 釘住 21×15 的戰場放得進 80×25 的畫布。
+// TestBattleFieldFitsTheCanvas 釘住 12×10 的戰場放得進 80×25 的畫布。
 func TestBattleFieldFitsTheCanvas(t *testing.T) {
 	// 最寬的一列：奇數列右移一格。
 	right := fieldCol + (battle.FieldW-1)*fieldStep + 1 + fieldStep

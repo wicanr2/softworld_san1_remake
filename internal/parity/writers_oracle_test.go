@@ -83,10 +83,12 @@ func TestZZDumpCode(t *testing.T) {
 	dumpImage(t, o, 0x00b000, 0x050000, "code")
 }
 
-// TestZZDumpBattleCode 把原版帶進一場真的打得起來的戰役，然後倒碼段。
+// TestZZDumpBattleCode 把原版帶進一場真的打得起來的戰役，然後倒記憶體。
 //
-// **主戰場那一層很可能是 overlay**：開機後的 dump 裡找不到它的選單字串
-//（`docs/re/03` §1.5）。所以要讀戰術層，得先讓原版把那一層載進來。
+// 戰術層本身**不是 overlay**（`docs/re/03` §1.5），開機後的碼段裡就有；
+// 這一支要的是**資料段**：地形代價表之類的常數都寫成 `[bx+0x7c42]` 這種
+// DS 相對位址，而 DS 是 MSC 的 DGROUP，不在碼段的 dump 裡。所以進到
+// 戰鬥裡攔一次，把 DS 記下來，連著整個資料段倒出來。
 //
 // 盤面**直接寫記憶體擺出來**，不靠存檔剛好是什麼樣子（`stageABattle`）。
 // 送的鍵用 `SAN1_BATTLEKEY` 換，`|` 分段，`enterMark` 代表 Enter。
@@ -106,44 +108,50 @@ func TestZZDumpBattleCode(t *testing.T) {
 	defer o.Close()
 
 	base := bootToGame(t, o, seedMas)
-	_, to := stageABattle(t, o, base)
+	at, to := stageABattle(t, o, base)
 
-	// 攔玩家那條出兵路徑的兩個點，看它走到哪裡就停。
-	// `0x18bc8` 是處理常式的進入點（`0x18fbc` 在它裡面呼叫移動常式），
-	// `0x1938a` 是真的把部隊搬過去的那一支。
-	// **攔那支數字輸入常式，讓它自己報呼叫端**：`33d8:115e`
-	// （線性 `0x34ede`）就是「請輸入難度(1-10)」與「攻打那一郡(1-42)」
-	// 共用的那一支。這樣不必猜處理常式在哪。
-	hits := map[uint32]int{}
-	o.OnCall(addr(0x34ede), func(o *oracle.Oracle) { hits[o.Caller().Linear()]++ })
-	moved := 0
-	o.OnCall(addr(0x1938a), func(o *oracle.Oracle) { moved++ })
-	defer func() {
-		if len(hits) == 0 {
-			t.Log("數字輸入常式一次都沒被呼叫——位址或路徑不對")
+	// `0x2053c` 是主戰場。攔它進去的那一刻取 DS——資料段的位置只有
+	// 執行期知道，而戰術層的常數表全是 DS 相對的。
+	var dgroup uint16
+	var steps uint64
+	o.OnCall(addr(0x2053c), func(o *oracle.Oracle) {
+		if dgroup == 0 {
+			dgroup, steps = o.DSReg(), o.Steps()
 		}
-		keys := make([]uint32, 0, len(hits))
-		for k := range hits {
-			keys = append(keys, k)
-		}
-		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-		for _, k := range keys {
-			t.Logf("數字輸入的呼叫端 %#07x：%d 次", k, hits[k])
-		}
-		t.Logf("部隊移動 0x1938a：%d 次", moved)
-	}()
+	})
 
 	const settle = 40_000_000
-	keys := envOr("SAN1_BATTLEKEY", fmt.Sprintf("2|2|%d%s", to, enterMark))
+	spell := func(n int) string {
+		out := ""
+		for _, c := range fmt.Sprintf("%d", n) {
+			out += string(c) + "|"
+		}
+		return out + enterMark
+	}
+	// **每一個提示都要 Enter，選單也一樣**（`docs/re/03` §1.5 的按鍵表）。
+	menu := "2|" + enterMark
+	keys := envOr("SAN1_BATTLEKEY",
+		menu+"|"+menu+"|"+spell(at)+"|"+spell(to))
 	for i, seg := range strings.Split(keys, "|") {
 		o.Drain()
 		o.PressScan(strings.ReplaceAll(seg, enterMark, "\r"))
-		if err := o.Run(settle * 3); err != nil {
+		if err := o.Run(settle); err != nil {
 			t.Fatalf("送第 %d 段（%q）時停止：%v", i+1, seg, err)
 		}
 		dumpScreen(t, o, fmt.Sprintf("battle-%d", i+1))
 	}
-	dumpImage(t, o, 0x00b000, 0x050000, "battle")
+	if dgroup == 0 {
+		t.Fatal("沒有進到主戰場 0x2053c——按鍵序列或盤面不對")
+	}
+	t.Logf("主戰場在第 %d 步進去，DS ＝ %#06x（線性 %#07x）",
+		steps, dgroup, uint32(dgroup)<<4)
+	// 再跑一段讓戰場畫完，畫面與資料一起留下來。
+	if err := o.Run(settle); err != nil {
+		t.Fatalf("戰場畫面停止：%v", err)
+	}
+	dumpScreen(t, o, "battle-field")
+	lo := uint32(dgroup) << 4
+	dumpImage(t, o, lo, lo+0x10000, "dgroup")
 }
 
 // enterMark 是環境變數裡代表 Enter 的兩個字元。**不寫真的 CR**：

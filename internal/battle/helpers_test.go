@@ -8,7 +8,7 @@ package battle
 // flat 鋪一張整片同一種地形的戰場，城池照樣放在中央。
 func flat(t Terrain) *Field {
 	f := &Field{W: FieldW, H: FieldH, cell: make([]Terrain, FieldW*FieldH),
-		Gates: map[int]Hex{}}
+		Gates: map[int][]Hex{}}
 	for i := range f.cell {
 		f.cell[i] = t
 	}

@@ -84,7 +84,7 @@ func New(s Setup) *Battle {
 	b.Gold[MainAttacker], b.Rice[MainAttacker] = s.AttackerGold, s.AttackerRice
 	b.Gold[MainDefender], b.Rice[MainDefender] = s.DefenderGold, s.DefenderRice
 
-	entry := s.Field.Gates[s.FromGate]
+	entry := s.Field.Gate(s.FromGate)
 	if !s.Field.InBounds(entry) {
 		entry = FromOffset(0, FieldH/2)
 	}
