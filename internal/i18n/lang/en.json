@@ -142,6 +142,7 @@
   "ev.locust": "%s: locusts",
   "ev.plague": "%s: plague",
   "ev.quake": "%s: earthquake",
+  "ev.seal": "%s obtained the Imperial Seal",
   "ev.tribute": "%s received %d tributes",
   "fld.active": "Officers",
   "fld.activeFree": "%d / free %d",

@@ -142,6 +142,7 @@
   "ev.locust": "%s 蝗害",
   "ev.plague": "%s 瘟疫",
   "ev.quake": "%s 地震",
+  "ev.seal": "%s 得到傳國玉璽",
   "ev.tribute": "%s 收到 %d 件貢品",
   "fld.active": "現役將",
   "fld.activeFree": "%d / 在野 %d",

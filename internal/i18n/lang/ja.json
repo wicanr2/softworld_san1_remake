@@ -142,6 +142,7 @@
   "ev.locust": "%s で蝗害",
   "ev.plague": "%s で疫病",
   "ev.quake": "%s で地震",
+  "ev.seal": "%s が伝国の玉璽を手に入れた",
   "ev.tribute": "%s が貢ぎ物を %d 件受け取った",
   "fld.active": "武将数",
   "fld.activeFree": "%d／在野 %d",

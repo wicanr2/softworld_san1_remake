@@ -200,6 +200,10 @@ func (g *State) spring() []Event {
 		p.LandValue = uint8(LandValueDecay(int(p.LandValue),
 			g.roll(int(Spring), p.ID, 8)%max(1, int(p.LandValue)/10+1)))
 	}
+	// **玉璽現世**（`0x15cfd`–`0x1519a`，`L0`）：玉璽還沒出現的話，
+	// 每個春月約半數機率落到隨機一個活著的勢力手上，那一家的人望
+	// 大漲。玉璽是勝利條件之一（說明書 p.24）。
+	out = append(out, g.sealEvent()...)
 	// **地震：每個春月 1/3 的機率，落在隨機一個郡**（`0x162d2`，`L0`）。
 	// 不看民眾忠誠也不看土地價值——那道「天災多因人怨」的門檻是瘟疫的。
 	if g.roll(int(Spring), 0, 10)%QuakeChance == 0 {
@@ -358,6 +362,59 @@ func (g *State) comeOfAge() []Event {
 		out = append(out, Event{at, tf("ev.appear", personName(x.Name), placeName(name))})
 	}
 	return out
+}
+
+// 玉璽現世的兩個數（`0x15d11`／`0x1518b`，`L0`）。
+const (
+	SealChanceBar     = 50 // RND(100) > 50 才出現
+	SealPrestigeSpread = 30 // 人望 += RND(30) + 40
+	SealPrestigeFloor  = 40
+)
+
+// SealFound 回報玉璽已經現世了沒有。
+//
+// 原版用一個全域旗標（`es:0x2f6c`，`0xFFFF` ＝ 還沒現世）；remake 從
+// 各家的寶庫推導，**因為滅亡勢力的寶物會被勝方接收**（`seizeTreasures`），
+// 玉璽不會憑空消失。少一個要存進存檔的欄位。
+func (g *State) SealFound() bool {
+	for i := range g.factions {
+		if g.factions[i].Treasury[TreasureSeal] > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// sealEvent 是春季的玉璽現世（`0x15cfd`–`0x1519a`，`L0`）。
+//
+// **玉璽在 remake 裡原本只被檢查、從來不會被發出來**——
+// 勝利條件那一條因此永遠走不到，而畫面上完全看不出來。
+func (g *State) sealEvent() []Event {
+	if g.SealFound() {
+		return nil
+	}
+	if g.roll(int(Spring), 0, 50)%100 <= SealChanceBar {
+		return nil
+	}
+	var alive []*Faction
+	for i := range g.factions {
+		if g.factions[i].Alive {
+			alive = append(alive, &g.factions[i])
+		}
+	}
+	if len(alive) == 0 {
+		return nil
+	}
+	f := alive[g.roll(int(Spring), 0, 51)%len(alive)]
+	f.Treasury[TreasureSeal] = 1
+	f.Prestige = clampTo(f.Prestige+
+		g.roll(int(Spring), int(f.ID), 52)%SealPrestigeSpread+SealPrestigeFloor, 100)
+	lord := g.Lord(f.ID)
+	name := tf("fld.factionN", f.ID)
+	if lord != nil {
+		name = personName(lord.Name)
+	}
+	return []Event{{0, tf("ev.seal", name)}}
 }
 
 // DebutGarrisonCap 是「牽絆對象的郡收不收得下」的門檻

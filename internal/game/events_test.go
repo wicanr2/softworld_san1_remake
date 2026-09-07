@@ -642,3 +642,62 @@ func TestDebutFollowsTheBond(t *testing.T) {
 		t.Errorf("%s 出現在郡 %d，出身郡是 %d", loner.Name, loner.Location, origin)
 	}
 }
+
+// TestSealAppearsAndBoostsPrestige 釘住玉璽現世（`0x15cfd`–`0x1519a`，`L0`）。
+//
+// **玉璽在 remake 裡原本只被檢查、從來不會被發出來**——勝利條件
+// （說明書 p.24）因此永遠走不到，而畫面上完全看不出來：每個勢力的
+// 寶庫都好端端地顯示玉璽 0 件。
+func TestSealAppearsAndBoostsPrestige(t *testing.T) {
+	g := newGame(t)
+	// **劇本 001 開局就有人持玉璽**（孫堅），所以事件在那裡不會觸發——
+	// 這一條要自己把盤面擺成「玉璽還沒現世」（使用者的指示：對拍直接
+	// 設定記憶體，不要依賴 RND()）。
+	// ⚠ `Factions()` 回的是**值**不是指標，`for _, f := range` 改不到——
+	// 要透過 `Faction(id)` 拿指標。
+	for _, f := range g.Factions() {
+		g.Faction(f.ID).Treasury[TreasureSeal] = 0
+	}
+	if g.SealFound() {
+		t.Fatal("清乾淨之後還是有人持玉璽")
+	}
+	before := map[state.FactionID]int{}
+	for _, f := range g.Factions() {
+		before[f.ID] = f.Prestige
+	}
+	// 跑十年的春天；約半數機率，十年內幾乎一定出現。
+	for y := 0; y < 10 && !g.SealFound(); y++ {
+		for m := 1; m <= 3; m++ {
+			g.Date = Date{Year: 190 + y, Month: m}
+			g.EndMonth()
+		}
+	}
+	if !g.SealFound() {
+		t.Fatal("跑了十年的春天，玉璽還沒現世")
+	}
+	// 只有一家拿到，而且人望大漲。
+	holders := 0
+	for _, f := range g.Factions() {
+		if f.Treasury[TreasureSeal] == 0 {
+			continue
+		}
+		holders++
+		if f.Prestige <= before[f.ID] {
+			t.Errorf("%v 拿到玉璽卻沒漲人望（%d → %d）",
+				f.ID, before[f.ID], f.Prestige)
+		}
+	}
+	if holders != 1 {
+		t.Errorf("%d 家持有玉璽，應該只有一家", holders)
+	}
+	// 已經現世就不會再發一次。
+	g.Date = Date{Year: 210, Month: 1}
+	g.EndMonth()
+	n := 0
+	for _, f := range g.Factions() {
+		n += f.Treasury[TreasureSeal]
+	}
+	if n != 1 {
+		t.Errorf("玉璽變成 %d 件——現世之後不該再發", n)
+	}
+}
