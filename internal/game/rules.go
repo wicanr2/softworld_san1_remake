@@ -242,6 +242,37 @@ const ArmsPerGold = 100
 
 func Weapons(arms, soldiers int) int { return arms * soldiers / 100 }
 
+// WeaponsF32 是**徵兵那條路**的武器數（`L0`、`0xbeb8` 與 `0x19b99`）。
+//
+// 原版乘的是 **float32 的 0.01**（0.009999999776…），比 1/100 小一點點，
+// 所以整除的時候會少一件：兵 20 × 武裝度 100 算出來是 **19** 件不是 20 件。
+// 買武器那一支（`0xc168`）乘的是 float64 的 0.01，整除不會少——
+// **兩條路的常數不同，不要合成一支**。
+//
+// 位址：稀釋是 `fmuls DS:0xa5d0`（電腦）／`fmuls DS:0xa7c2`（玩家），
+// 兩個位址存的都是 `0.009999999776482582`；買武器是
+// `fmull DS:0xa5c8` ＝ `0.01`（float64）。
+func WeaponsF32(arms, soldiers int) int {
+	n := arms * soldiers
+	if n > 0 && n%100 == 0 {
+		return n/100 - 1
+	}
+	return n / 100
+}
+
+// DiluteAfterRecruit 是徵兵之後訓練度與武裝度的稀釋（`L0`、`L1`、`[base]`）。
+//
+//	新值 ＝ trunc(WeaponsF32(舊值, 舊兵力) × 100 ÷ 新兵力)
+//
+// 新兵沒受訓也沒武器，所以兩個欄位走同一條加權平均——原版的碼也是
+// 同一段跑兩次（`0xbfdd`–`0xc057`）。
+func DiluteAfterRecruit(v, oldMen, newMen int) int {
+	if newMen <= 0 {
+		return 0
+	}
+	return WeaponsF32(v, oldMen) * 100 / newMen
+}
+
 func ArmsOf(weapons, soldiers int) int {
 	if soldiers <= 0 {
 		return 0

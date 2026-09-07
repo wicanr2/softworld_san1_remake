@@ -176,10 +176,11 @@ func (g *State) Conscript(prefectureID, generalIndex, n int, by state.FactionID)
 		return ErrNoRoom
 	}
 	// 新兵沒有武器也沒受過訓，加入之後**同一批武器攤在更多人頭上**，
-	// 武裝度自然下降（`ArmsOf`／`Weapons`，`rules.go`）。訓練度同理。
+	// 武裝度自然下降。訓練度走同一條式子——原版的碼就是同一段跑兩次
+	// （`DiluteAfterRecruit`，`rules.go`）。
 	total := x.Soldiers + n
-	x.Training = uint8((int(x.Training)*x.Soldiers + TuneNewSoldierTraining*n) / total)
-	x.Arms = uint8(ArmsOf(Weapons(int(x.Arms), x.Soldiers), total))
+	x.Training = uint8(DiluteAfterRecruit(int(x.Training), x.Soldiers, total))
+	x.Arms = uint8(DiluteAfterRecruit(int(x.Arms), x.Soldiers, total))
 
 	p.Gold -= cost
 	p.Population -= n

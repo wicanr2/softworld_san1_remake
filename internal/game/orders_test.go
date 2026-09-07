@@ -156,7 +156,13 @@ func TestConscriptNeedsPeople(t *testing.T) {
 	}
 }
 
-// TestConscriptLowersTraining 釘住「新兵毫無訓練，會把部隊拉低」（說明書 p.20）。
+// TestConscriptLowersTraining 釘住「新兵毫無訓練，會把部隊拉低」（說明書 p.20）
+// 以及原版那條**少一格**的算術。
+//
+// 直覺的加權平均是 80 → 40、60 → 30，而原版給的是 **39 與 29**：
+// 它先把百分比還原成「有訓練／有武器的人數」，那一步乘的是 float32 的
+// 0.01（比 1/100 小一點點），所以 `80 × 100` 得到的是 79 不是 80
+// （`game.WeaponsF32`）。差一格看起來像捨入雜訊，實際是原版的算術。
 func TestConscriptLowersTraining(t *testing.T) {
 	g := newGame(t)
 	lord := g.Lord(0)
@@ -170,12 +176,13 @@ func TestConscriptLowersTraining(t *testing.T) {
 	if err := g.Conscript(8, lord.Index, 100, 0); err != nil {
 		t.Fatal(err)
 	}
-	// 一百個訓練度 80 的老兵加一百個 0 的新兵 → 40。
-	if lord.Training != 40 {
-		t.Errorf("徵兵後訓練度 %d，應該是 40（加權平均）", lord.Training)
+	// 一百個訓練度 80 的老兵加一百個 0 的新兵：加權平均是 40，
+	// 而原版先還原成 79 個受過訓的人，攤到 200 人是 39。
+	if lord.Training != 39 {
+		t.Errorf("徵兵後訓練度 %d，應該是 39", lord.Training)
 	}
-	if lord.Arms != 30 {
-		t.Errorf("徵兵後武裝度 %d，應該是 30（加權平均）", lord.Arms)
+	if lord.Arms != 29 {
+		t.Errorf("徵兵後武裝度 %d，應該是 29", lord.Arms)
 	}
 }
 
