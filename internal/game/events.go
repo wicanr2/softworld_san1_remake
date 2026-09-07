@@ -791,12 +791,19 @@ func (g *State) retire(x *General) {
 	}
 }
 
-// Winner 回報有沒有人一統天下。
+// Winner 回報有沒有人一統天下（`0x15852`，`L0`、`[base]`）。
 //
-// 條件是**擁有全部有主的郡**，而且**手上有玉璽**——
-// 「在遊戲結束前一定要拿到玉璽」（說明書 p.37）。
-// 沒有玉璽的話回傳 false 與那個勢力，讓呼叫端顯示「還要再等數月」。
-func (g *State) Winner() (f state.FactionID, hasSeal bool, done bool) {
+// 條件只有一條：**所有有主的郡屬於同一個勢力**。原版逐郡掃兩遍——
+// 先取一個有主的郡的所屬當基準，再確認其他有主的郡都是同一方——
+// 然後直接印「%s 一統天下」（`DS:0x66d4`）並把月內迴圈的旗標清掉。
+//
+// **無主的郡不算。** 掃描碰到所屬 `0xFF` 就跳過，所以地圖上還有荒地
+// 也照樣算統一。
+//
+// **玉璽不是條件。** 說明書 p.37 的「在遊戲結束前一定要拿到玉璽」在碼裡
+// 沒有對應：那支常式除了郡的所屬與君主的姓名之外沒有讀任何東西。
+// 玉璽的作用在別處——現世時給人望（`docs/re/06` §7.1）。
+func (g *State) Winner() (f state.FactionID, done bool) {
 	var only state.FactionID = state.NoFaction
 	for i := range g.prefectures {
 		p := &g.prefectures[i]
@@ -808,14 +815,13 @@ func (g *State) Winner() (f state.FactionID, hasSeal bool, done bool) {
 			continue
 		}
 		if p.Owner != only {
-			return state.NoFaction, false, false
+			return state.NoFaction, false
 		}
 	}
 	if only == state.NoFaction {
-		return state.NoFaction, false, false
+		return state.NoFaction, false
 	}
-	x := g.Faction(only)
-	return only, x != nil && x.Treasury[TreasureSeal] > 0, true
+	return only, true
 }
 
 // SuccessionPrestigeScale 是繼承之後人望要乘的分母（原版是浮點的

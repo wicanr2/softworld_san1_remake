@@ -134,20 +134,17 @@ func (s *Session) EndMonth() {
 	for _, e := range events {
 		s.note("%s", e.Text)
 	}
-	if f, seal, done := s.G.Winner(); done {
+	// 統一判定在原版是每個月最後一件事，緊接在四季常式之後
+	// （`0x1583d`，`docs/re/06` §9）。條件只有「所有有主的郡同屬一方」
+	// ——**玉璽不在條件裡**。
+	if f, done := s.G.Winner(); done {
 		lord := s.G.Lord(f)
 		name := fmt.Sprintf("勢力 %d", f)
 		if lord != nil {
 			name = lord.Name
 		}
-		if seal {
-			s.note("★ %s 一 統 天 下", name)
-			s.Over = true
-		} else {
-			// 「在遊戲結束前一定要拿到玉璽，如果屆時玉璽尚未到手，
-			// 便須再多等候數月才能看到君臨天下的結局」（說明書 p.37）。
-			s.note("%s 已無敵手，但玉璽尚未到手", name)
-		}
+		s.note("★ %s 一 統 天 下", name)
+		s.Over = true
 	}
 }
 

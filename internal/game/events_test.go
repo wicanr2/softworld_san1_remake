@@ -251,29 +251,44 @@ func TestTributeYearly(t *testing.T) {
 		t.Errorf("董卓有四個郡，年底貢品卻沒有增加（%d → %d）", before, after)
 	}
 	if f.Treasury[TreasureSeal] > sealBefore {
-		t.Errorf("玉璽不該由進貢產生（%d → %d）——它是勝利條件",
+		t.Errorf("玉璽不該由進貢產生（%d → %d）——它走春季的現世事件",
 			sealBefore, f.Treasury[TreasureSeal])
 	}
 }
 
-// TestWinnerNeedsSeal 釘住勝利條件（說明書 p.37）。
-func TestWinnerNeedsSeal(t *testing.T) {
+// TestWinnerIgnoresTheSeal 釘住統一的條件（`0x15852`，`L0`）。
+//
+// 只有一條：**所有有主的郡屬於同一個勢力**。無主的郡跳過，玉璽不看。
+// 說明書 p.37 那句「在遊戲結束前一定要拿到玉璽」在碼裡沒有對應
+// （`CONTEXT.md` §4 R19）。
+func TestWinnerIgnoresTheSeal(t *testing.T) {
 	g := newGame(t)
+	// 先留一個無主的郡，證明它不擋統一。
+	ownerless := 0
+	for i := range g.prefectures {
+		if !g.prefectures[i].Owned() {
+			ownerless = g.prefectures[i].ID
+			break
+		}
+	}
+	if ownerless == 0 {
+		t.Fatal("劇本 001 應該有無主的郡")
+	}
 	for i := range g.prefectures {
 		if g.prefectures[i].Owned() {
 			g.prefectures[i].Owner = 0
 		}
 	}
-	f, seal, done := g.Winner()
+	g.Faction(0).Treasury[TreasureSeal] = 0
+	f, done := g.Winner()
 	if !done || f != 0 {
-		t.Fatalf("全部歸劉備之後 Winner 回 %v／%v", f, done)
+		t.Fatalf("全部歸劉備之後 Winner 回 %v／%v（無主的郡 %d 不該擋）",
+			f, done, ownerless)
 	}
-	if seal {
-		t.Error("還沒拿到玉璽卻說贏了")
-	}
-	g.Faction(0).Treasury[TreasureSeal] = 1
-	if _, seal, _ = g.Winner(); !seal {
-		t.Error("拿到玉璽卻還是沒贏")
+	// 有一個郡歸別人就不算統一。
+	g.Prefecture(ownerless).Owner = 1
+	if _, done := g.Winner(); done {
+		t.Error("還有別人的郡卻說統一了")
 	}
 }
 
