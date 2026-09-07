@@ -453,11 +453,42 @@ func RewardCost(effect, gain int) int {
 // 變成無窮大。實測十六個月四十二個郡的物價全部落在 30–68
 // （`docs/mechanics/60-economy`），所以那條路走不到。
 //
+// ⚠ **這是玩家那一條的除數（10）。** 電腦買米的除數隨 AI 等級變
+// （`AIRicePerGold`），等級 5 是 3——同一個物價下它換到的米是玩家的
+// 三倍有餘。
+//
 // **買賣共用這一條**：玩家買米 `0x1b20e` 與賣米 `0x1b49c` 算的是同一個
 // 量。買是「一金換 rate 米」，賣是「rate 米換一金」——所以在同一個月
 // 買進再賣出剛好不賺不賠，零頭還會被除法吃掉。
-func RicePerGold(priceLevel uint8) int {
-	if n := (100 - int(priceLevel)) / 10; n > 1 {
+func RicePerGold(priceLevel uint8) int { return ricePerGold(priceLevel, RiceRateDiv) }
+
+// RiceRateDiv 是玩家那一條的除數（`0x1b20e`／`0x1b49c`）。
+const RiceRateDiv = 10
+
+// riceRateDiv 是電腦買米那六支各自的除數（`0x0c7c0` 起，六個呼叫端
+// 位址差 0x34，`L0`）。
+//
+// **等級 5 是除以 3。** 物價 50 時等級 0–3 一金換 5 單位米，等級 4 換 5、
+// 等級 5 換 16——三倍有餘。這與內政那張表同一個形狀（六支同樣的碼、
+// 只有立即數不同），也是「六個等級是六種性格」的第三個例子。
+var riceRateDiv = [6]int{10, 10, 10, 10, 9, 3}
+
+// AIRicePerGold 是電腦諸侯買米的匯率；等級越界夾住。
+func AIRicePerGold(priceLevel uint8, level int) int {
+	if level < 0 {
+		level = 0
+	}
+	if level >= len(riceRateDiv) {
+		level = len(riceRateDiv) - 1
+	}
+	return ricePerGold(priceLevel, riceRateDiv[level])
+}
+
+func ricePerGold(priceLevel uint8, div int) int {
+	if div < 1 {
+		div = 1
+	}
+	if n := (100 - int(priceLevel)) / div; n > 1 {
 		return n
 	}
 	return 1

@@ -278,7 +278,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 它是市場交易。存糧目標跟著兵力走，不夠就用郡的金補到滿。
 		if o, ok := buyRice(g, p, id, purse); ok {
 			out = append(out, o)
-			purse -= o.Units / game.RicePerGold(g.Prefecture(p).PriceLevel)
+			purse -= o.Units / game.AIRicePerGold(g.Prefecture(p).PriceLevel, aiLevel)
 		}
 		// 挖角（表 `0x56d4`）：**君主要在本郡**，機率隨等級 30／60／80 %，
 		// 預算要 ≥ 100，費用是直接扣的 100 金。

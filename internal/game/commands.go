@@ -346,7 +346,12 @@ func (g *State) BuyRice(prefectureID, units int, by state.FactionID) error {
 	//
 	// 一金買到 `RicePerGold` 單位，**買到的米按實際花掉的金重算**——
 	// 除不盡的零頭拿不到（原版 `0xc73e` 是拿「花掉的金 × 量」回填米）。
+	// **電腦的匯率隨 AI 等級變**（`AIRicePerGold`，`0x0c7c0` 起六支）：
+	// 等級 5 是除以 3，同一個物價下換到的米是玩家的三倍有餘。
 	rate := RicePerGold(p.PriceLevel)
+	if f := g.Faction(by); f != nil && f.ByComputer {
+		rate = AIRicePerGold(p.PriceLevel, f.AILevel)
+	}
 	cost := units / rate
 	if p.Gold < cost {
 		return ErrNoGold

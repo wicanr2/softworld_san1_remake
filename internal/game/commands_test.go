@@ -708,3 +708,30 @@ func TestAutonomyMapsToAILevels(t *testing.T) {
 		t.Errorf("自冶的郡回 %d／%v，應該是 2／true", level, ok)
 	}
 }
+
+// TestRiceRateVariesByAILevel 釘住買米的匯率隨 AI 等級變。
+//
+// 玩家永遠是 `(100 − 物價) ÷ 10`；電腦那一條的除數是
+// `[10,10,10,10,9,3]`（`0x0c7c0` 起六個呼叫端）。**等級 5 是除以 3**
+// ——同一個物價下它換到的米是玩家的三倍有餘，只用玩家那條算式
+// 會把電腦的糧倉低估一大截。
+func TestRiceRateVariesByAILevel(t *testing.T) {
+	const price = 50 // (100−50) = 50
+	if got := RicePerGold(price); got != 5 {
+		t.Errorf("玩家 物價 50：一金換 %d 米，應該是 5", got)
+	}
+	for level, want := range []int{5, 5, 5, 5, 5, 16} {
+		if got := AIRicePerGold(price, level); got != want {
+			t.Errorf("電腦等級 %d 物價 50：一金換 %d 米，應該是 %d",
+				level, got, want)
+		}
+	}
+	if AIRicePerGold(price, -1) != AIRicePerGold(price, 0) ||
+		AIRicePerGold(price, 99) != AIRicePerGold(price, 5) {
+		t.Error("等級越界沒有夾住")
+	}
+	// 物價高到讓商數掉到 1 以下時仍然給 1（原版沒擋，remake 加的下限）。
+	if got := AIRicePerGold(99, 0); got != 1 {
+		t.Errorf("物價 99：一金換 %d 米，下限應該是 1", got)
+	}
+}
