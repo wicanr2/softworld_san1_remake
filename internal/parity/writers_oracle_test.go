@@ -276,8 +276,18 @@ func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
 // 還原之後再送。同一個問題問到第三次還在等好幾分鐘，就該把迴圈變快
 // （`~/.claude/CLAUDE.md` 的長工作紀律）。
 //
-// 判準是**部隊真的動了**：攔 `0x1938a`（把出征者的所在郡改成目標郡的
-// 那一支）。畫面看起來對不對是觀感，那一支被呼叫是事實。
+// 判準是**戰鬥真的被叫起來了**：攔 `0x18bb9`，也就是選完目標郡之後
+// 那個 `lcall 2020:0000(來源郡, 目標郡)`。畫面看起來對不對是觀感，
+// 那一支被呼叫是事實。
+//
+// 途中的路標一起攔，卡在哪一段一眼就看得出來：
+//
+//	0x188ea  發動戰役的入口
+//	0x1892a  過了「主事者是君主」那道門
+//	0x189c5  選完出兵郡
+//	0x18aad  軍師勸諫的分支（`RND(5)+80 < es:[0x16f2]` 才走）
+//	0x18b4e  兩條路會合
+//	0x18bb9  呼叫戰鬥
 func TestZZBattleKeySweep(t *testing.T) {
 	root := origRoot(t)
 	c := openContainer(t, filepath.Join(root, "DATA2"))
@@ -297,8 +307,18 @@ func TestZZBattleKeySweep(t *testing.T) {
 	at, to := stageABattle(t, o, base)
 	snap := o.Save()
 
-	moved := 0
-	o.OnCall(addr(0x1938a), func(o *oracle.Oracle) { moved++ })
+	marks := []struct {
+		at   uint32
+		name string
+	}{
+		{0x188ea, "入口"}, {0x1892a, "君主門"}, {0x189c5, "選完出兵郡"},
+		{0x18aad, "軍師勸諫"}, {0x18b4e, "會合"}, {0x18bb9, "呼叫戰鬥"},
+	}
+	hit := map[string]int{}
+	for _, m := range marks {
+		name := m.name
+		o.OnCall(addr(m.at), func(o *oracle.Oracle) { hit[name]++ })
+	}
 	asked := map[uint32]int{}
 	o.OnCall(addr(0x34ede), func(o *oracle.Oracle) { asked[o.Caller().Linear()]++ })
 	// `0x1d613` 是選郡那支數字輸入回來的那一刻，AX 就是它的回傳值：
@@ -306,6 +326,17 @@ func TestZZBattleKeySweep(t *testing.T) {
 	var got []string
 	o.OnCall(addr(0x1d613), func(o *oracle.Oracle) {
 		got = append(got, fmt.Sprintf("%#06x", o.AX()))
+	})
+	// `1058:0e24`（線性 `0x113a4`）是數字欄位真正讀鍵的那一支，
+	// 回傳 ASCII。攔它回來的那一刻（`0x34f91`）就知道哪些鍵進得去。
+	var keys []string
+	o.OnCall(addr(0x34f91), func(o *oracle.Oracle) {
+		k := o.AX() & 0xff
+		if k >= 0x20 && k < 0x7f {
+			keys = append(keys, fmt.Sprintf("%q", rune(k)))
+			return
+		}
+		keys = append(keys, fmt.Sprintf("%#02x", k))
 	})
 
 	// 候選：目標的數字有沒有 Enter、要不要補選將領、幾個 Y。
@@ -325,15 +356,21 @@ func TestZZBattleKeySweep(t *testing.T) {
 	src, dst := spell(at), spell(to)
 	// `|||` 之間的空段只是多等一輪：**選完子選單之後畫面要重畫**，
 	// 太快送出的第一個數字會被吃掉（量到的現象是 `4|1|\r` 回傳 1）。
+	// **每一個提示都要 Enter，選單也不例外**：欄寬由上限決定
+	// （`0x34eea`），滿了之後多打的數字被直接丟掉，只有 `0x0d` 才收工
+	// （`0x35017`）。所以 `2` 沒送 Enter 時，後面的數字全被選單吃掉——
+	// 量到的鍵序列 `'2' '2' '4' '1' 0x0d …` 正好是這個形狀。
+	menu := "2|" + E
+	head := menu + "|" + menu + "|" + src + "|" + dst
 	cands := []string{
-		"2|2|" + src + "|" + dst,
-		"2|2||" + src + "|" + dst,
-		"2|2|||" + src + "||" + dst,
-		"2|2||||" + src + "|||" + dst,
-		"2|2||" + src + "||" + dst + "|1|" + E,
-		"2|2|||" + src + "||" + dst + "|1|" + E + "|" + E,
-		"2||2||" + src + "||" + dst + "||1|" + E,
-		"2||2||" + src + "||" + dst + "||" + E,
+		head,
+		head + "|1|" + E,
+		head + "|1|" + E + "|" + E,
+		head + "|1|" + E + "|Y",
+		head + "|1|" + E + "|1|" + E,
+		head + "|1|" + E + "|1|" + E + "|" + E,
+		head + "|" + E,
+		head + "|Y|Y",
 	}
 	if v := os.Getenv("SAN1_BATTLEKEY"); v != "" {
 		cands = []string{v}
@@ -342,9 +379,11 @@ func TestZZBattleKeySweep(t *testing.T) {
 	for ci, cand := range cands {
 		o.Restore(snap)
 		o.Drain()
-		moved = 0
 		for k := range asked {
 			delete(asked, k)
+		}
+		for k := range hit {
+			delete(hit, k)
 		}
 		for _, seg := range strings.Split(cand, "|") {
 			k := strings.ReplaceAll(seg, enterMark, "\r")
@@ -365,9 +404,16 @@ func TestZZBattleKeySweep(t *testing.T) {
 			who = append(who, fmt.Sprintf("%#07x×%d", a, n))
 		}
 		sort.Strings(who)
-		t.Logf("候選 %d %-30q → 部隊移動 %d 次；選郡回傳 %v；問過 %v",
-			ci+1, cand, moved, got, who)
-		got = got[:0]
+		var route []string
+		for _, m := range marks {
+			if n := hit[m.name]; n > 0 {
+				route = append(route, fmt.Sprintf("%s×%d", m.name, n))
+			}
+		}
+		t.Logf("候選 %d %-30q → 走到 %v；選郡回傳 %v；讀到的鍵 %v",
+			ci+1, cand, route, got, keys)
+		got, keys = got[:0], keys[:0]
+		_ = who
 		dumpScreen(t, o, fmt.Sprintf("sweep-%02d", ci+1))
 	}
 }
