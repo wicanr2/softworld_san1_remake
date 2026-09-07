@@ -51,31 +51,26 @@ const (
 	TunePrestigeWeight  = 15 // 我方君主人望（這裡用君主魅力代表）
 	TuneEnemyChiefBonus = 20 // 對方軍師智力（扣分）
 
-	// TuneForgeryLoyalty 是偽書使疑降低的忠誠。
+	// ⚠ TuneForgeryLoyalty／TuneInciteLoss 已經被量到的公式取代
+	// （`Forgery`、`Sabotage`，`L0`）。留著只為讓 `docs/design/02`
+	// 的對照表讀得下去。
 	TuneForgeryLoyalty = 15
-	// TuneInciteLoss 是策反人民減少的金米與民眾忠誠百分比。
-	// ⚠ TuneInciteLoss 已被 `Sabotage` 取代（`L0`、`0x2d6e0`）。
-	TuneInciteLoss = 20
+	TuneInciteLoss     = 20
 )
 
 var ErrNoChief = fmt.Errorf("還沒拜封軍師，不能用計")
 
-// PlotCost 是計謀的花費。
+// PlotCost 是計謀的花費：**平時的五種計謀不花錢**（`L0`、`[base]`）。
 //
-// 平時的五種計謀手冊**沒有給費用**（只有戰場上的六種計謀有：
-// 火攻 600、水淹 500、誘敵 400、燒糧 300、圍攻 200、陷阱 100，p.32–34）。
-// 這裡照戰場那一組的量級給，等對拍量到再換。
-func PlotCost(p Plot) int {
-	switch p {
-	case PlotTigerWolf, PlotJointAttack:
-		return 300
-	case PlotFarNear:
-		return 200
-	case PlotForgery, PlotIncite:
-		return 100
-	}
-	return 0
-}
+// 手冊沒有給費用，戰場上的六種計謀則明列 600/500/400/300/200/100
+// （p.32–34），所以原本照那一組的量級猜過一輪。原版的碼裡沒有那筆帳：
+// 選單前置只查軍師（`0x2c225`–`0x2c281`），派工的 dispatcher
+// （`0x2c2ee`）與五支效果常式都沒有碰州郡 offset 18（金）——
+// 策反人民那支動到金，動的是**目標郡**的金，那是效果不是費用。
+//
+// 攔阻用計的是軍師：沒有軍師不能用計，而且只有軍師（或君主）所在的郡
+// 能用（`UsePlot`）。
+func PlotCost(Plot) int { return 0 }
 
 // plotChance 是成功率（0..95）。
 // plotSucceeds 是「這一計成不成」（`L0`、`0x2dd66`，公式見 `PlotScore`）。
@@ -121,6 +116,12 @@ func lordIntelOf(g *State, id state.FactionID) int {
 // `[HARD]` **用計的地點只能是軍師或諸侯所在地**（說明書 p.24）。
 // 目標必須是別人的郡。
 func (g *State) UsePlot(from, target int, p Plot, envoyIndex int, by state.FactionID) (bool, error) {
+	return g.UsePlotPlan(from, p, PlotPlan{Envoy: envoyIndex, At: target}, by)
+}
+
+// UsePlotPlan 是完整版：出兵型的三種計謀要指定的郡不只一個（`PlotPlan`）。
+func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID) (bool, error) {
+	target := plan.At
 	src, err := g.canOrder(from, by)
 	if err != nil {
 		return false, err
@@ -133,6 +134,11 @@ func (g *State) UsePlot(from, target int, p Plot, envoyIndex int, by state.Facti
 	if !(chief.Location == from || (lord != nil && lord.Location == from)) {
 		return false, fmt.Errorf("game: 只有軍師或諸侯所在地能用計")
 	}
+	// 聯合出兵是我方兩郡合攻，沒有出使的對象、也沒有使者。
+	if p == PlotJointAttack {
+		src.Commanded = true
+		return g.jointAttack(plan, by)
+	}
 	dst := g.Prefecture(target)
 	if dst == nil {
 		return false, fmt.Errorf("game: 郡編號 %d 越界", target)
@@ -140,15 +146,10 @@ func (g *State) UsePlot(from, target int, p Plot, envoyIndex int, by state.Facti
 	if dst.Owner == by {
 		return false, fmt.Errorf("game: 不能對自己的郡用計")
 	}
-	envoy := g.General(envoyIndex)
+	envoy := g.General(plan.Envoy)
 	if envoy == nil || envoy.Faction != by || envoy.Location != from {
 		return false, ErrUnknownUnit
 	}
-	cost := PlotCost(p)
-	if src.Gold < cost {
-		return false, ErrNoGold
-	}
-	src.Gold -= cost
 	src.Commanded = true
 
 	// **成敗照原版的分數對決**（`PlotScore`，`0x2dd66`）：兩邊各取
@@ -159,25 +160,65 @@ func (g *State) UsePlot(from, target int, p Plot, envoyIndex int, by state.Facti
 	}
 	switch p {
 	case PlotForgery:
-		// 降低其部將忠誠。
-		for _, x := range g.Garrison(target) {
-			if x.Faction == dst.Owner && x.HasLoyalty() &&
-				x.Status != state.StatusLord {
-				x.Loyalty = uint8(clampTo(int(x.Loyalty)-TuneForgeryLoyalty, 100))
-			}
-		}
+		g.Forgery(target, int(envoy.Charm))
 	case PlotIncite:
 		// 五刀一起下（`Sabotage`，`L0`）：民眾忠誠、洪水率、土地價值、
 		// 米、金。原版沒有把它們拆成不同的計謀。
 		g.Sabotage(target, int(envoy.Charm))
-	case PlotTigerWolf, PlotFarNear, PlotJointAttack:
-		// ⚠ **這三種要有「別人替我出兵」的機制才做得完整。**
-		// 戰役的戰略層已經有了（`Attack`），但「教唆」與「合攻」牽涉
-		// 第三方勢力的意願與助攻軍，那要等戰術層與外交狀態
-		//（`docs/design/03-battle.md`）。這裡先只記成功，不產生出兵。
-		return true, fmt.Errorf("game: %s 已成功，但出兵的部分還沒實作", p)
+	case PlotTigerWolf:
+		// 教唆出使郡去打它的鄰郡，我方不參戰（`0x2ce5b`）。
+		if _, err := g.launchCampaign(target, plan.Strike, Aid{}); err != nil {
+			return true, err
+		}
+	case PlotFarNear:
+		// 我方從 Ours 出兵，出使郡當助攻軍（`0x2c9cd`）。
+		if _, err := g.launchCampaign(plan.Ours, plan.Strike,
+			Aid{Attacker: target}); err != nil {
+			return true, err
+		}
 	}
 	return true, nil
+}
+
+// jointAttack 是「聯合出兵」（原版 `0x2d88c`）。
+//
+// 它**不判計謀成不成**——我方兩個郡合攻，不需要說服誰。那一次
+// `PlotScore` 判的是**守方求不求得到援軍**（`0x2dc51`，魅力填 70）：
+// 我方壓過守方，守方就孤立無援；壓不過，守方的鄰郡會出一支助守軍。
+func (g *State) jointAttack(plan PlotPlan, by state.FactionID) (bool, error) {
+	dst := g.Prefecture(plan.Strike)
+	if dst == nil {
+		return false, fmt.Errorf("game: 郡編號 %d 越界", plan.Strike)
+	}
+	if dst.Owner == by {
+		return false, fmt.Errorf("game: 不能打自己的郡")
+	}
+	aid := Aid{Attacker: plan.OursAid}
+	if !g.outwitsDefender(by, plan.Strike) {
+		aid.Defender = g.DefenderAid(plan.Strike)
+	}
+	if _, err := g.launchCampaign(plan.Ours, plan.Strike, aid); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// outwitsDefender 是聯合出兵那一次的分數對決（`0x2dc51`）。
+func (g *State) outwitsDefender(by state.FactionID, target int) bool {
+	prestige := 0
+	if f := g.Faction(by); f != nil {
+		prestige = f.Prestige
+	}
+	mine := PlotScore(chiefIntelOf(g, by), lordIntelOf(g, by), prestige, JointAttackCharm)
+	p := g.Prefecture(target)
+	if p == nil || !p.Owned() {
+		return true
+	}
+	theirs := chiefIntelOf(g, p.Owner)
+	if n := lordIntelOf(g, p.Owner); n > theirs {
+		theirs = n
+	}
+	return mine > theirs
 }
 
 // ---- 原版電腦諸侯用的那一種計略（`L0`、`[base]`）------------------------
@@ -243,4 +284,39 @@ func (g *State) Sabotage(target, envoyCharm int) {
 		int(p.LandValue)-roll(envoyCharm/SabotageLandDiv, 3), 100))
 	p.Rice -= p.Rice * SabotageScale / (roll(envoyCharm, 4) + SabotageRiceBase)
 	p.Gold -= p.Gold * SabotageScale / (roll(envoyCharm, 5) + SabotageGoldBase)
+}
+
+// ForgeryScale 是偽書使疑那條乘法的分母（原版 `0xfa` ＝ 250，`0x2d263`）。
+const ForgeryScale = 250
+
+// Forgery 是「偽書使疑」得手之後對目標郡下的手（`L0`、`0x2d1fa`）。
+//
+//	忠誠 < 使者魅力 的人：
+//	    忠誠 ← 忠誠 × (250 − RND(魅力 ÷ 2) − 魅力) ÷ 250
+//	    算成負數就歸零
+//
+// **門檻與幅度都跟著使者的魅力走**：魅力愈高牽連的人愈多、掉得也愈多。
+// 魅力 100 時係數落在 0.40–0.60，魅力 60 時是 0.64–0.76。
+//
+// 原版逐一掃該郡的武將名單（`0xf17:0x0aae` 取名單，`0x2d21e` 起的迴圈），
+// **不挑身分**——君主在自己的郡裡也照算。
+func (g *State) Forgery(target, envoyCharm int) {
+	dst := g.Prefecture(target)
+	if dst == nil {
+		return
+	}
+	for _, x := range g.Garrison(target) {
+		if x.Faction != dst.Owner || !x.HasLoyalty() {
+			continue
+		}
+		if int(x.Loyalty) >= envoyCharm {
+			continue
+		}
+		roll := g.Roll(max(envoyCharm/2, 1), target, envoyCharm, int(x.Loyalty))
+		n := int(x.Loyalty) * (ForgeryScale - roll - envoyCharm) / ForgeryScale
+		if n < 0 {
+			n = 0
+		}
+		x.Loyalty = uint8(n)
+	}
 }

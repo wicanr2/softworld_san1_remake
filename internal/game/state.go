@@ -94,6 +94,14 @@ type Prefecture struct {
 
 	Neighbours []int
 
+	// governor 是主事者的人物槽號，−1 ＝ 沒有（原版州郡 offset 32，
+	// `docs/spec/003` §3.4）。
+	//
+	// **它是狀態不是導出值**：君主與太守同一個郡時，誰主事只有當初的
+	// 任命說得準，從駐軍名單推不出來——那條路推過兩個版本，兩個都被
+	// 資料推翻。用 Governor() 讀，別直接碰。
+	governor int
+
 	// BattleField 是這個郡的戰場地圖，原版州郡記錄 offset 55–174
 	// 的 120 個位元組原樣搬過來（`internal/battle`.Load 解讀）。
 	BattleField []byte
@@ -345,6 +353,7 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Ed
 			Gold:       int(p.Gold), Rice: int(p.Rice),
 			PublicLoyalty: p.PublicLoyalty, LandValue: p.LandValue,
 			FloodRate: p.FloodRate, PriceLevel: p.PriceLevel,
+			governor:    governorSlot(p.Governor),
 			Neighbours:  append([]int(nil), p.Neighbours...),
 			BattleField: append([]byte(nil), p.BattleField...),
 		})
@@ -504,10 +513,32 @@ func (g *State) Governor(prefectureID int) *General {
 	if p == nil || !p.Owned() {
 		return nil
 	}
+	// **記著的那一位優先**：原版把主事者存在州郡 offset 32，開局之後
+	// 十三處會改它。他只要還在職、還在這個郡、還是這一方的人，
+	// 就是他主事——君主與太守同一個郡時，這是唯一問得出答案的地方。
+	if x := g.General(p.governor); x != nil && x.Employed() &&
+		x.Faction == p.Owner && x.Location == prefectureID {
+		return x
+	}
+	// 記著的那一位不在了（陣亡、被俘、調走、郡易主）就重新指派，
+	// 並且**把結果記回去**——否則每次都要重推，而推論在君主與太守
+	// 同郡時給不出唯一解。
+	x := g.pickGovernor(prefectureID, p.Owner)
+	if x == nil {
+		p.governor = -1
+		return nil
+	}
+	p.governor = x.Index
+	return x
+}
+
+// pickGovernor 是主事者失聯之後的重新指派：君主優先，其次太守，
+// 再其次軍師。
+func (g *State) pickGovernor(prefectureID int, owner state.FactionID) *General {
 	var lord, main, deputy []int
 	for i := range g.generals {
 		x := &g.generals[i]
-		if x.Faction != p.Owner || x.Location != prefectureID {
+		if x.Faction != owner || x.Location != prefectureID || !x.Employed() {
 			continue
 		}
 		switch {
@@ -520,18 +551,22 @@ func (g *State) Governor(prefectureID int) *General {
 		}
 	}
 	// **君主在場就是君主主事**，郡裡同時有太守是正常的——君主會巡狩，
-	// 也會親征經過自己的郡。把兩位一起算成「主事者」再要求唯一，
-	// 會讓那個月的郡看起來沒有人管，而畫面上完全看不出來。
-	if len(lord) == 1 {
-		return &g.generals[lord[0]]
-	}
-	if len(lord) == 0 && len(main) == 1 {
-		return &g.generals[main[0]]
-	}
-	if len(lord) == 0 && len(main) == 0 && len(deputy) == 1 {
-		return &g.generals[deputy[0]]
+	// 也會親征經過自己的郡。
+	for _, pool := range [][]int{lord, main, deputy} {
+		if len(pool) > 0 {
+			return &g.generals[pool[0]]
+		}
 	}
 	return nil
+}
+
+// governorSlot 把原版的 0xFFFF 哨兵換成 −1（`CLAUDE.md` §7 第 11 條：
+// 哨兵在唯一入口正規化，不讓它當成數值流進規則層）。
+func governorSlot(v uint16) int {
+	if v == state.NoGovernor {
+		return -1
+	}
+	return int(v)
 }
 
 // Garrison 回傳駐在某個郡的現役武將（含主事者）。

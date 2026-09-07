@@ -90,7 +90,12 @@ type Pending struct {
 	from, to int
 	by       state.FactionID
 	att, def []*General
-	result   *BattleResult
+
+	// aidAtt／aidDef 是助攻軍與助守軍。**它們不是主攻軍的一部分**：
+	// 打贏了進駐的只有主攻軍，援軍的生還者留在自己的郡裡。
+	aidAtt, aidDef []*General
+
+	result *BattleResult
 }
 
 // Battle 是這一場的戰術層戰役。
@@ -98,7 +103,7 @@ func (p *Pending) Battle() *battle.Battle { return p.B }
 
 // fight 把一場戰役交給戰術層打完，並把結果搬回局面。
 func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *BattleResult {
-	p := g.prepare(from, to, att, def, by, HalfSupply())
+	p := g.prepare(from, to, att, def, by, HalfSupply(), Aid{})
 	p.B.Auto()
 	return g.settle(p)
 }
@@ -118,7 +123,17 @@ type Supply struct {
 func HalfSupply() Supply { return Supply{Auto: true} }
 
 // prepare 把雙方擺上戰場，扣掉隨軍帶走的錢糧，但**不打**。
-func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, sup Supply) *Pending {
+// Aid 是一場戰役的兩支援軍（原版 `battle(攻方郡, 攻方援郡, 守方郡, 守方援郡)`
+// 的第二與第四個參數，`0x20200`）。
+//
+// 援郡是**郡不是將領名單**：原版只把郡編號傳下去，援軍就是那個郡的
+// 全部駐軍——與主守軍同一個規矩（說明書 p.27）。0 ＝ 沒有援軍。
+type Aid struct {
+	Attacker int // 助攻軍的來源郡
+	Defender int // 助守軍的來源郡
+}
+
+func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, sup Supply, aid Aid) *Pending {
 	dst := g.Prefecture(to)
 	r := &BattleResult{From: from, To: to}
 
@@ -159,9 +174,31 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 	for _, x := range def {
 		setup.Defenders = append(setup.Defenders, toLeader(x))
 	}
+	aidAtt, aidDef := g.garrisonOf(aid.Attacker), g.garrisonOf(aid.Defender)
+	for _, x := range aidAtt {
+		setup.AidAttackers = append(setup.AidAttackers, toLeader(x))
+	}
+	for _, x := range aidDef {
+		setup.AidDefenders = append(setup.AidDefenders, toLeader(x))
+	}
 
 	return &Pending{B: battle.New(setup), from: from, to: to, by: by,
-		att: att, def: def, result: r}
+		att: att, def: def, aidAtt: aidAtt, aidDef: aidDef, result: r}
+}
+
+// garrisonOf 是一個郡的全部駐軍（只算所屬勢力的人）。援軍用這個點齊。
+func (g *State) garrisonOf(prefectureID int) []*General {
+	p := g.Prefecture(prefectureID)
+	if p == nil || !p.Owned() {
+		return nil
+	}
+	var out []*General
+	for _, x := range g.Garrison(prefectureID) {
+		if x.Faction == p.Owner {
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 // settle 把打完的戰役搬回局面。
@@ -186,6 +223,14 @@ func (g *State) settle(p *Pending) *BattleResult {
 		byIndex[x.Index] = x
 	}
 	for _, x := range def {
+		byIndex[x.Index] = x
+	}
+	// **援軍的傷亡一樣要搬回去**：漏掉的話助攻軍打完毫髮無傷，
+	// 而戰報上的數字看起來完全正常。
+	for _, x := range p.aidAtt {
+		byIndex[x.Index] = x
+	}
+	for _, x := range p.aidDef {
 		byIndex[x.Index] = x
 	}
 	for _, u := range b.Units {
@@ -265,7 +310,7 @@ func (g *State) BeginAttack(from, to int, attackers []int, by state.FactionID, s
 	if err != nil {
 		return nil, err
 	}
-	p := g.prepare(from, to, att, def, by, sup)
+	p := g.prepare(from, to, att, def, by, sup, Aid{})
 	p.Player = true
 	return p, nil
 }

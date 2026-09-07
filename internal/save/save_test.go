@@ -113,6 +113,16 @@ func TestRoundTrip(t *testing.T) {
 		if len(a.Neighbours) != len(b.Neighbours) {
 			t.Fatalf("郡 %d 的鄰郡數不一樣", id)
 		}
+		// **主事者要跟著存檔走**（原版州郡 offset 32）。漏掉的話讀回來
+		// 得重推，而君主與太守同郡時推出來的常常是另一個人——存檔前後
+		// 的局面就從那一刻起分家，而畫面上看不出任何異狀。
+		x, y := g.Governor(id), h.Governor(id)
+		switch {
+		case (x == nil) != (y == nil):
+			t.Fatalf("郡 %d 的主事者一邊有一邊沒有", id)
+		case x != nil && x.Index != y.Index:
+			t.Fatalf("郡 %d 的主事者存的是 %s，讀回來是 %s", id, x.Name, y.Name)
+		}
 	}
 
 	for i := 0; i < 350; i++ {

@@ -168,8 +168,10 @@ func TestPlotNeedsChief(t *testing.T) {
 	}
 }
 
-// TestPlotCostsGold 釘住用計要花錢，而且只能在軍師或諸侯所在地。
-func TestPlotCostsGold(t *testing.T) {
+// TestPlotIsFree 釘住用計**不花錢**，而且只能在軍師或諸侯所在地。
+//
+// 原版的碼裡沒有那筆帳（`PlotCost`，`L0`）；戰場上的六種計謀才有費用。
+func TestPlotIsFree(t *testing.T) {
 	g := newGame(t)
 	lord := g.Lord(5) // 董卓
 	at := lord.Location
@@ -190,22 +192,33 @@ func TestPlotCostsGold(t *testing.T) {
 	p := g.Prefecture(at)
 	p.Commanded = false
 	p.Gold = MaxGold
-	target := 0
-	for _, n := range p.Neighbours {
-		if q := g.Prefecture(n); q.Owned() && q.Owner != 5 {
-			target = n
-			break
-		}
-	}
-	if target == 0 {
-		t.Skip("董卓所在地沒有敵方鄰郡")
+	// **盤面自己擺**：弘農的三個鄰郡開局全是董卓自己的，照劇本挑
+	// 會挑不到目標而整支測試安靜地 skip 掉。
+	target := p.Neighbours[0]
+	q := g.Prefecture(target)
+	q.Owner = 4
+	for _, x := range g.Garrison(target) {
+		x.Faction = 4
 	}
 	before := p.Gold
 	if _, err := g.UsePlot(at, target, PlotForgery, wise.Index, 5); err != nil {
 		t.Fatal(err)
 	}
-	if p.Gold != before-PlotCost(PlotForgery) {
-		t.Errorf("用計之後庫銀 %d，應該是 %d", p.Gold, before-PlotCost(PlotForgery))
+	if p.Gold != before {
+		t.Errorf("用計之後庫銀 %d，應該原封不動的 %d", p.Gold, before)
+	}
+	// 軍師與君主都不在的郡用不了計。
+	other := 0
+	for i := range g.generals {
+		if x := &g.generals[i]; x.Employed() && x.Faction == 5 && x.Location != at {
+			other = x.Location
+			break
+		}
+	}
+	if other != 0 {
+		if _, err := g.UsePlot(other, target, PlotForgery, wise.Index, 5); err == nil {
+			t.Error("軍師與君主都不在的郡竟然用得了計")
+		}
 	}
 }
 
@@ -507,5 +520,141 @@ func TestPlayerCommandedBattle(t *testing.T) {
 				t.Errorf("%s 收尾後兵力 %d，戰場上是 %d", l.Name, x.Soldiers, l.Soldiers)
 			}
 		}
+	}
+}
+
+// TestForgeryScalesWithCharm 釘住偽書使疑照原版的乘法降忠誠：
+// 只動忠誠低於使者魅力的人，而且是按比例掉不是減固定值。
+func TestForgeryScalesWithCharm(t *testing.T) {
+	g := newGame(t)
+	target := 11 // 陳留（曹操）
+	dst := g.Prefecture(target)
+	garrison := g.Garrison(target)
+	if len(garrison) < 2 {
+		t.Fatalf("陳留只有 %d 位武將", len(garrison))
+	}
+	const charm = 90
+	// 一位在門檻之上、一位之下。
+	high, low := garrison[0], garrison[1]
+	high.Faction, low.Faction = dst.Owner, dst.Owner
+	high.Loyalty, low.Loyalty = 95, 80
+	g.Forgery(target, charm)
+
+	if high.Loyalty != 95 {
+		t.Errorf("忠誠 95 高於魅力 %d，不該被動到，卻變成 %d", charm, high.Loyalty)
+	}
+	// 係數是 (250 − RND(45) − 90) ÷ 250 ＝ 0.464–0.64。
+	lo, hi := 80*(ForgeryScale-44-charm)/ForgeryScale, 80*(ForgeryScale-0-charm)/ForgeryScale
+	if int(low.Loyalty) < lo || int(low.Loyalty) > hi {
+		t.Errorf("忠誠 80 掉到 %d，應該落在 %d–%d", low.Loyalty, lo, hi)
+	}
+}
+
+// TestAidJoinsTheField 釘住助攻軍與助守軍真的擺得上戰場。
+//
+// 原版的戰鬥子系統一次收四個郡（`battle(攻方郡, 攻方援郡, 守方郡,
+// 守方援郡)`，`0x20200`），援軍是那個郡的全部駐軍。只有主攻與主守
+// 上場的話，四種軍力就只是一份沒有人走進去的資料結構。
+func TestAidJoinsTheField(t *testing.T) {
+	g := newGame(t)
+	// 盤面自己擺：三個相鄰的郡，攻方、守方、各自的援郡。
+	from, to := 11, 13 // 陳留（曹操）打潁川（袁術）
+	src, dst := g.Prefecture(from), g.Prefecture(to)
+	aidA, aidD := 0, 0
+	for _, n := range src.Neighbours {
+		if n != to && g.Prefecture(n).Owned() {
+			aidA = n
+			break
+		}
+	}
+	for _, n := range dst.Neighbours {
+		if n != from && n != aidA && g.Prefecture(n).Owned() {
+			aidD = n
+			break
+		}
+	}
+	if aidA == 0 || aidD == 0 {
+		t.Fatalf("找不到援郡：aidA=%d aidD=%d", aidA, aidD)
+	}
+	att := g.garrisonOf(from)
+	def := g.garrisonOf(to)
+	if len(att) == 0 || len(def) == 0 || len(g.garrisonOf(aidA)) == 0 ||
+		len(g.garrisonOf(aidD)) == 0 {
+		t.Skip("四個郡裡有人是空的")
+	}
+	p := g.prepare(from, to, att, def, src.Owner, HalfSupply(),
+		Aid{Attacker: aidA, Defender: aidD})
+	var seen [4]int
+	for _, u := range p.B.Units {
+		seen[u.Side] += len(u.Leaders)
+	}
+	for side, n := range seen {
+		if n == 0 {
+			t.Errorf("%s 一個人都沒上場", battle.Side(side))
+		}
+	}
+
+	// 援軍的傷亡要搬得回去：打完之後那兩個郡的人兵力有變動。
+	beforeA := g.Soldiers(aidA)
+	p.B.Auto()
+	g.settle(p)
+	if g.Soldiers(aidA) == beforeA {
+		t.Log("助攻軍毫髮無傷——有可能，但值得看一眼")
+	}
+}
+
+// TestFarNearLaunchesACampaign 釘住遠交近攻真的打起來。
+//
+// 這三種計謀的結局是發動一場戰役，不是「成功了但什麼也沒發生」。
+func TestFarNearLaunchesACampaign(t *testing.T) {
+	g := newGame(t)
+	var by state.FactionID = 1 // 曹操
+	envoy := 0
+	strike, ours := 0, 0
+	for _, at := range g.FarNearEnvoyTargets(by) {
+		for _, s := range g.FarNearStrikeTargets(at, by) {
+			if o := g.FarNearOurTargets(s, by); len(o) > 0 {
+				envoy, strike, ours = at, s, o[0]
+				break
+			}
+		}
+		if envoy != 0 {
+			break
+		}
+	}
+	if envoy == 0 {
+		t.Skip("開局的曹操找不到遠交近攻的組合")
+	}
+	lord := g.Lord(by)
+	from := lord.Location
+	// **盤面自己擺**：隨手挑一位部將把謀略拉到拜得了軍師的門檻。
+	// 照劇本挑的話，開局的曹操身邊沒有那樣的人，整支測試會安靜地
+	// skip 掉——而 skip 掉的測試看起來與通過的一模一樣。
+	var wise *General
+	for _, x := range g.Garrison(from) {
+		if x.Faction == by && x.Index != lord.Index {
+			x.Intel = 100
+			wise = x
+			break
+		}
+	}
+	if wise == nil {
+		t.Fatal("曹操所在地只有他自己")
+	}
+	if err := g.AppointChief(from, wise.Index, by); err != nil {
+		t.Fatal(err)
+	}
+	g.Prefecture(from).Commanded = false
+	before := g.Soldiers(strike)
+	ok, err := g.UsePlotPlan(from, PlotFarNear,
+		PlotPlan{Envoy: wise.Index, At: envoy, Strike: strike, Ours: ours}, by)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Skip("這一次計謀沒得手")
+	}
+	if g.Soldiers(strike) == before && g.Prefecture(strike).Owner != by {
+		t.Errorf("遠交近攻得手，%s 卻毫無動靜", g.Prefecture(strike).Name)
 	}
 }

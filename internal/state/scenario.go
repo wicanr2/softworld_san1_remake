@@ -55,6 +55,12 @@ type FactionID uint8
 // 這一層問過 Owned／Employed 再用。
 const NoFaction = 0xFF
 
+// NoGovernor 是主事者欄（州郡 offset 32）的哨兵，原版用 0xFFFF。
+//
+// 它是 `u16` 不是 `u8`——人物表有 350 筆，槽號放不進一個位元組，
+// 所以這一格的「沒有」與 NoFaction 不同寬。
+const NoGovernor = 0xFFFF
+
 // NoValue 是「這一格對這筆記錄沒有意義」的哨兵，原版同樣用 0xFF。
 //
 // ⚠ **哨兵不是數值。** 忠誠欄在在野者身上是 0xFF；當成 255 算下去
@@ -121,6 +127,19 @@ type Prefecture struct {
 	// 而且與地理對得起來：遼東 (276, 23) 在東北角、酒泉 (15, 55) 最西、
 	// 南海 (180, 284) 最南。
 	MapX, MapY uint16
+
+	// Governor 是這個郡的**主事者**在人物表的槽號（offset 32，`u16`，
+	// `L0`），`NoGovernor` ＝ 沒有人主事。
+	//
+	// 原版直接讀這一格，不是每次從人物表推：用計的前置條件
+	// （`0x2c270`）拿它取出那個人再看身分是不是君主，五種謀略把它
+	// 當參數往下傳（`0x2c82e`／`0x2ccc4`／`0x2d094`／`0x2d57a`）。
+	// 開局之後有十三處會寫它（`0x0d705`、`0x132ee`、`0x14d36`、
+	// `0x19500`…），所以它是**執行期維護的狀態**不是劇本裡的裝飾。
+	//
+	// 劇本 001 的 24 個有主的郡逐郡驗過：那個人的勢力與所在郡都與郡
+	// 本身相符，身分只有君主或太守。
+	Governor uint16
 
 	// ⚠ **Population 與 Soldiers 存的是實際值 ÷ 100。**
 	// 原版的格式字串是 `人口 %5d00`／`兵士%4d00`——把 `00` 直接接在
@@ -367,6 +386,7 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 		p.FloodRate = rec[28]
 		p.PriceLevel = rec[29]
 		p.Owner = rec[30]
+		p.Governor = binary.LittleEndian.Uint16(rec[32:])
 		for _, b := range rec[45:55] {
 			if b >= 1 && b <= PrefectureCount {
 				p.Neighbours = append(p.Neighbours, int(b))

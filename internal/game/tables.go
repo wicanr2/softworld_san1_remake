@@ -31,6 +31,7 @@ const (
 	staFloodRate  = 28
 	staPrice      = 29
 	staOwner      = 30
+	staGovernor   = 32
 
 	genAge      = 7
 	genStamina  = 8
@@ -99,6 +100,14 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 		rec[staFloodRate] = p.FloodRate
 		rec[staPrice] = p.PriceLevel
 		rec[staOwner] = byte(p.Owner)
+		// 主事者（offset 32）。**先問一次 Governor** 讓它把失聯的那一位
+		// 重新指派好，否則存檔帶著一個已經不在的人，讀回來又要重推——
+		// 而重推在君主與太守同郡時給不出唯一解。
+		var slot uint16 = state.NoGovernor
+		if x := g.Governor(p.ID); x != nil {
+			slot = uint16(x.Index)
+		}
+		binary.LittleEndian.PutUint16(rec[staGovernor:], slot)
 	}
 
 	for i := range g.generals {
