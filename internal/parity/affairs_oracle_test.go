@@ -124,8 +124,6 @@ func TestAffairsMatchTheOriginal(t *testing.T) {
 	rnd := 0
 	o.OnCall(addr(0x1058*16+0x058c), func(*oracle.Oracle) { rnd++ })
 
-
-
 	const settle = 40_000_000
 	for m := 0; m < 4; m++ {
 		for _, k := range []string{"4\r", "4\r", "Y"} {
