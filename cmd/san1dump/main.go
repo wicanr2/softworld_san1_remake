@@ -268,7 +268,10 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 			if err != nil {
 				return fmt.Errorf("接原版素材要讀 DATA3：%w", err)
 			}
-			art, err := ui.NewArtScreen(c3)
+			// 州郡的填色圖樣在 `DATA1`（`EGAFILL.PAL`）；讀不到就退回
+			// remake 自己的色號。
+			c1, _ := openContainer(root, "DATA1")
+			art, err := ui.NewArtScreen(c3, c1)
 			if err != nil {
 				return err
 			}

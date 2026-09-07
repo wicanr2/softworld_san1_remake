@@ -36,6 +36,32 @@ func TestZZOriginalMainScreen(t *testing.T) {
 	t.Log("原版主畫面已存（要設 SAN1_SHOTS）")
 }
 
+// TestZZOriginalLoadedScreen 存**剛載完進度**的主畫面。
+//
+// 與 `TestZZOriginalMainScreen` 差一個月：那一支走的是 `bootToGame`，
+// 而觸發防拷密碼的那道指令會把玩家的第一個月用掉（`bootToMain` 的說明）。
+// 要拿畫面上的州郡填色去對 remake 讀出來的第一個進度，就得用這一張——
+// 差一個月，郡就可能易主，而**那看起來與「填色的對應表錯了」一模一樣**。
+func TestZZOriginalLoadedScreen(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	bootToMain(t, o, seedMas)
+	dumpScreen(t, o, "orig-loaded")
+	t.Log("原版剛載完第一個進度的主畫面已存（要設 SAN1_SHOTS）")
+}
+
 // TestZZOriginalOpeningScreens 把開機到主選單之間的每一步都存成 PNG。
 //
 // 開場的圖（`SANT*`／`TITL*`／`CMARK*`）在哪一步出現是**量出來的**，

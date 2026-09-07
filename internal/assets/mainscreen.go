@@ -267,3 +267,76 @@ func MenuButtons() [6][2]int {
 		{376, 215}, {376, 267}, {376, 319},
 	}
 }
+
+// FillPatternSize 是一塊填色圖樣的邊長。
+const FillPatternSize = 8
+
+// FillPattern 是一個勢力的填色圖樣：8×8 的顏色索引。
+type FillPattern [FillPatternSize * FillPatternSize]byte
+
+// At 取圖樣在畫面座標 (x, y) 該用的顏色。**看的是畫面座標不是區塊內
+// 座標**——原版的網點是對齊畫面的，跨區塊接得起來。
+func (p *FillPattern) At(x, y int) byte {
+	return p[(y%FillPatternSize)*FillPatternSize+x%FillPatternSize]
+}
+
+// FillPatterns 解 `EGAFILL.PAL`：十六個勢力各一塊 8×8 的填色圖樣。
+//
+// 檔案 1024 byte ＝ 16 × 64，一格一個位元組、值就是 EGA 的顏色索引。
+// 前四個是純色（12、9、10、14），其餘十二個是兩色的 2×2 網點
+// （例如第五個是 13／14 交錯）——所以**填色不是「一個勢力一個顏色」**，
+// 拿單一顏色去畫，十六個勢力裡有十二個會錯。
+func FillPatterns(data1 *Container) ([16]FillPattern, error) {
+	var out [16]FillPattern
+	i, ok := data1.ByName("EGAFILL.PAL")
+	if !ok {
+		return out, fmt.Errorf("assets: DATA1 裡沒有 EGAFILL.PAL")
+	}
+	d := data1.Data(i)
+	if len(d) != len(out)*len(out[0]) {
+		return out, fmt.Errorf("assets: EGAFILL.PAL 是 %d bytes，應該是 %d",
+			len(d), len(out)*len(out[0]))
+	}
+	for k := range out {
+		copy(out[k][:], d[k*len(out[k]):])
+	}
+	return out, nil
+}
+
+// FloodFillPattern 與 FloodFill 一樣，但填的是圖樣。
+//
+// **要另外記走過哪些格**：填進去的顏色每一格不同，不能再用「顏色還等於
+// 起點的顏色」當作沒填過——那樣網點的第二個顏色會被當成沒填過而重來。
+func (im *Image) FloodFillPattern(x, y int, pat *FillPattern) int {
+	if x < 0 || y < 0 || x >= im.W || y >= im.H {
+		return 0
+	}
+	from := im.At(x, y)
+	seen := make([]bool, len(im.Pix))
+	n := 0
+	stack := []int{y*im.W + x}
+	for len(stack) > 0 {
+		p := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if seen[p] || im.Pix[p] != from {
+			continue
+		}
+		seen[p] = true
+		px, py := p%im.W, p/im.W
+		im.Pix[p] = pat.At(px, py)
+		n++
+		if px > 0 {
+			stack = append(stack, p-1)
+		}
+		if px < im.W-1 {
+			stack = append(stack, p+1)
+		}
+		if py > 0 {
+			stack = append(stack, p-im.W)
+		}
+		if py < im.H-1 {
+			stack = append(stack, p+im.W)
+		}
+	}
+	return n
+}

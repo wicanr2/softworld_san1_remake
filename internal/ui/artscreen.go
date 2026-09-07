@@ -32,15 +32,28 @@ type ArtScreen struct {
 	// base 是拼好的底圖（未上色），每回合從它複製一份再填色。
 	base  *assets.Image
 	faces *assets.Container
+
+	// fills 是州郡的填色圖樣（`EGAFILL.PAL`）；沒有原版的 `DATA1` 就是
+	// nil，那時退回 `artFactionColour`。
+	fills *[16]assets.FillPattern
 }
 
-// NewArtScreen 從 `DATA3` 容器拼出底圖，順便留著容器好取肖像。
-func NewArtScreen(data3 *assets.Container) (*ArtScreen, error) {
+// NewArtScreen 拼出主畫面的底圖，順便留著容器好取肖像。
+//
+// data1 給的是州郡的填色圖樣（`EGAFILL.PAL`）；可以是 nil，那就退回
+// remake 自己的色號。
+func NewArtScreen(data3, data1 *assets.Container) (*ArtScreen, error) {
 	bg, err := assets.MainScreen(data3)
 	if err != nil {
 		return nil, err
 	}
-	return &ArtScreen{base: bg, faces: data3}, nil
+	a := &ArtScreen{base: bg, faces: data3}
+	if data1 != nil {
+		if f, err := assets.FillPatterns(data1); err == nil {
+			a.fills = &f
+		}
+	}
+	return a, nil
 }
 
 // Portrait 取一張肖像；沒有就回 nil。
@@ -74,11 +87,10 @@ const (
 	artDateRow = 4
 )
 
-// artFactionColour 是州郡填色用的 EGA 色號。
+// artFactionColour 是**沒有原版素材時**的退路：一組看得出區別的色號。
 //
-// **這不是原版的表。** 原版的填色走 `EGAFILL.PAL`（1024 個位元組，
-// 還沒解），這裡先用一組看得出區別的色號，登記為 remake 差異
-// （`docs/design/02`）。無主的郡不填，留底圖的白色。
+// 原版的填色走 `EGAFILL.PAL`（十六個勢力各一塊 8×8 的圖樣，
+// `assets.FillPatterns`），讀得到就用那一份。無主的郡不填，留底圖的白色。
 var artFactionColour = [...]byte{
 	9, 12, 10, 14, 13, 11, 6, 2, 1, 5, 4, 3, 8, 7, 9, 12,
 }
@@ -92,6 +104,10 @@ func (a *ArtScreen) Compose(g *game.State, sel int) *assets.Image {
 		}
 		x := int(p.MapX) + assets.MapOriginX
 		y := int(p.MapY) + assets.MapOriginY
+		if a.fills != nil {
+			im.FloodFillPattern(x, y, &a.fills[int(p.Owner)%len(a.fills)])
+			continue
+		}
 		im.FloodFill(x, y, artFactionColour[int(p.Owner)%len(artFactionColour)])
 	}
 	return im

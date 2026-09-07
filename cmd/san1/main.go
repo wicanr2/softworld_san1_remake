@@ -812,14 +812,15 @@ func main() {
 	var artBattle *ui.ArtBattle
 	if *useArt {
 		if c3, err := openContainer(*root, "DATA3"); err == nil {
-			if art, err = ui.NewArtScreen(c3); err != nil {
+			// `DATA1` 給的是州郡的填色圖樣與主戰場的素材；讀不到就
+			// 各自退回 remake 自己的版面，主畫面照樣接得上。
+			c1, _ := openContainer(*root, "DATA1")
+			if art, err = ui.NewArtScreen(c3, c1); err != nil {
 				fmt.Fprintln(os.Stderr, "san1：原版素材讀不進來，改用文字版面：", err)
 				art = nil
 			}
-			// 主戰場另外要 `DATA1`（圖塊、旗幟、底紋、天氣圖示）。
-			// 少了它只是戰場退回文字版面，主畫面照樣接得上。
-			if art != nil {
-				if c1, err := openContainer(*root, "DATA1"); err == nil {
+			if art != nil && c1 != nil {
+				{
 					if artBattle, err = ui.NewArtBattle(c1, c3); err != nil {
 						fmt.Fprintln(os.Stderr, "san1：主戰場的素材讀不進來：", err)
 						artBattle = nil
