@@ -114,6 +114,14 @@ type Prefecture struct {
 	// 版面出處 `docs/spec/003` §3。
 	Owner uint8
 
+	// MapX／MapY 是這個郡在大地圖上的座標（offset 6／8，`u16`，`L0`）。
+	//
+	// 原版畫郡名時直接拿它們加偏移當螢幕座標（`0x10ce6`：
+	// `x + 80`、`y + 44`）。劇本 001 的範圍是 X 15–285、Y 23–288，
+	// 而且與地理對得起來：遼東 (276, 23) 在東北角、酒泉 (15, 55) 最西、
+	// 南海 (180, 284) 最南。
+	MapX, MapY uint16
+
 	// ⚠ **Population 與 Soldiers 存的是實際值 ÷ 100。**
 	// 原版的格式字串是 `人口 %5d00`／`兵士%4d00`——把 `00` 直接接在
 	// 數字後面。存 800 顯示 80000。照存的數字當人口用會差兩個數量級，
@@ -346,6 +354,8 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 			return nil, fmt.Errorf("state: 郡 %d 的名稱解不出來：%w", p.ID, err)
 		}
 		p.Name = name
+		p.MapX = binary.LittleEndian.Uint16(rec[6:])
+		p.MapY = binary.LittleEndian.Uint16(rec[8:])
 		p.Population = binary.LittleEndian.Uint16(rec[14:])
 		p.Soldiers = binary.LittleEndian.Uint16(rec[16:])
 		p.Gold = binary.LittleEndian.Uint16(rec[18:])

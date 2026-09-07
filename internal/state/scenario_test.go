@@ -505,3 +505,58 @@ func TestAICostFactor(t *testing.T) {
 		}
 	}
 }
+
+// TestPrefectureMapCoordsAreGeographic 釘住郡的大地圖座標
+// （offset 6／8，`L0`；原版 `0x10ce6` 拿它們加 (80, 44) 當螢幕座標）。
+//
+// **判準是地理，不是「值看起來合理」**：遼東要在東北角、酒泉最西、
+// 南海最南。任何一組 u16 都「看起來合理」——只有相對位置問得出
+// 「這兩格是不是座標」。
+func TestPrefectureMapCoordsAreGeographic(t *testing.T) {
+	c := loadData2(t, "三國演義")
+	sc, err := LoadScenario(c, Scenario1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := map[string]Prefecture{}
+	for _, p := range sc.Prefectures() {
+		at[p.Name] = p
+	}
+	need := []string{"遼東", "酒泉", "南海", "成都", "洛陽", "建業"}
+	for _, n := range need {
+		if _, ok := at[n]; !ok {
+			t.Skipf("劇本 001 找不到 %s", n)
+		}
+	}
+	if at["遼東"].MapX <= at["酒泉"].MapX {
+		t.Error("遼東應該在酒泉的東邊")
+	}
+	if at["遼東"].MapY >= at["南海"].MapY {
+		t.Error("遼東應該在南海的北邊")
+	}
+	if at["成都"].MapX >= at["建業"].MapX {
+		t.Error("成都應該在建業的西邊")
+	}
+	// 洛陽在正中：X 與 Y 都不該是極值。
+	minX, maxX := ^uint16(0), uint16(0)
+	for _, p := range sc.Prefectures() {
+		if p.MapX < minX {
+			minX = p.MapX
+		}
+		if p.MapX > maxX {
+			maxX = p.MapX
+		}
+	}
+	if at["洛陽"].MapX == minX || at["洛陽"].MapX == maxX {
+		t.Error("洛陽不該在地圖的最東或最西")
+	}
+	// 沒有兩個郡疊在同一格。
+	seen := map[[2]uint16]string{}
+	for _, p := range sc.Prefectures() {
+		k := [2]uint16{p.MapX, p.MapY}
+		if other, dup := seen[k]; dup {
+			t.Errorf("%s 與 %s 的座標相同 %v", p.Name, other, k)
+		}
+		seen[k] = p.Name
+	}
+}
