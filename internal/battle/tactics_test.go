@@ -237,57 +237,58 @@ func TestSiegeGetsStrongerWithMoreAllies(t *testing.T) {
 	}
 }
 
-// TestFireDamageOrdering 釘住火攻的地形排序（說明書 p.32–33）：
-// 樹林殺傷力最強 ＞ 平原沙漠 ＞ 山丘關寨城池 ＞ 水上損失不大。
-func TestFireDamageOrdering(t *testing.T) {
-	if !(fireDamage(Forest) > fireDamage(Plain)) {
+// TestFireAndFloodTables 釘住火攻與水淹的地形殺傷（`DS:0x8200`／
+// `DS:0x8224`，`L0`），以及它們與說明書 p.32–33 的排序關係。
+//
+// **原版的索引是 `地形碼 & 0x0D` 而表只有八格**，所以樹林（8）與
+// 沙漠（9）讀到表外；比率之後被 0.9 夾住，結果就是那兩種地形一律
+// 吃滿九成。這一條同時釘住量到的數字與那個折疊。
+func TestFireAndFloodTables(t *testing.T) {
+	const noRoll, plain = 0, 50 // 亂數 0、領隊謀略未達 98
+	for _, c := range []struct {
+		t          Terrain
+		fire, flood int
+	}{
+		{Hill, 25, 20},
+		{Mountain, 15, 2}, {Shallow, 15, 2},
+		{Deep, 20, 30}, {Fort, 20, 30},
+		{City, 55, 35}, {Plain, 55, 35},
+		{Forest, 90, 90}, {Desert, 90, 90},
+	} {
+		if got := FireLoss(c.t, plain, noRoll); got != c.fire {
+			t.Errorf("火攻在%s是 %d%%，原版是 %d%%", c.t, got, c.fire)
+		}
+		if got := FloodLoss(c.t, plain, noRoll); got != c.flood {
+			t.Errorf("水淹在%s是 %d%%，原版是 %d%%", c.t, got, c.flood)
+		}
+	}
+	// 排序：樹林最強、水上最輕（說明書 p.32–33）。
+	if FireLoss(Forest, plain, 0) <= FireLoss(Plain, plain, 0) {
 		t.Error("火攻在樹林應該最強")
 	}
-	if fireDamage(Plain) != fireDamage(Desert) {
-		t.Error("火攻在平原與沙漠應該相同")
-	}
-	if !(fireDamage(Plain) > fireDamage(Hill)) {
-		t.Error("火攻在平原應該重於山丘")
-	}
-	for _, tr := range []Terrain{Hill, Fort, City} {
-		if fireDamage(tr) != fireDamage(Hill) {
-			t.Errorf("火攻在%s與山丘應該相同（手冊列在同一級）", tr)
-		}
-		if !(fireDamage(tr) > fireDamage(Deep)) {
-			t.Errorf("火攻在%s應該重於水上", tr)
-		}
-	}
-	if fireDamage(Shallow) != fireDamage(Deep) {
-		t.Error("火攻在淺水與深水應該相同")
-	}
-}
-
-// TestFloodDamageOrdering 釘住水淹的地形排序（說明書 p.33）：
-// 樹林最強 ＞ 平原沙漠城池 ＞ 山上關寨 ＞ 水上損失不大。
-//
-// ⚠ 與火攻的差別在**城池**：火攻算在「損失普通」那一級，
-// 水淹算在「傷害較大」那一級。這一條就是防止兩張表被寫成同一張。
-func TestFloodDamageOrdering(t *testing.T) {
-	if !(floodDamage(Forest) > floodDamage(Plain)) {
+	if FloodLoss(Forest, plain, 0) <= FloodLoss(Plain, plain, 0) {
 		t.Error("水淹在樹林應該最強")
 	}
-	for _, tr := range []Terrain{Plain, Desert, City} {
-		if floodDamage(tr) != floodDamage(Plain) {
-			t.Errorf("水淹在%s應該與平原同一級", tr)
-		}
+	if FireLoss(Shallow, plain, 0) >= FireLoss(Hill, plain, 0) {
+		t.Error("火攻在水上應該最輕")
 	}
-	if !(floodDamage(City) > floodDamage(Hill)) {
-		t.Error("水淹在城池應該重於山上")
+	// **城池是兩張表分岔的地方**：火攻 55、水淹 35。
+	if FireLoss(City, plain, 0) == FloodLoss(City, plain, 0) {
+		t.Error("城池的火攻與水淹殺傷不該相同")
 	}
-	if floodDamage(Hill) != floodDamage(Fort) {
-		t.Error("水淹在山上與關寨應該相同")
+	// 亂數加上去，上限 90 不會被突破。
+	if got := FireLoss(Plain, plain, 9); got != 64 {
+		t.Errorf("平原火攻 + RND 9 是 %d%%，應該是 64%%", got)
 	}
-	if !(floodDamage(Fort) > floodDamage(Shallow)) {
-		t.Error("水淹在關寨應該重於水上")
+	if got := FireLoss(Forest, plain, 9); got != StratagemMaxLoss {
+		t.Errorf("樹林火攻 + RND 9 是 %d%%，應該夾在 %d%%", got, StratagemMaxLoss)
 	}
-	// 城池那一格是兩張表分岔的地方。
-	if fireDamage(City) == floodDamage(City) {
-		t.Error("城池的火攻與水淹殺傷不該相同——手冊把它們列在不同級")
+	// 謀略 98 起跳乘 1.6，一樣夾在 90。
+	if got := FireLoss(Plain, StratagemGeniusIntel, 0); got != 88 {
+		t.Errorf("謀略 98 的平原火攻是 %d%%，應該是 55×1.6 ＝ 88%%", got)
+	}
+	if got := FireLoss(City, StratagemGeniusIntel, 9); got != StratagemMaxLoss {
+		t.Errorf("謀略 98 的城池火攻是 %d%%，應該夾在 %d%%", got, StratagemMaxLoss)
 	}
 }
 

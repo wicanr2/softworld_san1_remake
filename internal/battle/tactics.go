@@ -179,36 +179,57 @@ func (s Stratagem) Cost() int {
 	return 0
 }
 
-// fireDamage 是火攻在各地形的殺傷百分比（說明書 p.32–33）。
+// 火攻與水淹的地形殺傷基數（原版 `DS:0x8200`／`DS:0x8224`，`L0`）。
 //
-// 「水上損失不大；山丘、關寨、城池損失普通；平原、沙漠傷害較大；
-// **樹林殺傷力最強**。」
-func fireDamage(t Terrain) int {
-	switch {
-	case t.Water():
-		return TuneFireBase * 30 / 100
-	case t == Hill || t == Fort || t == City:
-		return TuneFireBase * 70 / 100
-	case t == Forest:
-		return TuneFireBase * 150 / 100
-	}
-	return TuneFireBase
+// **索引是 `地形碼 & 0x0D`，而表只有八格**（`0x2afee`、`0x2b35e`）。
+// 那個遮罩把第 1 個位元抹掉，所以
+//
+//	山丘 2→0   大山 1／淺水 3→1   深水 4／關寨 6→4
+//	城池 5／平原 7→5   樹林 8→8   沙漠 9→9
+//
+// 8 與 9 已經超出表尾，讀到的是後面那串字（`SCG03.IMG`）當成數字——
+// 火攻讀到 17235、水淹讀到 17235 與 12615。**這不影響玩起來的結果**：
+// 比率之後被 0.9 夾住（`0x2b061`），所以樹林與沙漠一律吃滿九成，
+// 正是說明書寫的「樹林殺傷力最強」。這裡照原版的行為列表，
+// 越界的兩格直接寫成上限。
+var fireBase = [10]int{0: 25, 1: 15, 4: 20, 5: 55, 8: StratagemMaxLoss, 9: StratagemMaxLoss}
+
+var floodBase = [10]int{0: 20, 1: 2, 4: 30, 5: 35, 8: StratagemMaxLoss, 9: StratagemMaxLoss}
+
+const (
+	// StratagemMaxLoss 是火攻與水淹的殺傷上限（原版 `DS:0xa9be` ＝ 0.9）。
+	StratagemMaxLoss = 90
+	// StratagemRollSpread 是加在地形基數上的亂數寬度（`0x2aff8`）。
+	StratagemRollSpread = 10
+	// StratagemGeniusIntel 起跳的領隊讓殺傷乘上 StratagemGeniusBonus％
+	// （`0x2b047`：`謀略 >= 0x62`，`DS:0xa9b6` ＝ 1.6）。
+	StratagemGeniusIntel = 98
+	StratagemGeniusBonus = 160
+)
+
+// terrainSlot 是原版查地形殺傷表用的索引：`地形碼 & 0x0D`。
+func terrainSlot(t Terrain) int { return int(terrainCode[t]) & 0x0D }
+
+// FireLoss／FloodLoss 是火攻與水淹的殺傷百分比。
+//
+//	比率 ＝ min(90, (基數 + RND(10)) × (領隊謀略 ≥ 98 ? 1.6 : 1))
+func FireLoss(t Terrain, casterIntel, roll int) int {
+	return stratagemLoss(fireBase[terrainSlot(t)], casterIntel, roll)
 }
 
-// floodDamage 是水淹在各地形的殺傷百分比（說明書 p.33）。
-//
-// 「水上損失不大；山上、關寨損失普通；平原、沙漠、城池傷害較大；
-// **樹林傷害力最強**。」
-func floodDamage(t Terrain) int {
-	switch {
-	case t.Water():
-		return TuneFloodBase * 30 / 100
-	case t == Hill || t == Fort:
-		return TuneFloodBase * 70 / 100
-	case t == Forest:
-		return TuneFloodBase * 150 / 100
+func FloodLoss(t Terrain, casterIntel, roll int) int {
+	return stratagemLoss(floodBase[terrainSlot(t)], casterIntel, roll)
+}
+
+func stratagemLoss(base, casterIntel, roll int) int {
+	pct := base + roll
+	if casterIntel >= StratagemGeniusIntel {
+		pct = pct * StratagemGeniusBonus / 100
 	}
-	return TuneFloodBase
+	if pct > StratagemMaxLoss {
+		pct = StratagemMaxLoss
+	}
+	return pct
 }
 
 // UseStratagem 施行一個計謀。
@@ -292,13 +313,15 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 
 	switch s {
 	case Fire:
-		loss := t.Soldiers() * fireDamage(terrain) / 100
-		b.casualty(t, loss)
-		b.note("%s 對 %s 火攻，折損 %d（%s）", u.Name(), t.Name(), loss, terrain)
+		pct := FireLoss(terrain, ci, b.roll(StratagemRollSpread))
+		loss := b.scorch(t, pct)
+		b.note("%s 對 %s 火攻，折損 %d（%s，%d%%）",
+			u.Name(), t.Name(), loss, terrain, pct)
 	case Flood:
-		loss := t.Soldiers() * floodDamage(terrain) / 100
-		b.casualty(t, loss)
-		b.note("%s 對 %s 水淹，折損 %d（%s）", u.Name(), t.Name(), loss, terrain)
+		pct := FloodLoss(terrain, ci, b.roll(StratagemRollSpread))
+		loss := b.scorch(t, pct)
+		b.note("%s 對 %s 水淹，折損 %d（%s，%d%%）",
+			u.Name(), t.Name(), loss, terrain, pct)
 	case Lure:
 		t.Enraged = 3
 		b.note("%s 誘敵成功，%s 怒火攻心", u.Name(), t.Name())
@@ -340,3 +363,44 @@ func (b *Battle) alliesAround(u *Unit, target Hex) int {
 	}
 	return n
 }
+
+// roll 是 `RND(n)`：0..n−1。
+func (b *Battle) roll(n int) int {
+	if n <= 0 {
+		return 0
+	}
+	return int(b.rng.next() % uint32(n))
+}
+
+// scorch 把火攻或水淹的比率**逐將領**套上去，回傳總損失。
+//
+// 原版是一位一位算的（`0x2b102`）：`新兵 ＝ 兵 × (1 − 比率)`，
+// 算出來不大於零就把那位從部隊裡除名（將領欄寫回 `0xFFFF`），
+// 再擲一次 `RND(100)`——**大於 20 就燒死**（`0x2b138`），
+// 否則只是離隊。
+func (b *Battle) scorch(u *Unit, pct int) int {
+	before := u.Soldiers()
+	for i := range u.Leaders {
+		x := &u.Leaders[i]
+		if x.Dead || x.Captured || x.Soldiers <= 0 {
+			continue
+		}
+		x.Soldiers = x.Soldiers * (100 - pct) / 100
+		if x.Soldiers > 0 {
+			continue
+		}
+		x.Soldiers = 0
+		if b.roll(100) > StratagemDeathRoll {
+			x.Dead = true
+			b.note("%s 被燒死", x.Name)
+			continue
+		}
+		x.Captured = true
+	}
+	return before - u.Soldiers()
+}
+
+// StratagemDeathRoll 是火攻／水淹把人打光之後的生死判定門檻
+// （`0x2b138`：`RND(100) > 20` 就死）。
+const StratagemDeathRoll = 20
+

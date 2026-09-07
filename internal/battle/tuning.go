@@ -28,8 +28,6 @@ const (
 	// （火攻：樹林最強 ＞ 平原沙漠 ＞ 山丘關寨城池 ＞ 水上最輕；
 	// 水淹：樹林最強 ＞ 平原沙漠城池 ＞ 山上關寨 ＞ 水上最輕），
 	// 幅度是 remake 選的。
-	TuneFireBase   = 30
-	TuneFloodBase  = 30
 	TuneBurnLoss   = 40 // 燒糧減少的金米百分比
 	TuneSiegeBonus = 25 // 圍攻時每一支參與部隊的攻擊力加成
 

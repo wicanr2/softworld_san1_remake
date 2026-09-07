@@ -125,7 +125,6 @@
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
 | `TuneArrowDamage` | 6 | 只給了**次數**公式，沒給單次殺傷（相對白刃相接的百分比）|
-| `TuneFireBase` / `TuneFloodBase` | 30／30 | 只給了地形之間的**排序**，沒給幅度 |
 | `TuneBurnLoss` | 40 | 「燒毀敵軍的糧食」，沒給比例 |
 | `TuneSiegeBonus` | 25 | 「聯合友軍圍攻」，沒給加成 |
 | `TuneEnragedPenalty` | 30 | 「來犯敵軍攻擊力暫時下降」，沒給幅度 |
