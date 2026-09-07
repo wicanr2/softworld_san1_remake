@@ -44,11 +44,25 @@ func TestOneOrderPerMonth(t *testing.T) {
 }
 
 // TestReclaimCostsGold 釘住花費。
+//
+// **要指定一位將領**：原版的選單是「派那一位將軍」，量出自那個人的
+// 謀略。沒有人去開墾就是加 0——玩家那條沒有擲骰的退路。
 func TestReclaimCostsGold(t *testing.T) {
 	g := newGame(t)
 	p := g.Prefecture(8)
+	var who *General
+	for _, x := range g.Garrison(8) {
+		if x.Faction == p.Owner {
+			x.Intel = 100 // 盤面自己擺，量才看得出來
+			who = x
+			break
+		}
+	}
+	if who == nil {
+		t.Fatal("齊郡沒有人可以派去開墾")
+	}
 	before, land := p.Gold, p.LandValue
-	if err := g.Reclaim(8, -1, 0); err != nil {
+	if err := g.Reclaim(8, who.Index, 0); err != nil {
 		t.Fatal(err)
 	}
 	if p.Gold != before-CostReclaim {
@@ -57,16 +71,20 @@ func TestReclaimCostsGold(t *testing.T) {
 	if p.LandValue <= land {
 		t.Errorf("開墾後土地價值 %d 沒有比 %d 高", p.LandValue, land)
 	}
-	// 「若財庫已空則徒手開墾」（說明書 p.21）——**錢不夠不是失敗**，
-	// 只是效果減半。這與防洪不同（防洪「沒錢就不能修浚」）。
+	// 「若財庫已空則徒手開墾」（說明書 p.21）——**錢不夠不是失敗**。
+	// 原版把金扣到 0 為止、效果照給（`0x1a796`），不是效果減半。
+	// 這與防洪不同（防洪「沒錢就不能修浚」）。
 	g.EndMonth()
 	p.Gold = CostReclaim - 1
 	land2 := p.LandValue
-	if err := g.Reclaim(8, -1, 0); err != nil {
+	if err := g.Reclaim(8, who.Index, 0); err != nil {
 		t.Errorf("財庫空時開墾回 %v，應該還是能徒手開墾", err)
 	}
 	if p.LandValue <= land2 {
 		t.Errorf("徒手開墾之後土地價值 %d 沒有比 %d 高", p.LandValue, land2)
+	}
+	if p.Gold != 0 {
+		t.Errorf("徒手開墾之後庫銀 %d，應該被扣到 0", p.Gold)
 	}
 	g.EndMonth()
 	p.Gold = CostFloodControl - 1

@@ -55,12 +55,6 @@ type FactionID uint8
 // 這一層問過 Owned／Employed 再用。
 const NoFaction = 0xFF
 
-// NoGovernor 是主事者欄（州郡 offset 32）的哨兵，原版用 0xFFFF。
-//
-// 它是 `u16` 不是 `u8`——人物表有 350 筆，槽號放不進一個位元組，
-// 所以這一格的「沒有」與 NoFaction 不同寬。
-const NoGovernor = 0xFFFF
-
 // NoValue 是「這一格對這筆記錄沒有意義」的哨兵，原版同樣用 0xFF。
 //
 // ⚠ **哨兵不是數值。** 忠誠欄在在野者身上是 0xFF；當成 255 算下去
@@ -129,7 +123,7 @@ type Prefecture struct {
 	MapX, MapY uint16
 
 	// Governor 是這個郡的**主事者**在人物表的槽號（offset 32，`u16`，
-	// `L0`），`NoGovernor` ＝ 沒有人主事。
+	// `L0`），`NoValue16` ＝ 沒有人主事。
 	//
 	// 原版直接讀這一格，不是每次從人物表推：用計的前置條件
 	// （`0x2c270`）拿它取出那個人再看身分是不是君主，五種謀略把它
@@ -766,21 +760,18 @@ func AICost(base, level int) int {
 	return base * aiCostNum[level] / aiCostDen[level]
 }
 
-// GovernorIndex 是郡的太守（`BASESTA` offset 32，`u16`、`L2`）。
+// GovernorIndex 是郡的**主事者**在人物表的槽號（`BASESTA` offset 32，
+// `u16`、`L0`），`NoValue16` ＝ 沒有。
 //
-// 原版的常式拿它當人物槽號用，`0xFFFF` 是「沒有」。抽樣對得上：
-// 勢力首都那幾郡的值就是該勢力君主的槽號。
-//
-// ⚠ 這一格與 `Governor()`（掃身分算出來的）是**兩條獨立的路徑**，
-// 兩邊不一致就表示其中一條讀錯了——`TestGovernorFieldMatchesStatus`
-// 盯著這件事。
+// 原版直接讀這一格，不從人物表推：用計的前置條件（`0x2c270`）取出
+// 那個人再看身分是不是君主，五種謀略把它當參數往下傳。開局之後
+// 十三處會寫它，所以它是執行期維護的狀態（`docs/spec/003` §3.4）。
 func (s *Scenario) GovernorIndex(prefectureID int) int {
-	i := prefectureID // 筆 0 是啞元，郡編號與筆號相同
-	off := i*prefSize + 32
-	if i < 1 || off+1 >= len(s.rawSta) {
+	i := prefectureID - 1 // Prefectures() 是 1..42，切片從 0 起
+	if i < 0 || i >= len(s.prefectures) {
 		return NoValue16
 	}
-	return int(binary.LittleEndian.Uint16(s.rawSta[off:]))
+	return int(s.prefectures[i].Governor)
 }
 
 // NoValue16 是 16 位元欄位的「沒有」。

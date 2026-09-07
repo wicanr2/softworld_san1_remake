@@ -372,30 +372,53 @@ func TestTrainZerosUnitsWithNoTroops(t *testing.T) {
 
 // TestReclaimAndFloodMatchTheOriginal 釘住開墾與防洪的量與原版一致。
 //
-// 兩個都是從碼讀出來的（`ReclaimGain`／`FloodDrop`，`L0`）。
-// **開墾那條的重點是「智力低不會變負」**：呼叫端算的是 `(智−50)/12`，
-// 而常式先擋掉非正的量、改成擲 0 或 1。只釘高智力的案例會漏掉這一段。
+// **玩家與電腦走的是不同的常式**（`0x1a6d2`／`0x1a93a` 對上分派表
+// `0x5534` 底下的六支）：玩家那條謀略不足就是加 0，電腦那條非正時
+// 改擲 `RND(2)`。只測一邊會漏掉另一邊。
 func TestReclaimAndFloodMatchTheOriginal(t *testing.T) {
-	for _, c := range []struct{ intel, roll, want int }{
-		{100, 0, 4}, // (100−50)/12 = 4
-		{74, 1, 2},  // (74−50)/12 = 2
-		{62, 0, 1},  // (62−50)/12 = 1
-		{61, 0, 0},  // (61−50)/12 = 0 → 改用 RND(2)
-		{61, 1, 1},
-		{10, 1, 1}, // 智力很低也不會是負的
-		{10, 0, 0},
+	// 玩家：max(智 − 50, 0) / 12。
+	for _, c := range []struct{ intel, want int }{
+		{100, 4}, // (100−50)/12 = 4
+		{74, 2},
+		{62, 1},
+		{61, 0},
+		{10, 0}, // 智力低就是白做，不會變負也不會擲
 	} {
-		if got := ReclaimGain(c.intel, c.roll); got != c.want {
-			t.Errorf("智 %d、擲 %d：開墾 +%d，應該是 +%d",
-				c.intel, c.roll, got, c.want)
+		if got := ReclaimGain(c.intel); got != c.want {
+			t.Errorf("玩家 智 %d：開墾 +%d，應該是 +%d", c.intel, got, c.want)
+		}
+	}
+	// 電腦：底隨等級變，非正時擲 0 或 1。
+	for _, c := range []struct{ intel, floor, roll, want int }{
+		{100, 50, 0, 4},
+		{100, 60, 0, 3}, // 等級 1／2 的底是 60
+		{100, 40, 0, 5}, // 等級 4 的底是 40
+		{61, 50, 0, 0},  // (61−50)/12 = 0 → 改用 RND(2)
+		{61, 50, 1, 1},
+		{10, 50, 1, 1}, // 智力很低也不會是負的
+	} {
+		if got := AIReclaimGain(c.intel, c.floor, c.roll); got != c.want {
+			t.Errorf("電腦 智 %d、底 %d、擲 %d：開墾 +%d，應該是 +%d",
+				c.intel, c.floor, c.roll, got, c.want)
 		}
 	}
 	for _, c := range []struct{ intel, want int }{
 		{100, 10}, {95, 9}, {50, 5}, {9, 0},
 	} {
 		if got := FloodDrop(c.intel); got != c.want {
-			t.Errorf("智 %d：防洪 −%d，應該是 −%d", c.intel, got, c.want)
+			t.Errorf("玩家 智 %d：防洪 −%d，應該是 −%d", c.intel, got, c.want)
 		}
+	}
+	// 六個等級的三個常數，逐位元組讀出來的。
+	for level, want := range []AffairsTier{
+		{4, 50, 10}, {4, 60, 15}, {4, 60, 15}, {3, 50, 14}, {3, 40, 12}, {2, 50, 10},
+	} {
+		if got := AffairsTierFor(level); got != want {
+			t.Errorf("等級 %d 的內政常數 %+v，應該是 %+v", level, got, want)
+		}
+	}
+	if AffairsTierFor(-1) != AffairsTierFor(0) || AffairsTierFor(99) != AffairsTierFor(5) {
+		t.Error("等級越界沒有夾住")
 	}
 }
 

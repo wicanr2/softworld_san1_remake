@@ -563,7 +563,7 @@ func (g *State) pickGovernor(prefectureID int, owner state.FactionID) *General {
 // governorSlot 把原版的 0xFFFF 哨兵換成 −1（`CLAUDE.md` §7 第 11 條：
 // 哨兵在唯一入口正規化，不讓它當成數值流進規則層）。
 func governorSlot(v uint16) int {
-	if v == state.NoGovernor {
+	if v == state.NoValue16 {
 		return -1
 	}
 	return int(v)

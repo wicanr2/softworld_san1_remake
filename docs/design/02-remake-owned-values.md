@@ -69,8 +69,8 @@
 
 | 原本的常數 | 現在用的 | 出處 |
 |---|---|---|
-| `TuneReclaimBase`／`TuneReclaimIntel` | `ReclaimGain`：`max((智−50)/12, RND(2))`，上限 100 | `0xba02` ＋ 呼叫端 |
-| `TuneFloodBase`／`TuneFloodIntel` | `FloodDrop`：`智/10`，下限 0 | `0xba4c` ＋ 呼叫端 |
+| `TuneReclaimBase`／`TuneReclaimIntel` | 玩家 `ReclaimGain`：`max(智−50,0)/12`；電腦 `AIReclaimGain`：`max((智−底)/12, RND(2))`，底隨 AI 等級 | `0x1a6d2`／`0xba9c` 六支 ＋ `0xba02` |
+| `TuneFloodBase`／`TuneFloodIntel` | 玩家 `FloodDrop`：`智/10`；電腦 `AIFloodDrop`：`智/除數`，除數隨 AI 等級 | `0x1a93a`／`0xba9c` 六支 ＋ `0xba4c` |
 | `TuneTrainBase`／`TuneTrainIntel` | `TrainGain`：`(智/3 + 武/2)/除數[等級]`，上限 100 | `0xbd70` |
 | `TuneNewSoldierArms` | `ArmsOf`／`Weapons`：武裝度是百分比，兵力一變就重算 | `0xc168` |
 | `TuneRecruitCharm` | `RecruitPersuasion`／`RecruitDifficulty`：說服力比難度，前面還有牽絆閘門 | `0xce8c` |

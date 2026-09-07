@@ -122,32 +122,102 @@ func AITrainDivisor(level int) int {
 	}
 }
 
-// ReclaimGain 是「土地開發」一次增加多少地力（`L0`、`[base]`）。
+// 內政兩項的量：**玩家與電腦走的是不同的常式**（`L0`、`[base]`）。
 //
-// 原版的常式在線性 `0xba02`：
+// 玩家選單那一條在線性 `0x1a6d2`（土地開墾）與 `0x1a93a`（洪水防治），
+// 電腦那一條在分派表 `0x5534` 底下的六支（`0xba9c` 起，每支 0x76 bytes），
+// 兩邊共用寫回州郡的小常式 `0xba02`／`0xba4c`。
 //
-//	cmp word [bp+6], 0
-//	jg  用它                       ; 量 > 0 就照用
-//	mov ax,2; lcall RND            ; 否則改用 RND(2)，也就是 0 或 1
-//	add es:[bx+0x49b], al          ; 地力 += 量
-//	cmp es:[bx+0x49b], 100; 超過就設 100
+// 差別不只係數：
 //
-// 呼叫端算的量是 `(智 − 50) / 12`（`docs/re/03` §1.4）。
-// **智力低的不會讓地力下降**——常式先擋掉非正的量，改成擲 0 或 1。
-// 說明書只寫「謀略越高，土地價值增加越多」。
-func ReclaimGain(intel, roll int) int {
-	n := (intel - 50) / 12
-	if n > 0 {
+//   - 玩家：`max(謀略 − 50, 0) ÷ 12`——謀略不足 50 就是**加 0**
+//   - 電腦：`(謀略 − 底) ÷ 12`，算出來 ≤ 0 時改擲 `RND(2)`（0 或 1）
+//
+// 也就是說**蠢將替電腦開墾偶爾還有 1 點，替玩家開墾就是白做**。
+//
+// ReclaimGain 是玩家那一條。
+func ReclaimGain(intel int) int {
+	n := intel - ReclaimIntelFloor
+	if n < 0 {
+		n = 0
+	}
+	return n / ReclaimIntelDiv
+}
+
+// AIReclaimGain 是電腦那一條：底隨 AI 等級變，非正就改用擲的。
+func AIReclaimGain(intel, floor, roll int) int {
+	if n := (intel - floor) / ReclaimIntelDiv; n > 0 {
 		return n
 	}
 	return roll // RND(2)：0 或 1
 }
 
+// ReclaimIntelFloor／ReclaimIntelDiv 是玩家那一條的兩個常數
+// （`0x1a73b` 的 `sub $0x32`、`0x1a74d` 的 `idiv 12`）。
+// 除數 12 六個 AI 等級也都一樣，只有底會變。
+const (
+	ReclaimIntelFloor = 50
+	ReclaimIntelDiv   = 12
+)
+
 // FloodDrop 是「洪水防治」一次降多少洪水率（`L0`、`[base]`）。
 //
-// 原版的常式在線性 `0xba4c`：讀州郡 offset 28（洪水率），減掉呼叫端
-// 給的量，**負的夾到 0**，寫回去。呼叫端算的量是 `智 / 10`。
-func FloodDrop(intel int) int { return intel / 10 }
+// 寫回的常式在線性 `0xba4c`：讀州郡 offset 28，減掉呼叫端給的量，
+// **負的夾到 0**，寫回去。玩家那一條給的量是 `謀略 ÷ 10`（`0x1a94b`），
+// 電腦那一條的除數隨 AI 等級變（`AffairsTier`）。
+func FloodDrop(intel int) int { return intel / FloodIntelDiv }
+
+// AIFloodDrop 是電腦那一條。
+func AIFloodDrop(intel, div int) int {
+	if div < 1 {
+		div = 1
+	}
+	return intel / div
+}
+
+// FloodIntelDiv 是玩家那一條的除數。
+const FloodIntelDiv = 10
+
+// AffairsTier 是電腦內政那張表六個等級各自的三個常數（`L0`、`[base]`）。
+//
+// 六支常式是同一段碼，只有三個立即數不同（逐位元組 diff 過）：
+//
+//	等級  RND(K)  開墾的底  防洪的除數
+//	  0      4       50         10
+//	  1      4       60         15
+//	  2      4       60         15
+//	  3      3       50         14
+//	  4      3       40         12
+//	  5      2       50         10
+//
+// **這不是一條由弱到強的階梯**：K 越小動手越勤（等級 5 從不閒著），
+// 但等級 1 與 2 的開墾底比等級 0 還高、防洪除數也更大，做起來反而比
+// 等級 0 差。等級 4 的開墾最狠（底 40），等級 5 勤但量普通。
+type AffairsTier struct {
+	Chance    int // RND(K)：擲 0 開墾、1 防洪，其餘不做
+	LandFloor int // 開墾：(謀略 − 這個) ÷ 12
+	FloodDiv  int // 防洪：謀略 ÷ 這個
+}
+
+var affairsTiers = [6]AffairsTier{
+	{4, 50, 10},
+	{4, 60, 15},
+	{4, 60, 15},
+	{3, 50, 14},
+	{3, 40, 12},
+	{2, 50, 10},
+}
+
+// AffairsTierFor 取某個 AI 等級的那一組；越界夾住。
+func AffairsTierFor(level int) AffairsTier {
+	if level < 0 {
+		level = 0
+	}
+	if level >= len(affairsTiers) {
+		level = len(affairsTiers) - 1
+	}
+	return affairsTiers[level]
+}
 
 // 尋訪人才的門檻（`L0`、`[base]`）。
 //

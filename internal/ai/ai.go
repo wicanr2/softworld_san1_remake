@@ -140,10 +140,9 @@ func (f *faithful) Coverage() (int, int) { return 18, 18 }
 // **等級越高範圍越小、動手的機率越大**：等級 5 是 `RND(2)`，兩件事
 // 各半、從不閒著；等級 0 是 `RND(4)`，一半的回合什麼都不做。
 //
-// ⚠ **這裡只還原了「選哪一道」，沒有還原「做多少」。** 原版的量是
-// 地力 `+= (智 − 50)/12`、洪水率 `-= 智/10`，而 remake 的 `Reclaim`／
-// `FloodControl` 用的是自己的係數（`docs/design/02`）。要對拍得先把
-// 那兩個量也接過來。
+// 「做多少」也跟著等級走（`game.AffairsTier`）：開墾的底是
+// `[50,60,60,50,40,50]`、防洪的除數是 `[10,15,15,14,12,10]`。
+// 六支常式是同一段碼，只有這三個立即數不同。
 func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 	var out []game.Order
 	k := internalAffairsRange(g.AILevel(id))
@@ -996,13 +995,4 @@ func mostCharming(g *game.State, id state.FactionID, prefecture int) *game.Gener
 //
 // 六份常式是同一段碼，只有 `mov ax,K` 的常數不同：
 // 等級 0–2 是 `RND(4)`、3–4 是 `RND(3)`、5 是 `RND(2)`。
-func internalAffairsRange(level int) int {
-	switch {
-	case level <= 2:
-		return 4
-	case level <= 4:
-		return 3
-	default:
-		return 2
-	}
-}
+func internalAffairsRange(level int) int { return game.AffairsTierFor(level).Chance }

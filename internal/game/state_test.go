@@ -194,12 +194,15 @@ func TestSealHasExactlyOneHolder(t *testing.T) {
 	}
 }
 
-// TestGovernorFieldMatchesStatus 釘住兩條獨立的路徑對得上。
+// TestGovernorFieldIsConsistent 釘住主事者那一格（`BASESTA` offset 32）
+// 在六個劇本裡都自洽：那個人屬於郡的所屬勢力、就在這個郡、
+// 身分是君主、軍師或太守——**軍師也算**，劇本 004 的周瑜與劇本 006 的
+// 司馬懿就是這樣，那正是「只認身分 0 或 2」當初漏掉的兩例。
 //
-// 郡的太守有兩個來源：`BASESTA` offset 32 直接存人物槽號（`L2`），
-// 以及掃人物表的身分欄算出來（`Governor()`，`docs/spec/003`）。
-// **兩邊不一致就表示其中一條讀錯了**——而單獨看任何一條都不會露餡。
-func TestGovernorFieldMatchesStatus(t *testing.T) {
+// **判準不是「與掃身分算出來的一致」**——掃身分那條路推過兩個版本、
+// 兩個都被資料推翻（`docs/spec/003` §5），現在 `Governor()` 讀的就是
+// 這一格，拿它去比自己不會發現任何事。
+func TestGovernorFieldIsConsistent(t *testing.T) {
 	for _, slot := range []state.Slot{
 		state.Scenario1, state.Scenario2, state.Scenario3,
 		state.Scenario4, state.Scenario5, state.Scenario6,
@@ -215,19 +218,26 @@ func TestGovernorFieldMatchesStatus(t *testing.T) {
 				continue
 			}
 			want := sc.GovernorIndex(p.ID)
-			got := g.Governor(p.ID)
 			if want == state.NoValue16 {
 				continue
 			}
-			if got == nil || got.Index != want {
+			x := g.General(want)
+			switch {
+			case x == nil:
+				bad++
+				t.Errorf("劇本 %s 郡 %d：主事者槽號 %d 越界", slot, p.ID, want)
+			case x.Faction != p.Owner || x.Location != p.ID:
 				bad++
 				if bad <= 3 {
-					name := "（無）"
-					if got != nil {
-						name = got.Name
-					}
-					t.Errorf("劇本 %s 郡 %d：欄位說太守是槽 %d，掃身分算出來是 %s",
-						slot, p.ID, want, name)
+					t.Errorf("劇本 %s 郡 %d：主事者 %s 的勢力 %d／領地 %d 與郡的所屬 %d 對不上",
+						slot, p.ID, x.Name, x.Faction, x.Location, p.Owner)
+				}
+			case x.Status != state.StatusLord && x.Status != state.StatusChief &&
+				!x.Status.Governs():
+				bad++
+				if bad <= 3 {
+					t.Errorf("劇本 %s 郡 %d：主事者 %s 的身分是 %d",
+						slot, p.ID, x.Name, x.Status)
 				}
 			}
 		}

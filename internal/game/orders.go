@@ -87,26 +87,28 @@ func (g *State) price(by state.FactionID, base int) int {
 	return state.AICost(base, f.AILevel)
 }
 
-// Reclaim 是「土地開發」（說明書 p.21）：每次 10 金，
-// **負責開墾的將領謀略越高，土地價值增加越多**。
+// Reclaim 是「土地開發」（說明書 p.21，原版選單寫「土地開墾」）：
+// 每次 10 金，**負責開墾的將領謀略越高，土地價值增加越多**。
 //
-// 「若財庫已空則徒手開墾」——所以錢不夠不是錯誤，只是效果減半。
+// 「若財庫已空則徒手開墾」——錢不夠不是錯誤。原版的做法是把金扣到 0
+// 為止、效果照給（`0x1a796` 的 `sub` 後面跟著 `jns` 夾 0），
+// 不是效果減半。
 func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
 	}
-	fee := g.price(by, CostReclaim)
-	add := ReclaimGain(0, g.Roll(2, prefectureID, 0xba02))
+	intel := 0
 	if x := g.General(generalIndex); x != nil && x.Faction == by &&
 		x.Location == prefectureID {
-		add = ReclaimGain(int(x.Intel), g.Roll(2, prefectureID, 0xba02))
+		intel = int(x.Intel)
 	}
-	if p.Gold >= fee {
-		p.Gold -= fee
-	} else {
-		add = (add + 1) / 2 // 徒手開墾
+	add := ReclaimGain(intel)
+	if f := g.Faction(by); f != nil && f.ByComputer {
+		t := AffairsTierFor(f.AILevel)
+		add = AIReclaimGain(intel, t.LandFloor, g.Roll(2, prefectureID, 0xba02))
 	}
+	p.Gold -= min(p.Gold, g.price(by, CostReclaim))
 	p.LandValue = uint8(clampTo(int(p.LandValue)+add, 100))
 	p.Commanded = true
 	return nil
@@ -128,6 +130,9 @@ func (g *State) FloodControl(prefectureID, generalIndex int, by state.FactionID)
 	if x := g.General(generalIndex); x != nil && x.Faction == by &&
 		x.Location == prefectureID {
 		drop = FloodDrop(int(x.Intel))
+		if f := g.Faction(by); f != nil && f.ByComputer {
+			drop = AIFloodDrop(int(x.Intel), AffairsTierFor(f.AILevel).FloodDiv)
+		}
 	}
 	p.Gold -= fee
 	p.FloodRate = uint8(clampTo(int(p.FloodRate)-drop, 100))
