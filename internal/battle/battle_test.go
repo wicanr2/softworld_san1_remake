@@ -177,21 +177,36 @@ func TestThirtyDayRule(t *testing.T) {
 	if b.AttackerWon {
 		t.Error("三十天期滿而城池未失，應該是守方衛郡成功")
 	}
-	if b.Day != BattleDays+1 {
-		t.Errorf("結束在第 %d 天，應該是滿 %d 天之後", b.Day, BattleDays)
+	// 原版第 1 天開始，**滿 30 就判**（`0x250f6`：`天數 < 30` 才繼續）。
+	if b.Day != BattleDays {
+		t.Errorf("結束在第 %d 天，應該是第 %d 天", b.Day, BattleDays)
 	}
 
-	// 攻方據有城池時，同樣的三十天判給攻方。
+	// **勝負看的是「此刻誰站在城池上」**，不是「攻方進去過」
+	// （原版 `0x25109` 拿城池的座標去查佔位地圖）。
 	b2 := arena(flat(Plain))
-	place(b2, MainAttacker, Centre, FromOffset(1, 1), lead("攻", 50, 50, 1000))
-	place(b2, MainDefender, Centre, FromOffset(19, 13), lead("守", 50, 50, 1000))
+	place(b2, MainAttacker, Centre, b2.Field.CityAt, lead("攻", 50, 50, 1000))
+	place(b2, MainDefender, Centre, FromOffset(9, 8), lead("守", 50, 50, 1000))
 	b2.Rice[MainAttacker] = 100000
-	b2.CityHeld = MainAttacker
 	for i := 0; i < BattleDays && !b2.Over; i++ {
 		b2.EndDay()
 	}
 	if !b2.AttackerWon {
-		t.Error("攻下城池並堅持到卅天，應該是攻方獲勝")
+		t.Error("攻方站在城池上滿卅天，應該是攻方獲勝")
+	}
+
+	// 進去過又走掉的話不算——這一條就是 CityHeld 與 CityHolder 的差別。
+	b3 := arena(flat(Plain))
+	u := place(b3, MainAttacker, Centre, b3.Field.CityAt, lead("攻", 50, 50, 1000))
+	place(b3, MainDefender, Centre, FromOffset(9, 8), lead("守", 50, 50, 1000))
+	b3.Rice[MainAttacker] = 100000
+	b3.CityHeld = MainAttacker
+	u.At = FromOffset(1, 1) // 走掉了
+	for i := 0; i < BattleDays && !b3.Over; i++ {
+		b3.EndDay()
+	}
+	if b3.AttackerWon {
+		t.Error("攻方離開城池之後期滿，應該是守方衛郡成功")
 	}
 }
 

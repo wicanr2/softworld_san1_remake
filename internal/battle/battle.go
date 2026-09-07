@@ -592,15 +592,28 @@ func (b *Battle) checkOver() {
 	case !defenders:
 		b.Over, b.AttackerWon = true, true
 		b.note("守方全滅，攻方獲勝")
-	case b.Day > BattleDays:
+	case b.Day >= BattleDays:
 		b.Over = true
-		b.AttackerWon = b.CityHeld.Attacking()
+		b.AttackerWon = b.CityHolder().Attacking()
 		if b.AttackerWon {
 			b.note("卅天期滿，攻方據有城池，攻方獲勝")
 		} else {
 			b.note("卅天期滿，城池未失，守方衛郡成功")
 		}
 	}
+}
+
+// CityHolder 是**此刻站在城池那一格**的那一方；沒有人就算守方。
+//
+// 三十天期滿的勝負看的是它，不是 CityHeld（原版 `0x25109`：
+// 直接拿城池的座標去查「哪一格站著誰」那張地圖，空的話結果是 0，
+// 也就是主守軍）。**兩者不一樣**：攻方進去又走掉的話，
+// CityHeld 還記著攻方，而原版判守方贏。
+func (b *Battle) CityHolder() Side {
+	if u := b.UnitAt(b.Field.CityAt); u != nil && u.Alive() {
+		return u.Side
+	}
+	return MainDefender
 }
 
 // Order 依行動順序回傳還在場上的部隊（說明書 p.28）。

@@ -228,7 +228,7 @@ func (b *Battle) Auto() int {
 	}
 	if !b.Over {
 		b.Over = true
-		b.AttackerWon = b.CityHeld.Attacking()
+		b.AttackerWon = b.CityHolder().Attacking()
 	}
 	return b.Day
 }
