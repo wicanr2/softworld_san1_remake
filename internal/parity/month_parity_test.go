@@ -72,7 +72,7 @@ func TestZZMonthParity(t *testing.T) {
 	player := state.FactionID(players[0])
 	t.Logf("玩家勢力槽號 %d（盤面上共 %d 個玩家）", player, len(players))
 
-	g, err := game.New(sc, player, 5)
+	g, err := game.New(sc, player, 5, state.EditionBase)
 	if err != nil {
 		t.Fatalf("remake 這邊開不了局：%v", err)
 	}

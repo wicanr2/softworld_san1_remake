@@ -350,7 +350,7 @@ func loadGame(t *testing.T) *game.State {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := game.New(sc, 0, 5)
+	g, err := game.New(sc, 0, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}

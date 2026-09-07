@@ -37,7 +37,7 @@ func loadScenario(t *testing.T, slot state.Slot) *state.Scenario {
 
 func TestNewFromScenario1(t *testing.T) {
 	sc := loadScenario(t, state.Scenario1)
-	g, err := New(sc, 0, 5) // 勢力 0 ＝ 劉備
+	g, err := New(sc, 0, 5, state.EditionBase) // 勢力 0 ＝ 劉備
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,13 +72,13 @@ func TestNewFromScenario1(t *testing.T) {
 // **默默改成 0 的話，玩家會在控制別人而畫面上完全看不出來。**
 func TestPlayerFactionMustExist(t *testing.T) {
 	sc := loadScenario(t, state.Scenario1)
-	if _, err := New(sc, 15, 5); err == nil {
+	if _, err := New(sc, 15, 5, state.EditionBase); err == nil {
 		t.Error("勢力 15 沒在用，開局卻沒有報錯")
 	}
-	if _, err := New(sc, 0, 0); err == nil {
+	if _, err := New(sc, 0, 0, state.EditionBase); err == nil {
 		t.Error("難度 0 越界，開局卻沒有報錯")
 	}
-	if _, err := New(sc, 0, 11); err == nil {
+	if _, err := New(sc, 0, 11, state.EditionBase); err == nil {
 		t.Error("難度 11 越界，開局卻沒有報錯")
 	}
 }
@@ -90,7 +90,7 @@ func TestPlayerFactionMustExist(t *testing.T) {
 // 數字**，這比任何一邊自己說了算都強。
 func TestTroopCapMatchesData(t *testing.T) {
 	sc := loadScenario(t, state.Scenario1)
-	g, err := New(sc, 0, 5)
+	g, err := New(sc, 0, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestGovernorEverywhere(t *testing.T) {
 		state.Scenario4, state.Scenario5, state.Scenario6} {
 		sc := loadScenario(t, slot)
 		f := sc.ActiveFactions()[0]
-		g, err := New(sc, state.FactionID(f), 5)
+		g, err := New(sc, state.FactionID(f), 5, state.EditionBase)
 		if err != nil {
 			t.Fatalf("%s：%v", slot, err)
 		}
@@ -205,7 +205,7 @@ func TestGovernorFieldMatchesStatus(t *testing.T) {
 		state.Scenario4, state.Scenario5, state.Scenario6,
 	} {
 		sc := loadScenario(t, slot)
-		g, err := New(sc, state.FactionID(firstPlayable(sc)), 5)
+		g, err := New(sc, state.FactionID(firstPlayable(sc)), 5, state.EditionBase)
 		if err != nil {
 			t.Fatalf("劇本 %s 開不了局：%v", slot, err)
 		}
@@ -297,5 +297,43 @@ func TestRecomputeGivesThePrefectureToTheLastSlot(t *testing.T) {
 	g.RecomputeOwners()
 	if got := g.Prefecture(at).Owner; got != 1 {
 		t.Errorf("勢力對調之後郡算成 %d，應該跟著槽號大的那位變成 1", got)
+	}
+}
+
+// TestDifficultyBoundsFollowEdition 釘住難度上限跟著版本走
+// （`docs/spec/004`：原版 `請設定難度(1-10)`、加強版 `(1-20)`，`L0`）。
+//
+// **拿加強版的難度 15 去開原版不是「比較難」，是規則接錯了**——
+// 原版的係數表只有十格，第十五格是表外的位元組。所以要擋在開局，
+// 不是等到電腦諸侯出兵時讀到垃圾。
+func TestDifficultyBoundsFollowEdition(t *testing.T) {
+	sc := loadScenario(t, state.Scenario1)
+	f := state.FactionID(sc.ActiveFactions()[0])
+	for _, c := range []struct {
+		ed   state.Edition
+		diff int
+		ok   bool
+	}{
+		{state.EditionBase, 1, true}, {state.EditionBase, 10, true},
+		{state.EditionBase, 11, false}, {state.EditionBase, 20, false},
+		{state.EditionPlus, 10, true}, {state.EditionPlus, 20, true},
+		{state.EditionPlus, 21, false},
+		{state.EditionBase, 0, false}, {state.EditionPlus, 0, false},
+		// 空字串當原版：舊存檔沒有這個欄位。
+		{"", 10, true}, {"", 11, false},
+	} {
+		g, err := New(sc, f, c.diff, c.ed)
+		if c.ok && err != nil {
+			t.Errorf("%q 難度 %d 應該收：%v", c.ed, c.diff, err)
+		}
+		if !c.ok && err == nil {
+			t.Errorf("%q 難度 %d 應該擋下來，卻開起來了", c.ed, c.diff)
+		}
+		if c.ok && g != nil && g.Edition == "" {
+			t.Errorf("%q 難度 %d 開起來了，但局面的版本是空的", c.ed, c.diff)
+		}
+	}
+	if _, err := New(sc, f, 5, "enhanced"); err == nil {
+		t.Error("不認識的版本應該擋下來")
 	}
 }

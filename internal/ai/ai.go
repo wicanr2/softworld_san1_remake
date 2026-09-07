@@ -91,9 +91,10 @@ type faithful struct {
 	name string
 }
 
-func (f *faithful) Mode() Mode           { return f.mode }
-func (f *faithful) Name() string         { return f.name }
-func (f *faithful) Derived() bool        { return false }
+func (f *faithful) Mode() Mode    { return f.mode }
+func (f *faithful) Name() string  { return f.name }
+func (f *faithful) Derived() bool { return false }
+
 // Coverage 回報十八張分派表解出幾張。
 //
 // **`0x5514` 算解出來的**：六個等級的 far pointer 全部指向
@@ -260,19 +261,37 @@ const (
 	SortieMaxGenerals = 50 // 目標郡的現役將加上出征人數不得超過 50
 )
 
-// sortieOdds 是難度係數表（`DS:0x5430`，一格 8 byte 的 double，`L0`）。
+// 難度係數表（`DS:0x5430`，一格 8 byte 的 double，`L0`）。
 //
 // **只有「打敵國」那一條分支用得到**：
 // `係數 × 出征兵力（百） < 目標郡的兵士（百）` 就不打。
-// 係數越小同樣的兵力越難過門檻——難度 10 要帶到守軍的兩倍才動手。
-var sortieOdds = [10]int{100, 90, 100, 80, 80, 70, 70, 60, 60, 50}
+// 係數越小同樣的兵力越難過門檻——原版難度 10 要帶到守軍的兩倍才動手。
+//
+// 兩版的表不同，而且**加強版長一倍**（`docs/spec/004` §3）：
+// 原版 11 格、加強版 21 格，第 0 格用不到。加強版的 11–20 與 1–10
+// 逐格相同——多出來的十級不改變出兵的積極度。
+var sortieOdds = map[state.Edition][]int{
+	state.EditionBase: {100, 90, 100, 80, 80, 70, 70, 60, 60, 50},
+	state.EditionPlus: {
+		100, 90, 90, 80, 70, 75, 70, 75, 70, 60,
+		100, 90, 90, 80, 70, 75, 70, 75, 70, 60,
+	},
+}
 
-// SortieOdds 是某個難度（1–10）的出兵係數，以百分比表示。
-func SortieOdds(difficulty int) int {
-	if difficulty < 1 || difficulty > len(sortieOdds) {
+// SortieOdds 是某個版本、某個難度的出兵係數，以百分比表示。
+//
+// 版本空字串當原版。**越界回 100 不是「安全的預設」而是「不加碼也不
+// 打折」**——回 0 會讓電腦諸侯一次都不出兵，而那在畫面上看起來只是
+// 「這個諸侯很消極」。
+func SortieOdds(ed state.Edition, difficulty int) int {
+	t, ok := sortieOdds[ed]
+	if !ok {
+		t = sortieOdds[state.EditionBase]
+	}
+	if difficulty < 1 || difficulty > len(t) {
 		return 100
 	}
-	return sortieOdds[difficulty-1]
+	return t[difficulty-1]
 }
 
 // sortie 是「出兵／移防」（表 `0x54f4`，`L0`、`[base]`）。
@@ -349,7 +368,7 @@ func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.
 		for _, x := range g.Garrison(to) {
 			enemy += x.Soldiers
 		}
-		if SortieOdds(g.Difficulty)*(sent/100)/100 < enemy/100 {
+		if SortieOdds(g.Edition, g.Difficulty)*(sent/100)/100 < enemy/100 {
 			return nil, false
 		}
 		return game.AttackOrder{At: prefecture, To: to, Force: force}, true

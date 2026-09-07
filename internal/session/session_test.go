@@ -34,7 +34,7 @@ func newSession(t *testing.T, mode ai.Mode, player state.FactionID) *Session {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := game.New(sc, player, 5)
+	g, err := game.New(sc, player, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -185,7 +185,7 @@ const enterMark = `\r`
 // **不靠原版的 `RND()`，也不靠存檔剛好是什麼樣子**：那份存檔的玩家在
 // 南海，兵 500、金 3、現役將 1，戰役指令按下去就退回來。這裡把玩家的
 // 守軍與錢糧墊高，再把一個鄰郡放上敵將——郡的歸屬是從人物表導出來的
-//（`docs/re/03` §1.5），所以放人就等於換旗。
+// （`docs/re/03` §1.5），所以放人就等於換旗。
 func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
 	t.Helper()
 	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize

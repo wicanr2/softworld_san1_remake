@@ -428,4 +428,3 @@ const (
 func AdvisorWarns(chiefIntel, roll int) bool {
 	return AdvisorWarnFloor+roll < chiefIntel
 }
-

@@ -391,7 +391,6 @@ func (b *Battle) casualty(u *Unit, loss int) {
 	}
 }
 
-
 // QuickBattle 是「快戰」：雙方直接正面作戰（說明書 p.32）。
 func (b *Battle) QuickBattle(a *Unit, d Dir) error {
 	return b.melee(a, d, false)

@@ -702,7 +702,9 @@ func main() {
 	faction := flag.Int("faction", -1, "玩家的勢力槽號；−1 ＝ 第一個在用的")
 	aiMode := flag.String("ai", string(ai.ModeEnhanced),
 		"電腦 AI：base（原版還原）／plus（加強版還原）／enhanced（remake 強化）")
-	difficulty := flag.Int("difficulty", 5, "難度 1..10")
+	edition := flag.String("edition", string(state.EditionBase),
+		"版本：base（原版）／plus（加強版）——只切已量到的規則差異，見 docs/spec/004")
+	difficulty := flag.Int("difficulty", 5, "難度；上限看版本，原版 1..10、加強版 1..20")
 	scale := flag.Int("scale", 2, "視窗放大倍率（整數倍，不做非整數縮放）")
 	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
 	music := flag.Bool("music", true, "播配樂（從原版的 DATA1 邊播邊合成）")
@@ -755,7 +757,11 @@ func main() {
 		g, brain = s.G, s.Brain
 		f = int(s.Player)
 	} else {
-		g, err = game.New(sc, state.FactionID(f), *difficulty)
+		ed, err := state.ParseEdition(*edition)
+		if err != nil {
+			die(err)
+		}
+		g, err = game.New(sc, state.FactionID(f), *difficulty, ed)
 		if err != nil {
 			die(err)
 		}

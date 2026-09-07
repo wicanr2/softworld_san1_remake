@@ -75,12 +75,12 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 // `RND(6)` 的平均是 2.5，所以戰力沒有高過對方七點左右就傷不了人
 // ——正是說明書說的「依其戰力強弱分高下」。
 const (
-	DuelBlowSpread  = 5 // 兩次 RND(5)
-	DuelBlowWide    = 6 // 一次 RND(6)
-	DuelBlowEdge    = 4 // 再扣掉的常數
-	DuelRoundDiv    = 7 // 回合數裡兩人戰力各除的數
-	DuelRoundHalf   = 2 // 亂數上限是兩人戰力和的一半
-	DuelStaminaBar  = 46 // 畫面上體能條的上限（0x2e），不影響判定
+	DuelBlowSpread = 5  // 兩次 RND(5)
+	DuelBlowWide   = 6  // 一次 RND(6)
+	DuelBlowEdge   = 4  // 再扣掉的常數
+	DuelRoundDiv   = 7  // 回合數裡兩人戰力各除的數
+	DuelRoundHalf  = 2  // 亂數上限是兩人戰力和的一半
+	DuelStaminaBar = 46 // 畫面上體能條的上限（0x2e），不影響判定
 )
 
 // duelRoundSpread 是回合數那個亂數的上限。
@@ -553,4 +553,3 @@ func BurnKeep(casterIntel, geniusRoll, roll int) int {
 	}
 	return 100 - 100/(roll+2)
 }
-

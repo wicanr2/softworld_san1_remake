@@ -19,6 +19,7 @@ import (
 type Extra struct {
 	Year, Month int
 	Player      state.FactionID
+	Edition     state.Edition
 	Difficulty  int
 
 	// Prefectures 依郡編號 1..42，索引 0 對應郡 1。
@@ -62,7 +63,7 @@ type FactionExtra struct {
 func (g *State) CaptureExtra() Extra {
 	e := Extra{
 		Year: g.Date.Year, Month: g.Date.Month,
-		Player: g.Player, Difficulty: g.Difficulty,
+		Player: g.Player, Edition: g.Edition, Difficulty: g.Difficulty,
 		Options:  g.Options,
 		Factions: map[state.FactionID]FactionExtra{},
 	}
@@ -91,13 +92,20 @@ func Restore(sc *state.Scenario, e Extra) (*State, error) {
 	if e.Month < 1 || e.Month > 12 {
 		return nil, fmt.Errorf("game: 存檔的月份是 %d", e.Month)
 	}
-	if e.Difficulty < 1 || e.Difficulty > 10 {
-		return nil, fmt.Errorf("game: 存檔的難度是 %d", e.Difficulty)
+	ed := e.Edition
+	if ed == "" {
+		// 舊存檔沒有這個欄位。**當原版**，不要當「未知」——
+		// 原版的難度上限比較嚴，猜錯的那一邊會被 New 擋下來。
+		ed = state.EditionBase
+	}
+	if e.Difficulty < 1 || e.Difficulty > ed.MaxDifficulty() {
+		return nil, fmt.Errorf("game: 存檔的難度是 %d（%s 收 1..%d）",
+			e.Difficulty, ed, ed.MaxDifficulty())
 	}
 	// 借 New 把三張表解出來。難度先給合法值，年月與玩家馬上蓋掉——
 	// New 會擋「玩家控制的勢力沒在用」，而存檔裡的玩家可能已經被消滅，
 	// 那不是錯誤，是輸掉了。
-	g, err := New(sc, state.NoFaction, e.Difficulty)
+	g, err := New(sc, state.NoFaction, e.Difficulty, ed)
 	if err != nil {
 		return nil, err
 	}

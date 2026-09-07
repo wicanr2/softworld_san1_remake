@@ -149,7 +149,7 @@ func writePNG(out, fontPath string, sc *state.Scenario, slot, screen, aiMode str
 			}
 			f = act[0]
 		}
-		g, err := game.New(sc, state.FactionID(f), 5)
+		g, err := game.New(sc, state.FactionID(f), 5, state.EditionBase)
 		if err != nil {
 			return err
 		}
@@ -272,7 +272,7 @@ func runSaves(dir string, load, saveTo int, sc *state.Scenario, aiMode string, f
 			}
 			f = act[0]
 		}
-		g, err := game.New(sc, state.FactionID(f), 5)
+		g, err := game.New(sc, state.FactionID(f), 5, state.EditionBase)
 		if err != nil {
 			return err
 		}

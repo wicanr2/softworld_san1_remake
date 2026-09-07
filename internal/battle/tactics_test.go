@@ -248,7 +248,7 @@ func TestSiegeGetsStrongerWithMoreAllies(t *testing.T) {
 func TestFireAndFloodTables(t *testing.T) {
 	const noRoll, plain = 0, 50 // 亂數 0、領隊謀略未達 98
 	for _, c := range []struct {
-		t          Terrain
+		t           Terrain
 		fire, flood int
 	}{
 		{Hill, 25, 20},

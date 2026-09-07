@@ -10,7 +10,7 @@ import (
 func newGame(t *testing.T) *State {
 	t.Helper()
 	sc := loadScenario(t, state.Scenario1)
-	g, err := New(sc, 0, 5) // 劉備
+	g, err := New(sc, 0, 5, state.EditionBase) // 劉備
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestConscriptRejectsForeignGeneral(t *testing.T) {
 // 只會讓讀檔之後的玩家一個月下得完十八道令。
 func TestRestoreKeepsThePlayerHuman(t *testing.T) {
 	sc := loadScenario(t, state.Scenario1)
-	g, err := New(sc, 0, 5)
+	g, err := New(sc, 0, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +210,7 @@ func TestRestoreKeepsThePlayerHuman(t *testing.T) {
 // 只驗其中一邊的話，係數表整個接反了也看不出來。
 func TestComputerLordsGetADiscount(t *testing.T) {
 	sc := loadScenario(t, state.Scenario1)
-	g, err := New(sc, 0, 5) // 劉備是玩家
+	g, err := New(sc, 0, 5, state.EditionBase) // 劉備是玩家
 	if err != nil {
 		t.Fatal(err)
 	}

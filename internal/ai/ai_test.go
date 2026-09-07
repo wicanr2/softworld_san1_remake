@@ -32,7 +32,7 @@ func newGame(t *testing.T, f state.FactionID) *game.State {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := game.New(sc, f, 5)
+	g, err := game.New(sc, f, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,17 +476,21 @@ func TestConscriptFillsToCap(t *testing.T) {
 // **等級 3 以下一格都不做**（0–2 是空操作），而四道門檻任何一道不過
 // 就整個不做——這一條擋的是「AI 傾巢而出把自己餓死」。
 func TestSortieGates(t *testing.T) {
-	// 難度係數表：越大越保守。難度 10 要帶到守軍的兩倍才動手。
+	// 難度係數表：越小越保守。原版難度 10 要帶到守軍的兩倍才動手。
 	for _, c := range []struct{ diff, want int }{
 		{1, 100}, {2, 90}, {3, 100}, {4, 80}, {5, 80},
 		{6, 70}, {7, 70}, {8, 60}, {9, 60}, {10, 50},
 	} {
-		if got := SortieOdds(c.diff); got != c.want {
-			t.Errorf("難度 %d 的係數是 %d，原版是 %d", c.diff, got, c.want)
+		if got := SortieOdds(state.EditionBase, c.diff); got != c.want {
+			t.Errorf("原版難度 %d 的係數是 %d，原版是 %d", c.diff, got, c.want)
 		}
 	}
-	if SortieOdds(0) != 100 || SortieOdds(11) != 100 {
+	if SortieOdds(state.EditionBase, 0) != 100 || SortieOdds(state.EditionBase, 11) != 100 {
 		t.Error("難度越界應該回 100（不加碼也不打折）")
+	}
+	// 版本空字串當原版——舊存檔沒有這個欄位。
+	if SortieOdds("", 10) != SortieOdds(state.EditionBase, 10) {
+		t.Error("沒指定版本時應該照原版的表")
 	}
 
 	// 等級 0–2 不出兵：把等級調低，命令裡不該出現出兵或移防。
@@ -530,5 +534,40 @@ func TestCoverageCountsTheNoopTable(t *testing.T) {
 		if b.Derived() {
 			t.Errorf("%s 宣稱已經完整還原了——表底下還有沒量到的量", m)
 		}
+	}
+}
+
+// TestPlusDifficultyTable 釘住加強版的難度係數表（`DS:0x5430`，21 格 double，
+// `L0`；`docs/spec/004` §3）。
+//
+// 兩件事各自要成立：
+//
+//	一、加強版的表與原版**不同**——難度 10 原版 0.5、加強版 0.6
+//	二、加強版的 11–20 與 1–10 **逐格相同**
+//
+// 第二件是這張表最有訊息量的地方：多出來的十級不改變出兵的積極度，
+// 所以 11–20 要有意義，改的一定是別的規則。**只驗第一件會讓「兩張表
+// 都對」看起來已經測完**，而把 11–20 填成任何數字都照樣綠。
+func TestPlusDifficultyTable(t *testing.T) {
+	want := []int{100, 90, 90, 80, 70, 75, 70, 75, 70, 60}
+	for i, w := range want {
+		d := i + 1
+		if got := SortieOdds(state.EditionPlus, d); got != w {
+			t.Errorf("加強版難度 %d 的係數是 %d，原版讀出來是 %d", d, got, w)
+		}
+		if got := SortieOdds(state.EditionPlus, d+10); got != w {
+			t.Errorf("加強版難度 %d 的係數是 %d，應該與難度 %d 相同（%d）", d+10, got, d, w)
+		}
+	}
+	if SortieOdds(state.EditionPlus, 10) == SortieOdds(state.EditionBase, 10) {
+		t.Error("兩版難度 10 的係數不該相同（原版 0.5、加強版 0.6）")
+	}
+	if SortieOdds(state.EditionPlus, 21) != 100 {
+		t.Error("加強版難度 21 越界，應該回 100")
+	}
+	// 上限跟著版本走。**拿加強版的難度去開原版不是「比較難」，是接錯了。**
+	if state.EditionBase.MaxDifficulty() != 10 || state.EditionPlus.MaxDifficulty() != 20 {
+		t.Errorf("難度上限是 %d／%d，原版讀出來是 10／20",
+			state.EditionBase.MaxDifficulty(), state.EditionPlus.MaxDifficulty())
 	}
 }

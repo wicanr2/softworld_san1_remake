@@ -56,7 +56,7 @@ func TestEveryPrefectureHasTheOriginalField(t *testing.T) {
 // **兩者都會回一張看起來正常的圖**，所以判準是與劇本的位元組相同。
 func TestFieldComesFromTheScenario(t *testing.T) {
 	sc := loadScenario(t, state.Scenario1)
-	g, err := New(sc, 0, 5)
+	g, err := New(sc, 0, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestFieldSizesAreTheTwoOriginalShapes(t *testing.T) {
 // 只會讓計略與勸諫默默失效。
 func TestChiefMatchesTheMasterTable(t *testing.T) {
 	sc := loadScenario(t, state.Scenario1)
-	g, err := New(sc, 0, 5)
+	g, err := New(sc, 0, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}

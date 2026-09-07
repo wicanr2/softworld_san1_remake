@@ -14,8 +14,8 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
-// newGame 開一局；沒有原版素材就 skip。**本儲存庫不含原版檔案。**
-func newGame(t *testing.T) *game.State {
+// loadScenario 讀劇本 001；沒有原版素材就 skip。**本儲存庫不含原版檔案。**
+func loadScenario(t *testing.T) *state.Scenario {
 	t.Helper()
 	root := os.Getenv("SAN1_ORIG")
 	if root == "" {
@@ -37,7 +37,13 @@ func newGame(t *testing.T) *game.State {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := game.New(sc, 0, 5)
+	return sc
+}
+
+// newGame 用原版開一局。
+func newGame(t *testing.T) *game.State {
+	t.Helper()
+	g, err := game.New(loadScenario(t), 0, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +96,9 @@ func TestRoundTrip(t *testing.T) {
 	if h.Player != g.Player || h.Difficulty != g.Difficulty || h.Slot != g.Slot {
 		t.Errorf("玩家/難度/劇本 %v/%d/%s，存的是 %v/%d/%s",
 			h.Player, h.Difficulty, h.Slot, g.Player, g.Difficulty, g.Slot)
+	}
+	if h.Edition != g.Edition {
+		t.Errorf("版本 %q，存的是 %q", h.Edition, g.Edition)
 	}
 
 	for id := 1; id <= state.PrefectureCount; id++ {
@@ -414,7 +423,7 @@ func TestUntouchedSaveMatchesTheOriginal(t *testing.T) {
 		state.Scenario4, state.Scenario5, state.Scenario6,
 	} {
 		sc := loadSlot(t, slot)
-		g, err := game.New(sc, state.FactionID(sc.ActiveFactions()[0]), 5)
+		g, err := game.New(sc, state.FactionID(sc.ActiveFactions()[0]), 5, state.EditionBase)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -500,5 +509,27 @@ func TestOptionsSurviveRoundTrip(t *testing.T) {
 	}
 	if h.Options.Delay() != 0 {
 		t.Errorf("延時讀回來是 %d，存的是 0（等待按鍵）", h.Options.Delay())
+	}
+}
+
+// TestPlusSaveRoundTrip 釘住加強版的存檔——**難度 15 只有加強版收得下**。
+//
+// 版本沒存進去的話，這種存檔讀回來會被難度檢查擋掉（原版上限 10），
+// 而錯誤訊息會說「存檔的難度是 15」，指向存檔壞了，方向完全相反。
+func TestPlusSaveRoundTrip(t *testing.T) {
+	plus, err := game.New(loadScenario(t), 0, 15, state.EditionPlus)
+	if err != nil {
+		t.Fatalf("加強版難度 15 應該開得起來：%v", err)
+	}
+	root := t.TempDir()
+	if err := save.Write(root, 1, plus, "加強版"); err != nil {
+		t.Fatal(err)
+	}
+	h, err := save.Read(root, 1)
+	if err != nil {
+		t.Fatalf("加強版存檔讀不回來：%v", err)
+	}
+	if h.Edition != state.EditionPlus || h.Difficulty != 15 {
+		t.Errorf("讀回來是 %q／難度 %d，存的是 plus／15", h.Edition, h.Difficulty)
 	}
 }

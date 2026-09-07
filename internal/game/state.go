@@ -266,7 +266,11 @@ type State struct {
 	// Player 是玩家控制的勢力；NoFaction 表示純觀戰。
 	Player state.FactionID
 
-	// Difficulty 是難度 1–10（原版開局時問「請設定難度(1-10)」）。
+	// Edition 是原版還是加強版（`docs/spec/004`）。
+	Edition state.Edition
+
+	// Difficulty 是難度。上限看版本：原版問「請設定難度(1-10)」，
+	// 加強版問「請設定難度(1-20)」。
 	Difficulty int
 
 	// Options 是「其他」底下的開關（`options.go`）。
@@ -298,16 +302,28 @@ func (g *State) DrainReports() []*BattleResult {
 //
 // player 要是實際在用的勢力，否則回錯誤——**不要默默改成 0**：
 // 「玩家其實在控制別人」這種錯誤在畫面上完全看不出來。
-func New(sc *state.Scenario, player state.FactionID, difficulty int) (*State, error) {
+//
+// ed 空字串當原版。難度的上限跟著版本走（`docs/spec/004`）：
+// **拿加強版的難度 15 去開原版不會是「比較難」，是規則接錯了**——
+// 原版的係數表只有十格，第十五格是表外的位元組。
+func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Edition) (*State, error) {
 	start, ok := ScenarioStart[sc.Slot]
 	if !ok {
 		return nil, fmt.Errorf("game: 不知道槽位 %q 的起始年月", sc.Slot)
 	}
-	if difficulty < 1 || difficulty > 10 {
-		return nil, fmt.Errorf("game: 難度 %d 越界（原版收 1..10）", difficulty)
+	if ed == "" {
+		ed = state.EditionBase
+	}
+	if !ed.Valid() {
+		return nil, fmt.Errorf("game: 不認識的版本 %q", ed)
+	}
+	if difficulty < 1 || difficulty > ed.MaxDifficulty() {
+		return nil, fmt.Errorf("game: 難度 %d 越界（%s 收 1..%d）",
+			difficulty, ed, ed.MaxDifficulty())
 	}
 
-	g := &State{Slot: sc.Slot, Date: start, Player: player, Difficulty: difficulty}
+	g := &State{Slot: sc.Slot, Date: start, Player: player,
+		Edition: ed, Difficulty: difficulty}
 	g.rawMas, g.rawSta, g.rawGen = sc.Tables()
 
 	for _, p := range sc.Prefectures() {
