@@ -373,6 +373,22 @@ func TestZZDispatch(t *testing.T) {
 						math.Float32frombits(binary.LittleEndian.Uint32(b)))] = 0
 				}
 			}
+			// 出兵（表 `0x54f4`）：進攻那一條分支多一道兵力比較
+			// （`0xb5f9`–`0xb61e`）：`表[ds:0x5430 + 8×es:[0x30fe]] ×
+			// es:[0x3c96]` 小於目標郡的兵士就不打。把表與那兩個量讀出來。
+			if table == 0x5594 {
+				var w []string
+				for i := 0; i < 12; i++ {
+					b := o.Bytes(addr(ds*16+0x5430+uint32(i)*8), 8)
+					w = append(w, fmt.Sprintf("[%d]=%g", i,
+						math.Float64frombits(binary.LittleEndian.Uint64(b))))
+				}
+				seen["  出兵的兵力係數表 DS:0x5430："+strings.Join(w, " ")] = 0
+				seg1 := word(o, ds*16+0xa590)
+				seg2 := word(o, ds*16+0xa57e)
+				seen[fmt.Sprintf("  出兵：索引 es:[0x30fe] ＝ %d、乘數 es:[0x3c96] ＝ %d",
+					int16(word(o, seg1*16+0x30fe)), int16(word(o, seg2*16+0x3c96)))]++
+			}
 			if table == 0x54d4 {
 				var w []string
 				for st := 0; st < 12; st++ {
