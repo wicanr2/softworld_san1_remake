@@ -128,5 +128,11 @@ func TestPrefectureFillsMatchTheOriginal(t *testing.T) {
 // 排除過的解釋：不是玩家的顏色（這個進度的玩家是勢力 14，沒有領地）、
 // 不是本據的顏色（另外十一個本據都畫自己勢力的圖樣）、
 // 不是「只有一個郡的勢力」（那樣的勢力有七個，其餘六個都對）、
-// 也不是太守與君主的所屬不一致（逐郡比過，沒有不一致）。原因未解。
+// 也不是太守與君主的所屬不一致（逐郡比過，沒有不一致）；
+// **原版執行期記憶體裡的所屬也是 2**（`internal/parity` 的
+// `TestLoadedPrefectureOwnersMatchTheSave`），所以不是 remake 讀錯欄位；
+// 州郡記錄位移 0–54 沒有任何一格滿足「34 個郡等於所屬、長沙等於 0」，
+// 諸侯記錄前 24 個位元組也沒有一格等於自己的槽號；
+// **不是「後灌蓋先灌」**（`TestPrefectureFillsInOrderMatchTheOriginal`）。
+// 原因未解。
 const knownFillMismatch = 31
