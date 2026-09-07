@@ -50,6 +50,20 @@ type Battle struct {
 	Over        bool
 	AttackerWon bool
 
+	// Rules 是版本與難度決定的規則（`rules.go`）。零值是原版。
+	Rules Rules
+
+	// Commander 是四種軍力的統帥（人物槽號），−1 表示這一方沒出場。
+	//
+	// 原版把它存在軍力記錄的第 0 個欄位（`es:[0x175e + 22×軍力]`），
+	// 勝負判定拿它和「該方第一支部隊的第一位將領」比（`0x24f8c`）——
+	// **對不上就等於這一方的統帥不在了**。
+	//
+	// 取的是該方名單的排頭：原版的統帥就是編隊時排在最前面的那一位。
+	// **沒有另設欄位讓呼叫端指定**——只有這一條證據，多造一個旋鈕會
+	// 固定住一個還沒量過的假設。
+	Commander [sideCount]int
+
 	rng *rand
 }
 
@@ -67,6 +81,9 @@ type Setup struct {
 	AidAttackers []Leader
 	AidDefenders []Leader
 
+	// Rules 是版本規則（`RulesFor`）。零值是原版。
+	Rules Rules
+
 	// FromGate 是主攻軍的入口（來犯的鄰郡編號）。
 	FromGate int
 
@@ -80,9 +97,13 @@ type Setup struct {
 // 紮營順序是中軍 → 先鋒 → 左軍 → 右軍 → 後軍（p.28）。
 func New(s Setup) *Battle {
 	b := &Battle{Field: s.Field, Day: 1, Weather: s.Weather,
-		CityHeld: MainDefender, rng: newRand(s.Seed)}
+		CityHeld: MainDefender, rng: newRand(s.Seed), Rules: s.Rules}
 	b.Gold[MainAttacker], b.Rice[MainAttacker] = s.AttackerGold, s.AttackerRice
 	b.Gold[MainDefender], b.Rice[MainDefender] = s.DefenderGold, s.DefenderRice
+
+	for i := range b.Commander {
+		b.Commander[i] = -1
+	}
 
 	entry := s.Field.Gate(s.FromGate)
 	if !s.Field.InBounds(entry) {
@@ -103,6 +124,7 @@ func New(s Setup) *Battle {
 		if len(pool) == 0 {
 			continue
 		}
+		b.Commander[side] = pool[0].Index
 		base := entry
 		if !side.Attacking() {
 			base = s.Field.CityAt
@@ -584,13 +606,28 @@ func (b *Battle) checkOver() {
 	}
 	attackers := b.sideAlive(MainAttacker) || b.sideAlive(AidAttacker)
 	defenders := b.sideAlive(MainDefender) || b.sideAlive(AidDefender)
+	atkChief := b.CommanderAlive(MainAttacker) || b.CommanderAlive(AidAttacker)
+	defChief := b.CommanderAlive(MainDefender) || b.CommanderAlive(AidDefender)
 	switch {
-	case !attackers:
+	// 統帥條件先於全滅條件，而且**守方那一條蓋過攻方那一條**：原版
+	// `0x24f8c` 先寫「攻方統帥全滅 → 守方勝」再寫「守方統帥全滅 →
+	// 攻方勝」，後者覆蓋前者，所以兩邊統帥都不在時判攻方勝。
+	case !defChief && !b.Rules.DefenderCommanderLossIgnored:
+		b.Over, b.AttackerWon = true, true
+		b.note("守方統帥不在陣中，攻方獲勝")
+	case !atkChief:
 		b.Over, b.AttackerWon = true, false
-		b.note("攻方全滅或撤退，守方衛郡成功")
+		b.note("攻方統帥不在陣中，守方衛郡成功")
+	// 底下兩個只有在守方統帥那一條被關掉時才走得到（加強版難度 11–20），
+	// 對應的是加強版獨有的「總兵數為 0 者敗」（`0x229ba`）：打光守方的
+	// 統帥不再算贏，打光守方的兵還是算。原版走不到這裡——兵打光了統帥
+	// 也就不在了，上面那一條先成立。
 	case !defenders:
 		b.Over, b.AttackerWon = true, true
-		b.note("守方全滅，攻方獲勝")
+		b.note("守方總兵數為零，攻方獲勝")
+	case !attackers:
+		b.Over, b.AttackerWon = true, false
+		b.note("攻方總兵數為零，守方衛郡成功")
 	case b.Day >= BattleDays:
 		b.Over = true
 		b.AttackerWon = b.CityHolder().Attacking()
@@ -600,6 +637,33 @@ func (b *Battle) checkOver() {
 			b.note("卅天期滿，城池未失，守方衛郡成功")
 		}
 	}
+}
+
+// CommanderAlive 回報這一方的統帥還在不在場上。
+//
+// 原版比的是「軍力記錄的統帥」與「該方第一支部隊的第一位將領」
+// （`0x24f8c`）：死了、被俘了、部隊撤退或全滅了都會對不上。
+// 這裡等價地問「他本人還在某一支還在場上的部隊裡」。
+//
+// 沒出場的一方（統帥 −1）回 false——**四種軍力不是每場都到齊**，
+// 助攻軍與助守軍多半是空的，那一方的統帥當然不在陣中。
+func (b *Battle) CommanderAlive(s Side) bool {
+	id := b.Commander[s]
+	if id < 0 {
+		return false
+	}
+	for _, u := range b.Units {
+		if u.Side != s || !u.Alive() {
+			continue
+		}
+		for i := range u.Leaders {
+			l := &u.Leaders[i]
+			if l.Index == id && !l.Dead && !l.Captured {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // CityHolder 是**此刻站在城池那一格**的那一方；沒有人就算守方。

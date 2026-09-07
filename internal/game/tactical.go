@@ -127,6 +127,8 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 		Weather:  g.weatherFor(to),
 		Seed:     uint32(g.Date.Year*13 + g.Date.Month*7 + from*31 + to),
 		FromGate: from,
+		// 版本與難度決定的戰役規則（`docs/spec/004` §5）。
+		Rules: battle.RulesFor(g.Edition, g.Difficulty),
 	}
 	src := g.Prefecture(from)
 	if src != nil {
