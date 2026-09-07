@@ -14,23 +14,16 @@ import (
 // 民眾忠誠掛鉤，這是手冊明講的因果。
 
 const (
-	// TuneQuakeLoss 是地震的損失百分比（人口／金／米／兵）。
-	TuneQuakeLoss = 10
-	// TuneFloodPopLoss／TuneFloodLandLoss 是洪水的人口與土地價值損失。
-	TuneFloodPopLoss  = 8
-	TuneFloodLandLoss = 5
-	// TunePlagueLoss 是瘟疫的人口與兵力損失，TunePlagueStamina 是體能下降。
-	TunePlagueLoss    = 12
+	// TunePlagueStamina 是瘟疫讓將領體能下降多少。
+	//
+	// **只剩這一項是 remake 選的**：碼裡的瘟疫只動人口
+	// （`0x168fc`），手冊 p.36 說的「將領體能下降」在碼裡找不到，
+	// 但把它拿掉會讓瘟疫與「人口減少」完全同義。
 	TunePlagueStamina = 5
-	// TuneHarvestRicePerLand／TuneHarvestGoldPerLand 是秋收的產出：
+	// TuneHarvestRicePerLand 是秋收的米產出：
 	// 每一點土地價值換多少米／金，再乘人口規模。
 	TuneHarvestRicePerLand = 2
-	TuneHarvestGoldPerLand = 1
-	// TuneHarvestLandDrop 是秋收後土地價值的下降。
-	TuneHarvestLandDrop = 2
-	// TuneLocustRiceLoss／TuneLocustLandLoss 是蝗害。
-	TuneLocustRiceLoss = 30
-	TuneLocustLandLoss = 5
+
 	// PopulationCap 是每個郡的人口上限（原版 `0x16f0a` 夾在 10000，
 	// 存的值 ×100，`L0`）。
 	PopulationCap = 1_000_000
@@ -39,11 +32,6 @@ const (
 	PopulationOwnerlessChance = 30
 	// TuneAgingStamina 是每年體能的衰減基準；年紀越大掉越多。
 	TuneAgingStamina = 1
-	// TuneDisasterBase 是災害的**每月**基礎機率；民眾忠誠越低越高。
-	// 夏天有三個月，所以一年的水患機率遠高於這個數字。
-	TuneDisasterBase = 8
-	// TuneFloodWeight 是洪水率對水患機率的權重（百分比）。
-	TuneFloodWeight = 50
 	// TuneTributePerPrefecture 是每幾個郡一年進貢一件寶物。
 	TuneTributePerPrefecture = 3
 
@@ -75,18 +63,6 @@ func (g *State) RunSeason() []Event {
 	default:
 		return g.winter()
 	}
-}
-
-// disasterChance 是某個郡這個月的災害機率。
-//
-// 「天災多因人怨引起，民眾忠誠最好不要太低」（說明書 p.36）——
-// 忠誠 100 時降到基礎值的一半，忠誠 0 時是基礎值的兩倍。
-//
-// ⚠ **水災與瘟疫不走這一條**：兩者的判定都從碼讀出來了，而且形狀
-// 完全不同（`FloodBase`／`FloodStrikes`、`PlagueStrikes`）。這裡只剩
-// 地震與蝗害還在用它。
-func (g *State) disasterChance(p *Prefecture) int {
-	return TuneDisasterBase * (200 - int(p.PublicLoyalty)) / 200
 }
 
 // floodBase 是各郡的洪水基礎值（`DS:0x679c`，43 個 word，`L0`）。
@@ -213,7 +189,16 @@ func (g *State) spring() []Event {
 	if g.roll(int(Spring), 0, 10)%QuakeChance == 0 {
 		id := g.roll(int(Spring), 0, 11)%state.PrefectureCount + 1
 		if p := g.Prefecture(id); p != nil && p.Owned() {
-			g.scale(p, 100-TuneQuakeLoss)
+			// 三份保留率各擲一次，**不是同一個百分比套三次**。
+			p.Population = QuakePopKeep.Apply(p.Population,
+				g.roll(int(Spring), id, 20)%QuakePopKeep.Spread)
+			if p.Population < QuakePopFloor {
+				p.Population = QuakePopFloor
+			}
+			p.Gold = QuakeGoldKeep.Apply(p.Gold,
+				g.roll(int(Spring), id, 21)%QuakeGoldKeep.Spread)
+			p.Rice = QuakeRiceKeep.Apply(p.Rice,
+				g.roll(int(Spring), id, 22)%QuakeRiceKeep.Spread)
 			out = append(out, Event{p.ID, tf("ev.quake", placeName(p.Name))})
 		}
 	}
@@ -222,6 +207,41 @@ func (g *State) spring() []Event {
 
 // QuakeChance 是地震的機率分母（`0x162d2`：`RND(3) == 0`，`L0`）。
 const QuakeChance = 3
+
+// 四種天災的損失（`L0`、`[base]`）。每一項都是同一個形狀：
+//
+//	新值 ＝ 舊值 × (RND(幅度) + 底) ÷ 100
+//
+// 也就是**保留率**，不是損失率。底越小掉得越多。
+var (
+	// 地震（`0x1638b`／`0x163d5`／`0x1640e`）：人口、金、米各一份。
+	QuakePopKeep  = Keep{20, 60} // 60–79%
+	QuakeGoldKeep = Keep{20, 50} // 50–69%
+	QuakeRiceKeep = Keep{20, 40} // 40–59%
+	// 水災（`0x1666d`／`0x166c1`／`0x16701`）。
+	FloodPopKeep  = Keep{10, 70}  // 70–79%
+	FloodLandKeep = Keep{20, 60}  // 60–79%
+	FloodRateGain = Keep{20, 120} // 洪水率 ×1.20–1.39，越界變 100
+	// 瘟疫（`0x168ce`）：只動人口。
+	PlaguePopKeep = Keep{20, 40} // 40–59%
+	// 蝗害（`0x16cba`／`0x16cfa`）。
+	LocustRiceKeep = Keep{10, 20} // 20–29%，米幾乎被吃光
+	LocustLandKeep = Keep{90, 80} // 80–169% ⚠ 見下
+)
+
+// Keep 是「保留率」的兩個參數：`RND(Spread) + Floor`，單位是百分比。
+type Keep struct {
+	Spread int
+	Floor  int
+}
+
+// Apply 把保留率套上去。roll 是 `RND(Spread)`。
+func (k Keep) Apply(value, roll int) int { return value * (roll + k.Floor) / 100 }
+
+// QuakePopFloor 是地震之後人口的下限（`0x163bb`：低於 50 就補到 50，`L0`）。
+//
+// 存的值是實際值 ÷ 100，所以下限是五千人。
+const QuakePopFloor = 50 * 100
 
 // LandValueDecay 是土地價值每個春月的自然衰減（`0x15c96`，`L0`）：
 //
@@ -290,11 +310,19 @@ func (g *State) summer() []Event {
 		if FloodStrikes(g.roll(int(Summer), p.ID, 4)%max(1, int(p.FloodRate)+1),
 			g.roll(int(Summer), p.ID, 1)%FloodRollSpread,
 			g.roll(int(Summer), p.ID, 2)%FloodGateSpread) {
-			p.Population = p.Population * (100 - TuneFloodPopLoss) / 100
-			g.scaleTroops(p.ID, 100-TuneFloodPopLoss)
-			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneFloodLandLoss, 100))
-			// 「意外產生水災後，洪水率會立刻升到 100」（說明書 p.21）。
-			p.FloodRate = 100
+			p.Population = FloodPopKeep.Apply(p.Population,
+				g.roll(int(Summer), p.ID, 20)%FloodPopKeep.Spread)
+			p.LandValue = uint8(FloodLandKeep.Apply(int(p.LandValue),
+				g.roll(int(Summer), p.ID, 21)%FloodLandKeep.Spread))
+			// 洪水率**乘上去**（`0x16711`）：×1.20–1.39，算出來超過 100
+			// 或變成負的就是 100。說明書 p.21 說「水災後洪水率立刻升到
+			// 100」——那是高洪水率的郡才成立，低的只是往上推一截。
+			rate := FloodRateGain.Apply(int(p.FloodRate),
+				g.roll(int(Summer), p.ID, 22)%FloodRateGain.Spread)
+			if rate > 100 || rate < 0 {
+				rate = 100
+			}
+			p.FloodRate = uint8(rate)
 			out = append(out, Event{p.ID, tf("ev.flood", placeName(p.Name))})
 		}
 	}
@@ -306,8 +334,8 @@ func (g *State) summer() []Event {
 			PlagueStrikes(int(p.PublicLoyalty), int(p.LandValue),
 				g.roll(int(Summer), id, 6)%PlagueLoyaltySpread,
 				g.roll(int(Summer), id, 7)%PlagueLandSpread) {
-			p.Population = p.Population * (100 - TunePlagueLoss) / 100
-			g.scaleTroops(p.ID, 100-TunePlagueLoss)
+			p.Population = PlaguePopKeep.Apply(p.Population,
+				g.roll(int(Summer), id, 20)%PlaguePopKeep.Spread)
 			for _, x := range g.Garrison(p.ID) {
 				x.Stamina = uint8(clampTo(int(x.Stamina)-TunePlagueStamina, 100))
 			}
@@ -397,8 +425,14 @@ func (g *State) autumn() []Event {
 			LocustStrikes(int(p.PublicLoyalty), int(p.LandValue),
 				g.roll(int(Autumn), id, 13)%LocustLoyaltySpread,
 				g.roll(int(Autumn), id, 14)%LocustLandSpread) {
-			p.Rice = p.Rice * (100 - TuneLocustRiceLoss) / 100
-			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneLocustLandLoss, 100))
+			p.Rice = LocustRiceKeep.Apply(p.Rice,
+				g.roll(int(Autumn), id, 20)%LocustRiceKeep.Spread)
+			// ⚠ **蝗害的土地價值保留率是 80–169%**（`0x16cfa`：`RND(90) + 80`），
+			// 也就是平均會**上升**。碼就是這樣寫的——以碼為準，
+			// 但夾在 100 以內（欄位是 u8，說明書的範圍是 0–100）。
+			// 這一條與直覺相反到值得單獨對拍一次，記在 `docs/re/06` §6。
+			p.LandValue = uint8(clampTo(LocustLandKeep.Apply(int(p.LandValue),
+				g.roll(int(Autumn), id, 21)%LocustLandKeep.Spread), 100))
 			out = append(out, Event{p.ID, tf("ev.locust", placeName(p.Name))})
 		}
 	}
@@ -514,23 +548,6 @@ func (g *State) winter() []Event {
 		}
 	}
 	return out
-}
-
-// scaleTroops 把一個郡所有駐軍的兵力按百分比縮放。
-//
-// **只動人不動郡**：郡的總兵力是導出值，動兩邊會讓它們分家。
-func (g *State) scaleTroops(prefectureID, pct int) {
-	for _, x := range g.Garrison(prefectureID) {
-		x.Soldiers = x.Soldiers * pct / 100
-	}
-}
-
-// scale 把一個郡的人口、金、米、兵按百分比縮放（災害用）。
-func (g *State) scale(p *Prefecture, pct int) {
-	p.Population = p.Population * pct / 100
-	p.Gold = p.Gold * pct / 100
-	p.Rice = p.Rice * pct / 100
-	g.scaleTroops(p.ID, pct)
 }
 
 // retire 把一位人物從舞台上移走（老死用）。

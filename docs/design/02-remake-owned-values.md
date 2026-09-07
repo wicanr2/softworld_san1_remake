@@ -93,13 +93,7 @@
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneDisasterBase` | 8（每月）| 「天災多因人怨引起，民眾忠誠最好不要太低」|
-| `TuneFloodWeight` | 50 | 洪水率的作用 |
-| `TuneQuakeLoss` | 10 | 「地震造成人口減少，財物和米糧的損失，及部隊兵力傷亡」|
-| `TuneFloodPopLoss` / `TuneFloodLandLoss` | 8／5 | 「人口和兵力都會減少，土地價值也會流失」|
-| `TunePlagueLoss` / `TunePlagueStamina` | 12／5 | 「人口和兵力銳減，將領的體能也不正常地下降」|
 | `TuneHarvestRicePerLand` / `TuneHarvestGoldPerLand` / `TuneHarvestLandDrop` | 2／1／2 | 「稅金入庫、米糧進倉」|
-| `TuneLocustRiceLoss` / `TuneLocustLandLoss` | 30／5 | 「米糧減少，土地價值也會下降」|
 | `TuneWinterGrowth` | 95（千分比，**一年一次**）| 「人口增加」|
 | `harvestMonth` | 9 | 說明書只說秋收在秋天，沒說哪個月 |
 | `tributeMonth` | 12 | 說明書只說每年進貢一次 |

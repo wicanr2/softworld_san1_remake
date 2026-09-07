@@ -368,3 +368,57 @@ func TestLandValueDecays(t *testing.T) {
 		t.Error("走過三個春月，五個滿檔的郡一個都沒掉——衰減沒有生效")
 	}
 }
+
+// TestDisasterLossesAreMeasured 釘住四種天災的損失幅度（`L0`）。
+//
+// **每一項都是「保留率」不是「損失率」**，而且各自擲一次骰——
+// 地震對人口、金、米各擲一次，不是同一個百分比套三次。
+//
+// 這一組的重點是**相對輕重**：米最怕蝗害（只剩兩成）、人口最怕瘟疫
+// （剩四成）、金最怕地震（剩五成）。全部寫成同一個數字的話，
+// 「哪一種災害要防哪一樣」就消失了，而畫面上每一場災害看起來都一樣。
+func TestDisasterLossesAreMeasured(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		k    Keep
+		lo   int // 最少保留百分比
+		hi   int // 最多保留百分比
+	}{
+		{"地震人口", QuakePopKeep, 60, 79},
+		{"地震金", QuakeGoldKeep, 50, 69},
+		{"地震米", QuakeRiceKeep, 40, 59},
+		{"水災人口", FloodPopKeep, 70, 79},
+		{"水災土地價值", FloodLandKeep, 60, 79},
+		{"瘟疫人口", PlaguePopKeep, 40, 59},
+		{"蝗害米", LocustRiceKeep, 20, 29},
+		{"蝗害土地價值", LocustLandKeep, 80, 169},
+	} {
+		if got := c.k.Apply(100, 0); got != c.lo {
+			t.Errorf("%s 擲 0 保留 %d%%，原版是 %d%%", c.name, got, c.lo)
+		}
+		if got := c.k.Apply(100, c.k.Spread-1); got != c.hi {
+			t.Errorf("%s 擲滿保留 %d%%，原版是 %d%%", c.name, got, c.hi)
+		}
+	}
+	// 相對輕重：米最怕蝗害、人口最怕瘟疫、金最怕地震。
+	if LocustRiceKeep.Floor >= QuakeRiceKeep.Floor {
+		t.Error("米應該最怕蝗害")
+	}
+	if PlaguePopKeep.Floor >= FloodPopKeep.Floor ||
+		PlaguePopKeep.Floor >= QuakePopKeep.Floor {
+		t.Error("人口應該最怕瘟疫")
+	}
+	// ⚠ 蝗害的土地價值是**唯一會往上走**的一項（平均 124.5%）。
+	// 這與直覺相反，所以單獨釘一條——寫成減損會讓它安靜地變成另一個遊戲。
+	if LocustLandKeep.Floor <= 100 && LocustLandKeep.Floor+LocustLandKeep.Spread <= 100 {
+		t.Error("蝗害的土地價值保留率在原版是 80–169%，不是減損")
+	}
+
+	// 水災之後洪水率是**乘上去**的，越界才變 100。
+	if got := FloodRateGain.Apply(50, 0); got != 60 {
+		t.Errorf("洪水率 50 遇水災擲 0 之後是 %d，應該是 60", got)
+	}
+	if got := FloodRateGain.Apply(90, 19); got < 100 {
+		t.Errorf("洪水率 90 擲滿之後是 %d，應該越界（→ 100）", got)
+	}
+}
