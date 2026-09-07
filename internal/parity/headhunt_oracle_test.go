@@ -59,9 +59,41 @@ func TestHeadhuntMatchesTheOriginal(t *testing.T) {
 	}
 	t.Logf("%d 個活著的勢力全部設成等級 5", alive)
 
+	// **三個條件式加項要各自走到**，照劇本跑一個都碰不到：
+	//
+	//   - 對方人望 >= RND(5) + 90  → 諸侯 offset 8（人望）全設 95–100
+	//   - 目標忠誠 >= RND(7) + 87  → 在職者的忠誠設在 87–93
+	//   - 對方諸侯持有玉璽         → 一半的勢力 offset 14 設 1
+	//
+	// ⚠ 忠誠有**兩道相反的門**：候選過濾要 `忠誠 < RND(15) + 80`
+	// （最高 94），這一項要 `忠誠 >= RND(7) + 87`（最低 87）。
+	// 只有 87–93 同時滿足——設 95 會讓候選過濾先擋掉，看起來像
+	// 「這個加項不存在」。
+	for i := 0; i < state.MasterTableSize/72; i++ {
+		if o.Word(addr(base+uint32(i*72))) == 0xFFFF {
+			continue
+		}
+		o.SetWord(addr(base+uint32(i*72+8)), uint16(95+i%6))
+		if i%2 == 0 {
+			o.SetWord(addr(base+uint32(i*72+14)), 1)
+		}
+	}
+	for i := 0; i < 350; i++ {
+		at := genBase + uint32(i*30)
+		if o.Byte(addr(at+16)) == 0xFF {
+			continue
+		}
+		o.SetByte(addr(at+16), uint8(87+i%7))
+	}
+	t.Log("人望全設 95–100、一半的勢力給玉璽、在職者的忠誠設在 87–93")
+
 	type shot struct {
 		slot, bar, resist, newLoyal, ret int
 		loyalty, war, intel              int
+		luckBar, luckAdd                 int
+		zealBar, zealAdd                 int
+		seal                             int
+		theirPrestige                    int
 	}
 	var shots []shot
 	var cur shot
@@ -86,6 +118,38 @@ func TestHeadhuntMatchesTheOriginal(t *testing.T) {
 	o.OnCall(addr(0x1dced), func(o *oracle.Oracle) {
 		if armed {
 			cur.resist = int(int16(o.SI()))
+		}
+	})
+	// 三個條件式加項各自的擲值與觸發與否。
+	o.OnCall(addr(0x1dd27), func(o *oracle.Oracle) {
+		if armed {
+			cur.luckBar = int(int16(o.AX()))
+		}
+	})
+	o.OnCall(addr(0x1dd42), func(o *oracle.Oracle) {
+		if armed {
+			cur.theirPrestige = int(int16(o.Word(addr(
+				uint32(o.ES())*16 + uint32(o.SI()) + 8))))
+		}
+	})
+	o.OnCall(addr(0x1dd6d), func(o *oracle.Oracle) {
+		if armed {
+			cur.luckAdd = int(int16(o.AX())) + 1 // +1 分辨「沒觸發」
+		}
+	})
+	o.OnCall(addr(0x1dd7f), func(o *oracle.Oracle) {
+		if armed {
+			cur.zealBar = int(int16(o.AX()))
+		}
+	})
+	o.OnCall(addr(0x1dda3), func(o *oracle.Oracle) {
+		if armed {
+			cur.zealAdd = int(int16(o.AX())) + 1
+		}
+	})
+	o.OnCall(addr(0x1ddc7), func(*oracle.Oracle) {
+		if armed {
+			cur.seal = 1
 		}
 	})
 	o.OnCall(addr(0x1de1d), func(o *oracle.Oracle) {
@@ -156,8 +220,42 @@ func TestHeadhuntMatchesTheOriginal(t *testing.T) {
 			bad++
 			continue
 		}
+		// 三個條件式加項：擲值要落在值域裡，觸發與否要與條件相符。
+		if s.luckBar < game.HeadhuntLuckFloor ||
+			s.luckBar >= game.HeadhuntLuckFloor+game.HeadhuntLuckSpread {
+			t.Errorf("槽 %d：RND(5)+90 給了 %d", s.slot, s.luckBar)
+			bad++
+		}
+		if fired := s.luckAdd > 0; fired != (s.theirPrestige >= s.luckBar) {
+			t.Errorf("槽 %d：對方人望 %d、門檻 %d → 原版%s，判準說%s",
+				s.slot, s.theirPrestige, s.luckBar,
+				map[bool]string{true: "加了", false: "沒加"}[fired],
+				map[bool]string{true: "要加", false: "不加"}[s.theirPrestige >= s.luckBar])
+			bad++
+		}
+		if s.luckAdd > 0 && s.luckAdd-1 >= max(s.theirPrestige/2, 1) {
+			t.Errorf("槽 %d：RND(對方人望÷2 ＝ %d) 給了 %d",
+				s.slot, s.theirPrestige/2, s.luckAdd-1)
+			bad++
+		}
+		if s.zealBar < game.HeadhuntZealFloor ||
+			s.zealBar >= game.HeadhuntZealFloor+game.HeadhuntZealSpread {
+			t.Errorf("槽 %d：RND(7)+87 給了 %d", s.slot, s.zealBar)
+			bad++
+		}
+		if fired := s.zealAdd > 0; fired != (s.loyalty >= s.zealBar) {
+			t.Errorf("槽 %d：目標忠誠 %d、門檻 %d → 原版%s，判準說%s",
+				s.slot, s.loyalty, s.zealBar,
+				map[bool]string{true: "加了", false: "沒加"}[fired],
+				map[bool]string{true: "要加", false: "不加"}[s.loyalty >= s.zealBar])
+			bad++
+		}
+		if s.zealAdd > 0 && s.zealAdd-1 >= game.HeadhuntZealBonus {
+			t.Errorf("槽 %d：RND(30) 給了 %d", s.slot, s.zealAdd-1)
+			bad++
+		}
 		if s.ret == 0xFFFF || s.ret < 0 {
-			continue // 失敗；抵抗那一側還有三個條件式加項，這裡不比
+			continue // 失敗；成功那一側的忠誠不用比
 		}
 		won++
 		// 新忠誠 ＝ (100 − 舊忠誠) ÷ 2 ＋ 我方人望 ÷ 2，夾到 0..100。
@@ -174,5 +272,22 @@ func TestHeadhuntMatchesTheOriginal(t *testing.T) {
 			bad++
 		}
 	}
+	luck, zeal, seals := 0, 0, 0
+	for _, s := range shots {
+		if s.luckAdd > 0 {
+			luck++
+		}
+		if s.zealAdd > 0 {
+			zeal++
+		}
+		if s.seal == 1 {
+			seals++
+		}
+	}
+	t.Logf("三個條件式加項各走到：對方人望 %d 次、目標忠誠 %d 次、玉璽 %d 次",
+		luck, zeal, seals)
 	t.Logf("%d 次判定（成功 %d 次），%d 項對不上", len(shots), won, bad)
+	if luck == 0 || zeal == 0 || seals == 0 {
+		t.Errorf("有加項沒被取樣到（%d／%d／%d）——盤面沒擺成功", luck, zeal, seals)
+	}
 }
