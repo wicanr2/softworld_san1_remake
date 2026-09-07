@@ -560,3 +560,31 @@ func TestPrefectureMapCoordsAreGeographic(t *testing.T) {
 		seen[k] = p.Name
 	}
 }
+
+// TestFortCountMatchesTheField 釘住關寨數（offset 25）與戰場地圖
+// 是同一件事的兩份記錄。
+//
+// **兩條獨立的路徑對得上才算數**：offset 25 是一個位元組，單獨看它
+// 只能說「值在 0..3 之間，看起來像數量」；拿地圖上地形碼 6 的格數
+// 去數，42 個郡逐一吻合才排除得掉巧合。
+func TestFortCountMatchesTheField(t *testing.T) {
+	c := loadData2(t, "三國演義")
+	for _, slot := range []Slot{Scenario1, Scenario2, Scenario3, Scenario4, Scenario5, Scenario6} {
+		sc, err := LoadScenario(c, slot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range sc.Prefectures() {
+			n := 0
+			for _, b := range p.BattleField {
+				if b != 0xFF && b&0x0F == 6 { // 6 ＝ 關寨
+					n++
+				}
+			}
+			if n != int(p.Forts) {
+				t.Errorf("劇本 %s 郡 %d %s：關寨欄 %d，地圖上有 %d 格",
+					slot, p.ID, p.Name, p.Forts, n)
+			}
+		}
+	}
+}

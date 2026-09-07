@@ -549,3 +549,110 @@ func TestSabotageHitsFiveFields(t *testing.T) {
 			before.Rice-p.Rice, before.Gold-p.Gold)
 	}
 }
+
+// TestBuildFortUpdatesTheMap 釘住蓋關寨會同時動到數量與地圖。
+//
+// **兩份記錄不能分家**：原版的 offset 25 永遠等於地圖上關寨格的數目
+// （`state.TestFortCountMatchesTheField`）。只加數字的話，戰場上不會
+// 多出那座關寨，而玩家付了一整筆錢。
+func TestBuildFortUpdatesTheMap(t *testing.T) {
+	g := newGame(t)
+	p := g.Prefecture(11) // 陳留
+	var who *General
+	for _, x := range g.Garrison(11) {
+		if x.Faction == p.Owner {
+			x.Intel = 100
+			who = x
+			break
+		}
+	}
+	if who == nil {
+		t.Fatal("陳留沒有人可以監工")
+	}
+	count := func() int {
+		n := 0
+		for _, b := range p.BattleField {
+			if b != 0xFF && b&0x0F == fortTerrain {
+				n++
+			}
+		}
+		return n
+	}
+	p.Gold = MaxGold
+	before2 := append([]byte(nil), p.BattleField...)
+	before, onMap := p.Forts, count()
+	if before != onMap {
+		t.Fatalf("開局就分家：關寨數 %d、地圖上 %d", before, onMap)
+	}
+	if err := g.BuildFort(11, who.Index, p.Owner); err != nil {
+		t.Fatal(err)
+	}
+	if p.Forts != before+1 {
+		t.Errorf("關寨數 %d，應該是 %d", p.Forts, before+1)
+	}
+	if got := count(); got != onMap+1 {
+		t.Errorf("地圖上有 %d 格關寨，應該是 %d", got, onMap+1)
+	}
+	// **新蓋的那一格必須是沒有標記的平原**。原版的地圖上本來就有
+	// 帶著軍團起點標記的關寨（陳留的第 65、88 格），所以判準是
+	// 「新增的那一格」而不是「所有關寨格」——蓋在通道上會把鄰郡
+	// 從地圖上封死，而那只看得出「敵軍再也沒有從那一邊來過」。
+	added := -1
+	for i := range p.BattleField {
+		if p.BattleField[i] != before2[i] {
+			if added >= 0 {
+				t.Fatalf("動到不只一格：%d 與 %d", added, i)
+			}
+			added = i
+		}
+	}
+	if added < 0 {
+		t.Fatal("地圖沒有任何一格被改到")
+	}
+	if b := p.BattleField[added]; b>>4 != 15 || b&0x0F != fortTerrain {
+		t.Errorf("新蓋的第 %d 格是 %#02x，應該是沒有標記的關寨", added, b)
+	}
+	if before2[added]&0x0F != 7 {
+		t.Errorf("新蓋的第 %d 格原本是地形 %d，應該是平原", added, before2[added]&0x0F)
+	}
+}
+
+// TestRiceTradeIsSymmetric 釘住買賣米走同一條比率。
+//
+// 原版的提示字串把這件事寫在臉上：買米問「1 金 = %d 米」，賣米問
+// 「%d 米 = 1 金」。**同一個月買進再賣出不該憑空生出錢**——比率各走
+// 各的話，來回操作就是一台印鈔機，而那要玩上幾十回合才會看出來。
+func TestRiceTradeIsSymmetric(t *testing.T) {
+	g := newGame(t)
+	p := g.Prefecture(8)
+	p.PriceLevel = 50 // rate = (100−50)/10 = 5
+	rate := RicePerGold(p.PriceLevel)
+	if rate != 5 {
+		t.Fatalf("物價 50 的比率是 %d，應該是 5", rate)
+	}
+	p.Gold, p.Rice = 1000, 1000
+	if err := g.BuyRice(8, 100, 0); err != nil { // 100 米 = 20 金
+		t.Fatal(err)
+	}
+	if p.Gold != 980 || p.Rice != 1100 {
+		t.Fatalf("買 100 米之後 金 %d 米 %d，應該是 980／1100", p.Gold, p.Rice)
+	}
+	g.EndMonth()
+	p.PriceLevel = 50
+	if err := g.SellRice(8, 100, 0); err != nil {
+		t.Fatal(err)
+	}
+	if p.Gold != 1000 || p.Rice != 1000 {
+		t.Errorf("賣回去之後 金 %d 米 %d，應該回到 1000／1000", p.Gold, p.Rice)
+	}
+	// 換不到一金的零頭留在倉裡。
+	g.EndMonth()
+	p.PriceLevel = 50
+	if err := g.SellRice(8, rate-1, 0); err != nil {
+		t.Fatal(err)
+	}
+	if p.Gold != 1000 || p.Rice != 1000 {
+		t.Errorf("賣 %d 米之後 金 %d 米 %d，零頭不該換到錢",
+			rate-1, p.Gold, p.Rice)
+	}
+}

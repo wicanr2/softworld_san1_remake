@@ -67,7 +67,8 @@ type optMeta struct {
 }
 
 type prefMeta struct {
-	Forts     int  `json:"forts"`
+	// Forts 留著只為讀得懂舊存檔；新的一律以 BASESTA offset 25 為準。
+	Forts     int  `json:"forts,omitempty"`
 	Autonomy  int  `json:"autonomy"`
 	Commanded bool `json:"commanded"`
 
@@ -134,7 +135,7 @@ func Write(root string, slot int, g *game.State, name string) error {
 	}
 	for _, p := range e.Prefectures {
 		m.Prefectures = append(m.Prefectures, prefMeta{
-			Forts: p.Forts, Autonomy: int(p.Autonomy), Commanded: p.Commanded,
+			Autonomy: int(p.Autonomy), Commanded: p.Commanded,
 			Population: p.Population,
 		})
 	}
@@ -227,7 +228,7 @@ func Read(root string, slot int) (*game.State, error) {
 	}
 	for _, p := range m.Prefectures {
 		e.Prefectures = append(e.Prefectures, game.PrefectureExtra{
-			Forts: p.Forts, Autonomy: game.Autonomy(p.Autonomy), Commanded: p.Commanded,
+			Autonomy: game.Autonomy(p.Autonomy), Commanded: p.Commanded,
 			Population: p.Population,
 		})
 	}

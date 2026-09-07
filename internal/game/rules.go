@@ -453,7 +453,9 @@ func RewardCost(effect, gain int) int {
 // 變成無窮大。實測十六個月四十二個郡的物價全部落在 30–68
 // （`docs/mechanics/60-economy`），所以那條路走不到。
 //
-// ⚠ **賣米那一邊還沒讀**，仍照 remake 自己的比率（`SellRice`）。
+// **買賣共用這一條**：玩家買米 `0x1b20e` 與賣米 `0x1b49c` 算的是同一個
+// 量。買是「一金換 rate 米」，賣是「rate 米換一金」——所以在同一個月
+// 買進再賣出剛好不賺不賠，零頭還會被除法吃掉。
 func RicePerGold(priceLevel uint8) int {
 	if n := (100 - int(priceLevel)) / 10; n > 1 {
 		return n

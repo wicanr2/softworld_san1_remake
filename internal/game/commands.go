@@ -255,8 +255,18 @@ func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID
 
 // ---- 4. 內政 ------------------------------------------------------------
 
-// BuildFort 是「建築關寨」（說明書 p.21）：
-// 監工將領**謀略不得少於 80**、每郡最多五座、每寨費用是當月物價的 100 倍。
+// BuildFort 是「建築關寨」（原版 `0x1aa83`–`0x1abcf`，`L0`、`[base]`）。
+//
+// 三道門與說明書 p.21 一致，而且都在碼裡讀得到：
+//
+//   - 上限 5 座（`0x1aa95` 的 `cmp 5`，訊息「本郡已有%d個關寨\n不能再建了」）
+//   - 費用 ＝ 當月物價 × 100（`0x1aae2` 的 `imul 100`）
+//   - 監工將領**謀略大於 79**（提示字串 `DS:0x706e` 自己寫著）
+//
+// 原版接著讓玩家在該郡的戰場地圖上挑一格放關寨（`0x1acba` 開的是
+// 戰術層的地圖畫面），然後 offset 25 加一、金扣掉。
+// **關寨數與地圖是同一件事的兩份記錄**，所以這裡也要一起改；
+// remake 自己挑格子（原版由玩家指），那是登記在案的差異。
 func (g *State) BuildFort(prefectureID, generalIndex int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
@@ -276,10 +286,32 @@ func (g *State) BuildFort(prefectureID, generalIndex int, by state.FactionID) er
 	if p.Gold < cost {
 		return ErrNoGold
 	}
+	spot := plainSpotFor(p.BattleField)
+	if spot < 0 {
+		return ErrTooManyForts // 地圖上沒有空地可以蓋
+	}
+	p.BattleField[spot] = p.BattleField[spot]&0xF0 | fortTerrain
 	p.Gold -= cost
 	p.Forts++
 	p.Commanded = true
 	return nil
+}
+
+// fortTerrain 是關寨的地形碼（`docs/spec/003` §3.3）。
+const fortTerrain = 6
+
+// plainSpotFor 挑一格拿來蓋關寨：**沒有標記的平原**。
+//
+// 有標記的格子不能動——那些是通往鄰郡的通道、城池、四個軍團的起點
+// （高四位 0–14）。蓋在通道上會把那個郡從地圖上封死，而那在畫面上
+// 只看得出「敵軍再也沒有從那一邊來過」。
+func plainSpotFor(field []byte) int {
+	for i, b := range field {
+		if b != 0xFF && b>>4 == 15 && b&0x0F == 7 { // 7 ＝ 平原
+			return i
+		}
+	}
+	return -1
 }
 
 // Rest 是「休息」（說明書 p.21）：不做任何事，但耗掉這個月的指令。
@@ -325,7 +357,16 @@ func (g *State) BuyRice(prefectureID, units int, by state.FactionID) error {
 	return nil
 }
 
-// SellRice 是「賣出米糧」（說明書 p.22）：依物價以米換金，財庫上限 30000。
+// SellRice 是「賣出米糧」（原版 `0x1b45e` 起，`L0`、`[base]`）：
+// 財庫上限 30000。
+//
+// **比率與買米是同一條**（`RicePerGold`，`0x1b49c` 與 `0x1b20e` 算的
+// 是同一個量）：買是「一金換 rate 米」，賣是「rate 米換一金」。
+// 原版的提示字串把這件事寫在臉上——買米問「1 金 = %d 米」，
+// 賣米問「%d 米 = 1 金」。
+//
+// 所以同一個月買進再賣出剛好不賺不賠，**零頭還會被整數除法吃掉**：
+// 賣 rate−1 米一個銅板也拿不到。
 func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
@@ -337,10 +378,10 @@ func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 	if p.Rice < units {
 		return ErrNoRice
 	}
-	// ⚠ **賣米的比率還沒從原版讀出來**（買米是 `RicePerGold`，`L0`）。
-	// 這裡仍是 remake 自己的換算，`docs/design/02` 記著。
-	p.Rice -= units
-	p.Gold = clampTo(p.Gold+units*int(p.PriceLevel)/100, MaxGold)
+	rate := RicePerGold(p.PriceLevel)
+	gold := units / rate
+	p.Rice -= gold * rate // 換不到一金的零頭留在倉裡
+	p.Gold = clampTo(p.Gold+gold, MaxGold)
 	p.Commanded = true
 	return nil
 }

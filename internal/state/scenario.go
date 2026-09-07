@@ -153,6 +153,16 @@ type Prefecture struct {
 	ActiveGenerals uint8 // 現役武將數
 	FreeGenerals   uint8 // 在野武將數（只數身分為 StatusAvailable 的）
 
+	// Forts 是這個郡的關寨數（offset 25，`L0`）。
+	//
+	// **它與戰場地圖是同一件事的兩份記錄**：42 個郡逐一數過，這一格
+	// 永遠等於 offset 55–174 裡地形碼 6（關寨）的格數
+	// （`TestFortCountMatchesTheField`）。建築關寨時原版讓玩家在地圖上
+	// 挑位置，兩邊一起更新（`0x1ab9e`）。
+	//
+	// 六個劇本的值完全相同——與相鄰表一樣，這是**地圖幾何不是劇本狀態**。
+	Forts uint8
+
 	PublicLoyalty uint8 // 民眾忠誠
 	LandValue     uint8 // 土地價值
 	FloodRate     uint8 // 洪水率
@@ -379,6 +389,7 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 		p.Gold = binary.LittleEndian.Uint16(rec[18:])
 		p.Rice = binary.LittleEndian.Uint16(rec[20:])
 		p.ActiveGenerals = rec[22]
+		p.Forts = rec[25]
 		p.FreeGenerals = rec[23]
 		p.PublicLoyalty = rec[26]
 		p.LandValue = rec[27]
