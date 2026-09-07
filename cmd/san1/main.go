@@ -24,6 +24,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
@@ -54,6 +55,10 @@ type app struct {
 
 	// jb 是配樂；沒有原版的 DATA1 就是 nil。
 	jb *jukebox
+
+	// art 是接上原版素材的主畫面；沒有原版的 DATA3 就是 nil，
+	// 那時退回 remake 自己的文字版面。
+	art *ui.ArtScreen
 }
 
 // uiReliefGold 是介面上「開倉賑民」一次撥出去的金。**remake 自選**：
@@ -650,7 +655,11 @@ func (a *app) Draw(dst *ebiten.Image) {
 			ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
 		} else {
 			a.view.Over = a.s.Over
-			ui.DrawSession(a.canvas, a.s.G, a.s.Log, a.view)
+			if a.art != nil {
+				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, a.view)
+			} else {
+				ui.DrawSession(a.canvas, a.s.G, a.s.Log, a.view)
+			}
 		}
 		a.screen.WritePixels(a.canvas.Img.Pix)
 		a.dirty = false
@@ -710,6 +719,7 @@ func main() {
 	scale := flag.Int("scale", 2, "視窗放大倍率（整數倍，不做非整數縮放）")
 	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
 	music := flag.Bool("music", true, "播配樂（從原版的 DATA1 邊播邊合成）")
+	useArt := flag.Bool("art", true, "主畫面用原版素材（從玩家自己的 DATA3 讀）")
 	flag.Parse()
 	if l, ok := i18n.Parse(*lang); ok {
 		i18n.Current = l
@@ -788,13 +798,31 @@ func main() {
 		s = session.New(g, brain, state.FactionID(f))
 	}
 
+	// 接原版素材：主畫面的底圖與肖像來自玩家自己那一份 `DATA3`。
+	// **讀不到就退回文字版面**，不要讓少一個檔案變成開不起來。
+	var art *ui.ArtScreen
+	if *useArt {
+		if c3, err := openContainer(*root, "DATA3"); err == nil {
+			if art, err = ui.NewArtScreen(c3); err != nil {
+				fmt.Fprintln(os.Stderr, "san1：原版素材讀不進來，改用文字版面：", err)
+				art = nil
+			}
+		} else {
+			fmt.Fprintln(os.Stderr, "san1：沒有 DATA3，改用文字版面：", err)
+		}
+	}
+	cw, ch := ui.Cols*ui.CellW, ui.Rows*ui.CellH
+	if art != nil {
+		cw, ch = assets.ScreenW, assets.ScreenH
+	}
 	a := &app{
-		canvas:  ui.NewCanvas(ui.Cols, ui.Rows, face),
-		screen:  ebiten.NewImage(ui.Cols*ui.CellW, ui.Rows*ui.CellH),
+		canvas:  ui.NewCanvasPx(cw, ch, face),
+		screen:  ebiten.NewImage(cw, ch),
 		s:       s,
 		dirty:   true,
 		saveDir: *saveDir,
 		aiMode:  ai.Mode(*aiMode),
+		art:     art,
 	}
 	if *music {
 		a.jb = newJukebox(*root)
@@ -813,7 +841,7 @@ func main() {
 	if *scale < 1 {
 		*scale = 1
 	}
-	ebiten.SetWindowSize(ui.Cols*ui.CellW**scale, ui.Rows*ui.CellH**scale)
+	ebiten.SetWindowSize(cw**scale, ch**scale)
 	lord := g.Lord(state.FactionID(f))
 	title := "三國演義 remake"
 	if lord != nil {

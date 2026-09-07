@@ -95,6 +95,11 @@ type Prefecture struct {
 
 	Neighbours []int
 
+	// MapX／MapY 是這個郡在大地圖上的座標（原版州郡 offset 6／8）。
+	// 畫面上的位置是 `MapX + 0x50`、`MapY + 0x2c`（`0x10ceb`／`0x10cf4`）；
+	// 主畫面的州郡填色就是從那一點灌下去的。
+	MapX, MapY int
+
 	// governor 是主事者的人物槽號，−1 ＝ 沒有（原版州郡 offset 32，
 	// `docs/spec/003` §3.4）。
 	//
@@ -364,7 +369,8 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 	for _, p := range sc.Prefectures() {
 		g.prefectures = append(g.prefectures, Prefecture{
 			ID: p.ID, Name: p.Name,
-			Owner:      state.FactionID(p.Owner),
+			Owner: state.FactionID(p.Owner),
+			MapX:  int(p.MapX), MapY: int(p.MapY),
 			Population: p.People(),
 			Gold:       int(p.Gold), Rice: int(p.Rice),
 			PublicLoyalty: p.PublicLoyalty, LandValue: p.LandValue,

@@ -41,10 +41,19 @@ type Canvas struct {
 
 // NewCanvas 開一張 cols × rows 格的畫布。
 func NewCanvas(cols, rows int, face *font.Face) *Canvas {
+	return NewCanvasPx(cols*CellW, rows*CellH, face)
+}
+
+// NewCanvasPx 開一張指定像素尺寸的畫布。
+//
+// 接原版素材的畫面要 640×350，那個高度不是列高的整數倍
+// （350 ÷ 16 ＝ 21.875）。**格數往下取整**，最後那一列會被裁掉一半
+// ——原版的版面本來就是按像素排的，不是按格。
+func NewCanvasPx(w, h int, face *font.Face) *Canvas {
 	return &Canvas{
-		Img:     image.NewRGBA(image.Rect(0, 0, cols*CellW, rows*CellH)),
-		Cols:    cols,
-		Rows:    rows,
+		Img:     image.NewRGBA(image.Rect(0, 0, w, h)),
+		Cols:    w / CellW,
+		Rows:    h / CellH,
 		face:    face,
 		Missing: map[rune]int{},
 	}
@@ -56,6 +65,18 @@ func (c *Canvas) Fill(col color.RGBA) {
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			c.Img.SetRGBA(x, y, col)
+		}
+	}
+}
+
+// FillRect 以**像素**為單位塗一塊。
+//
+// 接原版素材的畫面要按像素排版，格對不齊——訊息列在原版是壓在地圖
+// 底下的一條，不是整格對齊的。
+func (c *Canvas) FillRect(x0, y0, x1, y1 int, col color.RGBA) {
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			c.setClipped(x, y, col)
 		}
 	}
 }

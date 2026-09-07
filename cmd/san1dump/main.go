@@ -34,7 +34,7 @@ func main() {
 	what := flag.String("what", "all", "印什麼：pref／gen／master／all")
 	cols := flag.Int("cols", 6, "郡名槽位寬度（半形格），用來檢查裝不裝得下")
 	png := flag.String("png", "", "把畫面存成 PNG（無頭環境驗版面用）")
-	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／battle（主戰場）")
+	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／art（接原版素材的主畫面）／battle（主戰場）")
 	faction := flag.Int("faction", -1, "main 畫面的玩家勢力；−1 ＝ 用第一個在用的勢力")
 	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
 	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫；battle 畫面是先打幾天")
@@ -67,7 +67,7 @@ func main() {
 	fmt.Printf("劇本 %s（來源 %s）\n\n", *slot, *root)
 
 	if *png != "" {
-		if err := writePNG(*png, *fontPath, sc, *slot, *screen, *aiMode, *faction, *sel, *months); err != nil {
+		if err := writePNG(*png, *fontPath, *root, sc, *slot, *screen, *aiMode, *faction, *sel, *months); err != nil {
 			die(err)
 		}
 		fmt.Printf("畫面存到 %s\n\n", *png)
@@ -128,7 +128,7 @@ func main() {
 //
 // **和 cmd/san1 畫的是同一張**（都走 ui.DrawPrefectureList）。
 // 畫面 bug 測試看不到，但存成圖就看得到，而且無頭環境也產得出來。
-func writePNG(out, fontPath string, sc *state.Scenario, slot, screen, aiMode string, faction, sel, months int) error {
+func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMode string, faction, sel, months int) error {
 	fh, err := os.Open(fontPath)
 	if err != nil {
 		return err
@@ -139,8 +139,11 @@ func writePNG(out, fontPath string, sc *state.Scenario, slot, screen, aiMode str
 		return err
 	}
 	c := ui.NewCanvas(ui.Cols, ui.Rows, face)
+	if screen == "art" {
+		c = ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
+	}
 	switch screen {
-	case "main":
+	case "art", "main":
 		f := faction
 		if f < 0 {
 			act := sc.ActiveFactions()
@@ -165,6 +168,18 @@ func writePNG(out, fontPath string, sc *state.Scenario, slot, screen, aiMode str
 			if t := g.Territory(state.FactionID(f)); len(t) > 0 {
 				sel = t[0]
 			}
+		}
+		if screen == "art" {
+			c3, err := openContainer(root, "DATA3")
+			if err != nil {
+				return fmt.Errorf("接原版素材要讀 DATA3：%w", err)
+			}
+			art, err := ui.NewArtScreen(c3)
+			if err != nil {
+				return err
+			}
+			ui.DrawArtSession(c, art, g, s.Log, ui.View{Sel: sel, Over: s.Over})
+			break
 		}
 		ui.DrawSession(c, g, s.Log, ui.View{Sel: sel, Over: s.Over})
 	case "battle":
@@ -229,13 +244,16 @@ func missingRunes(c *ui.Canvas) []rune {
 }
 
 // openData2 開 DATA2 容器。三個檔缺一不可。
-func openData2(root string) (*assets.Container, error) {
-	base := filepath.Join(root, "DATA2")
+func openData2(root string) (*assets.Container, error) { return openContainer(root, "DATA2") }
+
+// openContainer 開任一組三件套。三個檔缺一不可——少一個就是切出垃圾。
+func openContainer(root, name string) (*assets.Container, error) {
+	base := filepath.Join(root, name)
 	var parts [3][]byte
 	for i, ext := range []string{".NAM", ".IDX", ".GRP"} {
 		b, err := os.ReadFile(base + ext)
 		if err != nil {
-			return nil, fmt.Errorf("讀 DATA2%s：%w", ext, err)
+			return nil, fmt.Errorf("讀 %s%s：%w", name, ext, err)
 		}
 		parts[i] = b
 	}
