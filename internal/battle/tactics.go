@@ -175,9 +175,21 @@ func RefuseDuelDivisor(intel, war, challengerWar, roll10, roll5, roll10b, rollWa
 	return div
 }
 
+// DuelDeathRoll 是單挑落敗的處置：`RND(7)`，**只有 0 才死**
+// （`0x31b04`–`0x31b16`，`L0`）。
+//
+// 也就是被擒 6/7 ≈ 86%、死於刀下 1/7 ≈ 14%——說明書 p.30 只說
+// 「可能被擒，或死於刀下」，沒給比例。原版擲 0 的那一支印 `SCG27.IMG`
+// 與「死在%s的刀下」；非 0 的那一支印 `SCG28.IMG`，並把敗者的槽號寫進
+// 勝方的俘虜欄（`es:[0x1732 + (軍力×10 + 將領)×2]`）。
+const DuelDeathRoll = 7
+
+// DuelKills 回報這一擲要不要當場斬殺。roll 是 `RND(DuelDeathRoll)`。
+func DuelKills(roll int) bool { return roll == 0 }
+
 // defeatInDuel 處理單挑落敗：可能被擒，或死於刀下（說明書 p.30）。
 func (b *Battle) defeatInDuel(u *Unit, loser, winner *Leader) {
-	if int(b.rng.next()%100) < TuneCaptureOnDuel {
+	if !DuelKills(b.roll(DuelDeathRoll)) {
 		loser.Captured = true
 		b.note("%s 單挑不敵 %s，被擒", loser.Name, winner.Name)
 	} else {

@@ -27,9 +27,6 @@ const (
 	// 幅度是 remake 選的。
 	//（說明書 p.30：「若拒絕挑戰，麾下士兵將有部份逃跑」）。
 
-	// TuneCaptureOnDuel 是單挑落敗被擒（而不是被斬）的機率。
-	TuneCaptureOnDuel = 60
-
 	// TuneDeathBattleEdge 是自動作戰敢打死戰的攻防比門檻（百分比）。
 	// 手冊只說死戰是「一決生死的激戰」，沒說什麼時候該用。
 	TuneDeathBattleEdge = 140

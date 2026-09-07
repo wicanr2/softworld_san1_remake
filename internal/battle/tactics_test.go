@@ -592,3 +592,23 @@ func TestRefuseDuelDivisor(t *testing.T) {
 		t.Error("除數不該小於 1")
 	}
 }
+
+// TestDuelDefeatIsUsuallyCapture 釘住單挑落敗的處置：`RND(7)`，只有 0 才死
+// （`0x31b04`–`0x31b16`，`L0`）。
+//
+// **比例是 6/7 被擒、1/7 死**，不是各半。說明書 p.30 只說「可能被擒，
+// 或死於刀下」——照字面實作成五五開，猛將的損耗會是原版的三倍多，
+// 而那要玩很久才看得出來。
+func TestDuelDefeatIsUsuallyCapture(t *testing.T) {
+	if !DuelKills(0) {
+		t.Error("擲 0 應該是死於刀下")
+	}
+	for roll := 1; roll < DuelDeathRoll; roll++ {
+		if DuelKills(roll) {
+			t.Errorf("擲 %d 應該是被擒", roll)
+		}
+	}
+	if DuelDeathRoll != 7 {
+		t.Errorf("擲的範圍是 RND(%d)，原版是 RND(7)", DuelDeathRoll)
+	}
+}
