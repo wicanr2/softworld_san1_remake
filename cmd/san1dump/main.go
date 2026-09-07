@@ -202,7 +202,7 @@ func writePNG(out, fontPath string, sc *state.Scenario, slot, screen, aiMode str
 			Cursor: cur, Acting: acting,
 			Menu:   "指令",
 			Items:  ui.BattleCommandLines(),
-			Prompt: fmt.Sprintf("第 %d 郡的戰場（remake 生成的地形）", at),
+			Prompt: fmt.Sprintf("第 %d 郡的戰場（原版的郡地理誌）", at),
 		})
 	case "list":
 		ui.DrawPrefectureList(c, sc, slot)
