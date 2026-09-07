@@ -234,19 +234,31 @@ func DrawTitle(c *Canvas, ts *TitleScreen, sel int) {
 	}
 }
 
-// ArtBattle 是接上原版素材的主戰場：地形圖塊來自 `EICON.GRP`，
-// 位置與原版相同（`docs/spec/005` §8）。
+// ArtBattle 是接上原版素材的主戰場：地形圖塊來自 `DATA1` 的
+// `EICON.GRP`，上方花邊與遊戲主畫面共用 `DATA3` 的 `MAINMAP1`
+// （`0x2246a` 載入、`0x2247c` 畫在 (0,0)），位置與原版相同
+// （`docs/spec/005` §8）。
 type ArtBattle struct {
 	tiles []*assets.Image
+	top   *assets.Image
 }
 
-// NewArtBattle 從 `DATA1` 解出三十六張地形圖塊。
-func NewArtBattle(data1 *assets.Container) (*ArtBattle, error) {
+// NewArtBattle 解出三十六張地形圖塊與上方花邊。data3 可以是 nil，
+// 那時就不畫花邊。
+func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 	tiles, err := assets.BattleTiles(data1)
 	if err != nil {
 		return nil, err
 	}
-	return &ArtBattle{tiles: tiles}, nil
+	ab := &ArtBattle{tiles: tiles}
+	if data3 != nil {
+		if i, ok := data3.ByName("MAINMAP1.IMG"); ok {
+			if im, err := assets.DecodeImage(data3.Data(i)); err == nil {
+				ab.top = im
+			}
+		}
+	}
+	return ab, nil
 }
 
 // DrawArtField 畫一個郡的戰場地形。
@@ -255,7 +267,10 @@ func NewArtBattle(data1 *assets.Container) (*ArtBattle, error) {
 // remake 自己畫的——**這一張目前只有地形接上素材**。
 func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte) {
 	im := assets.BattleField(ab.tiles, field, 0)
+	if ab.top != nil {
+		im.Blit(ab.top, 0, 0)
+	}
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{}, draw.Src)
-	c.DrawText(1, 0, name, color.RGBA{0xFF, 0xFF, 0x55, 0xFF})
+	c.DrawText(1, 20, name, color.RGBA{0xFF, 0xFF, 0x55, 0xFF})
 }

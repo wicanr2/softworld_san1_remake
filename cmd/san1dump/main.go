@@ -148,7 +148,11 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		if err != nil {
 			return fmt.Errorf("地形圖塊要讀 DATA1：%w", err)
 		}
-		ab, err := ui.NewArtBattle(c1)
+		c3, err := openContainer(root, "DATA3")
+		if err != nil {
+			return fmt.Errorf("上方花邊要讀 DATA3：%w", err)
+		}
+		ab, err := ui.NewArtBattle(c1, c3)
 		if err != nil {
 			return err
 		}
