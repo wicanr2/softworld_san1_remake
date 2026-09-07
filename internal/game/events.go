@@ -36,8 +36,9 @@ const (
 	PopulationOwnerlessChance = 30
 	// TuneAgingStamina 是每年體能的衰減基準；年紀越大掉越多。
 	TuneAgingStamina = 1
-	// TuneTributePerPrefecture 是每幾個郡一年進貢一件寶物。
-	TuneTributePerPrefecture = 3
+	// 進貢的上限（`0x171e0`：`RND(5) + 8`，`L0`）。
+	TributeCapSpread = 5
+	TributeCapFloor  = 8
 
 	// TuneComingOfAge 是未登場的人物幾歲出頭。
 	//
@@ -177,6 +178,15 @@ func (g *State) spring() []Event {
 				continue
 			}
 			x.Stamina -= uint8(drop)
+			// **訓練度與武裝度每年各自掉**（`0x16006`／`0x16025`，`L0`）：
+			// `−RND(值 ÷ 10)`，與土地價值同一個形狀。
+			//
+			// 這是「訓練兵士」與「購置武器」要一直做的原因——少了它，
+			// 一次練到頂就永遠是精兵，而數值欄停在 100 看起來完全正常。
+			x.Arms = uint8(AnnualDecay(int(x.Arms),
+				g.roll(int(Spring), x.Index, 40)%max(1, int(x.Arms)/10+1)))
+			x.Training = uint8(AnnualDecay(int(x.Training),
+				g.roll(int(Spring), x.Index, 41)%max(1, int(x.Training)/10+1)))
 		}
 	}
 	out = append(out, g.comeOfAge()...)
@@ -207,6 +217,23 @@ func (g *State) spring() []Event {
 		}
 	}
 	return out
+}
+
+// AnnualDecay 是「值越高掉越多」的年度衰減（`L0`）：
+//
+//	新值 ＝ 值 − RND(值 ÷ 10)
+//
+// 土地價值（每個春月，`0x15c96`）、將領的訓練度與武裝度
+// （元月，`0x16006`／`0x16025`）三處都是這個形狀。
+//
+// **收斂點在「補的速度 ＝ 掉的速度」**，不是上限——所以內政、訓練、
+// 購置武器都是要一直做的事。
+func AnnualDecay(value, roll int) int {
+	v := value - roll
+	if v < 0 {
+		v = 0
+	}
+	return v
 }
 
 // QuakeChance 是地震的機率分母（`0x162d2`：`RND(3) == 0`，`L0`）。
@@ -247,20 +274,10 @@ func (k Keep) Apply(value, roll int) int { return value * (roll + k.Floor) / 100
 // 存的值是實際值 ÷ 100，所以下限是五千人。
 const QuakePopFloor = 50 * 100
 
-// LandValueDecay 是土地價值每個春月的自然衰減（`0x15c96`，`L0`）：
+// LandValueDecay 是土地價值每個春月的自然衰減（`0x15c96`，`L0`）。
 //
-//	土地價值 ← 土地價值 − RND(土地價值 ÷ 10)
-//
-// roll 是 `RND(土地價值 ÷ 10)`。**衰減與郡有沒有主無關**，
-// 而且值越高掉越多——所以土地價值會停在「開發速度 ＝ 衰減速度」的地方，
-// 不會一路到 100 就不動。
-func LandValueDecay(landValue, roll int) int {
-	v := landValue - roll
-	if v < 0 {
-		v = 0
-	}
-	return v
-}
+// **衰減與郡有沒有主無關。** 形狀與訓練度／武裝度相同（`AnnualDecay`）。
+func LandValueDecay(landValue, roll int) int { return AnnualDecay(landValue, roll) }
 
 // comeOfAge 是春天的「新血出現」（說明書 p.36）。
 //
@@ -489,6 +506,25 @@ func LocustStrikes(loyalty, landValue, loyaltyRoll, landRoll int) bool {
 	return landValue > landRoll+LocustLandFloor
 }
 
+// TributeCount 是一種寶物今年進貢幾件（`0x17164`，`L0`）：
+//
+//	n ＝ RND(領地數 + 1)
+//	若 RND(5) + 8 < n → n ＝ RND(5) + 8
+//
+// 也就是 `min(RND(領地數 + 1), RND(5) + 8)`：領地越多越接近上限，
+// **上限本身是 8–12，每一種寶物各擲一次**。手冊 p.37 只說
+// 「領地越多，貢品越多」，沒說有上限——一統天下的勢力不會拿到四十件。
+func TributeCount(land, landRoll, capRoll int) int {
+	n := landRoll
+	if c := capRoll + TributeCapFloor; c < n {
+		n = c
+	}
+	if n < 0 {
+		n = 0
+	}
+	return n
+}
+
 // GrowPopulation 是一年一次的人口成長（`0x16ec2`–`0x16f16`，`L0`）：
 //
 //	人口 ← min(上限, 人口 × (土地價值 + 民眾忠誠 ÷ 2 + 1000) ÷ 1000)
@@ -531,17 +567,28 @@ func (g *State) winter() []Event {
 		return out
 	}
 	// 「各州郡每年進貢寶物給諸侯，領地越多，貢品越多」（說明書 p.37）。
+	//
+	// 原版（`0x17164`–`0x1724c`，`L0`）**四種寶物各算一次**，
+	// 再隨機挑一種多給一件。玉璽不在裡面——它只能諸侯持有，
+	// 而且是勝利條件（說明書 p.24、p.37）。
 	for i := range g.factions {
 		f := &g.factions[i]
 		if !f.Alive {
 			continue
 		}
-		n := len(g.Territory(f.ID)) / TuneTributePerPrefecture
-		for k := 0; k < n; k++ {
-			// 玉璽不進貢——它只能諸侯持有，而且是勝利條件（說明書 p.24、p.37）。
-			t := Treasure(1 + g.roll(int(f.ID), k)%int(treasureCount-1))
-			f.Treasury[t]++
+		land := len(g.Territory(f.ID))
+		n := 0
+		for t := TreasureBook; t < treasureCount; t++ {
+			got := TributeCount(land,
+				g.roll(int(f.ID), int(t), 30)%max(1, land+1),
+				g.roll(int(f.ID), int(t), 31)%TributeCapSpread)
+			f.Treasury[t] += got
+			n += got
 		}
+		// 再挑一種多給一件（`0x1723c` 的 `RND(4)`）。
+		bonus := TreasureBook + Treasure(g.roll(int(f.ID), 0, 32)%int(treasureCount-1))
+		f.Treasury[bonus]++
+		n++
 		if n > 0 {
 			lord := g.Lord(f.ID)
 			name := tf("fld.factionN", f.ID)

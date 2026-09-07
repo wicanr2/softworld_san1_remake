@@ -16,7 +16,11 @@ import (
 // 勢力可能永遠不死。那些只有整局跑過才看得出來。
 func TestGameReachesAConclusion(t *testing.T) {
 	s := newSession(t, ai.ModeEnhanced, state.NoFaction) // 沒有玩家，全電腦
-	const maxYears = 60
+	// **年數是量出來的，不是挑的。** 訓練度、武裝度與土地價值都會逐年
+	// 自然衰減（`game.AnnualDecay`，`L0`），所以軍隊不會一路變強，
+	// 統一因此慢下來——六十年只收斂到剩兩家。這是規則本身的結果，
+	// 不是 AI 不會打。
+	const maxYears = 90
 	start := len(s.G.Factions())
 	alive := start
 	for i := 0; i < maxYears*12; i++ {

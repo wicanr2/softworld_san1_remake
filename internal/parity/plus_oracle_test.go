@@ -277,3 +277,45 @@ func TestZZSavedGameLandAndLoyalty(t *testing.T) {
 	}
 	t.Logf("有主的郡 %d 個，其中倍率到頂（>=1150）的 %d 個", n, maxed)
 }
+
+// TestZZMasterRecordFields 把諸侯表倒出來，逐欄與君主的人物記錄對照。
+//
+// **目標是認出 `offset 8`**：春季的年度忠誠變動讀的是它
+// （`0x15fc2`：`忠誠 ← 忠誠 + (諸侯[8] − 60) ÷ 2`），而諸侯記錄的
+// 72 個位元組只解出 offset 2（君主槽號）與 6（軍師槽號）。
+//
+// 判準是**與君主的哪一個能力值逐格相同**，不是「數值看起來合理」。
+func TestZZMasterRecordFields(t *testing.T) {
+	root := origRoot(t)
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatalf("載入原版：%v", err)
+	}
+	defer o.Close()
+	bootLikePlus(t, o)
+
+	const tables = 0x399b0
+	const genBase = tables + 0x2210
+	fields := map[string]int{"年齡": 7, "體能": 8, "謀略": 9, "戰力": 10, "魅力": 11}
+	match := map[string]int{}
+	rows := 0
+	for f := 0; f < 16; f++ {
+		mas := o.Bytes(addr(uint32(tables+f*72)), 72)
+		lord := int(mas[2]) | int(mas[3])<<8
+		if lord == 0xFFFF || lord >= 350 {
+			continue
+		}
+		rows++
+		gen := o.Bytes(addr(uint32(genBase+lord*30)), 30)
+		if rows <= 6 {
+			t.Logf("勢力 %2d 君主槽 %3d：諸侯[4..12] %v ｜ 君主 年齡%d 體能%d 謀略%d 戰力%d 魅力%d",
+				f, lord, mas[4:13], gen[7], gen[8], gen[9], gen[10], gen[11])
+		}
+		for name, off := range fields {
+			if mas[8] == gen[off] {
+				match[name]++
+			}
+		}
+	}
+	t.Logf("在用的勢力 %d 個；諸侯[8] 與君主各欄逐格相同的次數：%v", rows, match)
+}

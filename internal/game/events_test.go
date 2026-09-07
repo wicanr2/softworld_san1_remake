@@ -422,3 +422,90 @@ func TestDisasterLossesAreMeasured(t *testing.T) {
 		t.Errorf("洪水率 90 擲滿之後是 %d，應該越界（→ 100）", got)
 	}
 }
+
+// TestTributeFollowsTerritoryWithACap 釘住進貢的件數（`0x17164`，`L0`）。
+//
+// `min(RND(領地數 + 1), RND(5) + 8)`，**四種寶物各擲一次**，
+// 再隨機挑一種多給一件。
+//
+// **上限是重點**：手冊 p.37 只說「領地越多，貢品越多」，照字面寫成
+// 正比的話，一統天下的勢力一年會拿到四十件——而寶物是賞賜用的，
+// 那等於忠誠無限。
+func TestTributeFollowsTerritoryWithACap(t *testing.T) {
+	// 領地少 → 跟著領地走。
+	if got := TributeCount(2, 2, 4); got != 2 {
+		t.Errorf("領地 2 擲到 2，應該是 2，得到 %d", got)
+	}
+	// 領地多 → 被上限夾住。
+	if got := TributeCount(40, 35, 0); got != TributeCapFloor {
+		t.Errorf("領地 40 擲到 35、上限擲 0，應該夾成 %d，得到 %d",
+			TributeCapFloor, got)
+	}
+	// 上限本身會浮動：8–12。
+	if TributeCount(40, 40, 0) != 8 || TributeCount(40, 40, 4) != 12 {
+		t.Error("上限應該落在 8–12")
+	}
+
+	g := newGame(t)
+	f := g.Faction(g.Factions()[0].ID)
+	before := f.Treasury
+	g.Date = Date{Year: 189, Month: 11}
+	g.EndMonth() // → 十二月，進貢
+	if f.Treasury[TreasureSeal] != before[TreasureSeal] {
+		t.Error("玉璽不進貢")
+	}
+	got := 0
+	for tr := TreasureBook; tr < treasureCount; tr++ {
+		got += f.Treasury[tr] - before[tr]
+	}
+	if got == 0 {
+		t.Error("十二月沒有收到任何貢品")
+	}
+	// 四種各一次 ＋ 一件紅利，所以上界是 4×12＋1。
+	if max := 4*(TributeCapFloor+TributeCapSpread-1) + 1; got > max {
+		t.Errorf("一年收到 %d 件貢品，上界是 %d", got, max)
+	}
+}
+
+// TestAnnualDecayKeepsUpkeepMeaningful 釘住三處年度衰減同一個形狀
+// （`AnnualDecay`，`L0`）：土地價值（每個春月）、訓練度與武裝度（元月）。
+//
+// **這是「內政、訓練、購置武器要一直做」的原因。** 少了它，一次做到頂
+// 就永遠不用再管——而數值欄停在 100 看起來完全正常，只有跑完幾十年
+// 才看得出「所有人都是滿訓練的精兵」。
+func TestAnnualDecayKeepsUpkeepMeaningful(t *testing.T) {
+	if got := AnnualDecay(100, 9); got != 91 {
+		t.Errorf("100 掉 9 是 %d，應該是 91", got)
+	}
+	if AnnualDecay(3, 9) != 0 {
+		t.Error("掉到負的應該夾成 0")
+	}
+	// 值越高掉得越多：擲的範圍是「值 ÷ 10」。
+	if 100/10 <= 30/10 {
+		t.Fatal("這個測試的前提壞了")
+	}
+
+	g := newGame(t)
+	// 把一批將領練到滿，走一整年看它掉下來。
+	var picked []*General
+	for _, x := range g.Garrison(15) {
+		x.Training, x.Arms = 100, 100
+		picked = append(picked, x)
+	}
+	if len(picked) == 0 {
+		t.Skip("這個郡沒有駐軍")
+	}
+	for m := 1; m <= 12; m++ {
+		g.Date = Date{Year: 190, Month: m}
+		g.EndMonth()
+	}
+	dropped := 0
+	for _, x := range picked {
+		if x.Training < 100 || x.Arms < 100 {
+			dropped++
+		}
+	}
+	if dropped == 0 {
+		t.Errorf("走完一年，%d 位滿訓練的將領一個都沒掉", len(picked))
+	}
+}
