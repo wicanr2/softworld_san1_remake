@@ -10,7 +10,7 @@ import "fmt"
 // 即告落敗；若拒絕挑戰，麾下士兵將有部份逃跑；單挑落敗可能被擒，
 // 或死於刀下。」
 //
-// accept 為假表示對方拒絕挑戰。
+// accept 為假表示對方拒絕挑戰。要照原版判斷用 DuelAccepted。
 func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 	if err := b.canAct(a); err != nil {
 		return err
@@ -59,6 +59,40 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 	}
 	b.note("%s 與 %s 大戰百合，不分勝負", ca.Name, ct.Name)
 	return nil
+}
+
+// 接不接受單挑（`0x30c5b`–`0x30d5b`，`L0`、`[base]`）。
+//
+// **預設是拒絕**，被挑戰者由電腦控制時有三道機會翻成接受：
+//
+//	RND(10) + 被挑戰者的戰力 − 5 > 挑戰者的戰力                → 接受
+//	被挑戰者的兵 ÷ 2 > 挑戰者的兵，且 RND(20) + 被挑戰者的戰力
+//	                                 > 挑戰者的戰力            → 接受
+//	被挑戰者的兵 ÷ 5 > 挑戰者的兵                              → 接受
+//
+// 也就是**強者才應戰**，兵力懸殊時更願意應戰。被挑戰者由玩家控制時
+// 原版直接問「接受嗎(Y/N)」，不走這一套。
+//
+// 接受之後若被挑戰者的戰力 ≥ `RND(5) + 90`，原版會多印一句對白
+// （`0x30d66`）——那只是台詞，不影響勝負。
+const (
+	DuelWarSpread   = 10 // 第一道的 RND 上限
+	DuelWarEdge     = 5  // 第一道扣掉的常數
+	DuelOddsSpread  = 20 // 第二道的 RND 上限
+	DuelHalfTroops  = 2  // 第二道的兵力比
+	DuelFifthTroops = 5  // 第三道的兵力比
+)
+
+// DuelAccepted 回報電腦控制的被挑戰者接不接受這場單挑。
+func DuelAccepted(challengerWar, defenderWar, challengerTroops, defenderTroops, roll10, roll20 int) bool {
+	if roll10+defenderWar-DuelWarEdge > challengerWar {
+		return true
+	}
+	if defenderTroops/DuelHalfTroops > challengerTroops &&
+		roll20+defenderWar > challengerWar {
+		return true
+	}
+	return defenderTroops/DuelFifthTroops > challengerTroops
 }
 
 // defeatInDuel 處理單挑落敗：可能被擒，或死於刀下（說明書 p.30）。

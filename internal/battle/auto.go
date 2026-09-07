@@ -39,7 +39,12 @@ func (b *Battle) AutoTurn(u *Unit) {
 		if ca != nil && ct != nil &&
 			int(ca.War) >= int(ct.War)+TuneDuelWarEdge &&
 			b.power(u) < b.defence(t) {
-			_ = b.Duel(u, d, true)
+			// **對方接不接受是原版的判定**，不是一律應戰
+			// （`0x30c5b`，`docs/re/05` §9）。
+			accept := DuelAccepted(
+				int(ca.War), int(ct.War), u.Soldiers(), t.Soldiers(),
+				b.roll(DuelWarSpread), b.roll(DuelOddsSpread))
+			_ = b.Duel(u, d, accept)
 			return
 		}
 		// 「死戰：一決生死的激戰，雙方將互戰至分出勝負為止」（p.32）。

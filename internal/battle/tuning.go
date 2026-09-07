@@ -52,7 +52,12 @@ const (
 	TuneRetreatShare = 30
 
 	// TuneDuelWarEdge 是自動作戰敢叫陣的戰力差。
-	TuneDuelWarEdge = 20
+	//
+	// **要落在原版接受判定的窗裡**：對方接不接受看
+	// `RND(10) + 對方戰力 − 5 > 我方戰力`（`DuelAccepted`），
+	// 也就是我方最多強過對方四點還有機會被接受。差距開太大的話
+	// 叫陣一定被拒，整條單挑就永遠打不起來。
+	TuneDuelWarEdge = 3
 
 	// TuneStratagemRange 是自動作戰考慮用計的距離上限（格）。
 	TuneStratagemRange = 3

@@ -442,3 +442,48 @@ func TestStratagemSucceeds(t *testing.T) {
 		}
 	}
 }
+
+// TestDuelAccepted 釘住接不接受單挑（`0x30c5b`–`0x30d5b`，`L0`）。
+//
+// **預設是拒絕**，三道機會翻成接受。這一條同時擋住「一律應戰」與
+// 「一律拒絕」兩種寫法——兩者都會讓整條單挑看起來正常卻不對。
+func TestDuelAccepted(t *testing.T) {
+	const same = 1000
+	// 戰力相同：`RND(10) + 戰力 − 5 > 戰力` ⇒ RND 要大於 5，十分之四。
+	n := 0
+	for r := 0; r < DuelWarSpread; r++ {
+		if DuelAccepted(80, 80, same, same, r, 0) {
+			n++
+		}
+	}
+	if n != 4 {
+		t.Errorf("戰力相同時接受 %d/10 次，應該是 4", n)
+	}
+	// 被挑戰者強五點：RND 只要不是 0 就接受。
+	n = 0
+	for r := 0; r < DuelWarSpread; r++ {
+		if DuelAccepted(80, 85, same, same, r, 0) {
+			n++
+		}
+	}
+	if n != 9 {
+		t.Errorf("被挑戰者強五點時接受 %d/10 次，應該是 9", n)
+	}
+	// 被挑戰者弱五點：第一道永遠過不了，兵力也相當 → 一律拒絕。
+	for r := 0; r < DuelWarSpread; r++ {
+		if DuelAccepted(85, 80, same, same, r, 0) {
+			t.Errorf("被挑戰者弱五點、兵力相當，RND ＝ %d 卻接受了", r)
+		}
+	}
+	// **兵力懸殊會翻盤**：對方兵是我方兩倍以上時第二道開，
+	// 五倍以上時第三道無條件接受——「猛將帶寡兵」靠的就是這一條。
+	if !DuelAccepted(99, 60, 400, 3000, 0, 0) {
+		t.Error("對方兵力五倍以上應該無條件接受")
+	}
+	if DuelAccepted(99, 60, 1600, 3000, 9, 19) {
+		t.Error("兵力不到兩倍、戰力又差很多，不該接受")
+	}
+	if !DuelAccepted(62, 60, 1000, 2500, 0, 5) {
+		t.Error("對方兵力兩倍以上、戰力接近時，第二道應該讓它接受")
+	}
+}
