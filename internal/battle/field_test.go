@@ -112,23 +112,19 @@ func TestTroopSuits(t *testing.T) {
 	}
 }
 
-// TestMoveCostSuitability 釘住「兵種能否適應地形」會影響移動花費
-// （說明書 p.30）。
-func TestMoveCostSuitability(t *testing.T) {
-	if got := MoveCost(Hill, TroopLand); got != 3 {
-		t.Errorf("陸軍走山丘花 %d，應該是 3", got)
+// TestMoveCostIsTerrainOnly 釘住每一格的花費**只看地形**（`L0`）。
+//
+// 原版取完 `DS:0x7c42` 就直接跟部隊剩下的移動力比（`0x27e71`），
+// 中間沒有按兵種的調整——所以水軍走深水一樣花 6。
+// 這裡順便把整張表釘住：它與說明書 p.29 逐格相同。
+func TestMoveCostIsTerrainOnly(t *testing.T) {
+	for k := TroopLand; k <= TroopMighty; k++ {
+		for _, tr := range []Terrain{Plain, Hill, Shallow, Deep, City} {
+			if got, want := MoveCost(tr, k), moveCost[tr]; got != want {
+				t.Errorf("%s軍走%s花 %d，應該跟地形一樣是 %d", k, tr, got, want)
+			}
+		}
 	}
-	if got := MoveCost(Hill, TroopMountain); got != 2 {
-		t.Errorf("山軍走山丘花 %d，應該少一點（3-1）", got)
-	}
-	if got := MoveCost(Deep, TroopWaterOnly); got != 5 {
-		t.Errorf("水軍走深水花 %d，應該是 5（6-1）", got)
-	}
-	// 適應也不會減到零：平原本來就是最便宜的 2。
-	if got := MoveCost(Plain, TroopLand); got != 1 {
-		t.Errorf("陸軍走平原花 %d，應該是 1（2-1）", got)
-	}
-	// 原版的表（`DS:0x7c42`）與說明書 p.29 逐格相同，這裡整張釘住。
 	for _, c := range []struct {
 		t    Terrain
 		want int
@@ -140,49 +136,138 @@ func TestMoveCostSuitability(t *testing.T) {
 			t.Errorf("%s 的移動力消耗是 %d，原版是 %d", c.t, got, c.want)
 		}
 	}
-	// 大山誰都過不去。
+}
+
+// TestTerrainTablesMatchTheOriginal 釘住量到的兩張地形攻防表
+// （`DS:0x85c2`／`DS:0x85e2`，`L0`），以及它們與說明書 p.31–32
+// 的方向一致。
+//
+// **兩件事要各驗一次**：數字要是原版那一組，方向要對得起手冊。
+// 只驗數字的話，抄錯一格不會被抓到；只驗方向的話，數字換成別的
+// 也照樣綠。
+func TestTerrainTablesMatchTheOriginal(t *testing.T) {
+	for _, c := range []struct {
+		t        Terrain
+		atk, def int
+	}{
+		{Mountain, 0, 0}, {Hill, 20, 22}, {Shallow, 8, 9}, {Deep, 6, 8},
+		{City, 27, 40}, {Fort, 25, 30}, {Plain, 20, 17}, {Forest, 16, 22},
+		{Desert, 15, 16},
+	} {
+		if a, d := TerrainAttack(c.t), TerrainDefence(c.t); a != c.atk || d != c.def {
+			t.Errorf("%s 的攻守值是 %d／%d，原版是 %d／%d", c.t, a, d, c.atk, c.def)
+		}
+	}
+	// 方向照手冊 p.31–32。
+	if TerrainAttack(Hill) < TerrainAttack(Plain) ||
+		TerrainDefence(Hill) <= TerrainDefence(Plain) {
+		t.Error("山丘應該強化攻擊力和防禦力")
+	}
+	if TerrainDefence(Forest) <= TerrainDefence(Plain) {
+		t.Error("樹林應該提供不錯的防禦掩護")
+	}
+	if TerrainAttack(Forest) >= TerrainAttack(Plain) {
+		t.Error("樹林只說防禦掩護，攻擊不該比平原好")
+	}
+	for _, tr := range []Terrain{Shallow, Deep} {
+		if TerrainAttack(tr) >= TerrainAttack(Plain) ||
+			TerrainDefence(tr) >= TerrainDefence(Plain) {
+			t.Errorf("%s 應該不利攻擊與防禦", tr)
+		}
+	}
+	if TerrainDefence(Deep) >= TerrainDefence(Shallow) {
+		t.Error("深水應該比淺水更不利")
+	}
+	if TerrainAttack(City) <= TerrainAttack(Fort) ||
+		TerrainDefence(City) <= TerrainDefence(Fort) {
+		t.Error("城池是一流防禦工事，關寨是簡陋的——城池要高於關寨")
+	}
+	if TerrainDefence(City) <= TerrainDefence(Hill) {
+		t.Error("城池的防禦應該高過山丘")
+	}
+	if TerrainAttack(Fort) <= TerrainAttack(Plain) {
+		t.Error("關寨應該有少許攻擊優勢")
+	}
+}
+
+// TestTroopTerrainTable 釘住兵種對地形的加成（`DS:0x8602`，`L0`），
+// 以及它與說明書 p.18 那句話一致。
+func TestTroopTerrainTable(t *testing.T) {
+	for _, c := range []struct {
+		k    TroopKind
+		t    Terrain
+		want int
+	}{
+		{TroopLand, Plain, 5}, {TroopLand, Forest, 5}, {TroopLand, Hill, 0},
+		{TroopMountain, Hill, 10}, {TroopMountain, Plain, 0},
+		{TroopWaterOnly, Shallow, 10}, {TroopWaterOnly, Deep, 10},
+		{TroopMtnLand, Hill, 10}, {TroopMtnLand, Plain, 5},
+		{TroopWaterLand, Deep, 10}, {TroopWaterLand, Plain, 5},
+		{TroopMtnWater, Hill, 10}, {TroopMtnWater, Shallow, 10},
+		{TroopMighty, Deep, 15}, {TroopMighty, City, 8}, {TroopMighty, Desert, 5},
+	} {
+		if got := TroopTerrainBonus(c.k, c.t); got != c.want {
+			t.Errorf("%s軍在%s的加成是 %d，原版是 %d", c.k, c.t, got, c.want)
+		}
+	}
+	// 「強力軍是萬能兵種……而且也更能發揮地形特性」（p.18）：
+	// **每一種走得進去的地形都有加成，而且不低於專精那一種**。
+	for _, tr := range []Terrain{Hill, Shallow, Deep, City, Fort, Plain, Forest, Desert} {
+		if TroopTerrainBonus(TroopMighty, tr) <= 0 {
+			t.Errorf("強力軍在%s沒有加成", tr)
+		}
+	}
+	if TroopTerrainBonus(TroopMighty, Deep) <= TroopTerrainBonus(TroopWaterOnly, Deep) {
+		t.Error("強力軍在深水應該比水軍還強")
+	}
+	// 大山誰都走不進去，所以誰都沒有加成。
 	for k := TroopLand; k <= TroopMighty; k++ {
-		if MoveCost(Mountain, k) < 99 {
-			t.Errorf("%s 軍居然走得進大山", k)
+		if TroopTerrainBonus(k, Mountain) != 0 {
+			t.Errorf("%s軍在大山有加成", k)
 		}
 	}
 }
 
-// TestTerrainModsFollowManual 釘住地形效應的**方向**（說明書 p.31–32）。
+// TestLeaderPower 釘住一位將領的戰力值公式（`0x2e01a`／`0x2e13a`，`L0`）：
 //
-// 幅度是 remake 選的（`docs/design/02`），但誰高誰低是手冊寫死的：
-// 城池發揮最大戰力與一流防禦、山丘強化攻防、樹林是不錯的防禦掩護、
-// 水域攻防都不便、平原沙漠無特殊效果。
-func TestTerrainModsFollowManual(t *testing.T) {
-	for _, tr := range []Terrain{Plain, Desert} {
-		if AttackMod(tr) != 0 || DefenceMod(tr) != 0 {
-			t.Errorf("%s 應該無特殊效果", tr)
+//	(戰力 × 7 + 3 × 武裝度) × (兵種適性 + 地形值) ÷ 1000
+func TestLeaderPower(t *testing.T) {
+	// 陸軍、平原、攻方：(80×7 + 3×60) × (5 + 20) / 1000 ＝ 740×25/1000 ＝ 18
+	if got := LeaderPower(80, 60, TroopLand, Plain, true); got != 18 {
+		t.Errorf("陸軍在平原進攻的戰力值是 %d，公式算出來是 18", got)
+	}
+	// 同一位在城池守：(740) × (0 + 40) / 1000 ＝ 29
+	if got := LeaderPower(80, 60, TroopLand, City, false); got != 29 {
+		t.Errorf("陸軍在城池防守的戰力值是 %d，公式算出來是 29", got)
+	}
+	// 兵種適性真的有進去：山軍在山丘 (0+20) → (10+20)。
+	lo := LeaderPower(80, 60, TroopLand, Hill, true)
+	hi := LeaderPower(80, 60, TroopMountain, Hill, true)
+	if hi <= lo {
+		t.Errorf("山軍在山丘 %d 應該高過陸軍的 %d", hi, lo)
+	}
+	// 大山的地形值是 0，所以誰站上去戰力值都是 0。
+	if got := LeaderPower(100, 100, TroopMighty, Mountain, true); got != 0 {
+		t.Errorf("大山上的戰力值是 %d，應該是 0", got)
+	}
+}
+
+// TestMovePointsFormula 釘住移動力（`0x2e07a`，`L0`）：
+//
+//	min(15, (訓練度 − 武裝度 + 100) ÷ 10 + 1)
+func TestMovePointsFormula(t *testing.T) {
+	for _, c := range []struct {
+		train, arms, want int
+	}{
+		{50, 50, 11}, {100, 0, 15}, {0, 100, 1}, {100, 100, 11}, {80, 20, 15},
+		{60, 50, 12},
+	} {
+		u := &Unit{Leaders: []Leader{{
+			Training: uint8(c.train), Arms: uint8(c.arms), Soldiers: 1000,
+		}}}
+		if got := u.MovePoints(); got != c.want {
+			t.Errorf("訓練 %d 武裝 %d 的移動力是 %d，公式算出來是 %d",
+				c.train, c.arms, got, c.want)
 		}
-	}
-	if AttackMod(Hill) <= 0 || DefenceMod(Hill) <= 0 {
-		t.Error("山丘應該強化攻擊力和防禦力")
-	}
-	if DefenceMod(Forest) <= 0 {
-		t.Error("樹林應該提供不錯的防禦掩護")
-	}
-	if AttackMod(Forest) != 0 {
-		t.Error("樹林手冊只說防禦掩護，攻擊不該有加成")
-	}
-	for _, tr := range []Terrain{Shallow, Deep} {
-		if AttackMod(tr) >= 0 || DefenceMod(tr) >= 0 {
-			t.Errorf("%s 應該不利攻擊與防禦", tr)
-		}
-	}
-	if DefenceMod(Deep) >= DefenceMod(Shallow) {
-		t.Error("深水應該比淺水更不利")
-	}
-	if AttackMod(City) <= AttackMod(Fort) || DefenceMod(City) <= DefenceMod(Fort) {
-		t.Error("城池是一流防禦工事，關寨是簡陋的——城池要高於關寨")
-	}
-	if DefenceMod(City) <= DefenceMod(Hill) {
-		t.Error("城池的防禦應該高過山丘")
-	}
-	if AttackMod(Fort) <= 0 {
-		t.Error("關寨應該有少許攻擊優勢")
 	}
 }

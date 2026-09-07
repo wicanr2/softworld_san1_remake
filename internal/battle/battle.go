@@ -293,10 +293,7 @@ func (b *Battle) power(u *Unit) int {
 		q += int(c.War) * TuneHitWar / 100
 	}
 	t := b.Field.At(u.At)
-	q = q * (100 + AttackMod(t)) / 100
-	if u.Troop().Suits(t) {
-		q = q * 110 / 100 // 「能適應地形的兵種攻防能力會更好」（p.31）
-	}
+	q = q * TerrainFactor(t, u.Troop(), true) / 100
 	if u.Enraged > 0 {
 		q = q * (100 - TuneEnragedPenalty) / 100
 	}
@@ -307,10 +304,7 @@ func (b *Battle) power(u *Unit) int {
 func (b *Battle) defence(u *Unit) int {
 	q := 100 + u.AvgTraining()*TuneHitTraining/100 + u.AvgArms()*TuneHitArms/100
 	t := b.Field.At(u.At)
-	q = q * (100 + DefenceMod(t)) / 100
-	if u.Troop().Suits(t) {
-		q = q * 110 / 100
-	}
+	q = q * TerrainFactor(t, u.Troop(), false) / 100
 	return u.Soldiers() * q / 100
 }
 

@@ -253,14 +253,24 @@ func (u *Unit) Name() string {
 
 // MovePoints 是這支部隊一天的移動力。
 //
-// 「移動力來源是訓練度和部隊內兵種的綜合參考，也可藉由休息增加；
-// 全副武裝將稍減移動力」（說明書 p.29–30）。
+// 原版對每一位將領各算一次（`0x2e07a`，`L0`）：
+//
+//	移動力 ＝ min(15, (訓練度 − 武裝度 + 100) ÷ 10 + 1)
+//
+// 訓練度愈高愈遠、武裝度愈高愈近，正是手冊 p.29–30 說的
+// 「移動力來源是訓練度」「全副武裝將稍減移動力」。範圍 1–15。
+//
+// remake 這一層算的是部隊不是單一將領，所以拿部隊的加權平均代入。
 func (u *Unit) MovePoints() int {
-	mp := TuneMoveBase + u.AvgTraining()/TuneMoveTraining
-	// 全副武裝稍減。
-	mp -= u.AvgArms() / TuneMoveArmsPenalty
-	if mp < TuneMoveMin {
-		mp = TuneMoveMin
+	mp := (u.AvgTraining()-u.AvgArms()+100)/10 + 1
+	if mp > MoveMax {
+		mp = MoveMax
+	}
+	if mp < 1 {
+		mp = 1
 	}
 	return mp
 }
+
+// MoveMax 是移動力的上限，原版寫死在 `0x2e08f`。
+const MoveMax = 15

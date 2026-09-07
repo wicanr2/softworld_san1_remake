@@ -105,14 +105,15 @@ func TestTroopIsMajorityBySoldiers(t *testing.T) {
 	}
 }
 
-// TestMovePointsHasFloor 釘住移動力有下限。
+// TestMovePointsHasFloor 釘住移動力的下限。
 //
-// 訓練度 0、武裝度滿的部隊算出來會是負的；**一支動不了的部隊
-// 在戰場上看起來像卡住的 bug**，所以要有下限。
+// 原版的公式 `(訓練 − 武裝 + 100)/10 + 1` 在訓練 0、武裝 100 時是 1，
+// 而最便宜的地形要 2——**原版就是讓這種部隊動不了**。這裡只擋住
+// 資料越界（武裝度存的是 `u8`）算出負數。
 func TestMovePointsHasFloor(t *testing.T) {
 	u := &Unit{Leaders: []Leader{{Soldiers: 100, Training: 0, Arms: 255}}}
-	if got := u.MovePoints(); got < TuneMoveMin {
-		t.Errorf("移動力 %d 低於下限 %d", got, TuneMoveMin)
+	if got := u.MovePoints(); got < 1 {
+		t.Errorf("移動力 %d 低於下限 1", got)
 	}
 	// 訓練度高的走得比較遠（說明書 p.30：「移動力來源是訓練度…」）。
 	slow := &Unit{Leaders: []Leader{{Soldiers: 100, Training: 0, Arms: 0}}}

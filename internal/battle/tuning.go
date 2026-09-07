@@ -9,10 +9,6 @@ package battle
 
 const (
 	// 移動力（說明書 p.29–30 只說「來源是訓練度和兵種」「全副武裝稍減」）。
-	TuneMoveBase        = 4
-	TuneMoveTraining    = 25
-	TuneMoveArmsPenalty = 50
-	TuneMoveMin         = 2
 
 	// TuneRestMove 是休息增加的移動力。**這個有出處**：
 	// 手冊 p.29、p.30 兩處都寫「每休息一次可增加移動力 2」。

@@ -63,23 +63,90 @@ func (t Terrain) Passable() bool { return t != Mountain }
 // Water 回報是不是水域。火攻與水淹的殺傷、以及水軍的適性都看它。
 func (t Terrain) Water() bool { return t == Shallow || t == Deep }
 
-// 攻防修正（百分比）。出處是手冊 p.31–32 的兩張地形效應表：
-// 山丘強化攻防、樹林提供不錯的防禦掩護、水域對攻防都不便、
-// 城池發揮最大戰力與一流防禦、關寨少許攻擊優勢與簡陋防禦、
-// 平原沙漠無特殊效果。**方向是手冊的，幅度是 remake 選的。**
-var attackMod = [terrainCount]int{
-	Plain: 0, Desert: 0, Hill: +20, Forest: 0,
-	Shallow: -20, Deep: -30, City: +30, Fort: +10, Mountain: 0,
+// 地形的攻防值。原版的兩張表在 `DS:0x85c2`（攻方所在格）與
+// `DS:0x85e2`（守方所在格），用地形碼索引（`0x2df44`／`0x2df8d`，`L0`）。
+//
+// 手冊 p.31–32 只給了方向（山丘強化攻防、樹林提供不錯的防禦掩護、
+// 水域不便、城池最強、關寨次之）；**幅度是量到的**。
+var terrainAttack = [terrainCount]int{
+	Plain: 20, Desert: 15, Hill: 20, Forest: 16,
+	Shallow: 8, Deep: 6, City: 27, Fort: 25, Mountain: 0,
 }
 
-var defenceMod = [terrainCount]int{
-	Plain: 0, Desert: 0, Hill: +20, Forest: +25,
-	Shallow: -20, Deep: -30, City: +50, Fort: +20, Mountain: 0,
+var terrainDefence = [terrainCount]int{
+	Plain: 17, Desert: 16, Hill: 22, Forest: 22,
+	Shallow: 9, Deep: 8, City: 40, Fort: 30, Mountain: 0,
 }
 
-// AttackMod／DefenceMod 是地形對攻擊力與防禦力的修正百分比。
-func AttackMod(t Terrain) int  { return attackMod[t] }
-func DefenceMod(t Terrain) int { return defenceMod[t] }
+// TerrainAttack／TerrainDefence 是地形的攻防值（原版的絕對值）。
+func TerrainAttack(t Terrain) int  { return terrainAttack[t] }
+func TerrainDefence(t Terrain) int { return terrainDefence[t] }
+
+// troopTerrain 是兵種對地形的加成。原版的表在 `DS:0x8602`，
+// 七個兵種各 16 格，用地形碼索引（`0x2e049`／`0x2e169`，`L0`）。
+//
+// 這張表就是手冊 p.18 那句話的數字版：「山、陸、水各代表在山丘、
+// 平地或水域有優良戰力」——陸軍加在平原與樹林，山軍加在山丘，
+// 水軍加在淺水與深水；「強力軍是萬能兵種，而且也更能發揮地形特性」
+// ——強力軍每一種地形都有，而且水上比水軍還高。
+var troopTerrain = [7][terrainCount]int{
+	TroopLand:      {Plain: 5, Forest: 5},
+	TroopMountain:  {Hill: 10},
+	TroopWaterOnly: {Shallow: 10, Deep: 10},
+	TroopMtnLand:   {Hill: 10, Plain: 5, Forest: 5},
+	TroopWaterLand: {Shallow: 10, Deep: 10, Plain: 5, Forest: 5},
+	TroopMtnWater:  {Hill: 10, Shallow: 10, Deep: 10},
+	TroopMighty: {
+		Hill: 12, Shallow: 13, Deep: 15, City: 8, Fort: 8,
+		Plain: 6, Forest: 6, Desert: 5,
+	},
+}
+
+// TroopTerrainBonus 是兵種在某種地形上的加成。
+func TroopTerrainBonus(k TroopKind, t Terrain) int {
+	if int(k) >= len(troopTerrain) {
+		return 0
+	}
+	return troopTerrain[k][t]
+}
+
+// 一位將領的戰力值：原版每一次對戰都對雙方的每一位將領各算一次
+// （`0x2e01a` 守方、`0x2e13a` 攻方，`L0`）：
+//
+//	戰力值 ＝ (戰力 × 7 ＋ 3 × 武裝度) × (兵種適性 ＋ 地形值) ÷ 1000
+//
+// 地形值攻方取 terrainAttack、守方取 terrainDefence，兩邊各用
+// **自己所在那一格**的地形。
+const (
+	LeaderWarWeight  = 7
+	LeaderArmsWeight = 3
+	LeaderPowerDiv   = 1000
+)
+
+// LeaderPower 是一位將領在某一格的戰力值。
+func LeaderPower(war, arms int, k TroopKind, t Terrain, attacking bool) int {
+	edge := terrainDefence[t]
+	if attacking {
+		edge = terrainAttack[t]
+	}
+	return (war*LeaderWarWeight + LeaderArmsWeight*arms) *
+		(TroopTerrainBonus(k, t) + edge) / LeaderPowerDiv
+}
+
+// TerrainFactor 是地形與兵種合起來對戰力的倍率，**以陸軍在平原為 100**。
+//
+// 原版把「兵種適性 ＋ 地形值」當成乘數（見 LeaderPower）；remake 這一層
+// 算的是部隊不是單一將領，所以換算成相對平原的百分比再乘上去。
+// **兩張表都是量到的，換成百分比這一步是 remake 的**。
+func TerrainFactor(t Terrain, k TroopKind, attacking bool) int {
+	base := troopTerrain[TroopLand][Plain] + terrainDefence[Plain]
+	edge := terrainDefence[t]
+	if attacking {
+		base = troopTerrain[TroopLand][Plain] + terrainAttack[Plain]
+		edge = terrainAttack[t]
+	}
+	return (TroopTerrainBonus(k, t) + edge) * 100 / base
+}
 
 // moveCost 是走進一格要花的移動力。
 //
@@ -277,18 +344,15 @@ func (f *Field) String() string {
 
 // MoveCost 是走進某一格要花的移動力。
 //
-// 兵種對地形的適性會改變花費——「移動力來源是訓練度和兵種能否適應地形」
-// （說明書 p.30）。水軍在水上、山軍在山丘、陸軍在平地各自省力。
-func MoveCost(t Terrain, troop TroopKind) int {
-	c := moveCost[t]
-	if c >= 999 {
-		return c
-	}
-	if troop.Suits(t) && c > 1 {
-		c--
-	}
-	return c
-}
+// **只看地形，不看兵種。** 原版取完 `DS:0x7c42` 那一格的值就直接跟
+// 部隊剩下的移動力比（`0x27e71`，部隊記錄 offset 36），中間沒有任何
+// 按兵種的調整。說明書 p.30 的「移動力來源是訓練度和兵種能否適應地形」
+// 講的是**移動力本身**（`Unit.MovePoints`，看訓練度與武裝度）與
+// 兵種在戰力上的加成（`TroopTerrainBonus`），不是每一格的花費。
+//
+// troop 留著是為了呼叫端不必知道這件事，也留一個位置給加強版——
+// 兩版的表還沒比過。
+func MoveCost(t Terrain, troop TroopKind) int { return moveCost[t] }
 
 // TroopKind 是兵種。編號與原版的字串表相同（`docs/spec/003` §2.1）。
 type TroopKind uint8
