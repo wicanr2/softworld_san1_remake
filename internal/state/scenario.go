@@ -863,3 +863,37 @@ func ProvinceName(i int) string {
 	}
 	return provinceNames[i]
 }
+
+// troopNames／rankNames 是原版自己的字串表：兵種在 `DS:0x5962`
+// （七項、每項 5 bytes），職位在 `DS:0x5934`（九項、每項 5 bytes）。
+//
+// **編號對應是 `L0` 不是推的**——表就在那裡，`0x2225`（兵種）與
+// `0x221c`（職位）當索引。原版的兵種名前後補空白（` 陸 `），
+// 畫面上再接一個「軍」字；這裡存的是去掉空白的字。
+var (
+	troopNames = [...]string{"陸", "山", "水", "山陸", "水陸", "山水", "強力"}
+	rankNames  = [...]string{"君主", "軍師", "參軍", "主簿", "謀士",
+		"大將", "副將", "裨將", "牙將"}
+)
+
+// TroopName 是兵種的原文名稱；越界回空字串。
+func TroopName(k TroopType) string {
+	if int(k) >= len(troopNames) {
+		return ""
+	}
+	return troopNames[k]
+}
+
+// RankName 是職位的原文名稱；越界回空字串。
+func RankName(r Rank) string {
+	if int(r) >= len(rankNames) {
+		return ""
+	}
+	return rankNames[r]
+}
+
+// TroopCount／RankCount 是兩張表的長度。
+const (
+	TroopCount = len(troopNames)
+	RankCount  = len(rankNames)
+)

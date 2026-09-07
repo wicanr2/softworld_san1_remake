@@ -142,6 +142,8 @@ func StatusName(s state.Status) string {
 		return t("status.free")
 	case state.StatusUnborn:
 		return t("status.unborn")
+	case state.StatusFallen:
+		return t("status.fallen")
 	}
 	return "?"
 }

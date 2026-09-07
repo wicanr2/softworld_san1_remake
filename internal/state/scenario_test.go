@@ -706,3 +706,34 @@ func TestProvinceAndFieldShape(t *testing.T) {
 		}
 	}
 }
+
+// TestTroopAndRankNames 釘住兵種與職位的編號對應。
+//
+// **這兩張表是 `L0`**：原版的字串表就在 `DS:0x5962` 與 `DS:0x5934`，
+// 用 offset 21／12 直接索引。劇本資料裡的值必須全部落在表內——
+// 落在表外表示編號對應讀錯了，而畫面上只會看到一個「?」。
+func TestTroopAndRankNames(t *testing.T) {
+	if TroopName(0) != "陸" || TroopName(6) != "強力" || TroopName(7) != "" {
+		t.Error("兵種表對不上原版字串表")
+	}
+	if RankName(0) != "君主" || RankName(8) != "牙將" || RankName(9) != "" {
+		t.Error("職位表對不上原版字串表")
+	}
+	c := loadData2(t, "三國演義")
+	for _, slot := range []Slot{Scenario1, Scenario6} {
+		sc, err := LoadScenario(c, slot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, g := range sc.Generals() {
+			// **兵種與職位都可以是 `0xFF` 哨兵**：填充槽是這樣，
+			// 劇本 006 的王楷也是。哨兵不是編號（`CLAUDE.md` §7 第 11 條）。
+			if g.Troop != TroopType(NoValue) && TroopName(g.Troop) == "" {
+				t.Errorf("劇本 %s 的 %s 兵種是 %d，表外", slot, g.Name, g.Troop)
+			}
+			if g.Rank != Rank(NoValue) && RankName(g.Rank) == "" {
+				t.Errorf("劇本 %s 的 %s 職位是 %d，表外", slot, g.Name, g.Rank)
+			}
+		}
+	}
+}
