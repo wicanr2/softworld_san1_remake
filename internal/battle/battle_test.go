@@ -294,6 +294,7 @@ func TestArcheryIsLighterThanMelee(t *testing.T) {
 	a1 := place(b1, MainAttacker, Vanguard, from, lead("射", 50, 50, 5000))
 	t1 := place(b1, MainDefender, Centre, from.Step(DirUpRight).Step(DirUpRight),
 		lead("靶", 50, 50, 5000))
+	shots := a1.Arrows
 	if err := b1.Archery(a1, t1.At); err != nil {
 		t.Fatalf("射箭失敗：%v", err)
 	}
@@ -307,7 +308,7 @@ func TestArcheryIsLighterThanMelee(t *testing.T) {
 	}
 	meleeLoss := 5000 - t2.Soldiers()
 
-	perArrow := arrowLoss / a1.Arrows()
+	perArrow := arrowLoss / shots
 	if perArrow >= meleeLoss {
 		t.Errorf("一次箭傷 %d，白刃一次傷 %d——箭應該比較輕", perArrow, meleeLoss)
 	}

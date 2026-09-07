@@ -162,6 +162,9 @@ func (b *Battle) formUp(side Side, pool []Leader, base Hex) []*Unit {
 		}
 		u.Leaders = append(u.Leaders, l)
 	}
+	for _, u := range units {
+		u.Arrows = ArrowCount(u.Leaders)
+	}
 	// 紮營：依 DeployOrder 從基準點往外排。
 	spot := base
 	for i, u := range units {
@@ -519,10 +522,14 @@ func (b *Battle) Archery(a *Unit, target Hex) error {
 	if t.Side.Attacking() == a.Side.Attacking() {
 		return fmt.Errorf("battle: 那是友軍")
 	}
-	n := a.Arrows()
+	n := a.Arrows
 	if n <= 0 {
-		return fmt.Errorf("battle: 武裝度不足，射不出箭")
+		return fmt.Errorf("battle: 箭射完了")
 	}
+	// ⚠ **registered remake 差異**：原版一次射一箭，選單上印著剩幾次
+	// （`DS:0x80ae`「弓箭攻擊 次數:%d」）；remake 一次把整壺射完，
+	// 因為一次一箭配上一次一回合，在收斂成部隊對部隊的這一層太細。
+	// 次數本身是量到的（`ArrowCount`），而且**會用完**。
 	total := 0
 	for i := 0; i < n; i++ {
 		if !t.Alive() {
@@ -530,6 +537,7 @@ func (b *Battle) Archery(a *Unit, target Hex) error {
 		}
 		total += b.hit(a, t, TuneArrowDamage)
 	}
+	a.Arrows = 0
 	b.note("%s 射了 %d 次箭，%s 折損 %d", a.Name(), n, t.Name(), total)
 	a.Move = 0
 	return nil

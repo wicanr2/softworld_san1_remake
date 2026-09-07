@@ -177,7 +177,7 @@ func drawBattleSide(c *Canvas, b *battle.Battle, v BattleView) {
 		if ch := u.Chief(); ch != nil {
 			put(tf("bat.chiefLine", ch.Stamina, ch.War), ColFG)
 		}
-		put(tf("bat.arrowsLine", u.Arrows()), ColFG)
+		put(tf("bat.arrowsLine", u.Arrows), ColFG)
 	}
 	if v.Menu != "" {
 		row++
@@ -263,7 +263,7 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 	out := []string{
 		tf("bat.unitHead", u.Name(), u.Soldiers(), u.Move),
 		tf("bat.unitStats",
-			u.AvgTraining(), u.AvgArms(), TroopKindName(u.Troop()), u.Arrows()),
+			u.AvgTraining(), u.AvgArms(), TroopKindName(u.Troop()), u.Arrows),
 		"",
 		cells.Pad(t("fld.name"), 8) + cells.Pad(t("fld.war"), 4) +
 			cells.Pad(t("fld.intel"), 4) + cells.Pad(t("fld.stamina"), 4) +

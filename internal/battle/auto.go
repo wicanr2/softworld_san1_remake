@@ -67,7 +67,7 @@ func (b *Battle) AutoTurn(u *Unit) {
 	}
 	// 射箭。
 	for _, t := range b.enemies(u) {
-		if Distance(u.At, t.At) == 2 && u.Arrows() > 0 {
+		if Distance(u.At, t.At) == 2 && u.Arrows > 0 {
 			if err := b.Archery(u, t.At); err == nil {
 				return
 			}

@@ -7,43 +7,70 @@ import "testing"
 // 「部隊各單武裝度平均值 ÷ 20 後取整數」，
 // 例：`(75 + 80 + 50 + 100) ÷ 4 = 76.25`，`76.25 ÷ 20 = 3.8125`，射三次。
 //
-// ⚠ 算例用的是**各單的算術平均**，不是兵數加權。這個測試就是防止
-// 有人「順手改成加權平均」——那在多數情況下看起來更合理，但與手冊不同。
-func TestArrowsMatchesManualExample(t *testing.T) {
-	// 兵數刻意偏在武裝度最低的那一位身上：加權平均會落到 50 附近，
-	// 只射得出兩次；算術平均是手冊的 76，射三次。兩條路的答案不同，
-	// 這一題才問得出我們走的是哪一條。
-	u := &Unit{Leaders: []Leader{
+// ⚠ **手冊的算例看起來像算術平均，碼裡是兵數加權**（`0x272eb`）。
+// 算例沒提兵數，所以兩種算法在那一組數字上分不出來；以碼為準。
+func TestArrowCountIsWeightedByTroops(t *testing.T) {
+	// 兵數刻意偏在武裝度最低的那一位身上：算術平均是 76（射三次），
+	// 兵數加權落在 50 附近（射兩次）。兩條路的答案不同，這一題才問得出
+	// 我們走的是哪一條。
+	ls := []Leader{
 		{Name: "甲", Arms: 75, Soldiers: 10},
 		{Name: "乙", Arms: 80, Soldiers: 10},
 		{Name: "丙", Arms: 50, Soldiers: 10000},
 		{Name: "丁", Arms: 100, Soldiers: 10},
-	}}
-	if got := u.Arrows(); got != 3 {
-		t.Errorf("弓箭次數 %d，手冊的算例是 3 次", got)
 	}
-	if u.AvgArms()/20 == 3 {
+	if got := ArrowCount(ls); got != 2 {
+		t.Errorf("弓箭次數 %d，兵數加權算出來是 2 次（算術平均會是 3）", got)
+	}
+	u := &Unit{Leaders: ls}
+	if u.AvgArms()/20 != 2 {
 		t.Fatal("這組數字沒有拉開加權與算術平均的差距，測不到想測的東西")
 	}
 }
 
-// TestArrowsIgnoresLostLeaders 釘住死掉與被擒的人不算進平均。
-func TestArrowsIgnoresLostLeaders(t *testing.T) {
-	u := &Unit{Leaders: []Leader{
+// TestArrowCountIgnoresLostLeaders 釘住死掉、被擒、沒有兵的人不算。
+func TestArrowCountIgnoresLostLeaders(t *testing.T) {
+	ls := []Leader{
 		{Arms: 100, Soldiers: 100},
 		{Arms: 100, Soldiers: 100},
 		{Arms: 0, Soldiers: 100, Dead: true},
 		{Arms: 0, Soldiers: 100, Captured: true},
-	}}
-	if got := u.Arrows(); got != 5 {
-		t.Errorf("弓箭次數 %d，兩位陣亡被擒的不算，應該是 100/20 = 5", got)
+		{Arms: 0, Soldiers: 0},
 	}
-	if u.Arrows() == 0 {
-		t.Error("整隊都沒了才該射不出箭")
+	if got := ArrowCount(ls); got != 5 {
+		t.Errorf("弓箭次數 %d，只算還在的兩位，應該是 100/20 = 5", got)
 	}
-	empty := &Unit{}
-	if empty.Arrows() != 0 {
+	if ArrowCount(nil) != 0 {
 		t.Error("空隊伍應該射不出箭")
+	}
+	if ArrowCount([]Leader{{Arms: 100, Soldiers: 0}}) != 0 {
+		t.Error("沒有兵就沒有箭")
+	}
+}
+
+// TestArrowsAreSpent 釘住箭**會用完**。
+//
+// 原版把次數存在部隊記錄 offset 20，每射一次遞減（`0x2abae`）；
+// 每次都重算的話一支部隊可以無限次射滿箭，而戰報上只看得出
+// 「這一場箭特別多」。
+func TestArrowsAreSpent(t *testing.T) {
+	b := arena(flat(Plain))
+	from := FromOffset(4, 6)
+	a := place(b, MainAttacker, Vanguard, from, lead("射", 50, 50, 5000))
+	tgt := place(b, MainDefender, Centre, from.Step(DirUpRight).Step(DirUpRight),
+		lead("靶", 50, 50, 5000))
+	if a.Arrows <= 0 {
+		t.Fatalf("開場的箭是 %d，應該大於 0", a.Arrows)
+	}
+	if err := b.Archery(a, tgt.At); err != nil {
+		t.Fatalf("射箭失敗：%v", err)
+	}
+	if a.Arrows != 0 {
+		t.Errorf("射完剩 %d 支，remake 一次射完整壺", a.Arrows)
+	}
+	a.Move = a.MovePoints()
+	if err := b.Archery(a, tgt.At); err == nil {
+		t.Error("箭射完了還射得出來")
 	}
 }
 

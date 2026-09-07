@@ -117,6 +117,11 @@ type Unit struct {
 	// Trapped 是中了陷阱之後不能活動的天數（說明書 p.33：九日）。
 	Trapped int
 
+	// Arrows 是還能射幾次箭。**這是狀態不是算出來的**：原版把它存在
+	// 部隊記錄 offset 20，開戰時算一次（`ArrowCount`），每射一次遞減
+	// （`0x2abae`）。每次都重算的話一支部隊可以無限次射滿箭。
+	Arrows int
+
 	// Retreated／Wiped 表示已經離開戰場。
 	Retreated bool
 	Wiped     bool
@@ -217,27 +222,33 @@ func (u *Unit) Troop() TroopKind {
 	return best
 }
 
-// Arrows 是這支部隊還能射幾次箭。
+// ArrowCount 是這支部隊開戰時的弓箭次數，原版存在部隊記錄 offset 20
+// （`0x272eb`，`L0`）。
 //
-// 手冊 p.32 給了公式與算例：「部隊各單武裝度平均值 ÷ 20 後取整數」，
-// 例：`(75 + 80 + 50 + 100) ÷ 4 = 76.25`，`76.25 ÷ 20 = 3.8125`，射三次。
+// 原版逐位在場將領累加，再一起收斂：
 //
-// ⚠ **算例用的是各單的算術平均**，不是兵數加權——所以這裡不能用
-// AvgArms。手冊自己算給我們看了，照它。
-func (u *Unit) Arrows() int {
-	sum, n := 0, 0
-	for i := range u.Leaders {
-		x := &u.Leaders[i]
-		if x.Dead || x.Captured {
+//	S ＝ Σ round(武裝度ᵢ × 兵士數ᵢ ÷ 100)
+//	N ＝ Σ 兵士數ᵢ
+//	次數 ＝ round(S ÷ N × 100) ÷ 20      （N ≤ 0 時為 0）
+//
+// 也就是**兵數加權**的平均武裝度 ÷ 20。手冊 p.32 的算例
+// （`(75 + 80 + 50 + 100) ÷ 4 = 76.25`，`76.25 ÷ 20 = 3.8125`，射三次）
+// 看起來像算術平均，那是因為算例沒提兵數——**以碼為準**：
+// 一支千人的精銳與一支十人的殘兵放在一起時，兩種算法差很多。
+func ArrowCount(leaders []Leader) int {
+	sum, troops := 0, 0
+	for i := range leaders {
+		x := &leaders[i]
+		if x.Dead || x.Captured || x.Soldiers <= 0 {
 			continue
 		}
-		sum += int(x.Arms)
-		n++
+		sum += (int(x.Arms)*x.Soldiers + 50) / 100
+		troops += x.Soldiers
 	}
-	if n == 0 {
+	if troops <= 0 {
 		return 0
 	}
-	return sum / n / 20
+	return (sum*100 + troops/2) / troops / 20
 }
 
 // Name 是這支部隊給人看的名字。
