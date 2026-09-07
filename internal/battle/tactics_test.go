@@ -330,9 +330,10 @@ func TestRefusingDuelCostsSoldiers(t *testing.T) {
 	if err := b.Duel(a, DirDownRight, false); err != nil {
 		t.Fatalf("拒絕單挑不該回錯誤：%v", err)
 	}
-	if e.Soldiers() != 900 {
-		t.Errorf("拒戰後剩 %d 兵，%d%% 逃跑應該剩 900",
-			e.Soldiers(), TuneRefuseDuelLoss)
+	// 除數最小是 10 − RND(戰力÷20)，最大是 RND(10) − 戰力÷10 + 50，
+	// 所以損失落在 1/50 到 1/8 之間；拒絕的一方一定掉一些兵。
+	if lost := 1000 - e.Soldiers(); lost <= 0 || lost > 1000/8 {
+		t.Errorf("拒戰後逃散 %d 人，應該落在 1..125", lost)
 	}
 	if e.Leaders[0].Captured || e.Leaders[0].Dead {
 		t.Error("拒絕挑戰的人不會因此被擒或被斬")
@@ -526,5 +527,37 @@ func TestDuelFormula(t *testing.T) {
 	if DuelBlow(76, 70, 4, 0, 0) != 6 || DuelBlow(70, 76, 4, 0, 0) != 0 {
 		t.Errorf("戰力差的方向不對：強方 %d、弱方 %d",
 			DuelBlow(76, 70, 4, 0, 0), DuelBlow(70, 76, 4, 0, 0))
+	}
+}
+
+// TestRefuseDuelDivisor 釘住拒絕單挑的除數（`0x30de6`–`0x30ef5`，`L0`）。
+//
+// **三條分支的順序才是重點**：謀士拒絕損失最小，明顯打不過而拒絕
+// 次之，**旗鼓相當卻拒絕的損失最重**——那是怯戰。
+func TestRefuseDuelDivisor(t *testing.T) {
+	// 謀略 95 > RND(10)+80 的上界 89 → 一定走第一條：
+	// RND(10) − 戰力/10 + 50，戰力 70、RND 0 → 0 − 7 + 50 ＝ 43。
+	if got := RefuseDuelDivisor(95, 70, 99, 0, 0, 0, 0); got != 43 {
+		t.Errorf("謀士拒絕的除數是 %d，應該是 43", got)
+	}
+	// 謀略 50：第二條，RND(5)+戰力 < 挑戰者戰力 → 25 − RND(戰力/20)。
+	if got := RefuseDuelDivisor(50, 70, 99, 0, 0, 0, 0); got != 25 {
+		t.Errorf("打不過而拒絕的除數是 %d，應該是 25", got)
+	}
+	// 謀略 50、戰力相當：第三條 → 10 − RND(戰力/20)。
+	if got := RefuseDuelDivisor(50, 70, 70, 0, 0, 0, 0); got != 10 {
+		t.Errorf("旗鼓相當卻拒絕的除數是 %d，應該是 10", got)
+	}
+	// **順序**：謀士 > 打不過 > 旗鼓相當（除數越大掉得越少）。
+	wise := RefuseDuelDivisor(95, 70, 99, 0, 0, 0, 0)
+	weak := RefuseDuelDivisor(50, 70, 99, 0, 0, 0, 0)
+	even := RefuseDuelDivisor(50, 70, 70, 0, 0, 0, 0)
+	if !(wise > weak && weak > even) {
+		t.Errorf("三條分支的輕重順序不對：謀士 %d、打不過 %d、旗鼓相當 %d",
+			wise, weak, even)
+	}
+	// 除數不會掉到 0——戰力滿的話 10 − RND(5) 最小是 6，但資料越界時要擋。
+	if RefuseDuelDivisor(50, 255, 70, 0, 0, 0, 99) < 1 {
+		t.Error("除數不該小於 1")
 	}
 }

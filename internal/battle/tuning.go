@@ -35,9 +35,7 @@ const (
 	TuneLureDays = 3
 
 
-	// TuneRefuseDuelLoss 是拒絕單挑時逃跑的士兵百分比
 	//（說明書 p.30：「若拒絕挑戰，麾下士兵將有部份逃跑」）。
-	TuneRefuseDuelLoss = 10
 
 	// TuneCaptureOnDuel 是單挑落敗被擒（而不是被斬）的機率。
 	TuneCaptureOnDuel = 60

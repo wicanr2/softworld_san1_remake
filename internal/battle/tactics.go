@@ -28,9 +28,16 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 	}
 	a.Move = 0
 	if !accept {
-		// 「若拒絕挑戰，麾下士兵將有部份逃跑」。
-		b.casualty(t, t.Soldiers()*TuneRefuseDuelLoss/100)
-		b.note("%s 拒絕 %s 的挑戰，士兵逃散", ct.Name, ca.Name)
+		// 「若拒絕挑戰，麾下士兵將有部份逃跑」——**跑的是拒絕那一方的**
+		// （`0x30de6`，三條分支的 `si` 都指向被挑戰者）。
+		div := RefuseDuelDivisor(int(ct.Intel), int(ct.War), int(ca.War),
+			b.roll(RefuseIntelSpread), b.roll(RefuseWarSpread),
+			b.roll(RefuseIntelSpread), b.roll(max(1, int(ct.War)/RefuseWarDiv)))
+		lost := ct.Soldiers / div
+		if lost > 0 {
+			b.casualty(t, lost)
+		}
+		b.note("%s 拒絕 %s 的挑戰，逃散 %d 人", ct.Name, ca.Name, lost)
 		return nil
 	}
 	// 依戰力分高下，與兵力無關。**體能就是血條**，降到 0 即落敗。
@@ -125,6 +132,47 @@ func DuelAccepted(challengerWar, defenderWar, challengerTroops, defenderTroops, 
 		return true
 	}
 	return defenderTroops/DuelFifthTroops > challengerTroops
+}
+
+// 拒絕單挑之後跑掉多少兵（`0x30de6`–`0x30ef5`，`L0`、`[base]`）。
+//
+//	損失 ＝ 拒絕方的兵士數 ÷ 除數
+//
+// 除數分三條，**都用拒絕方（被挑戰者）自己的數字**：
+//
+//	謀略 > RND(10) + 80                → RND(10) − 戰力 ÷ 10 + 50   ; 約 2 %
+//	否則 RND(5) + 戰力 < 挑戰者的戰力  → 25 − RND(戰力 ÷ 20)        ; 約 4–5 %
+//	否則                               → 10 − RND(戰力 ÷ 20)        ; 約 10–14 %
+//
+// **除數越小掉得越多**，所以順序是：謀士拒絕損失最小，
+// 明顯打不過而拒絕次之，**旗鼓相當卻拒絕的損失最重**——
+// 那是怯戰，軍心散得最快。
+const (
+	RefuseIntelFloor  = 80
+	RefuseIntelSpread = 10
+	RefuseWarSpread   = 5
+	RefuseWarDiv      = 20
+	RefuseBaseWise    = 50
+	RefuseBaseWeak    = 25
+	RefuseBaseEven    = 10
+	RefuseWarShare    = 10
+)
+
+// RefuseDuelDivisor 是拒絕單挑時兵士數要除的數。
+func RefuseDuelDivisor(intel, war, challengerWar, roll10, roll5, roll10b, rollWar int) int {
+	div := 0
+	switch {
+	case intel > roll10+RefuseIntelFloor:
+		div = roll10b - war/RefuseWarShare + RefuseBaseWise
+	case roll5+war < challengerWar:
+		div = RefuseBaseWeak - rollWar
+	default:
+		div = RefuseBaseEven - rollWar
+	}
+	if div < 1 {
+		div = 1
+	}
+	return div
 }
 
 // defeatInDuel 處理單挑落敗：可能被擒，或死於刀下（說明書 p.30）。
