@@ -119,6 +119,9 @@ func TestZZDumpBattleCode(t *testing.T) {
 			dgroup, steps = o.DSReg(), o.Steps()
 		}
 	})
+	// `0x22704` 是畫戰場那一支——它跑到了才代表整編走完。
+	fielded := 0
+	o.OnCall(addr(0x22704), func(o *oracle.Oracle) { fielded++ })
 
 	const settle = 40_000_000
 	spell := func(n int) string {
@@ -130,8 +133,17 @@ func TestZZDumpBattleCode(t *testing.T) {
 	}
 	// **每一個提示都要 Enter，選單也一樣**（`docs/re/03` §1.5 的按鍵表）。
 	menu := "2|" + enterMark
+	// 整編：每個軍團一輪，「請按任一鍵」→ 分配將軍 → 分到那一軍 →
+	// 分配完畢(Y/N)；主守軍不問錢糧，主攻軍要問（`docs/re/05` §6）。
+	// 守方郡有兩位守將、攻方郡一位——盤面是 stageABattle 擺的。
+	one := func(n int) string {
+		return fmt.Sprintf("%d|%s|1|%s", n, enterMark, enterMark)
+	}
+	org := enterMark + "|" + one(1) + "|N|" + one(2) + "|Y" +
+		"|" + enterMark + "|" + one(1) + "|Y|5000|" + enterMark +
+		"|9000|" + enterMark + "|Y"
 	keys := envOr("SAN1_BATTLEKEY",
-		menu+"|"+menu+"|"+spell(at)+"|"+spell(to))
+		menu+"|"+menu+"|"+spell(at)+"|"+spell(to)+"|"+org)
 	for i, seg := range strings.Split(keys, "|") {
 		o.Drain()
 		o.PressScan(strings.ReplaceAll(seg, enterMark, "\r"))
@@ -143,6 +155,9 @@ func TestZZDumpBattleCode(t *testing.T) {
 	if dgroup == 0 {
 		t.Fatal("沒有進到主戰場 0x2053c——按鍵序列或盤面不對")
 	}
+	if fielded == 0 {
+		t.Fatal("戰場沒有畫出來——整編的按鍵序列不對")
+	}
 	t.Logf("主戰場在第 %d 步進去，DS ＝ %#06x（線性 %#07x）",
 		steps, dgroup, uint32(dgroup)<<4)
 	// 再跑一段讓戰場畫完，畫面與資料一起留下來。
@@ -152,6 +167,13 @@ func TestZZDumpBattleCode(t *testing.T) {
 	dumpScreen(t, o, "battle-field")
 	lo := uint32(dgroup) << 4
 	dumpImage(t, o, lo, lo+0x10000, "dgroup")
+	// 戰場的工作區在**另一個段**：`ds:0xa872` 這一格存著它的段值。
+	// 地圖緩衝區 `0x163a`、部隊記錄 `0x3502`、軍團記錄 `0x175e`、
+	// 將領戰力值 `0x548` 全在那裡（`docs/re/05`）。
+	work := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa872})
+	t.Logf("戰場工作區的段 ＝ %#06x（線性 %#07x）", work, uint32(work)<<4)
+	wlo := uint32(work) << 4
+	dumpImage(t, o, wlo, wlo+0x10000, "work")
 }
 
 // enterMark 是環境變數裡代表 Enter 的兩個字元。**不寫真的 CR**：

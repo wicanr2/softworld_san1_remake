@@ -367,3 +367,29 @@ func TestStratagemRejectsFriendlyAndEmpty(t *testing.T) {
 		t.Error("用計失敗不該扣錢")
 	}
 }
+
+// TestStratagemTablesMatchTheOriginal 釘住六種計謀的費用與智力門檻
+// （`DS:0x7f62`／`DS:0x7f6e`，`L0`）。
+//
+// 原本的出處是說明書 p.32–34；量到的兩張表**與它逐格相同**，
+// 而且電腦諸侯讀的是同一組（`0x297e6`），所以玩家與電腦的門檻一致。
+func TestStratagemTablesMatchTheOriginal(t *testing.T) {
+	for _, c := range []struct {
+		s              Stratagem
+		cost, minIntel int
+	}{
+		{Fire, 600, 80}, {Flood, 500, 75}, {Trap, 100, 60},
+		{Lure, 400, 60}, {Burn, 300, 70}, {Siege, 200, 65},
+	} {
+		if got := c.s.Cost(); got != c.cost {
+			t.Errorf("%s 要 %d 金，原版是 %d", c.s, got, c.cost)
+		}
+		if got := c.s.MinIntel(); got != c.minIntel {
+			t.Errorf("%s 的智力門檻是 %d，原版是 %d", c.s, got, c.minIntel)
+		}
+	}
+	// 選單的順序是原版的：3 是陷阱、4 是誘敵（手冊排反了）。
+	if Fire != 1 || Flood != 2 || Trap != 3 || Lure != 4 || Burn != 5 || Siege != 6 {
+		t.Error("計謀的編號與原版選單不同")
+	}
+}
