@@ -116,3 +116,44 @@ func BattleField(tiles []*Image, field []byte, bg byte) *Image {
 	}
 	return im
 }
+
+// 部隊的標記是**旗幟**（`DATA1` 的 `WFLAG*`，24×15）。
+//
+// 判準是拿原版紮完寨之後的主戰場，把 `DATA1` 裡的圖逐張去畫面上找：
+// `WFLAGD00`–`WFLAGD03` 四張各有一處 **100% 相符**，位置分別是
+// (304,116)、(304,148)、(352,132)、(352,68)——換算回格子是
+// (5,2)、(5,3)、(6,3)、(6,1)，每一張都在**格子的左上角加 (8, 0)**。
+//
+// 那四張是主攻軍的四支部隊（中軍、先鋒、左軍、右軍）。守軍用哪一組
+// 還沒定：`WFLAGA`／`B`／`C` 在同一張畫面上最高只有七成多。
+const (
+	// FlagW／FlagH 是旗幟的尺寸。
+	FlagW = 24
+	FlagH = 15
+	// FlagOffsetX／Y 是旗幟相對於格子左上角的位移。
+	FlagOffsetX = 8
+	FlagOffsetY = 0
+)
+
+// FlagCell 回傳第 (col, row) 格上旗幟的左上角。
+func FlagCell(col, row int) (x, y int) {
+	x, y = FieldCell(col, row)
+	return x + FlagOffsetX, y + FlagOffsetY
+}
+
+// UnitFlag 取一面旗幟，name 像 `WFLAGD00.IMG`。
+func UnitFlag(data1 *Container, name string) (*Image, error) {
+	i, ok := data1.ByName(name)
+	if !ok {
+		return nil, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
+	}
+	im, err := DecodeImage(data1.Data(i))
+	if err != nil {
+		return nil, err
+	}
+	if im.W != FlagW || im.H != FlagH {
+		return nil, fmt.Errorf("assets: %s 是 %d×%d，旗幟應該是 %d×%d",
+			name, im.W, im.H, FlagW, FlagH)
+	}
+	return im, nil
+}

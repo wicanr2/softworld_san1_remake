@@ -125,3 +125,49 @@ func prefectureField(t *testing.T, pref int) []byte {
 }
 
 var _ = image.Rect
+
+// TestUnitFlagsSitOnCells 釘住部隊旗幟的位置：格子左上角加 (8, 0)。
+//
+// 四面旗在基準畫面上各有一處逐像素 100% 相符，換算回格子都落在
+// 同一個位移上——**四面一致才算數**，一面可能是巧合。
+func TestUnitFlagsSitOnCells(t *testing.T) {
+	f, err := os.Open(bfShotPath)
+	if err != nil {
+		t.Skipf("沒有主戰場基準畫面 %s", bfShotPath)
+	}
+	shot, err := imgpng.Decode(f)
+	f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := container(t, "DATA1")
+	for _, tc := range []struct {
+		name     string
+		col, row int
+	}{
+		{"WFLAGD00.IMG", 5, 2},
+		{"WFLAGD01.IMG", 5, 3},
+		{"WFLAGD02.IMG", 6, 3},
+		{"WFLAGD03.IMG", 6, 1},
+	} {
+		flag, err := UnitFlag(c, tc.name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		x, y := FlagCell(tc.col, tc.row)
+		same := 0
+		for fy := 0; fy < FlagH; fy++ {
+			for fx := 0; fx < FlagW; fx++ {
+				a := EGAPalette[flag.Pix[fy*FlagW+fx]]
+				b := color.RGBAModel.Convert(shot.At(x+fx, y+fy)).(color.RGBA)
+				if a == b {
+					same++
+				}
+			}
+		}
+		if same != FlagW*FlagH {
+			t.Errorf("%s 在格 (%d,%d) → (%d,%d) 只有 %d／%d 個像素相符",
+				tc.name, tc.col, tc.row, x, y, same, FlagW*FlagH)
+		}
+	}
+}

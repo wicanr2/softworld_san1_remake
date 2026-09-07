@@ -150,8 +150,35 @@ y ≤ 340。把兩個軸讀反的話 8×10 會算出 y=488 超出畫面。
 基準畫面的取法：
 
 ```sh
-SAN1_SHOTS=/src/workplace/shots/bf SAN1_BATTLEKEY='2||2||4|1||2|5|||1||1||N|2||1||Y||1||1||Y|5000||9000||Y|0|0|0|0|0|0|0|0' tools/go.sh test ./internal/parity -tags oracle -run TestZZBattleKeySweep
+SAN1_SHOTS=/src/workplace/shots/bf SAN1_BATTLEKEY='2|
+|2|
+|4|1|
+|2|5|
+|
+|1|
+|1|
+|N|2|
+|1|
+|Y|
+|1|
+|1|
+|Y|5000|
+|9000|
+|Y|0|0|0|0|0|0|0|0' tools/go.sh test ./internal/parity -tags oracle -run TestZZBattleKeySweep
 ```
+
+### 部隊的標記是旗幟
+
+`DATA1` 的 `WFLAG*`（24×15）。判準是拿同一張基準畫面把 `DATA1` 裡的圖
+逐張去找：`WFLAGD00`–`WFLAGD03` 各有一處 **100% 相符**，位置是
+(304,116)、(304,148)、(352,132)、(352,68)——換算回格子是 (5,2)、(5,3)、
+(6,3)、(6,1)，每一張都在**格子左上角加 (8, 0)**。四面一致才算數。
+
+那四張是主攻軍的四支部隊。守軍用哪一組還沒定：`WFLAGA`／`B`／`C`
+在同一張畫面上最高只有七成多。
+
+同一次掃描還定下兩個東西：左側面板的天氣圖示是 `WEATHER1.IMG`
+（32×32）在 (8,155)，框線是 `FBRC0.IMG`（80×8）在 (64,268)，都是 100%。
 
 **目前只有地形接上素材**：部隊、指令列、左右面板還是 remake 自己畫的。
 
