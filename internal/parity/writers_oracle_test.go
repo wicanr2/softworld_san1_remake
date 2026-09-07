@@ -321,6 +321,9 @@ func TestZZBattleKeySweep(t *testing.T) {
 	}{
 		{0x188ea, "入口"}, {0x1892a, "君主門"}, {0x189c5, "選完出兵郡"},
 		{0x18aad, "軍師勸諫"}, {0x18b4e, "會合"}, {0x18bb9, "呼叫戰鬥"},
+		{0x2053c, "主戰場"}, {0x20a75, "整編:任一鍵"}, {0x20d26, "整編:分配"},
+		{0x20b37, "整編:金"}, {0x20bf1, "整編:米"}, {0x20c4e, "整編:確認"},
+		{0x22704, "畫戰場"}, {0x21816, "戰場迴圈"},
 	}
 	hit := map[string]int{}
 	for _, m := range marks {
@@ -335,8 +338,13 @@ func TestZZBattleKeySweep(t *testing.T) {
 	o.OnCall(addr(0x1d613), func(o *oracle.Oracle) {
 		got = append(got, fmt.Sprintf("%#06x", o.AX()))
 	})
-	// `1058:0e24`（線性 `0x113a4`）是數字欄位真正讀鍵的那一支，
-	// 回傳 ASCII。攔它回來的那一刻（`0x34f91`）就知道哪些鍵進得去。
+	// **誰在讀鍵**：`1058:0e24`（線性 `0x113a4`）是「讀一個鍵」的共用常式。
+	// 攔它並記呼叫端，就知道卡在哪一個提示——不必再猜。
+	readers := map[uint32]int{}
+	o.OnCall(addr(0x113a4), func(o *oracle.Oracle) { readers[o.Caller().Linear()]++ })
+
+	// `1058:0e24` 也是數字欄位真正讀鍵的那一支，回傳 ASCII。
+	// 攔它回來的那一刻（`0x34f91`）就知道哪些鍵進得去。
 	var keys []string
 	o.OnCall(addr(0x34f91), func(o *oracle.Oracle) {
 		k := o.AX() & 0xff
@@ -370,15 +378,19 @@ func TestZZBattleKeySweep(t *testing.T) {
 	// 量到的鍵序列 `'2' '2' '4' '1' 0x0d …` 正好是這個形狀。
 	menu := "2|" + E
 	head := menu + "|" + menu + "|" + src + "|" + dst
+	// 進到主戰場之後是**整編**（`0x20a30`）：先「請按任一鍵」，
+	// 再分配將軍，再問攜帶多少金、多少米，最後確認。四個軍團依序來，
+	// 主守軍（陣營碼 0）不問，錢糧全帶（`0x20ac3`）。
+	gold, rice := "5000|"+E, "9000|"+E
+	// 分配：「分配那一位將軍(1-%d)」→「將%s分到那一軍(1-5)」→
+	// 「分配完畢(Y/N)」。守方郡 25 有兩位、攻方郡 41 有一位。
+	one := func(n int) string { return fmt.Sprintf("%d|%s|1|%s", n, E, E) }
 	cands := []string{
-		head,
-		head + "|1|" + E,
-		head + "|1|" + E + "|" + E,
-		head + "|1|" + E + "|Y",
-		head + "|1|" + E + "|1|" + E,
-		head + "|1|" + E + "|1|" + E + "|" + E,
-		head + "|" + E,
-		head + "|Y|Y",
+		head + "|" + E + "|" + one(1) + "|N|" + one(2) + "|Y",
+		head + "|" + E + "|" + one(1) + "|" + one(2) + "|Y",
+		head + "|" + E + "|" + one(1) + "|Y|" + one(2) + "|Y",
+		head + "|" + E + "|" + one(1) + "|N|" + one(2) + "|Y" +
+			"|" + E + "|" + one(1) + "|Y|" + gold + "|" + rice + "|Y",
 	}
 	if v := os.Getenv("SAN1_BATTLEKEY"); v != "" {
 		cands = []string{v}
@@ -392,6 +404,9 @@ func TestZZBattleKeySweep(t *testing.T) {
 		}
 		for k := range hit {
 			delete(hit, k)
+		}
+		for k := range readers {
+			delete(readers, k)
 		}
 		for _, seg := range strings.Split(cand, "|") {
 			k := strings.ReplaceAll(seg, enterMark, "\r")
@@ -407,21 +422,26 @@ func TestZZBattleKeySweep(t *testing.T) {
 				t.Fatalf("候選 %q 執行停止：%v", cand, err)
 			}
 		}
-		var who []string
-		for a, n := range asked {
-			who = append(who, fmt.Sprintf("%#07x×%d", a, n))
-		}
-		sort.Strings(who)
 		var route []string
 		for _, m := range marks {
 			if n := hit[m.name]; n > 0 {
 				route = append(route, fmt.Sprintf("%s×%d", m.name, n))
 			}
 		}
-		t.Logf("候選 %d %-30q → 走到 %v；選郡回傳 %v；讀到的鍵 %v",
-			ci+1, cand, route, got, keys)
+		var who []string
+		for a, n := range readers {
+			who = append(who, fmt.Sprintf("%#07x×%d", a, n))
+		}
+		sort.Strings(who)
+		var fields []string
+		for a, n := range asked {
+			fields = append(fields, fmt.Sprintf("%#07x×%d", a, n))
+		}
+		sort.Strings(fields)
+		t.Logf("候選 %d %-30q → 走到 %v；讀鍵 %v；數字欄位 %v；鍵 %v",
+			ci+1, cand, route, who, fields, keys)
 		got, keys = got[:0], keys[:0]
-		_ = who
+		_ = got
 		dumpScreen(t, o, fmt.Sprintf("sweep-%02d", ci+1))
 	}
 }
