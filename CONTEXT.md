@@ -14,6 +14,7 @@
 | 說明書 | 46 頁解到 `workplace/manual/`，整理中 | 2026-09-06 |
 | dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |
 | 反組譯 | IDA 管線成立（`docs/re/01`）；主程式模組已用 objdump 逐段對讀 | 2026-09-06 |
+| **加強版跑得起來了** | `TestZZBootPlus` 把 `ASV.EXE` 載進 dosgolem，開 253 個檔、畫出標題。卡點是 `DATA0.GRP` 檔頭的 `e_cblp = 0xAA90`——那一格只有低九位有意義，dosgolem 沒遮就算出映像比檔案長而拒載（修在 dosgolem 的 `loader.go`）| 2026-09-07 |
 | 格式解析 | 容器、州郡名、劇本三張表、存檔、配樂、點陣圖、戰場地圖都解出來了（`VERIFICATION-MATRIX` §2）| 2026-09-07 |
 | Go 程式 | `assets`／`state`／`cells`／`font`／`ui` 五個套件 ＋ `cmd/san1`（Ebiten）＋ `cmd/san1dump`（CLI／PNG），測試全綠 | 2026-09-06 |
 | 引擎畫面 | 州郡一覽可渲染：42 郡名、零缺字，Ebiten 與無頭 PNG 走同一份畫面程式 | 2026-09-06 |
