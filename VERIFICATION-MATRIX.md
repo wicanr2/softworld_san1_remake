@@ -40,7 +40,7 @@
 | `.OKR`（DATA2，418 項 R000–R427）| **未解**（已知是 1bpp 點陣資料）| `L2` | `[both]` | `docs/mechanics/90` §4 |
 | 戰場地圖（州郡 offset 55–174）| 解出 | `L0` | `[base]` | `docs/spec/003` §3.3、`docs/re/05` §2 |
 | `NAME001`–`006.SHA`（加強版）| **不是遊戲檔**：bundle 裡混進來的第三方命名軟體存檔，`ASV.EXE`／`SV.COM` 都沒有引用 | `L0` | `[plus]` | `docs/mechanics/90` §4.1 |
-| `PARTNSAV.FIL` | **未解** | — | `[base]` | — |
+| `PARTNSAV.FIL` | **不是遊戲檔**：`MIRROR 6.M`／`saved partitions` 簽章 ＝ MS-DOS 6.x 的分割表備份，`AA.EXE` 沒有引用 | `L0` | `[base]` | `docs/formats/01` §6 |
 
 ### 劇本三張表的欄位覆蓋率
 
