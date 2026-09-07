@@ -96,6 +96,10 @@ type Pending struct {
 	aidAtt, aidDef []*General
 
 	result *BattleResult
+
+	// autoAI 為真表示這一場走的是電腦對電腦那條（`battle.AutoResolveAI`）。
+	// 收尾的錢糧規則跟著換，見 settle。
+	autoAI bool
 }
 
 // Battle 是這一場的戰術層戰役。
@@ -128,6 +132,7 @@ func (p *Pending) Chiefs() (att, def *General) {
 func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *BattleResult {
 	p := g.prepare(from, to, att, def, by, HalfSupply(), Aid{})
 	if g.noPlayerIn(from, to) {
+		p.autoAI = true
 		p.B.AutoResolveAI()
 		g.ravageBattlefield(to)
 	} else {
@@ -370,18 +375,33 @@ func (g *State) settle(p *Pending) *BattleResult {
 		g.takePrefecture(from, to, att, by)
 		r.PrefectureTook = true
 	}
-	// 隨軍剩下的錢糧回到落腳的郡。
-	back := from
-	if r.AttackerWon {
-		back = to
-	}
-	if p := g.Prefecture(back); p != nil {
-		p.Gold = clampTo(p.Gold+b.Gold[battle.MainAttacker], MaxGold)
-		p.Rice = clampTo(p.Rice+b.Rice[battle.MainAttacker], MaxRice)
-	}
-	if dst != nil {
-		dst.Gold = clampTo(b.Gold[battle.MainDefender], MaxGold)
-		dst.Rice = clampTo(b.Rice[battle.MainDefender], MaxRice)
+	if p.autoAI {
+		// 電腦對電腦（`0x1f82f`／`0x1f8ae`）：**四個軍團的隨軍錢糧全部
+		// 收進守方那一郡**，不管誰贏。攻方打輸時補給等於送給守方——
+		// 與玩家那條「補給跟著自己走」不一樣，這是原版的規則。
+		if dst != nil {
+			gold, rice := 0, 0
+			for s := range b.Gold {
+				gold += b.Gold[s]
+				rice += b.Rice[s]
+			}
+			dst.Gold = clampTo(gold, MaxGold)
+			dst.Rice = clampTo(rice, MaxRice)
+		}
+	} else {
+		// 隨軍剩下的錢糧回到落腳的郡。
+		back := from
+		if r.AttackerWon {
+			back = to
+		}
+		if p := g.Prefecture(back); p != nil {
+			p.Gold = clampTo(p.Gold+b.Gold[battle.MainAttacker], MaxGold)
+			p.Rice = clampTo(p.Rice+b.Rice[battle.MainAttacker], MaxRice)
+		}
+		if dst != nil {
+			dst.Gold = clampTo(b.Gold[battle.MainDefender], MaxGold)
+			dst.Rice = clampTo(b.Rice[battle.MainDefender], MaxRice)
+		}
 	}
 	g.Reports = append(g.Reports, r)
 	return r

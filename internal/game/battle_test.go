@@ -755,3 +755,46 @@ func TestRavageBattlefield(t *testing.T) {
 			p.FloodRate, p.PriceLevel, RavageFloodCap, RavagePriceCap)
 	}
 }
+
+// TestAutoAIPoolsSuppliesIntoTheBattlefield 釘住「電腦對電腦時，四個軍團的
+// 隨軍錢糧不管誰贏都收進守方那一郡」（原版 `0x1f82f`／`0x1f8ae`）。
+//
+// 與玩家那條「補給跟著自己走」是兩條規則：攻方打輸的時候，帶去的錢糧
+// 在原版是留給守方的。
+func TestAutoAIPoolsSuppliesIntoTheBattlefield(t *testing.T) {
+	g := newGame(t)
+	var from, to int
+	for n := 1; n <= 42 && from == 0; n++ {
+		src := g.Prefecture(n)
+		if src == nil || !src.Owned() || len(g.garrisonOf(n)) == 0 {
+			continue
+		}
+		for _, m := range src.Neighbours {
+			d := g.Prefecture(m)
+			if d != nil && d.Owned() && d.Owner != src.Owner &&
+				len(g.garrisonOf(m)) > 0 {
+				from, to = n, m
+				break
+			}
+		}
+	}
+	if from == 0 {
+		t.Skip("找不到可以出兵的郡")
+	}
+	src := g.Prefecture(from)
+	p := g.prepare(from, to, g.garrisonOf(from), g.garrisonOf(to),
+		src.Owner, HalfSupply(), Aid{})
+	p.autoAI = true
+	p.B.Gold = [4]int{100, 200, 400, 800}
+	p.B.Rice = [4]int{10, 20, 40, 80}
+	p.B.Over, p.B.AttackerWon = true, false // 攻方打輸，補給照樣留給守方
+	g.settle(p)
+
+	dst := g.Prefecture(to)
+	if dst.Gold != 1500 {
+		t.Errorf("守方那一郡的金是 %d，四個軍團加起來應該是 1500", dst.Gold)
+	}
+	if dst.Rice != 150 {
+		t.Errorf("守方那一郡的米是 %d，四個軍團加起來應該是 150", dst.Rice)
+	}
+}

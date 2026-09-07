@@ -35,9 +35,12 @@
 州郡 offset 20（米） ← min(30000, Σ 四個軍團 offset 8)     ; 0x1f8ae
 ```
 
+⚠ **不管誰贏都收進守方那一郡**。攻方打輸的時候，隨軍帶去的錢糧等於送給
+守方——玩家那條走的是「補給跟著自己走」（打輸退回原郡），兩條規則不一樣。
+
 **只有電腦對電腦那條路會走到**——玩家在場的戰役走戰術層，不經過這一段
-（`docs/re/05` §7.1）。remake 這一邊是 `game.ravageBattlefield`；
-錢糧那兩條還沒接（`game.settle` 已經在搬錢糧，要先確認會不會重複算）。
+（`docs/re/05` §7.1）。remake 這一邊是 `game.ravageBattlefield` 與
+`game.settle` 裡的 `autoAI` 分支。
 
 ## 2. 出兵要帶錢糧
 
