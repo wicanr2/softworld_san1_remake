@@ -514,6 +514,59 @@ func TestSortieGates(t *testing.T) {
 	}
 }
 
+// TestLowLevelsSkipFourBehaviours 釘住**等級 3 那道閘門是四種行為共用的**。
+//
+// 把十八張分派表的 144 個 far pointer 全部解開之後，第 0–2 格指向空函式
+// 的有四張：出兵／移防（`0x54f4`）、賞賜物品（`0x56b4`）、挖角
+// （`0x56d4`）、計略／破壞（`0x56f4`）。`L0`。
+//
+// **只擋出兵會讓低等級的電腦諸侯看起來「只是比較不愛打仗」**，
+// 而它其實連寶物、挖角、用計都不會做——那在畫面上分不出來。
+func TestLowLevelsSkipFourBehaviours(t *testing.T) {
+	for lvl := 0; lvl < 3; lvl++ {
+		g := newGame(t, 1)
+		f := g.Faction(1)
+		if f == nil {
+			t.Fatal("找不到勢力 1")
+		}
+		f.AILevel = lvl
+		b, err := New(ModeBase)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, o := range b.Plan(g, 1) {
+			switch o.(type) {
+			case game.AttackOrder, game.MoveOrder, game.GiftOrder,
+				game.HeadhuntOrder, game.PlotOrder:
+				t.Errorf("等級 %d 不該做這一種，卻下了 %T", lvl, o)
+			}
+		}
+	}
+	// 反面：等級 5 至少要做得出其中一種，否則上面那一條在
+	// 「AI 什麼都不做」的情況下也會綠。
+	seen := false
+	for p := 1; p <= 42 && !seen; p++ {
+		g := newGame(t, 1)
+		for _, fa := range g.Factions() {
+			fa.AILevel = 5
+		}
+		b, err := New(ModeBase)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, o := range b.Plan(g, state.FactionID(p%14+1)) {
+			switch o.(type) {
+			case game.AttackOrder, game.MoveOrder, game.GiftOrder,
+				game.HeadhuntOrder, game.PlotOrder:
+				seen = true
+			}
+		}
+	}
+	if !seen {
+		t.Error("等級 5 一種都做不出來——這個測試測不到想測的東西")
+	}
+}
+
 // TestCoverageCountsTheNoopTable 釘住十八張表都讀過了。
 //
 // **`0x5514` 算解出來的**：六個等級的 far pointer 全部指向
