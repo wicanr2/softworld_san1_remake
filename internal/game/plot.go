@@ -193,6 +193,10 @@ func (g *State) jointAttack(plan PlotPlan, by state.FactionID) (bool, error) {
 	if dst.Owner == by {
 		return false, fmt.Errorf("game: 不能打自己的郡")
 	}
+	if plan.OursAid == plan.Ours || plan.OursAid == 0 {
+		// 「聯合」至少要兩個郡，原版一個都挑不到時印「無法聯合出兵」。
+		return false, fmt.Errorf("game: 無法聯合出兵")
+	}
 	aid := Aid{Attacker: plan.OursAid}
 	if !g.outwitsDefender(by, plan.Strike) {
 		aid.Defender = g.DefenderAid(plan.Strike)

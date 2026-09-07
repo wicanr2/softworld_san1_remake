@@ -658,3 +658,63 @@ func TestFarNearLaunchesACampaign(t *testing.T) {
 		t.Errorf("遠交近攻得手，%s 卻毫無動靜", g.Prefecture(strike).Name)
 	}
 }
+
+// TestJointAttackNeedsTwoOfOurs 釘住聯合出兵真的要兩個我方的郡，
+// 而且助攻軍與被打的郡都照原版的候選條件挑。
+func TestJointAttackNeedsTwoOfOurs(t *testing.T) {
+	g := newGame(t)
+	var by state.FactionID = 5 // 董卓，開局四個郡連在一起
+	from, strike, aid := 0, 0, 0
+	for _, f := range g.JointAttackFromTargets(by) {
+		for _, s := range g.JointAttackStrikeTargets(f, by) {
+			if a := g.JointAttackAidTargets(s, f, by); len(a) > 0 {
+				from, strike, aid = f, s, a[0]
+				break
+			}
+		}
+		if from != 0 {
+			break
+		}
+	}
+	if from == 0 {
+		t.Skip("董卓開局湊不出聯合出兵的組合")
+	}
+	if aid == from {
+		t.Fatal("助攻的郡不該是出兵的那一郡")
+	}
+	if g.Prefecture(strike).Owner == by {
+		t.Fatal("聯合攻打的目標是自己的郡")
+	}
+	lord := g.Lord(by)
+	at := lord.Location
+	var wise *General
+	for _, x := range g.Garrison(at) {
+		if x.Faction == by && x.Index != lord.Index {
+			x.Intel = 100
+			wise = x
+			break
+		}
+	}
+	if err := g.AppointChief(at, wise.Index, by); err != nil {
+		t.Fatal(err)
+	}
+	g.Prefecture(at).Commanded = false
+	// 少了第二個我方的郡就不成立。
+	if _, err := g.UsePlotPlan(at, PlotJointAttack,
+		PlotPlan{Ours: from, Strike: strike, OursAid: from}, by); err == nil {
+		t.Error("只有一個郡也讓聯合出兵成立")
+	}
+	g.Prefecture(at).Commanded = false
+	before := g.Soldiers(strike)
+	ok, err := g.UsePlotPlan(at, PlotJointAttack,
+		PlotPlan{Ours: from, Strike: strike, OursAid: aid}, by)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("聯合出兵不判成敗，應該一定打得起來")
+	}
+	if g.Soldiers(strike) == before && g.Prefecture(strike).Owner == by {
+		t.Log("目標郡被接手且無傷亡——走進空郡，合理")
+	}
+}

@@ -209,3 +209,54 @@ func (g *State) launchCampaign(from, to int, aid Aid) (*BattleResult, error) {
 	p.B.Auto()
 	return g.settle(p), nil
 }
+
+// 聯合出兵的三個我方選單（原版 `0x2d95f`／`0x2d9f8`／`0x2dab0`）。
+
+// JointAttackFromTargets 是「從我方那一郡出兵」的候選：我方的郡，全部。
+func (g *State) JointAttackFromTargets(by state.FactionID) []int {
+	var out []int
+	for i := 1; i <= state.PrefectureCount; i++ {
+		if p := g.Prefecture(i); p != nil && p.Owned() && p.Owner == by {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// JointAttackStrikeTargets 是「聯合攻打那一郡」的候選：
+// 出兵郡的鄰郡、有主、不是我方的。
+func (g *State) JointAttackStrikeTargets(from int, by state.FactionID) []int {
+	src := g.Prefecture(from)
+	if src == nil {
+		return nil
+	}
+	var out []int
+	for _, n := range src.Neighbours {
+		if q := g.Prefecture(n); q != nil && q.Owned() && q.Owner != by {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// JointAttackAidTargets 是「聯合我方那一郡合攻」的候選：
+// 攻打目標的鄰郡、屬我方，**而且不是出兵的那一郡**。
+//
+// 一個都沒有的話原版印「無法聯合出兵」（`DS:0x8543`）退回選單——
+// 聯合出兵至少要兩個郡才叫聯合。
+func (g *State) JointAttackAidTargets(strike, from int, by state.FactionID) []int {
+	dst := g.Prefecture(strike)
+	if dst == nil {
+		return nil
+	}
+	var out []int
+	for _, n := range dst.Neighbours {
+		if n == from {
+			continue
+		}
+		if q := g.Prefecture(n); q != nil && q.Owned() && q.Owner == by {
+			out = append(out, n)
+		}
+	}
+	return out
+}
