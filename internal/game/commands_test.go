@@ -425,3 +425,38 @@ func TestArmsIsAPercentage(t *testing.T) {
 		t.Errorf("兵力從 1000 加倍到 2000、武器 %d 不變，武裝度是 %d，應該是 50", w, got)
 	}
 }
+
+// TestRiceRateFollowsThePrice 釘住「一金買到 (100 − 物價) ÷ 10 單位米」。
+//
+// **判準是方向與比例**：物價低買得多。原本 remake 用的是
+// 「一單位米 ＝ 物價 ÷ 100 金」——那條在物價 50 給 2 單位/金，
+// 原版給 5 單位/金，差了兩倍半，而且兩者都隨物價單調，
+// 只驗一個點分不出來。
+func TestRiceRateFollowsThePrice(t *testing.T) {
+	for _, c := range []struct{ price, want int }{
+		{30, 7}, {40, 6}, {50, 5}, {68, 3}, {95, 1}, {100, 1},
+	} {
+		if got := RicePerGold(uint8(c.price)); got != c.want {
+			t.Errorf("物價 %d：一金買到 %d 單位，應該是 %d", c.price, got, c.want)
+		}
+	}
+
+	g := newGame(t)
+	p := g.Prefecture(8)
+	p.PriceLevel, p.Gold, p.Rice = 50, 1000, 0
+	// 想買 500 單位：一金 5 單位，所以花 100 金、拿到 500。
+	if err := g.BuyRice(8, 500, 0); err != nil {
+		t.Fatal(err)
+	}
+	if p.Gold != 900 || p.Rice != 500 {
+		t.Errorf("物價 50 買 500 單位之後：金 %d、米 %d，應該是 900／500", p.Gold, p.Rice)
+	}
+	// **除不盡的零頭拿不到**：買 3 單位在一金 5 單位下花 0 金、拿 0。
+	p.Commanded = false
+	if err := g.BuyRice(8, 3, 0); err != nil {
+		t.Fatal(err)
+	}
+	if p.Gold != 900 || p.Rice != 500 {
+		t.Errorf("買不到一金份的零頭卻動了帳：金 %d、米 %d", p.Gold, p.Rice)
+	}
+}

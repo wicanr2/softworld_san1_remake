@@ -371,3 +371,22 @@ func RewardCost(effect, gain int) int {
 	}
 	return clampTo(gain*100/effect, MaxReward)
 }
+
+// RicePerGold 是一金在當月的物價買得到幾單位米（`L0`、`[base]`）。
+//
+// 原版的電腦諸侯買米走 `0xc634`，一金換到的量是 `(100 − 物價) ÷ 10`
+// ——**物價越低買到越多**，而不是「一單位米固定值多少金」。
+// 開倉賑民（`0xc8f6`）拿的是同一個量當「一分錢換多少忠誠」的係數，
+// 兩邊對得起來：賑民就是拿金在當月物價買米發下去。
+//
+// ⚠ **下限 1 是 remake 加的**：原版沒有擋，物價到 100 會在浮點除法裡
+// 變成無窮大。實測十六個月四十二個郡的物價全部落在 30–68
+// （`docs/mechanics/60-economy`），所以那條路走不到。
+//
+// ⚠ **賣米那一邊還沒讀**，仍照 remake 自己的比率（`SellRice`）。
+func RicePerGold(priceLevel uint8) int {
+	if n := (100 - int(priceLevel)) / 10; n > 1 {
+		return n
+	}
+	return 1
+}

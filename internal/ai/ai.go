@@ -94,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 13, 18 }
+func (f *faithful) Coverage() (int, int) { return 14, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -212,6 +212,12 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		for _, o := range paid {
 			purse -= o.(game.RewardOrder).Gold
 		}
+		// 買入米糧（表 `0x55d4`）：**不走回合預算也不打折**，
+		// 它是市場交易。存糧目標跟著兵力走，不夠就用郡的金補到滿。
+		if o, ok := buyRice(g, p, id, purse); ok {
+			out = append(out, o)
+			purse -= o.Units / game.RicePerGold(g.Prefecture(p).PriceLevel)
+		}
 	}
 	return out
 }
@@ -222,6 +228,7 @@ const (
 	tableConscript = 0x5574 // 徵兵
 	tableRelief    = 0x55f4 // 開倉賑民
 	tableReward    = 0x5654 // 賞賜金帛
+	tableRice      = 0x55d4 // 買入米糧
 )
 
 // aiBudgetPercent 是「本回合預算佔郡的金的百分之幾」（`L0`、`[base]`）。
@@ -332,6 +339,44 @@ func rewardGold(g *game.State, prefecture int, id state.FactionID, budget int) [
 		out = append(out, game.RewardOrder{At: prefecture, Target: x.Index, Gold: gold})
 	}
 	return out
+}
+
+// buyRice 是「買入米糧」（表 `0x55d4`，常式 `0xc634`，`L0`、`[base]`）。
+//
+//	量   ＝ (100 − 物價) ÷ 10                      ; 一金買到幾單位
+//	目標 ＝ min(兵士（百）× (RND(10) + 12), 30000)  ; 存糧跟著兵力走
+//	缺口 ＝ 目標 − 米
+//	剩金 ＝ clamp(金 − 缺口 ÷ 量, 0, 30000)
+//	買到 ＝ (金 − 剩金) × 量
+//
+// **下限是 0**——缺口夠大就把郡的金全部花光（`ds:[0xa5f2]` 讀出來是 0）。
+// 這一支不經過折扣常式 `0xec24`，所以電腦諸侯買米沒有折扣。
+func buyRice(g *game.State, prefecture int, id state.FactionID, purse int) (game.BuyRiceOrder, bool) {
+	p := g.Prefecture(prefecture)
+	if p == nil || purse <= 0 {
+		return game.BuyRiceOrder{}, false
+	}
+	troops := 0
+	for _, x := range g.Garrison(prefecture) {
+		troops += x.Soldiers
+	}
+	want := troops / 100 * (g.Roll(10, int(id), prefecture, tableRice) + 12)
+	if want > game.MaxRice {
+		want = game.MaxRice
+	}
+	gap := want - p.Rice
+	if gap <= 0 {
+		return game.BuyRiceOrder{}, false
+	}
+	rate := game.RicePerGold(p.PriceLevel)
+	spend := gap / rate
+	if spend > purse {
+		spend = purse
+	}
+	if spend <= 0 {
+		return game.BuyRiceOrder{}, false
+	}
+	return game.BuyRiceOrder{At: prefecture, Units: spend * rate}, true
 }
 
 // garrisonIndices 是這一郡守軍的槽號，照清單順序。

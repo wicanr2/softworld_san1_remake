@@ -305,14 +305,18 @@ func (g *State) BuyRice(prefectureID, units int, by state.FactionID) error {
 	if p.Rice+units > MaxRice {
 		return fmt.Errorf("game: 糧倉上限 %d，買不下 %d", MaxRice, units)
 	}
-	// **買米不套電腦諸侯的折扣**：那支折扣常式（`0xec24`）量到的是
-	// 分派表底下那幾種行為，市場交易走的是不是同一條還沒看過。
-	cost := units * int(p.PriceLevel) / 100
+	// **買米不套電腦諸侯的折扣**：原版買米那一支（`0xc634`）根本不經過
+	// 折扣常式 `0xec24`，它是市場交易不是勢力支出。
+	//
+	// 一金買到 `RicePerGold` 單位，**買到的米按實際花掉的金重算**——
+	// 除不盡的零頭拿不到（原版 `0xc73e` 是拿「花掉的金 × 量」回填米）。
+	rate := RicePerGold(p.PriceLevel)
+	cost := units / rate
 	if p.Gold < cost {
 		return ErrNoGold
 	}
 	p.Gold -= cost
-	p.Rice += units
+	p.Rice = clampTo(p.Rice+cost*rate, MaxRice)
 	p.Commanded = true
 	return nil
 }
@@ -329,6 +333,8 @@ func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 	if p.Rice < units {
 		return ErrNoRice
 	}
+	// ⚠ **賣米的比率還沒從原版讀出來**（買米是 `RicePerGold`，`L0`）。
+	// 這裡仍是 remake 自己的換算，`docs/design/02` 記著。
 	p.Rice -= units
 	p.Gold = clampTo(p.Gold+units*int(p.PriceLevel)/100, MaxGold)
 	p.Commanded = true
