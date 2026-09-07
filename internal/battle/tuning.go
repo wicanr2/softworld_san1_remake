@@ -28,12 +28,11 @@ const (
 	// （火攻：樹林最強 ＞ 平原沙漠 ＞ 山丘關寨城池 ＞ 水上最輕；
 	// 水淹：樹林最強 ＞ 平原沙漠城池 ＞ 山上關寨 ＞ 水上最輕），
 	// 幅度是 remake 選的。
-	TuneBurnLoss   = 40 // 燒糧減少的金米百分比
 	TuneSiegeBonus = 25 // 圍攻時每一支參與部隊的攻擊力加成
 
-	// TuneTrapDays 是中陷阱之後不能活動的天數。**這個有出處**：
-	// 手冊 p.33 寫「中計的部隊在九日內無法活動」。
-	TuneTrapDays = 9
+	// TuneLureDays 是中誘敵之後攻擊力下降的天數。原版把誘敵交給
+	// `0x2a224` 處理（帶一個 8 或 9 的參數），那一支還沒讀。
+	TuneLureDays = 3
 
 	// TuneDuelDamage 是單挑一回合對體能的傷害基準。
 	TuneDuelDamage = 12

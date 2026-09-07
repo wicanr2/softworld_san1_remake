@@ -400,19 +400,54 @@ func TestEndDayResetsMoveAndTicksStatus(t *testing.T) {
 	}
 }
 
-// TestTrappedUnitCannotAct 釘住「中計的部隊在九日內無法活動」（說明書 p.33）。
+// TestTrappedUnitCannotAct 釘住中陷阱的部隊動不了，以及困住的天數
+// （`0x2b648`，`L0`）。
+//
+// ⚠ **說明書 p.33 寫「九日內無法活動」，碼裡不是**：一般是
+// `RND(5) + 1` ＝ 1–5 日，領隊謀略 98 起跳再加 `RND(5) + 2`。以碼為準。
 func TestTrappedUnitCannotAct(t *testing.T) {
 	b := arena(flat(Plain))
 	u := place(b, MainAttacker, Centre, FromOffset(3, 3), lead("攻", 50, 50, 1000))
-	u.Trapped = TuneTrapDays
+	u.Trapped = 3
 	if err := b.Move(u, DirUp); err == nil {
 		t.Error("中陷阱的部隊不該走得動")
 	}
 	if err := b.Rest(u); err == nil {
 		t.Error("中陷阱的部隊不該休息得了")
 	}
-	if TuneTrapDays != 9 {
-		t.Errorf("陷阱困住 %d 天，手冊寫的是九日", TuneTrapDays)
+	for r := 0; r < TrapSpread; r++ {
+		if got, want := TrapDays(50, r, 0), r+1; got != want {
+			t.Errorf("RND ＝ %d 困住 %d 天，應該是 %d", r, got, want)
+		}
+	}
+	// 謀略 98 起跳多困 RND(5)+2 天，最長 5+5+2−1 ＝ 11。
+	if got := TrapDays(StratagemGeniusIntel, 4, 4); got != 11 {
+		t.Errorf("謀略 98、兩次 RND 都是 4 困住 %d 天，應該是 11", got)
+	}
+	if got := TrapDays(StratagemGeniusIntel, 0, 0); got != 3 {
+		t.Errorf("謀略 98、兩次 RND 都是 0 困住 %d 天，應該是 3", got)
+	}
+}
+
+// TestBurnKeep 釘住燒糧留下的比例（`0x2ba6b`，`L0`）。
+//
+// 一般是 `1 − 1/(RND(3)+2)`，謀略 98 起跳換成 `1/(RND(2)+4)`
+// ——**軍師級的燒糧狠得多**：從留下五到七成變成只留兩成。
+func TestBurnKeep(t *testing.T) {
+	for _, c := range []struct{ roll, want int }{{0, 50}, {1, 67}, {2, 75}} {
+		if got := BurnKeep(50, 0, c.roll); got != c.want {
+			t.Errorf("RND ＝ %d 留下 %d%%，應該是 %d%%", c.roll, got, c.want)
+		}
+	}
+	for _, c := range []struct{ roll, want int }{{0, 25}, {1, 20}} {
+		if got := BurnKeep(StratagemGeniusIntel, c.roll, 0); got != c.want {
+			t.Errorf("謀略 98、RND ＝ %d 留下 %d%%，應該是 %d%%",
+				c.roll, got, c.want)
+		}
+	}
+	// 軍師級一定燒得比一般狠。
+	if BurnKeep(StratagemGeniusIntel, 0, 0) >= BurnKeep(50, 0, 0) {
+		t.Error("謀略 98 的燒糧應該留得比一般少")
 	}
 }
 

@@ -176,8 +176,10 @@ func TestTrapPlacementAndDuration(t *testing.T) {
 	if err := b.UseStratagem(u, Trap, e.At); err != nil {
 		t.Fatalf("平原設陷阱應該成立：%v", err)
 	}
-	if e.Trapped != 9 {
-		t.Errorf("困住 %d 天，手冊寫九日", e.Trapped)
+	// 天數是 `RND(5)+1`（領隊謀略 100 ＞ 98，再加 `RND(5)+2`），
+	// 所以落在 3–11 之間。**手冊寫的九日不對**（`0x2b648`）。
+	if e.Trapped < 3 || e.Trapped > 11 {
+		t.Errorf("困住 %d 天，應該落在 3–11", e.Trapped)
 	}
 	if e.Soldiers() != 2000 {
 		t.Error("陷阱困住敵軍，不是當場殺兵")

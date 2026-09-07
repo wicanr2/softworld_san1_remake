@@ -323,16 +323,18 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		b.note("%s 對 %s 水淹，折損 %d（%s，%d%%）",
 			u.Name(), t.Name(), loss, terrain, pct)
 	case Lure:
-		t.Enraged = 3
+		t.Enraged = TuneLureDays
 		b.note("%s 誘敵成功，%s 怒火攻心", u.Name(), t.Name())
 	case Trap:
-		t.Trapped = TuneTrapDays
-		b.note("%s 設陷阱困住 %s，九日內無法活動", u.Name(), t.Name())
+		t.Trapped = TrapDays(ci, b.roll(TrapSpread), b.roll(TrapSpread))
+		b.note("%s 設陷阱困住 %s，%d 日內無法活動",
+			u.Name(), t.Name(), t.Trapped)
 	case Burn:
 		side := t.Side
-		b.Gold[side] = b.Gold[side] * (100 - TuneBurnLoss) / 100
-		b.Rice[side] = b.Rice[side] * (100 - TuneBurnLoss) / 100
-		b.note("%s 燒了 %s 的補給", u.Name(), side)
+		keep := BurnKeep(ci, b.roll(BurnGeniusSpread), b.roll(BurnSpread))
+		b.Gold[side] = b.Gold[side] * keep / 100
+		b.Rice[side] = b.Rice[side] * keep / 100
+		b.note("%s 燒了 %s 的補給，只剩 %d%%", u.Name(), side, keep)
 	case Siege:
 		n := b.alliesAround(u, target)
 		loss := b.hit(u, t, 100+n*TuneSiegeBonus)
@@ -403,4 +405,38 @@ func (b *Battle) scorch(u *Unit, pct int) int {
 // StratagemDeathRoll 是火攻／水淹把人打光之後的生死判定門檻
 // （`0x2b138`：`RND(100) > 20` 就死）。
 const StratagemDeathRoll = 20
+
+// 陷阱困住的天數（`0x2b648`，`L0`）：
+//
+//	天數 ＝ RND(5) + 1，領隊謀略 ≥ 98 再加 RND(5) + 2
+//
+// **說明書 p.33 寫「九日」，碼裡不是**——一般是 1–5 日，
+// 謀略 98 起跳才可能到 11 日。以碼為準。
+const TrapSpread = 5
+
+func TrapDays(casterIntel, roll, bonusRoll int) int {
+	days := roll + 1
+	if casterIntel >= StratagemGeniusIntel {
+		days += bonusRoll + 2
+	}
+	return days
+}
+
+// 燒糧留下的比例（`0x2ba6b`，`L0`）：
+//
+//	領隊謀略 ≥ 98：1 ÷ (RND(2) + 4)      → 剩 20–25%
+//	否則        ：1 − 1 ÷ (RND(3) + 2)   → 剩 50–75%
+//
+// 金與米各乘一次，**同一個比例**。
+const (
+	BurnGeniusSpread = 2
+	BurnSpread       = 3
+)
+
+func BurnKeep(casterIntel, geniusRoll, roll int) int {
+	if casterIntel >= StratagemGeniusIntel {
+		return 100 / (geniusRoll + 4)
+	}
+	return 100 - 100/(roll+2)
+}
 
