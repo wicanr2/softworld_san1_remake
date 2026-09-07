@@ -24,9 +24,14 @@ package battle
 //	  守方戰力歸零 → 攻方勝；攻方戰力歸零 → 守方勝
 //	  天數 >= 30 → 守方勝（**不看城池那一格，也不看統帥在不在**）
 //
-// ⚠ **傷亡怎麼寫回去還沒解**：`0x1f538` 只動隨軍的米與兩個戰力，
-// 部隊的兵士數整場沒被碰過；寫回去那一段（`0x1fb26` 之後）還沒讀。
-// 所以這一支**不扣任何人的兵**，勝負以外的狀態一律不動。
+// 傷亡在打完之後一次寫回（`0x1f6fe` 頭段算比例、`0x1f9fe` 逐人乘上去）：
+//
+//	存活比例 ＝ 結束時的戰力 ÷ (開場戰力 ＋ 0.0001)
+//	每一位將領：兵力 ← trunc(兵力 × 他那一方的存活比例)
+//
+// **四個軍力都乘**，贏的那一方也會折損；同一方的所有部隊共用一個比例。
+// 原版接著把每個人的所在郡清成 0 再重新安置，remake 這一邊的安置在
+// `game.settle`，所以這裡不動所在郡。
 func (b *Battle) AutoResolveAI() {
 	if b.Over {
 		return
@@ -51,9 +56,27 @@ func (b *Battle) AutoResolveAI() {
 	}
 	att, qa := side(MainAttacker, AidAttacker)
 	def, qd := side(MainDefender, AidDefender)
+	att0, def0 := att, def
 	riceA, riceD := b.Rice[MainAttacker], b.Rice[MainDefender]
 
+	// casualties 把「結束時的戰力 ÷ 開場戰力」乘回每一位將領的兵力。
+	// epsilon 是原版加的（`DS:0xa812` ＝ 0.0001），為的是兩邊都沒兵時
+	// 這個除法仍然除得下去。
+	casualties := func() {
+		ra, rd := att/(att0+0.0001), def/(def0+0.0001)
+		for _, u := range b.Units {
+			r := rd
+			if u.Side.Attacking() {
+				r = ra
+			}
+			for i := range u.Leaders {
+				l := &u.Leaders[i]
+				l.Soldiers = int(float64(l.Soldiers) * r)
+			}
+		}
+	}
 	win := func(attacker bool, msg string) {
+		casualties()
 		b.Over, b.AttackerWon = true, attacker
 		b.note("%s", msg)
 	}
