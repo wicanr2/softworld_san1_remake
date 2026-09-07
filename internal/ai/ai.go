@@ -94,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 16, 18 }
+func (f *faithful) Coverage() (int, int) { return 17, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -192,7 +192,14 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// 徵兵（表 `0x5574`）：預算是**剩下的**金的 30–50 %。
 		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
 		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
-		out = append(out, conscript(g, p, aiBudget(purse, g.AILevel(id), tableConscript))...)
+		drafted := conscript(g, p, aiBudget(purse, g.AILevel(id), tableConscript))
+		out = append(out, drafted...)
+		// 徵兵是一兵一金（說明書 p.20），錢包一樣要跟著扣——
+		// **不扣的話最後那一張「出兵」會拿月初的餘額去算隨行的錢**，
+		// 執行時就撞上 `ErrNoGold`，而 `ApplyAll` 會把整批作廢。
+		for _, o := range drafted {
+			purse -= o.(game.ConscriptOrder).Count
+		}
 		// 調整兵力（表 `0x55b4`）：**不花錢，也不隨等級變**——六格全部
 		// thunk 到同一支 `0xc2c4`。它把整郡的兵按帶兵上限重新攤平，
 		// 訓練度與武裝度拉到全郡的加權平均。
@@ -230,6 +237,204 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		if o, ok := plot(g, p, id); ok {
 			out = append(out, o)
 		}
+		// 出兵／移防（表 `0x54f4`）：**分派器的最後一張**，等級 3 以上
+		// 才做。四道門檻、洗牌編隊、三選一目標，見 sortie。
+		if o, ok := sortie(g, p, id, purse); ok {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+// 出兵的四道門檻（`0xb666`／`0xb47a`，`L0`、`[base]`）。
+const (
+	SortieMinTroops   = 5  // 州郡.兵士（百）至少 5，也就是 500 人
+	SortieRicePerUnit = 15 // 米要有 兵士（百） × 15
+	SortieMinLevel    = 3  // 等級 0–2 那三格是空操作
+	SortieMaxGenerals = 50 // 目標郡的現役將加上出征人數不得超過 50
+)
+
+// sortieOdds 是難度係數表（`DS:0x5430`，一格 8 byte 的 double，`L0`）。
+//
+// **只有「打敵國」那一條分支用得到**：
+// `係數 × 出征兵力（百） < 目標郡的兵士（百）` 就不打。
+// 係數越小同樣的兵力越難過門檻——難度 10 要帶到守軍的兩倍才動手。
+var sortieOdds = [10]int{100, 90, 100, 80, 80, 70, 70, 60, 60, 50}
+
+// SortieOdds 是某個難度（1–10）的出兵係數，以百分比表示。
+func SortieOdds(difficulty int) int {
+	if difficulty < 1 || difficulty > len(sortieOdds) {
+		return 100
+	}
+	return sortieOdds[difficulty-1]
+}
+
+// sortie 是「出兵／移防」（表 `0x54f4`，`L0`、`[base]`）。
+//
+// 四道門檻任何一道不過就整個不做（`0xb666`）：
+//
+//	兵士（百） >= 5
+//	兵士（百） <= 郡的金
+//	米 >= 兵士（百） × 15
+//	出征清單非空
+//
+// 目標是 `RND(4)` 三選一（`0xb47a`）：0 無主的鄰郡（占領）、
+// 1 自己的鄰郡（移防）、2 與 3 敵國的鄰郡（進攻）。
+//
+// **出征的人是隨機的**（`0xb2b4`）：守軍清單洗牌之後從尾端往前挑，
+// 累計到兵力目標為止——不是挑最強的。兵力目標 `es:[0x2e62]` 取
+// 「本郡守軍裡最小的非零兵力」與「每一個敵國鄰郡的兵士」的最大值，
+// **所以規模至少要追上最強的敵鄰郡**。
+func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.Order, bool) {
+	if g.AILevel(id) < SortieMinLevel {
+		return nil, false
+	}
+	p := g.Prefecture(prefecture)
+	if p == nil {
+		return nil, false
+	}
+	troops := 0
+	for _, x := range g.Garrison(prefecture) {
+		troops += x.Soldiers
+	}
+	units := troops / 100 // 原版整份用「百」當單位
+	// **金看的是這一輪還剩多少**，不是月初的餘額：出兵是分派器的最後
+	// 一張，前面十七張已經花過了（`es:[0x3d16]` 一路扣下來）。
+	if units < SortieMinTroops || units > purse || p.Rice < units*SortieRicePerUnit {
+		return nil, false
+	}
+
+	free, mine, foe := neighbourLists(g, p, id)
+	var targets []int
+	switch g.Roll(4, int(id), prefecture, tableSortie) {
+	case 0:
+		targets = free
+	case 1:
+		targets = mine
+	default:
+		targets = foe
+	}
+	if len(targets) == 0 {
+		return nil, false
+	}
+	to := targets[g.Roll(len(targets), int(id), prefecture, tableSortie, 1)]
+
+	force := muster(g, prefecture, id, sortieTarget(g, prefecture, foe))
+	if len(force) == 0 {
+		return nil, false
+	}
+	// 「每郡最多 50 位將軍」在這裡是**裁隊伍**，不是取消出兵（`0xb706`）。
+	if room := SortieMaxGenerals - len(g.Garrison(to)); len(force) > room {
+		if room <= 0 {
+			return nil, false
+		}
+		force = force[:room]
+	}
+
+	if q := g.Prefecture(to); q != nil && q.Owned() && q.Owner != id {
+		// 進攻多一道兵力比較（`0xb47a`）。
+		sent := 0
+		for _, i := range force {
+			if x := g.General(i); x != nil {
+				sent += x.Soldiers
+			}
+		}
+		enemy := 0
+		for _, x := range g.Garrison(to) {
+			enemy += x.Soldiers
+		}
+		if SortieOdds(g.Difficulty)*(sent/100)/100 < enemy/100 {
+			return nil, false
+		}
+		return game.AttackOrder{At: prefecture, To: to, Force: force}, true
+	}
+	// 無主的郡與自己的郡是移防，不是戰役。**帶走的錢糧按兵力比例**
+	// （`0xb706`）：`郡的金 ÷ 兵士（百） × 出征兵力（百）`。
+	sent := 0
+	for _, i := range force {
+		if x := g.General(i); x != nil {
+			sent += x.Soldiers
+		}
+	}
+	share := func(total int) int {
+		if units <= 0 || total <= 0 {
+			return 0
+		}
+		return total / units * (sent / 100)
+	}
+	return game.MoveOrder{
+		At: prefecture, To: to, General: force[0],
+		Gold: min(share(purse), purse), Rice: min(share(p.Rice), p.Rice),
+	}, true
+}
+
+// neighbourLists 把鄰郡分成三堆：無主的、自己的、別人的
+// （`0xee1e`／`0xeee8`／`0xef5c`，掃的是十格的相鄰表）。
+func neighbourLists(g *game.State, p *game.Prefecture, id state.FactionID) (free, mine, foe []int) {
+	for _, n := range p.Neighbours {
+		q := g.Prefecture(n)
+		if q == nil {
+			continue
+		}
+		switch {
+		case !q.Owned():
+			free = append(free, n)
+		case q.Owner == id:
+			mine = append(mine, n)
+		default:
+			foe = append(foe, n)
+		}
+	}
+	return
+}
+
+// sortieTarget 是出征兵力的目標（`es:[0x2e62]`，`L0`）：
+// 先取本郡守軍裡**最小的非零**兵力，再對每一個敵國的鄰郡取最大值。
+func sortieTarget(g *game.State, prefecture int, foe []int) int {
+	want := 0
+	for _, x := range g.Garrison(prefecture) {
+		if x.Soldiers > 0 && (want == 0 || x.Soldiers < want) {
+			want = x.Soldiers
+		}
+	}
+	for _, id := range foe {
+		total := 0
+		for _, x := range g.Garrison(id) {
+			total += x.Soldiers
+		}
+		if total > want {
+			want = total
+		}
+	}
+	return want
+}
+
+// muster 編隊（`0xb2b4`）：守軍清單洗牌之後從尾端往前挑，
+// 累計兵力到目標為止。**挑中的是隨機的**。
+func muster(g *game.State, prefecture int, id state.FactionID, want int) []int {
+	who := garrisonIndices(g, prefecture)
+	if len(who) == 0 {
+		return nil
+	}
+	// 逐格與 RND(n) 交換——原版就是這樣洗的。
+	for i := range who {
+		j := g.Roll(len(who), int(id), prefecture, tableSortie, 2+i)
+		who[i], who[j] = who[j], who[i]
+	}
+	var out []int
+	got := 0
+	for i := len(who) - 1; i >= 0 && got < want; i-- {
+		x := g.General(who[i])
+		if x == nil {
+			continue
+		}
+		out = append(out, who[i])
+		got += x.Soldiers
+	}
+	// **原郡要留得下人治理**：全部帶走的話 game.Attack／Move 會擋，
+	// 而那一道擋下來會讓整批命令作廢。
+	if len(out) >= len(who) {
+		out = out[:len(who)-1]
 	}
 	return out
 }
@@ -243,6 +448,7 @@ const (
 	tableRice      = 0x55d4 // 買入米糧
 	tableHeadhunt  = 0x56d4 // 挖角
 	tablePlot      = 0x56f4 // 計略
+	tableSortie    = 0x54f4 // 出兵／移防
 )
 
 // aiBudgetPercent 是「本回合預算佔郡的金的百分之幾」（`L0`、`[base]`）。

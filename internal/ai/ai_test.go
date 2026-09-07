@@ -75,7 +75,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// 十八張表裡解出九張，而且已讀的那幾張底下還有沒量到的量
+		// 十八張表裡解出十七張，而且已讀的那幾張底下還有沒量到的量
 		//（賞賜的增幅與排序鍵、原版的亂數）。**結構對了不代表數值對了。**
 		if b.Derived() {
 			t.Errorf("%s 宣稱已經完整還原了——表底下還有沒量到的量", m)
@@ -108,6 +108,7 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.BuyRiceOrder: // 買入米糧（0x55d4），已解
 			case game.HeadhuntOrder: // 挖角（0x56d4），已解
 			case game.PlotOrder: // 計略（0x56f4），已解
+			case game.AttackOrder, game.MoveOrder: // 出兵／移防（0x54f4），已解
 			default:
 				t.Errorf("%s 下了還沒解出來的命令：%T", m, o)
 			}
@@ -466,5 +467,44 @@ func TestConscriptFillsToCap(t *testing.T) {
 	}
 	if total > 250 {
 		t.Errorf("預算 250 金卻徵了 %d 人", total)
+	}
+}
+
+// TestSortieGates 釘住出兵的四道門檻與難度係數（表 `0x54f4`，`L0`）。
+//
+// **等級 3 以下一格都不做**（0–2 是空操作），而四道門檻任何一道不過
+// 就整個不做——這一條擋的是「AI 傾巢而出把自己餓死」。
+func TestSortieGates(t *testing.T) {
+	// 難度係數表：越大越保守。難度 10 要帶到守軍的兩倍才動手。
+	for _, c := range []struct{ diff, want int }{
+		{1, 100}, {2, 90}, {3, 100}, {4, 80}, {5, 80},
+		{6, 70}, {7, 70}, {8, 60}, {9, 60}, {10, 50},
+	} {
+		if got := SortieOdds(c.diff); got != c.want {
+			t.Errorf("難度 %d 的係數是 %d，原版是 %d", c.diff, got, c.want)
+		}
+	}
+	if SortieOdds(0) != 100 || SortieOdds(11) != 100 {
+		t.Error("難度越界應該回 100（不加碼也不打折）")
+	}
+
+	// 等級 0–2 不出兵：把等級調低，命令裡不該出現出兵或移防。
+	for lvl := 0; lvl < SortieMinLevel; lvl++ {
+		g := newGame(t, 1)
+		f := g.Faction(1)
+		if f == nil {
+			t.Fatal("找不到勢力 1")
+		}
+		f.AILevel = lvl
+		b, err := New(ModeBase)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, o := range b.Plan(g, 1) {
+			switch o.(type) {
+			case game.AttackOrder, game.MoveOrder:
+				t.Errorf("等級 %d 不該出兵，卻下了 %T", lvl, o)
+			}
+		}
 	}
 }

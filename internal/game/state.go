@@ -432,7 +432,6 @@ func (g *State) Faction(f state.FactionID) *Faction {
 	return nil
 }
 
-// Chief 回傳某個勢力現任的軍師；沒有回 nil。
 // AILevel 回傳勢力的電腦諸侯等級（0–5）。查不到的勢力回 0。
 func (g *State) AILevel(f state.FactionID) int {
 	if x := g.Faction(f); x != nil {
@@ -441,6 +440,7 @@ func (g *State) AILevel(f state.FactionID) int {
 	return 0
 }
 
+// Chief 回傳某個勢力現任的軍師；沒有回 nil。
 func (g *State) Chief(f state.FactionID) *General {
 	x := g.Faction(f)
 	if x == nil || x.Chief < 0 {

@@ -51,7 +51,11 @@ func (g *State) Move(from, to, generalIndex, gold, rice int, by state.FactionID)
 		return err
 	}
 	dst := g.Prefecture(to)
-	if dst == nil || !dst.Owned() || dst.Owner != by {
+	// **無主的郡也走得進去**（`0x18ce1`，`L0`）：原版建目的地清單時，
+	// 鄰郡的所屬是 `0xFF` 就直接放行，其餘要與本郡同屬。郡的歸屬是
+	// 從人物表導出來的，所以搬進去就等於占領——電腦諸侯的「出兵」
+	// 有四分之一的機率走的正是這一條（`docs/mechanics/70-ai` §2.13.6）。
+	if dst == nil || (dst.Owned() && dst.Owner != by) {
 		return ErrNotYours
 	}
 	if !g.Adjacent(from, to) {
