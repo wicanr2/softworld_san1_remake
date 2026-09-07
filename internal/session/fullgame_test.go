@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -61,15 +62,21 @@ func TestEconomyStaysSane(t *testing.T) {
 		pop += p.Population
 		gold += p.Gold
 	}
-	// **世界不該崩潰也不該爆炸。** 區間是 remake 自己的護欄，
-	// 不是平衡目標——成長率本身是從原版量出來的（年度 15%，
-	// `game.GrowPopulation`，倍率跟著土地價值與忠誠走），災害與徵兵把它吃掉一部分。
+	// **世界不該崩潰。** 下界是 remake 自己的護欄：沒有它的話，災害與
+	// 徵兵會把人口打到剩百分之七，而每一條規則單獨看都「照手冊做」，
+	// 只有整局跑過才看得出來。
 	//
-	// 沒有這一條的話，災害與徵兵會把人口打到剩百分之七——而每一條
-	// 規則單獨看都「照手冊做」，只有整局跑過才看得出來。
+	// **上界用原版的上限，不用倍數。** 成長率是量到的
+	// （`game.GrowPopulation`，倍率跟著土地價值與忠誠走，最快 15%），
+	// 所以人口本來就會往每郡 `PopulationCap` 爬——拿「不得超過開局的
+	// 三倍」當上界，等於拿 remake 早期猜的災害頻率當基準，那個基準
+	// 已經被量到的判定取代了。
 	const start = 2538000 // 劇本 001 的開局總人口
-	if pop < start/2 || pop > start*3 {
-		t.Errorf("二十年後總人口 %d，開局是 %d——落在一半到三倍之外", pop, start)
+	if pop < start/2 {
+		t.Errorf("二十年後總人口 %d，開局是 %d——世界崩潰了", pop, start)
+	}
+	if cap := game.PopulationCap * state.PrefectureCount; pop > cap {
+		t.Errorf("二十年後總人口 %d，超過每郡上限的總和 %d", pop, cap)
 	}
 	t.Logf("二十年後：總人口 %d（開局 %d）、總庫銀 %d", pop, start, gold)
 }

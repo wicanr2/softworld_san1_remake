@@ -22,13 +22,18 @@ func TestSeasons(t *testing.T) {
 	}
 }
 
-// TestAutumnHarvest 釘住秋收：米糧進倉、稅金入庫、土地價值略降
-// （說明書 p.37、p.21）。
+// TestAutumnHarvest 釘住秋收：米糧進倉、稅金入庫（`0x16a1b`，`L0`）。
+//
+// **土地價值在秋收時不掉**——原版是在**春天**每個月掉
+// `RND(土地價值 ÷ 10)`（`LandValueDecay`）。說明書 p.21 說「收成後
+// 土地價值會略降」，碼裡沒有這回事，掉的地方在別的季節。
 func TestAutumnHarvest(t *testing.T) {
 	g := newGame(t)
 	p := g.Prefecture(15) // 洛陽，人口最多
 	g.Date = Date{Year: 189, Month: 8}
 	rice, gold, land := p.Rice, p.Gold, p.LandValue
+	want := HarvestGold(charmOf(g, p.ID), int(p.LandValue),
+		int(p.PublicLoyalty), p.Population)
 	events := g.EndMonth() // → 9 月，秋收
 	if g.Date.Month != 9 {
 		t.Fatalf("推到 %d 月", g.Date.Month)
@@ -37,11 +42,73 @@ func TestAutumnHarvest(t *testing.T) {
 		t.Errorf("秋收之後米 %d（原 %d）金 %d（原 %d）——都沒有增加",
 			p.Rice, rice, p.Gold, gold)
 	}
-	if p.LandValue >= land {
-		t.Errorf("秋收之後土地價值 %d，原本 %d——應該略降", p.LandValue, land)
+	if got := p.Gold - gold; got != want {
+		t.Errorf("秋收進帳 %d，算式給的是 %d", got, want)
+	}
+	if p.LandValue != land {
+		t.Errorf("秋收之後土地價值 %d，原本 %d——秋收不動它", p.LandValue, land)
 	}
 	if len(events) == 0 {
 		t.Error("秋收沒有產生任何事件訊息")
+	}
+}
+
+func charmOf(g *State, prefectureID int) int {
+	if x := g.Governor(prefectureID); x != nil {
+		return int(x.Charm)
+	}
+	return 0
+}
+
+// TestHarvestCountsAllThreeFactors 釘住秋收的三個因子都算進去
+// （太守魅力 ＋ 土地價值 × 4 ＋ 民眾忠誠 × 2）。
+//
+// **只算土地價值與人口的話，「派誰當太守」對收入沒有影響**，
+// 而那正是原版讓魅力有用的地方之一。
+func TestHarvestCountsAllThreeFactors(t *testing.T) {
+	base := HarvestGold(50, 50, 50, 100000)
+	if HarvestGold(90, 50, 50, 100000) <= base {
+		t.Error("太守魅力高應該收得多")
+	}
+	if HarvestGold(50, 60, 50, 100000) <= base {
+		t.Error("土地價值高應該收得多")
+	}
+	if HarvestGold(50, 50, 60, 100000) <= base {
+		t.Error("民眾忠誠高應該收得多")
+	}
+	// 權重：土地價值 ×4 比忠誠 ×2 重。
+	land := HarvestGold(50, 60, 50, 100000) - base
+	loyal := HarvestGold(50, 50, 60, 100000) - base
+	if land <= loyal {
+		t.Errorf("土地價值 +10 給 %d，忠誠 +10 給 %d——土地價值的權重應該比較重",
+			land, loyal)
+	}
+}
+
+// TestLocustLikesRichLand 釘住蝗害的方向：**土地價值越高越容易鬧**
+// （`0x16c20`，`L0`）。
+//
+// 這與其他天災相反（瘟疫是土地價值**低**才發生）。照著「災害都因為窮」
+// 的直覺寫會寫反，而寫反之後遊戲照樣跑得動。
+func TestLocustLikesRichLand(t *testing.T) {
+	// 忠誠低、土地價值高 → 鬧
+	if !LocustStrikes(20, 90, 40, 40) {
+		t.Error("忠誠 20、土地價值 90 應該鬧蝗害")
+	}
+	// 忠誠低、土地價值低 → 不鬧
+	if LocustStrikes(20, 30, 40, 40) {
+		t.Error("土地價值 30 不該鬧蝗害——田不肥蟲不來")
+	}
+	// 忠誠高 → 不鬧
+	if LocustStrikes(90, 90, 40, 40) {
+		t.Error("忠誠 90 不該鬧蝗害")
+	}
+	// 瘟疫剛好相反：土地價值低才鬧。
+	if !PlagueStrikes(20, 10, 30, 30) {
+		t.Error("忠誠 20、土地價值 10 應該鬧瘟疫")
+	}
+	if PlagueStrikes(20, 90, 30, 30) {
+		t.Error("土地價值 90 不該鬧瘟疫——瘟疫與蝗害的方向相反")
 	}
 }
 

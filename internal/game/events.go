@@ -376,23 +376,79 @@ func (g *State) autumn() []Event {
 		if !p.Owned() {
 			continue
 		}
-		if g.roll(int(Autumn), p.ID) < g.disasterChance(p)/2 {
-			p.Rice = p.Rice * (100 - TuneLocustRiceLoss) / 100
-			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneLocustLandLoss, 100))
-			out = append(out, Event{p.ID, tf("ev.locust", placeName(p.Name))})
-			continue
+		// 秋收（`0x16a1b`–`0x16ac6`，`L0`）。
+		charm := 0
+		if x := g.Governor(p.ID); x != nil {
+			charm = int(x.Charm)
 		}
-		// 收成規模同時看土地價值與人口——人口是生產力的來源（說明書 p.20）。
-		scale := p.Population / 1000
-		rice := int(p.LandValue) * TuneHarvestRicePerLand * scale / 10
-		gold := int(p.LandValue) * TuneHarvestGoldPerLand * scale / 10
+		gold := HarvestGold(charm, int(p.LandValue), int(p.PublicLoyalty),
+			p.Population)
+		rice := int(p.LandValue) * TuneHarvestRicePerLand * (p.Population / 1000) / 10
+		p.Gold = clampTo(p.Gold+gold, HarvestGoldCap)
 		p.Rice = clampTo(p.Rice+rice, MaxRice)
-		p.Gold = clampTo(p.Gold+gold, MaxGold)
-		p.LandValue = uint8(clampTo(int(p.LandValue)-TuneHarvestLandDrop, 100))
 		out = append(out, Event{p.ID,
 			tf("ev.harvest", placeName(p.Name), rice, gold)})
 	}
+	// **蝗害每年只挑一個郡**（`0x16bd5`，`L0`），不逐郡掃。
+	{
+		id := g.roll(int(Autumn), 0, 12)%state.PrefectureCount + 1
+		p := g.Prefecture(id)
+		if p != nil && p.Owned() &&
+			LocustStrikes(int(p.PublicLoyalty), int(p.LandValue),
+				g.roll(int(Autumn), id, 13)%LocustLoyaltySpread,
+				g.roll(int(Autumn), id, 14)%LocustLandSpread) {
+			p.Rice = p.Rice * (100 - TuneLocustRiceLoss) / 100
+			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneLocustLandLoss, 100))
+			out = append(out, Event{p.ID, tf("ev.locust", placeName(p.Name))})
+		}
+	}
 	return out
+}
+
+// HarvestGoldCap 是秋收之後金的上限（`0x16aa1`：與 30000.0 比，`L0`）。
+const HarvestGoldCap = 30000
+
+// HarvestGold 是秋收進帳的金（`0x16a1b`–`0x16ac6`，`L0`）：
+//
+//	收入 ＝ (太守魅力 + 土地價值 × 4 + 民眾忠誠 × 2) × 人口 ÷ 300
+//
+// 人口用的是**存的值**（實際值 ÷ 100）。太守空缺時魅力算 0。
+//
+// **三個因子都在裡面**：土地價值權重最大（×4），忠誠其次（×2），
+// 太守的魅力直接加。remake 原本只看土地價值與人口，忠誠與太守都不算——
+// 那讓「派誰當太守」對收入沒有影響。
+func HarvestGold(governorCharm, landValue, loyalty, population int) int {
+	term := governorCharm + landValue*HarvestLandWeight + loyalty*HarvestLoyaltyWeight
+	return term * (population / 100) / HarvestDivisor
+}
+
+// 秋收的三個權重（`DS:0xa74e` ＝ 4.0、`DS:0xa756` ＝ 1/300）。
+const (
+	HarvestLandWeight    = 4
+	HarvestLoyaltyWeight = 2
+	HarvestDivisor       = 300
+)
+
+// 蝗害的兩道門檻（`0x16bd9`／`0x16c03`，`L0`）。
+const (
+	LocustLoyaltySpread = 80 // RND(80) + 30
+	LocustLoyaltyFloor  = 30
+	LocustLandSpread    = 100 // RND(100) + 30
+	LocustLandFloor     = 30
+)
+
+// LocustStrikes 回報隨機挑中的那個郡鬧不鬧蝗害。
+//
+//	民眾忠誠 >= RND(80) + 30  → 不發生
+//	土地價值 <= RND(100) + 30 → 不發生
+//
+// ⚠ **土地價值越高越容易鬧蝗害**——田越肥蟲越多。這與其他天災的方向
+// 相反（瘟疫是土地價值**低**才發生），照著「災害都因為窮」的直覺寫會寫反。
+func LocustStrikes(loyalty, landValue, loyaltyRoll, landRoll int) bool {
+	if loyalty >= loyaltyRoll+LocustLoyaltyFloor {
+		return false
+	}
+	return landValue > landRoll+LocustLandFloor
 }
 
 // GrowPopulation 是一年一次的人口成長（`0x16ec2`–`0x16f16`，`L0`）：

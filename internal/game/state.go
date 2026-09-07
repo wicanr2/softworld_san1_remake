@@ -493,23 +493,31 @@ func (g *State) Governor(prefectureID int) *General {
 	if p == nil || !p.Owned() {
 		return nil
 	}
-	var main, deputy []int
+	var lord, main, deputy []int
 	for i := range g.generals {
 		x := &g.generals[i]
 		if x.Faction != p.Owner || x.Location != prefectureID {
 			continue
 		}
 		switch {
+		case x.Status == state.StatusLord:
+			lord = append(lord, i)
 		case x.Status.Governs():
 			main = append(main, i)
 		case x.Status == state.StatusChief:
 			deputy = append(deputy, i)
 		}
 	}
-	if len(main) == 1 {
+	// **君主在場就是君主主事**，郡裡同時有太守是正常的——君主會巡狩，
+	// 也會親征經過自己的郡。把兩位一起算成「主事者」再要求唯一，
+	// 會讓那個月的郡看起來沒有人管，而畫面上完全看不出來。
+	if len(lord) == 1 {
+		return &g.generals[lord[0]]
+	}
+	if len(lord) == 0 && len(main) == 1 {
 		return &g.generals[main[0]]
 	}
-	if len(main) == 0 && len(deputy) == 1 {
+	if len(lord) == 0 && len(main) == 0 && len(deputy) == 1 {
 		return &g.generals[deputy[0]]
 	}
 	return nil
