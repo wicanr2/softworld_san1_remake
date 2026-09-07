@@ -236,3 +236,58 @@ func UnitFlags(data1 *Container) ([4][6]*Image, error) {
 func FlagPlateText(soldiers int) string {
 	return fmt.Sprintf("%*d", FlagPlateCells, soldiers)
 }
+
+// 遮罩：`8x8AND0`–`3`，四張 8×8。
+//
+// 用法是 **AND**：`畫面 &= 遮罩`，所以遮罩是 15 的地方留著、是 0 的地方
+// 變黑。四張的密度不同——
+//
+//	AND0  偶數列的偶數欄留著        1/4
+//	AND1  棋盤                      1/2
+//	AND2  斜線，每四格留一格        1/8
+//	AND3  偶數列整列留著            1/2
+//
+// **紮寨那一步用的是 `AND0`**：原版把可以下寨的格子照常畫、其餘蓋一層
+// 遮罩。判準是原版紮寨那一格的畫面（`sweep-04`）——78 格裡 73 格與
+// 「圖塊 AND `8x8AND0`」逐像素相同，剩下四格是照常畫的可下寨格。
+const MaskCount = 4
+
+// Masks 載入四張遮罩。
+func Masks(data1 *Container) ([MaskCount]*Image, error) {
+	var out [MaskCount]*Image
+	for i := range out {
+		name := fmt.Sprintf("8x8AND%d.IMG", i)
+		j, ok := data1.ByName(name)
+		if !ok {
+			return out, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
+		}
+		im, err := DecodeImage(data1.Data(j))
+		if err != nil {
+			return out, err
+		}
+		out[i] = im
+	}
+	return out, nil
+}
+
+// MaskCamp 是紮寨那一步用的遮罩編號。
+const MaskCamp = 0
+
+// ApplyMask 把一塊矩形套上遮罩（`畫面 &= 遮罩`）。
+//
+// 遮罩對齊的是**畫面座標**，與底紋同一個規矩，跨格子接得起來。
+func (im *Image) ApplyMask(x, y, w, h int, mask *Image) {
+	for dy := 0; dy < h; dy++ {
+		yy := y + dy
+		if yy < 0 || yy >= im.H {
+			continue
+		}
+		for dx := 0; dx < w; dx++ {
+			xx := x + dx
+			if xx < 0 || xx >= im.W {
+				continue
+			}
+			im.Pix[yy*im.W+xx] &= mask.Pix[(yy%mask.H)*mask.W+xx%mask.W]
+		}
+	}
+}

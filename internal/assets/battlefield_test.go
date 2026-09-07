@@ -253,3 +253,79 @@ func TestFlagComplement(t *testing.T) {
 		t.Errorf("陳就的中軍在 (%d,%d) 有 %d 格對不上取補數後的 WFLAGA00", bx, by, bad)
 	}
 }
+
+// TestCampMaskMatchesTheOriginal 釘住紮寨那一步蓋的是 `8x8AND0`。
+//
+// 基準是原版走到紮寨的那一格畫面。可以下寨的格子照常畫，其餘蓋遮罩——
+// 78 格裡 73 格與「圖塊 AND 遮罩」逐像素相同，剩下四格是照常畫的。
+func TestCampMaskMatchesTheOriginal(t *testing.T) {
+	const shotPath = "../../workplace/shots/bf/sweep-04.png"
+	f, err := os.Open(shotPath)
+	if err != nil {
+		t.Skipf("沒有紮寨那一步的基準畫面 %s", shotPath)
+	}
+	shot, err := imgpng.Decode(f)
+	f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := container(t, "DATA1")
+	tiles, err := BattleTiles(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	masks, err := Masks(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	field := prefectureField(t, 25)
+	plain, masked, other := 0, 0, 0
+	for row := 0; row < len(field)/FieldCols; row++ {
+		for col := 0; col < FieldCols; col++ {
+			b := field[row*FieldCols+col]
+			if b == 0xFF || int(b&0x0F) > MaxTerrain {
+				continue
+			}
+			x, y := FieldCell(col, row)
+			if y+TileH > ScreenH {
+				continue
+			}
+			one := &Image{W: TileW, H: TileH, Pix: make([]byte, TileW*TileH)}
+			copy(one.Pix, tiles[b&0x0F].Pix)
+			same := func(im *Image) bool {
+				for ty := 0; ty < TileH; ty++ {
+					for tx := 0; tx < TileW; tx++ {
+						a := EGAPalette[im.Pix[ty*TileW+tx]&15]
+						o := color.RGBAModel.Convert(shot.At(x+tx, y+ty)).(color.RGBA)
+						if a != o {
+							return false
+						}
+					}
+				}
+				return true
+			}
+			if same(one) {
+				plain++
+				continue
+			}
+			// 遮罩對齊畫面座標，所以要把整塊放回畫面的位置再套。
+			full := &Image{W: ScreenW, H: ScreenH, Pix: make([]byte, ScreenW*ScreenH)}
+			full.Blit(tiles[b&0x0F], x, y)
+			full.ApplyMask(x, y, TileW, TileH, masks[MaskCamp])
+			copy(one.Pix, full.SubImage(image.Rect(x, y, x+TileW, y+TileH)).Pix)
+			if same(one) {
+				masked++
+				continue
+			}
+			other++
+		}
+	}
+	t.Logf("紮寨那一步：照常畫 %d 格、蓋遮罩 %d 格、兩者都不是 %d 格",
+		plain, masked, other)
+	if masked < 70 {
+		t.Errorf("只有 %d 格對得上「圖塊 AND 8x8AND0」", masked)
+	}
+	if plain != 4 {
+		t.Errorf("照常畫的有 %d 格，原版那一步可以下寨的是 4 格", plain)
+	}
+}
