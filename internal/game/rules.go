@@ -14,7 +14,11 @@
 // 而且玩起來「差不多」——那是最難發現的錯（`CLAUDE.md` §7 第 18 條）。
 package game
 
-import "github.com/wicanr2/softworld_san1_remake/internal/state"
+import (
+	"math/big"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
+)
 
 // 資源上限（說明書 p.22）。
 const (
@@ -48,6 +52,34 @@ const (
 
 // FortCost 是建一座城寨的花費：當月物價的 100 倍（說明書 p.21）。
 func FortCost(priceLevel uint8) int { return int(priceLevel) * 100 }
+
+// TroopShare 是調整兵力時一個人分到的兵（`L1`、`[base]`、`0xc4c3`）。
+//
+//	份額 ＝ min(trunc(帶兵上限 × (總兵力 ÷ 總上限) ＋ 0.5), 帶兵上限)
+//
+// ⚠ **不能寫成整數的四捨五入**（`(總兵力 × 上限 × 2 ÷ 總上限 ＋ 1) ÷ 2`）。
+// 原版先把「總兵力 ÷ 總上限」存成一個 double，再用 80 位元的浮點乘回去；
+// 那個商比真值小一點點，所以**剛好落在 .5 的案例會少一格**：
+// 上限 2000、總兵 12565、總上限 28000 的真值是 897.5，原版給 897。
+// 整數的四捨五入給 898，279 個樣本裡就是這 4 個對不上。
+//
+// 這裡用精確有理數重現：先取「商」那一步的 double 捨入，再精確算乘法。
+func TroopShare(cap, total, capSum int) int {
+	if capSum <= 0 || cap <= 0 {
+		return 0
+	}
+	r := new(big.Rat).SetFloat64(float64(total) / float64(capSum))
+	if r == nil {
+		return 0
+	}
+	r.Mul(r, new(big.Rat).SetInt64(int64(cap)))
+	r.Add(r, big.NewRat(1, 2))
+	n := int(new(big.Int).Quo(r.Num(), r.Denom()).Int64())
+	if n > cap {
+		n = cap
+	}
+	return n
+}
 
 // TroopCap 是一個職位帶得動的最大兵力（`L0`、`[base]`）。
 //

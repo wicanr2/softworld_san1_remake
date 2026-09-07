@@ -214,40 +214,13 @@ func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID
 	if total > 0 {
 		train, arms = wTrain*100/total, wArms*100/total
 	}
-	// **依各人的上限比例分配，四捨五入**（原版 `0xc2c4` 在轉回整數之前
-	// 加 `ds:[0xa5de]` ＝ 0.5，`L0`）。除得不盡時總數會差幾個人，
-	// 原版沒有補回去——郡的總兵力是導出值（駐軍加總），不會因此失衡。
-	left := total
+	// **依各人的上限比例分配**（`TroopShare`，`L1`）。除得不盡時總數會差
+	// 幾個人，原版沒有補回去——郡的總兵力是導出值（駐軍加總），
+	// 不會因此失衡。
 	for _, x := range units {
-		n := 0
-		if capSum > 0 {
-			n = (total*x.TroopCap()*2/capSum + 1) / 2
-		}
-		if n > x.TroopCap() {
-			n = x.TroopCap()
-		}
-		x.Soldiers = n
+		x.Soldiers = TroopShare(x.TroopCap(), total, capSum)
 		x.Training = uint8(train)
 		x.Arms = uint8(arms)
-		left -= n
-	}
-	// 上限擋住的剩餘塞回還有空間的人。**只補不足，不削多餘**：
-	// 四捨五入會讓總數比原本多幾個，而原版就是這樣——它不做校正，
-	// 郡的總兵力是駐軍加總算出來的，不會因此失衡。
-	for _, x := range units {
-		if left <= 0 {
-			break
-		}
-		room := x.TroopCap() - x.Soldiers
-		if room <= 0 {
-			continue
-		}
-		take := left
-		if take > room {
-			take = room
-		}
-		x.Soldiers += take
-		left -= take
 	}
 	p.Commanded = true
 	return nil
