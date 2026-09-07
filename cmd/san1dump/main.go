@@ -170,9 +170,16 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		if p == nil {
 			return fmt.Errorf("沒有郡 %d", at)
 		}
-		// 部隊要接上原版的旗幟，就得真的有一場戰役：用這個郡自己的
-		// 地形開一場，讓電腦打 `months` 天再畫。
-		b := sampleBattle(at, p.Neighbours, p.BattleField)
+		// 部隊要接上原版的旗幟，就得真的有一場戰役。**優先用劇本裡真的
+		// 兩個勢力**——那樣連統帥的姓名與肖像都是原版的資料；湊不出
+		// 對手才退回自組的樣本局面。
+		b, chiefs := realBattle(sc, at)
+		if b == nil {
+			fmt.Fprintf(os.Stderr,
+				"san1dump：郡 %d 湊不出真的兩軍（沒有駐軍或鄰郡同屬一方），"+
+					"改用自組的樣本局面\n", at)
+			b = sampleBattle(at, p.Neighbours, p.BattleField)
+		}
 		for d := 0; d < months && !b.Over; d++ {
 			for _, u := range b.Order() {
 				b.AutoTurn(u)
@@ -201,6 +208,10 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 				}
 				info.Commander[k] = u.Leaders[0].Name
 				break
+			}
+			if chiefs[k] != nil {
+				info.Commander[k] = chiefs[k].Name
+				info.Portrait[k] = int(chiefs[k].Portrait)
 			}
 		}
 		ui.DrawArtBattle(c, ab, b, ui.BattleView{Acting: hi,
@@ -430,4 +441,46 @@ func promptFor(u *battle.Unit) string {
 		return ""
 	}
 	return i18n.Sf("bat.unitMoves", u.Name(), u.Move)
+}
+
+// realBattle 用劇本裡真的兩個勢力開一場：守方是這個郡的主人，攻方是
+// 第一個**不同勢力**又有駐軍的鄰郡。湊不出來就回 nil。
+func realBattle(sc *state.Scenario, at int) (*battle.Battle, [2]*game.General) {
+	var chiefs [2]*game.General
+	act := sc.ActiveFactions()
+	if len(act) == 0 {
+		return nil, chiefs
+	}
+	g, err := game.New(sc, state.FactionID(act[0]), 5, state.EditionBase)
+	if err != nil {
+		return nil, chiefs
+	}
+	to := g.Prefecture(at)
+	if to == nil || len(g.Garrison(at)) == 0 {
+		return nil, chiefs
+	}
+	for _, n := range to.Neighbours {
+		from := g.Prefecture(n)
+		if from == nil || from.Owner == to.Owner {
+			continue
+		}
+		var idx []int
+		for _, x := range g.Garrison(n) {
+			idx = append(idx, x.Index)
+		}
+		// **要留一位在家**：原版不准把郡治理的人全部帶走
+		//（`移出之後這個郡沒有人治理`）。
+		if len(idx) < 2 {
+			continue
+		}
+		idx = idx[:len(idx)-1]
+		p, err := g.BeginAttack(n, at, idx, from.Owner, game.HalfSupply())
+		if err != nil {
+			continue
+		}
+		att, def := p.Chiefs()
+		chiefs[0], chiefs[1] = att, def
+		return p.Battle(), chiefs
+	}
+	return nil, chiefs
 }
