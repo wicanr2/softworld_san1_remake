@@ -30,12 +30,13 @@ func TestSeasons(t *testing.T) {
 func TestAutumnHarvest(t *testing.T) {
 	g := newGame(t)
 	p := g.Prefecture(15) // 洛陽，人口最多
-	g.Date = Date{Year: 189, Month: 8}
+	// 秋季常式一年只跑一次，在**七月**（`SeasonMonths`）。
+	g.Date = Date{Year: 189, Month: 6}
 	rice, gold, land := p.Rice, p.Gold, p.LandValue
 	want := HarvestGold(charmOf(g, p.ID), int(p.LandValue),
 		int(p.PublicLoyalty), p.Population)
-	events := g.EndMonth() // → 9 月，秋收
-	if g.Date.Month != 9 {
+	events := g.EndMonth() // → 7 月，秋收
+	if g.Date.Month != 7 {
 		t.Fatalf("推到 %d 月", g.Date.Month)
 	}
 	if p.Rice <= rice && p.Gold <= gold {
@@ -239,8 +240,9 @@ func TestTributeYearly(t *testing.T) {
 	// **開局的寶庫不是空的**——`BASEMAS` offset 14–18 帶著初始內容
 	// （`state.TreasuryOf`），所以玉璽要比「有沒有增加」而不是「是不是零」。
 	sealBefore := f.Treasury[TreasureSeal]
-	g.Date = Date{Year: 189, Month: 11}
-	g.EndMonth() // → 12 月
+	// 冬季常式一年只跑一次，在**十月**。
+	g.Date = Date{Year: 189, Month: 9}
+	g.EndMonth() // → 10 月，進貢
 	after := 0
 	for _, n := range f.Treasury {
 		after += n
@@ -402,12 +404,14 @@ func TestLandValueDecays(t *testing.T) {
 	}
 
 	g := newGame(t)
-	// 先把幾個郡的土地價值拉滿，走三個春月看它掉下來。
+	// 先把幾個郡的土地價值拉滿，走三年的元月看它掉下來。
+	// **春季常式一年只跑一次**（`SeasonMonths`），所以「三個春月」
+	// 要跑三年不是跑三個月。
 	for id := 1; id <= 5; id++ {
 		g.Prefecture(id).LandValue = 100
 	}
-	for m := 1; m <= 3; m++ {
-		g.Date = Date{Year: 190, Month: m}
+	for y := 190; y <= 192; y++ {
+		g.Date = Date{Year: y, Month: 12}
 		g.EndMonth()
 	}
 	dropped := 0
@@ -417,7 +421,7 @@ func TestLandValueDecays(t *testing.T) {
 		}
 	}
 	if dropped == 0 {
-		t.Error("走過三個春月，五個滿檔的郡一個都沒掉——衰減沒有生效")
+		t.Error("走過三年的元月，五個滿檔的郡一個都沒掉——衰減沒有生效")
 	}
 }
 
@@ -501,8 +505,8 @@ func TestTributeFollowsTerritoryWithACap(t *testing.T) {
 	g := newGame(t)
 	f := g.Faction(g.Factions()[0].ID)
 	before := f.Treasury
-	g.Date = Date{Year: 189, Month: 11}
-	g.EndMonth() // → 十二月，進貢
+	g.Date = Date{Year: 189, Month: 9}
+	g.EndMonth() // → 十月，冬季常式（進貢與人口成長同一支）
 	if f.Treasury[TreasureSeal] != before[TreasureSeal] {
 		t.Error("玉璽不進貢")
 	}
@@ -511,7 +515,7 @@ func TestTributeFollowsTerritoryWithACap(t *testing.T) {
 		got += f.Treasury[tr] - before[tr]
 	}
 	if got == 0 {
-		t.Error("十二月沒有收到任何貢品")
+		t.Error("十月沒有收到任何貢品")
 	}
 	// 四種各一次 ＋ 一件紅利，所以上界是 4×12＋1。
 	if max := 4*(TributeCapFloor+TributeCapSpread-1) + 1; got > max {
@@ -713,15 +717,14 @@ func TestSealAppearsAndBoostsPrestige(t *testing.T) {
 	for _, f := range g.Factions() {
 		before[f.ID] = f.Prestige
 	}
-	// 跑十年的春天；約半數機率，十年內幾乎一定出現。
+	// 跑十年的元月；約半數機率，十年內幾乎一定出現。
+	// **春季常式一年只跑一次**（`SeasonMonths`），所以是十次不是三十次。
 	for y := 0; y < 10 && !g.SealFound(); y++ {
-		for m := 1; m <= 3; m++ {
-			g.Date = Date{Year: 190 + y, Month: m}
-			g.EndMonth()
-		}
+		g.Date = Date{Year: 190 + y, Month: 12}
+		g.EndMonth()
 	}
 	if !g.SealFound() {
-		t.Fatal("跑了十年的春天，玉璽還沒現世")
+		t.Fatal("跑了十年的元月，玉璽還沒現世")
 	}
 	// 只有一家拿到，而且人望大漲。
 	holders := 0

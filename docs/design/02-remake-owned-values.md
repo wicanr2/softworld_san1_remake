@@ -95,8 +95,6 @@
 |---|---|---|
 | `TuneHarvestRicePerLand` / `TuneHarvestGoldPerLand` / `TuneHarvestLandDrop` | 2／1／2 | 「稅金入庫、米糧進倉」|
 | `TuneWinterGrowth` | 95（千分比，**一年一次**）| 「人口增加」|
-| `harvestMonth` | 9 | 說明書只說秋收在秋天，沒說哪個月 |
-| `tributeMonth` | 12 | 說明書只說每年進貢一次 |
 | `TuneAgingStamina` | `AlreadyPastPrime`／`AgingDrop`：過壽命才扣體能，`體能 + (壽命−年齡)×25 − RND(50)` | `0x15d5d` | 「年齡增長，體能隨之逐漸減退」|
 
 `agingMonth`（元月）與 `growthMonth`（十月）**不在這張表裡**——

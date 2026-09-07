@@ -54,11 +54,24 @@ type Event struct {
 	Text       string
 }
 
+// SeasonMonths 是四季常式真正會跑的四個月（`L0`、`0x15c48`）。
+//
+// **一年各跑一次，不是每個月都跑。** 原版的分派器讀的是月份
+// （`es:[0x3f08]`），跳躍表比的是 1、4、7、10：其餘八個月直接 `retf`。
+// 這決定了天災的頻率——每個月都判的話，地震、水災、瘟疫、蝗害
+// 一年各有十二次機會而不是一次，**十二倍**。
+var SeasonMonths = map[int]Season{1: Spring, 4: Summer, 7: Autumn, 10: Winter}
+
 // RunSeason 跑這個月的季節事件，回傳發生了什麼。
 //
 // 呼叫時機是**推進到新的月份之後**——事件屬於新的那個月。
+// 不在 `SeasonMonths` 裡的月份什麼都不跑。
 func (g *State) RunSeason() []Event {
-	switch g.Date.Season() {
+	season, ok := SeasonMonths[g.Date.Month]
+	if !ok {
+		return nil
+	}
+	switch season {
 	case Spring:
 		return g.spring()
 	case Summer:
@@ -508,10 +521,10 @@ func (g *State) summer() []Event {
 // 全部 350 筆的年齡只在元月動；二三十個郡的人口只在十月一起動，
 // 兩者都十二個月後再來一次，其他月份沒有（`docs/mechanics/70-ai` §2.2）。
 //
-// harvestMonth 與 tributeMonth 是 **remake 挑的**：說明書只說秋收在秋天、
-// 進貢每年一次，沒說是哪個月，原版那一邊也還沒量到——米糧每個月都被
-// 電腦諸侯買賣，年度收成的尖峰埋在裡面看不出來
-// （`docs/design/02-remake-owned-values.md`）。
+// **四個月份現在都是量到的**（`L0`、`0x15c48`）。四季常式一年各跑一次，
+// 分派器比的是月份：1 春、4 夏、7 秋、10 冬。秋收在秋季常式裡、
+// 進貢與人口成長在冬季常式裡，所以它們的月份不是 remake 挑得動的——
+// 原本挑的 9 月與 12 月落在四支常式都不跑的月份上。
 // 物價的範圍。**量出來的**：十六個月 × 四十二個郡，值全部落在 30–68。
 const (
 	PriceMin    = 30
@@ -523,10 +536,10 @@ const (
 const priceSalt = 0x9E37
 
 const (
-	agingMonth   = 1
-	harvestMonth = 9
-	tributeMonth = 12
-	growthMonth  = 10
+	agingMonth   = 1  // 春季常式
+	harvestMonth = 7  // 秋季常式
+	tributeMonth = 10 // 冬季常式
+	growthMonth  = 10 // 冬季常式，與進貢同一支
 )
 
 // repriceAll 每個月替每一個郡重抽物價。
