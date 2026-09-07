@@ -701,3 +701,26 @@ func TestSealAppearsAndBoostsPrestige(t *testing.T) {
 		t.Errorf("玉璽變成 %d 件——現世之後不該再發", n)
 	}
 }
+
+// TestTreasuryIsCapped 釘住寶庫每一種寶物的上限（`0x1731d`，`L0`）。
+//
+// **這與 `TreasureCap` 是兩件事**：那個是賞賜能把能力值提到的上限
+// （90 點，說明書 p.24），這個是寶庫的存量上限（100 件）。兩個常數
+// 名字只差一個字，混用不會編譯失敗也不會報錯。
+func TestTreasuryIsCapped(t *testing.T) {
+	if TreasuryCap == TreasureCap {
+		t.Fatal("寶庫上限與能力上限不該是同一個數")
+	}
+	g := newGame(t)
+	f := g.Faction(g.Factions()[0].ID)
+	for tr := TreasureBook; tr < treasureCount; tr++ {
+		f.Treasury[tr] = TreasuryCap
+	}
+	g.Date = Date{Year: 189, Month: 11}
+	g.EndMonth() // → 十二月，進貢
+	for tr := TreasureBook; tr < treasureCount; tr++ {
+		if f.Treasury[tr] > TreasuryCap {
+			t.Errorf("%v 存了 %d 件，上限是 %d", tr, f.Treasury[tr], TreasuryCap)
+		}
+	}
+}

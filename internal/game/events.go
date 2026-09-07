@@ -39,6 +39,12 @@ const (
 	// 進貢的上限（`0x171e0`：`RND(5) + 8`，`L0`）。
 	TributeCapSpread = 5
 	TributeCapFloor  = 8
+	// TreasuryCap 是寶庫裡每一種寶物的上限（`0x1731d`，`L0`）。
+	// 欄位是一個 byte，原版自己夾在 100。
+	//
+	// ⚠ 不要與 `TreasureCap` 混淆——那是賞賜能把**能力值**提到的上限
+	// （說明書 p.24：90 點），兩者是不同的東西。
+	TreasuryCap = 100
 )
 
 // Event 是一則發生過的事件，給訊息列與測試用。
@@ -710,12 +716,12 @@ func (g *State) winter() []Event {
 			got := TributeCount(land,
 				g.roll(int(f.ID), int(t), 30)%max(1, land+1),
 				g.roll(int(f.ID), int(t), 31)%TributeCapSpread)
-			f.Treasury[t] += got
+			f.Treasury[t] = clampTo(f.Treasury[t]+got, TreasuryCap)
 			n += got
 		}
 		// 再挑一種多給一件（`0x1723c` 的 `RND(4)`）。
 		bonus := TreasureBook + Treasure(g.roll(int(f.ID), 0, 32)%int(treasureCount-1))
-		f.Treasury[bonus]++
+		f.Treasury[bonus] = clampTo(f.Treasury[bonus]+1, TreasuryCap)
 		n++
 		if n > 0 {
 			lord := g.Lord(f.ID)

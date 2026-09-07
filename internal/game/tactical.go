@@ -318,7 +318,7 @@ func (g *State) seizeTreasures(r *BattleResult, by state.FactionID) {
 			if loser.Treasury[i] > 0 {
 				moved = true
 			}
-			winner.Treasury[i] += loser.Treasury[i]
+			winner.Treasury[i] = clampTo(winner.Treasury[i]+loser.Treasury[i], TreasuryCap)
 			loser.Treasury[i] = 0
 		}
 		if moved {

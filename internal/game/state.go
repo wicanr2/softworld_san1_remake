@@ -185,6 +185,8 @@ func (g *General) TroopCap() int { return TroopCap(g.Rank) }
 type Treasure int
 
 const (
+	// **列舉順序就是諸侯記錄 offset 14–18 的順序**（`L0`，
+	// `state.TreasuryOf`）：進貢的迴圈用同一個索引寫欄位與挑標籤。
 	TreasureSeal   Treasure = iota // 玉璽：只能諸侯持有，不能送人
 	TreasureBook                   // 兵書：謀略 +2
 	TreasureBlade                  // 寶刀：戰力 +3
