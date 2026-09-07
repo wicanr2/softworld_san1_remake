@@ -336,6 +336,16 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Ed
 	if !ok {
 		return nil, fmt.Errorf("game: 不知道槽位 %q 的起始年月", sc.Slot)
 	}
+	return newAt(sc, player, difficulty, ed, start)
+}
+
+// newAt 是 New 去掉「起始年月要查得到」那一條。
+//
+// **讀進度時年月來自進度本身**，起始年月當場就被蓋掉；而原版存的進度
+// 不記得自己是從哪個劇本開始的（`docs/re/08`），拿劇本表去查一定落空。
+// 落空就擋下來的話，玩家自己的原版存檔一份都讀不進來。
+func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
+	ed state.Edition, start Date) (*State, error) {
 	if ed == "" {
 		ed = state.EditionBase
 	}

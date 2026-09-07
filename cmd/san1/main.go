@@ -696,6 +696,8 @@ func main() {
 	root := flag.String("root", "", "原版遊戲目錄（必填，玩家自備）")
 	saveDir := flag.String("saves", "saves", "存檔目錄（remake 自己的，不寫回原版）")
 	load := flag.Int("load", 0, "開場就讀第幾個進度（1..6）；0 ＝ 開新局")
+	origLoad := flag.Int("orig-load", 0,
+		"改讀**原版**存的第幾個進度（1..6，從 DATA2.GRP 讀，只讀不寫）；0 ＝ 不讀")
 	calendar := flag.String("calendar", "中曆", "年月的表示方式：中曆／西曆（原版「其他 → 年號」）")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型")
 	slot := flag.String("slot", "001", "劇本：001..006")
@@ -749,7 +751,18 @@ func main() {
 	var s *session.Session
 	var brain ai.Brain
 	var g *game.State
-	if *load > 0 {
+	if *origLoad > 0 {
+		ed, err := state.ParseEdition(*edition)
+		if err != nil {
+			die(err)
+		}
+		s, err = session.LoadOriginal(c, *origLoad, ed, ai.Mode(*aiMode))
+		if err != nil {
+			die(err)
+		}
+		g, brain = s.G, s.Brain
+		f = int(s.Player)
+	} else if *load > 0 {
 		s, err = session.Load(*saveDir, *load, ai.Mode(*aiMode))
 		if err != nil {
 			die(err)

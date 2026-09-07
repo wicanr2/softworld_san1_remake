@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/save"
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
 // 存讀檔（說明書 p.25：「其他 → 儲存」，六個進度）。
@@ -57,6 +59,31 @@ func Load(dir string, slot int, mode ai.Mode) (*Session, error) {
 	s.note("讀入第 %d 個進度", slot)
 	return s, nil
 }
+
+// LoadOriginal 讀玩家自己的**原版**進度（`DATA2.GRP` 裡的六個），
+// 回傳一個新的 Session。
+//
+// ⚠ **只讀不寫。** 之後要存還是存進 remake 自己的目錄；原版的容器
+// 一個位元組都不動（`internal/save` 的說明）。
+func LoadOriginal(c *assets.Container, slot int, ed state.Edition, mode ai.Mode) (*Session, error) {
+	g, err := save.ReadOriginal(c, slot, ed)
+	if err != nil {
+		return nil, err
+	}
+	if err := ai.CheckEdition(mode, g.Edition); err != nil {
+		return nil, err
+	}
+	brain, err := ai.New(mode)
+	if err != nil {
+		return nil, err
+	}
+	s := New(g, brain, g.Player)
+	s.note("讀入原版的第 %d 個進度", slot)
+	return s, nil
+}
+
+// OriginalSaves 回傳原版六個進度的概況。
+func OriginalSaves(c *assets.Container) []save.Info { return save.ListOriginal(c) }
 
 // Saves 回傳六個存檔槽的概況。
 func Saves(dir string) []save.Info {

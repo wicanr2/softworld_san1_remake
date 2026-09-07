@@ -105,11 +105,11 @@ func Restore(sc *state.Scenario, e Extra) (*State, error) {
 	// 借 New 把三張表解出來。難度先給合法值，年月與玩家馬上蓋掉——
 	// New 會擋「玩家控制的勢力沒在用」，而存檔裡的玩家可能已經被消滅，
 	// 那不是錯誤，是輸掉了。
-	g, err := New(sc, state.NoFaction, e.Difficulty, ed)
+	g, err := newAt(sc, state.NoFaction, e.Difficulty, ed,
+		Date{Year: e.Year, Month: e.Month})
 	if err != nil {
 		return nil, err
 	}
-	g.Date = Date{Year: e.Year, Month: e.Month}
 	g.Player = e.Player
 	g.Options = e.Options
 	// `New` 是拿 `NoFaction` 叫的，所以它把每一個勢力都標成電腦。

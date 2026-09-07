@@ -546,9 +546,28 @@ func (s *Scenario) Lord(faction int) (General, error) {
 
 // ActiveFactions 回傳實際在用的勢力槽號。
 //
-// **判準從資料推，不硬編 14。** 沒在用的槽指向姓名是全形標點的填充筆，
-// 所以「君主是不是人」就是判準——換劇本、換版本都成立。
+// 有兩條判準，用哪一條看資料自己說得出多少。
+//
+// **操縱方（offset 0）填好了就用它。** 那一欄是 1 玩家／2 電腦／
+// `0xFFFF` 已滅亡，最直接。但**劇本檔裡它還沒填**——玩家人數是開局
+// 才問的，所以六個劇本的十六個槽沒有一個是 `0xFFFF`。看得到 `0xFFFF`
+// 就表示這份資料是一局玩過的（存檔），那時操縱方比什麼都準。
+//
+// 沒填的時候退回「君主是不是人」加「有沒有領地」：沒在用的槽指向姓名
+// 是全形標點的填充筆（`docs/formats/03` §4）。這一條在存檔上會出兩種錯，
+// 正是要靠操縱方擋掉的——**自創君主的君主槽也指向填充筆**
+// （`docs/re/08` §3），而**輸掉的玩家一個郡都不剩**，兩種都會被漏掉，
+// 而錯誤訊息會說那個勢力「沒有在用」，看起來像存檔壞了。
 func (s *Scenario) ActiveFactions() []int {
+	if s.controllersFilled() {
+		var out []int
+		for i := range s.masters {
+			if s.Controller(i) != ControlledByNobody {
+				out = append(out, i)
+			}
+		}
+		return out
+	}
 	owned := map[int]bool{}
 	for _, p := range s.prefectures {
 		if p.Owned() {
@@ -561,18 +580,24 @@ func (s *Scenario) ActiveFactions() []int {
 			out = append(out, i)
 			continue
 		}
-		// **自創君主的諸侯記錄指向人物表的填充筆**（名字是全形標點，
-		// `docs/formats/03` §4）。拿「君主是不是人」當唯一判準的話，
-		// 讀原版存檔時會把玩家自己排除掉——而錯誤訊息會說那個勢力
-		// 「沒有在用」，看起來像存檔壞了。
-		//
-		// 有領地就是在用。劇本檔那兩個指向填充筆的槽本來就沒有領地，
-		// 所以這一條不會讓它們混進來。
 		if owned[i] {
 			out = append(out, i)
 		}
 	}
 	return out
+}
+
+// controllersFilled 說操縱方那一欄有沒有被填過。
+//
+// 判準是「看得到至少一個 `0xFFFF`」：劇本檔一個都沒有，玩過一局的
+// 存檔一定有——十六個槽不可能全部都還在。
+func (s *Scenario) controllersFilled() bool {
+	for i := range s.masters {
+		if s.Controller(i) == ControlledByNobody {
+			return true
+		}
+	}
+	return false
 }
 
 // Territory 回傳某個勢力擁有的郡，依編號排序。
