@@ -180,6 +180,13 @@ func (b *Battle) stratagemOptions(u *Unit) []scheme {
 			if !worthIt(b, s, t) {
 				continue
 			}
+			// **必敗的計不要用**：判定是
+			// `RND(Spread) + 目標謀略 < 施法者謀略`，亂數最小是 0，
+			// 所以謀略不高過對方就一次都不會成功——而錢與行動力
+			// 照樣賠進去。這條不是調校，是那個公式的直接推論。
+			if x := t.Smartest(); x != nil && int(wise.Intel) <= int(x.Intel) {
+				continue
+			}
 			out = append(out, scheme{s, t.At})
 		}
 	}

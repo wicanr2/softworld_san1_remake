@@ -393,3 +393,49 @@ func TestStratagemTablesMatchTheOriginal(t *testing.T) {
 		t.Error("計謀的編號與原版選單不同")
 	}
 }
+
+// TestStratagemSucceeds 釘住計謀的成功判定（`0x2ac4d`，`L0`）：
+//
+//	RND(上限) + 目標領隊的謀略 < 施法者領隊的謀略
+//
+// **說明書完全沒提這一關**——它只寫了智力門檻與費用，過了那兩關
+// 看起來就一定成功。
+func TestStratagemSucceeds(t *testing.T) {
+	for _, c := range []struct {
+		s    Stratagem
+		want int
+	}{
+		{Fire, 10}, {Flood, 8}, {Trap, 2}, {Lure, 2}, {Burn, 4}, {Siege, 6},
+	} {
+		if got := c.s.Spread(); got != c.want {
+			t.Errorf("%s 的亂數上限是 %d，原版是 %d", c.s, got, c.want)
+		}
+	}
+	// 謀略相同一次都不會成功——亂數最小是 0。
+	for r := 0; r < 10; r++ {
+		if StratagemSucceeds(80, 80, r) {
+			t.Errorf("謀略同樣是 80、RND ＝ %d 卻成功了", r)
+		}
+	}
+	// 高出 10 點的話，火攻（上限 10）一定成功。
+	for r := 0; r < Fire.Spread(); r++ {
+		if !StratagemSucceeds(90, 80, r) {
+			t.Errorf("謀略 90 對 80、RND ＝ %d 卻失敗了", r)
+		}
+	}
+	// 高出 5 點：火攻一半機率、陷阱（上限 2）一定成功。
+	n := 0
+	for r := 0; r < Fire.Spread(); r++ {
+		if StratagemSucceeds(85, 80, r) {
+			n++
+		}
+	}
+	if n != 5 {
+		t.Errorf("謀略 85 對 80 的火攻成功 %d/10 次，應該是 5", n)
+	}
+	for r := 0; r < Trap.Spread(); r++ {
+		if !StratagemSucceeds(85, 80, r) {
+			t.Errorf("謀略 85 對 80 的陷阱、RND ＝ %d 卻失敗了", r)
+		}
+	}
+}

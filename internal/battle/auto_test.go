@@ -219,8 +219,11 @@ func TestAutoUsesTheWholeRepertoire(t *testing.T) {
 				s.FromGate = params(id).Neighbours[0]
 				// 最後一組是「猛將帶寡兵」：正面打不贏但戰力壓過對方，
 				// 手冊說單挑「與率領軍力大小無關」，就是為這種局面設的。
+				// **兩邊的謀略要有差**：計謀的判定是
+				// `RND(上限) + 目標謀略 < 施法者謀略`，謀略相同時
+				// 一次都不會成功，整組計謀就掃不到。
 				s.Attackers = armies(8, c.war, 85, int(3000*c.ratio), "攻")
-				s.Defenders = armies(6, 60, 85, 2500, "守")
+				s.Defenders = armies(6, 60, 60, 2500, "守")
 				b := New(s)
 				b.Auto()
 				for _, line := range b.Log {

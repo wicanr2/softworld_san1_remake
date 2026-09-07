@@ -130,6 +130,36 @@ func (s Stratagem) MinIntel() int {
 	return 0
 }
 
+// Spread 是成功判定的亂數上限（原版 `DS:0x81e0`，`L0`）。
+//
+// 判定是（`0x2ac4d`）
+//
+//	RND(Spread) + 目標領隊的謀略 < 施法者領隊的謀略 → 成功
+//
+// 所以上限愈大愈難：火攻要贏過對方 10 點以內的亂數，陷阱與誘敵
+// 只要 2 點。**說明書完全沒提這一關**——它只寫了智力門檻與費用，
+// 過了那兩關看起來就一定成功。
+func (s Stratagem) Spread() int {
+	switch s {
+	case Fire:
+		return 10
+	case Flood:
+		return 8
+	case Trap, Lure:
+		return 2
+	case Burn:
+		return 4
+	case Siege:
+		return 6
+	}
+	return 0
+}
+
+// StratagemSucceeds 是計謀成不成功。
+func StratagemSucceeds(casterIntel, targetIntel, roll int) bool {
+	return roll+targetIntel < casterIntel
+}
+
 // Cost 是用這個計謀要花多少金（說明書 p.32–34）。
 func (s Stratagem) Cost() int {
 	switch s {
@@ -243,6 +273,22 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 
 	b.Gold[u.Side] -= s.Cost()
 	u.Move = 0
+
+	// 成功判定（`0x2ac4d`）。**錢與行動力先扣**——原版也是先付再賭，
+	// 失敗一樣花掉。
+	caster, victim := u.Smartest(), t.Smartest()
+	ci, vi := 0, 0
+	if caster != nil {
+		ci = int(caster.Intel)
+	}
+	if victim != nil {
+		vi = int(victim.Intel)
+	}
+	if !StratagemSucceeds(ci, vi, int(b.rng.next()%uint32(s.Spread()))) {
+		b.note("%s 對 %s 用%s，被識破了", u.Name(), t.Name(), s)
+		b.checkOver()
+		return nil
+	}
 
 	switch s {
 	case Fire:
