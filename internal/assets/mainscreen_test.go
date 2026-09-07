@@ -103,3 +103,56 @@ func TestMainScreenPiecesCoverTheWidth(t *testing.T) {
 		}
 	}
 }
+
+// menuShotPath 是原版主選單的基準圖，由 `internal/parity` 的
+// `TestZZOriginalOpeningScreens` 產（第 6 步）。
+const menuShotPath = "../../workplace/shots/open/open-06.png"
+
+// TestMenuScreenMatchesTheOriginal 釘住主選單的兩塊標題牌。
+//
+// 主選單跑在開機鏈的第二層（`DATA0.GRP`），碼段 dump 涵蓋不到，
+// 所以位置**只能拿畫面比對出來**。判準因此要嚴：兩塊 100%。
+func TestMenuScreenMatchesTheOriginal(t *testing.T) {
+	f, err := os.Open(menuShotPath)
+	if err != nil {
+		t.Skipf("沒有基準畫面 %s", menuShotPath)
+	}
+	shot, err := imgpng.Decode(f)
+	f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := container(t, "DATA3")
+	bg, err := MenuScreen(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rgba := bg.RGBA()
+	for _, tc := range []struct {
+		name string
+		r    image.Rectangle
+		min  float64
+	}{
+		{"標題牌左半 MENU0A", image.Rect(40, 27, 320, 207), 100},
+		{"標題牌右半 MENU0B", image.Rect(320, 27, 608, 207), 100},
+		{"按鈕列（字寫在上面）", image.Rect(152, 215, 352, 261), 90},
+	} {
+		same, n := 0, 0
+		for y := tc.r.Min.Y; y < tc.r.Max.Y; y++ {
+			for x := tc.r.Min.X; x < tc.r.Max.X; x++ {
+				a := color.RGBAModel.Convert(rgba.At(x, y)).(color.RGBA)
+				b := color.RGBAModel.Convert(shot.At(x, y)).(color.RGBA)
+				n++
+				if a == b {
+					same++
+				}
+			}
+		}
+		got := float64(same) * 100 / float64(n)
+		if got < tc.min {
+			t.Errorf("%s 相符 %.1f%%，至少要 %.0f%%", tc.name, got, tc.min)
+		} else {
+			t.Logf("%-22s %.1f%%", tc.name, got)
+		}
+	}
+}

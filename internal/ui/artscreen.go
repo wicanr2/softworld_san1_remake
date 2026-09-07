@@ -176,3 +176,51 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 			color.RGBA{0xFF, 0xFF, 0x55, 0xFF})
 	}
 }
+
+// TitleScreen 是主選單畫面（原版開機後的那一張）。
+//
+// 圖是原版的（`assets.MenuScreen`），字是 remake 自己的字庫。
+// 六個項目的文字照原版的選單抄（`docs/re/02` §3 的開機畫面）。
+type TitleScreen struct {
+	bg *assets.Image
+}
+
+// NewTitleScreen 從 `DATA3` 拼出主選單畫面。
+func NewTitleScreen(data3 *assets.Container) (*TitleScreen, error) {
+	bg, err := assets.MenuScreen(data3)
+	if err != nil {
+		return nil, err
+	}
+	return &TitleScreen{bg: bg}, nil
+}
+
+// TitleItems 是六個選項的原文。
+func TitleItems() [6]string {
+	return [6]string{
+		"1. 開始新遊戲", "2. 載入舊進度", "3. 使用楷書字",
+		"4. 使用隸書字", "5. 音樂欣賞", "6. 回作業系統",
+	}
+}
+
+// DrawTitle 畫主選單。sel 是反白的項目（0–5，負數表示沒有）。
+func DrawTitle(c *Canvas, ts *TitleScreen, sel int) {
+	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		ts.bg.RGBA(), image.Point{}, draw.Src)
+	ink := color.RGBA{0x55, 0xFF, 0xFF, 0xFF}
+	hot := color.RGBA{0xFF, 0xFF, 0x55, 0xFF}
+	// 左邊那面牌子：原版有一張 `MENU1.IMG`，但位置還沒定得下來
+	// （`internal/assets` 的說明），所以先由 remake 自己畫一個框。
+	c.DrawBox(7, 13, 12, 8, ink)
+	for i, r := range []rune("主選擇單") {
+		c.DrawText(12, 15+i, string(r), ink)
+	}
+	for i, s := range TitleItems() {
+		b := assets.MenuButtons()[i]
+		col := hot
+		if i != sel {
+			col = ink
+		}
+		// 按鈕是 200×46；字往內縮 16 像素、直向置中。
+		c.DrawText((b[0]+16)/CellW, (b[1]+15)/CellH, s, col)
+	}
+}

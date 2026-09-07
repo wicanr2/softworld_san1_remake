@@ -34,7 +34,7 @@ func main() {
 	what := flag.String("what", "all", "印什麼：pref／gen／master／all")
 	cols := flag.Int("cols", 6, "郡名槽位寬度（半形格），用來檢查裝不裝得下")
 	png := flag.String("png", "", "把畫面存成 PNG（無頭環境驗版面用）")
-	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／art（接原版素材的主畫面）／battle（主戰場）")
+	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／art（接原版素材的主畫面）／title（主選單）／battle（主戰場）")
 	faction := flag.Int("faction", -1, "main 畫面的玩家勢力；−1 ＝ 用第一個在用的勢力")
 	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
 	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫；battle 畫面是先打幾天")
@@ -139,10 +139,20 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		return err
 	}
 	c := ui.NewCanvas(ui.Cols, ui.Rows, face)
-	if screen == "art" {
+	if screen == "art" || screen == "title" {
 		c = ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
 	}
 	switch screen {
+	case "title":
+		c3, err := openContainer(root, "DATA3")
+		if err != nil {
+			return fmt.Errorf("主選單要讀 DATA3：%w", err)
+		}
+		ts, err := ui.NewTitleScreen(c3)
+		if err != nil {
+			return err
+		}
+		ui.DrawTitle(c, ts, 0)
 	case "art", "main":
 		f := faction
 		if f < 0 {

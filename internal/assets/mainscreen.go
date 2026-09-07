@@ -168,3 +168,71 @@ func (im *Image) FloodFill(x, y int, to byte) int {
 	}
 	return n
 }
+
+// 主選單畫面（`DATA3` 的 `MENU*`）。
+//
+// 這一張的程式不在主程式裡——主選單跑在開機鏈的第二層（`DATA0.GRP`），
+// 而我們的碼段 dump 只涵蓋 `DATA5.GRP`（`docs/re/02` §1）。所以位置不是
+// 讀碼讀出來的，是**拿原版的畫面逐像素比對出來的**：
+//
+//	MENU0A.IMG  (40, 27)   280×180   標題牌左半   100%
+//	MENU0B.IMG  (320, 27)  288×180   標題牌右半   100%
+//	MENU2.IMG   六格按鈕，x ∈ {152, 376}、y ∈ {215, 267, 319}
+//
+// 按鈕那一張只到 95–96%——字寫在上面。六個位置裡最下面一列
+// （y=319）超出 350 的部分被裁掉，畫面上只看得到上緣。
+//
+// **`MENU1.IMG`（左側「主選擇單」直牌）的位置還沒定**：全畫面掃過，
+// 最高只有 71.6%（在 (56,199)），而 ≥55% 的位置有 46 個。
+// 而且 (56,199) 一定是錯的——它會蓋到 `MENU0A` 的左下角，
+// 而 `MENU0A` 在原版畫面上是 **100%** 相符，表示那塊沒有被蓋。
+// 在有更硬的證據之前不拼這一張，那面牌子由 remake 自己畫。
+var menuScreenPieces = []struct {
+	Name string
+	X, Y int
+}{
+	{"MENU0A.IMG", 40, 27},
+	{"MENU0B.IMG", 320, 27},
+	{"MENU2.IMG", 152, 215},
+	{"MENU2.IMG", 376, 215},
+	{"MENU2.IMG", 152, 267},
+	{"MENU2.IMG", 376, 267},
+	{"MENU2.IMG", 152, 319},
+	{"MENU2.IMG", 376, 319},
+}
+
+// MenuScreenBG 是主選單的底色（原版是一片藍）。
+const MenuScreenBG = 9
+
+// MenuScreen 從 `DATA3` 拼出主選單畫面。
+func MenuScreen(data3 *Container) (*Image, error) {
+	dst := &Image{W: ScreenW, H: ScreenH, Pix: make([]byte, ScreenW*ScreenH)}
+	for i := range dst.Pix {
+		dst.Pix[i] = MenuScreenBG
+	}
+	for _, p := range menuScreenPieces {
+		i, ok := data3.ByName(p.Name)
+		if !ok {
+			return nil, fmt.Errorf("assets: DATA3 裡沒有 %s", p.Name)
+		}
+		im, err := DecodeImage(data3.Data(i))
+		if err != nil {
+			return nil, fmt.Errorf("assets: 解 %s：%w", p.Name, err)
+		}
+		dst.Blit(im, p.X, p.Y)
+	}
+	return dst, nil
+}
+
+// MenuButtons 是六個按鈕的左上角，順序與原版的編號相同
+// （1 開始新遊戲、2 載入舊進度、3 使用楷書字、4 使用隸書字、
+// 5 音樂欣賞、6 回作業系統）。
+//
+// **編號是橫著走的**：1、4 在第一列，2、5 在第二列——原版畫面上
+// 左欄是 1／2／3、右欄是 4／5／6，所以左欄先排完再排右欄。
+func MenuButtons() [6][2]int {
+	return [6][2]int{
+		{152, 215}, {152, 267}, {152, 319},
+		{376, 215}, {376, 267}, {376, 319},
+	}
+}
