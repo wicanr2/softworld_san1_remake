@@ -129,34 +129,54 @@ func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *Ba
 	p := g.prepare(from, to, att, def, by, HalfSupply(), Aid{})
 	if g.noPlayerIn(from, to) {
 		p.B.AutoResolveAI()
-		g.warWeariness(from, to)
+		g.ravageBattlefield(to)
 	} else {
 		p.B.Auto()
 	}
 	return g.settle(p)
 }
 
-// warWeariness 是打過仗的郡民眾忠誠的下降（`0x1f8b2`–`0x1f8f0`，`L0`）。
+// ravageBattlefield 是**戰場那個郡被打殘**（`0x1f8b2`–`0x1f9bd`，`L0`）。
 //
-//	民眾忠誠 ← max(0, 民眾忠誠 − RND(10) − 1)
+//	民眾忠誠（州郡 offset 26） ← max(0, 忠誠 − RND(10) − 1)
+//	土地價值（offset 27）      ← max(0, 地價 − RND(10) − 1)
+//	洪水率（offset 28）        ← min(100, 洪水率 + RND(7) + 2)
+//	物價（offset 29）          ← min(70, 物價 + RND(18) + 2)
 //
-// 原版對四個軍力的郡各擲一次（沒有援軍的那一格是 `0xFFFF`，跳過），
-// 而且**只在電腦對電腦那條路上做**——它寫在 `0x1f6fe` 的收尾裡，
-// 玩家在場那條走的是戰術層，不經過這一段。
-func (g *State) warWeariness(prefectures ...int) {
-	for i, n := range prefectures {
-		p := g.Prefecture(n)
-		if p == nil {
-			continue
-		}
-		drop := g.Roll(10, n, i, 0x1f6fe) + 1
-		if int(p.PublicLoyalty) <= drop {
-			p.PublicLoyalty = 0
-			continue
-		}
-		p.PublicLoyalty -= uint8(drop)
+// 四個欄位都打在**守方那一郡**（原版存在 `es:[0x1bf8]`，`0x1E908` 從
+// 主守郡填進去的），不是四個軍力各一個郡。
+//
+// **只在電腦對電腦那條路上做**：它寫在 `0x1f6fe` 的收尾裡，玩家在場的
+// 戰役走戰術層，不經過這一段（`docs/re/05` §7.1）。
+func (g *State) ravageBattlefield(prefecture int) {
+	p := g.Prefecture(prefecture)
+	if p == nil {
+		return
 	}
+	down := func(v uint8, drop int) uint8 {
+		if int(v) <= drop {
+			return 0
+		}
+		return v - uint8(drop)
+	}
+	up := func(v uint8, add, cap int) uint8 {
+		n := int(v) + add
+		if n > cap {
+			n = cap
+		}
+		return uint8(n)
+	}
+	p.PublicLoyalty = down(p.PublicLoyalty, g.Roll(10, prefecture, 0, 0x1f6fe)+1)
+	p.LandValue = down(p.LandValue, g.Roll(10, prefecture, 1, 0x1f6fe)+1)
+	p.FloodRate = up(p.FloodRate, g.Roll(7, prefecture, 2, 0x1f6fe)+2, RavageFloodCap)
+	p.PriceLevel = up(p.PriceLevel, g.Roll(18, prefecture, 3, 0x1f6fe)+2, RavagePriceCap)
 }
+
+// 戰後受損的兩個上限（`0x1f95e`／`0x1f9a3`）。
+const (
+	RavageFloodCap = 100 // 洪水率
+	RavagePriceCap = 70  // 物價
+)
 
 // noPlayerIn 回報這幾個郡是不是一個玩家的都沒有。
 //

@@ -719,31 +719,39 @@ func TestJointAttackNeedsTwoOfOurs(t *testing.T) {
 	}
 }
 
-// TestWarWearinessDropsPublicLoyalty 釘住「打過仗的郡民眾忠誠掉 1–10」
-// （原版 `0x1f8b2`–`0x1f8f0`，只在電腦對電腦那條路上做）。
-func TestWarWearinessDropsPublicLoyalty(t *testing.T) {
+// TestRavageBattlefield 釘住戰場那個郡的四個欄位怎麼被打殘
+// （原版 `0x1f8b2`–`0x1f9bd`，只在電腦對電腦那條路上做）。
+func TestRavageBattlefield(t *testing.T) {
 	g := newGame(t)
-	before := map[int]int{}
-	for _, n := range []int{1, 2, 3} {
-		p := g.Prefecture(n)
-		if p == nil {
-			t.Fatalf("郡 %d 不存在", n)
-		}
-		p.PublicLoyalty = 100
-		before[n] = 100
-	}
-	g.warWeariness(1, 2, 3)
-	for n, was := range before {
-		got := int(g.Prefecture(n).PublicLoyalty)
-		if d := was - got; d < 1 || d > 10 {
-			t.Errorf("郡 %d 的民眾忠誠掉了 %d，應該落在 1–10", n, d)
-		}
-	}
-	// 忠誠低於掉幅時夾在 0，不繞成 255。
 	p := g.Prefecture(1)
-	p.PublicLoyalty = 1
-	g.warWeariness(1)
-	if p.PublicLoyalty > 100 {
-		t.Errorf("忠誠 1 掉完之後變成 %d，應該夾在 0", p.PublicLoyalty)
+	if p == nil {
+		t.Fatal("郡 1 不存在")
+	}
+	p.PublicLoyalty, p.LandValue, p.FloodRate, p.PriceLevel = 100, 100, 0, 30
+	g.ravageBattlefield(1)
+
+	if d := 100 - int(p.PublicLoyalty); d < 1 || d > 10 {
+		t.Errorf("民眾忠誠掉了 %d，應該落在 1–10", d)
+	}
+	if d := 100 - int(p.LandValue); d < 1 || d > 10 {
+		t.Errorf("土地價值掉了 %d，應該落在 1–10", d)
+	}
+	if d := int(p.FloodRate); d < 2 || d > 8 {
+		t.Errorf("洪水率升了 %d，應該落在 2–8", d)
+	}
+	if d := int(p.PriceLevel) - 30; d < 2 || d > 19 {
+		t.Errorf("物價升了 %d，應該落在 2–19", d)
+	}
+
+	// 兩個下降夾在 0（不繞成 255），兩個上升各有上限。
+	p.PublicLoyalty, p.LandValue = 1, 1
+	p.FloodRate, p.PriceLevel = RavageFloodCap, RavagePriceCap
+	g.ravageBattlefield(1)
+	if p.PublicLoyalty > 100 || p.LandValue > 100 {
+		t.Errorf("低值掉完之後變成 %d／%d，應該夾在 0", p.PublicLoyalty, p.LandValue)
+	}
+	if int(p.FloodRate) != RavageFloodCap || int(p.PriceLevel) != RavagePriceCap {
+		t.Errorf("洪水率 %d、物價 %d，應該停在上限 %d／%d",
+			p.FloodRate, p.PriceLevel, RavageFloodCap, RavagePriceCap)
 	}
 }
