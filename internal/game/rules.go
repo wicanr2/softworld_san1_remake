@@ -414,21 +414,53 @@ func ReliefRate(level int) int {
 	}
 }
 
-// ReliefGain 是賑一次漲多少民眾忠誠。
+// ReliefGain 是賑一次漲多少民眾忠誠（`L1`、`0xc8f6`）。
+//
+//	每格 ＝ 人口 ÷ 1200
+//	增幅 ＝ min(量 × 撥出的金 ÷ 每格, 太守魅力 ÷ 2)
+//
+// ⚠ **`量 × 撥出的金` 是 16 位元有號乘法**：原版的 `imulw` 之後接 `cwd`，
+// 高位字被蓋掉（`0xc96a`–`0xc96e`）。郡的金到上限時真的溢位——
+// 量 6 × 預算 6000 ＝ 36000 → −29536，忠誠反而暴跌。
+// 這不是模擬器的誤差，是原版的算術，99 次實跑逐次相同。
 func ReliefGain(priceLevel, population, gold, governorCharm, level int) int {
-	rate := (100 - priceLevel) / ReliefRate(level)
-	if rate <= 0 {
-		rate = ReliefMinRate
-	}
-	per := population / 100 / 12
+	per := ReliefPerStep(population)
 	if per <= 0 {
 		return 0
 	}
-	gain := rate * gold / per
+	gain := int(int16(ReliefRateOf(priceLevel, level)*gold)) / per
 	if cap := governorCharm / 2; gain > cap {
 		gain = cap
 	}
 	return gain
+}
+
+// ReliefRateOf 是一分錢換多少忠誠的係數（`L1`、`0xca4b` 起的六份）。
+//
+// **不是 `max(量, 5)`**：原版只在算出來 `<= 0` 時才換成 5
+// （`0xc92f` 的 `cmpw $0, 量; jg`），物價高到讓量掉成 1–4 時就用 1–4。
+func ReliefRateOf(priceLevel, level int) int {
+	rate := (100 - priceLevel) / ReliefRate(level)
+	if rate <= 0 {
+		rate = ReliefMinRate
+	}
+	return rate
+}
+
+// ReliefPerStep 是「多少人口換一格忠誠」（原版 `0xc95c` 的 `idiv 12`，
+// 而人口存的是實際值 ÷ 100，所以是 人口 ÷ 1200）。
+func ReliefPerStep(population int) int { return population / 100 / 12 }
+
+// ReliefSecondCharge 是賑民**第二次**扣的錢（`L1`、`0xc9d6`）。
+//
+// 原版在寫回忠誠之前照**實際**漲到的幅度再收一次
+// （`增幅 ÷ 量 × 每格`，浮點算完轉回 16 位元整數）——也就是整份預算之外
+// 再付一次。99 次實跑逐次相同（`docs/playtest/02`）。
+func ReliefSecondCharge(gain, rate, per int) int {
+	if rate <= 0 {
+		return 0
+	}
+	return int(int16(gain * per / rate))
 }
 
 // 賞賜金帛的效果（`L0`、`[base]`，分派表 `0x5654`／常式 `0xd302`）。

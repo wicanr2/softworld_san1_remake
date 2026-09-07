@@ -425,6 +425,14 @@ func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 
 // Relief 是「開倉賑民」（說明書 p.22）：撥米賑濟百姓換民眾忠誠，
 // **太守魅力越高效果越好**。
+//
+// **收兩次錢**（`L1`、`0xc93d` 與 `0xc9d6`）：先扣整份撥款，寫回忠誠之前
+// 再照**實際**漲到的幅度收一次（`ReliefSecondCharge`）。99 次實跑
+// 每一次都收了第二筆（`docs/playtest/02`）。
+//
+// 忠誠**只有上限沒有下限**，而且寫回去的是低位那個 byte——
+// 撥款大到讓 `量 × 金` 溢位時，民心會直接掉成一個看起來莫名其妙的數。
+// 那是原版的行為（`ReliefGain` 的說明）。
 func (g *State) Relief(prefectureID, gold int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
@@ -442,8 +450,15 @@ func (g *State) Relief(prefectureID, gold int, by state.FactionID) error {
 		charm = int(gov.Charm)
 	}
 	p.Gold -= fee
-	add := ReliefGain(int(p.PriceLevel), p.Population, gold, charm, g.aiLevelOf(by))
-	p.PublicLoyalty = uint8(clampTo(int(p.PublicLoyalty)+add, 100))
+	level := g.aiLevelOf(by)
+	add := ReliefGain(int(p.PriceLevel), p.Population, gold, charm, level)
+	full := int(p.PublicLoyalty) + add
+	if full > 100 {
+		full = 100
+	}
+	p.Gold -= g.price(by, ReliefSecondCharge(full-int(p.PublicLoyalty),
+		ReliefRateOf(int(p.PriceLevel), level), ReliefPerStep(p.Population)))
+	p.PublicLoyalty = uint8(full)
 	p.Commanded = true
 	return nil
 }
