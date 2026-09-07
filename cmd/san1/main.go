@@ -29,6 +29,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+	"github.com/wicanr2/softworld_san1_remake/internal/menu"
 	"github.com/wicanr2/softworld_san1_remake/internal/session"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
@@ -63,8 +64,10 @@ type app struct {
 	// artBattle 是接上原版素材的主戰場，要 `DATA1` 與 `DATA3` 兩個。
 	artBattle *ui.ArtBattle
 
-	// title 非 nil 表示停在主選單那一層（開場詞按完就到這裡）。
-	title *titleState
+	// menuScreen 非 nil 表示停在主選單那一層（開場詞按完就到這裡）；
+	// titleArt 是那一張的底圖。
+	menuScreen *menu.Screen
+	titleArt   *ui.TitleScreen
 
 	// c2 是 `DATA2`：主選單要重讀劇本，得留著。
 	c2 *assets.Container
@@ -95,7 +98,7 @@ func (a *app) Update() error {
 		}
 		return nil
 	}
-	if a.title != nil {
+	if a.menuScreen != nil {
 		return a.updateTitle()
 	}
 	if a.fight != nil {
@@ -685,7 +688,7 @@ func (a *app) Draw(dst *ebiten.Image) {
 		switch {
 		case a.poem != nil:
 			ui.DrawPoem(a.canvas, a.poem)
-		case a.title != nil:
+		case a.menuScreen != nil:
 			a.drawTitle()
 		case a.fight != nil:
 			if a.artBattle != nil {
@@ -884,16 +887,16 @@ func main() {
 	a.artBattle = artBattle
 	a.c2 = c
 	a.edition = ed
+	if *music {
+		a.jb = newJukebox(*root)
+		a.jb.Play(0)
+	}
 	// 開場詞 → 主選單 → 遊戲。**指定了劇本以外的東西就直接進遊戲**：
 	// `-load`／`-orig-load` 是「我要那一局」，中間再問一次沒有道理，
 	// 而 `-title=false` 是給截圖與腳本用的。
 	if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
-		a.startTitle(titleScreen)
+		a.startTitle(titleScreen, menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len()))
 		a.poem = poem
-	}
-	if *music {
-		a.jb = newJukebox(*root)
-		a.jb.Play(0)
 	}
 	if *calendar == "西曆" {
 		g.Options.Calendar = game.Western
