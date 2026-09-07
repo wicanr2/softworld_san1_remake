@@ -718,3 +718,32 @@ func TestJointAttackNeedsTwoOfOurs(t *testing.T) {
 		t.Log("目標郡被接手且無傷亡——走進空郡，合理")
 	}
 }
+
+// TestWarWearinessDropsPublicLoyalty 釘住「打過仗的郡民眾忠誠掉 1–10」
+// （原版 `0x1f8b2`–`0x1f8f0`，只在電腦對電腦那條路上做）。
+func TestWarWearinessDropsPublicLoyalty(t *testing.T) {
+	g := newGame(t)
+	before := map[int]int{}
+	for _, n := range []int{1, 2, 3} {
+		p := g.Prefecture(n)
+		if p == nil {
+			t.Fatalf("郡 %d 不存在", n)
+		}
+		p.PublicLoyalty = 100
+		before[n] = 100
+	}
+	g.warWeariness(1, 2, 3)
+	for n, was := range before {
+		got := int(g.Prefecture(n).PublicLoyalty)
+		if d := was - got; d < 1 || d > 10 {
+			t.Errorf("郡 %d 的民眾忠誠掉了 %d，應該落在 1–10", n, d)
+		}
+	}
+	// 忠誠低於掉幅時夾在 0，不繞成 255。
+	p := g.Prefecture(1)
+	p.PublicLoyalty = 1
+	g.warWeariness(1)
+	if p.PublicLoyalty > 100 {
+		t.Errorf("忠誠 1 掉完之後變成 %d，應該夾在 0", p.PublicLoyalty)
+	}
+}

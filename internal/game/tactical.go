@@ -129,10 +129,33 @@ func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *Ba
 	p := g.prepare(from, to, att, def, by, HalfSupply(), Aid{})
 	if g.noPlayerIn(from, to) {
 		p.B.AutoResolveAI()
+		g.warWeariness(from, to)
 	} else {
 		p.B.Auto()
 	}
 	return g.settle(p)
+}
+
+// warWeariness 是打過仗的郡民眾忠誠的下降（`0x1f8b2`–`0x1f8f0`，`L0`）。
+//
+//	民眾忠誠 ← max(0, 民眾忠誠 − RND(10) − 1)
+//
+// 原版對四個軍力的郡各擲一次（沒有援軍的那一格是 `0xFFFF`，跳過），
+// 而且**只在電腦對電腦那條路上做**——它寫在 `0x1f6fe` 的收尾裡，
+// 玩家在場那條走的是戰術層，不經過這一段。
+func (g *State) warWeariness(prefectures ...int) {
+	for i, n := range prefectures {
+		p := g.Prefecture(n)
+		if p == nil {
+			continue
+		}
+		drop := g.Roll(10, n, i, 0x1f6fe) + 1
+		if int(p.PublicLoyalty) <= drop {
+			p.PublicLoyalty = 0
+			continue
+		}
+		p.PublicLoyalty -= uint8(drop)
+	}
 }
 
 // noPlayerIn 回報這幾個郡是不是一個玩家的都沒有。
