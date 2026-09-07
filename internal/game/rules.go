@@ -409,3 +409,23 @@ const (
 
 // HeadhuntLoyaltyBar 是這一次挖角的忠誠門檻；忠誠不低於它就挖不動。
 func HeadhuntLoyaltyBar(roll int) int { return HeadhuntLoyaltyFloor + roll }
+
+// ---- 軍師勸諫 ------------------------------------------------------------
+
+// 發動戰役之前，軍師有機會跳出來勸一次（原版 `0x18a90`，`L0`）：
+//
+//	RND(5) + 80 < 軍師的謀略 → 勸諫，答 N 就取消出兵
+//
+// 門檻的下界是 AdvisorWarnFloor、亂數的寬度是 AdvisorWarnSpread，
+// 所以謀略 85 以上一定勸、80 以下一定不勸。沒有軍師的勢力不會勸
+// ——原版那一格存 `0xFFFF`，帶號比較之下永遠不成立。
+const (
+	AdvisorWarnFloor  = 80
+	AdvisorWarnSpread = 5
+)
+
+// AdvisorWarns 回報這一次發動戰役軍師會不會出來勸。
+func AdvisorWarns(chiefIntel, roll int) bool {
+	return AdvisorWarnFloor+roll < chiefIntel
+}
+

@@ -119,3 +119,60 @@ func TestFieldSizesAreTheTwoOriginalShapes(t *testing.T) {
 		}
 	}
 }
+
+// TestChiefMatchesTheMasterTable 釘住軍師的推導（`L0`）。
+//
+// remake 是從人物表的身分推的（身分 1 ＝ 軍師），原版另外把軍師的
+// 人物槽號存在諸侯記錄 offset 6，而且拿它去查謀略、決定要不要勸諫
+// （`0x175a7`）。**兩條路要得到同一個人**——推導錯了不會報錯，
+// 只會讓計略與勸諫默默失效。
+func TestChiefMatchesTheMasterTable(t *testing.T) {
+	sc := loadScenario(t, state.Scenario1)
+	g, err := New(sc, 0, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mas, _, _ := sc.Tables()
+	const masterSize = 72
+	for _, f := range g.Factions() {
+		i := int(f.ID) * masterSize
+		if i+8 > len(mas) {
+			t.Fatalf("諸侯表只有 %d 個位元組，讀不到槽 %d", len(mas), f.ID)
+		}
+		want := int(mas[i+6]) | int(mas[i+7])<<8
+		if want == 0xFFFF {
+			want = -1
+		}
+		if f.Chief != want {
+			t.Errorf("勢力 %d 的軍師推成 %d，諸侯表寫的是 %d",
+				f.ID, f.Chief, want)
+		}
+	}
+}
+
+// TestAdvisorWarns 釘住軍師勸諫的門檻（`0x18a90`，`L0`）：
+// `RND(5) + 80 < 軍師的謀略`。
+func TestAdvisorWarns(t *testing.T) {
+	// 謀略 85 以上一定勸：RND(5) 最大 4，80+4 ＝ 84 < 85。
+	for r := 0; r < AdvisorWarnSpread; r++ {
+		if !AdvisorWarns(85, r) {
+			t.Errorf("謀略 85、RND ＝ %d 沒有勸諫", r)
+		}
+	}
+	// 謀略 80 以下一定不勸：80+0 ＝ 80 不小於 80。
+	for r := 0; r < AdvisorWarnSpread; r++ {
+		if AdvisorWarns(80, r) {
+			t.Errorf("謀略 80、RND ＝ %d 卻勸諫了", r)
+		}
+	}
+	// 中間是機率：謀略 83 只有 RND 0、1、2 會勸。
+	n := 0
+	for r := 0; r < AdvisorWarnSpread; r++ {
+		if AdvisorWarns(83, r) {
+			n++
+		}
+	}
+	if n != 3 {
+		t.Errorf("謀略 83 有 %d/5 會勸，應該是 3", n)
+	}
+}
