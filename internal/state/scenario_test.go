@@ -633,3 +633,76 @@ func TestPortraitAndLifespanLookSane(t *testing.T) {
 		}
 	}
 }
+
+// TestProvinceAndFieldShape 釘住州（offset 5）與戰場版面（offset 34）。
+//
+// **兩者都要拿第二條路徑對照**：州看的是「同一州的郡在地圖上真的相鄰」，
+// 版面看的是「編號與地圖上非圖外格子的實際範圍一致」。
+// 單看一個位元組只能說它有值。
+func TestProvinceAndFieldShape(t *testing.T) {
+	c := loadData2(t, "三國演義")
+	sc, err := LoadScenario(c, Scenario1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[uint8]int{}
+	for _, p := range sc.Prefectures() {
+		if int(p.Province) >= ProvinceCount {
+			t.Fatalf("郡 %d %s 的州編號 %d 越界", p.ID, p.Name, p.Province)
+		}
+		seen[p.Province]++
+
+		// 版面編號要對得上地圖的實際形狀。
+		maxCol, maxRow := 0, 0
+		for i, b := range p.BattleField {
+			if b == 0xFF {
+				continue
+			}
+			if c := i % 12; c > maxCol {
+				maxCol = c
+			}
+			if r := i / 12; r > maxRow {
+				maxRow = r
+			}
+		}
+		w, h := maxCol+1, maxRow+1
+		switch p.FieldShape {
+		case 9:
+			if w != 12 || h != 7 {
+				t.Errorf("郡 %d %s 版面 9，地圖卻是 %d×%d", p.ID, p.Name, w, h)
+			}
+		case 10:
+			if w != 8 || h != 10 {
+				t.Errorf("郡 %d %s 版面 10，地圖卻是 %d×%d", p.ID, p.Name, w, h)
+			}
+		default:
+			t.Errorf("郡 %d %s 的版面編號 %d 沒見過", p.ID, p.Name, p.FieldShape)
+		}
+	}
+	if len(seen) != ProvinceCount {
+		t.Errorf("劇本 001 只用到 %d 個州，應該是 %d", len(seen), ProvinceCount)
+	}
+	// 同一州的郡要連得起來（至少每個州內有一對相鄰）。
+	for prov := 0; prov < ProvinceCount; prov++ {
+		var ids []int
+		for _, p := range sc.Prefectures() {
+			if int(p.Province) == prov {
+				ids = append(ids, p.ID)
+			}
+		}
+		if len(ids) < 2 {
+			continue
+		}
+		linked := false
+		for _, a := range ids {
+			for _, b := range ids {
+				if a != b && sc.Adjacent(a, b) {
+					linked = true
+				}
+			}
+		}
+		if !linked {
+			t.Errorf("%s 的 %v 在地圖上完全不相鄰", ProvinceName(prov), ids)
+		}
+	}
+}

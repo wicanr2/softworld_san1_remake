@@ -140,6 +140,24 @@ type Prefecture struct {
 	// 本身相符，身分只有君主或太守。
 	Governor uint16
 
+	// Province 是這個郡屬於哪一州（offset 5，0–13，`L0`）。
+	//
+	// 州名表在 `DS:0x9b8c`，十四個、每個 5 bytes（`ProvinceName`）。
+	// 劇本 001 的分群與地理一致：遼東與涿郡是幽州、渤海與鄴郡是冀州、
+	// 京兆／安定／天水是雍州、南海與鬱林是交州。
+	Province uint8
+
+	// FieldShape 是戰場版面的編號（offset 34，`L0`）。
+	//
+	// 劇本 001 只有兩個值，而且**與地圖的實際形狀逐郡吻合**：
+	// 9 → 12 欄 × 7 列（21 個郡）、10 → 8 欄 × 10 列（21 個）。
+	// 原版拿它 `× 8` 去索引畫面版面的參數表（`DS:0x7b24`／`0x7b34`，
+	// `0x22c29`），也用 `== 9` 分辨兩種版面（`0x224bb`）。
+	//
+	// 對邏輯層是冗餘的——形狀從 `0xFF` 標記就看得出來——但兩條路徑
+	// 對得上正是它的意義所在。
+	FieldShape uint8
+
 	// Autonomy 是郡縣自治的型態（offset 12，`u16`，`L0`）：
 	// 0 正常、1 內政、2 軍事、3 自冶——選單字串表在 `DS:0x9b70` 起，
 	// 每項 7 bytes（`0x1cee0` 的 `×7 + 0x9b69`）。
@@ -410,6 +428,8 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 			return nil, fmt.Errorf("state: 郡 %d 的名稱解不出來：%w", p.ID, err)
 		}
 		p.Name = name
+		p.Province = rec[5]
+		p.FieldShape = rec[34]
 		p.Autonomy = binary.LittleEndian.Uint16(rec[12:])
 		p.MapX = binary.LittleEndian.Uint16(rec[6:])
 		p.MapY = binary.LittleEndian.Uint16(rec[8:])
@@ -823,3 +843,23 @@ func (s *Scenario) GovernorIndex(prefectureID int) int {
 
 // NoValue16 是 16 位元欄位的「沒有」。
 const NoValue16 = 0xFFFF
+
+// provinceNames 是十四個州，原版字串表 `DS:0x9b8c` 起、每項 5 bytes。
+//
+// **用原版的字**：第 3 個是「弁州」（不是并州）、第 4 個是「充州」
+// （不是兗州）。地名以遊戲資料為準，不照史書改（`CLAUDE.md` §2.2）。
+var provinceNames = [...]string{
+	"幽州", "冀州", "青州", "弁州", "充州", "司隸", "徐州",
+	"雍州", "涼州", "豫州", "揚州", "荊州", "益州", "交州",
+}
+
+// ProvinceCount 是州的數目。
+const ProvinceCount = len(provinceNames)
+
+// ProvinceName 是州名；越界回空字串。
+func ProvinceName(i int) string {
+	if i < 0 || i >= len(provinceNames) {
+		return ""
+	}
+	return provinceNames[i]
+}
