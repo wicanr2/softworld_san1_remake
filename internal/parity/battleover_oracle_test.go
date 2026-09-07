@@ -124,6 +124,52 @@ func TestBattleOutcomeMatchesTheOriginal(t *testing.T) {
 		o.OnCall(addr(a.at), func(*oracle.Oracle) { enters[name]++ })
 	}
 
+	// ---- 軍團 offset 10 是「將領人數」還是「部隊數」（0x1ea67）------
+	//
+	// `0x1E908` 拿 offset 10 當 42 byte 部隊記錄的迴圈上界，而 `docs/re/05`
+	// §3.3 把 offset 10 標成將領人數、offset 12 才是部隊數。三個數一起讀：
+	// 上界、offset 12、以及實際非空（將領[0] != 0xFFFF）的部隊記錄數。
+	shape := map[string]int{}
+	shapeSeen := 0
+	o.OnCall(addr(0x1ea67), func(o *oracle.Oracle) {
+		if shapeSeen >= 40 {
+			return
+		}
+		ds := uint32(o.DSReg()) * 16
+		far := func(slot uint16, off uint32) uint32 {
+			return uint32(o.Word(addr(ds+uint32(slot))))*16 + off
+		}
+		forceBase := far(0xa7f6, 0x175e) // 軍團記錄（22 byte 一筆）
+		unitBase := far(0xa810, 0x384a)  // 軍團 2 的部隊記錄（42 byte，十格）
+		bound := int(int16(o.Word(addr(forceBase + 2*22 + 10))))
+		f12 := int(int16(o.Word(addr(forceBase + 2*22 + 12))))
+		units, leaders := 0, 0
+		for i := 0; i < 10; i++ {
+			u := unitBase + uint32(i*42)
+			if int(int16(o.Word(addr(u)))) == -1 {
+				continue
+			}
+			units++
+			for k := 0; k < 10; k++ {
+				if int(int16(o.Word(addr(u+uint32(k*2))))) != -1 {
+					leaders++
+				}
+			}
+		}
+		shapeSeen++
+		switch {
+		case bound == units && bound != leaders:
+			shape["上界＝部隊數"]++
+		case bound == leaders && bound != units:
+			shape["上界＝將領人數"]++
+		case bound == units && bound == leaders:
+			shape["部隊數＝將領人數，分不開"]++
+		default:
+			shape[fmt.Sprintf("上界%d／部隊%d／將領%d／offset12=%d",
+				bound, units, leaders, f12)]++
+		}
+	})
+
 	// ---- 統帥條件（0x24f8c）----------------------------------------
 	chiefRuns, chiefDecided := 0, map[int]int{}
 	armedChief := false
@@ -209,6 +255,7 @@ func TestBattleOutcomeMatchesTheOriginal(t *testing.T) {
 	}
 
 	t.Logf("入口計數：%v", enters)
+	t.Logf("軍團 offset 10 的形狀（%d 次取樣）：%v", shapeSeen, shape)
 	t.Logf("三個月：亂數 %d 次（正對照）、統帥條件跑 %d 次（判出勝負 %v）、"+
 		"三十天期滿跑 %d 次（結果分布 %v）",
 		rnd, chiefRuns, chiefDecided, dayRuns, dayDecided)
