@@ -737,3 +737,74 @@ func TestTroopAndRankNames(t *testing.T) {
 		}
 	}
 }
+
+// TestPrefectureOffset35IsANorthSouthSplit 釘住州郡 offset 35。
+//
+// 兩版的碼都沒有讀它（掃過 `[bx+disp16]` 形式的全部存取），但它**不是
+// 填充**：42 個郡固定 24 個是 11、18 個是 12，六個劇本、十二個存檔槽、
+// 兩個版本一個位元組都不差，而且分界與地圖上的南北一致——揚州與交州
+// 整個是 12，荊州與益州各自被切開（南陽、襄陽、漢中、成都在北，
+// 南郡以下在南）。
+//
+// ⚠ 這一格曾被記成「與有主／無主一致」。那是劇本 001 剛好也是 24／18
+// 造成的巧合：**兩個分群的個數相同不表示分群相同**，換一個劇本就散了。
+func TestPrefectureOffset35IsANorthSouthSplit(t *testing.T) {
+	const off = 35
+	// 完全在南邊的兩個州，與被切開的兩個州裡在北邊的四個郡。
+	southProvinces := map[string]bool{"揚州": true, "交州": true}
+	northInSplit := map[string]bool{"南陽": true, "襄陽": true, "漢中": true, "成都": true}
+
+	for _, ver := range versions {
+		c := loadData2(t, ver)
+		for _, slot := range []Slot{Scenario1, Scenario2, Scenario3,
+			Scenario4, Scenario5, Scenario6} {
+			sc, err := LoadScenario(c, slot)
+			if err != nil {
+				t.Fatalf("%s %s：%v", ver, slot, err)
+			}
+			_, sta, _ := sc.Tables()
+			count := map[byte]int{}
+			for _, p := range sc.Prefectures() {
+				v := sta[p.ID*PrefectureRecordSize+off]
+				count[v]++
+				want := byte(11)
+				name := ProvinceName(int(p.Province))
+				if southProvinces[name] || (!northInSplit[p.Name] &&
+					(name == "荊州" || name == "益州")) {
+					want = 12
+				}
+				if v != want {
+					t.Errorf("%s %s 郡 %d %s（%s）offset 35 是 %d，想要 %d",
+						ver, slot, p.ID, p.Name, name, v, want)
+				}
+			}
+			if count[11] != 24 || count[12] != 18 || len(count) != 2 {
+				t.Errorf("%s %s：offset 35 的分布是 %v，想要 11×24、12×18",
+					ver, slot, count)
+			}
+		}
+	}
+}
+
+// TestPrefectureOffsets36To44AreFiller 釘住 36–44 是九個 120。
+//
+// 兩版的碼都沒有讀它們。**照抄不歸零**：存檔時把未知欄位寫成零，
+// 等於替將來解出它的人銷毀證據。
+func TestPrefectureOffsets36To44AreFiller(t *testing.T) {
+	for _, ver := range versions {
+		c := loadData2(t, ver)
+		sc, err := LoadScenario(c, Scenario1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, sta, _ := sc.Tables()
+		for _, p := range sc.Prefectures() {
+			for off := 36; off <= 44; off++ {
+				if v := sta[p.ID*PrefectureRecordSize+off]; v != 120 {
+					t.Errorf("%s 郡 %d %s offset %d 是 %d，想要 120",
+						ver, p.ID, p.Name, off, v)
+				}
+			}
+		}
+	}
+}
