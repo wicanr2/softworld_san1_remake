@@ -73,6 +73,7 @@ M3（文字與字型）畫面已通。**M1（dosgolem 跑得動）達成**：原
 | F3 | `DATA1.GRP`／`DATA3.GRP`／`DATA4.GRP` 兩版相同 | `L0` | `[both]` | 同上 |
 | F4 | `DATA0.GRP` 42,488 → 87,696；`DATA5.GRP` 145,378 → 287,590；`DATA2.GRP` 長度相同但內容不同 | `L0` | — | 同上 |
 | F5 | 加強版獨有 `NAME001`–`NAME006.SHA`、`SV.COM`、`CHKLIST.CPS`；原版獨有 `10/20/D5.GRP`、`PARTNSAV.FIL`、三個 `.BAT` | `L0` | — | 同上 |
+| F5b | **`NAME00n.SHA` 不是遊戲檔**：標頭 `WSHA V1B NewType`、內容是八字命名軟體的存檔（日期民國 87／91 年），而 `ASV.EXE`／`SV.COM` 連 `NAME00` 這個字串都沒有 | `L0` | `[plus]` | `docs/mechanics/90` §4.1 |
 | F6 | 兩份 bundle 附的 `dosbox.conf` 皆 `machine=svga_s3`、`memsize=16`、`core=auto`、`cycles=auto` | `L0` | `[both]` | `.jsdos/dosbox.conf`，兩版只差 autoexec 末行的執行檔名 |
 | F7 | 兩版啟動時的 DOS 服務輪廓**逐項相同**（`AH=35`×12、`25`×11、`44`×5、`30`×2、`4A`×2、`48`×1），停止位址只差 `0x21` | `L0` | `[both]` | dosgolem probe，`docs/re/00` |
 | F8 | 兩支執行檔都在 `int 21h AH=08`（無回顯字元輸入）上空轉 | `L0` | `[both]` | 同上，佔全部呼叫 99.99%。**成因是 dosgolem 沒有阻塞模型，不是遊戲卡住**——見 `docs/re/00` 第二輪 |
