@@ -33,3 +33,16 @@ func TestWarRecruitFollowsTheOriginal(t *testing.T) {
 		t.Error("抵抗值 81 的門檻是 40（整數除法），人望 40 應該收得下來")
 	}
 }
+
+// TestWarRecruitLoyalty 釘住「收編之後的忠誠 ＝ min(100, 勝方的人望)」
+// （原版 `0x1fee6`／`0x1ff27`）。
+func TestWarRecruitLoyalty(t *testing.T) {
+	for _, c := range []struct{ prestige, want int }{
+		{0, 0}, {55, 55}, {100, 100}, {120, 100},
+	} {
+		if got := WarRecruitLoyalty(c.prestige); got != c.want {
+			t.Errorf("人望 %d 收編之後的忠誠是 %d，應該是 %d",
+				c.prestige, got, c.want)
+		}
+	}
+}

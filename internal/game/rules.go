@@ -801,6 +801,15 @@ func WarRecruitResistance(intel, war int, bondedSameFaction bool, roll int) int 
 	return v
 }
 
+// WarRecruitLoyalty 是收編之後的忠誠（`0x1fee6`／`0x1ff27`）：
+//
+//	忠誠 ← min(100, 勝方的人望)
+//
+// 收編同時改的還有三個欄位（`0x1feba`）：勢力 ← 勝方的勢力、
+// **身分 ← 3（一般武將）**、所在郡 ← 戰場郡；被收編的人如果原本是軍師
+// （身分 1），舊主的軍師槽（諸侯記錄 offset 6）清成 `0xFFFF`。
+func WarRecruitLoyalty(prestige int) int { return clampTo(prestige, 100) }
+
 // WarRecruited 是收降的判定（`0x2001c`–`0x2003b`）：
 //
 //	勝方的人望（諸侯記錄 offset 8） >= 抵抗值 ÷ 2
