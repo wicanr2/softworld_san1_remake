@@ -31,14 +31,12 @@ const (
 	// TuneLocustRiceLoss／TuneLocustLandLoss 是蝗害。
 	TuneLocustRiceLoss = 30
 	TuneLocustLandLoss = 5
-	// PopulationGrowthPercent 是年度人口成長率。
-	//
-	// **量出來的，不是挑的**：原版十月的成長是固定 15%、無條件捨去，
-	// 與土地價值和民眾忠誠都無關。兩個年度各驗一次，凡是低於 15% 的郡
-	// 都對得上同一個月的徵兵（兵士 +1 就少 1 個單位的人口）——
-	// 渤海 3844→4420、上黨 2443→2809、琅邪 2251→2588、下邳 2102→2417，
-	// 四個都剛好是 ×1.15 捨去（`docs/mechanics/60-economy.md` §1，`L1`）。
-	PopulationGrowthPercent = 15
+	// PopulationCap 是每個郡的人口上限（原版 `0x16f0a` 夾在 10000，
+	// 存的值 ×100，`L0`）。
+	PopulationCap = 1_000_000
+	// PopulationOwnerlessChance 是無主郡成長的機率（`0x16ebd`，`L0`）：
+	// `RND(100) < 30` 才長。有主的郡每次都長。
+	PopulationOwnerlessChance = 30
 	// TuneAgingStamina 是每年體能的衰減基準；年紀越大掉越多。
 	TuneAgingStamina = 1
 	// TuneDisasterBase 是災害的**每月**基礎機率；民眾忠誠越低越高。
@@ -83,8 +81,90 @@ func (g *State) RunSeason() []Event {
 //
 // 「天災多因人怨引起，民眾忠誠最好不要太低」（說明書 p.36）——
 // 忠誠 100 時降到基礎值的一半，忠誠 0 時是基礎值的兩倍。
+//
+// ⚠ **水災與瘟疫不走這一條**：兩者的判定都從碼讀出來了，而且形狀
+// 完全不同（`FloodBase`／`FloodStrikes`、`PlagueStrikes`）。這裡只剩
+// 地震與蝗害還在用它。
 func (g *State) disasterChance(p *Prefecture) int {
 	return TuneDisasterBase * (200 - int(p.PublicLoyalty)) / 200
+}
+
+// floodBase 是各郡的洪水基礎值（`DS:0x679c`，43 個 word，`L0`）。
+//
+// **各郡不同**——有些郡天生就容易淹。索引 0 是啞元郡。
+var floodBase = [state.PrefectureCount + 1]int{
+	0, 0, 5, 4, 3, 1, 2, 5,
+	7, 3, 3, 7, 2, 2, 7, 7,
+	3, 2, 1, 2, 0, 5, 5, 3,
+	10, 3, 12, 2, 2, 5, 5, 10,
+	3, 3, 3, 1, 2, 5, 4, 1,
+	2, 3,
+}
+
+// FloodBase 是某個郡的洪水基礎值。
+func FloodBase(prefectureID int) int {
+	if prefectureID < 0 || prefectureID >= len(floodBase) {
+		return 0
+	}
+	return floodBase[prefectureID]
+}
+
+// FloodRise 是每個月洪水率自己的變動（`0x16500`–`0x16543`，`L0`）：
+//
+//	新洪水率 ＝ min(100, RND(舊 ÷ 4) + 舊 % 4 + 基礎[郡])
+//
+// **這件事每個月都發生，與淹不淹無關。** 期望值大約
+// `舊 × 0.625 + 基礎`，所以洪水率會往 `基礎 ÷ 0.375` 收斂——
+// 防洪（`FloodDrop` ＝ 謀略 ÷ 10）壓下去之後還會爬回來。
+func FloodRise(rate, base, roll int) int {
+	v := roll + rate%4 + base
+	if v > 100 {
+		v = 100
+	}
+	if v < 0 {
+		v = 0
+	}
+	return v
+}
+
+// 水災的兩道判定（`0x16574`／`0x16585`，`L0`）。
+const (
+	FloodRollSpread = 65 // RND(65) + 5
+	FloodRollFloor  = 5
+	FloodGateSpread = 100 // 再擲一次 RND(100)，<= 80 就不淹
+	FloodGateBar    = 80
+)
+
+// FloodStrikes 回報這個郡這個月淹不淹。
+//
+// rateRoll ＝ `RND(新洪水率)`、guard ＝ `RND(65)`、gate ＝ `RND(100)`。
+//
+// **兩道都要過**：`RND(65) + 5 < RND(洪水率)` 而且 `RND(100) > 80`。
+// 第二道是無條件的 19%，所以就算洪水率滿檔也不是每個月都淹。
+func FloodStrikes(rateRoll, guard, gate int) bool {
+	return guard+FloodRollFloor < rateRoll && gate > FloodGateBar
+}
+
+// 瘟疫的兩道門檻（`0x167df`–`0x1683d`，`L0`）。
+const (
+	PlagueLoyaltySpread = 45 // RND(45) + 25
+	PlagueLoyaltyFloor  = 25
+	PlagueLandSpread    = 40 // RND(40) + 20
+	PlagueLandFloor     = 20
+)
+
+// PlagueStrikes 回報隨機挑中的那個郡鬧不鬧瘟疫。
+//
+// **瘟疫不逐郡掃**，原版每個月只挑一個郡（`RND(42) + 1`）。
+// 兩道門檻都要過：忠誠 70 以上一定安全（門檻上限 69），
+// 25 以下一定過第一關；土地價值 59 以上安全、20 以下必過。
+//
+// **這才是說明書「天災多因人怨引起」的出處**——水災完全不看忠誠。
+func PlagueStrikes(loyalty, landValue, loyaltyRoll, landRoll int) bool {
+	if loyalty >= loyaltyRoll+PlagueLoyaltyFloor {
+		return false
+	}
+	return landValue < landRoll+PlagueLandFloor
 }
 
 // spring 是春天：年齡增長、體能衰退、老死、地震。
@@ -178,19 +258,29 @@ func (g *State) summer() []Event {
 		if !p.Owned() {
 			continue
 		}
-		// 水患的機率同時看民怨與洪水率——洪水率就是為這件事存在的。
-		flood := g.disasterChance(p)*(100-TuneFloodWeight)/100 +
-			int(p.FloodRate)*TuneFloodWeight/100
-		if g.roll(int(Summer), p.ID, 1) < flood {
+		// **洪水率每個月都會自己動**，與淹不淹無關（`0x16500`）。
+		p.FloodRate = uint8(FloodRise(int(p.FloodRate), FloodBase(p.ID),
+			g.roll(int(Summer), p.ID, 3)%max(1, int(p.FloodRate)/4+1)))
+		// 淹不淹：兩道擲骰都要過（`0x16574`／`0x16585`）。
+		if FloodStrikes(g.roll(int(Summer), p.ID, 4)%max(1, int(p.FloodRate)+1),
+			g.roll(int(Summer), p.ID, 1)%FloodRollSpread,
+			g.roll(int(Summer), p.ID, 2)%FloodGateSpread) {
 			p.Population = p.Population * (100 - TuneFloodPopLoss) / 100
 			g.scaleTroops(p.ID, 100-TuneFloodPopLoss)
 			p.LandValue = uint8(clampTo(int(p.LandValue)-TuneFloodLandLoss, 100))
 			// 「意外產生水災後，洪水率會立刻升到 100」（說明書 p.21）。
 			p.FloodRate = 100
 			out = append(out, Event{p.ID, tf("ev.flood", placeName(p.Name))})
-			continue
 		}
-		if g.roll(int(Summer), p.ID, 2) < g.disasterChance(p)/2 {
+	}
+	// **瘟疫每個月只挑一個郡**（`RND(42) + 1`，`0x167df`），不逐郡掃。
+	{
+		id := g.roll(int(Summer), 0, 5)%state.PrefectureCount + 1
+		p := g.Prefecture(id)
+		if p != nil && p.Owned() &&
+			PlagueStrikes(int(p.PublicLoyalty), int(p.LandValue),
+				g.roll(int(Summer), id, 6)%PlagueLoyaltySpread,
+				g.roll(int(Summer), id, 7)%PlagueLandSpread) {
 			p.Population = p.Population * (100 - TunePlagueLoss) / 100
 			g.scaleTroops(p.ID, 100-TunePlagueLoss)
 			for _, x := range g.Garrison(p.ID) {
@@ -280,6 +370,26 @@ func (g *State) autumn() []Event {
 	return out
 }
 
+// GrowPopulation 是一年一次的人口成長（`0x16ec2`–`0x16f16`，`L0`）：
+//
+//	人口 ← min(上限, 人口 × (土地價值 + 民眾忠誠 ÷ 2 + 1000) ÷ 1000)
+//
+// 倍率的上限是 `100 + 50 + 1000 = 1150`，也就是**最快 15%**，
+// 而且要土地價值與忠誠都滿檔才到得了。
+//
+// ⚠ 原本這裡寫的是固定 15%，出處是十六個月的對拍觀測「每個郡都剛好
+// ×1.15」。那個觀測沒錯，但它走的是**載入舊進度**，而那份出貨存檔的
+// 土地價值是 100、忠誠 99–100（36 個有主的郡裡 30 個倍率到頂）——
+// 每個郡都在上限，所以看起來像常數。劇本 001 的倍率只有 1019–1059
+// （2–6%），差得很遠。詳見 `CONTEXT.md` R15。
+func GrowPopulation(population, landValue, loyalty int) int {
+	n := population * (landValue + loyalty/2 + 1000) / 1000
+	if n > PopulationCap {
+		n = PopulationCap
+	}
+	return n
+}
+
 // winter 是冬季：人口增加與進貢物品，兩者都一年一次。
 //
 // **人口成長不是每個冬月都來。** 原版十六個月的觀測裡，二三十個郡的
@@ -290,10 +400,12 @@ func (g *State) winter() []Event {
 	if g.Date.Month == growthMonth {
 		for i := range g.prefectures {
 			p := &g.prefectures[i]
-			if !p.Owned() {
+			if !p.Owned() &&
+				g.roll(int(Winter), p.ID, 9)%100 >= PopulationOwnerlessChance {
 				continue
 			}
-			p.Population += p.Population * PopulationGrowthPercent / 100
+			p.Population = GrowPopulation(p.Population,
+				int(p.LandValue), int(p.PublicLoyalty))
 		}
 	}
 	if g.Date.Month != tributeMonth {

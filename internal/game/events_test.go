@@ -79,22 +79,26 @@ func TestAgingKillsEventually(t *testing.T) {
 	}
 }
 
-// TestPopulationGrowsOnceAYear 釘住人口一年只長一次，在十月，長 15%。
+// TestPopulationGrowsOnceAYear 釘住人口一年只長一次，在十月，
+// 幅度跟著土地價值與民眾忠誠走（`0x16ec2`，`L0`）。
 //
 // **三件事要一起釘**：月份、幅度、以及「其他月份不長」。只釘「有增加」
 // 的話，每個月都長 1% 也會綠——而那與原版差了一個數量級。
-// 數字是量出來的（`docs/mechanics/60-economy.md` §1，`L1`）。
 func TestPopulationGrowsOnceAYear(t *testing.T) {
 	g := newGame(t)
 	p := g.Prefecture(15)
 
 	g.Date = Date{Year: 189, Month: 9}
 	before := p.Population
+	want := GrowPopulation(before, int(p.LandValue), int(p.PublicLoyalty))
 	g.EndMonth() // → 十月
-	want := before + before*PopulationGrowthPercent/100
 	if p.Population != want {
-		t.Errorf("十月人口 %d，原本 %d，應該是 %d（＋%d%%）",
-			p.Population, before, want, PopulationGrowthPercent)
+		t.Errorf("十月人口 %d，原本 %d，應該是 %d", p.Population, before, want)
+	}
+	// **幅度不是常數**：劇本 001 的倍率只有 1019–1059，離上限 1150 很遠。
+	// 寫死 15% 的話這一條會差一個量級。
+	if want == before+before*15/100 {
+		t.Error("這個郡剛好是滿檔的 15%，測不出「幅度跟著土地價值與忠誠走」")
 	}
 
 	// 其他月份不長。

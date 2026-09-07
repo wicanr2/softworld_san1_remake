@@ -233,3 +233,47 @@ func TestZZDumpBaseAtBoot(t *testing.T) {
 		t.Errorf("只做了 %d 次檔案操作——沒走到載資料那一步", n)
 	}
 }
+
+// TestZZSavedGameLandAndLoyalty 印出「載入舊進度」之後各郡的土地價值與
+// 民眾忠誠。
+//
+// **這是為了分辨一組相衝的證據**：`0x16e70` 讀出來的年度人口成長是
+// `人口 × (土地價值 + 忠誠 ÷ 2 + 1000) ÷ 1000`，倍率上限 1150（＝15%）；
+// 而 `docs/mechanics/60` §1 量到的是「每個郡都剛好 15%」。劇本 001 的
+// 倍率只有 1019–1059，所以那個觀測不可能來自劇本——對拍走的是
+// **載入舊進度**（`bootToMain`）。如果那份進度的土地價值與忠誠都在
+// 上限附近，兩邊就對得起來。
+func TestZZSavedGameLandAndLoyalty(t *testing.T) {
+	root := origRoot(t)
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatalf("載入原版：%v", err)
+	}
+	defer o.Close()
+	bootLikePlus(t, o)
+
+	const staBase = 0x399b0 + 0x480 // 三張表的基底 ＋ 州郡表的位移
+	const stride = 176
+	maxed, n := 0, 0
+	for id := 1; id <= 42; id++ {
+		rec := o.Bytes(addr(uint32(staBase+id*stride)), stride)
+		if len(rec) < 31 {
+			t.Fatalf("郡 %d 讀不到記錄", id)
+		}
+		loyalty, land := int(rec[26]), int(rec[27])
+		mul := land + loyalty/2 + 1000
+		if rec[30] == 0xFF {
+			continue
+		}
+		n++
+		if mul >= 1150 {
+			maxed++
+		}
+		if id <= 10 {
+			t.Logf("郡 %2d 土地價值 %3d 忠誠 %3d 洪水率 %3d 人口 %5d → 倍率 %d",
+				id, land, loyalty, rec[28],
+				int(rec[14])|int(rec[15])<<8, mul)
+		}
+	}
+	t.Logf("有主的郡 %d 個，其中倍率到頂（>=1150）的 %d 個", n, maxed)
+}
