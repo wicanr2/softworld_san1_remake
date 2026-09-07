@@ -366,7 +366,7 @@ func (g *State) comeOfAge() []Event {
 
 // 玉璽現世的兩個數（`0x15d11`／`0x1518b`，`L0`）。
 const (
-	SealChanceBar     = 50 // RND(100) > 50 才出現
+	SealChanceBar      = 50 // RND(100) > 50 才出現
 	SealPrestigeSpread = 30 // 人望 += RND(30) + 40
 	SealPrestigeFloor  = 40
 )
