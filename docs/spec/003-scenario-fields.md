@@ -226,8 +226,8 @@ Y 23–288，與地理對得起來：遼東 (276, 23) 東北角、酒泉 (15, 55
 
 ⚠ **`金%6d`／`米%6d` 那兩個格式字串不屬於州郡記錄。** 當初把它們記成
 offset 84／86，但那兩格落在戰場地圖（55–174）裡，而地圖已經逐位元組
-round-trip 驗過（`TestEveryPrefectureHasTheOriginalField`）。那兩個字串
-餵的是另一個結構——`docs/re/04` 的字串表裡還沒追出是誰在用。
+round-trip 驗過（`TestEveryPrefectureHasTheOriginalField`）。那兩個字串餵的是**戰役工作區**：`0x22f41` 印四個軍團帶的錢糧，
+值取自工作區 `0x1764` 起（`docs/re/05`）。
 
 ### 3.2 相鄰表（offset 45–54）
 
