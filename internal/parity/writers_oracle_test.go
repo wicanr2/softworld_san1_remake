@@ -83,6 +83,295 @@ func TestZZDumpCode(t *testing.T) {
 	dumpImage(t, o, 0x00b000, 0x050000, "code")
 }
 
+// TestZZDumpBattleCode 把原版帶進一場真的打得起來的戰役，然後倒碼段。
+//
+// **主戰場那一層很可能是 overlay**：開機後的 dump 裡找不到它的選單字串
+//（`docs/re/03` §1.5）。所以要讀戰術層，得先讓原版把那一層載進來。
+//
+// 盤面**直接寫記憶體擺出來**，不靠存檔剛好是什麼樣子（`stageABattle`）。
+// 送的鍵用 `SAN1_BATTLEKEY` 換，`|` 分段，`enterMark` 代表 Enter。
+func TestZZDumpBattleCode(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	base := bootToGame(t, o, seedMas)
+	_, to := stageABattle(t, o, base)
+
+	// 攔玩家那條出兵路徑的兩個點，看它走到哪裡就停。
+	// `0x18bc8` 是處理常式的進入點（`0x18fbc` 在它裡面呼叫移動常式），
+	// `0x1938a` 是真的把部隊搬過去的那一支。
+	// **攔那支數字輸入常式，讓它自己報呼叫端**：`33d8:115e`
+	// （線性 `0x34ede`）就是「請輸入難度(1-10)」與「攻打那一郡(1-42)」
+	// 共用的那一支。這樣不必猜處理常式在哪。
+	hits := map[uint32]int{}
+	o.OnCall(addr(0x34ede), func(o *oracle.Oracle) { hits[o.Caller().Linear()]++ })
+	moved := 0
+	o.OnCall(addr(0x1938a), func(o *oracle.Oracle) { moved++ })
+	defer func() {
+		if len(hits) == 0 {
+			t.Log("數字輸入常式一次都沒被呼叫——位址或路徑不對")
+		}
+		keys := make([]uint32, 0, len(hits))
+		for k := range hits {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+		for _, k := range keys {
+			t.Logf("數字輸入的呼叫端 %#07x：%d 次", k, hits[k])
+		}
+		t.Logf("部隊移動 0x1938a：%d 次", moved)
+	}()
+
+	const settle = 40_000_000
+	keys := envOr("SAN1_BATTLEKEY", fmt.Sprintf("2|2|%d%s", to, enterMark))
+	for i, seg := range strings.Split(keys, "|") {
+		o.Drain()
+		o.PressScan(strings.ReplaceAll(seg, enterMark, "\r"))
+		if err := o.Run(settle * 3); err != nil {
+			t.Fatalf("送第 %d 段（%q）時停止：%v", i+1, seg, err)
+		}
+		dumpScreen(t, o, fmt.Sprintf("battle-%d", i+1))
+	}
+	dumpImage(t, o, 0x00b000, 0x050000, "battle")
+}
+
+// enterMark 是環境變數裡代表 Enter 的兩個字元。**不寫真的 CR**：
+// 經過 shell 與 `docker -e` 會被吃掉或轉掉。
+const enterMark = `\r`
+
+// stageABattle 直接改記憶體，把盤面擺成打得起來，回傳要打的郡。
+//
+// **不靠原版的 `RND()`，也不靠存檔剛好是什麼樣子**：那份存檔的玩家在
+// 南海，兵 500、金 3、現役將 1，戰役指令按下去就退回來。這裡把玩家的
+// 守軍與錢糧墊高，再把一個鄰郡放上敵將——郡的歸屬是從人物表導出來的
+//（`docs/re/03` §1.5），所以放人就等於換旗。
+func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
+	t.Helper()
+	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
+	raw := o.Bytes(addr(base), nMas+nSta+nGen)
+	mas, sta, gen := raw[:nMas], raw[nMas:nMas+nSta], raw[nMas+nSta:]
+
+	sc, err := state.DecodeTables(state.Slot("001"), mas, sta, gen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	players := sc.Players()
+	if len(players) == 0 {
+		t.Fatal("盤面上沒有玩家")
+	}
+	me := players[0]
+	// **不要拿君主的所在郡當起點**：自創君主指向填充槽，`Location`
+	// 是哨兵值（實測 255），拿去索引州郡表會越界。從盤面找他的郡。
+	at := 0
+	for id := 1; id <= 42; id++ {
+		if int(sta[id*176+30]) == me {
+			at = id
+			break
+		}
+	}
+	if at == 0 {
+		t.Fatalf("勢力 %d 在盤面上沒有郡", me)
+	}
+
+	// 鄰郡：州郡 offset 45–54，`0xFF` 補齊。
+	to := 0
+	for k := 45; k <= 54; k++ {
+		if n := int(sta[at*176+k]); n != 0xFF && n != 0 {
+			to = n
+			break
+		}
+	}
+	if to == 0 {
+		t.Fatalf("郡 %d 沒有鄰郡", at)
+	}
+	enemy := -1
+	for _, f := range sc.ActiveFactions() {
+		if f != me {
+			enemy = f
+			break
+		}
+	}
+	if enemy < 0 {
+		t.Fatal("盤面上只有玩家一個勢力")
+	}
+
+	put16 := func(b []byte, i, v int) { b[i], b[i+1] = byte(v), byte(v>>8) }
+
+	// 玩家這一邊：守軍每人三千兵、訓練與武裝八成，郡裡錢糧管夠。
+	mine := 0
+	for i := 0; i < 350; i++ {
+		r := gen[i*30:]
+		if int(r[18]) != me || int(r[19]) != at {
+			continue
+		}
+		put16(r, 22, 3000)
+		r[24], r[25] = 80, 80
+		mine++
+	}
+	put16(sta[at*176:], 16, mine*30)
+	put16(sta[at*176:], 18, 9000)
+	put16(sta[at*176:], 20, 20000)
+
+	// **「發動戰役」要君主本人在這個郡**（`0x1891f` 檢查州郡 offset 32
+	// 指到的人身分是不是 0）。這份存檔的玩家是自創君主，諸侯 offset 2
+	// 指向填充槽，所以怎麼按都會被擋回來。把本郡第一位守將改成君主。
+	for i := 0; i < 350; i++ {
+		r := gen[i*30:]
+		if int(r[18]) != me || int(r[19]) != at {
+			continue
+		}
+		r[17] = 0 // 身分 ← 君主
+		put16(sta[at*176:], 32, i)
+		put16(mas[me*72:], 2, i)
+		t.Logf("把人物 %d 設成勢力 %d 的君主，坐鎮郡 %d", i, me, at)
+		break
+	}
+
+	// 敵方這一邊：挑兩位在野的人放進目標郡，郡就跟著換旗。
+	placed := 0
+	for i := 0; i < 350 && placed < 2; i++ {
+		r := gen[i*30:]
+		if r[18] != 0xFF {
+			continue
+		}
+		r[18], r[19], r[17], r[12] = byte(enemy), byte(to), 3, 3
+		put16(r, 22, 1500)
+		r[24], r[25] = 50, 50
+		placed++
+	}
+	sta[to*176+30] = byte(enemy)
+	put16(sta[to*176:], 16, placed*15)
+	put16(sta[to*176:], 18, 500)
+	put16(sta[to*176:], 20, 3000)
+	sta[to*176+22] = byte(placed)
+
+	o.SetBytes(addr(base), raw)
+	// **寫完要讀回來**：`base` 找錯或表在別處的話，寫進去什麼事都不會
+	// 發生，而畫面看起來完全正常——那是最難發現的那種錯。
+	back := o.Bytes(addr(base), nMas+nSta+nGen)
+	bs := back[nMas : nMas+nSta]
+	get16 := func(b []byte, i int) int { return int(b[i]) | int(b[i+1])<<8 }
+	t.Logf("盤面擺好：玩家勢力 %d 在郡 %d（%d 位守將 × 3000 兵），"+
+		"目標郡 %d 換成勢力 %d（%d 位 × 1500 兵）", me, at, mine, to, enemy, placed)
+	t.Logf("讀回來：郡 %d 金 %d 米 %d 兵士 %d；郡 %d 所屬 %d 兵士 %d 現役將 %d",
+		at, get16(bs, at*176+18), get16(bs, at*176+20), get16(bs, at*176+16),
+		to, bs[to*176+30], get16(bs, to*176+16), bs[to*176+22])
+	return at, to
+}
+
+// TestZZBattleKeySweep 從**同一個快照**試多組按鍵，找出打得起來的那一組。
+//
+// **開機要三分鐘，一組按鍵要十秒**——所以開機一次、存快照，每個候選
+// 還原之後再送。同一個問題問到第三次還在等好幾分鐘，就該把迴圈變快
+// （`~/.claude/CLAUDE.md` 的長工作紀律）。
+//
+// 判準是**部隊真的動了**：攔 `0x1938a`（把出征者的所在郡改成目標郡的
+// 那一支）。畫面看起來對不對是觀感，那一支被呼叫是事實。
+func TestZZBattleKeySweep(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	base := bootToGame(t, o, seedMas)
+	at, to := stageABattle(t, o, base)
+	snap := o.Save()
+
+	moved := 0
+	o.OnCall(addr(0x1938a), func(o *oracle.Oracle) { moved++ })
+	asked := map[uint32]int{}
+	o.OnCall(addr(0x34ede), func(o *oracle.Oracle) { asked[o.Caller().Linear()]++ })
+	// `0x1d613` 是選郡那支數字輸入回來的那一刻，AX 就是它的回傳值：
+	// `0xFFFF` ＝ 取消、`0xFFFE` ＝ 不合法要重問、其餘 ＝ 選中的郡。
+	var got []string
+	o.OnCall(addr(0x1d613), func(o *oracle.Oracle) {
+		got = append(got, fmt.Sprintf("%#06x", o.AX()))
+	})
+
+	// 候選：目標的數字有沒有 Enter、要不要補選將領、幾個 Y。
+	E := enterMark
+	// **順序是先問「從那一郡移出」再問「攻打那一郡」**（`0x18992` 那個
+	// 選郡的互動在建完「自己的郡」清單之後，`0x189e8` 才建可打的目標）。
+	// **一段一鍵**：鍵盤是逐鍵中斷送進去的，一段裡塞三個鍵的話
+	// `Run(settle)` 的預算用光時輸入常式還沒讀完，它就一直卡在那裡
+	// ——量到的現象是「進得去、回不來」（`0x1d613` 從來沒被執行到）。
+	spell := func(n int) string {
+		out := ""
+		for _, c := range fmt.Sprintf("%d", n) {
+			out += string(c) + "|"
+		}
+		return out + E
+	}
+	src, dst := spell(at), spell(to)
+	// `|||` 之間的空段只是多等一輪：**選完子選單之後畫面要重畫**，
+	// 太快送出的第一個數字會被吃掉（量到的現象是 `4|1|\r` 回傳 1）。
+	cands := []string{
+		"2|2|" + src + "|" + dst,
+		"2|2||" + src + "|" + dst,
+		"2|2|||" + src + "||" + dst,
+		"2|2||||" + src + "|||" + dst,
+		"2|2||" + src + "||" + dst + "|1|" + E,
+		"2|2|||" + src + "||" + dst + "|1|" + E + "|" + E,
+		"2||2||" + src + "||" + dst + "||1|" + E,
+		"2||2||" + src + "||" + dst + "||" + E,
+	}
+	if v := os.Getenv("SAN1_BATTLEKEY"); v != "" {
+		cands = []string{v}
+	}
+	const settle = 30_000_000
+	for ci, cand := range cands {
+		o.Restore(snap)
+		o.Drain()
+		moved = 0
+		for k := range asked {
+			delete(asked, k)
+		}
+		for _, seg := range strings.Split(cand, "|") {
+			k := strings.ReplaceAll(seg, enterMark, "\r")
+			// 候選字串開頭的 `P:` 表示這一組走 `int 21h` 的字元佇列，
+			// 其餘走硬體掃描碼。**兩條一起餵會產生重複的字元**，
+			// 所以要分開試而不是都送。
+			if strings.HasPrefix(cand, "P:") {
+				o.Press(strings.TrimPrefix(k, "P:"))
+			} else {
+				o.PressScan(k)
+			}
+			if err := o.Run(settle); err != nil {
+				t.Fatalf("候選 %q 執行停止：%v", cand, err)
+			}
+		}
+		var who []string
+		for a, n := range asked {
+			who = append(who, fmt.Sprintf("%#07x×%d", a, n))
+		}
+		sort.Strings(who)
+		t.Logf("候選 %d %-30q → 部隊移動 %d 次；選郡回傳 %v；問過 %v",
+			ci+1, cand, moved, got, who)
+		got = got[:0]
+		dumpScreen(t, o, fmt.Sprintf("sweep-%02d", ci+1))
+	}
+}
+
 // TestZZHookTraining 攔「訓練兵士」那支常式，讀它的參數與呼叫端。
 //
 // 常式在線性 `0xbd70`（`docs/re/03` §1.3）。它對郡裡每一位守將算
