@@ -75,8 +75,9 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// 十八張表裡解出十七張，而且已讀的那幾張底下還有沒量到的量
-		//（賞賜的增幅與排序鍵、原版的亂數）。**結構對了不代表數值對了。**
+		// 十八張表都讀過了（`0x5514` 六個等級全是空操作），但已讀的
+		// 那幾張底下還有沒量到的量（賞賜的增幅與排序鍵、原版的亂數）。
+		// **結構對了不代表數值對了。**
 		if b.Derived() {
 			t.Errorf("%s 宣稱已經完整還原了——表底下還有沒量到的量", m)
 		}
@@ -505,6 +506,29 @@ func TestSortieGates(t *testing.T) {
 			case game.AttackOrder, game.MoveOrder:
 				t.Errorf("等級 %d 不該出兵，卻下了 %T", lvl, o)
 			}
+		}
+	}
+}
+
+// TestCoverageCountsTheNoopTable 釘住十八張表都讀過了。
+//
+// **`0x5514` 算解出來的**：六個等級的 far pointer 全部指向
+// `33 c0 9a 1c 05 c4 05 cb`（配 0 位元組堆疊之後直接 `retf`），
+// 那張表在任何等級都不做事——「已解」的正確做法就是不發命令。
+// **這一條同時擋住「把沒讀的表算進去」**：Derived() 還是假，
+// 因為已讀的那幾張底下還有沒量到的量。
+func TestCoverageCountsTheNoopTable(t *testing.T) {
+	for _, m := range []Mode{ModeBase, ModePlus} {
+		b, err := New(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		done, total := b.Coverage()
+		if done != 18 || total != 18 {
+			t.Errorf("%s 的覆蓋率是 %d/%d，十八張表都讀過了", m, done, total)
+		}
+		if b.Derived() {
+			t.Errorf("%s 宣稱已經完整還原了——表底下還有沒量到的量", m)
 		}
 	}
 }

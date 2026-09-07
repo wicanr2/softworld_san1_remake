@@ -94,7 +94,13 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 17, 18 }
+// Coverage 回報十八張分派表解出幾張。
+//
+// **`0x5514` 算解出來的**：六個等級的 far pointer 全部指向
+// `33 c0 9a 1c 05 c4 05 cb`——配 0 位元組堆疊之後直接 `retf`，
+// 也就是空操作。那張表在任何等級都不做事，所以「已解」的正確做法
+// 就是不發任何命令（`docs/re/03` §1.4）。
+func (f *faithful) Coverage() (int, int) { return 18, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
