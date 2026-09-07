@@ -1,8 +1,8 @@
 package game
 
 import (
-	"sort"
 	"fmt"
+	"sort"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -166,7 +166,7 @@ type General struct {
 	Bond int
 
 	// Debut 是出頭的年齡（人物表 offset 26，`L0`）。
-	Debut    uint8
+	Debut uint8
 
 	// Portrait 是肖像編號（原版人物 offset 27）；Lifespan 是壽命
 	// （offset 28）——**幾歲開始走下坡，不是幾歲一定死**（`AgingDrop`）。
