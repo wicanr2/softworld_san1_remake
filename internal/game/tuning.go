@@ -58,10 +58,15 @@ const (
 	TuneNewSoldierArms = 0
 )
 
-// TreasureEffect 是寶物的效果（說明書 p.24，**這一組是原版的數字**）。
+// TreasureEffect 是寶物加給能力的**下界**（`L1`、`[base]`，
+// 分派表 `0x56b4` 底下四支：`0xd962`／`0xdac0`／`0xdc1e`／`0xdd94`）。
 //
-// 放在這一檔是因為它與上面的常數相鄰好對照，但它有出處——
-// 兵書 +2 謀略、寶刀 +3 戰力、美女 +5 魅力、駿馬 +2 戰力 +3 魅力。
+// 兵書 +2 謀略、寶刀 +3 戰力、美女 +5 魅力、駿馬 +2 戰力 +3 魅力——
+// **說明書 p.24 寫的就是這一組，而它是下界不是定值**：原版在每一項上面
+// 再加一次 `RND(2)`（`add $底,%al` 之前的 `RND(2)`）。186 次對拍
+// 逐次落在 `底`–`底+1` 裡（`docs/playtest/02`）。
+//
+// 忠誠的增幅另見 `TreasureLoyaltyGain`。
 func TreasureEffect(t Treasure) (intel, war, charm int) {
 	switch t {
 	case TreasureBook:
@@ -78,3 +83,24 @@ func TreasureEffect(t Treasure) (intel, war, charm int) {
 
 // TreasureCap 是靠賞賜能把能力提到的上限（說明書 p.24：90 點）。
 const TreasureCap = 90
+
+// TreasureLoyaltySpread 是賞賜物品之後忠誠那一擲的上限（`L1`）。
+//
+// 三種寶物是 `RND(30) + 提升後的能力 ÷ 2`，**美女是 `RND(50) + 50`**
+// ——沒有能力那一項，而且底就有 50。
+const (
+	TreasureLoyaltySpread       = 30
+	TreasureBeautyLoyaltySpread = 50
+	TreasureBeautyLoyaltyFloor  = 50
+)
+
+// TreasureLoyaltyGain 是賞賜一件寶物換到的忠誠。
+//
+//	roll ＝ RND(30)，美女那一支是 RND(50)
+//	ability ＝ **提升之後**的能力值
+func TreasureLoyaltyGain(t Treasure, ability, roll int) int {
+	if t == TreasureBeauty {
+		return TreasureBeautyLoyaltyFloor + roll
+	}
+	return ability/2 + roll
+}

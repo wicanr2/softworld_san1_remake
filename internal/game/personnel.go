@@ -368,13 +368,33 @@ func (g *State) GiftTreasure(prefectureID, targetIndex int, t Treasure, by state
 	if x == nil || x.Faction != by || x.Location != prefectureID {
 		return ErrUnknownUnit
 	}
+	// **說明書的數字是下界**：原版在每一項上面再加一次 `RND(2)`
+	// （`TreasureEffect` 的說明，`L1`）。
 	di, dw, dc := TreasureEffect(t)
+	bump := func(d, salt int) int {
+		if d == 0 {
+			return 0
+		}
+		return d + g.roll(prefectureID, targetIndex, int(t), salt)%2
+	}
+	di, dw, dc = bump(di, 1), bump(dw, 2), bump(dc, 3)
 	x.Intel = raiseTo(x.Intel, di, TreasureCap)
 	x.War = raiseTo(x.War, dw, TreasureCap)
 	x.Charm = raiseTo(x.Charm, dc, TreasureCap)
 	f.Treasury[t]--
 	if x.HasLoyalty() {
-		x.Loyalty = uint8(clampTo(int(x.Loyalty)+1, 100))
+		// 忠誠跟著提升**之後**的那個能力走（美女那一支不看能力）。
+		ability := int(x.Intel)
+		spread := TreasureLoyaltySpread
+		switch t {
+		case TreasureBlade, TreasureHorse:
+			ability = int(x.War)
+		case TreasureBeauty:
+			ability, spread = 0, TreasureBeautyLoyaltySpread
+		}
+		roll := g.roll(prefectureID, targetIndex, int(t), 4) % spread
+		x.Loyalty = uint8(clampTo(int(x.Loyalty)+
+			TreasureLoyaltyGain(t, ability, roll), 100))
 	}
 	p.Commanded = true
 	return nil
