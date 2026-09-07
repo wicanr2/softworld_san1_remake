@@ -7,6 +7,12 @@
 
 ## 畫面
 
+![開場詞](docs/images/poem.png)
+
+開場的〈臨江仙〉。底圖是原版的兩張 `SANTL`／`SANTR`，與原版還沒寫字的
+那一格逐像素相同；詞的欄距、列距與顏色也是從原版量的，字用 remake
+自己的字庫。
+
 ![主選單](docs/images/title.png)
 
 主選單。標題牌是原版的 `MENU0A`／`MENU0B`，六個按鈕是 `MENU2` 排成

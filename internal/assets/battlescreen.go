@@ -191,3 +191,34 @@ func (im *Image) vline(x, y0, y1 int, v byte) {
 		im.Set(x, y, v)
 	}
 }
+
+// 開場詩那一張的底圖是 `DATA1` 的兩半，各 320×295。
+//
+// 位置量自原版開場的第一格（詩還沒寫上去的那一張）：`SANTL` 在 (0,49)、
+// `SANTR` 在 (320,49)，兩張各 94400 格**逐格相同**。
+const (
+	PoemPieceW = 320
+	PoemPieceH = 295
+	PoemY      = 49
+)
+
+// PoemScreen 拼出開場詩的底圖（沒有字）。
+func PoemScreen(data1 *Container) (*Image, error) {
+	im := &Image{W: ScreenW, H: ScreenH, Pix: make([]byte, ScreenW*ScreenH)}
+	for i, name := range []string{"SANTL.IMG", "SANTR.IMG"} {
+		j, ok := data1.ByName(name)
+		if !ok {
+			return nil, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
+		}
+		p, err := DecodeImage(data1.Data(j))
+		if err != nil {
+			return nil, err
+		}
+		if p.W != PoemPieceW || p.H != PoemPieceH {
+			return nil, fmt.Errorf("assets: %s 是 %d×%d，開場詩的底圖應該是 %d×%d",
+				name, p.W, p.H, PoemPieceW, PoemPieceH)
+		}
+		im.Blit(p, i*PoemPieceW, PoemY)
+	}
+	return im, nil
+}
