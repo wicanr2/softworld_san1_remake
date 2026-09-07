@@ -281,8 +281,12 @@ func TestZhugeLiangAppears(t *testing.T) {
 	if zgl.Status != state.StatusUnborn {
 		t.Fatalf("諸葛亮開局的身分是 %d，應該是未登場", zgl.Status)
 	}
-	born := zgl.Age
-	for g.Date.Year < 189+int(TuneComingOfAge-born)+2 {
+	// **出頭年齡是他自己的**（人物表 offset 26），不是全域常數。
+	born, debut := zgl.Age, zgl.Debut
+	if debut == 0 {
+		t.Fatal("諸葛亮的出頭年齡是 0——offset 26 沒有解碼進來")
+	}
+	for g.Date.Year < 189+int(debut-born)+2 {
 		g.EndMonth()
 	}
 	if zgl.Status == state.StatusUnborn {
@@ -568,5 +572,73 @@ func TestLoyaltyDriftsWithPrestige(t *testing.T) {
 	// 君主自己不受影響。
 	if lord := g.Lord(id); lord != nil && lord.Loyalty != 100 && lord.Loyalty == 0 {
 		t.Error("君主不該被人望影響")
+	}
+}
+
+// TestDebutFollowsTheBond 釘住出頭的兩條路（`0x16064`／`0x15ec4`，`L0`）。
+//
+// **牽絆對象有勢力的話，人直接投奔他**——手冊 p.36 的「新將投效其
+// 親族朋友」是字面意思。少了這一條，名將的子姪與舊部都會變成散落
+// 各地的在野人士，而「牽絆」在登用之外就沒有別的作用。
+func TestDebutFollowsTheBond(t *testing.T) {
+	g := newGame(t)
+	// 找一位未登場、牽絆對象有勢力的人。
+	var who *General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Status != state.StatusUnborn || x.Name == "" {
+			continue
+		}
+		if _, _, ok := g.bondDebut(x); ok {
+			who = x
+			break
+		}
+	}
+	if who == nil {
+		t.Skip("劇本 001 沒有牽絆對象已出仕的未登場者")
+	}
+	at, id, _ := g.bondDebut(who)
+	who.Age = who.Debut + 1
+	g.Date = Date{Year: 200, Month: 12}
+	g.EndMonth() // → 元月
+	if who.Status == state.StatusUnborn {
+		t.Fatalf("%s 年齡 %d 已過出頭年齡 %d，卻沒登場",
+			who.Name, who.Age, who.Debut)
+	}
+	if who.Faction != id {
+		t.Errorf("%s 投奔了勢力 %d，牽絆對象在 %d", who.Name, who.Faction, id)
+	}
+	if who.Location != at {
+		t.Errorf("%s 出現在郡 %d，牽絆對象在郡 %d", who.Name, who.Location, at)
+	}
+	if who.Status != state.StatusOfficer {
+		t.Errorf("投奔的人身分是 %d，應該是一般武將", who.Status)
+	}
+
+	// 沒有牽絆的人走退路：出身郡、在野、無勢力。
+	var loner *General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Status != state.StatusUnborn || x.Name == "" || x.Origin < 1 {
+			continue
+		}
+		if _, _, ok := g.bondDebut(x); !ok {
+			loner = x
+			break
+		}
+	}
+	if loner == nil {
+		t.Skip("沒有可比較的無牽絆者")
+	}
+	origin := loner.Origin
+	loner.Age = loner.Debut + 1
+	g.Date = Date{Year: 201, Month: 12}
+	g.EndMonth()
+	if loner.Status != state.StatusAvailable || loner.Faction != state.NoFaction {
+		t.Errorf("%s 應該在出身郡當在野，得到身分 %d 勢力 %d",
+			loner.Name, loner.Status, loner.Faction)
+	}
+	if loner.Location != origin {
+		t.Errorf("%s 出現在郡 %d，出身郡是 %d", loner.Name, loner.Location, origin)
 	}
 }

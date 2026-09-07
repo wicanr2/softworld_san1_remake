@@ -228,6 +228,12 @@ type General struct {
 	// 而曹純指向孫乾（`docs/spec/003` §2.5）。**功能是 `L0`，語意是 `L2`**。
 	Bond int
 
+	// Debut 是未登場者出頭的年齡（人物表 offset 26，`L0`）。
+	//
+	// **每個人自己一個**，不是全域常數：春季的元月處理拿
+	// `年齡 > Debut` 當閘門（`0x1605a`）。
+	Debut uint8
+
 	// Faction 是效力的勢力槽號，NoFaction ＝ 在野。
 	// Location 是所在郡的編號（1..42），原版的標籤是「領地」。
 	//
@@ -372,6 +378,7 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 			Rank:     Rank(rec[12]),
 			Origin:   rec[13],
 			Bond:     int(binary.LittleEndian.Uint16(rec[14:])),
+			Debut:    rec[26],
 			Loyalty:  rec[16],
 			Status:   Status(rec[17]),
 			Faction:  rec[18],

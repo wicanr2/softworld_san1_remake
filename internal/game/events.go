@@ -39,13 +39,6 @@ const (
 	// 進貢的上限（`0x171e0`：`RND(5) + 8`，`L0`）。
 	TributeCapSpread = 5
 	TributeCapFloor  = 8
-
-	// TuneComingOfAge 是未登場的人物幾歲出頭。
-	//
-	// 手冊只說「新血出現：新將投效其親族朋友」（p.36），沒給年齡。
-	// 用二十歲的話，劇本 001 裡八歲的諸葛亮會在西元 201 年前後登場，
-	// 十四歲的孫策在 195 年——與史實的量級相符。
-	TuneComingOfAge = 20
 )
 
 // Event 是一則發生過的事件，給訊息列與測試用。
@@ -328,7 +321,22 @@ func (g *State) comeOfAge() []Event {
 		if x.Status != state.StatusUnborn || x.Name == "" {
 			continue
 		}
-		if int(x.Age) < TuneComingOfAge {
+		// **出頭年齡是每個人自己的**（人物表 offset 26，`0x1605a`）——
+		// 不是一個全域常數。原版比的是「年齡 > Debut」，不是 >=。
+		if int(x.Age) <= int(x.Debut) {
+			continue
+		}
+		// **先看牽絆對象**（`0x16064`）：他有勢力、而且他所在的郡還沒
+		// 滿五十位現役武將的話，這個人直接投奔他，不是回出身郡當在野。
+		//
+		// 少了這一條，名將的子姪與舊部都會變成散落各地的在野人士，
+		// 而「牽絆」在登用之外就沒有別的作用了。
+		if at, id, ok := g.bondDebut(x); ok {
+			x.Location = at
+			x.Faction = id
+			x.Status = state.StatusOfficer
+			out = append(out, Event{at,
+				tf("ev.appear", personName(x.Name), placeName(g.Prefecture(at).Name))})
 			continue
 		}
 		at := x.Origin
@@ -338,7 +346,9 @@ func (g *State) comeOfAge() []Event {
 		if at < 1 || at > len(g.prefectures) {
 			continue
 		}
+		// 退路是**出身郡**，身分「在野而且露面」、無勢力（`0x15ec4`）。
 		x.Location = at
+		x.Faction = state.NoFaction
 		x.Status = state.StatusAvailable
 		p := g.Prefecture(at)
 		name := ""
@@ -348,6 +358,33 @@ func (g *State) comeOfAge() []Event {
 		out = append(out, Event{at, tf("ev.appear", personName(x.Name), placeName(name))})
 	}
 	return out
+}
+
+// DebutGarrisonCap 是「牽絆對象的郡收不收得下」的門檻
+// （`0x16097`：現役武將數 < 50，`L0`）。與每郡五十位將軍的上限同一個數。
+const DebutGarrisonCap = 50
+
+// bondDebut 回報未登場者要不要直接投奔牽絆對象，以及去哪個郡、投哪一家。
+//
+// 三道閘門（`0x16064`–`0x1609d`）：牽絆對象不是自己、他有勢力、
+// 他所在的郡現役武將數 < 50。
+func (g *State) bondDebut(x *General) (int, state.FactionID, bool) {
+	if x.Bond == x.Index || x.Bond < 0 || x.Bond >= len(g.generals) {
+		return 0, state.NoFaction, false
+	}
+	b := &g.generals[x.Bond]
+	if b.Faction == state.NoFaction {
+		return 0, state.NoFaction, false
+	}
+	at := b.Location
+	p := g.Prefecture(at)
+	if p == nil {
+		return 0, state.NoFaction, false
+	}
+	if len(g.Garrison(at)) >= DebutGarrisonCap {
+		return 0, state.NoFaction, false
+	}
+	return at, b.Faction, true
 }
 
 // summer 是夏天：洪水與瘟疫。

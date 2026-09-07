@@ -154,7 +154,10 @@ type General struct {
 
 	// Bond 是人物表 offset 14 指到的人物槽號，登用判定拿它當閘門
 	//（`state.General.Bond`）。指向自己表示沒有牽絆。
-	Bond     int
+	Bond int
+
+	// Debut 是出頭的年齡（人物表 offset 26，`L0`）。
+	Debut    uint8
 	Loyalty  uint8
 	Status   state.Status
 	Faction  state.FactionID
@@ -348,7 +351,7 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Ed
 		g.generals = append(g.generals, General{
 			Index: s.Index, Name: s.Name,
 			Age: s.Age, Stamina: s.Stamina, Intel: s.Intel, War: s.War, Charm: s.Charm,
-			Rank: s.Rank, Origin: int(s.Origin), Bond: s.Bond,
+			Rank: s.Rank, Origin: int(s.Origin), Bond: s.Bond, Debut: s.Debut,
 			Loyalty: s.Loyalty, Status: s.Status,
 			Faction: state.FactionID(s.Faction), Location: int(s.Location),
 			Troop: s.Troop, Soldiers: int(s.Soldiers),
