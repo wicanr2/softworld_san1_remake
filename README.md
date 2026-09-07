@@ -138,6 +138,10 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
     -screen main -faction 0 -months 14 -png out.png
 ```
 
+`-screen` 可以挑：`list`（州郡一覽）、`main`／`art`（主畫面，`art` 接原版
+素材）、`title`（主選單）、`poem`（開場詞）、`artfield`（戰場地形）、
+`artbattle`（整張主戰場）、`battle`（文字版主戰場）。
+
 電腦 AI 有三個版本：`base`（三國演義原版還原）、`plus`（加強版還原）、
 `enhanced`（remake 強化）。前兩個只發已經從原版解出來的行為，
 沒解出來的一律不做——**不會拿一個「差不多的」策略頂著**，

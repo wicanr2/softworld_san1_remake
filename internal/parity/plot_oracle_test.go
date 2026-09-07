@@ -116,6 +116,13 @@ func TestSabotageMatchesTheOriginal(t *testing.T) {
 	//	0xe605 空殼（AX=6）     → 0xe610 建候選表 → 0xe618 挑目標並執行
 	//	  0xe836 抽中目標 → 0xe853 選使者 → 0xe892 成敗判定
 	//	  0xe89a AX==0 才動手 → 0xe8ba 五刀（0x2d6e0）
+	// 兩支建表常式各自的兩條出口：表是空的回 0xFFFF（`0xe712`／`0xe82e`），
+	// 不是空的就 `RND(長度)` 抽一個（`0xe71a`／`0xe836`）。
+	empty1, full1, empty2 := 0, 0, 0
+	o.OnCall(addr(0x0e712), func(*oracle.Oracle) { empty1++ })
+	o.OnCall(addr(0x0e71a), func(*oracle.Oracle) { full1++ })
+	o.OnCall(addr(0x0e82e), func(*oracle.Oracle) { empty2++ })
+
 	picked, rolled := 0, 0
 	rollAX := map[uint16]int{}
 	var lastMine, lastTarget, lastCharm int
@@ -204,6 +211,8 @@ func TestSabotageMatchesTheOriginal(t *testing.T) {
 		}
 	}
 
+	t.Logf("建表：第一支 空表 %d 次／有表 %d 次，第二支 空表 %d 次／有表 %d 次",
+		empty1, full1, empty2, picked)
 	t.Logf("逐關：抽中目標 %d 次、成敗判定 %d 次（回傳分布 %v）",
 		picked, rolled, rollAX)
 	t.Logf("六個月：亂數 %d 次、計略常式進去 %d 次、"+
