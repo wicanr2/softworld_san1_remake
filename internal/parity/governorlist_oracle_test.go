@@ -48,13 +48,41 @@ func TestGovernorSortListShape(t *testing.T) {
 	const genCount = state.GeneralTableSize / state.GeneralRecordSize
 	rec := func(i int) uint32 { return genBase + uint32(i*state.GeneralRecordSize) }
 
+	// 盤面自己擺：A 與 C 的差別只在君主算不算候選，所以把每個君主搬進
+	// **一個主事者是太守的郡**——搬完之後 `0xd652` 的跳過條件（主事者的
+	// 身分 == 0）仍然不成立，排序照跑，君主在不在名單裡就分得出來了。
+	// 君主的勢力與郡的所屬相同，所以 `0x1e394` 重算所屬時不會易主。
+	moved := 0
+	for i := 0; i < genCount; i++ {
+		if o.Byte(addr(rec(i)+17)) != 0 { // 身分 0 ＝ 君主
+			continue
+		}
+		f := o.Byte(addr(rec(i) + 18))
+		for p := 1; p <= state.PrefectureCount; p++ {
+			if o.Byte(addr(staBase+uint32(p*176+30))) != f {
+				continue
+			}
+			gov := int(int16(o.Word(addr(staBase + uint32(p*176+32)))))
+			if gov < 0 || gov >= genCount || o.Byte(addr(rec(gov)+17)) != 2 {
+				continue
+			}
+			if int(o.Byte(addr(rec(gov)+19))) != p {
+				continue
+			}
+			o.SetByte(addr(rec(i)+19), uint8(p))
+			moved++
+			break
+		}
+	}
+	t.Logf("把 %d 位君主搬進「主事者是太守」的郡", moved)
+
 	rnd := 0
 	o.OnCall(addr(0x1058*16+0x058c), func(*oracle.Oracle) { rnd++ })
 
 	var g sortieGlobals
 	resolved := false
 
-	calls := 0
+	calls, lordSeen, lordInList := 0, 0, 0
 	fit := map[string]int{}
 	var notes []string
 
@@ -91,6 +119,19 @@ func TestGovernorSortListShape(t *testing.T) {
 			"C 身分1-3": want(func(r, _ uint8) bool { return r >= 1 && r <= 3 }),
 			"D 身分2-3": want(func(r, _ uint8) bool { return r >= 2 && r <= 3 }),
 		}
+		// 君主在這個郡、而且不是主事者的那幾次，直接看他在不在名單裡。
+		for i := 0; i < genCount; i++ {
+			if o.Byte(addr(rec(i)+17)) != 0 || int(o.Byte(addr(rec(i)+19))) != p {
+				continue
+			}
+			if int(int16(o.Word(addr(staBase+uint32(p*176+32))))) == i {
+				continue // 他就是主事者，這一次本來就會跳過
+			}
+			lordSeen++
+			if got[i] {
+				lordInList++
+			}
+		}
 		hit := ""
 		for k, m := range cand {
 			if sameSet(m, got) {
@@ -122,6 +163,8 @@ func TestGovernorSortListShape(t *testing.T) {
 
 	t.Logf("兩個月：亂數 %d 次（正對照）、指定太守排序 %d 次；名單形狀 %v",
 		rnd, calls, fit)
+	t.Logf("君主在郡裡而且不是主事者：%d 次，其中 %d 次他在名單裡",
+		lordSeen, lordInList)
 	for _, s := range notes {
 		t.Log(s)
 	}
