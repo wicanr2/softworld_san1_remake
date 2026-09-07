@@ -768,3 +768,43 @@ func SortieThreshold(pct, force int) int {
 	n, _ := r.Int64()
 	return int(int16(n))
 }
+
+// 戰後收降（`0x1ff7c`，`L0`、`[base]`）。
+//
+// 電腦對電腦的戰役打完之後，安置那一支（`0x1fb26`）對名單裡的每一位呼叫
+// 它一次，決定勝方收不收得下這個人。
+const (
+	// WarRecruitOfficerCap 是郡裡的現役將上限（州郡 offset 22）；滿了就
+	// 一個都不收（`0x1ffb4`）。
+	WarRecruitOfficerCap = 50
+
+	// WarRecruitBondBonus／WarRecruitBondSpread 是牽絆的加成
+	// （`0x20014`：`60 − RND(30)`，也就是 31–60）。
+	WarRecruitBondBonus  = 60
+	WarRecruitBondSpread = 30
+)
+
+// WarRecruitResistance 是戰後收降的抵抗值（`0x1ffbc`–`0x20019`）。
+//
+//	max(謀略, 戰力) ＋（牽絆的對象與他同勢力 ? 60 − RND(30) : 0）
+//
+// 牽絆那一項只在**對象還在同一個勢力**時加——人跟著人走，舊主那邊還有
+// 牽掛的人就不容易收編。牽絆指向自己時當作沒有。
+func WarRecruitResistance(intel, war int, bondedSameFaction bool, roll int) int {
+	v := war
+	if intel > v {
+		v = intel
+	}
+	if bondedSameFaction {
+		v += WarRecruitBondBonus - roll
+	}
+	return v
+}
+
+// WarRecruited 是收降的判定（`0x2001c`–`0x2003b`）：
+//
+//	勝方的人望（諸侯記錄 offset 8） >= 抵抗值 ÷ 2
+//
+// **君主不被收編**（`0x1ff93`），郡裡的現役將滿 `WarRecruitOfficerCap`
+// 也一個都不收（`0x1ffb4`）——兩道門在抵抗值算出來之前就擋掉了。
+func WarRecruited(prestige, resistance int) bool { return prestige >= resistance/2 }
