@@ -423,10 +423,33 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 	p.Gold -= CostHeadhunt
 	p.Commanded = true
 
-	// ⚠ **最後這一擲還沒從原版讀出來**（`0x1dc62` 之後）：候選條件是
-	// `L0`，成功率仍是 remake 自己的（`TuneHeadhuntBase`）。
-	chance := clampTo(TuneHeadhuntBase-int(t.Loyalty)/2, 95)
-	if g.roll(prefectureID, targetIndex, int(t.Loyalty)) >= chance {
+	// **成敗照原版**（`0x1dc0a`，`L0`）：招募方開的條件對上目標的抵抗，
+	// 而回傳的不是布林是「成功之後的忠誠」——算出來 <= 0 就當失敗。
+	lordCharm, mine := 50, 0
+	if l := g.Lord(by); l != nil {
+		lordCharm = int(l.Charm)
+	}
+	if f := g.Faction(by); f != nil {
+		mine = f.Prestige
+	}
+	theirs := 0
+	if f := g.Faction(t.Faction); f != nil {
+		theirs = f.Prestige
+	}
+	resist := HeadhuntResistance(int(t.Loyalty), int(t.War), int(t.Intel), theirs)
+	if theirs >= HeadhuntLuckFloor+
+		g.roll(prefectureID, targetIndex, 1)%HeadhuntLuckSpread {
+		resist += g.roll(prefectureID, targetIndex, 2) % max(theirs/2, 1)
+	}
+	if int(t.Loyalty) >= HeadhuntZealFloor+
+		g.roll(prefectureID, targetIndex, 3)%HeadhuntZealSpread {
+		resist += g.roll(prefectureID, targetIndex, 4) % HeadhuntZealBonus
+	}
+	if f := g.Faction(t.Faction); f != nil && f.Treasury[TreasureSeal] > 0 {
+		resist += HeadhuntSealPenalty
+	}
+	won := HeadhuntNewLoyalty(int(t.Loyalty), mine)
+	if resist >= HeadhuntOffer(lordCharm, mine, 0) || won <= 0 {
 		return fmt.Errorf("%s：%w", tf("msg.unmoved", t.Name), ErrDeclined)
 	}
 	old := t.Faction
@@ -434,7 +457,7 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 	at := t.Location
 	t.Faction = by
 	t.Status = state.StatusOfficer
-	t.Loyalty = 60
+	t.Loyalty = uint8(won)
 	if wasGovernor {
 		// 太守被挖角 → 全郡同時歸屬新諸侯。
 		if q := g.Prefecture(at); q != nil {

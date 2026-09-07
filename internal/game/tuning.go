@@ -45,7 +45,8 @@ const (
 	// 增幅 ＝ (RND(加成/2) ＋ 太守魅力/3 ＋ 加成) × 金 ÷ 100，
 	// 見 `RewardEffect`。
 
-	// TuneHeadhuntBase：挖角成功率的基礎百分比，再依目標忠誠遞減。
+	// ⚠ TuneHeadhuntBase 已被原版的公式取代（`L0`、`0x1dc0a`）：
+	// 挖角比的是「招募方開的條件」對上「目標的抵抗」，見 `HeadhuntOffer`。
 	TuneHeadhuntBase = 60
 
 	// TuneNewSoldierTraining：新兵沒受過訓，加入時把部隊的訓練度

@@ -651,6 +651,57 @@ const (
 // HeadhuntLoyaltyBar 是這一次挖角的忠誠門檻；忠誠不低於它就挖不動。
 func HeadhuntLoyaltyBar(roll int) int { return HeadhuntLoyaltyFloor + roll }
 
+// 挖角的成敗判定（`L0`、`[base]`，常式 `0x1dc0a`）。
+//
+// 候選過濾（`HeadhuntLoyaltyBar`）挑出人之後，這一段決定挖不挖得動。
+// **它回的不是成敗，是成功之後的忠誠**——算出來 <= 0 就當失敗
+// （`0x1de34` 那道 `cmpw -0x6(%bp), 0`）。
+//
+//	門檻 ＝ (我方君主的魅力 × 3 ＋ 我方人望 × 4) ÷ 6 ＋ 加成
+//	抵抗 ＝ 目標忠誠 ＋ 戰力 ÷ 10 ＋ 謀略 ÷ 10
+//	       ＋ (對方人望 − 50) ÷ 3            ; 對方人望 >= 50 才加
+//	       ＋ RND(對方人望 ÷ 2)              ; RND(5) + 90 <= 對方人望
+//	       ＋ RND(30)                        ; RND(7) + 87 <= 目標忠誠
+//	       ＋ 1000                           ; **對方諸侯持有玉璽**
+//	抵抗 < 門檻 → 成功
+//	新忠誠 ＝ clamp((100 − 舊忠誠) ÷ 2 ＋ 我方人望 ÷ 2, 0, 100)
+//
+// **玉璽那一條等於免疫**：抵抗加一千，門檻最高不過兩百出頭。
+// 諸侯記錄 offset 14 就是玉璽那一格（`state.TreasuryOf`）。
+//
+// 前置閘門在同一支的開頭（`0x1dc22`–`0x1dc60`）：目標是君主（身分 0）
+// 挖不動；目標的牽絆對象與他同一勢力也挖不動——**在野的人略過這兩道**。
+const (
+	HeadhuntPrestigeFloor = 50 // 對方人望超過這個數才加抵抗
+	HeadhuntPrestigeDiv   = 3  // 超出的部分除以 3
+	HeadhuntAbilityDiv    = 10 // 戰力與謀略各除以 10
+	HeadhuntLuckFloor     = 90 // RND(5) + 90 <= 對方人望 → 再擲一次
+	HeadhuntLuckSpread    = 5
+	HeadhuntZealFloor     = 87 // RND(7) + 87 <= 目標忠誠 → 再擲一次
+	HeadhuntZealSpread    = 7
+	HeadhuntZealBonus     = 30
+	HeadhuntSealPenalty   = 1000 // 對方諸侯持有玉璽
+)
+
+// HeadhuntOffer 是招募方開得出的條件（門檻）。
+func HeadhuntOffer(lordCharm, prestige, bonus int) int {
+	return (lordCharm*3+prestige*4)/6 + bonus
+}
+
+// HeadhuntResistance 是目標的抵抗，不含三項條件式的加項。
+func HeadhuntResistance(loyalty, war, intel, theirPrestige int) int {
+	n := loyalty + war/HeadhuntAbilityDiv + intel/HeadhuntAbilityDiv
+	if theirPrestige >= HeadhuntPrestigeFloor {
+		n += (theirPrestige - HeadhuntPrestigeFloor) / HeadhuntPrestigeDiv
+	}
+	return n
+}
+
+// HeadhuntNewLoyalty 是挖角成功之後的忠誠；<= 0 就當這一次失敗。
+func HeadhuntNewLoyalty(oldLoyalty, prestige int) int {
+	return clampTo((100-oldLoyalty)/2+prestige/2, 100)
+}
+
 // ---- 軍師勸諫 ------------------------------------------------------------
 
 // 發動戰役之前，軍師有機會跳出來勸一次（原版 `0x18a90`，`L0`）：
