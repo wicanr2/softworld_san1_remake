@@ -311,3 +311,27 @@ func (f Formation) OriginalIndex() int {
 	}
 	return -1
 }
+
+// Ability 是這支部隊的**綜合能力**（原版部隊記錄 offset 32，
+// `docs/re/05` §3.3）：
+//
+//	Σ(謀略 × 2 ÷ 5 ＋ 戰力 × 3 ÷ 5) ÷ 將領人數
+//
+// **逐人先除再加**，兩個除法都是整數除法。電腦對電腦的戰役拿它當戰力
+// 的品質（`AutoResolveAI`）——那條路不進戰術層，整場只用這一個數與
+// 兵士數。
+func (u *Unit) Ability() int {
+	sum, n := 0, 0
+	for i := range u.Leaders {
+		x := &u.Leaders[i]
+		if x.Dead || x.Captured {
+			continue
+		}
+		sum += int(x.Intel)*2/5 + int(x.War)*3/5
+		n++
+	}
+	if n == 0 {
+		return 0
+	}
+	return sum / n
+}

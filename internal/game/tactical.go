@@ -119,11 +119,38 @@ func (p *Pending) Chiefs() (att, def *General) {
 	return
 }
 
-// fight 把一場戰役交給戰術層打完，並把結果搬回局面。
+// fight 把一場戰役打完，並把結果搬回局面。
+//
+// **兩條路，照原版的分岔選**（`0x20471`，`docs/re/05` §7.1）：郡裡有玩家
+// 就進戰術層（`Auto()` 是「不想看就自動打完」的那一種），四個郡都沒有玩家
+// 就走 `AutoResolveAI()`——原版在那種情況下**根本不進戰術層**，整場只用
+// 兩邊的兵士數與綜合能力。
 func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *BattleResult {
 	p := g.prepare(from, to, att, def, by, HalfSupply(), Aid{})
-	p.B.Auto()
+	if g.noPlayerIn(from, to) {
+		p.B.AutoResolveAI()
+	} else {
+		p.B.Auto()
+	}
 	return g.settle(p)
+}
+
+// noPlayerIn 回報這幾個郡是不是一個玩家的都沒有。
+//
+// 原版判的是**諸侯記錄 offset 0 == 1（玩家控制）**，四個郡（主攻、助攻、
+// 主守、助守）各判一次，郡編號不在 1..42 的那一格跳過——所以「沒有援軍」
+// 的 `0xFFFF` 不會被誤判成玩家。
+func (g *State) noPlayerIn(prefectures ...int) bool {
+	if g.Player == state.NoFaction {
+		return true // 純觀戰：一個玩家都沒有
+	}
+	for _, n := range prefectures {
+		p := g.Prefecture(n)
+		if p != nil && p.Owned() && p.Owner == g.Player {
+			return false
+		}
+	}
+	return true
 }
 
 // Supply 是出兵時攜帶的錢糧。
