@@ -62,6 +62,21 @@ type app struct {
 
 	// artBattle 是接上原版素材的主戰場，要 `DATA1` 與 `DATA3` 兩個。
 	artBattle *ui.ArtBattle
+
+	// title 非 nil 表示停在主選單那一層（開場詞按完就到這裡）。
+	title *titleState
+
+	// c2 是 `DATA2`：主選單要重讀劇本，得留著。
+	c2 *assets.Container
+
+	// edition 是版本旗標，開新局時要用。
+	edition state.Edition
+
+	// quit 為真表示玩家選了「回作業系統」。
+	quit bool
+
+	// poem 非 nil 表示停在開場詞那一張，按任意鍵進主選單。
+	poem *assets.Image
 }
 
 // uiReliefGold 是介面上「開倉賑民」一次撥出去的金。**remake 自選**：
@@ -70,6 +85,19 @@ type app struct {
 const uiReliefGold = 100
 
 func (a *app) Update() error {
+	if a.quit {
+		return ebiten.Termination
+	}
+	if a.poem != nil {
+		if anyKeyPressed() {
+			a.poem = nil
+			a.dirty = true
+		}
+		return nil
+	}
+	if a.title != nil {
+		return a.updateTitle()
+	}
 	if a.fight != nil {
 		return a.updateBattle()
 	}
@@ -654,14 +682,19 @@ func (a *app) Draw(dst *ebiten.Image) {
 	if a.dirty {
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
 		// 同一張圖無頭環境也產得出來（cmd/san1dump -png）。
-		if a.fight != nil {
+		switch {
+		case a.poem != nil:
+			ui.DrawPoem(a.canvas, a.poem)
+		case a.title != nil:
+			a.drawTitle()
+		case a.fight != nil:
 			if a.artBattle != nil {
 				ui.DrawArtBattle(a.canvas, a.artBattle, a.fight.pending.Battle(),
 					a.fight.view, a.battleInfo())
 			} else {
 				ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
 			}
-		} else {
+		default:
 			a.view.Over = a.s.Over
 			if a.art != nil {
 				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, a.view)
@@ -728,6 +761,7 @@ func main() {
 	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
 	music := flag.Bool("music", true, "播配樂（從原版的 DATA1 邊播邊合成）")
 	useArt := flag.Bool("art", true, "主畫面用原版素材（從玩家自己的 DATA3 讀）")
+	showTitle := flag.Bool("title", true, "先進開場詞與主選單；false ＝ 直接開局")
 	flag.Parse()
 	if l, ok := i18n.Parse(*lang); ok {
 		i18n.Current = l
@@ -754,6 +788,10 @@ func main() {
 	if err != nil {
 		die(err)
 	}
+	ed, err := state.ParseEdition(*edition)
+	if err != nil {
+		die(err)
+	}
 	sc, err := state.LoadScenario(c, state.Slot(*slot))
 	if err != nil {
 		die(err)
@@ -770,10 +808,6 @@ func main() {
 	var brain ai.Brain
 	var g *game.State
 	if *origLoad > 0 {
-		ed, err := state.ParseEdition(*edition)
-		if err != nil {
-			die(err)
-		}
 		s, err = session.LoadOriginal(c, *origLoad, ed, ai.Mode(*aiMode))
 		if err != nil {
 			die(err)
@@ -788,10 +822,6 @@ func main() {
 		g, brain = s.G, s.Brain
 		f = int(s.Player)
 	} else {
-		ed, err := state.ParseEdition(*edition)
-		if err != nil {
-			die(err)
-		}
 		g, err = game.New(sc, state.FactionID(f), *difficulty, ed)
 		if err != nil {
 			die(err)
@@ -810,8 +840,14 @@ func main() {
 	// **讀不到就退回文字版面**，不要讓少一個檔案變成開不起來。
 	var art *ui.ArtScreen
 	var artBattle *ui.ArtBattle
+	var titleScreen *ui.TitleScreen
+	var poem *assets.Image
 	if *useArt {
 		if c3, err := openContainer(*root, "DATA3"); err == nil {
+			if titleScreen, err = ui.NewTitleScreen(c3); err != nil {
+				fmt.Fprintln(os.Stderr, "san1：主選單的素材讀不進來：", err)
+				titleScreen = nil
+			}
 			// `DATA1` 給的是州郡的填色圖樣與主戰場的素材；讀不到就
 			// 各自退回 remake 自己的版面，主畫面照樣接得上。
 			c1, _ := openContainer(*root, "DATA1")
@@ -820,11 +856,12 @@ func main() {
 				art = nil
 			}
 			if art != nil && c1 != nil {
-				{
-					if artBattle, err = ui.NewArtBattle(c1, c3); err != nil {
-						fmt.Fprintln(os.Stderr, "san1：主戰場的素材讀不進來：", err)
-						artBattle = nil
-					}
+				if artBattle, err = ui.NewArtBattle(c1, c3); err != nil {
+					fmt.Fprintln(os.Stderr, "san1：主戰場的素材讀不進來：", err)
+					artBattle = nil
+				}
+				if poem, err = assets.PoemScreen(c1); err != nil {
+					poem = nil
 				}
 			}
 		} else {
@@ -845,6 +882,15 @@ func main() {
 		art:     art,
 	}
 	a.artBattle = artBattle
+	a.c2 = c
+	a.edition = ed
+	// 開場詞 → 主選單 → 遊戲。**指定了劇本以外的東西就直接進遊戲**：
+	// `-load`／`-orig-load` 是「我要那一局」，中間再問一次沒有道理，
+	// 而 `-title=false` 是給截圖與腳本用的。
+	if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
+		a.startTitle(titleScreen)
+		a.poem = poem
+	}
 	if *music {
 		a.jb = newJukebox(*root)
 		a.jb.Play(0)

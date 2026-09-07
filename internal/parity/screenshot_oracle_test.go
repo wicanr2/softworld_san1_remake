@@ -59,7 +59,13 @@ func TestZZOriginalLoadedScreen(t *testing.T) {
 
 	bootToMain(t, o, seedMas)
 	dumpScreen(t, o, "orig-loaded")
-	t.Log("原版剛載完第一個進度的主畫面已存（要設 SAN1_SHOTS）")
+	// 再跑一段之後存第二張：畫面上會閃的東西（例如某些州郡的填色）
+	// 兩張會不一樣，而**單看一張分不出「閃爍」與「對應表錯了」**。
+	if err := o.Run(20_000_000); err != nil {
+		t.Fatalf("停止：%v", err)
+	}
+	dumpScreen(t, o, "orig-loaded2")
+	t.Log("原版剛載完第一個進度的主畫面已存兩張（要設 SAN1_SHOTS）")
 }
 
 // TestZZOriginalOpeningScreens 把開機到主選單之間的每一步都存成 PNG。

@@ -124,3 +124,11 @@ func openContainer(root, name string) (*assets.Container, error) {
 	}
 	return assets.OpenContainer(parts[0], parts[1], parts[2])
 }
+
+// Len 是有幾首曲子。
+func (j *jukebox) Len() int {
+	if j == nil {
+		return 0
+	}
+	return len(j.tracks)
+}

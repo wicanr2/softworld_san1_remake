@@ -353,3 +353,53 @@ func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte,
 	}
 	c.DrawText(1, 20, name, color.RGBA{0xFF, 0xFF, 0x55, 0xFF})
 }
+
+// DrawTitleList 在主選單上疊一張清單（選劇本、選君主、選進度、選曲）。
+//
+// 原版那幾層跑在開機鏈的第二層（`DATA0.GRP`），主程式的碼段 dump
+// 涵蓋不到，所以**版面是 remake 自己排的**：置中的框、一行一項。
+func DrawTitleList(c *Canvas, ts *TitleScreen, title string, items []string, sel int) {
+	DrawTitle(c, ts, -1)
+	// 蓋在六個按鈕那一片上，標題牌留著看得見。
+	const col, row, cols = 18, 9, 44
+	// 放得下幾項就顯示幾項，其餘捲動——**選君主可以有十六個**，
+	// 難度上限也有二十，寫死幾行遲早會有一項被切掉而沒人發現。
+	//
+	// ⚠ 用的是**這張畫布的列數**（`c.Rows`）不是套件常數 `Rows`：
+	// 後者是文字版面的 25 列，接原版素材的畫布只有 21 列，
+	// 拿錯的話最底下幾項會被畫到畫面外——而畫面外沒有紅字。
+	view := c.Rows - row - 5
+	if view < 1 {
+		view = 1
+	}
+	first := 0
+	if sel >= view {
+		first = sel - view + 1
+	}
+	if first > len(items)-view {
+		first = len(items) - view
+	}
+	if first < 0 {
+		first = 0
+	}
+	shown := items[first:]
+	if len(shown) > view {
+		shown = shown[:view]
+	}
+	rows := len(shown) + 4
+	c.FillRect(col*CellW, row*CellH, (col+cols)*CellW, (row+rows)*CellH,
+		color.RGBA{0x00, 0x00, 0x2A, 0xFF})
+	c.DrawBox(col, row, cols, rows, ColFrame)
+	head := title
+	if len(items) > view {
+		head = fmt.Sprintf("%s（%d／%d）", title, sel+1, len(items))
+	}
+	c.DrawText(col+2, row+1, cells.Truncate(head, cols-4), ColSel)
+	for i, s := range shown {
+		ink := ColFG
+		if first+i == sel {
+			ink = ColSel
+		}
+		c.DrawText(col+2, row+3+i, cells.Truncate(s, cols-4), ink)
+	}
+}
