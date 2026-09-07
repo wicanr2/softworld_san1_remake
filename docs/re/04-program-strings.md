@@ -266,7 +266,10 @@ tools/go.sh run ./cmd/san1strings -f /path/to/AA.EXE -at 0x46c02  # 看完整條
 | `0x47269`／`0x47284` | `Insert Disk #1 In Drive A:`／`#2 In Drive B:` | |
 | `0x499e3`／`0x49a14` | ` Please Wait`／`  -= Please Insert MainProgram Disk  =-` | |
 
-`WEATHER0-2.IMG` 剛好三個，對應戰場的三種天氣（晴／刮風／下雨）。
+`WEATHER0-2.IMG` 剛好三個，對應戰場的三種天氣，**順序是晴、雨、風**：
+天氣名表在 `DS:0x7892`（三筆各 5 byte：「 晴 」「 雨 」「 風 」），
+而畫面左欄的圖示編號是 `237 + 天氣 mod 3`（`0x21969`）——基準畫面上
+那一張是 `WEATHER1`，配的字正是「雨」。
 
 ## 13. `.OKR` 的線索
 

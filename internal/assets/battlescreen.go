@@ -1,0 +1,193 @@
+package assets
+
+import "fmt"
+
+// 主戰場整張畫面的版面。
+//
+// 座標讀自 `0x224c6`–`0x226ff`（寬版面那一條路，州郡 offset 34 ＝ 9），
+// 每一項都拿紮完寨的基準畫面驗過。
+//
+// 原版先把整個畫面鋪滿 8×8 的底紋（`0x223e4` 的雙重迴圈，一次 8 像素，
+// 鋪到 640×408），再蓋上方花邊、場地、面板。底紋是 `8x8PAT0.IMG`
+// ——黃／青的 2×2 棋盤，畫面左緣 x 0–5 那一條逐像素對得上。
+//
+// 三個面板的外框由 `0x22200` 畫：黑線在上與左、白線在下與右，
+// 也就是**下凹**的立體邊。面板本身沒有底色，內容自己填：
+// 兩個軍力面板是藍底（1）配淺紅字（12），指令面板是青底（3）配黃字（14）。
+//
+// ⚠ 面板高 96，但畫面只有 350 高——原版的虛擬頁比畫面高
+// （`MAINMAP8` 畫在 y ＝ 372 也在畫面外），所以面板下緣看不到。
+const (
+	// BattleBGTile 是鋪滿畫面的底紋。
+	BattleBGTile = "8x8PAT0.IMG"
+
+	// BattleFieldLeft／Right／Top 是場地區的邊（`0x22527`、`0x2250c`）。
+	BattleFieldLeft  = 54
+	BattleFieldRight = 632
+	BattleFieldTop   = 34
+
+	// BattleWeatherX／Y 是天氣圖示的位置（`0x21969`，`WEATHER%d.IMG`）。
+	BattleWeatherX = 8
+	BattleWeatherY = 155
+
+	// BattleNameX／Y／Step 是左欄郡名的位置（`0x2181d`–`0x218a4`）。
+	// 原版一個字 32×32，remake 用自己的字庫，字級不同。
+	BattleNameX    = 8
+	BattleNameY    = 52
+	BattleNameStep = 32
+
+	// BattleProvinceY 是州名（`0x218d7`，白色）、BattleNumberY 是郡編號
+	// （`0x21921`，`%2d`、洋紅）。兩個都在左欄第一個框裡。
+	BattleProvinceY = 116
+	BattleNumberY   = 132
+
+	// 三個面板：兩個軍力 ＋ 一個指令列（`0x2259e`、`0x226cb`）。
+	BattlePanelY = 268
+	BattlePanelW = 176
+	BattlePanelH = 96
+
+	// 肖像框 80×80，框內的肖像 64×80（`FBRC0.IMG` 在 (64,268) 與
+	// (352,268) 各 100% 相符）。
+	BattleFrameW = 80
+	BattleFaceW  = 64
+	BattleFaceH  = 80
+
+	// 面板的底色與字色，量自基準畫面。
+	BattlePanelInk   = 12 // 淺紅
+	BattlePanelPaper = 1  // 藍
+	BattleOrderInk   = 14 // 黃
+	BattleOrderPaper = 3  // 青
+)
+
+// BattlePanelX 是三個面板的左緣：攻方、守方、指令列。
+var BattlePanelX = [3]int{64, 256, 448}
+
+// BattleFrameX 是兩個肖像框的左緣。**攻方的框在左、守方的在右**，
+// 兩人因此面對面。
+var BattleFrameX = [2]int{64, 352}
+
+// BattleFaceX 是兩張肖像的左緣（框內縮 8）。
+var BattleFaceX = [2]int{72, 360}
+
+// BattleFaceY 是兩張肖像的上緣。
+const BattleFaceY = 276
+
+// BattleFaceMirror 說某一側的肖像要不要左右翻。
+//
+// **攻方的肖像是鏡像**：基準畫面上守方的 `F014.FAC` 直接對得上，
+// 攻方的 `F228.FAC` 要左右翻過來才 100%（各 4736 格，下緣被畫面切掉）。
+var BattleFaceMirror = [2]bool{true, false}
+
+// BattleBackground 鋪出整張底紋。
+func BattleBackground(data1 *Container) (*Image, error) {
+	i, ok := data1.ByName(BattleBGTile)
+	if !ok {
+		return nil, fmt.Errorf("assets: DATA1 裡沒有 %s", BattleBGTile)
+	}
+	tile, err := DecodeImage(data1.Data(i))
+	if err != nil {
+		return nil, err
+	}
+	im := &Image{W: ScreenW, H: ScreenH, Pix: make([]byte, ScreenW*ScreenH)}
+	for y := 0; y < ScreenH; y++ {
+		for x := 0; x < ScreenW; x++ {
+			im.Pix[y*ScreenW+x] = tile.Pix[(y%tile.H)*tile.W+x%tile.W]
+		}
+	}
+	return im, nil
+}
+
+// PortraitFrame 取一組肖像框：上、下、左、右四片（`FBR%c0`–`FBR%c3`）。
+//
+// 主戰場用的是 `C` 那一組。上片在框的左上角 100% 相符；其餘三片原版
+// 畫在哪還沒定，所以呼叫端目前只用得到上片。
+func PortraitFrame(data1 *Container, style byte) ([4]*Image, error) {
+	var out [4]*Image
+	for i := range out {
+		name := fmt.Sprintf("FBR%c%d.IMG", style, i)
+		j, ok := data1.ByName(name)
+		if !ok {
+			return out, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
+		}
+		im, err := DecodeImage(data1.Data(j))
+		if err != nil {
+			return out, err
+		}
+		out[i] = im
+	}
+	return out, nil
+}
+
+// Mirror 左右翻一張圖。
+func (im *Image) Mirror() *Image {
+	out := &Image{W: im.W, H: im.H, Pix: make([]byte, len(im.Pix))}
+	for y := 0; y < im.H; y++ {
+		for x := 0; x < im.W; x++ {
+			out.Pix[y*im.W+x] = im.Pix[y*im.W+im.W-1-x]
+		}
+	}
+	return out
+}
+
+// BevelBox 畫一個下凹的方框：黑線在上與左、白線在下與右。
+//
+// 八條線的端點照 `0x22200` 逐條抄：黑線在 `x0−2`／`x0−1`／`y0−2`／`y0−1`，
+// 白線在 `x1+1`／`x1+2`／`y1+1`／`y1+2`，而且**上下兩條的端點各差一格**
+// ——那個一格的參差就是立體感的來源，抄整齊了反而不對。
+// x1／y1 是含在框內的最後一格。
+func (im *Image) BevelBox(x0, y0, x1, y1 int) {
+	const black, white = 0, 15
+	im.hline(x0-2, x1+2, y0-2, black)
+	im.hline(x0-2, x1+1, y0-1, black)
+	im.vline(x0-2, y0-2, y1+2, black)
+	im.vline(x0-1, y0-1, y1+1, black)
+	im.hline(x0, x1+2, y1+1, white)
+	im.hline(x0-1, x1+2, y1+2, white)
+	im.vline(x1+1, y0, y1+2, white)
+	im.vline(x1+2, y0-1, y1+2, white)
+}
+
+// 左欄是**四個**下凹的小框，內部一律 32 像素寬（x 8–39），
+// 上下緣量自基準畫面：
+//
+//	郡名／州名／郡編號  y 52–147   （32＋32＋16＋16 剛好填滿）
+//	天氣圖示            y 155–187  （圖示 32×32 畫在 (8,155)）
+//	天氣名              y 196–211
+//	日數                y 228 起，與面板一樣被畫面下緣切掉
+//
+// 框與框之間露出底紋。右邊 x 54–55 那兩條黑線是場地的左緣，不屬於框
+// （`0x22527`、`0x22542`）。
+var battleLeftBoxes = [4][2]int{{52, 147}, {155, 187}, {196, 211},
+	{228, BattlePanelY + BattlePanelH - 1}}
+
+// BattleLeftBox 回傳左欄第 i 個框的上下緣。
+func BattleLeftBox(i int) (y0, y1 int) { return battleLeftBoxes[i][0], battleLeftBoxes[i][1] }
+
+// BattleLeftBoxX0／X1 是左欄三個框共用的左右緣。
+const (
+	BattleLeftBoxX0 = 8
+	BattleLeftBoxX1 = 39
+)
+
+// LeftColumn 畫左欄的三個框與場地的左緣。
+func (im *Image) LeftColumn() {
+	for _, b := range battleLeftBoxes {
+		im.FillRect(BattleLeftBoxX0, b[0],
+			BattleLeftBoxX1-BattleLeftBoxX0+1, b[1]-b[0]+1, BattleOrderPaper)
+		im.BevelBox(BattleLeftBoxX0, b[0], BattleLeftBoxX1, b[1])
+	}
+	im.vline(BattleFieldLeft, BattleFieldTop, 260, 0)
+	im.vline(BattleFieldLeft+1, BattleFieldTop, 259, 0)
+}
+
+func (im *Image) hline(x0, x1, y int, v byte) {
+	for x := x0; x <= x1; x++ {
+		im.Set(x, y, v)
+	}
+}
+
+func (im *Image) vline(x, y0, y1 int, v byte) {
+	for y := y0; y <= y1; y++ {
+		im.Set(x, y, v)
+	}
+}

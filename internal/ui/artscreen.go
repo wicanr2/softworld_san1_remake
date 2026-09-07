@@ -240,9 +240,13 @@ func DrawTitle(c *Canvas, ts *TitleScreen, sel int) {
 // （`0x2246a` 載入、`0x2247c` 畫在 (0,0)），位置與原版相同
 // （`docs/spec/005` §8）。
 type ArtBattle struct {
-	tiles []*assets.Image
-	flags [4][6]*assets.Image
-	top   *assets.Image
+	tiles   []*assets.Image
+	flags   [4][6]*assets.Image
+	top     *assets.Image
+	bg      *assets.Image
+	frame   [4]*assets.Image
+	weather [3]*assets.Image
+	faces   *assets.Container
 }
 
 // NewArtBattle 解出三十六張地形圖塊與上方花邊。data3 可以是 nil，
@@ -257,7 +261,21 @@ func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 		return nil, err
 	}
 	ab := &ArtBattle{tiles: tiles, flags: flags}
+	if ab.bg, err = assets.BattleBackground(data1); err != nil {
+		return nil, err
+	}
+	if ab.frame, err = assets.PortraitFrame(data1, 'C'); err != nil {
+		return nil, err
+	}
+	for i := range ab.weather {
+		if j, ok := data1.ByName(fmt.Sprintf("WEATHER%d.IMG", i)); ok {
+			if im, err := assets.DecodeImage(data1.Data(j)); err == nil {
+				ab.weather[i] = im
+			}
+		}
+	}
 	if data3 != nil {
+		ab.faces = data3
 		if i, ok := data3.ByName("MAINMAP1.IMG"); ok {
 			if im, err := assets.DecodeImage(data3.Data(i)); err == nil {
 				ab.top = im

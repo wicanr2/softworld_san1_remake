@@ -229,3 +229,12 @@ func TestOriginalIndex(t *testing.T) {
 		t.Errorf("只排出 %d 個槽號", len(seen))
 	}
 }
+
+// TestWeatherOriginalIndex 釘住天氣的原版編號：晴 0、雨 1、風 2。
+func TestWeatherOriginalIndex(t *testing.T) {
+	for w, want := range map[Weather]int{Clear: 0, Rainy: 1, Windy: 2} {
+		if got := w.OriginalIndex(); got != want {
+			t.Errorf("%s 的原版編號是 %d，想要 %d", w, got, want)
+		}
+	}
+}

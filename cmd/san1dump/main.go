@@ -34,7 +34,7 @@ func main() {
 	what := flag.String("what", "all", "印什麼：pref／gen／master／all")
 	cols := flag.Int("cols", 6, "郡名槽位寬度（半形格），用來檢查裝不裝得下")
 	png := flag.String("png", "", "把畫面存成 PNG（無頭環境驗版面用）")
-	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／art（接原版素材的主畫面）／title（主選單）／artfield（接原版素材的戰場地形）／battle（主戰場）")
+	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／art（接原版素材的主畫面）／title（主選單）／artfield（接原版素材的戰場地形）／artbattle（接原版素材的整張主戰場）／battle（主戰場）")
 	faction := flag.Int("faction", -1, "main 畫面的玩家勢力；−1 ＝ 用第一個在用的勢力")
 	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
 	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫；battle／artfield 畫面是先打幾天")
@@ -143,7 +143,7 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		c = ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
 	}
 	switch screen {
-	case "artfield":
+	case "artfield", "artbattle":
 		c1, err := openContainer(root, "DATA1")
 		if err != nil {
 			return fmt.Errorf("地形圖塊要讀 DATA1：%w", err)
@@ -183,7 +183,28 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		if order := b.Order(); len(order) > 0 {
 			hi = order[0]
 		}
-		ui.DrawArtField(c, ab, p.Name, p.BattleField, b.Units, hi)
+		if screen == "artfield" {
+			ui.DrawArtField(c, ab, p.Name, p.BattleField, b.Units, hi)
+			break
+		}
+		info := ui.ArtBattleInfo{
+			Prefecture: p.Name,
+			Province:   state.ProvinceName(int(p.Province)),
+			Field:      p.BattleField,
+			ID:         p.ID,
+			Portrait:   [2]int{-1, -1},
+		}
+		for k, side := range []battle.Side{battle.MainAttacker, battle.MainDefender} {
+			for _, u := range b.Units {
+				if u.Side != side || len(u.Leaders) == 0 {
+					continue
+				}
+				info.Commander[k] = u.Leaders[0].Name
+				break
+			}
+		}
+		ui.DrawArtBattle(c, ab, b, ui.BattleView{Acting: hi,
+			Prompt: promptFor(hi)}, info)
 	case "title":
 		c3, err := openContainer(root, "DATA3")
 		if err != nil {
@@ -401,4 +422,12 @@ func sampleBattle(at int, neighbours []int, field []byte) *battle.Battle {
 		AttackerGold: 3000, AttackerRice: 9000,
 		DefenderGold: 2000, DefenderRice: 8000,
 	})
+}
+
+// promptFor 是主戰場下方那一行提示（原版 `%s 的命令(0-8)`）。
+func promptFor(u *battle.Unit) string {
+	if u == nil {
+		return ""
+	}
+	return i18n.Sf("bat.unitMoves", u.Name(), u.Move)
 }

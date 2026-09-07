@@ -16,6 +16,25 @@ const (
 	Rainy                // 下雨
 )
 
+// OriginalIndex 是原版的天氣編號：**晴 0、雨 1、風 2**。
+//
+// remake 的列舉照說明書講到的順序排（晴、刮風、下雨），原版不是。
+// 判準有兩條，同一張基準畫面上互相印證：天氣名表在 `DS:0x7892`，
+// 三筆每筆 5 byte，依序是「 晴 」「 雨 」「 風 」；而畫面左欄的圖示是
+// `WEATHER%d.IMG`（`0x21969` 算的是 `237 + 天氣 mod 3`），基準畫面上
+// 那一張是 `WEATHER1`，配的字正是「雨」。
+//
+// **只有在對回原版的編號時才用它**：規則層一律用列舉本身。
+func (w Weather) OriginalIndex() int {
+	switch w {
+	case Rainy:
+		return 1
+	case Windy:
+		return 2
+	}
+	return 0
+}
+
 func (w Weather) String() string {
 	switch w {
 	case Windy:

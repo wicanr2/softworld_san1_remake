@@ -16,6 +16,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
 
@@ -316,4 +317,28 @@ func (a *app) battleMove(d battle.Dir) {
 	if f.pending.Battle().Field.InBounds(to) {
 		f.view.Cursor.At = to
 	}
+}
+
+// battleInfo 是主戰場畫面上那些戰術層自己不知道的東西：郡名、州名、
+// 郡編號、兩軍統帥的姓名與肖像。
+func (a *app) battleInfo() ui.ArtBattleInfo {
+	info := ui.ArtBattleInfo{Portrait: [2]int{-1, -1}}
+	if a.fight == nil {
+		return info
+	}
+	if p := a.s.G.Prefecture(a.fight.pending.Where()); p != nil {
+		info.Prefecture = p.Name
+		info.Province = state.ProvinceName(int(p.Province))
+		info.Field = p.BattleField
+		info.ID = p.ID
+	}
+	att, def := a.fight.pending.Chiefs()
+	for i, who := range []*game.General{att, def} {
+		if who == nil {
+			continue
+		}
+		info.Commander[i] = who.Name
+		info.Portrait[i] = int(who.Portrait)
+	}
+	return info
 }

@@ -67,7 +67,7 @@ tools/go.sh run ./cmd/san1imgcheck -shot workplace/lords.png \
 | `MAINMAP1`–`7`、`B`、`C` | 640 × 36 | 9 |
 | `CP###.IMG` | 24 × 24 | 44 |
 | `8x8PAT0`–`3`、`8x8AND0`–`3` | 8 × 8 圖塊與遮罩 | 8 |
-| `WEATHER0`–`2.IMG` | 32 × 32（對應戰場的晴／風／雨）| 3 |
+| `WEATHER0`–`2.IMG` | 32 × 32（依序是晴、雨、風）| 3 |
 
 肖像固定 2,564 個位元組：4 個表頭 ＋ 8 × 80 × 4 個平面 ＝ 2,560。
 

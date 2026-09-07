@@ -59,6 +59,9 @@ type app struct {
 	// art 是接上原版素材的主畫面；沒有原版的 DATA3 就是 nil，
 	// 那時退回 remake 自己的文字版面。
 	art *ui.ArtScreen
+
+	// artBattle 是接上原版素材的主戰場，要 `DATA1` 與 `DATA3` 兩個。
+	artBattle *ui.ArtBattle
 }
 
 // uiReliefGold 是介面上「開倉賑民」一次撥出去的金。**remake 自選**：
@@ -652,7 +655,12 @@ func (a *app) Draw(dst *ebiten.Image) {
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
 		// 同一張圖無頭環境也產得出來（cmd/san1dump -png）。
 		if a.fight != nil {
-			ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
+			if a.artBattle != nil {
+				ui.DrawArtBattle(a.canvas, a.artBattle, a.fight.pending.Battle(),
+					a.fight.view, a.battleInfo())
+			} else {
+				ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
+			}
 		} else {
 			a.view.Over = a.s.Over
 			if a.art != nil {
@@ -801,11 +809,22 @@ func main() {
 	// 接原版素材：主畫面的底圖與肖像來自玩家自己那一份 `DATA3`。
 	// **讀不到就退回文字版面**，不要讓少一個檔案變成開不起來。
 	var art *ui.ArtScreen
+	var artBattle *ui.ArtBattle
 	if *useArt {
 		if c3, err := openContainer(*root, "DATA3"); err == nil {
 			if art, err = ui.NewArtScreen(c3); err != nil {
 				fmt.Fprintln(os.Stderr, "san1：原版素材讀不進來，改用文字版面：", err)
 				art = nil
+			}
+			// 主戰場另外要 `DATA1`（圖塊、旗幟、底紋、天氣圖示）。
+			// 少了它只是戰場退回文字版面，主畫面照樣接得上。
+			if art != nil {
+				if c1, err := openContainer(*root, "DATA1"); err == nil {
+					if artBattle, err = ui.NewArtBattle(c1, c3); err != nil {
+						fmt.Fprintln(os.Stderr, "san1：主戰場的素材讀不進來：", err)
+						artBattle = nil
+					}
+				}
 			}
 		} else {
 			fmt.Fprintln(os.Stderr, "san1：沒有 DATA3，改用文字版面：", err)
@@ -824,6 +843,7 @@ func main() {
 		aiMode:  ai.Mode(*aiMode),
 		art:     art,
 	}
+	a.artBattle = artBattle
 	if *music {
 		a.jb = newJukebox(*root)
 		a.jb.Play(0)

@@ -101,6 +101,24 @@ type Pending struct {
 // Battle 是這一場的戰術層戰役。
 func (p *Pending) Battle() *battle.Battle { return p.B }
 
+// Where 是這一場打在哪個郡（守方那一邊），From 是攻方從哪裡來。
+func (p *Pending) Where() int { return p.to }
+func (p *Pending) From() int  { return p.from }
+
+// Chiefs 是攻方與守方的統帥；沒有就是 nil。
+//
+// 取的是各方名單的排頭——原版的統帥就是編隊時排在最前面的那一位
+// （`internal/battle` 的 `Commander`）。
+func (p *Pending) Chiefs() (att, def *General) {
+	if len(p.att) > 0 {
+		att = p.att[0]
+	}
+	if len(p.def) > 0 {
+		def = p.def[0]
+	}
+	return
+}
+
 // fight 把一場戰役交給戰術層打完，並把結果搬回局面。
 func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *BattleResult {
 	p := g.prepare(from, to, att, def, by, HalfSupply(), Aid{})
