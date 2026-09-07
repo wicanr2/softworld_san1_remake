@@ -1,6 +1,7 @@
 package game
 
 import (
+	"sort"
 	"fmt"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -166,6 +167,11 @@ type General struct {
 
 	// Debut 是出頭的年齡（人物表 offset 26，`L0`）。
 	Debut    uint8
+
+	// Portrait 是肖像編號（原版人物 offset 27）；Lifespan 是壽命
+	// （offset 28）——**幾歲開始走下坡，不是幾歲一定死**（`AgingDrop`）。
+	Portrait uint8
+	Lifespan uint8
 	Loyalty  uint8
 	Status   state.Status
 	Faction  state.FactionID
@@ -364,6 +370,7 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Ed
 			Index: s.Index, Name: s.Name,
 			Age: s.Age, Stamina: s.Stamina, Intel: s.Intel, War: s.War, Charm: s.Charm,
 			Rank: s.Rank, Origin: int(s.Origin), Bond: s.Bond, Debut: s.Debut,
+			Portrait: s.Portrait, Lifespan: s.Lifespan,
 			Loyalty: s.Loyalty, Status: s.Status,
 			Faction: state.FactionID(s.Faction), Location: int(s.Location),
 			Troop: s.Troop, Soldiers: int(s.Soldiers),
@@ -534,9 +541,13 @@ func (g *State) Governor(prefectureID int) *General {
 }
 
 // pickGovernor 是主事者失聯之後的重新指派：君主優先，其次太守，
-// 再其次軍師。
+// 再其次軍師，**都沒有就從一般武將裡挑一位升任太守**。
+//
+// 最後那一段不能省：郡易主或主事者陣亡之後，留在郡裡的常常只剩
+// 一般武將。少了它，那個郡有主卻沒有人管——而畫面上只看得出
+// 「太守欄是空的」，不會有任何錯誤。
 func (g *State) pickGovernor(prefectureID int, owner state.FactionID) *General {
-	var lord, main, deputy []int
+	var lord, main, deputy, officer []int
 	for i := range g.generals {
 		x := &g.generals[i]
 		if x.Faction != owner || x.Location != prefectureID || !x.Employed() {
@@ -549,14 +560,26 @@ func (g *State) pickGovernor(prefectureID int, owner state.FactionID) *General {
 			main = append(main, i)
 		case x.Status == state.StatusChief:
 			deputy = append(deputy, i)
+		case x.Status == state.StatusOfficer:
+			officer = append(officer, i)
 		}
 	}
+	// 一般武將要照魅力挑，與原版指定太守那張表同一個排序鍵
+	// （`docs/mechanics/70-ai` §2.6）。
+	sort.SliceStable(officer, func(a, b int) bool {
+		return g.generals[officer[a]].Charm > g.generals[officer[b]].Charm
+	})
 	// **君主在場就是君主主事**，郡裡同時有太守是正常的——君主會巡狩，
 	// 也會親征經過自己的郡。
 	for _, pool := range [][]int{lord, main, deputy} {
 		if len(pool) > 0 {
 			return &g.generals[pool[0]]
 		}
+	}
+	if len(officer) > 0 {
+		x := &g.generals[officer[0]]
+		x.Status = state.StatusGovernor // 升任，否則郡照樣沒有人主事
+		return x
 	}
 	return nil
 }

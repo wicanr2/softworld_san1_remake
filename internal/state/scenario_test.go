@@ -588,3 +588,48 @@ func TestFortCountMatchesTheField(t *testing.T) {
 		}
 	}
 }
+
+// TestPortraitAndLifespanLookSane 釘住肖像編號與壽命兩格的形狀。
+//
+// **判準是「值域與分布說得通」**：肖像對得上 `F000`–`F255.FAC` 的 256 張
+// （0..255、幾乎人人不同），壽命落在人的年紀範圍內而且與史實接近。
+// 單看一個位元組只能說「有值」，說不出它是什麼。
+func TestPortraitAndLifespanLookSane(t *testing.T) {
+	c := loadData2(t, "三國演義")
+	sc, err := LoadScenario(c, Scenario1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[uint8]int{}
+	for _, g := range sc.Generals() {
+		seen[g.Portrait]++
+		// 填充槽的壽命是 0xFF 哨兵（名字是全形標點的那四筆）。
+		if g.Lifespan == NoValue {
+			continue
+		}
+		if g.Lifespan < 30 || g.Lifespan > 100 {
+			t.Errorf("%s 的壽命是 %d，不像年紀", g.Name, g.Lifespan)
+		}
+	}
+	if len(seen) < 200 {
+		t.Errorf("肖像只用到 %d 個相異編號，256 張圖對不起來", len(seen))
+	}
+	// 幾個對得上史實的：劉備 62、關羽 57、曹操 65、孫堅 46。
+	for _, c := range []struct {
+		name string
+		want uint8
+	}{{"劉備", 62}, {"關羽", 57}, {"曹操", 65}, {"孫堅", 46}} {
+		found := false
+		for _, g := range sc.Generals() {
+			if g.Name == c.name {
+				found = true
+				if g.Lifespan != c.want {
+					t.Errorf("%s 的壽命是 %d，應該是 %d", c.name, g.Lifespan, c.want)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("劇本 001 裡找不到 %s", c.name)
+		}
+	}
+}

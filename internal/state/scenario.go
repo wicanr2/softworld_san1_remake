@@ -253,6 +253,23 @@ type General struct {
 	Training uint8     // 訓練度
 	Arms     uint8     // 武裝度
 
+	// Portrait 是肖像編號（offset 27，`L0`）：對上 `DATA3` 裡的
+	// `F000`–`F255.FAC`（256 張，每張 2,564 B，`docs/formats/04` §4）。
+	//
+	// 劇本 001 的 350 位人物用掉 255 個相異值，主要人物排在前面
+	// （曹操 0、關羽 2、諸葛亮 4、劉備 5）。畫人名的地方一路把它
+	// 跟人物記錄的遠指標一起往下傳（116 處讀取）。
+	Portrait uint8
+
+	// Lifespan 是壽命（offset 28，`L0`）：**幾歲開始走下坡**，
+	// 不是幾歲一定死。
+	//
+	// 春天的老死判定（`0x15d5d`）先問 `RND(3) + 壽命 >= 年齡`——成立
+	// 就完全不動體能；過了才開始扣，扣的量是
+	// `(壽命 − 年齡) × 25 − RND(50)`，體能歸零才是死。
+	// 值域 46–75，與史實年齡接近（劉備 62、關羽 57、曹操 65、孫堅 46）。
+	Lifespan uint8
+
 	// Bond 是 offset 14 的人物槽號（`u16`）。
 	//
 	// **原版拿它當登用的閘門**（`0xce8c`，`L0`）：被登用者的 Bond 指到
@@ -411,6 +428,8 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 		g := General{
 			Index:    i,
 			Age:      rec[7],
+			Portrait: rec[27],
+			Lifespan: rec[28],
 			Stamina:  rec[8],
 			Intel:    rec[9],
 			War:      rec[10],

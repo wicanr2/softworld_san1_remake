@@ -124,7 +124,11 @@ func TestHarvestOncePerYear(t *testing.T) {
 	}
 }
 
-// TestAgingKillsEventually 釘住「體能逐年降到 0 時將領死亡」（說明書 p.36）。
+// TestAgingKillsEventually 釘住老死照原版的兩段判定來（`0x15d5d`，`L0`）。
+//
+// **體能低不等於快死了。** 原版先問「過壽命了沒」——沒過的人體能
+// 一點都不掉，過了才開始扣。只釘「體能 1 的人一年後死掉」會通過一個
+// 每年無條件扣體能的實作，而那會讓全圖的人在四十歲上下集體凋零。
 func TestAgingKillsEventually(t *testing.T) {
 	g := newGame(t)
 	var old *General
@@ -135,14 +139,58 @@ func TestAgingKillsEventually(t *testing.T) {
 		}
 	}
 	if old == nil {
-		t.Skip("洛陽沒有守將")
+		t.Fatal("洛陽沒有守將")
 	}
-	old.Stamina = 1
 	old.Status = state.StatusOfficer
+
+	// 還沒過壽命：體能只剩 1 也不會死，而且**一點都不掉**。
+	old.Stamina, old.Age, old.Lifespan = 1, 40, 70
 	g.Date = Date{Year: 189, Month: 12}
-	g.EndMonth() // → 元月，年齡增長那一個月
+	g.EndMonth()
+	if !old.Employed() {
+		t.Fatalf("%s 才 %d 歲、壽命 %d，不該死", old.Name, old.Age, old.Lifespan)
+	}
+	if old.Stamina != 1 {
+		t.Errorf("沒過壽命體能卻從 1 掉到 %d", old.Stamina)
+	}
+
+	// 過壽四年：(70−74)×25 = −100，體能再高也扛不住。
+	old.Stamina, old.Age, old.Lifespan = 90, 74, 70
+	g.Date = Date{Year: 190, Month: 12}
+	g.EndMonth()
 	if old.Employed() {
-		t.Errorf("%s 體能只剩 1，過了一年還活著（體能 %d）", old.Name, old.Stamina)
+		t.Errorf("%s 過壽四年還活著（體能 %d）", old.Name, old.Stamina)
+	}
+}
+
+// TestAgingDropIsTheOriginalFormula 釘住那兩條算式。
+func TestAgingDropIsTheOriginalFormula(t *testing.T) {
+	// 門：RND(3) + 壽命 >= 年齡 就完全不動。
+	for _, c := range []struct {
+		age, lifespan, roll int
+		past                bool
+	}{
+		{70, 70, 0, false}, // 剛好到壽命，還沒過
+		{71, 70, 0, true},
+		{71, 70, 1, false}, // 擲到 1 就再撐一年
+		{74, 70, 2, true},
+	} {
+		if got := AlreadyPastPrime(c.age, c.lifespan, c.roll); got != c.past {
+			t.Errorf("年齡 %d、壽命 %d、擲 %d：past=%v，應該是 %v",
+				c.age, c.lifespan, c.roll, got, c.past)
+		}
+	}
+	// 扣：體能 + (壽命 − 年齡) × 25 − RND(50)，夾到 0。
+	for _, c := range []struct{ stamina, age, lifespan, roll, want int }{
+		{80, 71, 70, 0, 55},  // 80 − 25
+		{80, 71, 70, 49, 6},  // 80 − 25 − 49
+		{80, 74, 70, 0, 0},   // 80 − 100 → 0
+		{100, 72, 70, 0, 50}, // 100 − 50
+	} {
+		if got := AgingDrop(c.stamina, c.age, c.lifespan, c.roll); got != c.want {
+			t.Errorf("體能 %d、年齡 %d、壽命 %d、擲 %d：得到 %d，應該是 %d",
+				c.stamina, c.age, c.lifespan, c.roll, got, c.want)
+		}
 	}
 }
 

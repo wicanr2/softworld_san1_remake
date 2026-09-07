@@ -34,7 +34,8 @@ const (
 	// PopulationOwnerlessChance 是無主郡成長的機率（`0x16ebd`，`L0`）：
 	// `RND(100) < 30` 才長。有主的郡每次都長。
 	PopulationOwnerlessChance = 30
-	// TuneAgingStamina 是每年體能的衰減基準；年紀越大掉越多。
+	// ⚠ TuneAgingStamina 已經被量到的公式取代（`AgingDrop`，`L0`）。
+	// 留著只為讓 `docs/design/02` 的對照表讀得下去。
 	TuneAgingStamina = 1
 	// 進貢的上限（`0x171e0`：`RND(5) + 8`，`L0`）。
 	TributeCapSpread = 5
@@ -165,18 +166,19 @@ func (g *State) spring() []Event {
 			if x.Status == state.StatusUnborn {
 				continue
 			}
-			// 「越大體能越差」（說明書 p.18）：四十歲以後每年多掉一點。
-			drop := TuneAgingStamina
-			if x.Age > 40 {
-				drop += int(x.Age-40) / 10
+			// **老死看壽命，不是每年掉一點**（`0x15d5d`，`L0`）：
+			// 沒過壽命的人體能一點都不掉。
+			if AlreadyPastPrime(int(x.Age), int(x.Lifespan),
+				g.roll(int(Spring), x.Index, 43)%LifespanRollSpread) {
+				n := AgingDrop(int(x.Stamina), int(x.Age), int(x.Lifespan),
+					g.roll(int(Spring), x.Index, 44)%DeathStaminaSpread)
+				x.Stamina = uint8(n)
+				if n == 0 {
+					out = append(out, Event{x.Location, tf("ev.death", personName(x.Name))})
+					g.retire(x)
+					continue
+				}
 			}
-			if int(x.Stamina) <= drop {
-				x.Stamina = 0
-				out = append(out, Event{x.Location, tf("ev.death", personName(x.Name))})
-				g.retire(x)
-				continue
-			}
-			x.Stamina -= uint8(drop)
 			// **忠誠每年跟著君主的人望漂移**（`0x15fc2`，`L0`）：
 			// `忠誠 += (人望 − 60) ÷ 2`。**君主自己不算**——
 			// 他不會對自己不忠。
@@ -858,4 +860,34 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 	heir.Status = state.StatusLord
 	f.Lord = heir.Index
 	return heir
+}
+
+// 老死（原版 `0x15d5d`–`0x15dd7`，`L0`、`[base]`）。
+//
+// **壽命是「幾歲開始走下坡」不是「幾歲一定死」**：沒過壽命的人體能
+// 一點都不掉，過了才開始扣，扣到 0 才是死。體能因此是壽命的緩衝——
+// 體能 80 的人過壽一年掉到 5–55 還活著，過壽四年才必死。
+const (
+	// LifespanRollSpread 是那道門的浮動：`RND(3) + 壽命 >= 年齡` 就跳過。
+	LifespanRollSpread = 3
+	// OverAgeWeight 是每超過壽命一歲要多扣的體能。
+	OverAgeWeight = 25
+	// DeathStaminaSpread 是每年的隨機扣減 `RND(50)`。
+	DeathStaminaSpread = 50
+)
+
+// AlreadyPastPrime 回報這個人今年要不要跑老死判定。
+func AlreadyPastPrime(age, lifespan, roll int) bool { return roll+lifespan < age }
+
+// AgingDrop 是過了壽命之後的新體能，夾到 0。
+//
+//	新體能 = 體能 + (壽命 − 年齡) × 25 − RND(50)
+//
+// `壽命 − 年齡` 在這裡一定是負的，所以那一項是扣分。
+func AgingDrop(stamina, age, lifespan, roll int) int {
+	n := stamina + (lifespan-age)*OverAgeWeight - roll
+	if n < 0 {
+		return 0
+	}
+	return n
 }
