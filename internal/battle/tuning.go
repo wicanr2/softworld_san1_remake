@@ -16,15 +16,12 @@ const (
 
 	// 攻擊的傷害係數。手冊列了影響戰力的因素（訓練度、武裝度、兵數、
 	// 地形、兵種、有無用計，p.31）但沒給公式。
-	TuneHitTraining = 60
-	TuneHitArms     = 40
-	TuneHitWar      = 50
-	TuneHitBase     = 12 // 基礎傷害百分比
 
 	// TuneEnragedPenalty 是中了誘敵之後攻擊力下降的百分比。
 	TuneEnragedPenalty = 30
 
-	// TuneArrowDamage 是一次弓箭的傷害百分比。
+	// TuneArrowDamage 是一次弓箭相對白刃相接的殺傷百分比。
+	// 手冊只給了**次數**公式（`Unit.Arrows`），沒給單次的殺傷。
 	TuneArrowDamage = 6
 
 	// 計謀的殺傷（百分比）。手冊給的是**地形差異的排序**

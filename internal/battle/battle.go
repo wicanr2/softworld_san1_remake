@@ -284,28 +284,39 @@ func (b *Battle) Move(u *Unit, d Dir) error {
 	return nil
 }
 
-// power 是一支部隊此刻的攻擊力。
+// power 是一支部隊此刻打出去的殺傷（原版 `0x305a9`，`L0`）。
 //
-// 因素照手冊 p.31：訓練度、武裝度、兵數、部隊位置地形、兵種、有無用計。
-func (b *Battle) power(u *Unit) int {
-	q := 100 + u.AvgTraining()*TuneHitTraining/100 + u.AvgArms()*TuneHitArms/100
-	if c := u.Chief(); c != nil {
-		q += int(c.War) * TuneHitWar / 100
-	}
-	t := b.Field.At(u.At)
-	q = q * TerrainFactor(t, u.Troop(), true) / 100
-	if u.Enraged > 0 {
-		q = q * (100 - TuneEnragedPenalty) / 100
-	}
-	return u.Soldiers() * q / 100
-}
+// 原版對每一位將領各算一次，然後把兵士數乘進去：
+//
+//	殺傷 ＝ 兵士數 × 戰力值 ÷ 100
+//
+// 戰力值就是 LeaderPower。**主動的那一邊用地形的攻值、被打的那一邊
+// 用守值**，而兩邊都用自己所在那一格的地形——所以地形對守方的保護
+// 走的是守方自己那一份殺傷，不是把攻方的減掉。
+//
+// 誘敵的減益是 remake 的（`TuneEnragedPenalty`）：手冊說中計會影響戰力，
+// 沒給幅度。
+func (b *Battle) power(u *Unit) int { return b.strike(u, true) }
 
-// defence 是一支部隊此刻的防禦力。
-func (b *Battle) defence(u *Unit) int {
-	q := 100 + u.AvgTraining()*TuneHitTraining/100 + u.AvgArms()*TuneHitArms/100
+// defence 是一支部隊被打時打回去的殺傷。
+func (b *Battle) defence(u *Unit) int { return b.strike(u, false) }
+
+// strike 是一支部隊此刻的殺傷，attacking 決定地形取攻值還是守值。
+func (b *Battle) strike(u *Unit, attacking bool) int {
 	t := b.Field.At(u.At)
-	q = q * TerrainFactor(t, u.Troop(), false) / 100
-	return u.Soldiers() * q / 100
+	total := 0
+	for i := range u.Leaders {
+		x := &u.Leaders[i]
+		if x.Dead || x.Captured || x.Soldiers <= 0 {
+			continue
+		}
+		p := LeaderPower(int(x.War), int(x.Arms), x.Troop, t, attacking)
+		total += x.Soldiers * p / 100
+	}
+	if attacking && u.Enraged > 0 {
+		total = total * (100 - TuneEnragedPenalty) / 100
+	}
+	return total
 }
 
 // hit 讓 a 打 b 一次，回傳 b 的損失。
@@ -314,11 +325,11 @@ func (b *Battle) defence(u *Unit) int {
 // （`TuneArrowDamage`），圍攻比它重（`TuneSiegeBonus`）。
 // **用百分比不用整數倍**：整數倍表示不了「箭只有一半殺傷」。
 func (b *Battle) hit(a, d *Unit, pct int) int {
-	ap, dp := b.power(a), b.defence(d)
-	if dp <= 0 {
-		dp = 1
-	}
-	loss := d.Soldiers() * TuneHitBase * ap * pct / (dp * 100 * 100)
+	return b.apply(d, b.power(a)*pct/100)
+}
+
+// apply 把一次殺傷落到部隊上，回傳實際的損失。
+func (b *Battle) apply(d *Unit, loss int) int {
 	if loss < 1 {
 		loss = 1
 	}
@@ -333,6 +344,9 @@ func (b *Battle) hit(a, d *Unit, pct int) int {
 //
 // 「人員損耗後，其持有的軍械也隨同失去」（說明書 p.20）——所以
 // 兵沒了武裝度不變（那是比率），但總量跟著少。
+//
+// **兵打光的將領被俘**（原版 `0x30716` 印「我們抓到%s」，接上
+// 「1.斬首 2.囚禁 3.釋放 4.招降」的處置，`L0`）。
 func (b *Battle) casualty(u *Unit, loss int) {
 	total := u.Soldiers()
 	if total <= 0 {
@@ -367,7 +381,16 @@ func (b *Battle) casualty(u *Unit, loss int) {
 		u.Wiped = true
 		b.note("%s 全滅", u.Name())
 	}
+	// 兵打光就被俘（原版 0x30716）。
+	for i := range u.Leaders {
+		x := &u.Leaders[i]
+		if x.Soldiers <= 0 && !x.Dead && !x.Captured {
+			x.Captured = true
+			b.note("%s 兵盡被擒", x.Name)
+		}
+	}
 }
+
 
 // QuickBattle 是「快戰」：雙方直接正面作戰（說明書 p.32）。
 func (b *Battle) QuickBattle(a *Unit, d Dir) error {
@@ -396,12 +419,15 @@ func (b *Battle) melee(a *Unit, d Dir, toTheDeath bool) error {
 		rounds = 50 // 打到分出勝負；上限避免無窮迴圈
 	}
 	for i := 0; i < rounds; i++ {
-		la := b.hit(a, t, 100)
+		// **同時**：原版先把雙方的殺傷都算出來，再各自扣兵
+		// （`0x30618`／`0x306bb`）。先扣一邊再算另一邊的話，
+		// 先手會佔到不該有的便宜。
+		pa, pd := b.power(a), b.defence(t)
+		la, lb := b.apply(t, pa), b.apply(a, pd)
 		if !t.Alive() {
 			b.note("%s 擊潰 %s（斬 %d）", a.Name(), t.Name(), la)
 			break
 		}
-		lb := b.hit(t, a, 100)
 		if !a.Alive() {
 			b.note("%s 反擊得手（斬 %d）", t.Name(), lb)
 			break
@@ -448,7 +474,7 @@ func (b *Battle) Archery(a *Unit, target Hex) error {
 		if !t.Alive() {
 			break
 		}
-		total += b.hit(a, t, TuneArrowDamage*100/TuneHitBase)
+		total += b.hit(a, t, TuneArrowDamage)
 	}
 	b.note("%s 射了 %d 次箭，%s 折損 %d", a.Name(), n, t.Name(), total)
 	a.Move = 0

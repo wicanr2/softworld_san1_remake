@@ -429,3 +429,69 @@ func TestMeleeRejectsFriendlyAndEmpty(t *testing.T) {
 		t.Error("那個方向沒有部隊，應該失敗")
 	}
 }
+
+// TestStrikeMatchesTheOriginal 釘住一次交手的殺傷（`0x305a9`，`L0`）：
+//
+//	殺傷 ＝ 兵士數 × 戰力值 ÷ 100
+//
+// **兩件事要各驗一次**：數字要對得上手算，而且**主動的一邊用地形攻值、
+// 被打的一邊用守值**。只驗數字的話，攻守表接反了也照樣綠。
+func TestStrikeMatchesTheOriginal(t *testing.T) {
+	f := flat(Plain)
+	b := arena(f)
+	at := FromOffset(2, 2)
+	u := place(b, MainAttacker, Centre, at, Leader{
+		Name: "甲", War: 80, Arms: 60, Training: 50,
+		Soldiers: 2000, Troop: TroopLand,
+	})
+	// 陸軍在平原：LeaderPower(80,60,陸,平原,攻) ＝ 740×25/1000 ＝ 18
+	// 殺傷 ＝ 2000 × 18 / 100 ＝ 360
+	if got := b.power(u); got != 360 {
+		t.Errorf("攻方的殺傷是 %d，手算是 360", got)
+	}
+	// 守值 17：740×22/1000 ＝ 16 → 2000 × 16 / 100 ＝ 320
+	if got := b.defence(u); got != 320 {
+		t.Errorf("守方的殺傷是 %d，手算是 320", got)
+	}
+	// 兵一半的部隊殺傷也一半——殺傷與兵士數是線性的。
+	u.Leaders[0].Soldiers = 1000
+	if got := b.power(u); got != 180 {
+		t.Errorf("兵減半之後的殺傷是 %d，應該是 180", got)
+	}
+	// 站到城池上：守值 40 遠高於平原的 17，攻值 27 高於 20。
+	f.Set(at, City)
+	if b.defence(u) <= 160 || b.power(u) <= 90 {
+		t.Errorf("城池上的殺傷 攻 %d 守 %d，應該都高過平原",
+			b.power(u), b.defence(u))
+	}
+}
+
+// TestMeleeIsSimultaneous 釘住雙方**同時**算傷亡（`0x30618`／`0x306bb`）。
+//
+// 先扣一邊再算另一邊的話，先手會佔到不該有的便宜——把守方的兵設成
+// 剛好被一擊打光，看攻方有沒有照樣挨打。
+func TestMeleeIsSimultaneous(t *testing.T) {
+	f := flat(Plain)
+	b := arena(f)
+	a := place(b, MainAttacker, Centre, FromOffset(2, 2), Leader{
+		Name: "甲", War: 80, Arms: 60, Soldiers: 2000, Troop: TroopLand,
+	})
+	d := place(b, MainDefender, Centre, FromOffset(2, 2).Step(DirDown), Leader{
+		Name: "乙", War: 80, Arms: 60, Soldiers: 100, Troop: TroopLand,
+	})
+	before := a.Soldiers()
+	if err := b.QuickBattle(a, DirDown); err != nil {
+		t.Fatalf("快戰失敗：%v", err)
+	}
+	if d.Soldiers() != 0 {
+		t.Errorf("守方剩 %d 兵，應該被一擊打光", d.Soldiers())
+	}
+	if a.Soldiers() >= before {
+		t.Errorf("攻方一兵未損（%d → %d）——反擊應該同時發生",
+			before, a.Soldiers())
+	}
+	// 兵打光的將領被俘（原版 0x30716「我們抓到%s」）。
+	if !d.Leaders[0].Captured {
+		t.Error("兵打光的將領應該被擒")
+	}
+}
