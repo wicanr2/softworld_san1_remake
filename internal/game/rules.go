@@ -465,13 +465,17 @@ func RicePerGold(priceLevel uint8) int { return ricePerGold(priceLevel, RiceRate
 // RiceRateDiv 是玩家那一條的除數（`0x1b20e`／`0x1b49c`）。
 const RiceRateDiv = 10
 
-// riceRateDiv 是電腦買米那六支各自的除數（`0x0c7c0` 起，六個呼叫端
-// 位址差 0x34，`L0`）。
+// riceRateDiv 是電腦買米那六支各自的除數（呼叫端 `0x0c7d1`、`0x0c805`、
+// `0x0c839`、`0x0c86d`、`0x0c8a1`、`0x0c8dd`，`L0`）。
 //
-// **等級 5 是除以 3。** 物價 50 時等級 0–3 一金換 5 單位米，等級 4 換 5、
-// 等級 5 換 16——三倍有餘。這與內政那張表同一個形狀（六支同樣的碼、
+// 前五支是 `mov cx,除數` ＋ `idiv cx`；**第六支不是除法**，
+// 而是 `mov cx,3` ＋ `sar cl,ax` 加上前後兩次 `xor dx / sub dx`
+// 的正負號修正（`0xc8ce`–`0xc8db`）——那個 3 是**位移量**，除數是 8。
+//
+// 等級 4 除以 9、等級 5 除以 8，其餘除以 10。物價 50 時等級 0–3 一金換
+// 5 單位米，等級 5 換 6。這與內政那張表同一個形狀（六支同樣的碼、
 // 只有立即數不同），也是「六個等級是六種性格」的第三個例子。
-var riceRateDiv = [6]int{10, 10, 10, 10, 9, 3}
+var riceRateDiv = [6]int{10, 10, 10, 10, 9, 8}
 
 // AIRicePerGold 是電腦諸侯買米的匯率；等級越界夾住。
 func AIRicePerGold(priceLevel uint8, level int) int {

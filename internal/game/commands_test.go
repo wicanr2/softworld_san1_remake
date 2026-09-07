@@ -711,16 +711,16 @@ func TestAutonomyMapsToAILevels(t *testing.T) {
 
 // TestRiceRateVariesByAILevel 釘住買米的匯率隨 AI 等級變。
 //
-// 玩家永遠是 `(100 − 物價) ÷ 10`；電腦那一條的除數是
-// `[10,10,10,10,9,3]`（`0x0c7c0` 起六個呼叫端）。**等級 5 是除以 3**
-// ——同一個物價下它換到的米是玩家的三倍有餘，只用玩家那條算式
-// 會把電腦的糧倉低估一大截。
+// 玩家永遠是 `(100 − 物價) ÷ 10`；電腦那六個呼叫端的除數是
+// `[10,10,10,10,9,8]`。第六支寫成 `sar cl,ax`（`cl` ＝ 3）而不是
+// `idiv`，所以除數是 `2³ ＝ 8` 不是 3——只用玩家那條算式
+// 會把等級 4 與 5 的糧倉低估一截。
 func TestRiceRateVariesByAILevel(t *testing.T) {
 	const price = 50 // (100−50) = 50
 	if got := RicePerGold(price); got != 5 {
 		t.Errorf("玩家 物價 50：一金換 %d 米，應該是 5", got)
 	}
-	for level, want := range []int{5, 5, 5, 5, 5, 16} {
+	for level, want := range []int{5, 5, 5, 5, 5, 6} {
 		if got := AIRicePerGold(price, level); got != want {
 			t.Errorf("電腦等級 %d 物價 50：一金換 %d 米，應該是 %d",
 				level, got, want)
