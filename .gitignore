@@ -16,6 +16,11 @@ manual/
 # 建置產物
 /dist/
 /dist-all/
+/san1
+/san1dump
+/san1diff
+/san1strings
+/san1turndiff
 *.exe
 *.test
 
