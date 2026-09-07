@@ -95,6 +95,9 @@ type Prefecture struct {
 
 	Neighbours []int
 
+	// Province 是這個郡屬於哪一州（原版州郡 offset 5，0–13）。
+	Province uint8
+
 	// MapX／MapY 是這個郡在大地圖上的座標（原版州郡 offset 6／8）。
 	// 畫面上的位置是 `MapX + 0x50`、`MapY + 0x2c`（`0x10ceb`／`0x10cf4`）；
 	// 主畫面的州郡填色就是從那一點灌下去的。

@@ -132,14 +132,23 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	for i, r := range []rune(g.Date.Format(v.Calendar)) {
 		c.DrawText(artDateCol, artDateRow+i, string(r), ink)
 	}
-	c.DrawText(col, row, fmt.Sprintf("%s %2d", p.Name, p.ID), ink)
+	// 第一列照原版：郡名、州名、編號。
+	c.DrawText(col, row, p.Name, ink)
+	c.DrawText(col+5, row, state.ProvinceName(int(p.Province)),
+		color.RGBA{0xAA, 0x00, 0x00, 0xFF})
+	c.DrawText(col+10, row, fmt.Sprintf("%2d", p.ID), ink)
 	row++
 	if lord := g.Lord(p.Owner); lord != nil {
 		c.DrawText(col, row, "君主 "+lord.Name, ink)
+		if f := g.Faction(p.Owner); f != nil {
+			c.DrawText(col+13, row, fmt.Sprintf("人望%3d", f.Prestige), ink)
+		}
 	} else {
 		c.DrawText(col, row, "無　主", ink)
 	}
-	row += 2
+	row++
+	c.DrawText(col+2, row, game.AutonomyName(p.Autonomy), ink)
+	row++
 	for _, line := range []string{
 		fmt.Sprintf("土地價值 %3d", p.LandValue),
 		fmt.Sprintf("洪水率   %3d", p.FloodRate),
