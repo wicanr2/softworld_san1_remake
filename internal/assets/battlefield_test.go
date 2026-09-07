@@ -8,9 +8,10 @@ import (
 	"testing"
 )
 
-// bfShotPath 是原版主戰場的基準圖，由 `internal/parity` 的
-// `TestZZBattleKeySweep`（候選 4）產，要設 `SAN1_SHOTS`。
-const bfShotPath = "../../workplace/shots/bf/sweep-04.png"
+// bfShotPath 是**紮完寨之後**的原版主戰場，由 `internal/parity` 的
+// `TestZZBattleKeySweep` 產：`SAN1_BATTLEKEY` 在候選 4 後面接八個 `0`
+// （五支部隊各紮一次），`SAN1_SHOTS` 指到輸出目錄。
+const bfShotPath = "../../workplace/shots/bf/orig-battle.png"
 
 // TestBattleTilesDecode 釘住 `EICON.GRP` 的版面：36 筆 × 772 B，每張 48×32。
 func TestBattleTilesDecode(t *testing.T) {
@@ -85,16 +86,18 @@ func TestBattleFieldMatchesTheOriginal(t *testing.T) {
 		}
 	}
 	t.Logf("%d 格逐像素全中、%d 格不同、%d 格跳過", full, part, skipped)
-	// **只驗「有格子全中」**，因為基準畫面停在**紮寨**那一步：原版那時
-	// 把可以下寨的格子照常畫、其餘蓋一層 50% 網點（偶數列偶數欄留著、
-	// 其餘變黑），而留下來的像素與圖塊完全相同。全中的四格就是可以
-	// 下寨的那一小片。
+	// 基準畫面是**紮完寨之後**的主戰場，所以除了五支部隊站的格子之外
+	// 都應該逐像素全中。
 	//
-	// 全中的格子證明了三件事：圖塊的解碼、圖塊編號就是地形碼、格子的
-	// 座標。**不是座標問題**——逐格在 ±24 內找最佳位移，全中的都落在
-	// (0,0)，其餘找不到 95% 以上的位置。
-	if full < 4 {
-		t.Errorf("只有 %d 格全中：圖塊或座標不對", full)
+	// ⚠ 換基準畫面之前這個數字是 4／78，而原因不是座標錯：那一張停在
+	// 紮寨那一步，原版把可以下寨的格子照常畫、其餘蓋一層 50% 網點
+	// （偶數列偶數欄留著、其餘變黑）。**判準要看形狀不要看比例**——
+	// 把差異畫成圖案一眼看得出是網點，只看相符率會猜成天氣。
+	if full < 70 {
+		t.Errorf("只有 %d 格全中（%d 格不同）：圖塊或座標不對", full, part)
+	}
+	if part > 8 {
+		t.Errorf("%d 格不同，比五支部隊佔的格子多", part)
 	}
 }
 

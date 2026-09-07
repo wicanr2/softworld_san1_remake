@@ -118,6 +118,43 @@ remake 先用自己的一組色號，登記在 `docs/design/02`。
 基準畫面是 `TestZZOriginalOpeningScreens` 的第 6 步；
 比對在 `TestMenuScreenMatchesTheOriginal`。
 
+## 8. 主戰場的地形圖塊
+
+`EICON.GRP`（`DATA1`，27,792 B）**不是一整塊圖，是三十六筆 `.IMG`
+首尾相接**：表頭 4 個位元組加四個 192 位元組的平面，共 772，
+27792 ÷ 772 ＝ 36 整除。每張 48×32——表頭自己寫著高 32 寬 48。
+
+**圖塊編號就是地形碼。** 判準是拿原版主戰場的基準畫面抽一格，把四個
+平面的位元樣式去 `EICON.GRP` 裡 grep，命中的記錄編號與那一格的地形碼
+相同（樹林 8 對 #8、平原 7 對 #7）。原版畫的時候也是直接把低四位推
+進去（`0x22781`，大於 10 就不畫）。
+
+格子的位置（`0x22745`–`0x22781`，`L0`）：
+
+```
+x = 欄 × 48 + 56
+y = 列 × 32 + 36        奇數欄再 +16
+```
+
+**兩種版面都塞得下**：12×7 是 x ≤ 584、y ≤ 244；8×10 是 x ≤ 392、
+y ≤ 340。把兩個軸讀反的話 8×10 會算出 y=488 超出畫面。
+
+驗證：與原版**紮完寨之後**的主戰場逐格比，78 格裡 **73 格逐像素全中**，
+差的五格正是五支部隊站的位置（`TestBattleFieldMatchesTheOriginal`）。
+
+⚠ 用**紮寨那一步**的畫面當基準的話只有 4 格全中，而原因不是座標錯：
+原版在紮寨時把可以下寨的格子照常畫、其餘蓋一層 50% 網點（偶數列偶數欄
+留著、其餘變黑）。**判準要看形狀不要看比例**——把差異畫成圖案一眼
+看得出是網點，只看相符率會猜成天氣。
+
+基準畫面的取法：
+
+```sh
+SAN1_SHOTS=/src/workplace/shots/bf SAN1_BATTLEKEY='2||2||4|1||2|5|||1||1||N|2||1||Y||1||1||Y|5000||9000||Y|0|0|0|0|0|0|0|0' tools/go.sh test ./internal/parity -tags oracle -run TestZZBattleKeySweep
+```
+
+**目前只有地形接上素材**：部隊、指令列、左右面板還是 remake 自己畫的。
+
 ## 7. 怎麼跑
 
 ```sh
@@ -127,6 +164,7 @@ go run ./cmd/san1 -root path/to/三國演義
 # 無頭出圖
 go run ./cmd/san1dump -root path/to/三國演義 -screen art   -months 6 -png out.png
 go run ./cmd/san1dump -root path/to/三國演義 -screen title           -png title.png
+go run ./cmd/san1dump -root path/to/三國演義 -screen artfield -sel 25 -png field.png
 ```
 
 `-art=false` 可以退回 remake 自己的文字版面（沒有原版素材時的樣子）。

@@ -233,3 +233,29 @@ func DrawTitle(c *Canvas, ts *TitleScreen, sel int) {
 		c.DrawText((b[0]+16)/CellW, (b[1]+15)/CellH, s, col)
 	}
 }
+
+// ArtBattle 是接上原版素材的主戰場：地形圖塊來自 `EICON.GRP`，
+// 位置與原版相同（`docs/spec/005` §8）。
+type ArtBattle struct {
+	tiles []*assets.Image
+}
+
+// NewArtBattle 從 `DATA1` 解出三十六張地形圖塊。
+func NewArtBattle(data1 *assets.Container) (*ArtBattle, error) {
+	tiles, err := assets.BattleTiles(data1)
+	if err != nil {
+		return nil, err
+	}
+	return &ArtBattle{tiles: tiles}, nil
+}
+
+// DrawArtField 畫一個郡的戰場地形。
+//
+// field 是州郡記錄 offset 55–174 那 120 個位元組。部隊與指令列還是
+// remake 自己畫的——**這一張目前只有地形接上素材**。
+func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte) {
+	im := assets.BattleField(ab.tiles, field, 0)
+	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{}, draw.Src)
+	c.DrawText(1, 0, name, color.RGBA{0xFF, 0xFF, 0x55, 0xFF})
+}
