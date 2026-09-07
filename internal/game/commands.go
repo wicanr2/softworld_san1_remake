@@ -286,11 +286,12 @@ func (g *State) BuildFort(prefectureID, generalIndex int, by state.FactionID) er
 	if p.Gold < cost {
 		return ErrNoGold
 	}
-	spot := plainSpotFor(p.BattleField)
+	spot := fortSpotFor(p.BattleField)
 	if spot < 0 {
-		return ErrTooManyForts // 地圖上沒有空地可以蓋
+		return ErrTooManyForts // 地圖上沒有可以蓋的格子
 	}
-	p.BattleField[spot] = p.BattleField[spot]&0xF0 | fortTerrain
+	// 原版寫的是 `(格 & 0xF6) | 0x06`（`0x1afae`）：低四位變 6、高四位留著。
+	p.BattleField[spot] = p.BattleField[spot]&0xF6 | fortTerrain
 	p.Gold -= cost
 	p.Forts++
 	p.Commanded = true
@@ -300,18 +301,49 @@ func (g *State) BuildFort(prefectureID, generalIndex int, by state.FactionID) er
 // fortTerrain 是關寨的地形碼（`docs/spec/003` §3.3）。
 const fortTerrain = 6
 
-// plainSpotFor 挑一格拿來蓋關寨：**沒有標記的平原**。
+// CanBuildFortOn 回報一格能不能蓋關寨（`0x1aeba`–`0x1aed1`，`L0`）。
 //
-// 有標記的格子不能動——那些是通往鄰郡的通道、城池、四個軍團的起點
-// （高四位 0–14）。蓋在通道上會把那個郡從地圖上封死，而那在畫面上
-// 只看得出「敵軍再也沒有從那一邊來過」。
-func plainSpotFor(field []byte) int {
+// 原版兩道門：
+//
+//	DS:0x7134[地形碼] != 0        ; 只有山丘(2)、平原(7)、樹林(8) 是 1
+//	(格 & 0xF0) >= 0xA0           ; 高四位 0–9 是通往鄰郡的通道
+//
+// 第二道擋掉的正是通道格——蓋在那裡會把鄰郡從地圖上封死，而畫面上
+// 只看得出「敵軍再也沒有從那一邊來過」。城池標記(10)與四個軍團起點
+// (11–14) 過得了第二道，但它們的地形碼過不了第一道。
+func CanBuildFortOn(cell byte) bool {
+	if cell == 0xFF { // 圖外
+		return false
+	}
+	if !fortableTerrain[cell&0x0F] {
+		return false
+	}
+	return cell&0xF0 >= 0xA0
+}
+
+// fortableTerrain 是 `DS:0x7134` 那張十六格的表（`L0`）。
+var fortableTerrain = [16]bool{2: true, 7: true, 8: true, 10: true, 11: true, 12: true}
+
+// fortSpotFor 挑一格拿來蓋關寨。
+//
+// 原版由玩家在地圖上指（`0x1acba` 的游標畫面，`DS:0x70cc`「數字鍵選方向」），
+// remake 自己挑——**那是登記在案的差異**。挑的順序先平原後其他，
+// 但收的範圍與原版一樣寬：只挑平原的話，地圖上平原都被佔滿而山丘、
+// 樹林還空著時，remake 會說蓋不了而原版蓋得起來。
+func fortSpotFor(field []byte) int {
+	fallback := -1
 	for i, b := range field {
-		if b != 0xFF && b>>4 == 15 && b&0x0F == 7 { // 7 ＝ 平原
+		if !CanBuildFortOn(b) {
+			continue
+		}
+		if b&0x0F == 7 { // 平原優先
 			return i
 		}
+		if fallback < 0 {
+			fallback = i
+		}
 	}
-	return -1
+	return fallback
 }
 
 // Rest 是「休息」（說明書 p.21）：不做任何事，但耗掉這個月的指令。

@@ -735,3 +735,90 @@ func TestRiceRateVariesByAILevel(t *testing.T) {
 		t.Errorf("物價 99：一金換 %d 米，下限應該是 1", got)
 	}
 }
+
+// TestCanBuildFortOn 釘住原版的兩道門（`0x1aeba`–`0x1aed1`，`L0`）。
+//
+// 地形要在 `DS:0x7134` 那張表裡是 1（山丘 2、平原 7、樹林 8），
+// 而且高四位要 ≥ 10——**高四位 0–9 是通往鄰郡的通道**，蓋在那裡會把
+// 鄰郡從地圖上封死。
+func TestCanBuildFortOn(t *testing.T) {
+	cases := []struct {
+		cell byte
+		want bool
+		why  string
+	}{
+		{0xFF, false, "圖外"},
+		{0xF7, true, "沒標記的平原"},
+		{0xF2, true, "沒標記的山丘"},
+		{0xF8, true, "沒標記的樹林"},
+		{0xF1, false, "大山"},
+		{0xF3, false, "淺水"},
+		{0xF4, false, "深水"},
+		{0xF5, false, "城池"},
+		{0xF6, false, "已經是關寨"},
+		{0xF9, false, "沙漠"},
+		{0x07, false, "通往第 0 個鄰郡的平原"},
+		{0x97, false, "通往第 9 個鄰郡的平原"},
+		{0xA7, true, "城池標記的平原"},
+		{0xB7, true, "軍團起點的平原"},
+	}
+	for _, c := range cases {
+		if got := CanBuildFortOn(c.cell); got != c.want {
+			t.Errorf("格 0x%02X（%s）回 %v，應該是 %v", c.cell, c.why, got, c.want)
+		}
+	}
+}
+
+// TestBuildFortAcceptsHillsAndWoods 釘住「平原被佔滿了還是蓋得起來」。
+//
+// remake 原本只挑沒有標記的平原，而原版收山丘與樹林。差別在平原用完
+// 的地圖上會變成「remake 說蓋不了、原版蓋得起來」。
+func TestBuildFortAcceptsHillsAndWoods(t *testing.T) {
+	g := newGame(t)
+	var p *Prefecture
+	for i := range g.prefectures {
+		if g.prefectures[i].Owned() && len(g.prefectures[i].BattleField) > 0 {
+			p = &g.prefectures[i]
+			break
+		}
+	}
+	if p == nil {
+		t.Fatal("找不到有地圖的郡")
+	}
+	// 把地圖擺成「一格樹林，其餘全是大山」——沒有平原。
+	for i := range p.BattleField {
+		p.BattleField[i] = 0xF1 // 沒標記的大山
+	}
+	p.BattleField[7] = 0xF8 // 樹林
+	p.Forts = 0
+	p.Gold = 30000
+	p.PriceLevel = 50
+	who := (*General)(nil)
+	for _, x := range g.Garrison(p.ID) {
+		if x.Intel > MinIntelForChief {
+			who = x
+			break
+		}
+	}
+	if who == nil {
+		x := g.Garrison(p.ID)
+		if len(x) == 0 {
+			t.Skip("這個郡沒有駐軍")
+		}
+		who = x[0]
+		who.Intel = 90
+	}
+	p.Commanded = false
+	if err := g.BuildFort(p.ID, who.Index, p.Owner); err != nil {
+		t.Fatalf("只有樹林可以蓋時 BuildFort 回 %v", err)
+	}
+	if p.BattleField[7]&0x0F != fortTerrain {
+		t.Errorf("樹林那一格是 0x%02X，應該變成關寨", p.BattleField[7])
+	}
+	if p.BattleField[7]>>4 != 15 {
+		t.Errorf("高四位被動到了：0x%02X", p.BattleField[7])
+	}
+	if p.Forts != 1 {
+		t.Errorf("關寨數是 %d", p.Forts)
+	}
+}
