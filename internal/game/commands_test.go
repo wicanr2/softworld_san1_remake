@@ -460,3 +460,69 @@ func TestRiceRateFollowsThePrice(t *testing.T) {
 		t.Errorf("買不到一金份的零頭卻動了帳：金 %d、米 %d", p.Gold, p.Rice)
 	}
 }
+
+// TestPlotScoreIsADuelOfWits 釘住計略是雙方謀略的對決（`L0`、`0x2dd66`）。
+//
+// **人望與使者魅力只扣分不加分**——到了 80／70 就封頂。
+// 只驗「高人望比較容易成功」的話，這個封頂完全看不出來。
+func TestPlotScoreIsADuelOfWits(t *testing.T) {
+	// 軍師與君主取較高的那位。
+	if got := PlotScore(90, 70, 80, 70); got != 90 {
+		t.Errorf("軍師 90、君主 70 算出 %d，應該取 90", got)
+	}
+	if got := PlotScore(70, 95, 80, 70); got != 95 {
+		t.Errorf("君主比較聰明時沒有取君主：%d", got)
+	}
+	// 人望 80 以上不加分。
+	for _, p := range []int{80, 90, 100} {
+		if got := PlotScore(90, 0, p, 70); got != 90 {
+			t.Errorf("人望 %d 加了分：%d", p, got)
+		}
+	}
+	// 人望不足才扣，每 10 點一分。
+	if got := PlotScore(90, 0, 50, 70); got != 87 {
+		t.Errorf("人望 50 算出 %d，應該是 90 + (50−80)/10 ＝ 87", got)
+	}
+	// 使者魅力 70 以上不加分，不足才扣，每 5 點一分。
+	for _, c := range []int{70, 90, 100} {
+		if got := PlotScore(90, 0, 80, c); got != 90 {
+			t.Errorf("使者魅力 %d 加了分：%d", c, got)
+		}
+	}
+	if got := PlotScore(90, 0, 80, 50); got != 86 {
+		t.Errorf("使者魅力 50 算出 %d，應該是 90 + (50−70)/5 ＝ 86", got)
+	}
+}
+
+// TestSabotageHitsFiveFields 釘住計略得手之後五個欄位都動（`L0`、`0x2d6e0`）。
+//
+// **判準是「五個都動」**：原版沒有把它們拆成不同的計謀，漏掉任何一個
+// 都會讓被計的郡比原版好過，而那在對拍裡只會表現成幾個欄位對不上。
+func TestSabotageHitsFiveFields(t *testing.T) {
+	g := newGame(t)
+	p := g.Prefecture(8)
+	p.PublicLoyalty, p.FloodRate, p.LandValue = 90, 10, 90
+	p.Rice, p.Gold = 10000, 10000
+	before := *p
+	g.Sabotage(8, 100)
+	if p.PublicLoyalty >= before.PublicLoyalty {
+		t.Errorf("民眾忠誠沒降：%d → %d", before.PublicLoyalty, p.PublicLoyalty)
+	}
+	if p.FloodRate <= before.FloodRate {
+		t.Errorf("洪水率沒升：%d → %d", before.FloodRate, p.FloodRate)
+	}
+	if p.LandValue >= before.LandValue {
+		t.Errorf("土地價值沒降：%d → %d", before.LandValue, p.LandValue)
+	}
+	if p.Rice >= before.Rice {
+		t.Errorf("米沒少：%d → %d", before.Rice, p.Rice)
+	}
+	if p.Gold >= before.Gold {
+		t.Errorf("金沒少：%d → %d", before.Gold, p.Gold)
+	}
+	// **米的比例比金重**：除數 300 對 500。
+	if before.Rice-p.Rice <= before.Gold-p.Gold {
+		t.Errorf("同樣的存量下米燒得不比金多：米 −%d、金 −%d",
+			before.Rice-p.Rice, before.Gold-p.Gold)
+	}
+}

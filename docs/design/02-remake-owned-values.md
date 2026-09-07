@@ -77,6 +77,8 @@
 | `TuneRewardLoyalty` | `RewardEffect`／`RewardGain`：增幅 ＝ (RND(加成/2)＋魅力/3＋加成) × 金 ÷ 100 | `0xd302` |
 | `TuneReliefRice`／`TuneReliefLoyalty` | `ReliefGain`：撥的是**金**不是米，增幅上限 ＝ 太守魅力 ÷ 2 | `0xc8f6` |
 | 買米的換算 | `RicePerGold`：一金買到 `(100 − 物價) ÷ 10` 單位 | `0xc634` |
+| `TuneChiefWeight` 等四項 | `PlotScore`：雙方各取「軍師與君主裡謀略較高的那位」，人望與使者魅力只扣分，沒有擲骰 | `0x2dd66` |
+| `TuneInciteLoss` | `Sabotage`：民忠、洪水率、土地價值、米、金五刀，量都跟著使者魅力 | `0x2d6e0` |
 
 **「智力低會不會變負」是這一批最容易做錯的地方**：呼叫端算的
 `(智−50)/12` 對低智力是負的，而常式先擋掉非正的量、改成擲 0 或 1。
@@ -142,9 +144,8 @@
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneChiefWeight` / `TuneEnvoyWeight` / `TunePrestigeWeight` / `TuneEnemyChiefBonus` | 40／25／15／20 | 「成功率取決於四項：我方軍師智力、派遣使者魅力、我方君主人望、對方軍師智力」|
 | `PlotCost` | 100–300 | 平時的五種計謀手冊**沒給費用**；照戰場那一組的量級 |
-| `TuneForgeryLoyalty` / `TuneInciteLoss` | 15／20 | 「降低其部將忠誠」「減少米、金和人民忠誠」|
+| `TuneForgeryLoyalty` | 15 | 「降低其部將忠誠」|
 
 ### 災害與成長是一對
 

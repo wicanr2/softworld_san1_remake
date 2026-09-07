@@ -366,6 +366,7 @@ func TestZZDispatch(t *testing.T) {
 					{0xa5de, true, "調整兵力：份額的加項"},
 					{0xa5e6, true, "買米：存糧目標的夾值"},
 					{0xa5f2, true, "買米：買完之後留下的金的下限"},
+					{0xa9ea, true, "計略：燒米燒錢的係數"},
 					{0xa604, true, "賞賜金帛：忠誠增幅的係數"},
 					{0xa60c, true, "賞賜金帛：反算花費的係數"},
 				} {

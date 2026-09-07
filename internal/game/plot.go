@@ -42,7 +42,10 @@ func (p Plot) String() string {
 }
 
 const (
-	// 成功率的四項權重（百分比，加起來 100）。
+	// ⚠ **下面四項已經被原版的公式取代**（`PlotScore`，`L0`、`0x2dd66`）：
+	// 原版比的是雙方「軍師與君主裡謀略較高的那位」，人望與使者魅力
+	// 只扣分不加分，而且沒有擲骰。留著是為了讓 `docs/design/02`
+	// 的對照表讀得下去。
 	TuneChiefWeight     = 40 // 我方軍師智力
 	TuneEnvoyWeight     = 25 // 派遣使者魅力
 	TunePrestigeWeight  = 15 // 我方君主人望（這裡用君主魅力代表）
@@ -51,6 +54,7 @@ const (
 	// TuneForgeryLoyalty 是偽書使疑降低的忠誠。
 	TuneForgeryLoyalty = 15
 	// TuneInciteLoss 是策反人民減少的金米與民眾忠誠百分比。
+	// ⚠ TuneInciteLoss 已被 `Sabotage` 取代（`L0`、`0x2d6e0`）。
 	TuneInciteLoss = 20
 )
 
@@ -74,23 +78,42 @@ func PlotCost(p Plot) int {
 }
 
 // plotChance 是成功率（0..95）。
-func (g *State) plotChance(by state.FactionID, envoy *General, target int) int {
-	chief := g.Chief(by)
-	if chief == nil {
-		return 0
-	}
-	score := int(chief.Intel)*TuneChiefWeight +
-		int(envoy.Charm)*TuneEnvoyWeight
-	if lord := g.Lord(by); lord != nil {
-		score += int(lord.Charm) * TunePrestigeWeight
-	}
-	// 對方軍師智力扣分。
-	if p := g.Prefecture(target); p != nil && p.Owned() {
-		if ec := g.Chief(p.Owner); ec != nil {
-			score -= int(ec.Intel) * TuneEnemyChiefBonus
+// plotSucceeds 是「這一計成不成」（`L0`、`0x2dd66`，公式見 `PlotScore`）。
+func (g *State) plotSucceeds(by state.FactionID, envoy *General, target int) bool {
+	best := func(id state.FactionID) int {
+		n := 0
+		if c := g.Chief(id); c != nil {
+			n = int(c.Intel)
 		}
+		if l := g.Lord(id); l != nil && int(l.Intel) > n {
+			n = int(l.Intel)
+		}
+		return n
 	}
-	return clampTo(score/100, 95)
+	prestige := 0
+	if f := g.Faction(by); f != nil {
+		prestige = f.Prestige
+	}
+	mine := PlotScore(chiefIntelOf(g, by), lordIntelOf(g, by), prestige, int(envoy.Charm))
+	p := g.Prefecture(target)
+	if p == nil || !p.Owned() {
+		return true // 無主的郡沒有人反制
+	}
+	return mine > best(p.Owner)
+}
+
+func chiefIntelOf(g *State, id state.FactionID) int {
+	if c := g.Chief(id); c != nil {
+		return int(c.Intel)
+	}
+	return 0
+}
+
+func lordIntelOf(g *State, id state.FactionID) int {
+	if l := g.Lord(id); l != nil {
+		return int(l.Intel)
+	}
+	return 0
 }
 
 // UsePlot 施行一個計謀。
@@ -128,7 +151,10 @@ func (g *State) UsePlot(from, target int, p Plot, envoyIndex int, by state.Facti
 	src.Gold -= cost
 	src.Commanded = true
 
-	if g.roll(from, target, int(p), envoyIndex) >= g.plotChance(by, envoy, target) {
+	// **成敗照原版的分數對決**（`PlotScore`，`0x2dd66`）：兩邊各取
+	// 「軍師與君主裡謀略較高的那位」，我方再依人望與使者魅力扣分。
+	// 這一段沒有擲骰——原版就是硬碰硬。
+	if !g.plotSucceeds(by, envoy, target) {
 		return false, nil
 	}
 	switch p {
@@ -141,10 +167,9 @@ func (g *State) UsePlot(from, target int, p Plot, envoyIndex int, by state.Facti
 			}
 		}
 	case PlotIncite:
-		dst.Gold = dst.Gold * (100 - TuneInciteLoss) / 100
-		dst.Rice = dst.Rice * (100 - TuneInciteLoss) / 100
-		dst.PublicLoyalty = uint8(clampTo(
-			int(dst.PublicLoyalty)*(100-TuneInciteLoss)/100, 100))
+		// 五刀一起下（`Sabotage`，`L0`）：民眾忠誠、洪水率、土地價值、
+		// 米、金。原版沒有把它們拆成不同的計謀。
+		g.Sabotage(target, int(envoy.Charm))
 	case PlotTigerWolf, PlotFarNear, PlotJointAttack:
 		// ⚠ **這三種要有「別人替我出兵」的機制才做得完整。**
 		// 戰役的戰略層已經有了（`Attack`），但「教唆」與「合攻」牽涉
@@ -153,4 +178,65 @@ func (g *State) UsePlot(from, target int, p Plot, envoyIndex int, by state.Facti
 		return true, fmt.Errorf("game: %s 已成功，但出兵的部分還沒實作", p)
 	}
 	return true, nil
+}
+
+// ---- 原版電腦諸侯用的那一種計略（`L0`、`[base]`）------------------------
+
+// PlotScore 是計略的成敗判定（原版 `0x2dd66`）。
+//
+//	我方 ＝ max(軍師的謀略, 君主的謀略)
+//	人望 < 80     → 我方 += (人望 − 80) ÷ 10      ; 只扣不加
+//	使者魅力 < 70 → 我方 += (魅力 − 70) ÷ 5       ; 只扣不加
+//	對方 ＝ max(對方君主的謀略, 對方軍師的謀略)
+//	我方 > 對方 → 得手
+//
+// **人望與使者魅力到了 80／70 就封頂**，所以主軸是雙方的謀略對決。
+func PlotScore(chiefIntel, lordIntel, prestige, envoyCharm int) int {
+	n := chiefIntel
+	if lordIntel > n {
+		n = lordIntel
+	}
+	if prestige < 80 {
+		n += (prestige - 80) / 10
+	}
+	if envoyCharm < 70 {
+		n += (envoyCharm - 70) / 5
+	}
+	return n
+}
+
+// SabotageCharmDiv 是五刀各自的除數（原版 `0x2d6e0`）。
+const (
+	SabotageLoyaltyDiv = 10  // 民眾忠誠：− RND(魅力 ÷ 10)
+	SabotageFloodDiv   = 5   // 洪水率：  ＋ RND(魅力 ÷ 5)
+	SabotageLandDiv    = 12  // 土地價值：− RND(魅力 ÷ 12)
+	SabotageRiceBase   = 300 // 米：− 米 × 100 ÷ (RND(魅力) + 300)
+	SabotageGoldBase   = 500 // 金：− 金 × 100 ÷ (RND(魅力) + 500)
+	SabotageScale      = 100 // 上面兩式的係數，從記憶體讀出來是 100
+)
+
+// Sabotage 是計略得手之後對目標郡下的五刀（`L0`、`0x2d6e0`）。
+//
+// **每一刀的量都跟著使者的魅力走**，而且五刀一起下——原版沒有把它們
+// 拆成不同的計謀。remake 把它掛在「策反人民」底下（`L2`：碼裡沒有字串
+// 把這支常式綁到手冊那五個名字裡的哪一個）。
+func (g *State) Sabotage(target, envoyCharm int) {
+	p := g.Prefecture(target)
+	if p == nil {
+		return
+	}
+	roll := func(n, salt int) int {
+		if n < 1 {
+			n = 1
+		}
+		return g.Roll(n, target, envoyCharm, salt)
+	}
+	p.PublicLoyalty = uint8(clampTo(
+		int(p.PublicLoyalty)-roll(envoyCharm/SabotageLoyaltyDiv, 1), 100))
+	p.FloodRate = uint8(clampTo(
+		int(p.FloodRate)+roll(envoyCharm/SabotageFloodDiv, 2), 100))
+	p.LandValue = uint8(clampTo(
+		int(p.LandValue)-roll(envoyCharm/SabotageLandDiv, 3), 100))
+	p.Rice -= p.Rice * SabotageScale / (roll(envoyCharm, 4) + SabotageRiceBase)
+	p.Gold -= p.Gold * SabotageScale / (roll(envoyCharm, 5) + SabotageGoldBase)
 }

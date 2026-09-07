@@ -94,7 +94,7 @@ type faithful struct {
 func (f *faithful) Mode() Mode           { return f.mode }
 func (f *faithful) Name() string         { return f.name }
 func (f *faithful) Derived() bool        { return false }
-func (f *faithful) Coverage() (int, int) { return 15, 18 }
+func (f *faithful) Coverage() (int, int) { return 16, 18 }
 
 // Plan 只發出已經解出來的那一種行為。
 //
@@ -224,6 +224,12 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 			out = append(out, o)
 			purse -= game.CostHeadhunt
 		}
+		// 計略（表 `0x56f4`）：**軍師本人要在這個郡**，機率隨等級
+		// 10／12.5／20 %；目標是**全圖**任何一個敵郡，使者取本郡魅力
+		// 最高的人。
+		if o, ok := plot(g, p, id); ok {
+			out = append(out, o)
+		}
 	}
 	return out
 }
@@ -236,6 +242,7 @@ const (
 	tableReward    = 0x5654 // 賞賜金帛
 	tableRice      = 0x55d4 // 買入米糧
 	tableHeadhunt  = 0x56d4 // 挖角
+	tablePlot      = 0x56f4 // 計略
 )
 
 // aiBudgetPercent 是「本回合預算佔郡的金的百分之幾」（`L0`、`[base]`）。
@@ -426,6 +433,72 @@ func headhuntBar(level int) int {
 		return 3
 	}
 	return 1
+}
+
+// plot 是「計略」（表 `0x56f4`，`L0`、`[base]`）。
+//
+//	等級 0–2 不做（三格空操作）
+//	RND(10 / 8 / 5) != 0 → 不做      ; 等級 3／4／5 ＝ 10 % / 12.5 % / 20 %
+//	沒有軍師、或軍師不在這個郡 → 不做
+//	掃全部 42 個郡，取「有主而且不是自己」的，隨機挑一個
+//	使者 ＝ 本郡守軍裡魅力最高的
+//
+// 成敗與效果在 `game.PlotScore`／`game.Sabotage`。
+func plot(g *game.State, prefecture int, id state.FactionID) (game.PlotOrder, bool) {
+	level := g.AILevel(id)
+	if level < 3 {
+		return game.PlotOrder{}, false
+	}
+	chief := g.Chief(id)
+	if chief == nil || chief.Location != prefecture {
+		return game.PlotOrder{}, false
+	}
+	if g.Roll(plotRange(level), int(id), prefecture, tablePlot) != 0 {
+		return game.PlotOrder{}, false
+	}
+	envoy := mostCharmingHere(g, id, prefecture)
+	if envoy == nil {
+		return game.PlotOrder{}, false
+	}
+	var targets []int
+	for _, q := range g.Prefectures() {
+		if q.Owned() && q.Owner != id {
+			targets = append(targets, q.ID)
+		}
+	}
+	if len(targets) == 0 {
+		return game.PlotOrder{}, false
+	}
+	to := targets[g.Roll(len(targets), int(id), prefecture, tablePlot, 1)]
+	return game.PlotOrder{
+		At: prefecture, To: to, What: game.PlotIncite, Envoy: envoy.Index,
+	}, true
+}
+
+// plotRange 是 `RND(n) == 0` 裡的 n：等級 3／4／5 ＝ 10／8／5。
+func plotRange(level int) int {
+	switch level {
+	case 3:
+		return 10
+	case 4:
+		return 8
+	}
+	return 5
+}
+
+// mostCharmingHere 是本郡守軍裡魅力最高的一位（**不看君主在不在**，
+// 與 `mostCharming` 那個「指定太守」用的不同）。
+func mostCharmingHere(g *game.State, id state.FactionID, prefecture int) *game.General {
+	var best *game.General
+	for _, x := range g.Garrison(prefecture) {
+		if x.Faction != id {
+			continue
+		}
+		if best == nil || x.Charm > best.Charm {
+			best = x
+		}
+	}
+	return best
 }
 
 // garrisonIndices 是這一郡守軍的槽號，照清單順序。
