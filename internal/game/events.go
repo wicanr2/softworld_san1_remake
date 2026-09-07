@@ -200,17 +200,42 @@ func (g *State) spring() []Event {
 		}
 	}
 	out = append(out, g.comeOfAge()...)
+	// **土地價值每個春月自己掉**（`0x15c96`，`L0`）：`−RND(土地價值 ÷ 10)`。
+	// 逐郡跑，無主的郡也跑。這是「土地開發要一直做」的原因——
+	// 少了它，一次開發到頂就永遠不用再管。
 	for i := range g.prefectures {
 		p := &g.prefectures[i]
-		if !p.Owned() {
-			continue
-		}
-		if g.roll(int(Spring), p.ID) < g.disasterChance(p)/3 {
+		p.LandValue = uint8(LandValueDecay(int(p.LandValue),
+			g.roll(int(Spring), p.ID, 8)%max(1, int(p.LandValue)/10+1)))
+	}
+	// **地震：每個春月 1/3 的機率，落在隨機一個郡**（`0x162d2`，`L0`）。
+	// 不看民眾忠誠也不看土地價值——那道「天災多因人怨」的門檻是瘟疫的。
+	if g.roll(int(Spring), 0, 10)%QuakeChance == 0 {
+		id := g.roll(int(Spring), 0, 11)%state.PrefectureCount + 1
+		if p := g.Prefecture(id); p != nil && p.Owned() {
 			g.scale(p, 100-TuneQuakeLoss)
 			out = append(out, Event{p.ID, tf("ev.quake", placeName(p.Name))})
 		}
 	}
 	return out
+}
+
+// QuakeChance 是地震的機率分母（`0x162d2`：`RND(3) == 0`，`L0`）。
+const QuakeChance = 3
+
+// LandValueDecay 是土地價值每個春月的自然衰減（`0x15c96`，`L0`）：
+//
+//	土地價值 ← 土地價值 − RND(土地價值 ÷ 10)
+//
+// roll 是 `RND(土地價值 ÷ 10)`。**衰減與郡有沒有主無關**，
+// 而且值越高掉越多——所以土地價值會停在「開發速度 ＝ 衰減速度」的地方，
+// 不會一路到 100 就不動。
+func LandValueDecay(landValue, roll int) int {
+	v := landValue - roll
+	if v < 0 {
+		v = 0
+	}
+	return v
 }
 
 // comeOfAge 是春天的「新血出現」（說明書 p.36）。

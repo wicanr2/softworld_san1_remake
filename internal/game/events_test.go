@@ -268,3 +268,36 @@ func TestPriceMovesEveryMonth(t *testing.T) {
 		t.Errorf("十二個月只出現 %d 種物價，範圍應該鋪得開：%v", len(seen), vs)
 	}
 }
+
+// TestLandValueDecays 釘住土地價值每個春月自己掉（`0x15c96`，`L0`）。
+//
+// **少了這一條，土地開發是一次性的**：開到 100 就永遠不用再管，
+// 而原版的內政是每個月都要做的事。畫面上看不出差別——土地價值欄
+// 停在 100 看起來完全正常。
+func TestLandValueDecays(t *testing.T) {
+	if got := LandValueDecay(100, 7); got != 93 {
+		t.Errorf("100 掉 7 之後是 %d，應該是 93", got)
+	}
+	if got := LandValueDecay(3, 9); got != 0 {
+		t.Errorf("掉到負的應該夾成 0，得到 %d", got)
+	}
+
+	g := newGame(t)
+	// 先把幾個郡的土地價值拉滿，走三個春月看它掉下來。
+	for id := 1; id <= 5; id++ {
+		g.Prefecture(id).LandValue = 100
+	}
+	for m := 1; m <= 3; m++ {
+		g.Date = Date{Year: 190, Month: m}
+		g.EndMonth()
+	}
+	dropped := 0
+	for id := 1; id <= 5; id++ {
+		if g.Prefecture(id).LandValue < 100 {
+			dropped++
+		}
+	}
+	if dropped == 0 {
+		t.Error("走過三個春月，五個滿檔的郡一個都沒掉——衰減沒有生效")
+	}
+}

@@ -507,9 +507,10 @@ const (
 // `預算 ＝ 郡的金 × 係數 ÷ 100`，係數表在 `DS:0x5714`，
 // 24 筆 ＝ 6 個等級 × 4 個相位（`docs/mechanics/70-ai` §2.14）。
 //
-// **這兩張表的係數不隨相位變**，所以「相位是什麼」（`es:[0x3f08] mod 4`，
-// 還沒解）不影響這裡。會隨相位變的是 `0x5514` 與 `0x56d4`，
-// 而 `0x5514` 八格全是空操作。
+// **這四張表的係數不隨季節變**，所以這裡不必看季節。
+// 會隨季節變的是 `0x5514` 與 `0x56d4`（挖角）——`es:[0x3f08]` 就是季節
+// （`docs/re/06`），而 `0x5514` 八格全是空操作，所以只有挖角受影響
+// （`HeadhuntBudget`）。
 var aiBudgetPercent = map[int][6]int{
 	tableArms:      {2, 2, 2, 2, 2, 2},
 	tableConscript: {30, 30, 40, 50, 50, 50},
@@ -663,6 +664,12 @@ func headhunt(g *game.State, prefecture int, id state.FactionID, purse int) (gam
 	if level < 3 || purse < game.CostHeadhunt {
 		return game.HeadhuntOrder{}, false
 	}
+	// **挖角的預算按季節開關**（係數表 `DS:0x5714`，`L0`）：某些
+	// （等級, 季節）組合給 0%，那個季節就挖不了角。等級越高開放的
+	// 季節越多。
+	if HeadhuntBudget(level, g.Date.Season()) == 0 {
+		return game.HeadhuntOrder{}, false
+	}
 	if lord := g.Lord(id); lord == nil || lord.Location != prefecture {
 		return game.HeadhuntOrder{}, false
 	}
@@ -681,6 +688,28 @@ func headhunt(g *game.State, prefecture int, id state.FactionID, purse int) (gam
 }
 
 // headhuntBar 是 `RND(10) > K` 裡的 K：等級 3／4／5 ＝ 6／3／1。
+// HeadhuntBudget 是挖角這一季的預算百分比（係數表 `DS:0x5714`，`L0`）。
+//
+// 0 表示這個季節不挖角。等級 0–2 一律 0（那三格是空操作），
+// 等級 3 只有冬天、等級 4 是夏天與冬天、等級 5 除了春天都可以。
+//
+// **不是「機率低」是「完全不做」**——係數 0 算出來的預算是 0，
+// 而挖角要 100 金。
+func HeadhuntBudget(level int, season game.Season) int {
+	if level < 3 || season < 0 || season > 3 {
+		return 0
+	}
+	open := map[int][4]bool{
+		3: {false, false, false, true},
+		4: {false, true, false, true},
+		5: {false, true, true, true},
+	}[level]
+	if !open[season] {
+		return 0
+	}
+	return 20
+}
+
 func headhuntBar(level int) int {
 	switch level {
 	case 3:

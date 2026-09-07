@@ -654,3 +654,35 @@ func TestFaithfulAINeedsItsOwnEdition(t *testing.T) {
 		}
 	}
 }
+
+// TestHeadhuntFollowsTheSeason 釘住挖角的預算按季節開關
+// （係數表 `DS:0x5714`，`L0`）。
+//
+// **`es:[0x3f08]` 是季節**（`docs/re/06`），所以那張表的「四個相位」
+// 就是四季。某些（等級, 季節）組合的係數是 0——**那不是「機率低」是
+// 「完全不做」**，因為預算 0 付不起 100 金的挖角費。
+func TestHeadhuntFollowsTheSeason(t *testing.T) {
+	want := map[int][4]bool{
+		0: {false, false, false, false},
+		1: {false, false, false, false},
+		2: {false, false, false, false},
+		3: {false, false, false, true},
+		4: {false, true, false, true},
+		5: {false, true, true, true},
+	}
+	for lvl, seasons := range want {
+		for s := 0; s < 4; s++ {
+			got := HeadhuntBudget(lvl, game.Season(s)) > 0
+			if got != seasons[s] {
+				t.Errorf("等級 %d 季節 %d：挖不挖角 ＝ %v，原版是 %v",
+					lvl, s, got, seasons[s])
+			}
+		}
+	}
+	// 春天（季節 0）任何等級都不挖角——這是表裡唯一一整欄都是 0 的。
+	for lvl := 0; lvl <= 5; lvl++ {
+		if HeadhuntBudget(lvl, game.Spring) != 0 {
+			t.Errorf("等級 %d 在春天不該挖角", lvl)
+		}
+	}
+}
