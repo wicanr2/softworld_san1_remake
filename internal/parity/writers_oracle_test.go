@@ -75,7 +75,10 @@ func TestZZDumpCode(t *testing.T) {
 	defer o.Close()
 
 	bootToGame(t, o, seedMas)
-	dumpImage(t, o, 0x00b000, 0x01f000, "code")
+	// 範圍要蓋到主程式全部的碼段。`0x01f000` 那個上界是最初隨手取的，
+	// 而外交（`2c21:1b56` ＝ 線性 `0x02dd66`）與交戰都落在它外面——
+	// 讀不到的原因是 dump 太短，不是那段碼不在記憶體裡。
+	dumpImage(t, o, 0x00b000, 0x03a000, "code")
 }
 
 // TestZZHookTraining 攔「訓練兵士」那支常式，讀它的參數與呼叫端。
@@ -156,7 +159,10 @@ func TestZZWhoWritesTheTables(t *testing.T) {
 
 	base := bootToGame(t, o, seedMas)
 	// **碼段和量到的位址要出自同一次執行**，否則對不上。
-	dumpImage(t, o, 0x00b000, 0x01f000, "code")
+	// 範圍要蓋到主程式全部的碼段。`0x01f000` 那個上界是最初隨手取的，
+	// 而外交（`2c21:1b56` ＝ 線性 `0x02dd66`）與交戰都落在它外面——
+	// 讀不到的原因是 dump 太短，不是那段碼不在記憶體裡。
+	dumpImage(t, o, 0x00b000, 0x03a000, "code")
 	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
 	nGen := state.GeneralTableSize
 	_ = state.MasterRecordSize
