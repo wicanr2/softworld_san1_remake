@@ -110,6 +110,29 @@ func TestSabotageMatchesTheOriginal(t *testing.T) {
 	}
 	o.OnCall(addr(0x0e608), func(o *oracle.Oracle) { gateAX[o.AX()]++ })
 
+	// **逐關計數**：前四輪只數頭尾，看不出斷在哪。整條鏈是
+	//
+	//	0xe5a9 RND(5)==0        → 0xe5dd 有軍師 → 0xe5fd 軍師在本郡
+	//	0xe605 空殼（AX=6）     → 0xe610 建候選表 → 0xe618 挑目標並執行
+	//	  0xe836 抽中目標 → 0xe853 選使者 → 0xe892 成敗判定
+	//	  0xe89a AX==0 才動手 → 0xe8ba 五刀（0x2d6e0）
+	picked, rolled := 0, 0
+	rollAX := map[uint16]int{}
+	var lastMine, lastTarget, lastCharm int
+	o.OnCall(addr(0x0e836), func(*oracle.Oracle) { picked++ })
+	o.OnCall(addr(0x0e892), func(o *oracle.Oracle) {
+		rolled++
+		lastMine, lastTarget, lastCharm =
+			int(o.StackWord(0)), int(o.StackWord(1)), int(o.StackWord(2))
+	})
+	o.OnCall(addr(0x0e89a), func(o *oracle.Oracle) {
+		rollAX[o.AX()]++
+		if o.AX() != 0 {
+			t.Logf("成敗判定：我方郡 %d 打目標 %d，使者魅力 %d，回 %d（非 0 ＝ 沒得手）",
+				lastMine, lastTarget, lastCharm, o.AX())
+		}
+	})
+
 	charm, target := 0, 0
 	calls := 0
 	o.OnCall(addr(0x2d6e0), func(o *oracle.Oracle) {
@@ -181,6 +204,8 @@ func TestSabotageMatchesTheOriginal(t *testing.T) {
 		}
 	}
 
+	t.Logf("逐關：抽中目標 %d 次、成敗判定 %d 次（回傳分布 %v）",
+		picked, rolled, rollAX)
 	t.Logf("六個月：亂數 %d 次、計略常式進去 %d 次、"+
 		"空殼那道門的 AX 分布 %v、計略得手 %d 次、五刀共 %d 次，%d 次對不上",
 		rnd, entered, gateAX, calls, cuts, bad)
