@@ -86,8 +86,12 @@ func (g *State) Search(prefectureID, generalIndex int, by state.FactionID) (foun
 	if hidden == nil {
 		return nil, nil // 這裡真的沒有人才——不是錯誤
 	}
-	chance := clampTo(int(x.Intel)/TuneSearchIntel, 95)
-	if g.roll(prefectureID, x.Index, hidden.Index) >= chance {
+	// **門檻照原版**（`SearchTierFor`，`L1`、`0xcc86`）：
+	// 尋訪者的謀略要**大於** `RND(Spread) + Floor`。三個常數隨 AI 等級變，
+	// 玩家這一邊照等級 0 那一組（`L2`：玩家的常式沒有單獨讀過）。
+	tier := SearchTierFor(g.aiLevelOf(by))
+	bar := g.roll(prefectureID, x.Index, hidden.Index)%tier.Spread + tier.Floor
+	if int(x.Intel) <= bar {
 		return nil, nil
 	}
 	hidden.Status = state.StatusAvailable

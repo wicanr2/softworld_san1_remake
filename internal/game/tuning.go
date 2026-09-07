@@ -32,7 +32,9 @@ const (
 	// （說明書 p.20）。實際損耗 ＝ base × (100 − 魅力) ÷ 100。
 	TuneTransportLoss = 20
 
-	// TuneSearchIntel：尋訪人才的成功率 ＝ 謀略 ÷ intel（百分比上限 95）。
+	// ⚠ TuneSearchIntel 已被原版的三張表取代（`L1`、`0xcd20` 起六支）：
+	// 尋訪比的是「謀略 > RND(Spread) + Floor」，而三個常數都隨 AI 等級變，
+	// 見 `SearchTierFor`。留著只為讓 `docs/design/02` 的對照表讀得懂。
 	TuneSearchIntel = 1
 
 	// ⚠ TuneRecruitCharm 已被原版的公式取代（`L0`、`0xce8c`）：

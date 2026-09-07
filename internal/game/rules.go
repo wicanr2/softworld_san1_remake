@@ -251,16 +251,42 @@ func AffairsTierFor(level int) AffairsTier {
 	return affairsTiers[level]
 }
 
-// 尋訪人才的門檻（`L0`、`[base]`）。
+// SearchTier 是尋訪人才的三個常數（`L1`、`[base]`）。
 //
-// 原版：`門檻 = RND(65) + 30`，尋訪者的智要**大於**它才算成功
-// （`0xcd38`／`0xccd2`）。所以智 95 一定成功、智 30 一定失敗。
+// 六支分派常式在 `0xcd20` 起（間隔 `0x3a`），每一支的形狀相同而**三個
+// 立即數都隨等級變**：
+//
+//	RND(10) <= Bar → 這回合不做
+//	門檻 ＝ RND(Spread) ＋ Floor
+//	尋訪者的謀略 > 門檻 → 找到一位身分 9 的人，把他改成身分 8
+//
+// | 等級 | 0 | 1 | 2 | 3 | 4 | 5 |
+// |---|---|---|---|---|---|---|
+// | Bar | 7 | 7 | 7 | 6 | 5 | 4 |
+// | Spread | 65 | 65 | 65 | 45 | 20 | 20 |
+// | Floor | 30 | 30 | 30 | 30 | 30 | 15 |
+//
+// 等級 0 的門檻是 30–94（謀略 95 才穩），等級 5 是 15–34——**高等級的
+// 電腦幾乎每次尋訪都會找到人**，而且出手的機率從 20 % 升到 50 %。
 //
 // 說明書只說「負責尋訪的將領謀略越高，成功的機率越大」。
-const (
-	SearchIntelFloor  = 30
-	SearchIntelSpread = 65
-)
+type SearchTier struct{ Bar, Spread, Floor int }
+
+var searchTiers = [6]SearchTier{
+	{7, 65, 30}, {7, 65, 30}, {7, 65, 30},
+	{6, 45, 30}, {5, 20, 30}, {4, 20, 15},
+}
+
+// SearchTierFor 取一個 AI 等級的尋訪常數，越界夾住。
+func SearchTierFor(level int) SearchTier {
+	if level < 0 {
+		level = 0
+	}
+	if level >= len(searchTiers) {
+		level = len(searchTiers) - 1
+	}
+	return searchTiers[level]
+}
 
 // Weapons／ArmsOf 是武裝度與武器數之間的換算。
 //

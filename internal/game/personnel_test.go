@@ -10,14 +10,26 @@ import (
 // TestSearchThreshold 釘住尋訪的門檻與命中的效果。
 //
 // 原版的常式（`0xcc86`）掃全部 350 人，找**所在郡是本郡且身分 9
-// （在野未露面）**的；尋訪者的智要**大於 `RND(65)+30`**（30–94）才算
+// （在野未露面）**的；尋訪者的智要**大於 `RND(Spread)+Floor`** 才算
 // 成功，成功的話那個人身分 9 → 8、勢力設成 `0xFF`。
 //
-// 說明書只說「謀略越高成功機率越大」——**門檻是一個 30–94 的亂數**是
-// 碼裡才有的。
+// **三個常數都隨 AI 等級變**（`SearchTierFor`，`L1`）：等級 0 的門檻是
+// 30–94，等級 5 是 15–34；出手的機率也從 20 % 升到 50 %。
+// 說明書只說「謀略越高成功機率越大」。
 func TestSearchThreshold(t *testing.T) {
-	if lo, hi := SearchIntelFloor, SearchIntelFloor+SearchIntelSpread; lo != 30 || hi != 95 {
-		t.Errorf("尋訪的門檻範圍是 %d–%d，原版是 30–94", lo, hi-1)
+	for _, c := range []struct{ level, bar, spread, floor int }{
+		{0, 7, 65, 30}, {1, 7, 65, 30}, {2, 7, 65, 30},
+		{3, 6, 45, 30}, {4, 5, 20, 30}, {5, 4, 20, 15},
+	} {
+		got := SearchTierFor(c.level)
+		if got.Bar != c.bar || got.Spread != c.spread || got.Floor != c.floor {
+			t.Errorf("等級 %d 的尋訪常數是 %+v，應該是 (%d, %d, %d)",
+				c.level, got, c.bar, c.spread, c.floor)
+		}
+	}
+	// 越界要夾住，不能索引出界。
+	if SearchTierFor(-1) != SearchTierFor(0) || SearchTierFor(99) != SearchTierFor(5) {
+		t.Error("等級越界沒有夾住")
 	}
 }
 

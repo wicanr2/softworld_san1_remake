@@ -217,9 +217,11 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		if best := mostCharming(g, id, p); best != nil && best.Index != gov.Index {
 			out = append(out, game.AppointGovernorOrder{At: p, Target: best.Index})
 		}
-		// 尋訪人才（表 `0x5614`）：`RND(10) > 7`，也就是 20 %。
-		// **機率不隨等級變**（六個項目都推 10）。
-		if g.Roll(10, int(id), p, 0x5614) > 7 && afford(game.CostSearch) {
+		// 尋訪人才（表 `0x5614`）：`RND(10) > Bar[等級]`。
+		// **三個常數都隨等級變**（`game.SearchTierFor`，`L1`）：
+		// 出手的機率從 20 % 升到 50 %，門檻從 30–94 降到 15–34。
+		if g.Roll(10, int(id), p, 0x5614) > game.SearchTierFor(aiLevel).Bar &&
+			afford(game.CostSearch) {
 			out = append(out, game.SearchOrder{At: p, General: gov.Index})
 		}
 		// 登用人才（表 `0x5634`）：掃本郡身分 8（在野露面）的人。
