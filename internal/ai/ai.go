@@ -751,7 +751,9 @@ func headhuntBar(level int) int {
 //	掃全部 42 個郡，取「有主而且不是自己」的，隨機挑一個
 //	使者 ＝ 本郡守軍裡魅力最高的
 //
-// 成敗與效果在 `game.PlotScore`／`game.Sabotage`。
+// **電腦諸侯只會用偽書使疑**（`0x0e79e` 呼叫 `0x2d1fa`）：五種計謀裡
+// 只有這一種接在電腦的決策表底下，效果是壓低目標郡武將的忠誠。
+// 成敗與效果在 `game.PlotScore`／`game.Forgery`。
 func plot(g *game.State, prefecture int, id state.FactionID) (game.PlotOrder, bool) {
 	level := g.AILevel(id)
 	if level < 3 {
@@ -779,7 +781,7 @@ func plot(g *game.State, prefecture int, id state.FactionID) (game.PlotOrder, bo
 	}
 	to := targets[g.Roll(len(targets), int(id), prefecture, tablePlot, 1)]
 	return game.PlotOrder{
-		At: prefecture, To: to, What: game.PlotIncite, Envoy: envoy.Index,
+		At: prefecture, To: to, What: game.PlotForgery, Envoy: envoy.Index,
 	}, true
 }
 

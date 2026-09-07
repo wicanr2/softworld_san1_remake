@@ -265,10 +265,11 @@ const (
 // **每一刀的量都跟著使者的魅力走**，而且五刀一起下——原版沒有把它們
 // 拆成不同的計謀。
 //
-// **掛在「策反人民」底下是量到的**（`L0`）：`0x2d6e0` 只有兩個呼叫端，
+// **掛在「策反人民」底下是量到的**（`L0`）：`0x2d6e0` 的呼叫端
 // `0x2d6d7` 在策反人民那支常式裡（`0x2d34c`–`0x2d88c`，選單字串
-// `<策反人民>派細作到那一郡` 在 `0x2d46c`），`0x0e8ba` 是電腦諸侯的
-// 計略。兩邊都傳人物 offset 11（魅力）。
+// `<策反人民>派細作到那一郡` 在 `0x2d46c`），傳的是人物 offset 11
+// （魅力）。**這一刀只有玩家下得了**——電腦諸侯那條鏈用的是偽書使疑
+// （`Forgery`，`docs/mechanics/70-ai` §2.13.7）。
 func (g *State) Sabotage(target, envoyCharm int) {
 	p := g.Prefecture(target)
 	if p == nil {
@@ -304,6 +305,9 @@ const ForgeryScale = 250
 //
 // 原版逐一掃該郡的武將名單（`0xf17:0x0aae` 取名單，`0x2d21e` 起的迴圈），
 // **不挑身分**——君主在自己的郡裡也照算。
+//
+// **電腦諸侯的「計略」也是這一支**（`0x0e79e`），五種計謀裡只有它接在
+// 電腦的決策表底下（`docs/mechanics/70-ai` §2.13.7）。
 func (g *State) Forgery(target, envoyCharm int) {
 	dst := g.Prefecture(target)
 	if dst == nil {
