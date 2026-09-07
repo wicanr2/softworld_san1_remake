@@ -60,19 +60,17 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 			Pix: make([]byte, assets.ScreenW*assets.ScreenH)}
 	}
 
-	// 場地：地形在下、部隊在上。
-	field := assets.BattleField(ab.tiles, info.Field, 0)
-	// **從 56 起，不是從 54 起**：54–55 那兩格是場地的左緣黑線，由
-	// `LeftColumn` 畫，而且只畫到 y ＝ 260；連著場地一起抄會把黑一路
-	// 抄到畫面下緣，蓋掉本來該露出來的底紋。
-	for y := assets.BattleFieldTop; y < assets.ScreenH; y++ {
-		for x := assets.FieldOriginX; x <= assets.BattleFieldRight && x < assets.ScreenW; x++ {
-			im.Set(x, y, field.At(x, y))
-		}
-	}
+	// 場地：先畫邊框再蓋圖塊——**順序照原版**（`0x225c8` 的邊框迴圈在
+	// 地形之前）。反過來畫的話下緣那兩列白線會壓在地形上。
+	//
+	// ⚠ **格子以外的地方不塗黑**：奇數欄往下錯開 16，上下各留一塊
+	// 沒有格子的空隙，而原版那裡露出來的是**底紋**不是黑色
+	// （基準畫面上 x ≥ 106、y 36–49 那一塊是黃青棋盤）。
 	if ab.top != nil {
 		im.Blit(ab.top, 0, 0)
 	}
+	im.FieldEdges()
+	im.BlitField(ab.tiles, info.Field)
 	ab.drawUnits(im, b, v)
 
 	// 左欄與三個面板：先塗底色再畫下凹的外框。

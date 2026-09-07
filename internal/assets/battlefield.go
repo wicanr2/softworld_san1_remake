@@ -96,6 +96,16 @@ func BattleField(tiles []*Image, field []byte, bg byte) *Image {
 	for i := range im.Pix {
 		im.Pix[i] = bg
 	}
+	im.BlitField(tiles, field)
+	return im
+}
+
+// BlitField 把圖塊畫到既有的圖上，格子以外的地方不動。
+//
+// 場地四周的邊框（`FieldEdges`）要在圖塊**之前**畫：原版就是那個順序，
+// 所以邊框在錯開的欄位那裡會被圖塊蓋掉一半。反過來畫的話下緣那兩列
+// 白線會壓在地形上，與原版差五百多格。
+func (im *Image) BlitField(tiles []*Image, field []byte) {
 	// **順序有差**：奇數欄往下錯開 16，而圖塊高 32——後畫的會蓋掉
 	// 先畫的一半。原版逐欄畫（`0x22704` 的兩層迴圈外層是欄），
 	// 照列畫出來的疊法不一樣，格子邊緣就會對不上。
@@ -114,7 +124,6 @@ func BattleField(tiles []*Image, field []byte, bg byte) *Image {
 			im.Blit(tiles[t], x, y)
 		}
 	}
-	return im
 }
 
 // 部隊的標記是**旗幟**（`DATA1` 的 `WFLAG*`）。

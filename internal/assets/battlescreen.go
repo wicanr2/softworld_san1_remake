@@ -222,3 +222,42 @@ func PoemScreen(data1 *Container) (*Image, error) {
 	}
 	return im, nil
 }
+
+// 場地四周的階梯狀邊框。
+//
+// 原版每 96 像素（兩欄）畫一組：上緣 `0x21ee2`、下緣 `0x220f0`，
+// 寬版面各叫六次，x ＝ 96i + 56，上緣的 y ＝ 36、下緣的 y ＝ 228。
+// 兩支都是把黑線畫在上與左、白線畫在下與右——**奇數欄低 16 像素**，
+// 所以每一組都是一個階梯。
+//
+// 端點逐條抄自那兩支常式；差一格的參差就是立體感的來源。
+func (im *Image) fieldEdgeTop(x, y int) {
+	im.vline(x-2, y-2, y+15, 0)
+	im.vline(x-1, y-2, y+15, 0)
+	im.hline(x-2, x+49, y-2, 0)
+	im.hline(x-2, x+48, y-1, 0)
+	im.vline(x+48, y, y+15, 15)
+	im.vline(x+49, y-1, y+14, 15)
+	im.hline(x+50, x+95, y+14, 0)
+	im.hline(x+49, x+95, y+15, 0)
+}
+
+func (im *Image) fieldEdgeBottom(x, y int) {
+	im.vline(x-1, y+17, y+32, 0)
+	im.vline(x-2, y+16, y+31, 0)
+	im.hline(x-1, x+49, y+32, 15)
+	im.hline(x-2, x+49, y+33, 15)
+	im.vline(x+48, y+16, y+33, 15)
+	im.vline(x+49, y+16, y+33, 15)
+	im.hline(x+48, x+95, y+16, 15)
+	im.hline(x+48, x+94, y+17, 15)
+}
+
+// FieldEdges 畫整個場地的邊框。
+func (im *Image) FieldEdges() {
+	for i := 0; i < FieldCols/2; i++ {
+		x := i*96 + FieldOriginX
+		im.fieldEdgeTop(x, FieldOriginY)
+		im.fieldEdgeBottom(x, FieldOriginY+6*TileH)
+	}
+}
