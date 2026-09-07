@@ -305,6 +305,9 @@ func (f *Field) offset(h Hex) (int, int) {
 	return x, y
 }
 
+// ToOffset 把軸座標換成矩形陣列的欄列。畫面用它算像素位置。
+func ToOffset(h Hex) (x, y int) { return h.Q, h.R + (h.Q-(h.Q&1))/2 }
+
 // FromOffset 把矩形座標換回軸座標。畫面與載入器用它。
 func FromOffset(x, y int) Hex { return Hex{Q: x, R: y - (x-(x&1))/2} }
 

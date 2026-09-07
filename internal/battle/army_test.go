@@ -192,3 +192,40 @@ func TestOrdersFollowManual(t *testing.T) {
 		t.Error("主守軍與助守軍不是攻方")
 	}
 }
+
+// TestOriginalIndex 釘住與原版部隊陣列的換算。
+//
+// 軍力照行動順序（主守、助守、主攻、助攻），隊伍照紮營順序
+// （中軍、先鋒、左軍、右軍、後軍）——旗幟的組名表與旗面上的字
+// 都是這個順序（`internal/assets/battlefield.go`）。
+func TestOriginalIndex(t *testing.T) {
+	for s, want := range map[Side]int{
+		MainDefender: 0, AidDefender: 1, MainAttacker: 2, AidAttacker: 3,
+	} {
+		if got := s.OriginalIndex(); got != want {
+			t.Errorf("%s 的軍力編號是 %d，想要 %d", s, got, want)
+		}
+	}
+	for f, want := range map[Formation]int{
+		Centre: 0, Vanguard: 1, Left: 2, Right: 3, Rear: 4,
+	} {
+		if got := f.OriginalIndex(); got != want {
+			t.Errorf("%s 的隊伍編號是 %d，想要 %d", f, got, want)
+		}
+	}
+	// 兩個編號合起來就是原版部隊記錄的索引 `軍力×10 + 隊伍`，
+	// 四個軍力各佔十格不重疊。
+	seen := map[int]bool{}
+	for _, s := range SideActionOrder() {
+		for _, f := range ActionOrder() {
+			k := s.OriginalIndex()*10 + f.OriginalIndex()
+			if seen[k] {
+				t.Errorf("%s%s 的槽號 %d 撞號", s, f, k)
+			}
+			seen[k] = true
+		}
+	}
+	if len(seen) != 20 {
+		t.Errorf("只排出 %d 個槽號", len(seen))
+	}
+}

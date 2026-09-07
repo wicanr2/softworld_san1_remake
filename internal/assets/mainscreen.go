@@ -102,10 +102,41 @@ func (im *Image) Set(x, y int, v byte) {
 	im.Pix[y*im.W+x] = v
 }
 
+// FillRect 把一塊矩形塗成同一個顏色。超出邊界的部分裁掉。
+func (im *Image) FillRect(x, y, w, h int, v byte) {
+	for dy := 0; dy < h; dy++ {
+		yy := y + dy
+		if yy < 0 || yy >= im.H {
+			continue
+		}
+		for dx := 0; dx < w; dx++ {
+			xx := x + dx
+			if xx < 0 || xx >= im.W {
+				continue
+			}
+			im.Pix[yy*im.W+xx] = v
+		}
+	}
+}
+
 // Clone 複製一張圖。底圖只拼一次，換色每回合都要重來。
 func (im *Image) Clone() *Image {
 	out := &Image{W: im.W, H: im.H, Pix: make([]byte, len(im.Pix))}
 	copy(out.Pix, im.Pix)
+	return out
+}
+
+// Complement 把每一格的顏色取補數（`^15`），也就是原版的反白。
+//
+// 選到的部隊會閃：原版把反白旗標打開畫一次、關掉再畫一次
+// （`0x275b9`–`0x275ec`，旗標由 `es:[0x2e78]` 的間接呼叫切換）。
+// 紮完寨的基準畫面剛好停在亮的那一格，陳就的中軍就是 `WFLAGA00`
+// 每格 `^15`，360 格逐格相同。
+func (im *Image) Complement() *Image {
+	out := im.Clone()
+	for i, v := range out.Pix {
+		out.Pix[i] = v ^ 0x0F
+	}
 	return out
 }
 

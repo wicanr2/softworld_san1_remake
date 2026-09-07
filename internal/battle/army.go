@@ -282,3 +282,32 @@ func (u *Unit) MovePoints() int {
 
 // MoveMax 是移動力的上限，原版寫死在 `0x2e08f`。
 const MoveMax = 15
+
+// OriginalIndex 是原版部隊陣列裡的軍力編號。
+//
+// 原版把四個軍力排成 主守、助守、主攻、助攻，也就是行動順序
+// （說明書 p.28）：部隊記錄在 `es:[0x3502 + (軍力×10 + 隊伍)×42]`，
+// 旗幟組名表 `DS:0x5da2` 依同一個順序放 `D0`、`D1`、`A0`、`A1`。
+// 對上的證據是紮完寨的基準畫面——主守的周瑜軍掛 `D0`、主攻的陳就軍
+// 掛 `A0`（`internal/assets/battlefield.go`）。
+func (s Side) OriginalIndex() int {
+	for i, v := range SideActionOrder() {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// OriginalIndex 是原版旗幟上的隊伍編號：0–4 依序是中軍、先鋒、
+// 左軍、右軍、後軍，與紮營順序相同（說明書 p.28）。
+//
+// remake 的 `Formation` 照的是行動順序，兩者不同，所以要換算。
+func (f Formation) OriginalIndex() int {
+	for i, v := range DeployOrder() {
+		if v == f {
+			return i
+		}
+	}
+	return -1
+}

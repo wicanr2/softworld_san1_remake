@@ -9,6 +9,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -240,6 +241,7 @@ func DrawTitle(c *Canvas, ts *TitleScreen, sel int) {
 // （`docs/spec/005` §8）。
 type ArtBattle struct {
 	tiles []*assets.Image
+	flags [4][6]*assets.Image
 	top   *assets.Image
 }
 
@@ -250,7 +252,11 @@ func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 	if err != nil {
 		return nil, err
 	}
-	ab := &ArtBattle{tiles: tiles}
+	flags, err := assets.UnitFlags(data1)
+	if err != nil {
+		return nil, err
+	}
+	ab := &ArtBattle{tiles: tiles, flags: flags}
 	if data3 != nil {
 		if i, ok := data3.ByName("MAINMAP1.IMG"); ok {
 			if im, err := assets.DecodeImage(data3.Data(i)); err == nil {
@@ -261,16 +267,55 @@ func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 	return ab, nil
 }
 
-// DrawArtField 畫一個郡的戰場地形。
+// DrawArtField 畫一個郡的戰場：地形與部隊都接原版素材。
 //
-// field 是州郡記錄 offset 55–174 那 120 個位元組。部隊與指令列還是
-// remake 自己畫的——**這一張目前只有地形接上素材**。
-func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte) {
+// field 是州郡記錄 offset 55–174 那 120 個位元組。units 可以是空的，
+// 那就只有地形。highlight 是輪到下令的那一支——原版讓它閃，亮的那半
+// 是**整面旗取補數**（`assets.Image.Complement`）。
+//
+// 兵力牌的數字用 remake 自己的字庫畫，位置與字色照原版
+// （旗下方 15 像素、`DS:0x796a` 的四個色）。
+func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte,
+	units []*battle.Unit, highlight *battle.Unit) {
 	im := assets.BattleField(ab.tiles, field, 0)
 	if ab.top != nil {
 		im.Blit(ab.top, 0, 0)
 	}
+	type plate struct {
+		x, y int
+		text string
+		col  byte
+	}
+	var plates []plate
+	for _, u := range units {
+		if u == nil || !u.Alive() {
+			continue
+		}
+		army, form := u.Side.OriginalIndex(), u.Formation.OriginalIndex()
+		if army < 0 || form < 0 {
+			continue
+		}
+		flag := ab.flags[army][form]
+		if flag == nil {
+			continue
+		}
+		ink, paper := assets.FlagPlateColour[army], byte(0)
+		if u == highlight {
+			flag = flag.Complement()
+			ink, paper = ink^0x0F, paper^0x0F
+		}
+		col, row := battle.ToOffset(u.At)
+		x, y := assets.FlagCell(col, row)
+		im.Blit(flag, x, y)
+		py := y + assets.FlagPlateOffsetY
+		im.FillRect(x, py, assets.FlagPlateW, assets.FlagPlateH, paper)
+		plates = append(plates, plate{x, py,
+			assets.FlagPlateText(u.Soldiers()), ink})
+	}
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{}, draw.Src)
+	for _, p := range plates {
+		c.DrawTextPx(p.x, p.y, p.text, assets.EGAPalette[p.col])
+	}
 	c.DrawText(1, 20, name, color.RGBA{0xFF, 0xFF, 0x55, 0xFF})
 }

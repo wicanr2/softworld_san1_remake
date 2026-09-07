@@ -117,22 +117,28 @@ func BattleField(tiles []*Image, field []byte, bg byte) *Image {
 	return im
 }
 
-// 部隊的標記是**旗幟**（`DATA1` 的 `WFLAG*`，24×15）。
+// 部隊的標記是**旗幟**（`DATA1` 的 `WFLAG*`）。
 //
-// 判準是拿原版紮完寨之後的主戰場，把 `DATA1` 裡的圖逐張去畫面上找：
-// `WFLAGD00`–`WFLAGD03` 四張各有一處 **100% 相符**，位置分別是
-// (304,116)、(304,148)、(352,132)、(352,68)——換算回格子是
-// (5,2)、(5,3)、(6,3)、(6,1)，每一張都在**格子的左上角加 (8, 0)**。
+// 四組旗幟的組名寫在 `DS:0x5da2`：`D0`、`D1`、`A0`、`A1`。載入端
+// （`0x11636`）用 `WFLAG%s%c.IMG` 組出檔名，`%c` 是 `'0'+n`（n 走 0–5），
+// 載進去的槽號是 `20 + 組×6 + n`；畫的那一端（`0x21c01`–`0x21c16`）
+// 算的是同一個式子，而同一支常式前面用 `(組×10 + n) × 42` 去索引部隊
+// 記錄——所以**第一個參數是軍力、第二個是隊伍**。
 //
-// 那四張是主攻軍的四支部隊。畫面上的數字牌對回位置是
-// D00 ＝ 中軍、D01 ＝ 先鋒、D02 ＝ 左軍、D03 ＝ 右軍——**那正好是紮營
-// 的順序**（說明書 p.28：中軍 → 先鋒 → 左軍 → 右軍 → 後軍），
-// 而基準畫面就是照那個順序一個一個紮下去的。所以「旗的編號」是照
-// 隊伍還是照紮的先後，這一張分不出來，不要當成已知。
+// **`D` 是守、`A` 是攻。** 紮完寨的基準畫面上四面綠旗（`D0`）的兵力牌
+// 是 2673／1500／2227／1500，合計 7900，等於右側面板的「周瑜軍　主守軍
+// 四軍 4將　兵 7900」；畫面上唯一的另一個標記牌是 3000，等於左側的
+// 「陳就軍　主攻軍　一軍 1將　兵 3000」，用的是 `A0`。
 //
-// **守軍的標記不是 `WFLAG`**：把 `DATA1` 的 190 張圖整張畫面掃過，
-// 只有 D00–D03 四處 100%；二十四面旗放到每一格上試也只有那四處。
-// 守軍那個洋紅色的牌子要往 `DATA3` 找。
+// 組的顏色：`D0` 淺綠、`D1` 淺青、`A0` 紅／淺紅網點、`A1` 洋紅／淺洋紅
+// 網點，與兵力牌的字色表（`DS:0x796a` ＝ 10、11、12、13）一一對上。
+//
+// 每組六張。0–4 的旗面上各印一個字——**帥、先、左、右、後**，逐像素
+// 讀字模讀出來的，即中軍、先鋒、左軍、右軍、後軍；順序與紮營順序相同
+// （說明書 p.28）。第六張（n ＝ 5）是 16×15 的城門圖示，不是旗。
+//
+// 位置：旗畫在格子左上角加 (8, 0)，兵力牌畫在再往下 15 個像素
+// （`0x21c67` 的 `[bp-4] + 0xf`）。
 const (
 	// FlagW／FlagH 是旗幟的尺寸。
 	FlagW = 24
@@ -140,7 +146,25 @@ const (
 	// FlagOffsetX／Y 是旗幟相對於格子左上角的位移。
 	FlagOffsetX = 8
 	FlagOffsetY = 0
+	// FlagPlateOffsetY 是兵力牌相對於旗幟左上角的 y。
+	FlagPlateOffsetY = FlagH
+	// FlagPlateW／FlagPlateH 是兵力牌那個黑底方塊的大小。
+	// 量自基準畫面：右軍的牌佔 (352,83)–(391,99)，下一列的地形從 100 起。
+	FlagPlateW = 40
+	FlagPlateH = 17
+	// FlagPlateCells 是牌上留幾個字格：原版的格式是 `%5d`
+	// （`DS:0x7ab4`），一格 8 像素，所以四位數的兵力靠右、左邊空一格。
+	FlagPlateCells = 5
+	// FlagUnits 是每組有幾支部隊的旗（隊伍 0–4）。
+	FlagUnits = 5
+	// FlagGate 是每組第六張——城門圖示的編號。
+	FlagGate = 5
+	// GateW 是城門圖示的寬，與旗不同。
+	GateW = 16
 )
+
+// FlagPlateColour 是兵力牌的字色，逐軍力一個（`DS:0x796a`）。
+var FlagPlateColour = [4]byte{10, 11, 12, 13}
 
 // FlagCell 回傳第 (col, row) 格上旗幟的左上角。
 func FlagCell(col, row int) (x, y int) {
@@ -148,7 +172,26 @@ func FlagCell(col, row int) (x, y int) {
 	return x + FlagOffsetX, y + FlagOffsetY
 }
 
-// UnitFlag 取一面旗幟，name 像 `WFLAGD00.IMG`。
+// flagSets 是四組旗幟的組名，順序就是原版部隊陣列的軍力順序：
+// 主守軍、助守軍、主攻軍、助攻軍。
+var flagSets = [4]string{"D0", "D1", "A0", "A1"}
+
+// FlagName 回傳某一支部隊的旗幟項目名。
+//
+// army 是軍力 0–3（主守、助守、主攻、助攻），unit 是原版的隊伍編號：
+// 0–4 依序是中軍、先鋒、左軍、右軍、後軍，5 是城門圖示。
+//
+// ⚠ 這個編號**不是** remake `battle.Formation` 的編號，兩者要換算
+// （`battle.Formation.OriginalIndex`）。
+func FlagName(army, unit int) string {
+	if army < 0 || army >= len(flagSets) || unit < 0 || unit > FlagGate {
+		return ""
+	}
+	return fmt.Sprintf("WFLAG%s%d.IMG", flagSets[army], unit)
+}
+
+// UnitFlag 取一面旗幟，name 像 `WFLAGD00.IMG`。城門圖示（`*5.IMG`）
+// 窄一些，所以只檢查高度。
 func UnitFlag(data1 *Container, name string) (*Image, error) {
 	i, ok := data1.ByName(name)
 	if !ok {
@@ -158,9 +201,29 @@ func UnitFlag(data1 *Container, name string) (*Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	if im.W != FlagW || im.H != FlagH {
-		return nil, fmt.Errorf("assets: %s 是 %d×%d，旗幟應該是 %d×%d",
-			name, im.W, im.H, FlagW, FlagH)
+	if im.H != FlagH || (im.W != FlagW && im.W != GateW) {
+		return nil, fmt.Errorf("assets: %s 是 %d×%d，旗幟應該是 %d×%d 或 %d×%d",
+			name, im.W, im.H, FlagW, FlagH, GateW, FlagH)
 	}
 	return im, nil
+}
+
+// UnitFlags 載入四組共 24 張。
+func UnitFlags(data1 *Container) ([4][6]*Image, error) {
+	var out [4][6]*Image
+	for army := range out {
+		for unit := range out[army] {
+			im, err := UnitFlag(data1, FlagName(army, unit))
+			if err != nil {
+				return out, err
+			}
+			out[army][unit] = im
+		}
+	}
+	return out, nil
+}
+
+// FlagPlateText 是兵力牌上的字：原版用 `%5d` 靠右對齊（`DS:0x7ab4`）。
+func FlagPlateText(soldiers int) string {
+	return fmt.Sprintf("%*d", FlagPlateCells, soldiers)
 }

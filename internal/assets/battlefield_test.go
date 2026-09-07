@@ -171,3 +171,85 @@ func TestUnitFlagsSitOnCells(t *testing.T) {
 		}
 	}
 }
+
+// TestFlagNames 釘住旗幟的命名：組照軍力（守 D、攻 A），數字照原版的
+// 隊伍編號（中軍、先鋒、左軍、右軍、後軍，第六張是城門圖示）。
+func TestFlagNames(t *testing.T) {
+	for _, tc := range []struct {
+		army, unit int
+		want       string
+	}{
+		{0, 0, "WFLAGD00.IMG"}, // 主守軍中軍——基準畫面上驗過
+		{0, 3, "WFLAGD03.IMG"}, // 主守軍右軍
+		{1, 0, "WFLAGD10.IMG"}, // 助守軍
+		{2, 0, "WFLAGA00.IMG"}, // 主攻軍——基準畫面上驗過
+		{3, 5, "WFLAGA15.IMG"}, // 助攻軍的城門圖示
+	} {
+		if got := FlagName(tc.army, tc.unit); got != tc.want {
+			t.Errorf("FlagName(%d,%d) ＝ %q，想要 %q", tc.army, tc.unit, got, tc.want)
+		}
+	}
+	if FlagName(4, 0) != "" || FlagName(0, 6) != "" {
+		t.Error("越界沒有回空字串")
+	}
+	flags, err := UnitFlags(container(t, "DATA1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for army := range flags {
+		for unit, im := range flags[army] {
+			w := FlagW
+			if unit == FlagGate {
+				w = GateW
+			}
+			if im == nil || im.W != w || im.H != FlagH {
+				t.Errorf("軍力 %d 第 %d 張不是 %d×%d", army, unit, w, FlagH)
+			}
+		}
+	}
+}
+
+// TestFlagPlateText 釘住兵力牌的格式：`%5d`，靠右。
+func TestFlagPlateText(t *testing.T) {
+	for _, tc := range []struct {
+		n    int
+		want string
+	}{{2673, " 2673"}, {1500, " 1500"}, {30000, "30000"}, {7, "    7"}} {
+		if got := FlagPlateText(tc.n); got != tc.want {
+			t.Errorf("FlagPlateText(%d) ＝ %q，想要 %q", tc.n, got, tc.want)
+		}
+	}
+}
+
+// TestFlagComplement 釘住反白：守方那面旗在基準畫面上是
+// `WFLAGA00` 每格取補數，360 格逐格相同。
+func TestFlagComplement(t *testing.T) {
+	f, err := os.Open(bfShotPath)
+	if err != nil {
+		t.Skipf("沒有主戰場基準畫面 %s", bfShotPath)
+	}
+	shot, err := imgpng.Decode(f)
+	f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	flag, err := UnitFlag(container(t, "DATA1"), "WFLAGA00.IMG")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv := flag.Complement()
+	const bx, by = 352, 228
+	bad := 0
+	for y := 0; y < inv.H; y++ {
+		for x := 0; x < inv.W; x++ {
+			a := EGAPalette[inv.Pix[y*inv.W+x]&15]
+			b := color.RGBAModel.Convert(shot.At(bx+x, by+y)).(color.RGBA)
+			if a != b {
+				bad++
+			}
+		}
+	}
+	if bad != 0 {
+		t.Errorf("陳就的中軍在 (%d,%d) 有 %d 格對不上取補數後的 WFLAGA00", bx, by, bad)
+	}
+}

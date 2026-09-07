@@ -37,7 +37,7 @@ func main() {
 	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／art（接原版素材的主畫面）／title（主選單）／artfield（接原版素材的戰場地形）／battle（主戰場）")
 	faction := flag.Int("faction", -1, "main 畫面的玩家勢力；−1 ＝ 用第一個在用的勢力")
 	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
-	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫；battle 畫面是先打幾天")
+	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫；battle／artfield 畫面是先打幾天")
 	aiMode := flag.String("ai", "enhanced", "電腦 AI：base／plus／enhanced")
 	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
 	fontPath := flag.String("font", "fonts/unifont.hex.gz", "點陣字型（-png 時才需要）")
@@ -170,7 +170,20 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		if p == nil {
 			return fmt.Errorf("沒有郡 %d", at)
 		}
-		ui.DrawArtField(c, ab, p.Name, p.BattleField)
+		// 部隊要接上原版的旗幟，就得真的有一場戰役：用這個郡自己的
+		// 地形開一場，讓電腦打 `months` 天再畫。
+		b := sampleBattle(at, p.Neighbours, p.BattleField)
+		for d := 0; d < months && !b.Over; d++ {
+			for _, u := range b.Order() {
+				b.AutoTurn(u)
+			}
+			b.EndDay()
+		}
+		var hi *battle.Unit
+		if order := b.Order(); len(order) > 0 {
+			hi = order[0]
+		}
+		ui.DrawArtField(c, ab, p.Name, p.BattleField, b.Units, hi)
 	case "title":
 		c3, err := openContainer(root, "DATA3")
 		if err != nil {
@@ -231,7 +244,7 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		if err != nil {
 			return err
 		}
-		b := sampleBattle(at, p.Neighbours)
+		b := sampleBattle(at, p.Neighbours, p.BattleField)
 		r := battle.NewRunner(b, nil)
 		for d := 0; d < months && !b.Over; d++ {
 			for _, u := range b.Order() {
@@ -355,7 +368,7 @@ func runSaves(dir string, load, saveTo int, sc *state.Scenario, aiMode string, f
 }
 
 // sampleBattle 開一場給畫面用的戰役。
-func sampleBattle(at int, neighbours []int) *battle.Battle {
+func sampleBattle(at int, neighbours []int, field []byte) *battle.Battle {
 	mk := func(n int, name string, war uint8, men int, base int) []battle.Leader {
 		var out []battle.Leader
 		for i := 0; i < n; i++ {
@@ -371,10 +384,15 @@ func sampleBattle(at int, neighbours []int) *battle.Battle {
 	if len(neighbours) > 0 {
 		from = neighbours[0]
 	}
-	return battle.New(battle.Setup{
-		Field: battle.Generate(battle.Params{
+	f, err := battle.Load(field, neighbours)
+	if err != nil {
+		// 劇本沒帶地圖時（自組的局面）退回生成器，它也是決定性的。
+		f = battle.Generate(battle.Params{
 			Prefecture: at, Neighbours: neighbours, LandValue: 60, FloodRate: 40,
-		}),
+		})
+	}
+	return battle.New(battle.Setup{
+		Field:        f,
 		Weather:      battle.Windy,
 		Seed:         uint32(at),
 		Attackers:    mk(8, "攻將", 90, 3000, 0),

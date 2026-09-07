@@ -101,14 +101,36 @@ func (c *Canvas) DrawText(col, row int, s string, fg color.RGBA) int {
 	return x - col
 }
 
+// DrawTextPx 從任意像素座標畫一行字。
+//
+// 接原版素材的畫面上，字要對齊的是圖裡的位置，不是格線——例如戰場
+// 的兵力牌在旗幟下方 15 個像素（`assets.FlagPlateOffsetY`），那不是
+// 列高的倍數。回傳畫掉的寬度。
+func (c *Canvas) DrawTextPx(x, y int, s string, fg color.RGBA) int {
+	x0 := x
+	for _, r := range s {
+		w := cells.RuneWidth(r)
+		if w == 0 {
+			continue
+		}
+		c.drawRunePx(x, y, r, fg)
+		x += w * CellW
+	}
+	return x - x0
+}
+
 // drawRune 畫一個字。字型沒有這個碼位時**什麼都不畫**，只記進 Missing。
 func (c *Canvas) drawRune(col, row int, r rune, fg color.RGBA) {
+	c.drawRunePx(col*CellW, row*CellH, r, fg)
+}
+
+func (c *Canvas) drawRunePx(px, py int, r rune, fg color.RGBA) {
 	g, ok := c.face.Glyph(r)
 	if !ok {
 		c.Missing[r]++
 		return
 	}
-	px, py := col*CellW, row*CellH
+
 	// 字型的高度可能與列高不同（例如 6×10 的小字級放進 16 像素的列）。
 	// 垂直置底對齊，讓基線一致。
 	off := CellH - g.H
