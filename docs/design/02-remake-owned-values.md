@@ -125,8 +125,6 @@
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
 | `TuneArrowDamage` | 6 | 只給了**次數**公式，沒給單次殺傷（相對白刃相接的百分比）|
-| `TuneSiegeBonus` | 25 | 「聯合友軍圍攻」，沒給加成 |
-| `TuneEnragedPenalty` | 30 | 「來犯敵軍攻擊力暫時下降」，沒給幅度 |
 | `TuneCaptureOnDuel` | 60 | 「可能被擒，或死於刀下」，沒給機率 |
 | `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` / `TuneStratagemRange` | 140／20／30／3 | 自動作戰什麼時候該死戰、叫陣、退兵、用計——手冊是寫給玩家看的，沒有這一層 |
 
@@ -140,8 +138,10 @@
 remake 這一層算的是部隊，所以拿加權平均代入，並把「兵種適性 ＋ 地形值」
 換算成相對「陸軍在平原」的百分比（`battle.TerrainFactor`）。
 一次交戰的損失也是量到的（`殺傷 ＝ 兵士數 × 戰力值 ÷ 100`，雙方同時算），
-所以 `TuneHit*` 那一組整組退役。剩下的是弓箭的單次殺傷、圍攻的加成、
-誘敵的減益——那三項手冊都只給了方向。
+所以 `TuneHit*` 那一組整組退役。誘敵與圍攻的三個常數
+（`TuneEnragedPenalty`／`TuneLureDays`／`TuneSiegeBonus`）也退役了——
+那兩招走的是共同的交戰結算，倍率在 `DS:0x81a2`（`docs/re/05` §4.2b–4.5）。
+戰術層剩下的 remake 決定只有弓箭的單次殺傷。
 
 ### 謀略
 

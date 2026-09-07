@@ -437,8 +437,16 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		b.note("%s 對 %s 水淹，折損 %d（%s，%d%%）",
 			u.Name(), t.Name(), loss, terrain, pct)
 	case Lure:
-		t.Enraged = TuneLureDays
-		b.note("%s 誘敵成功，%s 怒火攻心", u.Name(), t.Name())
+		// **誘敵是把敵人引過來打你。** 原版 `0x2b6aa` 播完動畫之後叫共同
+		// 的交戰結算，而且推參數時把攻守對調（`0x2b877` 先推目標再推
+		// 施法者），所以出手的是目標。倍率傳 8（謀略 ≥ 98 時 9），
+		// 兩個都被 `0x2a2c9` 夾成 1 ＝ 100%。
+		//
+		// 划不划算看的是「目標的攻擊力 vs 施法者的防禦力」——引一支弱的
+		// 部隊來撞自己的硬點才是這一招的用法。
+		lost, back := b.exchange(t, u, StrikeMultiplier(LureStrike))
+		b.note("%s 誘敵成功，%s 中計來攻：%s 折損 %d，%s 折損 %d",
+			u.Name(), t.Name(), u.Name(), back, t.Name(), lost)
 	case Trap:
 		t.Trapped = TrapDays(ci, b.roll(TrapSpread), b.roll(TrapSpread))
 		b.note("%s 設陷阱困住 %s，%d 日內無法活動",
@@ -450,9 +458,27 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		b.Rice[side] = b.Rice[side] * keep / 100
 		b.note("%s 燒了 %s 的補給，只剩 %d%%", u.Name(), side, keep)
 	case Siege:
-		n := b.alliesAround(u, target)
-		loss := b.hit(u, t, 100+n*TuneSiegeBonus)
-		b.note("%s 聯合 %d 支友軍圍攻 %s，折損 %d", u.Name(), n, t.Name(), loss)
+		// 原版 `0x2bd49`–`0x2bdfb`：掃目標的六個鄰格，格內有部隊、
+		// **與目標不同陣營**、而且目標的將領人數還大於 0，就各對目標
+		// 打一次交戰，倍率 `DS:0x81a2[0]` ＝ 80。
+		//
+		// **判準是「與目標不同陣營」，不是「不是施法者」**，所以貼著
+		// 目標的施法者自己也會打一次。打光就停——原版每一輪都重查
+		// 目標的將領人數。
+		total, n := 0, 0
+		for _, d := range Dirs() {
+			x := b.UnitAt(target.Step(d))
+			if x == nil || !x.Alive() || x.Side.Attacking() == t.Side.Attacking() {
+				continue
+			}
+			if !t.Alive() {
+				break
+			}
+			lost, _ := b.exchange(x, t, StrikeMultiplier(SiegeStrike))
+			total += lost
+			n++
+		}
+		b.note("%s 圍攻 %s：%d 支部隊參戰，折損 %d", u.Name(), t.Name(), n, total)
 	}
 	b.checkOver()
 	return nil

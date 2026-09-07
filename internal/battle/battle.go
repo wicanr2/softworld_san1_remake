@@ -315,9 +315,6 @@ func (b *Battle) Move(u *Unit, d Dir) error {
 // 戰力值就是 LeaderPower。**主動的那一邊用地形的攻值、被打的那一邊
 // 用守值**，而兩邊都用自己所在那一格的地形——所以地形對守方的保護
 // 走的是守方自己那一份殺傷，不是把攻方的減掉。
-//
-// 誘敵的減益是 remake 的（`TuneEnragedPenalty`）：手冊說中計會影響戰力，
-// 沒給幅度。
 func (b *Battle) power(u *Unit) int { return b.strike(u, true) }
 
 // defence 是一支部隊被打時打回去的殺傷。
@@ -335,19 +332,55 @@ func (b *Battle) strike(u *Unit, attacking bool) int {
 		p := LeaderPower(int(x.War), int(x.Arms), x.Troop, t, attacking)
 		total += x.Soldiers * p / 100
 	}
-	if attacking && u.Enraged > 0 {
-		total = total * (100 - TuneEnragedPenalty) / 100
-	}
 	return total
 }
 
 // hit 讓 a 打 b 一次，回傳 b 的損失。
 //
 // pct 是這一擊的強度百分比，100 是白刃相接的基準。弓箭比它輕
-// （`TuneArrowDamage`），圍攻比它重（`TuneSiegeBonus`）。
+// （`TuneArrowDamage`）；計謀那一側的倍率是量到的（`strikeMultiplier`）。
 // **用百分比不用整數倍**：整數倍表示不了「箭只有一半殺傷」。
 func (b *Battle) hit(a, d *Unit, pct int) int {
 	return b.apply(d, b.power(a)*pct/100)
+}
+
+// strikeMultiplier 是交戰結算的傷害倍率表（`DS:0x81a2`，八格，`L0`）。
+//
+// 共同的交戰結算 `0x2a224` 拿模式當索引（`0x2a444`：`shl si` 之後
+// `fimuls DS:0x81a2(%si)`）。**模式在 0..7 之外一律夾成 1**
+// （`0x2a2c9`），所以第 1 格的 100 也是「傳錯值」的落點。
+var strikeMultiplier = [8]int{80, 100, 150, 200, 250, 300, 350, 400}
+
+// 用得到的兩格。
+const (
+	// SiegeStrike 是圍攻每一支參戰部隊的倍率格（`0x2bc95` 傳 0）。
+	SiegeStrike = 0
+	// LureStrike 是誘敵的倍率格。**原版傳的是 8（施法者謀略 ≥ 98 時 9），
+	// 兩個都在 0..7 之外，被 `0x2a2c9` 夾成 1**——所以那個「謀略高就
+	// 加碼」完全沒有作用，是原版的 bug。remake 照它，不修。
+	LureStrike = 1
+)
+
+// StrikeMultiplier 是某個模式的傷害倍率（百分比）。
+//
+// 越界回第 1 格，與原版 `0x2a2c9` 相同——**不是防禦式寫法**，
+// 誘敵就是靠這個落點決定倍率的。
+func StrikeMultiplier(mode int) int {
+	if mode < 0 || mode >= len(strikeMultiplier) {
+		mode = 1
+	}
+	return strikeMultiplier[mode]
+}
+
+// exchange 是一次交戰結算（原版 `0x2a224`）：a 打 d，倍率 pct，
+// 雙方同時互扣，回傳（d 的損失, a 的損失）。
+//
+// **雙向是 `L2`**：`0x2a224` 收尾時對兩邊各查一次「將領人數 ≤ 0」，
+// 是的話把那一格畫回地形（`0x2a732`／`0x2a790`）——兩邊都可能在這一次
+// 結算裡消失。倍率只乘在出手的那一邊：表只被讀一次（`0x2a444`）。
+func (b *Battle) exchange(a, d *Unit, pct int) (int, int) {
+	pa, pd := b.power(a)*pct/100, b.defence(d)
+	return b.apply(d, pa), b.apply(a, pd)
 }
 
 // apply 把一次殺傷落到部隊上，回傳實際的損失。
@@ -564,9 +597,6 @@ func (b *Battle) EndDay() {
 		u.Move = u.MovePoints()
 		if u.Trapped > 0 {
 			u.Trapped--
-		}
-		if u.Enraged > 0 {
-			u.Enraged--
 		}
 	}
 	// 「沒米給軍隊吃，士兵將會陸續逃亡」（說明書 p.28）。

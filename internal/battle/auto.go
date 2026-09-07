@@ -201,11 +201,11 @@ func (b *Battle) stratagemOptions(u *Unit) []scheme {
 // worthIt 擋掉白花錢的計。
 //
 // 效果還掛著就再下一次，錢照扣、效果沒有變好——而且**貴的計會一直
-// 排在便宜的前面**，於是誘敵一招就把整袋錢用完，燒糧與圍攻一次都輪不到。
+// 排在便宜的前面**，於是陷阱一招就把整袋錢用完，燒糧與圍攻一次都輪不到。
+//
+// 誘敵不在這裡：它不掛效果，是當場結算的一次交戰（`0x2b6aa`）。
 func worthIt(b *Battle, s Stratagem, t *Unit) bool {
 	switch s {
-	case Lure:
-		return t.Enraged == 0
 	case Trap:
 		return t.Trapped == 0
 	case Burn:

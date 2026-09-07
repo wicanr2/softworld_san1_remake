@@ -117,9 +117,6 @@ type Unit struct {
 	// Trapped 是中了陷阱之後不能活動的天數（說明書 p.33：九日）。
 	Trapped int
 
-	// Enraged 是中了誘敵之後攻擊力暫時下降的天數。
-	Enraged int
-
 	// Retreated／Wiped 表示已經離開戰場。
 	Retreated bool
 	Wiped     bool

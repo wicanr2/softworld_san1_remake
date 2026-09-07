@@ -394,7 +394,7 @@ func TestStarvationCausesDesertion(t *testing.T) {
 	}
 }
 
-// TestEndDayResetsMoveAndTicksStatus 釘住每天重置移動力、遞減中計天數。
+// TestEndDayResetsMoveAndTicksStatus 釘住每天重置移動力、遞減中陷阱天數。
 func TestEndDayResetsMoveAndTicksStatus(t *testing.T) {
 	b := arena(flat(Plain))
 	u := place(b, MainAttacker, Centre, FromOffset(3, 3), lead("攻", 50, 50, 1000))
@@ -402,16 +402,12 @@ func TestEndDayResetsMoveAndTicksStatus(t *testing.T) {
 	b.Rice[MainAttacker] = 10000
 	u.Move = 0
 	u.Trapped = 2
-	u.Enraged = 1
 	b.EndDay()
 	if u.Move != u.MovePoints() {
 		t.Errorf("隔天移動力 %d，應該回到 %d", u.Move, u.MovePoints())
 	}
 	if u.Trapped != 1 {
 		t.Errorf("中陷阱剩 %d 天，應該遞減成 1", u.Trapped)
-	}
-	if u.Enraged != 0 {
-		t.Errorf("誘敵效果剩 %d 天，應該遞減成 0", u.Enraged)
 	}
 }
 

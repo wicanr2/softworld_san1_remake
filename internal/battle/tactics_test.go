@@ -186,18 +186,49 @@ func TestTrapPlacementAndDuration(t *testing.T) {
 	}
 }
 
-// TestLureLowersAttack 釘住誘敵讓「來犯敵軍攻擊力暫時下降」（說明書 p.33）。
-func TestLureLowersAttack(t *testing.T) {
+// TestLureMakesTheEnemyStrike 釘住誘敵是**把敵人引過來打你**
+// （`0x2b6aa` ＋ `0x2a224`，`L0`）。
+//
+// 說明書 p.33 寫的是「來犯敵軍攻擊力暫時下降」，碼裡沒有這回事：
+// 誘敵播完動畫就叫共同的交戰結算，而且推參數時把攻守對調，出手的是
+// 目標。**兩邊都會掉兵**，划不划算看目標的攻擊力比不比得過施法者的
+// 防禦力——這一條的判準因此是「雙方都掉兵」，不是「敵人變弱」。
+func TestLureMakesTheEnemyStrike(t *testing.T) {
 	b, u, e := plotting(Plain, Clear, 100, 10000)
-	before := b.power(e)
+	mine, theirs := u.Soldiers(), e.Soldiers()
 	if err := b.UseStratagem(u, Lure, e.At); err != nil {
 		t.Fatalf("誘敵失敗：%v", err)
 	}
-	if e.Enraged <= 0 {
-		t.Fatal("誘敵之後應該掛著效果")
+	if u.Soldiers() >= mine {
+		t.Errorf("施法者剩 %d 兵，原本 %d——誘敵是引敵人來打，自己也會掉兵",
+			u.Soldiers(), mine)
 	}
-	if after := b.power(e); after >= before {
-		t.Errorf("中了誘敵的攻擊力是 %d，原本 %d，應該下降", after, before)
+	if e.Soldiers() >= theirs {
+		t.Errorf("目標剩 %d 兵，原本 %d——出手的一方也會被還擊",
+			e.Soldiers(), theirs)
+	}
+}
+
+// TestStrikeMultiplierTable 釘住傷害倍率表與它的越界行為
+// （`DS:0x81a2` ＝ 80/100/150/200/250/300/350/400，夾在 `0x2a2c9`）。
+//
+// **越界回第 1 格不是防禦式寫法**：誘敵傳的 8 與 9 就是靠這個落點
+// 變成 100 的，所以「謀略 ≥ 98 加碼」在原版完全沒有作用。改成夾到
+// 第 0 格或直接用 8 都會讓誘敵的傷害不一樣。
+func TestStrikeMultiplierTable(t *testing.T) {
+	want := []int{80, 100, 150, 200, 250, 300, 350, 400}
+	for i, w := range want {
+		if got := StrikeMultiplier(i); got != w {
+			t.Errorf("模式 %d 的倍率是 %d，原版是 %d", i, got, w)
+		}
+	}
+	for _, bad := range []int{-1, 8, 9, 99} {
+		if got := StrikeMultiplier(bad); got != 100 {
+			t.Errorf("模式 %d 越界，倍率是 %d，原版夾成第 1 格 ＝ 100", bad, got)
+		}
+	}
+	if StrikeMultiplier(SiegeStrike) != 80 || StrikeMultiplier(LureStrike) != 100 {
+		t.Error("圍攻用第 0 格（80）、誘敵落在第 1 格（100）")
 	}
 }
 
