@@ -27,7 +27,7 @@
 | `.GRP`／`.IDX`／`.NAM` 容器 | 解出 | `L1` | `[both]` | `docs/formats/01` |
 | 州郡名表 | 解出 | `L0` | `[base]` | `docs/formats/02` |
 | 劇本三張表 | 部分 | `L0` | `[base]` | `docs/formats/03` |
-| 存檔 | 解出 | `L1` | `[base]` | `docs/formats/05` |
+| 存檔（六個項目全解）| 解出 | `L0`／`L1` | `[base]` | `docs/formats/05`、`docs/re/08` |
 | 配樂（曲子）| 解出 | `L1` | `[base]` | `docs/formats/06` |
 | 配樂（音色）| 解出 | `L1` | `[base]` | `docs/formats/06` §5、§7 |
 | 點陣圖 `.IMG`／`.FAC` | 解出 | `L1` | `[base]` | `docs/formats/07` |

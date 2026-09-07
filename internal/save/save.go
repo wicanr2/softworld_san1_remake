@@ -5,9 +5,12 @@
 //	SV1/BASEMAS.SV1   諸侯表 16 × 72
 //	SV1/BASESTA.SV1   州郡表 43 × 176
 //	SV1/BASEGEN.SV1   人物表 350 × 30
-//	SV1/REMAKE.JSON   三張表放不下的東西
+//	SV1/BASEPRO.SV1   年月、難度、選項、月內進度 256 B
+//	SV1/BASEPRE.SV1   自創君主的十二個字模 384 B
+//	SV1/REMAKE.JSON   前五個放不下的東西
+//	SAVENAME.SVP      六個進度共用的名稱 126 B
 //
-// 前三個**與原版的版面逐位元組相同**（`docs/formats/03`）。這樣做的
+// 前五個**與原版的版面逐位元組相同**（`docs/formats/03`、`docs/formats/05`）。這樣做的
 // 理由有兩個：解出來的欄位可以直接與原版的存檔對拍；還沒解出來的
 // 欄位原封不動帶著走，不會因為存過一次檔就被我們洗掉。
 //
@@ -172,6 +175,8 @@ func Write(root string, slot int, g *game.State, name string) error {
 		{"BASEMAS." + suffix, mas},
 		{"BASESTA." + suffix, sta},
 		{"BASEGEN." + suffix, gen},
+		{"BASEPRO." + suffix, buildProgress(e, readProgress(dirFor(root, slot), slot)).Encode()},
+		{"BASEPRE." + suffix, glyphsFor(dirFor(root, slot), slot).Encode()},
 		{"REMAKE.JSON", blob},
 	}
 	for _, f := range files {
@@ -182,7 +187,72 @@ func Write(root string, slot int, g *game.State, name string) error {
 	if err := os.RemoveAll(dir); err != nil {
 		return err
 	}
-	return os.Rename(tmp, dir)
+	if err := os.Rename(tmp, dir); err != nil {
+		return err
+	}
+	return writeName(root, slot, name)
+}
+
+// writeName 把名稱寫進共用的 `SAVENAME.SVP`。
+//
+// **六個進度共用一個檔**，所以要先讀回來再改一格；整份重寫會把另外
+// 五個槽的名稱清掉，而那在畫面上只會表現成「別的存檔忽然沒有名字」。
+func writeName(root string, slot int, name string) error {
+	names := readNames(root)
+	names[slot-1] = name
+	b, err := state.EncodeSaveNames(names)
+	if err != nil {
+		return err
+	}
+	tmp := filepath.Join(root, "SAVENAME.tmp")
+	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, filepath.Join(root, saveNameFile))
+}
+
+// saveNameFile 是名稱表的檔名，照原版。
+const saveNameFile = "SAVENAME.SVP"
+
+// readNames 讀共用的名稱表；讀不到或壞掉就回六個空字串。
+//
+// **壞掉不當錯誤**：名稱是給人看的，讀不出來頂多顯示「無名」，
+// 不該讓整局存不進去。
+func readNames(root string) []string {
+	b, err := os.ReadFile(filepath.Join(root, saveNameFile))
+	if err == nil {
+		if names, err := state.DecodeSaveNames(b); err == nil {
+			return names
+		}
+	}
+	return make([]string, Slots)
+}
+
+// readProgress 讀某個槽上一次寫出去的 `BASEPRO`；沒有就回 nil。
+func readProgress(dir string, slot int) *state.Progress {
+	b, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("BASEPRO.SV%d", slot)))
+	if err != nil {
+		return nil
+	}
+	p, err := state.DecodeProgress(b)
+	if err != nil {
+		return nil
+	}
+	return p
+}
+
+// glyphsFor 讀某個槽上一次寫出去的字模；沒有就回一組空的。
+//
+// remake 還沒做自創君主，所以這裡多半是空的——**空的照樣要寫**，
+// 否則存檔目錄與原版的項目對不齊，將來要比對就少一份。
+func glyphsFor(dir string, slot int) *state.Glyphs {
+	b, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("BASEPRE.SV%d", slot)))
+	if err == nil {
+		if g, err := state.DecodeGlyphs(b); err == nil {
+			return g
+		}
+	}
+	return &state.Glyphs{}
 }
 
 // Read 讀一個槽。
@@ -241,6 +311,13 @@ func Read(root string, slot int) (*game.State, error) {
 	if err := e.Options.SetDelay(m.Options.Delay); err != nil {
 		return nil, fmt.Errorf("save: 存檔 %d 的延時：%w", slot, err)
 	}
+	// `BASEPRO` 有的欄位以它為準——**同一個值不要有兩個真相**。
+	// 舊存檔沒有這個檔，那時 JSON 就是唯一來源。
+	if p := readProgress(dir, slot); p != nil {
+		if err := applyProgress(&e, p); err != nil {
+			return nil, fmt.Errorf("save: 存檔 %d：%w", slot, err)
+		}
+	}
 	for k, f := range m.Factions {
 		var id int
 		if _, err := fmt.Sscanf(k, "%d", &id); err != nil {
@@ -258,6 +335,7 @@ func Read(root string, slot int) (*game.State, error) {
 // **空槽要列出來**：原版的儲存畫面就是六格，看得到哪幾格是空的。
 func List(root string) []Info {
 	out := make([]Info, 0, Slots)
+	names := readNames(root)
 	for slot := 1; slot <= Slots; slot++ {
 		info := Info{Slot: slot}
 		blob, err := os.ReadFile(filepath.Join(dirFor(root, slot), "REMAKE.JSON"))
@@ -268,6 +346,12 @@ func List(root string) []Info {
 				info.Name = m.Name
 				info.Year, info.Month = m.Year, m.Month
 				info.SavedAt = m.SavedAt
+				if p := readProgress(dirFor(root, slot), slot); p != nil {
+					info.Year, info.Month = p.Year, p.Month
+				}
+				if n := names[slot-1]; n != "" {
+					info.Name = n
+				}
 			}
 		}
 		out = append(out, info)

@@ -693,6 +693,14 @@ func decodeBig5(b []byte) (string, error) {
 	return string(out), nil
 }
 
+// encodeBig5 把字串編回 cp950。
+//
+// **造字碼位（`A141`–`A14C`）在標準對照表裡是全形標點**，來回一趟
+// 得到的是同一組位元組，所以自創君主的名字存得回去。
+func encodeBig5(s string) ([]byte, error) {
+	return traditionalchinese.Big5.NewEncoder().Bytes([]byte(s))
+}
+
 // AILevel 是勢力的電腦諸侯等級（`BASEMAS` offset 4，`L0`、`[base]`）。
 //
 // 原版用它當索引挑一整套行為：十八張指令分派表，每張八個 far pointer

@@ -7,24 +7,27 @@
 | `BASEMAS.SV1`–`.SV6` | 1 | 1,152 | 諸侯表 16 × 72 |
 | `BASESTA.SV1`–`.SV6` | 1 | 7,568 | 州郡表 43 × 176 |
 | `BASEGEN.SV1`–`.SV6` | 1 | 10,500 | 人物表 350 × 30 |
-| `BASEPRO.SV1`–`.SV6` | 1 | 256 | 用途未解 |
-| `BASEPRE.SV1`–`.SV6` | 1 | 384 | 用途未解 |
-| `SAVENAME.SVP` | 共用 | 126 | 六個存檔的名稱 |
+| `BASEPRO.SV1`–`.SV6` | 1 | 256 | 年月、難度、選項、月內進度 |
+| `BASEPRE.SV1`–`.SV6` | 1 | 384 | 自創君主的十二個字模 |
+| `SAVENAME.SVP` | 共用 | 126 | 六個存檔的名稱，六筆 21 byte |
 
 三張主表的版面與六個劇本（`.001`–`.006`）完全相同，欄位見 `docs/spec/003`。
 
 ## remake 存到哪裡
 
-一個進度是一個目錄，四個檔案：
+一個進度是一個目錄，六個檔案，外加一個共用的名稱表：
 
 ```
 saves/SV1/BASEMAS.SV1     諸侯表 16 × 72
 saves/SV1/BASESTA.SV1     州郡表 43 × 176
 saves/SV1/BASEGEN.SV1     人物表 350 × 30
-saves/SV1/REMAKE.JSON     三張表放不下的東西
+saves/SV1/BASEPRO.SV1     年月、難度、選項、月內進度 256 B
+saves/SV1/BASEPRE.SV1     自創君主的十二個字模 384 B
+saves/SV1/REMAKE.JSON     前五個放不下的東西
+saves/SAVENAME.SVP        六個進度共用的名稱 126 B
 ```
 
-前三個**與原版的版面逐位元組相同**。目錄位置由 `-saves` 指定，預設 `saves/`。
+前五個與名稱表**都照原版的版面**。目錄位置由 `-saves` 指定，預設 `saves/`。
 
 **不寫回原版的容器。** 原版的存檔是 `DATA2.GRP` 裡的項目，要存就得改寫
 玩家自己的原版檔案；那是別人的東西，而且寫壞了沒有第二份。
@@ -75,12 +78,13 @@ saves/SV1/REMAKE.JSON     三張表放不下的東西
 
 | 欄位 | 為什麼在這裡 |
 |---|---|
-| `year`／`month` | 原版的年月大概在 `BASEPRO`／`BASEPRE`，尚未解出 |
-| `player`／`difficulty` | 同上 |
-| `prefectures[].forts` | 城寨數。原版的州郡表有 152 個位元組沒解，可能在裡面 |
-| `prefectures[].autonomy` | 郡縣自治型態（說明書 p.23–24），同上 |
-| `prefectures[].commanded` | 這個月下過令沒（每郡每月一次，p.17）|
+| `player` | 原版靠諸侯表 offset 0（操縱方）認玩家，remake 另外記一份 |
+| `edition` | 原版沒有「加強版」這回事 |
 | `prefectures[].population` | **精確人口**。原版那一欄只放得下百位（格式字串是 `人口 %5d00`），而 remake 的四季事件用百分比縮放，算出來不是百的倍數；只靠原版那一欄，每存一次就掉最多 99 人 |
+
+`year`、`month`、`difficulty`、六個選項與「這個月下過令沒」原本也在這裡，
+現在走 `BASEPRO`。**同一個值不要有兩個真相**：`BASEPRO` 在就以它為準，
+JSON 那幾格只為了讀得懂舊存檔而留著。
 | `rewarded` | 這個月受過賞的人物槽號（每郡每月可賞每人一次，p.23）|
 | `factions[].alive`／`chief`／`treasury` | 勢力存活、現任軍師、君主寶庫。寶庫在 `BASEMAS` 哪裡還沒解 |
 
@@ -92,11 +96,24 @@ saves/SV1/REMAKE.JSON     三張表放不下的東西
 先寫到 `SV<n>.tmp` 再改名。存檔寫到一半當掉，玩家失去的是**上一次的
 進度**，那比這一次沒存到嚴重得多。
 
+## `BASEPRO`、`BASEPRE` 與 `SAVENAME`
+
+版面與逐欄的出處在 `docs/re/08-save-load.md`；實作是
+`internal/state/progress.go`，`internal/save/original.go` 負責與局面對接。
+
+三支測試釘住它（`internal/state/progress_test.go`）：
+
+- 出貨的六個進度逐欄核對，年份對得上名稱裡的 `Y201`／`Y208`／`Y215`／`Y220`；
+  而且**未下令的郡數、順序表與游標三者相符**——那是三段獨立資料之間的
+  關係，版面認錯一格就會破。
+- 解完再編回去逐位元組相同，**包含沒解出用途的那 58 個位元組**。
+- 十二個字模是四個名額 × 三個字，六個進度完全相同。
+
 ## 還沒做的
 
-- `BASEPRO.SVn`（256 B）與 `BASEPRE.SVn`（384 B）的用途。解出來之後，
-  `REMAKE.JSON` 裡對應的欄位就能搬回原版的版面。
-- `SAVENAME.SVP`（126 B）的版面。六個名稱 ÷ 126 不整除，
-  推測是 6 × 20 ＋ 6，未驗證。remake 目前把名稱放在 `REMAKE.JSON`。
-- 讀原版存的進度。三張表已經讀得出來（`state.DecodeTables`），
-  缺的是年月與難度——那在未解的兩張表裡。
+- `BASEPRO` 位移 `0xAC`（讀進 `DS:0x5b00`）沒有第三處引用，用途不明。
+- 自創君主本身。範本（四個名額、姓名用造字 `A141`–`A14C`）已經讀出來，
+  remake 還沒有畫字模的介面，所以 `BASEPRE` 目前一律寫空的。
+- 從原版的 `DATA2.GRP` 直接讀玩家自己的進度。三張表、`BASEPRO`、
+  `BASEPRE` 與名稱表現在都解得開了（`state.LoadProgress` 等），
+  差的是接進讀檔選單。

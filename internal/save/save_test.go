@@ -546,3 +546,139 @@ func TestPlusSaveRoundTrip(t *testing.T) {
 		t.Errorf("讀回來是 %q／難度 %d，存的是 plus／15", h.Edition, h.Difficulty)
 	}
 }
+
+// TestProgressFileMatchesOriginalLayout 釘住新增的三個檔案：長度照原版、
+// 內容解得回來、而且**年月與選項以 `BASEPRO` 為準**。
+func TestProgressFileMatchesOriginalLayout(t *testing.T) {
+	g := newGame(t)
+	play(t, g, 3)
+	g.Options.MusicOff = true
+	g.Options.Calendar = game.Western
+	if err := g.Options.SetDelay(37); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if err := save.Write(root, 2, g, "測試進度"); err != nil {
+		t.Fatal(err)
+	}
+
+	sizes := map[string]int{
+		"SV2/BASEPRO.SV2": state.ProgressSize,
+		"SV2/BASEPRE.SV2": state.GlyphTableSize,
+		"SAVENAME.SVP":    state.SaveNameTableSize,
+	}
+	for name, want := range sizes {
+		b, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			t.Fatalf("讀 %s：%v", name, err)
+		}
+		if len(b) != want {
+			t.Errorf("%s 長 %d，原版是 %d", name, len(b), want)
+		}
+	}
+
+	b, err := os.ReadFile(filepath.Join(root, "SV2", "BASEPRO.SV2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := state.DecodeProgress(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Year != g.Date.Year || p.Month != g.Date.Month {
+		t.Errorf("BASEPRO 存的是 %d 年 %d 月，局面是 %d 年 %d 月",
+			p.Year, p.Month, g.Date.Year, g.Date.Month)
+	}
+	if p.Difficulty != g.Difficulty {
+		t.Errorf("BASEPRO 存的難度是 %d，局面是 %d", p.Difficulty, g.Difficulty)
+	}
+	if !p.MusicOff || p.Calendar != int(game.Western) || p.Delay != 37 {
+		t.Errorf("BASEPRO 的選項是 音樂關=%v 曆=%d 延時=%d",
+			p.MusicOff, p.Calendar, p.Delay)
+	}
+
+	back, err := save.Read(root, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.Date != g.Date || back.Difficulty != g.Difficulty {
+		t.Errorf("讀回來是 %v 難度 %d，存的是 %v 難度 %d",
+			back.Date, back.Difficulty, g.Date, g.Difficulty)
+	}
+	if !back.Options.MusicOff || back.Options.Delay() != 37 {
+		t.Errorf("讀回來的選項是 音樂關=%v 延時=%d",
+			back.Options.MusicOff, back.Options.Delay())
+	}
+}
+
+// TestSaveNamesShareOneFile 釘住名稱表是**六個槽共用一個檔**：
+// 寫第二個槽不可以把第一個槽的名字洗掉。
+func TestSaveNamesShareOneFile(t *testing.T) {
+	g := newGame(t)
+	root := t.TempDir()
+	if err := save.Write(root, 1, g, "第一個"); err != nil {
+		t.Fatal(err)
+	}
+	if err := save.Write(root, 3, g, "第三個"); err != nil {
+		t.Fatal(err)
+	}
+	list := save.List(root)
+	if list[0].Name != "第一個" {
+		t.Errorf("第 1 槽的名稱是 %q", list[0].Name)
+	}
+	if list[2].Name != "第三個" {
+		t.Errorf("第 3 槽的名稱是 %q", list[2].Name)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "SAVENAME.SVP"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	names, err := state.DecodeSaveNames(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if names[0] != "第一個" || names[2] != "第三個" || names[1] != "" {
+		t.Errorf("名稱表是 %q", names)
+	}
+}
+
+// TestCommandedSurvivesInProgress 釘住「這個月下過令沒」搬進 `BASEPRO`
+// 之後還原得回來。索引差一格的話整批會位移一個郡。
+func TestCommandedSurvivesInProgress(t *testing.T) {
+	g := newGame(t)
+	var marked []int
+	for _, id := range g.Territory(g.Player) {
+		if len(marked) == 2 {
+			break
+		}
+		g.Prefecture(id).Commanded = true
+		marked = append(marked, id)
+	}
+	if len(marked) == 0 {
+		t.Skip("玩家一個郡都沒有")
+	}
+	root := t.TempDir()
+	if err := save.Write(root, 1, g, "x"); err != nil {
+		t.Fatal(err)
+	}
+	back, err := save.Read(root, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range marked {
+		if !back.Prefecture(id).Commanded {
+			t.Errorf("郡 %d 的「已下令」沒帶過去", id)
+		}
+	}
+	for _, id := range g.Territory(g.Player) {
+		want := false
+		for _, m := range marked {
+			if m == id {
+				want = true
+			}
+		}
+		if got := back.Prefecture(id).Commanded; got != want {
+			t.Errorf("郡 %d 的「已下令」是 %v，應該是 %v", id, got, want)
+		}
+	}
+}
