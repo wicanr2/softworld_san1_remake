@@ -222,6 +222,13 @@ func (g *State) EndMonth() []Event {
 	for i := range g.generals {
 		g.generals[i].Rewarded = false
 	}
+	// **郡的歸屬從人物表重算**（`RecomputeOwners`，`L0`、`0x1e394`）。
+	// 原版是在每一個郡的回合入口做這件事；remake 這一邊沒有那個逐郡的
+	// 迴圈，放在換月時做——效果一樣，時機晚一點。
+	//
+	// 少了這一步，電腦諸侯的出兵就完全沒有意義：原版的「出兵」只是把
+	// 部隊搬進目標郡，郡易主全靠這次重算。
+	g.RecomputeOwners()
 	g.repriceAll()
 	return g.RunSeason()
 }

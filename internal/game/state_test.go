@@ -244,3 +244,58 @@ func firstPlayable(sc *state.Scenario) int {
 	}
 	return sc.ActiveFactions()[0]
 }
+
+// TestOwnersAreDerivedFromTheGeneralTable 釘住「郡的歸屬是導出值」。
+//
+// **兩條路對同一份資料要逐格相同**：劇本檔存的所屬勢力，與從人物表
+// 重算出來的，開局就該一致。不一致表示其中一條讀錯了——而兩者都是
+// 合法的值，看不出差別（`CLAUDE.md` §7 第 18 條）。
+func TestOwnersAreDerivedFromTheGeneralTable(t *testing.T) {
+	g := newGame(t)
+	was := make([]state.FactionID, 0, 42)
+	for _, p := range g.Prefectures() {
+		was = append(was, p.Owner)
+	}
+	g.RecomputeOwners()
+	for i, p := range g.Prefectures() {
+		if p.Owner != was[i] {
+			t.Errorf("郡 %d（%s）：劇本存的是勢力 %d，從人物表算出來是 %d",
+				p.ID, p.Name, was[i], p.Owner)
+		}
+	}
+}
+
+// TestRecomputeGivesThePrefectureToTheLastSlot 釘住「槽號較大的那位說了算」。
+//
+// 這不是實作細節：原版電腦諸侯的出兵**不打仗**，只把部隊搬進目標郡，
+// 郡易主完全靠這次重算（`docs/mechanics/70-ai` §2.13.6）。
+func TestRecomputeGivesThePrefectureToTheLastSlot(t *testing.T) {
+	g := newGame(t)
+	at := 0
+	for _, p := range g.Prefectures() {
+		if p.Owned() {
+			at = p.ID
+			break
+		}
+	}
+	if at == 0 {
+		t.Fatal("找不到有主的郡")
+	}
+	// 把兩位不同勢力的人放進同一個郡，槽號大的在後面。
+	lo, hi := g.General(100), g.General(300)
+	if lo == nil || hi == nil {
+		t.Fatal("找不到人物 100／300")
+	}
+	lo.Faction, lo.Status, lo.Location = 1, state.StatusOfficer, at
+	hi.Faction, hi.Status, hi.Location = 2, state.StatusOfficer, at
+	g.RecomputeOwners()
+	if got := g.Prefecture(at).Owner; got != 2 {
+		t.Errorf("同郡兩方：槽號 300 是勢力 2，郡卻算成勢力 %d", got)
+	}
+	// 反過來換勢力，結論跟著換——確認靠的是槽號不是勢力編號。
+	lo.Faction, hi.Faction = 2, 1
+	g.RecomputeOwners()
+	if got := g.Prefecture(at).Owner; got != 1 {
+		t.Errorf("勢力對調之後郡算成 %d，應該跟著槽號大的那位變成 1", got)
+	}
+}

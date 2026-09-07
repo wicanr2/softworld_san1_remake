@@ -371,6 +371,30 @@ func (g *State) Prefecture(id int) *Prefecture {
 func (g *State) Prefectures() []Prefecture { return g.prefectures }
 
 // General 用槽號取一個人物。越界回 nil。
+// RecomputeOwners 把每個郡的所屬勢力從人物表重算一次（`L0`、`0x1e394`）。
+//
+// **郡的歸屬是導出值，不是獨立的狀態。** 原版在每一個郡的回合入口
+// （`0x17471`）都跑一次這件事：先把全部的郡設成無主，再掃全部人物，
+// 把每一位有主的武將所在的郡標成他的勢力。
+//
+// **同一個郡裡有兩方的人時，人物槽號較大的那位說了算**——後寫的蓋掉
+// 先寫的。這就是原版電腦諸侯「出兵」之後郡易主的機制：搬進去的部隊
+// 不打仗，下一輪重算歸屬就換人（`docs/mechanics/70-ai` §2.13.6）。
+func (g *State) RecomputeOwners() {
+	for i := range g.prefectures {
+		g.prefectures[i].Owner = state.NoFaction
+	}
+	for i := range g.generals {
+		x := &g.generals[i]
+		if !x.Employed() {
+			continue
+		}
+		if p := g.Prefecture(x.Location); p != nil {
+			p.Owner = x.Faction
+		}
+	}
+}
+
 // AllGenerals 是整張人物表，照槽號順序。
 //
 // **原版有好幾支常式掃全表**（挖角挑人 `0xe0bc` 掃 350 筆），
