@@ -124,3 +124,40 @@ func TestLogIsBounded(t *testing.T) {
 		t.Errorf("紀錄有 %d 行，上限是 10", len(s.Log))
 	}
 }
+
+// TestAutonomyActuallyRuns 釘住授權自治的郡真的會有動作。
+//
+// **自治不是一個設定欄位**：原版的郡回合入口看到州郡 offset 12 不是 0
+// 就把那個郡交給電腦跑（`0x17550`）。只存型態不接上分派器的話，
+// 「郡縣自冶」這道指令在畫面上會完全沒有效果——而那看起來像
+// 「這個月剛好沒事發生」。
+func TestAutonomyActuallyRuns(t *testing.T) {
+	s := newSession(t, ai.ModeBase, 5) // 董卓
+	lord := s.G.Lord(5)
+	at := 0
+	for _, n := range s.G.Territory(5) {
+		if n != lord.Location {
+			at = n
+			break
+		}
+	}
+	if at == 0 {
+		t.Fatal("董卓只有一個郡")
+	}
+	if err := s.G.SetAutonomy(at, game.AutoCivil, 5); err != nil {
+		t.Fatal(err)
+	}
+	p := s.G.Prefecture(at)
+	p.Gold = game.MaxGold
+	// 讓它有事可做：地力與洪水率都留出空間。
+	p.LandValue, p.FloodRate = 20, 80
+	land, flood, gold := p.LandValue, p.FloodRate, p.Gold
+	moved := false
+	for i := 0; i < 12 && !moved; i++ {
+		s.EndMonth()
+		moved = p.LandValue != land || p.FloodRate != flood || p.Gold != gold
+	}
+	if !moved {
+		t.Errorf("授權自治十二個月，%s 的地力／洪水率／庫銀一動也沒動", p.Name)
+	}
+}

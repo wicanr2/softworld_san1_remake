@@ -30,6 +30,7 @@ const (
 	staLandValue  = 27
 	staFloodRate  = 28
 	staPrice      = 29
+	staAutonomy   = 12
 	staForts      = 25
 	staOwner      = 30
 	staGovernor   = 32
@@ -96,6 +97,7 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 		put16(rec[staRice:], p.Rice)
 		rec[staActive] = clampByte(g.ActiveGenerals(p.ID))
 		rec[staFree] = clampByte(g.FreeGenerals(p.ID))
+		put16(rec[staAutonomy:], int(p.Autonomy))
 		rec[staForts] = clampByte(p.Forts)
 		rec[staLoyalty] = p.PublicLoyalty
 		rec[staLandValue] = p.LandValue

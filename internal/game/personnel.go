@@ -446,3 +446,39 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 	}
 	return nil
 }
+
+// AutonomyAILevel 是自治的郡跑電腦分派器時用的 AI 等級
+// （原版 `0x17572`，`L0`、`[base]`）。
+//
+// 郡的回合入口讀州郡 offset 12，非零就拿 `值 − 1` 當等級去跑
+// `0xe8d2`。所以**內政型走等級 0、軍事型走等級 1、自冶型走等級 2**
+// ——那三個等級的內政係數正好符合各自的名字：等級 0 開墾的底 50、
+// 防洪除數 10（最勤於內政），等級 1 是 60／15（最懶），
+// 等級 2 也是 60／15 但擲的範圍一樣（`docs/mechanics/70-ai` §2.5）。
+//
+// 第二個回傳值是「這個郡要不要交給電腦跑」。
+func AutonomyAILevel(a Autonomy) (int, bool) {
+	if a <= AutoNormal || a > AutoSelf {
+		return 0, false
+	}
+	return int(a) - 1, true
+}
+
+// AutonomousFor 回報這個郡這個月要不要由電腦代管。
+//
+// **君主在的郡不自治**（原版 `0x17566`：主事者身分是 0 就跳過）——
+// 主公親自坐鎮的地方輪不到太守自作主張。
+func (g *State) AutonomousFor(prefectureID int) (int, bool) {
+	p := g.Prefecture(prefectureID)
+	if p == nil || !p.Owned() {
+		return 0, false
+	}
+	level, ok := AutonomyAILevel(p.Autonomy)
+	if !ok {
+		return 0, false
+	}
+	if x := g.Governor(prefectureID); x == nil || x.Status == state.StatusLord {
+		return 0, false
+	}
+	return level, true
+}

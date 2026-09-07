@@ -140,6 +140,17 @@ type Prefecture struct {
 	// 本身相符，身分只有君主或太守。
 	Governor uint16
 
+	// Autonomy 是郡縣自治的型態（offset 12，`u16`，`L0`）：
+	// 0 正常、1 內政、2 軍事、3 自冶——選單字串表在 `DS:0x9b70` 起，
+	// 每項 7 bytes（`0x1cee0` 的 `×7 + 0x9b69`）。
+	//
+	// **非零的郡由電腦代管**：郡的回合入口（`0x17550`）看到它不是 0
+	// 而且主事者不是君主，就拿 `這個值 − 1` 當 AI 等級去跑分派器
+	// （`0xe8d2`）。所以內政型走等級 0、軍事型走等級 1、自冶型走等級 2
+	// ——那三個等級的內政係數正好符合各自的名字
+	// （`docs/mechanics/70-ai` §2.5）。
+	Autonomy uint16
+
 	// ⚠ **Population 與 Soldiers 存的是實際值 ÷ 100。**
 	// 原版的格式字串是 `人口 %5d00`／`兵士%4d00`——把 `00` 直接接在
 	// 數字後面。存 800 顯示 80000。照存的數字當人口用會差兩個數量級，
@@ -399,6 +410,7 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 			return nil, fmt.Errorf("state: 郡 %d 的名稱解不出來：%w", p.ID, err)
 		}
 		p.Name = name
+		p.Autonomy = binary.LittleEndian.Uint16(rec[12:])
 		p.MapX = binary.LittleEndian.Uint16(rec[6:])
 		p.MapY = binary.LittleEndian.Uint16(rec[8:])
 		p.Population = binary.LittleEndian.Uint16(rec[14:])

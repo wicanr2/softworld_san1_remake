@@ -101,6 +101,7 @@ const MaxBattles = 8
 // 順序是**先電腦後推進**：玩家已經在這個月下過令了，電腦要在同一個
 // 月份裡回應。推進之後才清掉各郡的下令旗標。
 func (s *Session) EndMonth() {
+	s.runAutonomy()
 	for _, f := range s.G.Factions() {
 		if f.ID == s.Player || !f.Alive {
 			continue
@@ -162,4 +163,41 @@ func (s *Session) PlayerAlive() bool {
 	}
 	f := s.G.Faction(s.Player)
 	return f != nil && f.Alive
+}
+
+// runAutonomy 讓玩家勢力裡授權自治的郡由電腦代下命令。
+//
+// 原版的郡回合入口（`0x17550`）看到州郡 offset 12 不是 0、而且主事者
+// 不是君主，就拿那個值減一當 AI 等級去跑同一個分派器——**自治不是
+// 「這個郡自己會長大」，是「這個郡交給電腦按某種性格經營」**
+// （`game.AutonomousFor`）。
+//
+// 這一步要在電腦諸侯之前跑：自治的郡是玩家的地盤，順序與玩家自己
+// 下令的那一刻相同。
+func (s *Session) runAutonomy() {
+	planner, ok := s.Brain.(ai.PrefecturePlanner)
+	if !ok || s.Player == state.NoFaction {
+		return
+	}
+	for _, at := range s.G.Territory(s.Player) {
+		level, auto := s.G.AutonomousFor(at)
+		if !auto {
+			continue
+		}
+		if p := s.G.Prefecture(at); p == nil || p.Commanded {
+			continue // 玩家這個月已經自己下過令了
+		}
+		orders := planner.PlanPrefecture(s.G, s.Player, at, level)
+		if _, err := s.G.ApplyAll(orders, s.Player); err != nil {
+			s.note("⚠ %s 的自治命令被擋下：%v", prefectureName(s.G, at), err)
+		}
+		s.drainBattles()
+	}
+}
+
+func prefectureName(g *game.State, at int) string {
+	if p := g.Prefecture(at); p != nil {
+		return p.Name
+	}
+	return fmt.Sprintf("郡 %d", at)
 }

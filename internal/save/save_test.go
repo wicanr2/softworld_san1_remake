@@ -116,6 +116,9 @@ func TestRoundTrip(t *testing.T) {
 		// **主事者要跟著存檔走**（原版州郡 offset 32）。漏掉的話讀回來
 		// 得重推，而君主與太守同郡時推出來的常常是另一個人——存檔前後
 		// 的局面就從那一刻起分家，而畫面上看不出任何異狀。
+		if a.Autonomy != b.Autonomy {
+			t.Errorf("郡 %d 的自治型態存的是 %s，讀回來是 %s", id, a.Autonomy, b.Autonomy)
+		}
 		x, y := g.Governor(id), h.Governor(id)
 		switch {
 		case (x == nil) != (y == nil):

@@ -68,8 +68,9 @@ type optMeta struct {
 
 type prefMeta struct {
 	// Forts 留著只為讀得懂舊存檔；新的一律以 BASESTA offset 25 為準。
-	Forts     int  `json:"forts,omitempty"`
-	Autonomy  int  `json:"autonomy"`
+	Forts int `json:"forts,omitempty"`
+	// Autonomy 留著只為讀得懂舊存檔；新的一律以 BASESTA offset 12 為準。
+	Autonomy  int  `json:"autonomy,omitempty"`
 	Commanded bool `json:"commanded"`
 
 	// Population 是精確人口。原版的州郡表只放得下百位，見
@@ -135,7 +136,7 @@ func Write(root string, slot int, g *game.State, name string) error {
 	}
 	for _, p := range e.Prefectures {
 		m.Prefectures = append(m.Prefectures, prefMeta{
-			Autonomy: int(p.Autonomy), Commanded: p.Commanded,
+			Commanded:  p.Commanded,
 			Population: p.Population,
 		})
 	}

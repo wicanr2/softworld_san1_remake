@@ -37,6 +37,15 @@ const (
 func Modes() []Mode { return []Mode{ModeBase, ModePlus, ModeEnhanced} }
 
 // Brain 是一個 AI。
+// PrefecturePlanner 是「只替一個郡規劃、而且用指定等級」的可選能力。
+//
+// **郡縣自治要用它**：自治的郡屬於玩家，卻由電腦下令，等級來自玩家選的
+// 型態而不是勢力的 AI 等級（`game.AutonomyAILevel`）。
+// 沒有實作這個介面的 Brain，自治就只是一個設定不會有動作。
+type PrefecturePlanner interface {
+	PlanPrefecture(g *game.State, id state.FactionID, prefectureID, level int) []game.Order
+}
+
 type Brain interface {
 	Mode() Mode
 
@@ -144,9 +153,24 @@ func (f *faithful) Coverage() (int, int) { return 18, 18 }
 // `[50,60,60,50,40,50]`、防洪的除數是 `[10,15,15,14,12,10]`。
 // 六支常式是同一段碼，只有這三個立即數不同。
 func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
+	return f.planIn(g, id, g.Territory(id), g.AILevel(id))
+}
+
+// PlanPrefecture 只替一個郡規劃，而且用指定的 AI 等級。
+//
+// **郡縣自治用的是這一條**：原版的郡回合入口看到州郡 offset 12 不是 0，
+// 就拿那個值減一當等級去跑同一個分派器（`0x17550`，`game.AutonomyAILevel`）
+// ——所以自治的郡跑的是電腦的行為，只是等級由玩家指定的型態決定。
+func (f *faithful) PlanPrefecture(g *game.State, id state.FactionID,
+	prefectureID, level int) []game.Order {
+	return f.planIn(g, id, []int{prefectureID}, level)
+}
+
+func (f *faithful) planIn(g *game.State, id state.FactionID,
+	territory []int, aiLevel int) []game.Order {
 	var out []game.Order
-	k := internalAffairsRange(g.AILevel(id))
-	for _, p := range g.Territory(id) {
+	k := internalAffairsRange(aiLevel)
+	for _, p := range territory {
 		// **錢包要跟著這一輪扣。** 原版每一支常式開頭都看一次本回合的
 		// 預算（`es:[0x3d16]`）；remake 這一邊沒有那個數，用郡的金頂著。
 		// 對著開局餘額規劃的話，後面幾道會被 `ErrNoGold` 擋下來，
@@ -205,7 +229,7 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// ⚠ 原版掃的是身分 8 **與 10**，而 10 是什麼還沒解；
 		// 有好幾位可選時它挑誰也還沒讀。
 		if len(g.Garrison(p)) < game.MaxGeneralsPerPrefecture &&
-			afford(game.RecruitFee(g.AILevel(id))) {
+			afford(game.RecruitFee(aiLevel)) {
 			if who := f.recruitTarget(g, p); who != nil {
 				out = append(out, game.RecruitOrder{At: p, Target: who.Index})
 			}
@@ -213,7 +237,7 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
 		out = append(out, f.rewards(g, id, p)...)
 		// 購置武器（表 `0x5594`）：預算是郡的金的 2 %。
-		bought := armsPurchase(g, p, aiBudget(purse, g.AILevel(id), tableArms))
+		bought := armsPurchase(g, p, aiBudget(purse, aiLevel, tableArms))
 		out = append(out, bought...)
 		// **扣的是真的花掉的，不是配下去的額度**：原版每一支常式都重讀
 		// 一次郡的金，而金只被實際的支出扣減。
@@ -223,7 +247,7 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		// 徵兵（表 `0x5574`）：預算是**剩下的**金的 30–50 %。
 		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
 		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
-		drafted := conscript(g, p, aiBudget(purse, g.AILevel(id), tableConscript))
+		drafted := conscript(g, p, aiBudget(purse, aiLevel, tableConscript))
 		out = append(out, drafted...)
 		// 徵兵是一兵一金（說明書 p.20），錢包一樣要跟著扣——
 		// **不扣的話最後那一張「出兵」會拿月初的餘額去算隨行的錢**，
@@ -239,13 +263,13 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 		}
 		// 開倉賑民（表 `0x55f4`）：民眾忠誠低於「底 ＋ RND(20)」才做，
 		// 撥的是**整份預算**（郡的金的 10–20 %）。
-		if o, ok := relief(g, p, id, aiBudget(purse, g.AILevel(id), tableRelief)); ok {
+		if o, ok := relief(g, p, id, aiBudget(purse, aiLevel, tableRelief)); ok {
 			out = append(out, o)
 			purse -= o.Gold
 		}
 		// 賞賜金帛（表 `0x5654`）：走守軍清單，君主自己不受賞，
 		// 每人上限 100 金，發到預算用完為止。
-		paid := rewardGold(g, p, id, aiBudget(purse, g.AILevel(id), tableReward))
+		paid := rewardGold(g, p, id, aiBudget(purse, aiLevel, tableReward))
 		out = append(out, paid...)
 		for _, o := range paid {
 			purse -= o.(game.RewardOrder).Gold

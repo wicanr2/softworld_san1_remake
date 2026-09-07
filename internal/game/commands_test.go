@@ -656,3 +656,55 @@ func TestRiceTradeIsSymmetric(t *testing.T) {
 			rate-1, p.Gold, p.Rice)
 	}
 }
+
+// TestAutonomyMapsToAILevels 釘住自治型態與 AI 等級的對應。
+//
+// 原版把型態存在州郡 offset 12（0 正常、1 內政、2 軍事、3 自冶），
+// 郡的回合入口拿 `值 − 1` 當 AI 等級去跑分派器（`0x17572`）。
+// **君主在的郡不自治**——主公親自坐鎮的地方輪不到太守自作主張。
+func TestAutonomyMapsToAILevels(t *testing.T) {
+	for _, c := range []struct {
+		mode  Autonomy
+		level int
+		auto  bool
+	}{
+		{AutoNormal, 0, false},
+		{AutoCivil, 0, true},
+		{AutoMilitary, 1, true},
+		{AutoSelf, 2, true},
+	} {
+		level, ok := AutonomyAILevel(c.mode)
+		if ok != c.auto || (ok && level != c.level) {
+			t.Errorf("%s：等級 %d／代管 %v，應該是 %d／%v",
+				c.mode, level, ok, c.level, c.auto)
+		}
+	}
+
+	g := newGame(t)
+	lord := g.Lord(5) // 董卓
+	at := lord.Location
+	if err := g.SetAutonomy(at, AutoMilitary, 5); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := g.AutonomousFor(at); ok {
+		t.Error("君主所在的郡不該自治")
+	}
+	// 換一個沒有君主的郡。
+	other := 0
+	for _, n := range g.Prefecture(at).Neighbours {
+		if q := g.Prefecture(n); q.Owned() && q.Owner == 5 {
+			other = n
+			break
+		}
+	}
+	if other == 0 {
+		t.Fatal("董卓沒有第二個郡")
+	}
+	if err := g.SetAutonomy(other, AutoSelf, 5); err != nil {
+		t.Fatal(err)
+	}
+	level, ok := g.AutonomousFor(other)
+	if !ok || level != 2 {
+		t.Errorf("自冶的郡回 %d／%v，應該是 2／true", level, ok)
+	}
+}

@@ -360,6 +360,7 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Ed
 			PublicLoyalty: p.PublicLoyalty, LandValue: p.LandValue,
 			FloodRate: p.FloodRate, PriceLevel: p.PriceLevel,
 			Forts:       int(p.Forts),
+			Autonomy:    Autonomy(p.Autonomy),
 			governor:    governorSlot(p.Governor),
 			Neighbours:  append([]int(nil), p.Neighbours...),
 			BattleField: append([]byte(nil), p.BattleField...),

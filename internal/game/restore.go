@@ -37,8 +37,8 @@ type Extra struct {
 
 // PrefectureExtra 是一個郡在三張表以外的狀態。
 type PrefectureExtra struct {
-	Forts     int // 只給舊存檔用；新的一律走 BASESTA offset 25
-	Autonomy  Autonomy
+	Forts     int      // 只給舊存檔用；新的一律走 BASESTA offset 25
+	Autonomy  Autonomy // 只給舊存檔用；新的一律走 BASESTA offset 12
 	Commanded bool
 
 	// Population 是**精確**人口。
@@ -126,7 +126,12 @@ func Restore(sc *state.Scenario, e Extra) (*State, error) {
 	for i := range g.prefectures {
 		p := &g.prefectures[i]
 		x := e.Prefectures[i]
-		p.Autonomy, p.Commanded = x.Autonomy, x.Commanded
+		p.Commanded = x.Commanded
+		// **自治型態以三張表為準**（BASESTA offset 12，`L0`）；
+		// 舊存檔只有 REMAKE.JSON 有值。
+		if p.Autonomy == AutoNormal && x.Autonomy != AutoNormal {
+			p.Autonomy = x.Autonomy
+		}
 		// **關寨數以三張表為準**（BASESTA offset 25，`L0`）。
 		// 舊存檔沒把它寫進表裡，那時只有 REMAKE.JSON 有值——所以
 		// 表裡是 0 而補充資料不是 0 時，聽補充資料的。
