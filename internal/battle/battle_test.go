@@ -167,6 +167,7 @@ func TestThirtyDayRule(t *testing.T) {
 	place(b, MainAttacker, Centre, FromOffset(1, 1), lead("攻", 50, 50, 1000))
 	place(b, MainDefender, Centre, FromOffset(19, 13), lead("守", 50, 50, 1000))
 	b.Rice[MainAttacker] = 100000
+	b.Rice[MainDefender] = 100000
 
 	for i := 0; i < BattleDays && !b.Over; i++ {
 		b.EndDay()
@@ -188,6 +189,7 @@ func TestThirtyDayRule(t *testing.T) {
 	place(b2, MainAttacker, Centre, b2.Field.CityAt, lead("攻", 50, 50, 1000))
 	place(b2, MainDefender, Centre, FromOffset(9, 8), lead("守", 50, 50, 1000))
 	b2.Rice[MainAttacker] = 100000
+	b2.Rice[MainDefender] = 100000
 	for i := 0; i < BattleDays && !b2.Over; i++ {
 		b2.EndDay()
 	}
@@ -200,6 +202,7 @@ func TestThirtyDayRule(t *testing.T) {
 	u := place(b3, MainAttacker, Centre, b3.Field.CityAt, lead("攻", 50, 50, 1000))
 	place(b3, MainDefender, Centre, FromOffset(9, 8), lead("守", 50, 50, 1000))
 	b3.Rice[MainAttacker] = 100000
+	b3.Rice[MainDefender] = 100000
 	b3.CityHeld = MainAttacker
 	u.At = FromOffset(1, 1) // 走掉了
 	for i := 0; i < BattleDays && !b3.Over; i++ {
@@ -380,18 +383,33 @@ func TestStarvationCausesDesertion(t *testing.T) {
 		t.Errorf("缺糧一天後兵力 %d，應該少於 %d", u.Soldiers(), before)
 	}
 
-	// 帶夠糧就不會逃兵，但米會消耗。
+	// **一次就少一半到三分之二**（`÷= RND(2) + 2`），不是慢慢掉。
+	if got := u.Soldiers(); got > before/2 {
+		t.Errorf("缺糧一天後兵力 %d，除以 2 也該只剩 %d 以下", got, before/2)
+	}
+
+	// 帶夠糧就不會逃兵。**米是三天扣一次**（`0x2508a`：`天數 % 3`），
+	// 所以第 1、2 天不動，第 3 天才扣一次兵士（百）。
 	b2 := arena(flat(Plain))
 	u2 := place(b2, MainAttacker, Centre, FromOffset(3, 3), lead("攻", 50, 50, 10000))
 	place(b2, MainDefender, Centre, FromOffset(15, 10), lead("守", 50, 50, 1000))
 	b2.Rice[MainAttacker] = 5000
+	b2.Rice[MainDefender] = 5000
 	n := u2.Soldiers()
-	b2.EndDay()
-	if u2.Soldiers() != n {
-		t.Errorf("糧食充足卻掉了兵：%d → %d", n, u2.Soldiers())
+	for d := 1; d <= RiceUpkeepEvery; d++ {
+		was := b2.Rice[MainAttacker]
+		b2.EndDay()
+		if u2.Soldiers() != n {
+			t.Errorf("糧食充足卻掉了兵：%d → %d", n, u2.Soldiers())
+		}
+		if d < RiceUpkeepEvery && b2.Rice[MainAttacker] != was {
+			t.Errorf("第 %d 天就扣糧了（%d → %d），應該三天一次",
+				d, was, b2.Rice[MainAttacker])
+		}
 	}
-	if b2.Rice[MainAttacker] >= 5000 {
-		t.Error("行軍一天卻沒吃米")
+	if b2.Rice[MainAttacker] != 5000-u2.Soldiers()/100 {
+		t.Errorf("三天扣一次之後剩 %d 米，應該是 %d",
+			b2.Rice[MainAttacker], 5000-u2.Soldiers()/100)
 	}
 }
 

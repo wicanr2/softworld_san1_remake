@@ -832,28 +832,52 @@ func (b *Battle) EndDay() {
 			u.Trapped--
 		}
 	}
-	// 「沒米給軍隊吃，士兵將會陸續逃亡」（說明書 p.28）。
-	for _, s := range []Side{MainAttacker, AidAttacker} {
-		if !b.sideAlive(s) {
+	// 糧草（`0x25040`–`0x250c7`，`L0`）。兩件事分開，順序也分開：
+	//
+	//	每天：四個軍團各查一次，米 ≤ 0 → 逃亡（`0x25073`）
+	//	天數 % 3 == 0：四個軍團各扣一次，量是軍團記錄 offset 14
+	//	              ＝ 該軍團的兵士（百）（`0x2533f` 設、`0x250ad` 讀），
+	//	              扣成負的歸 0（`0x250b9`）
+	//
+	// **三天扣一次不是每天**，而且**守方也扣**——原版的迴圈四個軍團
+	// 都走（`0x2509c`：`cmpw $0x4`）。
+	for _, s := range SideDeployOrder() {
+		if !b.sideAlive(s) || b.Rice[s] > 0 {
 			continue
 		}
-		need := 0
+		// **逃亡是除不是減**（`0x25576`）：印「沒米了」（`DS:0x7d11`），
+		// 然後這個軍團五支部隊、每支十個將領槽，每一位的兵
+		// `÷= RND(2) + 2`——剩一半或三分之一。說明書 p.28 的
+		// 「士兵將會陸續逃亡」一點都不含蓄。
 		for _, u := range b.Units {
-			if u.Side == s && u.Alive() {
-				need += u.Soldiers() / 100
+			if u.Side != s || !u.Alive() {
+				continue
+			}
+			for j := range u.Leaders {
+				x := &u.Leaders[j]
+				if x.Dead || x.Captured || x.Soldiers <= 0 {
+					continue
+				}
+				x.Soldiers /= b.roll(DesertionSpread) + DesertionFloor
 			}
 		}
-		if b.Rice[s] >= need {
-			b.Rice[s] -= need
-			continue
-		}
-		b.Rice[s] = 0
-		for _, u := range b.Units {
-			if u.Side == s && u.Alive() {
-				b.casualty(u, u.Soldiers()/20)
+		b.note("%s 沒米了，士兵大批逃亡", s)
+	}
+	if b.Day%RiceUpkeepEvery == 0 {
+		for _, s := range SideDeployOrder() {
+			if !b.sideAlive(s) {
+				continue
+			}
+			need := 0
+			for _, u := range b.Units {
+				if u.Side == s && u.Alive() {
+					need += u.Soldiers() / 100
+				}
+			}
+			if b.Rice[s] -= need; b.Rice[s] < 0 {
+				b.Rice[s] = 0
 			}
 		}
-		b.note("%s 缺糧，士兵陸續逃亡", s)
 	}
 	b.Day++
 	b.checkOver()

@@ -47,6 +47,13 @@ const (
 	TuneStratagemRange = 3
 )
 
+// 缺糧逃亡的除數（`0x255ce`–`0x255f2`，`L0`）：每一位將領的兵
+// `÷= RND(2) + 2`。**是除不是減**，一次就少掉五成到六成七。
+const (
+	DesertionSpread = 2 // RND(2)
+	DesertionFloor  = 2 // 再加 2 → 除以 2 或 3
+)
+
 // RiceUpkeepEvery 是幾天扣一次糧（`0x2508a`：`天數 % 3`，`L0`）。
 //
 // **不是每天**：三十天下來只扣十次，所以實際耗用是兵士（百）× 10，
