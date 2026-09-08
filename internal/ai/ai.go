@@ -258,8 +258,20 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		if x := g.Prefecture(p); x != nil {
 			purse = x.Gold
 		}
+		// **付不付得起比的是郡的金**，不是本回合預算：尋訪、開墾、登用
+		// 這幾支不在那六張「呼叫前先算預算」的名單裡，它們直接扣郡的金。
+		// 拿模型化的錢包判斷會讓後面的表誤以為沒錢，跟著少抽一批。
+		gold := func() int {
+			if !live {
+				return purse
+			}
+			if q := g.Prefecture(p); q != nil {
+				return q.Gold
+			}
+			return 0
+		}
 		afford := func(cost int) bool {
-			if purse < cost {
+			if gold() < cost {
 				return false
 			}
 			purse -= cost
@@ -283,15 +295,6 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		//（挖角那道 `預算 >= 100` 反而過得太寬，量到多觸發四次）。
 		// ⚠ **預覽（`Plan`）讀不到真的支出**：那一條不套用命令，郡的金
 		// 不會動，所以只能用模型化的錢包頂著，否則會排出付不出來的命令。
-		gold := func() int {
-			if !live {
-				return purse
-			}
-			if q := g.Prefecture(p); q != nil {
-				return q.Gold
-			}
-			return 0
-		}
 		// **順序照原版的分派器**（`0xe926`–`0xec1b`，`docs/re/03` §1.4）：
 		// 行動者 → 指定軍師 → 指定太守 → 尋訪 → 登用 → 訓練 → 內政 →
 		// 賞賜物品 → 武器 → 徵兵 → 賑民 → 賞賜金帛 → 挖角 → 計略 →
