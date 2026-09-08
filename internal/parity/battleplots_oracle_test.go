@@ -63,6 +63,55 @@ func TestBattlePlotsRunLive(t *testing.T) {
 	t.Logf("我方勢力 %d、君主槽 %d 坐鎮郡 %d；其餘勢力的謀略壓到 30",
 		mine, lord, at)
 
+	// **聯合出兵至少要兩個我方的郡**：第三個提示問「聯合我方那一郡合攻」，
+	// 條件是「攻打目標的鄰郡、屬我方、不是出兵的那一郡」，一個都挑不到時
+	// 原版印 `DS:0x8543`「無法聯合出兵」退回選單（`docs/re/07` §2）。
+	// `stageABattle` 只給玩家一個郡，所以再撥一個——挑目標郡的鄰郡，
+	// 換旗並放一位在職將進去。
+	tgt := 0
+	for k := 45; k <= 54; k++ {
+		n := int(o.Byte(addr(staBase + uint32(at)*staRec + uint32(k))))
+		if n >= 1 && n <= 42 && int(o.Byte(addr(staBase+uint32(n)*staRec+30))) != mine {
+			tgt = n
+			break
+		}
+	}
+	second := 0
+	if tgt > 0 {
+		for k := 45; k <= 54; k++ {
+			n := int(o.Byte(addr(staBase + uint32(tgt)*staRec + uint32(k))))
+			if n >= 1 && n <= 42 && n != at {
+				second = n
+				break
+			}
+		}
+	}
+	if second == 0 {
+		t.Fatalf("郡 %d 的鄰郡 %d 旁邊找不到第二個郡可以撥給玩家", at, tgt)
+	}
+	o.SetByte(addr(staBase+uint32(second)*staRec+30), byte(mine))
+	placed := 0
+	for i := 0; i < 350 && placed < 1; i++ {
+		g := genBase + uint32(i)*30
+		if o.Byte(addr(g+18)) != 0xFF {
+			continue
+		}
+		o.SetByte(addr(g+18), byte(mine))
+		o.SetByte(addr(g+19), byte(second))
+		o.SetByte(addr(g+17), 2) // 太守
+		o.SetByte(addr(g+12), 2)
+		o.SetWord(addr(g+22), 2000)
+		o.SetByte(addr(g+24), 80)
+		o.SetByte(addr(g+25), 80)
+		o.SetByte(addr(g+9), 90)
+		placed++
+	}
+	o.SetWord(addr(staBase+uint32(second)*staRec+16), 20)
+	o.SetWord(addr(staBase+uint32(second)*staRec+18), 5000)
+	o.SetWord(addr(staBase+uint32(second)*staRec+20), 8000)
+	o.SetByte(addr(staBase+uint32(second)*staRec+22), byte(placed))
+	t.Logf("再撥郡 %d 給玩家（%d 位守將），它與郡 %d 相鄰", second, placed, tgt)
+
 	var dgroup uint16
 	o.OnCall(addr(0x2c2ee), func(o *oracle.Oracle) {
 		if dgroup == 0 {
@@ -111,9 +160,10 @@ func TestBattlePlotsRunLive(t *testing.T) {
 	for _, tc := range []struct {
 		name, key string
 		envoy     bool
+		rounds    int
 	}{
-		{"遠交近攻", "2", true},
-		{"聯合出兵", "5", false},
+		{"遠交近攻", "2", true, 3},
+		{"聯合出兵", "5", false, 4},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			o.Restore(atMenu)
@@ -121,22 +171,32 @@ func TestBattlePlotsRunLive(t *testing.T) {
 			send(t, tc.name, "8⏎")
 			send(t, tc.name, tc.key+"⏎")
 
-			// 表重建了就代表下一個提示是選郡。一路選到它不再重建為止。
+			// **選郡的提示個數照 `docs/re/07` §2**：遠交近攻三個
+			// （出使／聯合攻打／聯合我方），聯合出兵三或四個（出兵／
+			// 聯合攻打／我方合攻／守方合守，最後一個只在守方求得到
+			// 援軍時才問）。
+			//
+			// ⚠ **不要拿 `0x2c3e7` 當「下一個提示是選郡」的訊號**：
+			// 那支只服務第一張表，第二張以後各有各的迴圈位址，
+			// 量到過一次——第一輪之後 `rebuilt` 就不再動，
+			// 迴圈提早收掉而看起來像「原版沒有再問」。
 			var picks []int
-			for round := 1; round <= 5; round++ {
-				was := rebuilt
+			for round := 1; round <= tc.rounds; round++ {
+				if len(battles) > 0 {
+					break
+				}
 				cand := candidates(t)
 				if len(cand) == 0 {
 					t.Logf("第 %d 個選郡提示的候選表是空的，停在這裡", round)
 					break
 				}
 				// 挑一個之後下一張表不能是空的——空了就換下一個候選。
-				at := o.Save()
+				mark := o.Save()
 				picked := 0
 				for _, id := range cand {
-					o.Restore(at)
+					o.Restore(mark)
 					send(t, tc.name, fmt.Sprintf("%d⏎", id))
-					if rebuilt == was || len(candidates(t)) > 0 {
+					if len(battles) > 0 || len(candidates(t)) > 0 {
 						picked = id
 						break
 					}
@@ -145,11 +205,8 @@ func TestBattlePlotsRunLive(t *testing.T) {
 					t.Fatalf("第 %d 個提示的每一個候選都讓下一張表變空", round)
 				}
 				picks = append(picks, picked)
-				t.Logf("第 %d 個選郡提示：候選 %d 個，挑 %d（所屬勢力 %d）",
-					round, len(cand), picked, owner(picked))
-				if rebuilt == was {
-					break // 沒有再重建，選郡問完了
-				}
+				t.Logf("第 %d 個選郡提示：候選 %d 個 %v，挑 %d（所屬勢力 %d）",
+					round, len(cand), cand, picked, owner(picked))
 			}
 			t.Logf("%s 選的郡：%v（我方是勢力 %d）", tc.name, picks, mine)
 
