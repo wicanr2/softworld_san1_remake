@@ -43,6 +43,21 @@ func (g *State) roll(salt ...int) int {
 	return int(h % 100)
 }
 
+// MSCRand 是 MSC 6.0 的 `rand()`（原版的 `0x5c4:0x2cb0`，`L1`）：
+// 線性同餘 `seed = seed*214013 + 2531011`，輸出取第 16..30 位元。
+//
+// 原版的 `RND(n)` 是 `0x10b0c`（`L0`）：`n <= 0` 回 0，否則
+// `rand()` 對 n 取 **idiv 的餘數**。
+//
+// **這是亂數對齊的地基**：remake 現在用的是與局面綁定的雜湊
+//（`roll`），跟原版的序列無關，所以月度對拍剩下的差異多半來自
+// 「哪個郡擲到了什麼」。要收斂就得從原版的狀態接著抽，而且每一處
+// 消耗的次數都要一樣（`internal/parity/rand_oracle_test.go`）。
+func MSCRand(seed uint32) (uint32, int) {
+	seed = seed*214013 + 2531011
+	return seed, int((seed >> 16) & 0x7fff)
+}
+
 // Roll 是給 `internal/ai` 用的決定性亂數，回 0..n−1。
 //
 // **和規則層用的是同一顆**（`roll`），所以 AI 的選擇與事件的判定
