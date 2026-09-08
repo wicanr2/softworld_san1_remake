@@ -197,7 +197,49 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 			s.army, s.team, cap34, left36, who.String())
 	}
 	t.Logf("連移動力一起算：比了 %d 個欄位，對不上 %d 個", checked, bad)
-	dumpScreen(t, o, "battle-day1")
+
+	// 逐日對拍的下一步：把一天送完。主戰場的選單是
+	// `1.移動 2.對戰 3.快戰 4.死戰 5.弓箭 6.策略 7.查看 8.退兵 0.休息`
+	// （`DS:0x7f22`）。**全部休息**是最乾淨的一天：不動、不打，
+	// 只看天數跳不跳、移動力怎麼被夾。
+	//
+	// 天數在 `es:[0x2100]`，而 `es` 在戰術層是從好幾格取的
+	// （`ds:0xa872`／`0xa896`／`0xa89e`／`0xa8a8`／`0xa8ce`）——
+	// 先把每一格當段去讀 0x2100，看哪一個像天數。
+	segs := []uint16{0xa872, 0xa896, 0xa89e, 0xa8a8, 0xa8ce}
+	dayOf := func() string {
+		var sb strings.Builder
+		for _, g := range segs {
+			seg := o.Word(oracle.Addr{Seg: dgroup, Off: g})
+			fmt.Fprintf(&sb, "ds:%#x→%#x:[0x2100]=%d ", g, seg,
+				o.Word(oracle.Addr{Seg: seg, Off: 0x2100}))
+		}
+		return sb.String()
+	}
+	t.Logf("紮完寨：%s", dayOf())
+	for step := 1; step <= 10; step++ {
+		// **兩種輸入都試**：紮寨讀的是掃描碼（`PressScan` 有效），
+		// 命令欄位可能讀字元（`Press`）。奇數步送掃描碼、偶數步送字元，
+		// 哪一種讓天數動起來就是哪一種。
+		send, kind := o.PressScan, "掃描碼"
+		if step%2 == 0 {
+			send, kind = o.Press, "字元"
+		}
+		for _, k := range []string{"0", "\r"} {
+			o.Drain()
+			send(k)
+			if err := o.Run(60_000_000); err != nil {
+				t.Fatalf("休息第 %d 步（%s %q）停止：%v", step, kind, k, err)
+			}
+		}
+		var sb strings.Builder
+		for _, sl := range slots {
+			fmt.Fprintf(&sb, "[%d-%d 兵 %d 移 %d/%d] ", sl.army, sl.team,
+				w16(sl.rec+unitSoldiers), w16(sl.rec+unitMove), w16(sl.rec+unitCap))
+		}
+		t.Logf("休息第 %2d 步（%s）：%s｜%s", step, kind, dayOf(), sb.String())
+	}
+	dumpScreen(t, o, "battle-rested")
 }
 
 // unitSlot 是一支部隊在原版記錄裡的位置，加上 remake 這一邊對應的物件。

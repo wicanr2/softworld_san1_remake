@@ -615,13 +615,27 @@ func (b *Battle) Retreat(u *Unit) error {
 	return nil
 }
 
-// EndDay 結束這一天：重置移動力、遞減狀態、判定勝負。
+// EndDay 結束這一天：回填移動力、遞減狀態、判定勝負。
+//
+// **移動力是回填不是重設**（原版 `0x24ee1`–`0x24f0d`，`L0`）：
+//
+//	ax ← 上限（部隊記錄 offset 34）
+//	剩下的（offset 36）比 ax 小才寫回去，大就留著
+//
+// 也就是 `剩下的 ← max(剩下的, 上限)`。休息多加的 2 因此**不會被砍掉**
+// ——量到紮完寨的部隊上限 12、剩下 14，走了七天還是 14
+// （`TestZZBattleDaySweep`）。無條件重設會把那 2 吃掉。
+//
+// 上限本身**整場只算一次**（`0x27114` 在佈陣時跑，日循環裡一次都沒有），
+// 所以傷亡讓兵力變少不會讓部隊變慢。
 func (b *Battle) EndDay() {
 	for _, u := range b.Units {
 		if !u.Alive() {
 			continue
 		}
-		u.Move = u.MovePoints()
+		if cap := u.MovePoints(); u.Move < cap {
+			u.Move = cap
+		}
 		if u.Trapped > 0 {
 			u.Trapped--
 		}
