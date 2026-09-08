@@ -525,7 +525,10 @@ func (g *State) giftTreasure(prefectureID, targetIndex int, t Treasure,
 		return ErrNoTreasure
 	}
 	x := g.General(targetIndex)
-	if x == nil || x.Faction != by || x.Location != prefectureID {
+	// **電腦那一條不比對勢力**（名單是 `buildRoster` 模式 2 建的，
+	// 混編的郡裡別的勢力的人也在名單上）；玩家那一條照舊。
+	if x == nil || x.Location != prefectureID ||
+		(needLord && x.Faction != by) {
 		return ErrUnknownUnit
 	}
 	// **說明書的數字是下界**：原版在每一項上面再加一次 `RND(2)`

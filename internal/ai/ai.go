@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"strconv"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
@@ -1283,15 +1282,28 @@ func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture in
 		}
 		return 0
 	}
-	var list []*game.General
-	for _, x := range g.Garrison(prefecture) {
-		if x.Faction == id {
-			list = append(list, x)
+	// **接在排過一輪的名單後面**：原版的清單由 `0xec86` 建好、行動者那
+	// 一張（`智 + 武 + 加權`）先排過，四支賞賜常式再按自己的鍵排一次
+	// （`0xf360`／`0xf440`／`0xf520`）。交換排序不穩定，所以**進去的
+	// 順序會影響同鍵的結果**——從槽號順序開始排會挑到另一個人
+	// （郡 12 的兩位都是智 79，郡 30 有兩處同樣）。
+	//
+	// **不比對勢力**：名單是 `buildRoster` 模式 2 建的，混編的郡裡別的
+	// 勢力的人也在裡面。
+	list := roster(g, prefecture)
+	// **交換排序**，和行動者那一張同一支（`0xf360`／`0xf440`／`0xf520`，
+	// 鍵是「該寶物要提升的能力 ＋ 加權表[身分]」）。**不能用穩定排序**
+	// ——內層一比到更大的就當場對調，同鍵的其餘元素會被打亂，而收禮的
+	// 是名單裡第一個過門檻的人。月度對拍量到郡 12 的兩位都是智 79，
+	// 原版給後面那位、穩定排序給前面那位（郡 30 兩處同樣）。
+	key := func(x *game.General) int { return ability(x) + weight(x) }
+	for i := range list {
+		for j := i + 1; j < len(list); j++ {
+			if key(list[j]) > key(list[i]) {
+				list[i], list[j] = list[j], list[i]
+			}
 		}
 	}
-	sort.SliceStable(list, func(a, b int) bool {
-		return ability(list[a])+weight(list[a]) > ability(list[b])+weight(list[b])
-	})
 	for i, x := range list {
 		// **`RND(20)` 在迴圈頂端，每一筆都抽**（`0xd9f2`）——包括能力
 		// 已經到頂、以及君主那種不必比的。寫成短路條件會把那些抽樣吃掉
