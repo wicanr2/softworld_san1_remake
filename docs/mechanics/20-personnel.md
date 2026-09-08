@@ -59,9 +59,13 @@
 降將一開始就死心塌地，人望低的收來就搖搖欲墜。牽絆那一項與登用、挖角
 同一個路子：舊主那邊還有牽掛的人就不容易收編。
 
+收不下來的人**維持原本的勢力留在戰場那一郡**——所有生還者的所在郡都被
+設成戰場郡（`0x1fd4f`），沒被收編的就這樣待在勝方的地盤上。原版的混編郡
+是這樣來的，也因此挑名單時一律不比對勢力（`docs/re/07` §6）。
+
 remake 這一邊是 `game.WarRecruitResistance`／`WarRecruited`／
-`WarRecruitLoyalty`。**判定對拍過**（`docs/playtest/02`，4 次逐次相同，
-三個分支都走到；樣本偏小）。接進安置流程還沒做（`CONTEXT.md` worklist）。
+`WarRecruitLoyalty`，安置是 `game.placeAfterAIBattle`。**判定對拍過**
+（`docs/playtest/02`，4 次逐次相同，三個分支都走到；樣本偏小）。
 
 ## 身分的編碼：還有一個 10（`L0`、`[base]`）
 

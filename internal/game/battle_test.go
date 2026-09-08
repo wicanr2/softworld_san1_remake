@@ -798,3 +798,64 @@ func TestAutoAIPoolsSuppliesIntoTheBattlefield(t *testing.T) {
 		t.Errorf("守方那一郡的米是 %d，四個軍團加起來應該是 150", dst.Rice)
 	}
 }
+
+// TestAutoAIPlacementLeavesLosersInTheBattlefield 釘住電腦對電腦戰役的安置
+// （原版 `0x1fb26`）：**所有生還者都落在戰場那一郡**，敗方收得下來的改
+// 勢力並降成一般武將，收不下來的維持原本的勢力留在那裡。
+//
+// 「留在那裡」是原版混編郡的來源——玩家那條打輸是退回原郡，兩者不同。
+func TestAutoAIPlacementLeavesLosersInTheBattlefield(t *testing.T) {
+	g := newGame(t)
+	var from, to int
+	for n := 1; n <= 42 && from == 0; n++ {
+		src := g.Prefecture(n)
+		if src == nil || !src.Owned() || len(g.garrisonOf(n)) == 0 {
+			continue
+		}
+		for _, m := range src.Neighbours {
+			d := g.Prefecture(m)
+			if d != nil && d.Owned() && d.Owner != src.Owner &&
+				len(g.garrisonOf(m)) > 0 {
+				from, to = n, m
+				break
+			}
+		}
+	}
+	if from == 0 {
+		t.Skip("找不到可以出兵的郡")
+	}
+	src, dst := g.Prefecture(from), g.Prefecture(to)
+	if f := g.Faction(dst.Owner); f != nil {
+		f.Prestige = 100 // 人望拉滿，收得下來的那一條才走得到
+	}
+	att := g.garrisonOf(from)
+	p := g.prepare(from, to, att, g.garrisonOf(to), src.Owner, HalfSupply(), Aid{})
+	p.autoAI = true
+	p.B.Over, p.B.AttackerWon = true, false // 攻方打輸
+	g.settle(p)
+
+	stayed, joined := 0, 0
+	for _, x := range att {
+		if x.Soldiers <= 0 || !x.Employed() {
+			continue
+		}
+		if x.Location != to {
+			t.Errorf("%s 打輸之後在郡 %d，原版是留在戰場那一郡 %d",
+				x.Name, x.Location, to)
+		}
+		switch x.Faction {
+		case dst.Owner:
+			joined++
+			if x.Status != state.StatusOfficer {
+				t.Errorf("%s 被收編之後身分是 %v，原版一律降成一般武將",
+					x.Name, x.Status)
+			}
+		case src.Owner:
+			stayed++
+		}
+	}
+	if joined+stayed == 0 {
+		t.Skip("攻方沒有生還者")
+	}
+	t.Logf("攻方生還 %d 位：收編 %d、留在敵郡 %d", joined+stayed, joined, stayed)
+}

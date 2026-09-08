@@ -108,12 +108,12 @@ func TestWarRecruitMatchesTheOriginal(t *testing.T) {
 	})
 
 	type shot struct {
-		faction, pref, who      int
-		rank, intel, war        int
-		bond, mine, prestige    int
-		officers                int
-		roll                    int
-		bonded                  bool
+		faction, pref, who   int
+		rank, intel, war     int
+		bond, mine, prestige int
+		officers             int
+		roll                 int
+		bonded               bool
 	}
 	var cur shot
 	armed := false

@@ -183,6 +183,71 @@ const (
 	RavagePriceCap = 70  // 物價
 )
 
+// placeAfterAIBattle 是電腦對電腦戰役的安置（`0x1fb26`，`L0`）。
+//
+// **所有生還者的所在郡都設成戰場郡**（`0x1fd4f`），接著對敗方的每一位跑
+// 一次收降（`0x1ff7c`）：收得下來就改勢力、身分降成一般武將、忠誠等於
+// 勝方的人望；**收不下來的維持原本的勢力留在那裡**。
+//
+// 最後那一句是重點：一場敗仗會在勝方的郡裡留下一批敵方武將，原版的混編
+// 郡就是這樣產生的——也因此原版挑名單時一律不比對勢力（`docs/re/07` §6）。
+// 郡的歸屬由人物表重算，所以留下來的人會參與下一次的歸屬判定。
+//
+// 與玩家那條不同：玩家打輸時攻軍退回原郡（`settle` 的另一半）。
+func (g *State) placeAfterAIBattle(p *Pending, winner, loser state.FactionID) {
+	dst := g.Prefecture(p.to)
+	if dst == nil {
+		return
+	}
+	var all []*General
+	for _, group := range [][]*General{p.att, p.def, p.aidAtt, p.aidDef} {
+		for _, x := range group {
+			if x != nil && x.Employed() && x.Soldiers > 0 {
+				all = append(all, x)
+			}
+		}
+	}
+	for _, x := range all {
+		x.Location = p.to
+	}
+	prestige := 0
+	if f := g.Faction(winner); f != nil {
+		prestige = f.Prestige
+	}
+	for _, x := range all {
+		if x.Faction != loser || x.Status == state.StatusLord {
+			continue // 君主不被收編（`0x1ff93`）
+		}
+		if len(g.Garrison(p.to)) >= WarRecruitOfficerCap {
+			continue // 郡裡的在職將滿了（`0x1ffb4`）
+		}
+		bonded := x.Bond != x.Index && x.Bond >= 0
+		if bonded {
+			b := g.General(x.Bond)
+			bonded = b != nil && b.Faction == x.Faction
+		}
+		roll := 0
+		if bonded {
+			roll = g.Roll(WarRecruitBondSpread, x.Index, p.to, 0x1ff7c)
+		}
+		if !WarRecruited(prestige,
+			WarRecruitResistance(int(x.Intel), int(x.War), bonded, roll)) {
+			continue
+		}
+		// 收編改的四個欄位（`0x1feba`）。原本是軍師的話，舊主的軍師位子
+		// 跟著空出來。
+		if x.Status == state.StatusChief {
+			if f := g.Faction(x.Faction); f != nil {
+				f.Chief = -1
+			}
+		}
+		x.Loyalty = uint8(WarRecruitLoyalty(prestige))
+		x.Faction = winner
+		x.Status = state.StatusOfficer
+		x.Location = p.to
+	}
+}
+
 // noPlayerIn 回報這幾個郡是不是一個玩家的都沒有。
 //
 // 原版判的是**諸侯記錄 offset 0 == 1（玩家控制）**，四個郡（主攻、助攻、
@@ -376,6 +441,7 @@ func (g *State) settle(p *Pending) *BattleResult {
 		r.PrefectureTook = true
 	}
 	if p.autoAI {
+		g.placeAfterAIBattle(p, winner, loser)
 		// 電腦對電腦（`0x1f82f`／`0x1f8ae`）：**四個軍團的隨軍錢糧全部
 		// 收進守方那一郡**，不管誰贏。攻方打輸時補給等於送給守方——
 		// 與玩家那條「補給跟著自己走」不一樣，這是原版的規則。
