@@ -332,6 +332,13 @@ func TestZZMonthParity(t *testing.T) {
 		t.Logf("⚠ %s 解出 %d/%d 種行為——下面的差異包含「沒解出來的那幾種完全沒動」",
 			brain.Name(), done, total)
 	}
+	// **窗口跨過月底。** 原版走的是：月 9 的尾巴（那 5 個郡的旗標早就
+	// 清掉了）→ 月底結算 ＋ 冬季事件（**含進貢**）→ 開月洗牌 →
+	// 月 10 的前 37 個郡 → 又輪到玩家。remake 這一邊要照同一個相位：
+	// **先結算再跑郡回合**，否則郡回合看到的是進貢之前的庫存
+	//（賞賜物品那一支因此少抽 271 次），而人口成長也會落在錯的一邊。
+	g.EndMonth()
+
 	for _, f := range g.Factions() {
 		if !f.Alive || f.ID == player {
 			continue
@@ -356,7 +363,7 @@ func TestZZMonthParity(t *testing.T) {
 			mineBy[p] = g.RandDraws() - d0
 		}
 	}
-	g.EndMonth()
+
 
 	rm, rs, rg, err := g.Tables()
 	if err != nil {
@@ -378,6 +385,11 @@ func TestZZMonthParity(t *testing.T) {
 		t.Logf("　  %s %4d", tb.name, randTbl[tb.name])
 	}
 	t.Logf("兵書那一支的漏斗：進入 %d → 過 RND(100) %d → 過庫存 %d", fIn, fRnd, fStock)
+	// 四支寶物常式的桶要併回賞賜物品，否則比較欄位對不起來。
+	for _, k := range []string{"賞賜物品：兵書", "賞賜物品：寶刀",
+		"賞賜物品：美女", "賞賜物品：駿馬"} {
+		randTbl["賞賜物品"] += randTbl[k]
+	}
 	t.Log("逐表抽亂數：原版／remake")
 	for _, tb := range tables {
 		if randTbl[tb.name] > 0 || mineTbl[tb.name] > 0 {
