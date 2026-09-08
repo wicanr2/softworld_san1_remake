@@ -233,11 +233,20 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 等級參數 (30,0)/(20,10)/(10,20)/(0,40) 是**費用與加成**。
 		// ⚠ 原版掃的是身分 8 **與 10**，而 10 是什麼還沒解；
 		// 有好幾位可選時它挑誰也還沒讀。
-		if len(g.Garrison(p)) < game.MaxGeneralsPerPrefecture &&
-			afford(game.RecruitFee(aiLevel)) {
-			if who := f.recruitTarget(g, p); who != nil {
-				out = append(out, game.RecruitOrder{At: p, Target: who.Index})
+		// **不挑人，全部都試一遍**（`0xd0ae`）：掃 0–349，所在郡相符
+		// 且身分 ∈ {8, 10} 的每一位都呼叫一次 `0xce8c`，照槽號由小到大。
+		// 擋住的是 `0xce8c` 裡的每回合預算（`es:[0x3d16]`）與 50 位上限，
+		// 不是「只登用一位」。
+		//
+		// 席次照**成功**算：`ApplyAll` 把擋下來的命令當成違規、中斷同一
+		// 輪後面全部的命令，所以寧可少發也不要發出套不上去的。
+		seats := game.MaxGeneralsPerPrefecture - g.ActiveGenerals(p)
+		for _, who := range g.Recruitable(p) {
+			if seats <= 0 || !afford(game.RecruitFee(aiLevel)) {
+				break
 			}
+			seats--
+			out = append(out, game.RecruitOrder{At: p, Target: who.Index})
 		}
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
 		out = append(out, f.rewards(g, id, p)...)
@@ -909,18 +918,6 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []
 	return out
 }
 
-// recruitTarget 是登用的對象：本郡身分 8（在野露面）的人。
-//
-// 原版還收身分 10——**那個編碼 remake 沒有**，還沒解出是什麼
-// （`docs/mechanics/20-personnel`）。
-func (f *faithful) recruitTarget(g *game.State, prefecture int) *game.General {
-	for _, x := range g.Free(prefecture) {
-		if x.Status == state.StatusAvailable {
-			return x
-		}
-	}
-	return nil
-}
 
 // rewardTarget 是賞賜的對象（`0xd9bc`／`0xdb1a`／`0xdc78`／`0xddee`，`L0`）。
 //

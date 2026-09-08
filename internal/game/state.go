@@ -678,6 +678,22 @@ func (g *State) Soldiers(prefectureID int) int {
 }
 
 // Free 回傳某個郡露面的在野武將。
+// Recruitable 是本郡可以被登用的人，**照槽號由小到大**。
+//
+// 原版的條件只有兩個（`0xd0ae`）：所在郡相符、身分 ∈ {8 在野露面,
+// 10 失去勢力}。它不看名字也不看別的——`Free` 那一份多了
+// 「算進郡的在野武將數」的限制，兩者不是同一個集合。
+func (g *State) Recruitable(prefectureID int) []*General {
+	var out []*General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Location == prefectureID && x.Status.Recruitable() {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
 func (g *State) Free(prefectureID int) []*General {
 	var out []*General
 	for i := range g.generals {

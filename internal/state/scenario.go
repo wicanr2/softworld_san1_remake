@@ -94,8 +94,17 @@ const (
 	// StatusAvailable 是「在野而且在該郡露面」。**只有這一種算進
 	// 郡的在野武將數。**
 	StatusAvailable Status = 8
-	StatusIdle      Status = 9  // 在野，不列入郡的在野數
-	StatusUnborn    Status = 11 // 還沒登場（此時諸葛亮 8 歲）
+	StatusIdle Status = 9 // 在野，不列入郡的在野數
+	// StatusStranded 是**剛失去勢力、留在原地**（`L0`）。原版只有一種
+	// 寫法（`0x20183`／`0x201c7`／`0x261f5`／`0x26239`，兩份同形的碼）：
+	// 身分 ← 10、勢力 ← 0xFF、所在郡 ← 全域 `es:[0x1bf8]`，君主的話先把
+	// 他原本的勢力存起來、軍師的話先把諸侯 offset 6 清成 `0xFFFF`。
+	//
+	// **讀的地方一律與 8 成對**（九處），`0x0ff80` 更是 `8 <= 身分 <= 12`
+	// 的範圍判定——原版沒有任何一處把 10 與 8 分開，唯一的不對稱是
+	// 行動者排序的加權表（`70-ai` §2.11：身分 10 是 400，8 與 9 是 0）。
+	StatusStranded Status = 10
+	StatusUnborn   Status = 11 // 還沒登場（此時諸葛亮 8 歲）
 
 	// StatusFallen 是**已故**。君主死掉時原版就是把身分寫成 12、
 	// 勢力與領地都寫成 `0xFF`（`0x14a5d`–`0x14a6a`），接著才處理繼承。
@@ -107,6 +116,11 @@ const (
 //
 // 君主與太守是常態；**軍師是代理**——`Governor` 才是完整的判斷。
 func (s Status) Governs() bool { return s == StatusLord || s == StatusGovernor }
+
+// Recruitable 回報這個身分能不能被登用（`0xd0e0`：身分 10 或 8）。
+func (s Status) Recruitable() bool {
+	return s == StatusAvailable || s == StatusStranded
+}
 
 // Prefecture 是一個郡。
 type Prefecture struct {

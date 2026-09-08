@@ -114,7 +114,7 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 	}
 	t := g.General(targetIndex)
 	if t == nil || t.Employed() || t.Location != prefectureID ||
-		t.Status != state.StatusAvailable {
+		!t.Status.Recruitable() {
 		return ErrUnknownUnit
 	}
 	level := g.aiLevelOf(by)
