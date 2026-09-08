@@ -74,9 +74,27 @@ func TestSabotageRunsLive(t *testing.T) {
 	o.SetWord(addr(base+uint32(mine)*72+6), lord) // 軍師 ← 君主
 	t.Logf("勢力 %d 的軍師欄指向君主槽 %d（坐鎮郡 %d）", mine, lord, at)
 
+	tgt := staBase + uint32(to)*staRec
+	tgtFaction := tgt + 30 // 州郡 offset 30 ＝ 所屬
+
+	// **成敗那道門也要自己擺**（`0x2dd66`，`PlotScore`）：比的是雙方
+	// 「軍師與君主裡謀略較高的那位」。判失敗的話效果常式根本不會跑，
+	// 印出來與「按鍵沒走到底」一模一樣。我方拉到 100、目標那一方壓到
+	// 30，把這個變數整個移出去。
+	genBase := staBase + uint32(state.PrefectureTableSize)
+	o.SetByte(addr(genBase+uint32(lord)*30+9), 100)
+	theirs := int(o.Word(addr(tgtFaction)))
+	for _, off := range []uint32{2, 6} { // 君主、軍師
+		who := o.Word(addr(base + uint32(theirs)*72 + off))
+		if who < 350 {
+			o.SetByte(addr(genBase+uint32(who)*30+9), 30)
+		}
+	}
+	t.Logf("我方君主槽 %d 謀略拉到 100；目標郡屬勢力 %d，君主與軍師壓到 30",
+		lord, theirs)
+
 	// **五刀要量得到就得有得扣。** 目標郡的五個欄位直接寫進去
 	// （`CLAUDE.md`：對拍的盤面自己擺，不靠原版的 RND()）。
-	tgt := staBase + uint32(to)*staRec
 	o.SetWord(addr(tgt+staGold), 9000)
 	o.SetWord(addr(tgt+staRice), 20000)
 	o.SetByte(addr(tgt+staLoyalty), 90)
@@ -99,6 +117,24 @@ func TestSabotageRunsLive(t *testing.T) {
 	o.OnCall(addr(0x2c2ee), func(*oracle.Oracle) { menuIn++ }) // 分派器
 	inIncite := 0
 	o.OnCall(addr(0x2d34c), func(*oracle.Oracle) { inIncite++ }) // 策反人民
+	// 挑名單的共用常式（`0xf17:0x0aae` ＝ `0xfc1e`）與成敗判定
+	// （`0x2dd66`）各記一次參數，失敗時看得出停在哪一關。
+	type rosterCall struct{ pref, mode int }
+	var rosters []rosterCall
+	o.OnCall(addr(0xfc1e), func(o *oracle.Oracle) {
+		if len(rosters) < 12 {
+			rosters = append(rosters, rosterCall{int(o.Arg(0)), int(o.Arg(1))})
+		}
+	})
+	type judgeCall struct{ from, at, charm int }
+	var judges []judgeCall
+	o.OnCall(addr(0x2dd66), func(o *oracle.Oracle) {
+		if len(judges) < 12 {
+			judges = append(judges, judgeCall{
+				int(o.Arg(0)), int(o.Arg(1)), int(o.Arg(2))})
+		}
+	})
+
 	var charm, hitTarget, calls int
 	var before snap
 	o.OnCall(addr(0x2d6e0), func(o *oracle.Oracle) {
@@ -137,6 +173,7 @@ func TestSabotageRunsLive(t *testing.T) {
 	}
 	t.Logf("分派器進去 %d 次、策反人民進去 %d 次、效果常式跑了 %d 次",
 		menuIn, inIncite, calls)
+	t.Logf("挑名單 %v｜成敗判定 %v", rosters, judges)
 	if calls == 0 {
 		t.Fatalf("效果常式一次都沒跑（分派器 %d／策反人民 %d）"+
 			"——按鍵序列沒走到底，用 SAN1_PLOTKEY 換一組再看",
