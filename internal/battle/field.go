@@ -133,21 +133,6 @@ func LeaderPower(war, arms int, k TroopKind, t Terrain, attacking bool) int {
 		(TroopTerrainBonus(k, t) + edge) / LeaderPowerDiv
 }
 
-// TerrainFactor 是地形與兵種合起來對戰力的倍率，**以陸軍在平原為 100**。
-//
-// 原版把「兵種適性 ＋ 地形值」當成乘數（見 LeaderPower）；remake 這一層
-// 算的是部隊不是單一將領，所以換算成相對平原的百分比再乘上去。
-// **兩張表都是量到的，換成百分比這一步是 remake 的**。
-func TerrainFactor(t Terrain, k TroopKind, attacking bool) int {
-	base := troopTerrain[TroopLand][Plain] + terrainDefence[Plain]
-	edge := terrainDefence[t]
-	if attacking {
-		base = troopTerrain[TroopLand][Plain] + terrainAttack[Plain]
-		edge = terrainAttack[t]
-	}
-	return (TroopTerrainBonus(k, t) + edge) * 100 / base
-}
-
 // moveCost 是走進一格要花的移動力。
 //
 // 原版的表在 `DS:0x7c42`，16 個字，用地形碼（那一格的低四位）索引：

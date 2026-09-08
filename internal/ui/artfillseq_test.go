@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
-	"github.com/wicanr2/softworld_san1_remake/internal/save"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -48,7 +47,12 @@ func TestPrefectureFillsInOrderMatchTheOriginal(t *testing.T) {
 		return c
 	}
 	c2, c3, c1 := open("DATA2"), open("DATA3"), open("DATA1")
-	g, err := save.ReadOriginal(c2, 1, state.EditionBase)
+	// **所屬要讀存檔裡的那一份，不是載入之後重算的。**
+	// 地圖是「載完就畫」、之後不重畫，而原版載完存檔會把郡的所屬重算
+	// 一次（`0x1e394`，`save.ReadOriginal` 照做）——重算是在畫完之後，
+	// 所以畫面上的顏色是存檔的值。潁川（存檔 5、記憶體 4）與南海
+	// （存檔無主、記憶體 14）兩格會因此看起來像「填色的對應表錯了」。
+	g, err := state.LoadScenario(c2, state.Slot("SV1"))
 	if err != nil {
 		t.Fatalf("讀原版第一個進度：%v", err)
 	}

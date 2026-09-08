@@ -206,7 +206,10 @@ func TestPopulationGrowsOnceAYear(t *testing.T) {
 
 	g.Date = Date{Year: 189, Month: 9}
 	before := p.Population
-	want := GrowPopulation(before, int(p.LandValue), int(p.PublicLoyalty))
+	// **零頭進不去**：人口在州郡表裡存的是「百」（offset 14，`u16`），
+	// 所以成長算完寫回去的時候不足百的部分就沒了（月度對拍四十三個郡
+	// 逐格相同的條件之一，`docs/playtest/02`）。
+	want := GrowPopulation(before, int(p.LandValue), int(p.PublicLoyalty)) / 100 * 100
 	g.EndMonth() // → 十月
 	if p.Population != want {
 		t.Errorf("十月人口 %d，原本 %d，應該是 %d", p.Population, before, want)

@@ -117,7 +117,11 @@
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
 | `TuneArrowDamage` | 6 | 只給了**次數**公式，沒給單次殺傷（相對白刃相接的百分比）|
-| `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` / `TuneStratagemRange` | 140／20／30／3 | 自動作戰什麼時候該死戰、叫陣、退兵、用計——手冊是寫給玩家看的，沒有這一層 |
+| `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` / `TuneStratagemRange` | 140／3／30／3 | 自動作戰什麼時候該死戰、叫陣、退兵、用計——手冊是寫給玩家看的，沒有這一層 |
+
+`TuneDuelWarEdge` 的 3 **有上界**：對方接不接受叫陣看
+`RND(10) + 對方戰力 − 5 > 我方戰力`（`DuelAccepted`），我方最多強過對方
+四點還有機會被接受。填大一點的值會讓叫陣一定被拒，整條單挑永遠打不起來。
 
 戰術層原本 remake 自選的這幾項**都換成量到的了**（`docs/re/05`）：
 地形的攻防值（`DS:0x85c2`／`DS:0x85e2`）、兵種對地形的加成
@@ -125,11 +129,13 @@
 移動力公式（`min(15, (訓練 − 武裝 + 100)/10 + 1)`）、戰場版面
 （12 欄 × 10 列，地圖在州郡記錄 offset 55–174）。
 
-剩下的 remake 決定只有**合成的方式**：原版對每一位將領各算一個戰力值，
-remake 這一層算的是部隊，所以拿加權平均代入，並把「兵種適性 ＋ 地形值」
-換算成相對「陸軍在平原」的百分比（`battle.TerrainFactor`）。
-一次交戰的損失也是量到的（`殺傷 ＝ 兵士數 × 戰力值 ÷ 100`，雙方同時算），
-所以 `TuneHit*` 那一組整組退役。誘敵與圍攻的三個常數
+殺傷這條**沒有合成**：`battle.strike` 照原版對隊伍裡每一位將領各算一次
+戰力值（`LeaderPower`，`0x2e01a`／`0x2e13a`）再乘上他自己的兵，加起來
+就是這支部隊打出去的量；一次交戰的損失也是量到的
+（`殺傷 ＝ 兵士數 × 戰力值 ÷ 100`，雙方同時算），所以 `TuneHit*` 那一組
+整組退役。剩下的合成只有**移動力**：原版逐將領算，remake 的部隊共用一個
+移動力池，所以拿兵數加權的平均訓練度與武裝度代入（`Unit.MovePoints`）。
+誘敵與圍攻的三個常數
 （`TuneEnragedPenalty`／`TuneLureDays`／`TuneSiegeBonus`）也退役了——
 那兩招走的是共同的交戰結算，倍率在 `DS:0x81a2`（`docs/re/05` §4.2b–4.5）；
 `TuneCaptureOnDuel` 一樣退役，單挑落敗的處置是 `RND(7)`，只有 0 才死

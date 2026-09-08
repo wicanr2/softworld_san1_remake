@@ -107,6 +107,9 @@ func TestFaithfulModesDoNotPretend(t *testing.T) {
 			case game.ReliefOrder: // 開倉賑民（0x55f4），已解
 			case game.RewardOrder: // 賞賜金帛（0x5654），已解
 			case game.BuyRiceOrder: // 買入米糧（0x55d4），已解
+			// 同一支分派表項目（常式 `0xc634`）是**雙向**的：存糧低於
+			// 目標就買、高於目標就賣，所以電腦諸侯下的是 RiceTradeOrder。
+			case game.RiceTradeOrder:
 			case game.HeadhuntOrder: // 挖角（0x56d4），已解
 			case game.PlotOrder: // 計略（0x56f4），已解
 			case game.AttackOrder, game.MoveOrder: // 出兵／移防（0x54f4），已解
@@ -388,9 +391,15 @@ func TestArmsPurchaseFillsToFull(t *testing.T) {
 
 // TestFaithfulPlansAllApply 釘住「AI 送出的命令套得上去」。
 //
-// `ApplyAll` 遇到擋下來的命令會**中斷同一輪後面全部的命令**，所以一道
-// 送錯就少算一整個勢力的行動。而少算的結果長得跟「公式不準」一模一樣：
-// 對拍那一邊只看得到欄位對不上，看不到有一整串命令根本沒跑。
+// 一道被擋下來會**中斷同一個郡後面全部的命令**，所以一道送錯就少算
+// 一整個郡的行動。而少算的結果長得跟「公式不準」一模一樣：對拍那一邊
+// 只看得到欄位對不上，看不到有一整串命令根本沒跑。
+//
+// 走的是**逐郡的執行版**（`ActPrefecture`），也就是 `session` 實際在用
+// 的那一條。原版的分派器是循序的：後面的表讀的是前面改過的盤面——
+// 米糧買賣把郡裡的米賣掉之後，緊接著的出兵能帶走多少就跟著變。
+// 「整個勢力先排完再一次套上」因此本來就對不上，那個模式只有
+// `enhanced` 用得到（它每郡只下一道令）。
 //
 // 這一條不需要原版素材以外的東西，三秒跑完——`internal/parity` 那個
 // 三分鐘的對拍不該是第一個發現這件事的地方。
@@ -400,14 +409,21 @@ func TestFaithfulPlansAllApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	planner, ok := b.(PrefecturePlanner)
+	if !ok {
+		t.Fatalf("%s 沒有逐郡的執行版", b.Name())
+	}
 	for _, f := range g.Factions() {
 		if !f.Alive || f.ID == g.Player {
 			continue
 		}
-		orders := b.Plan(g, f.ID)
-		if n, err := g.ApplyAll(orders, f.ID); err != nil {
-			t.Errorf("勢力 %d 的 %d 道命令裡有 %d 道成立，然後：%v",
-				f.ID, len(orders), n, err)
+		level := g.AILevel(f.ID)
+		for _, at := range g.Territory(f.ID) {
+			orders, n, err := planner.ActPrefecture(g, f.ID, at, level)
+			if err != nil {
+				t.Errorf("勢力 %d 的郡 %d：%d 道命令裡有 %d 道成立，然後：%v",
+					f.ID, at, len(orders), n, err)
+			}
 		}
 	}
 }
