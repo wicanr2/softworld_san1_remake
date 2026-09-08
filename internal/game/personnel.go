@@ -119,6 +119,16 @@ func (g *State) Search(prefectureID, generalIndex int, by state.FactionID) (foun
 	p.Gold -= fee
 	p.Commanded = true
 
+	// **門檻照原版**（`SearchTierFor`，`L1`、`0xcc86`）：
+	// 尋訪者的謀略要**大於** `RND(Spread) + Floor`。三個常數隨 AI 等級變，
+	// 玩家這一邊照等級 0 那一組（`L2`：玩家的常式沒有單獨讀過）。
+	//
+	// **先擲再找人。** 原版這一次亂數是無條件抽的——這個郡有沒有人可找
+	// 是後面才判的。先找人再擲，沒人的郡就不會抽，整條亂數序列跟著錯開
+	// （月度對拍量到尋訪少抽 13 次，正好等於閘門通過的次數）。
+	tier := SearchTierFor(g.aiLevelOf(by))
+	bar := g.roll(prefectureID, x.Index)%tier.Spread + tier.Floor
+
 	// 這個郡有沒有人可找：身分是「在野但不列入該郡在野數」的那些人。
 	var hidden *General
 	for i := range g.generals {
@@ -131,11 +141,6 @@ func (g *State) Search(prefectureID, generalIndex int, by state.FactionID) (foun
 	if hidden == nil {
 		return nil, nil // 這裡真的沒有人才——不是錯誤
 	}
-	// **門檻照原版**（`SearchTierFor`，`L1`、`0xcc86`）：
-	// 尋訪者的謀略要**大於** `RND(Spread) + Floor`。三個常數隨 AI 等級變，
-	// 玩家這一邊照等級 0 那一組（`L2`：玩家的常式沒有單獨讀過）。
-	tier := SearchTierFor(g.aiLevelOf(by))
-	bar := g.roll(prefectureID, x.Index, hidden.Index)%tier.Spread + tier.Floor
 	if int(x.Intel) <= bar {
 		return nil, nil
 	}
