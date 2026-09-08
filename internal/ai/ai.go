@@ -20,7 +20,9 @@ package ai
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sort"
+	"strconv"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -238,6 +240,9 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		applied++
 	}
 	lastDraws := g.RandDraws()
+	// 追值的時候順便記下這一張表跑完之後郡的兵、金、米。抽樣次數對上
+	// 之後剩下的就是**量**的差，而量的差要逐表看才知道是哪一支。
+	curP, watch := -1, watchPrefecture()
 	mark := func(name string) {
 		if f.trace == nil {
 			return
@@ -245,9 +250,20 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		now := g.RandDraws()
 		f.trace[name] += now - lastDraws
 		lastDraws = now
+		if curP == watch {
+			if q := g.Prefecture(curP); q != nil {
+				n := 0
+				for _, x := range g.Garrison(curP) {
+					n += x.Soldiers
+				}
+				f.trace[fmt.Sprintf("值|%-10s 兵(百) %3d 金 %5d 米 %5d",
+					name, n/100, q.Gold, q.Rice)]++
+			}
+		}
 	}
 	k := internalAffairsRange(aiLevel)
 	for _, p := range territory {
+		curP = p
 		if failed != nil {
 			break
 		}
@@ -319,9 +335,11 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 尋訪人才（表 `0x5614`）：`RND(10) > Bar[等級]`。
 		// **三個常數都隨等級變**（`game.SearchTierFor`，`L1`）：
 		// 出手的機率從 20 % 升到 50 %，門檻從 30–94 降到 15–34。
-		if g.Roll(10, int(id), p, 0x5614) > game.SearchTierFor(aiLevel).Bar &&
-			afford(game.CostSearch) {
-			emit(game.SearchOrder{At: p, General: gov.Index})
+		// **沒有錢的閘門**：原版那一條不收錢（`0xcc86` 沒碰 offset 18），
+		// 所以「付不付得起」根本不是條件。加上它會讓窮郡少做一次尋訪，
+		// 而且郡的金也跟著錯。
+		if g.Roll(10, int(id), p, 0x5614) > game.SearchTierFor(aiLevel).Bar {
+			emit(game.SearchOrder{At: p, General: gov.Index, Auto: true})
 		}
 		mark("尋訪")
 		// 登用人才（表 `0x5634`）。**每郡最多 50 位將軍**
@@ -473,16 +491,23 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			emit(game.RedistributeOrder{At: p, Units: who})
 		}
 		mark("調整兵力")
-		// 買入米糧（表 `0x55d4`）：**不走回合預算也不打折**，
-		// 它是市場交易。存糧目標跟著兵力走，不夠就用郡的金補到滿。
+		// 米糧買賣（表 `0x55d4`）：**不走回合預算也不打折**，
+		// 它是市場交易，而且**雙向**——存糧目標跟著兵力走，低了買、
+		// 高了賣（`game.TradeRiceTo`）。
 		if o, ok := buyRice(g, p, id, gold()); ok {
+			was := 0
+			if q := g.Prefecture(p); q != nil {
+				was = q.Gold
+			}
 			emit(o)
-			purse -= o.Units / game.AIRicePerGold(g.Prefecture(p).PriceLevel, aiLevel)
+			if q := g.Prefecture(p); q != nil && live {
+				purse -= was - q.Gold
+			}
 		}
 		mark("買米")
 		// 出兵／移防（表 `0x54f4`）：**分派器的最後一張**，等級 3 以上
 		// 才做。四道門檻、洗牌編隊、三選一目標，見 sortie。
-		if o, ok := sortie(g, p, id, purse); ok {
+		if o, ok := f.sortie(g, p, id, purse); ok {
 			emit(o)
 		}
 		mark("出兵")
@@ -548,7 +573,8 @@ func SortieOdds(ed state.Edition, difficulty int) int {
 // 各自擲骰，所以評估的部隊與上路的部隊不是同一批。差別在收尾：
 // `0xb2b4` 允許整郡被留守吃光（清單長度收成 0 → 這次出兵作廢），
 // `0xb706` 的迴圈用 `jg`，位置 0 永遠留著，所以出發時至少有一個人。
-func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.Order, bool) {
+func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
+	purse int) (game.Order, bool) {
 	if g.AILevel(id) < SortieMinLevel {
 		return nil, false
 	}
@@ -584,6 +610,11 @@ func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.
 	//
 	// **金看的是郡的金，不是本回合預算**——出兵是分派器的最後一張，
 	// 前面十七張花掉的錢不影響這一道。
+	if f.trace != nil {
+		f.trace[fmt.Sprintf("出兵：郡 %d 兵(百) %d 金 %d 米 %d 守軍 %d 留下 %d",
+			prefecture, units, p.Gold, p.Rice,
+			len(g.Garrison(prefecture)), len(survivors))]++
+	}
 	if units > p.Gold || p.Rice < units*SortieRicePerUnit || len(survivors) == 0 {
 		return nil, false
 	}
@@ -728,6 +759,20 @@ func muster(g *game.State, prefecture int, id state.FactionID, want, salt int, k
 	return who[:left]
 }
 
+// watchPrefecture 是要逐表記錄兵金米的那個郡，`SAN1_WATCH` 沒設就關掉。
+// 對拍在追「抽樣次數對上但量不對」時用。
+func watchPrefecture() int {
+	v := os.Getenv("SAN1_WATCH")
+	if v == "" {
+		return -1
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return -1
+	}
+	return n
+}
+
 // 分派表的位址，當識別碼用。
 const (
 	tableArms      = 0x5594 // 購置武器
@@ -847,10 +892,10 @@ func relief(g *game.State, prefecture int, id state.FactionID, budget int) (game
 //
 // **下限是 0**——缺口夠大就把郡的金全部花光（`ds:[0xa5f2]` 讀出來是 0）。
 // 這一支不經過折扣常式 `0xec24`，所以電腦諸侯買米沒有折扣。
-func buyRice(g *game.State, prefecture int, id state.FactionID, purse int) (game.BuyRiceOrder, bool) {
+func buyRice(g *game.State, prefecture int, id state.FactionID, purse int) (game.RiceTradeOrder, bool) {
 	p := g.Prefecture(prefecture)
 	if p == nil {
-		return game.BuyRiceOrder{}, false
+		return game.RiceTradeOrder{}, false
 	}
 	troops := 0
 	for _, x := range g.Garrison(prefecture) {
@@ -858,25 +903,14 @@ func buyRice(g *game.State, prefecture int, id state.FactionID, purse int) (game
 	}
 	// **先擲再看錢。** 同賑民：原版每郡都抽一次（32／32）。
 	want := troops / 100 * (g.Roll(10, int(id), prefecture, tableRice) + 12)
-	if purse <= 0 {
-		return game.BuyRiceOrder{}, false
-	}
 	if want > game.MaxRice {
 		want = game.MaxRice
 	}
-	gap := want - p.Rice
-	if gap <= 0 {
-		return game.BuyRiceOrder{}, false
-	}
-	rate := game.RicePerGold(p.PriceLevel)
-	spend := gap / rate
-	if spend > purse {
-		spend = purse
-	}
-	if spend <= 0 {
-		return game.BuyRiceOrder{}, false
-	}
-	return game.BuyRiceOrder{At: prefecture, Units: spend * rate}, true
+	// **不擋方向也不擋錢包**：這一支是雙向的，存糧高於目標就賣
+	// （`game.TradeRiceTo`）。先前擋掉 `缺口 <= 0`，等於把賣米整個拿掉
+	// ——月度對拍量到郡 1 的米因此多出 116 單位、金少 14，而出兵那一道
+	// 比的正是米，於是連出兵的判定都跟著翻面。
+	return game.RiceTradeOrder{At: prefecture, Target: want}, true
 }
 
 // headhunt 是「挖角」（表 `0x56d4`，`L0`、`[base]`）。

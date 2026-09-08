@@ -407,6 +407,53 @@ func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 	return nil
 }
 
+// TradeRiceTo 是電腦諸侯那一支的米糧買賣（`0xc634`，`L0`、`[base]`）。
+//
+// **它是雙向的**：存糧低於目標就買，高於目標就賣，同一條算式：
+//
+//	量   ＝ (100 − 物價) ÷ 除數[等級]        ; 一金換幾單位米
+//	缺口 ＝ 目標 − 米
+//	剩金 ＝ clamp(金 − 缺口 ÷ 量, 0, 30000)  ; 浮點
+//	買到 ＝ (金 − 剩金) × 量                 ; 浮點
+//	金 ← trunc(剩金)；米 ← 米 + 買到
+//
+// 缺口為負時 `剩金 > 金`、`買到` 為負——**米降到目標、金往上補**。
+// 代數上 `買到 == 缺口`（除非 `剩金` 被夾在 0），所以**米一定落在目標上**，
+// 而金的變化是 `trunc(缺口 ÷ 量)`：賣 116 單位、量 8 換到 14 金
+// （零頭被截掉），米卻是整整少 116。
+//
+// ⚠ 用浮點算，**不要先把 `剩金` 截成整數再回推買到**——那會讓米停在
+// 目標上方幾個單位（量 8、缺口 116 時差 4）。
+func (g *State) TradeRiceTo(prefectureID, target int, by state.FactionID) error {
+	p, err := g.canOrder(prefectureID, by)
+	if err != nil {
+		return err
+	}
+	if target > MaxRice {
+		target = MaxRice
+	}
+	rate := RicePerGold(p.PriceLevel)
+	if f := g.Faction(by); f != nil && f.ByComputer {
+		rate = AIRicePerGold(p.PriceLevel, f.AILevel)
+	}
+	gap := float64(target - p.Rice)
+	left := float64(p.Gold) - gap/float64(rate)
+	if left < 0 {
+		left = 0
+	}
+	if left > MaxGold {
+		left = MaxGold
+	}
+	got := (float64(p.Gold) - left) * float64(rate)
+	p.Gold = int(left)
+	p.Rice = clampTo(p.Rice+int(got), MaxRice)
+	if p.Rice < 0 {
+		p.Rice = 0
+	}
+	p.Commanded = true
+	return nil
+}
+
 // Relief 是「開倉賑民」（說明書 p.22）：撥米賑濟百姓換民眾忠誠，
 // **太守魅力越高效果越好**。
 //

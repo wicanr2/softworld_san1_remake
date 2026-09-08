@@ -24,7 +24,8 @@ PASS=()
 # 對拍測試讀的環境變數要一起帶進容器。**漏一個不會報錯**——
 # 測試看到空字串就當「沒有設」，該存的圖或該倒的表安靜地不存。
 for v in GOOS GOARCH CGO_ENABLED SAN1_ORIG_DIR SAN1_SHOTS SAN1_DUMP \
-         SAN1_TURNS SAN1_TURNKEY SAN1_DIFFICULTY SAN1_BATTLEKEY SAN1_PLUSKEY; do
+         SAN1_TURNS SAN1_TURNKEY SAN1_DIFFICULTY SAN1_BATTLEKEY SAN1_PLUSKEY \
+         SAN1_WATCH; do
   [[ -n "${!v:-}" ]] && PASS+=(-e "$v=${!v}")
 done
 

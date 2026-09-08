@@ -96,6 +96,18 @@ func (o BuyRiceOrder) Describe(g *State) string {
 	return tf("log.buy", prefName(g, o.At), o.Units)
 }
 
+// RiceTradeOrder 是電腦諸侯的米糧買賣（`0xc634`）：**存糧往目標靠**，
+// 低了買、高了賣，同一條算式。玩家那兩道是 `BuyRiceOrder`／`SellRiceOrder`。
+type RiceTradeOrder struct{ At, Target int }
+
+func (o RiceTradeOrder) Prefecture() int { return o.At }
+func (o RiceTradeOrder) Apply(g *State, by state.FactionID) error {
+	return g.TradeRiceTo(o.At, o.Target, by)
+}
+func (o RiceTradeOrder) Describe(g *State) string {
+	return tf("log.buy", prefName(g, o.At), o.Target)
+}
+
 // RecruitOrder 是登用本地在野人才。
 type RecruitOrder struct{ At, Target int }
 
@@ -265,11 +277,19 @@ func (o RestOrder) Describe(g *State) string {
 	return tf("log.rest", prefName(g, o.At))
 }
 
-type SearchOrder struct{ At, General int }
+type SearchOrder struct {
+	At, General int
+
+	// Auto 為真表示走電腦諸侯那一條（`0xcd20` 起的六支 → `0xcc86`）。
+	// **原版那一條不收錢**：`0xcc86` 只把一位身分 9 的人改成 8、
+	// 把州郡 offset 23（在野武將數）加一，從頭到尾沒有碰 offset 18。
+	// 5 金是說明書給玩家的規則（p.22），兩條不是同一組。
+	Auto bool
+}
 
 func (o SearchOrder) Prefecture() int { return o.At }
 func (o SearchOrder) Apply(g *State, by state.FactionID) error {
-	_, err := g.Search(o.At, o.General, by)
+	_, err := g.search(o.At, o.General, by, !o.Auto)
 	return err
 }
 func (o SearchOrder) Describe(g *State) string {

@@ -52,6 +52,7 @@ func TestZZMonthParity(t *testing.T) {
 	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
 	total := nMas + nSta + nGen
 
+	var atSettle []byte
 	before := o.Bytes(addr(base), total)
 	dumpTables(t, before, "parity-00-出發")
 
@@ -143,9 +144,32 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	curTable := "郡回合之外"
 	randTbl := map[string]int{}
+	// **州郡記錄直接從 `base` 讀**，和倒三張表用的是同一塊記憶體。
+	// 自己算 DS 相對的段選擇子會拿到別的東西——同一個位址在不同的
+	// 呼叫點對到不同的段。
+	sta := func(o *oracle.Oracle, p int) string {
+		at := base + uint32(nMas) + uint32(p)*176
+		return fmt.Sprintf("兵(百) %d 金 %d 米 %d",
+			o.Word(addr(at+16)), o.Word(addr(at+18)), o.Word(addr(at+20)))
+	}
+	// 逐表記下**進這一張表之前**郡的兵金米。remake 那邊記的是
+	// 「跑完這一張表之後」，所以原版的第 n+1 筆對 remake 的第 n 筆。
+	watch := -1
+	if v := os.Getenv("SAN1_WATCH"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			watch = n
+		}
+	}
+	valLog := []string{}
 	for _, tb := range tables {
 		name := tb.name
-		o.OnCall(addr(tb.at), func(*oracle.Oracle) { curTable = name })
+		o.OnCall(addr(tb.at), func(o *oracle.Oracle) {
+			curTable = name
+			if watch >= 0 && curDisp == watch {
+				valLog = append(valLog,
+					fmt.Sprintf("進 %-10s 之前　%s", name, sta(o, watch)))
+			}
+		})
 	}
 	// 這些攔截點不只要記抽了幾次，還要記**被呼叫幾次**——一個桶是 0
 	// 有兩種意思：常式跑了但沒抽亂數，或者它在這個窗口裡根本沒跑。
@@ -182,6 +206,10 @@ func TestZZMonthParity(t *testing.T) {
 		ds := uint32(o.DSReg()) * 16
 		seedAtSettle = uint32(o.Word(addr(ds+0xa3ae))) | uint32(o.Word(addr(ds+0xa3b0)))<<16
 		haveSettleSeed = true
+		// **窗口的起點盤面也要驗。** remake 是從 `parity-00`（開機那一刻）
+		// 建局面的，而原版在那之後還跑過玩家的回合才進結算——那一段
+		// 動過的欄位，remake 這邊沒有。
+		atSettle = o.Bytes(addr(base), total)
 	})
 
 	// 每個郡的回合（`0x1746e`）：走到幾個、其中幾個真的跑了分派器。
@@ -323,6 +351,27 @@ func TestZZMonthParity(t *testing.T) {
 	var tbBefore, tbAfter [16][5]int
 	o.OnCall(addr(0x170a2), func(o *oracle.Oracle) { tbBefore = dumpTreasury(o) })
 	o.OnCall(addr(0x1734f), func(o *oracle.Oracle) { tbAfter = dumpTreasury(o) })
+	// 出兵那三道閘門（`0xb47a`）：兵士(百) > 金、兵士(百)×15 > 米、
+	// 清單長度 < 1。進到 `0xb47a` 表示編隊已經洗過了，所以這裡讀到的
+	// 是**擋下來之前**的盤面。
+	soLog := []string{}
+	// 郡回合**開始時**的金與米（`0x174f3`，分派器之前）。出兵那一道
+	// 比的是米，所以要知道差是回合開始就有、還是回合中某張表造成的。
+	startLog := map[int]string{}
+	var atFirstTurn []byte
+	o.OnCall(addr(0x174f3), func(o *oracle.Oracle) {
+		if curTurn >= 0 && curTurn <= 42 {
+			startLog[curTurn] = sta(o, curTurn)
+		}
+		if atFirstTurn == nil {
+			atFirstTurn = o.Bytes(addr(base), total)
+		}
+	})
+	o.OnCall(addr(0xb47a), func(o *oracle.Oracle) {
+		if curDisp >= 0 && curDisp <= 42 {
+			soLog = append(soLog, fmt.Sprintf("郡 %d %s", curDisp, sta(o, curDisp)))
+		}
+	})
 	o.OnCall(addr(0x1713e), func(*oracle.Oracle) { tbLand++ })
 	o.OnCall(addr(0x17167), func(*oracle.Oracle) { tbTalent++ })
 	// 四種寶物的「重抽」各一段（`c < v → v = RND(5)+8`）。
@@ -529,6 +578,17 @@ func TestZZMonthParity(t *testing.T) {
 					return -1
 				}())
 		}
+		if at == firstGapAt {
+			t.Logf("郡 %d 回合開始：原版 %s", at, startLog[at])
+			t.Logf("郡 %d 回合開始：remake 兵(百) %d 金 %d 米 %d",
+				at, func() int {
+					n := 0
+					for _, x := range g.Garrison(at) {
+						n += x.Soldiers
+					}
+					return n / 100
+				}(), q.Gold, q.Rice)
+		}
 		d0 := g.RandDraws()
 		if at == firstGapAt {
 			for k, v := range mineTbl {
@@ -618,6 +678,32 @@ func TestZZMonthParity(t *testing.T) {
 		if strings.HasPrefix(k, "內政：郡 1 ") {
 			t.Logf("remake 的內政：%s（%d 次）", k, v)
 		}
+	}
+	for _, ln := range valLog {
+		t.Logf("原版逐表的值：%s", ln)
+	}
+	for _, ln := range soLog {
+		if strings.HasPrefix(ln, "郡 1 ") {
+			t.Logf("原版的出兵閘門：%s", ln)
+		}
+	}
+	for k, v := range mineTbl {
+		if strings.HasPrefix(k, "出兵：郡 1 ") {
+			t.Logf("remake 的出兵閘門：%s（%d 次）", k, v)
+		}
+	}
+	if len(atFirstTurn) == total {
+		t.Logf("月底結算 → 第一個郡的回合之間原版動了 %d 個位元組%s",
+			differs8(atSettle, atFirstTurn),
+			where(atSettle, atFirstTurn, nMas, nSta))
+		t.Log(byPrefecture(atSettle, atFirstTurn, nMas, nSta))
+	}
+	if len(atSettle) == total {
+		dumpTables(t, atSettle, "parity-005-結算前")
+		t.Logf("快照 → 月底結算之間原版動了 %d 個位元組%s",
+			differs8(before, atSettle),
+			where(before, atSettle, nMas, nSta))
+		t.Log(byPrefecture(before, atSettle, nMas, nSta))
 	}
 	t.Logf("郡 %d 逐表（原版）：%v", firstGapAt, firstTbl)
 	t.Logf("郡 %d 逐表（remake）：%v", firstGapAt, firstMine)

@@ -125,6 +125,12 @@ func (g *State) Roll(n int, salt ...int) int {
 // Search 是「尋訪人才」（說明書 p.22）：每次 5 金，
 // **謀略越高成功機率越大**；找到的人成為當地在野將領。
 func (g *State) Search(prefectureID, generalIndex int, by state.FactionID) (found *General, err error) {
+	return g.search(prefectureID, generalIndex, by, true)
+}
+
+// search 是本體。`charge` 分開玩家與電腦兩條——電腦那一條不收錢。
+func (g *State) search(prefectureID, generalIndex int, by state.FactionID,
+	charge bool) (found *General, err error) {
 	p, e := g.canOrder(prefectureID, by)
 	if e != nil {
 		return nil, e
@@ -133,11 +139,16 @@ func (g *State) Search(prefectureID, generalIndex int, by state.FactionID) (foun
 	if x == nil || x.Faction != by || x.Location != prefectureID {
 		return nil, ErrUnknownUnit
 	}
-	fee := g.price(by, CostSearch)
-	if p.Gold < fee {
-		return nil, ErrNoGold
+	// **收不收錢分兩條**：玩家一次 5 金（說明書 p.22），電腦那一條
+	// （`0xcd20` 起的六支 → `0xcc86`）**不收**——那一支從頭到尾沒有寫
+	// 州郡 offset 18，只把一位身分 9 的人改成 8、offset 23 加一。
+	if charge {
+		fee := g.price(by, CostSearch)
+		if p.Gold < fee {
+			return nil, ErrNoGold
+		}
+		p.Gold -= fee
 	}
-	p.Gold -= fee
 	p.Commanded = true
 
 	// **門檻照原版**（`SearchTierFor`，`L1`、`0xcc86`）：
