@@ -64,6 +64,12 @@ func TestStratagemsRunLive(t *testing.T) {
 		t.Fatal("沒有進到主戰場 0x2053c——按鍵序列或盤面不對")
 	}
 	work := o.Word(oracle.Addr{Seg: dgroup, Off: battleWorkSeg})
+	// 天候與戰場地圖各自從 DGROUP 的段變數取（`docs/re/05` §4.0）。
+	wxSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9d6})
+	mapSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa99e})
+	weatherAt := oracle.Addr{Seg: wxSeg, Off: 0x17bc}
+	t.Logf("工作區段 %#06x｜天候段 %#06x（現值 %d）｜地圖段 %#06x",
+		work, wxSeg, o.Word(weatherAt), mapSeg)
 	w16 := func(off int) int {
 		return int(o.Word(oracle.Addr{Seg: work, Off: uint16(off)}))
 	}
@@ -176,19 +182,34 @@ func TestStratagemsRunLive(t *testing.T) {
 	t.Logf("主攻軍在 (%d,%d)，方向 `5` 指到守軍 %d-%d",
 		myCol, myRow, slots[adj].army, slots[adj].team)
 
+	// **天候要在快照那一刻再記一次。** 進場時記到的是第 1 天的值，
+	// 掃描發生在第 3 天——燒糧在下雨天會被擋（§4.0），拿第 1 天的值
+	// 去解釋第 3 天的結果會得到一個假的矛盾。
+	t.Logf("快照時的天候 ＝ %d（1 下雨、2 刮風）", o.Word(weatherAt))
 	snap := o.Save()
 
 	// 選單索引 → remake 的計謀。順序是 `DS:0x8113` 的字串表。
+	// **條件自己擺**（`docs/re/05` §4.0）：火攻要天候 2（刮風），
+	// 水淹要天候 1（下雨）**而且**目標的六個鄰格裡有一格淺水（地形碼 3）。
+	// 兩者都在還原快照之後才寫，所以不影響其餘四種那幾次。
 	menu := []struct {
-		key string
-		s   battle.Stratagem
+		key   string
+		s     battle.Stratagem
+		setup func()
 	}{
-		{"3", battle.Trap},  // 已經實跑過的那一支，當正對照排第一
-		{"1", battle.Fire},
-		{"2", battle.Flood},
-		{"4", battle.Lure},
-		{"5", battle.Burn},
-		{"6", battle.Siege},
+		{"3", battle.Trap, nil}, // 已經實跑過的那一支，當正對照排第一
+		{"1", battle.Fire, func() { o.SetWord(weatherAt, 2) }},
+		{"2", battle.Flood, func() {
+			o.SetWord(weatherAt, 1)
+			// 目標在 (欄, 列)；把它正上方那一格改成淺水。
+			col := w16(slots[adj].rec + unitCol)
+			row := w16(slots[adj].rec + unitRow)
+			at := oracle.Addr{Seg: mapSeg, Off: uint16(0x163a + (row-1)*12 + col)}
+			o.SetByte(at, o.Byte(at)&0xf0|3)
+		}},
+		{"4", battle.Lure, nil},
+		{"5", battle.Burn, nil},
+		{"6", battle.Siege, nil},
 	}
 
 	type shot struct {
@@ -208,7 +229,11 @@ func TestStratagemsRunLive(t *testing.T) {
 	ran, checked, bad := 0, 0, 0
 	for _, m := range menu {
 		o.Restore(snap)
+		if m.setup != nil {
+			m.setup()
+		}
 		before := take()
+		wx := int(o.Word(weatherAt))
 		wasEx := exchanges
 		wasMenu := plotMenu
 
@@ -256,10 +281,10 @@ func TestStratagemsRunLive(t *testing.T) {
 					sl.army, sl.team, now.trapped[i])
 			}
 		}
-		t.Logf("%v（選單 %s）：金 %d→%d 扣 %d（remake 的表 %d）｜"+
-			"移動力 %d→%d｜選單讀鍵 %d 次｜交戰結算 %d 次｜%s",
-			m.s, m.key, before.gold, now.gold, spent, m.s.Cost(),
-			before.move, now.move, menuHits, exchanges-wasEx, eff.String())
+		t.Logf("%v（選單 %s，天候 %d）：金 %d→%d 扣 %d（remake 的表 %d）｜"+
+			"選單讀鍵 %d 次｜交戰結算 %d 次｜%s",
+			m.s, m.key, wx, before.gold, now.gold, spent, m.s.Cost(),
+			menuHits, exchanges-wasEx, eff.String())
 
 		if menuHits == 0 {
 			t.Errorf("%v：計謀選單一次都沒讀鍵——`6` 或方向那一步就斷了，"+
