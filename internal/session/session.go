@@ -107,16 +107,7 @@ func (s *Session) drainBattles() {
 // **順序有意義**：郡的回合是一條全域的迴圈，不是「一個勢力跑完換下一個」
 // ——誰排在前面誰先花錢、先徵兵、先出兵。
 func (s *Session) shuffleMonth() {
-	s.MonthOrder = make([]int, 43)
-	for i := range s.MonthOrder {
-		s.MonthOrder[i] = i
-	}
-	for round := 0; round < 5; round++ {
-		for i := range s.MonthOrder {
-			j := s.G.Roll(43, round, i, 0x17371)
-			s.MonthOrder[i], s.MonthOrder[j] = s.MonthOrder[j], s.MonthOrder[i]
-		}
-	}
+	s.MonthOrder = s.G.ShuffleTurnOrder()
 	s.MonthCursor = 0
 }
 

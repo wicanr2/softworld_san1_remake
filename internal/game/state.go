@@ -547,6 +547,29 @@ func (g *State) Territory(f state.FactionID) []int {
 	return out
 }
 
+// ShuffleTurnOrder 洗這個月的郡順序（`0x17371`–`0x1740a`，`L0`）。
+//
+// 順序表填成 0..42，接著**洗五輪**，每輪逐格與 `RND(43)` 交換。
+//
+// ⚠ **它會消耗亂數**（5 × 43 ＝ 215 次）。原版的序列裡有這一段，所以
+// 即使呼叫端不打算用回傳值也要跑，否則接下來的每一次抽樣都錯開
+// （`CONTEXT.md` 的亂數路線圖：原版「郡回合之外」414 次裡有 215 次是它）。
+func (g *State) ShuffleTurnOrder() []int {
+	// 43 格：州郡表的筆數，第 0 筆是啞元（`docs/formats/03`）。
+	const slots = 43
+	order := make([]int, slots)
+	for i := range order {
+		order[i] = i
+	}
+	for round := 0; round < 5; round++ {
+		for i := range order {
+			j := g.Roll(slots, round, i, 0x17371)
+			order[i], order[j] = order[j], order[i]
+		}
+	}
+	return order
+}
+
 // Governor 回傳某個郡的主事者：君主或太守，兩者都不在時由軍師代理
 // （`docs/spec/003` §2.2）。找不到唯一的一位回 nil。
 func (g *State) Governor(prefectureID int) *General {

@@ -338,6 +338,9 @@ func TestZZMonthParity(t *testing.T) {
 	// **先結算再跑郡回合**，否則郡回合看到的是進貢之前的庫存
 	//（賞賜物品那一支因此少抽 271 次），而人口成長也會落在錯的一邊。
 	g.EndMonth()
+	// 開月的洗牌（`0x1740a`）——**它會消耗 215 次亂數**，不跑的話接下來
+	// 每一次抽樣都錯開。順序這裡不用（照原版的順序表走），但抽樣要抽。
+	g.ShuffleTurnOrder()
 
 	for _, f := range g.Factions() {
 		if !f.Alive || f.ID == player {
