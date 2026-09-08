@@ -893,14 +893,17 @@ func headhunt(g *game.State, prefecture int, id state.FactionID, gold int) (game
 	// 讓它過得太寬（量到挖角多觸發四次、多抽 920 次）。
 	// **索引是 `月 mod 4`**（`0xe9a9` 的 `idiv 4`），不是季節事件那個
 	// 1／4／7／10 的季（`docs/mechanics/70-ai` §2.14）。兩者不對齊。
-	budget := gold * HeadhuntBudget(level, g.Date.Month%4) / 100
-	if budget < game.CostHeadhunt {
-		return game.HeadhuntOrder{}, false
-	}
+	// **順序照原版**：君主在不在（`0xe414`）→ `RND(10) > 門檻`
+	// （`0xe427`）→ 本回合預算 >= 100（`0xe438`）。擲骰夾在中間，
+	// 所以預算不夠的那幾次**還是抽過了**——先看預算會少抽一批。
 	if lord := g.Lord(id); lord == nil || lord.Location != prefecture {
 		return game.HeadhuntOrder{}, false
 	}
 	if g.Roll(10, int(id), prefecture, tableHeadhunt) <= headhuntBar(level) {
+		return game.HeadhuntOrder{}, false
+	}
+	budget := gold * HeadhuntBudget(level, g.Date.Month%4) / 100
+	if budget < game.CostHeadhunt {
 		return game.HeadhuntOrder{}, false
 	}
 	for _, x := range g.AllGenerals() {

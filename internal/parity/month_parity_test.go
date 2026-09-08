@@ -152,6 +152,8 @@ func TestZZMonthParity(t *testing.T) {
 	staBase := base + uint32(state.MasterTableSize)
 	genBase := staBase + uint32(state.PrefectureTableSize)
 	turnFlags := make([]bool, 43) // true ＝ 這個月還沒下令
+	var turnSeq []int             // 原版這個月的郡順序
+	winFrom, winTo := 0, 0        // 對拍視窗在順序表上的範圍
 	flagsRead := false
 	visited := map[int]int{}
 	dispatched := map[int]bool{}
@@ -196,6 +198,7 @@ func TestZZMonthParity(t *testing.T) {
 					turnFlags[p] = false
 				}
 			}
+			turnSeq, winFrom, winTo = seq, cur, stop
 			t.Logf("對拍視窗：順序表 [%d, %d)，共 %d 個郡", cur, stop, stop-cur)
 			flagsRead = true
 		}
@@ -349,31 +352,26 @@ func TestZZMonthParity(t *testing.T) {
 	// 每一次抽樣都錯開。順序這裡不用（照原版的順序表走），但抽樣要抽。
 	g.ShuffleTurnOrder()
 
-	for _, f := range g.Factions() {
-		if !f.Alive || f.ID == player {
+	// **照原版的順序跑。** 郡的回合是一條全域的洗牌迴圈，不是「一個勢力
+	// 跑完換下一個」——即使每一張表抽的次數都對，消耗的**順序**不同，
+	// 亂數序列一開始就岔開。順序表直接用原版那一份（`turnSeq`）。
+	pp, ok := brain.(ai.PrefecturePlanner)
+	if !ok {
+		t.Fatalf("%s 不支援逐郡執行", brain.Name())
+	}
+	pp.TraceDraws(mineTbl)
+	for i := winFrom; i < winTo && i < len(turnSeq); i++ {
+		at := turnSeq[i]
+		q := g.Prefecture(at)
+		if q == nil || !q.Owned() || q.Owner == player {
 			continue
 		}
-		// **套不上去的命令是 bug，不是雜訊。** `ApplyAll` 會中斷同一輪
-		// 後面全部的命令，所以一道擋下來就少算一整個勢力的行動——
-		// 只印一行 log 的話，對拍的差異看起來像是公式不準。
-		// 照原版的旗標跳過已經下過令的郡（見上）。
-		for _, p := range g.Territory(f.ID) {
-			if p >= 0 && p < len(turnFlags) && !turnFlags[p] {
-				continue
-			}
-			pp, ok := brain.(ai.PrefecturePlanner)
-			if !ok {
-				t.Fatalf("%s 不支援逐郡執行", brain.Name())
-			}
-			pp.TraceDraws(mineTbl)
-			d0 := g.RandDraws()
-			if _, n, err := pp.ActPrefecture(g, f.ID, p, g.AILevel(f.ID)); err != nil {
-				t.Errorf("勢力 %d 郡 %d 的命令有 %d 道成立，然後：%v", f.ID, p, n, err)
-			}
-			mineBy[p] = g.RandDraws() - d0
+		d0 := g.RandDraws()
+		if _, n, err := pp.ActPrefecture(g, q.Owner, at, g.AILevel(q.Owner)); err != nil {
+			t.Errorf("郡 %d（勢力 %d）的命令有 %d 道成立，然後：%v", at, q.Owner, n, err)
 		}
+		mineBy[at] = g.RandDraws() - d0
 	}
-
 
 	rm, rs, rg, err := g.Tables()
 	if err != nil {
