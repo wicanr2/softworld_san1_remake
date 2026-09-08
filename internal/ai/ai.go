@@ -272,6 +272,26 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			continue
 		}
 		gov := act
+		// **本回合預算的分母是「當下的郡的金」，不是一路扣下來的錢包。**
+		// 分派器在那六張表之前各算一次（`0xe9a1`–`0xe9fc`）：
+		//
+		//	索引 = 等級×4 + 月 mod 4
+		//	es:[0x3d16] = 係數表[索引] × 州郡 offset 18（金）× 0.01
+		//
+		// 每一張都重算，所以前一張花掉的錢只透過**郡的金**影響後一張，
+		// 不是把額度直接扣掉。拿剩餘錢包當分母會讓越後面的表越窮
+		//（挖角那道 `預算 >= 100` 反而過得太寬，量到多觸發四次）。
+		// ⚠ **預覽（`Plan`）讀不到真的支出**：那一條不套用命令，郡的金
+		// 不會動，所以只能用模型化的錢包頂著，否則會排出付不出來的命令。
+		gold := func() int {
+			if !live {
+				return purse
+			}
+			if q := g.Prefecture(p); q != nil {
+				return q.Gold
+			}
+			return 0
+		}
 		// **順序照原版的分派器**（`0xe926`–`0xec1b`，`docs/re/03` §1.4）：
 		// 行動者 → 指定軍師 → 指定太守 → 尋訪 → 登用 → 訓練 → 內政 →
 		// 賞賜物品 → 武器 → 徵兵 → 賑民 → 賞賜金帛 → 挖角 → 計略 →
@@ -343,7 +363,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		}
 		mark("賞賜物品")
 		// 購置武器（表 `0x5594`）：預算是郡的金的 2 %。
-		bought := armsPurchase(g, p, aiBudget(purse, aiLevel, tableArms))
+		bought := armsPurchase(g, p, aiBudget(gold(), aiLevel, tableArms))
 		for _, o := range bought {
 			emit(o)
 		}
@@ -356,7 +376,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 徵兵（表 `0x5574`）：預算是**剩下的**金的 30–50 %。
 		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
 		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
-		drafted := conscript(g, p, aiBudget(purse, aiLevel, tableConscript))
+		drafted := conscript(g, p, aiBudget(gold(), aiLevel, tableConscript))
 		for _, o := range drafted {
 			emit(o)
 		}
@@ -369,7 +389,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		mark("徵兵")
 		// 開倉賑民（表 `0x55f4`）：民眾忠誠低於「底 ＋ RND(20)」才做，
 		// 撥的是**整份預算**（郡的金的 10–20 %）。
-		if o, ok := relief(g, p, id, aiBudget(purse, aiLevel, tableRelief)); ok {
+		if o, ok := relief(g, p, id, aiBudget(gold(), aiLevel, tableRelief)); ok {
 			emit(o)
 			purse -= o.Gold
 		}
@@ -380,7 +400,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// ——忠誠接近 100 的人賞下去的錢很少，所以同一份預算撐得比
 		// 「每人 100」久得多。原版一輪在這一支抽了 196 次，幾乎等於
 		// 名單的總長度（`CONTEXT.md` 的亂數路線圖）。
-		rewardBudget := aiBudget(purse, aiLevel, tableReward)
+		rewardBudget := aiBudget(gold(), aiLevel, tableReward)
 		for _, x := range roster(g, p) {
 			if rewardBudget <= 0 {
 				break
@@ -417,7 +437,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		mark("賞賜金帛")
 		// 挖角（表 `0x56d4`）：**君主要在本郡**，機率隨等級 30／60／80 %，
 		// 預算要 ≥ 100，費用是直接扣的 100 金。
-		if o, ok := headhunt(g, p, id, purse); ok {
+		if o, ok := headhunt(g, p, id, gold()); ok {
 			emit(o)
 			purse -= game.CostHeadhunt
 		}
@@ -438,7 +458,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		mark("調整兵力")
 		// 買入米糧（表 `0x55d4`）：**不走回合預算也不打折**，
 		// 它是市場交易。存糧目標跟著兵力走，不夠就用郡的金補到滿。
-		if o, ok := buyRice(g, p, id, purse); ok {
+		if o, ok := buyRice(g, p, id, gold()); ok {
 			emit(o)
 			purse -= o.Units / game.AIRicePerGold(g.Prefecture(p).PriceLevel, aiLevel)
 		}
@@ -842,15 +862,22 @@ func buyRice(g *game.State, prefecture int, id state.FactionID, purse int) (game
 //	掃全部人物挑候選（`game.Headhunt` 的 `headhuntable`），取第一位
 //
 // 費用 100 金是**直接扣的**，不經過等級折扣。
-func headhunt(g *game.State, prefecture int, id state.FactionID, purse int) (game.HeadhuntOrder, bool) {
+func headhunt(g *game.State, prefecture int, id state.FactionID, gold int) (game.HeadhuntOrder, bool) {
 	level := g.AILevel(id)
-	if level < 3 || purse < game.CostHeadhunt {
+	if level < 3 {
 		return game.HeadhuntOrder{}, false
 	}
 	// **挖角的預算按季節開關**（係數表 `DS:0x5714`，`L0`）：某些
 	// （等級, 季節）組合給 0%，那個季節就挖不了角。等級越高開放的
 	// 季節越多。
-	if HeadhuntBudget(level, g.Date.Season()) == 0 {
+	//
+	// 門檻比的是**算出來的本回合預算**（`0xe438`：`es:[0x3d16] < 100`
+	// 就回），而預算是「係數 × 郡的金 × 0.01」——拿郡的金直接比會
+	// 讓它過得太寬（量到挖角多觸發四次、多抽 920 次）。
+	// **索引是 `月 mod 4`**（`0xe9a9` 的 `idiv 4`），不是季節事件那個
+	// 1／4／7／10 的季（`docs/mechanics/70-ai` §2.14）。兩者不對齊。
+	budget := gold * HeadhuntBudget(level, g.Date.Month%4) / 100
+	if budget < game.CostHeadhunt {
 		return game.HeadhuntOrder{}, false
 	}
 	if lord := g.Lord(id); lord == nil || lord.Location != prefecture {
@@ -873,13 +900,15 @@ func headhunt(g *game.State, prefecture int, id state.FactionID, purse int) (gam
 // headhuntBar 是 `RND(10) > K` 裡的 K：等級 3／4／5 ＝ 6／3／1。
 // HeadhuntBudget 是挖角這一季的預算百分比（係數表 `DS:0x5714`，`L0`）。
 //
-// 0 表示這個季節不挖角。等級 0–2 一律 0（那三格是空操作），
-// 等級 3 只有冬天、等級 4 是夏天與冬天、等級 5 除了春天都可以。
+// **索引是「月 mod 4」**（分派器 `0xe9a9` 的 `idiv 4`），不是季節事件
+// 那個 1／4／7／10 的季——兩者不對齊。0 表示這個相位不挖角：
+// 等級 0–2 一律 0（那三格是空操作），等級 3 只有相位 3、
+// 等級 4 是相位 1 與 3、等級 5 除了相位 0 都可以。
 //
 // **不是「機率低」是「完全不做」**——係數 0 算出來的預算是 0，
 // 而挖角要 100 金。
-func HeadhuntBudget(level int, season game.Season) int {
-	if level < 3 || season < 0 || season > 3 {
+func HeadhuntBudget(level, phase int) int {
+	if level < 3 || phase < 0 || phase > 3 {
 		return 0
 	}
 	open := map[int][4]bool{
@@ -887,7 +916,7 @@ func HeadhuntBudget(level int, season game.Season) int {
 		4: {false, true, false, true},
 		5: {false, true, true, true},
 	}[level]
-	if !open[season] {
+	if !open[phase] {
 		return 0
 	}
 	return 20

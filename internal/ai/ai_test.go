@@ -672,17 +672,18 @@ func TestHeadhuntFollowsTheSeason(t *testing.T) {
 	}
 	for lvl, seasons := range want {
 		for s := 0; s < 4; s++ {
-			got := HeadhuntBudget(lvl, game.Season(s)) > 0
+			got := HeadhuntBudget(lvl, s) > 0
 			if got != seasons[s] {
-				t.Errorf("等級 %d 季節 %d：挖不挖角 ＝ %v，原版是 %v",
+				t.Errorf("等級 %d 相位 %d：挖不挖角 ＝ %v，原版是 %v",
 					lvl, s, got, seasons[s])
 			}
 		}
 	}
-	// 春天（季節 0）任何等級都不挖角——這是表裡唯一一整欄都是 0 的。
+	// 相位 0 任何等級都不挖角——這是表裡唯一一整欄都是 0 的。
+	// **相位是「月 mod 4」**，不是季節事件那個 1／4／7／10 的季。
 	for lvl := 0; lvl <= 5; lvl++ {
-		if HeadhuntBudget(lvl, game.Spring) != 0 {
-			t.Errorf("等級 %d 在春天不該挖角", lvl)
+		if HeadhuntBudget(lvl, 0) != 0 {
+			t.Errorf("等級 %d 在相位 0 不該挖角", lvl)
 		}
 	}
 }
