@@ -60,7 +60,8 @@
 同一個路子：舊主那邊還有牽掛的人就不容易收編。
 
 remake 這一邊是 `game.WarRecruitResistance`／`WarRecruited`／
-`WarRecruitLoyalty`；接進安置流程還沒做（`CONTEXT.md` worklist）。
+`WarRecruitLoyalty`。**判定對拍過**（`docs/playtest/02`，4 次逐次相同，
+三個分支都走到；樣本偏小）。接進安置流程還沒做（`CONTEXT.md` worklist）。
 
 ## 身分的編碼：還有一個 10（`L0`、`[base]`）
 
