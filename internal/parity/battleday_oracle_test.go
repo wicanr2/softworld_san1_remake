@@ -93,6 +93,36 @@ func TestZZBattleDaySweep(t *testing.T) {
 	o.OnCall(addr(0x27a68), func(o *oracle.Oracle) {
 		cmdKeys = append(cmdKeys, fmt.Sprintf("%#04x", o.AX()))
 	})
+	// **命令 `2` 走的是交戰結算 `0x2a224`，不是對戰子畫面的 `0x30560`**
+	// ——後者掛上去一次都不觸發。`0x2a224` 正是 remake 的
+	// `battle.exchange` 對應的那一支。每次進去把戰力值陣列（工作區的
+	// `0x548`，守方 0x548、攻方 0x55c）與各支的兵倒下來，相鄰兩次的差
+	// 就是那一次交戰的效果。
+	var melee []string
+	o.OnCall(addr(0x2a224), func(o *oracle.Oracle) {
+		var sb strings.Builder
+		// 參數（`0x2a224` 進場時）：甲軍力、甲隊伍、乙軍力、乙隊伍、模式。
+		// **不要從差值反推誰打誰**——`o.Arg` 直接讀得到。
+		fmt.Fprintf(&sb, "甲 %d-%d 乙 %d-%d 模式 %d｜",
+			o.Arg(0), o.Arg(1), o.Arg(2), o.Arg(3), o.Arg(4))
+		for army := 0; army < battleArmies; army++ {
+			for team := 0; team < battleTeams; team++ {
+				rec := battleUnitBase + (army*battleUnitPer+team)*battleUnitSize
+				w := func(off int) int {
+					return int(o.Word(oracle.Addr{Seg: work, Off: uint16(rec + off)}))
+				}
+				if w(0) == 0xFFFF || w(unitLeaders) <= 0 {
+					continue
+				}
+				col, row := w(unitCol), w(unitRow)
+				code := o.Word(oracle.Addr{
+					Seg: work, Off: uint16(0x163a + row*12 + col)}) & 0x0f
+				fmt.Fprintf(&sb, "[%d-%d 格 %d,%d 地形 %d 兵 %d 能力 %d] ",
+					army, team, col, row, code, w(unitSoldiers), w(unitAbility))
+			}
+		}
+		melee = append(melee, sb.String())
+	})
 	var keys []string
 	o.OnCall(addr(0x34f91), func(o *oracle.Oracle) {
 		k := o.AX() & 0xff
@@ -127,12 +157,7 @@ func TestZZBattleDaySweep(t *testing.T) {
 	// 1–6 一律當方向，其餘的鍵忽略後繼續問。
 	E := enterMark
 	cands := []string{
-		"1|5|5|" + E,
 		"1|5|5|" + E + "|2",
-		"1|5|5|" + E + "|2|5",
-		"1|5|5|" + E + "|2|5|Y",
-		"1|5|5|" + E + "|2|5|Y|Y",
-		"1|5|5|" + E + "|2|5|" + E,
 	}
 	const settle = 40_000_000
 	for ci, cand := range cands {
@@ -144,7 +169,7 @@ func TestZZBattleDaySweep(t *testing.T) {
 		for k := range readers {
 			delete(readers, k)
 		}
-		keys, cmdKeys = keys[:0], cmdKeys[:0]
+		keys, cmdKeys, melee = keys[:0], cmdKeys[:0], melee[:0]
 		body := strings.TrimPrefix(cand, "P:")
 		for _, seg := range strings.Split(body, "|") {
 			k := strings.ReplaceAll(seg, enterMark, "\r")
@@ -185,5 +210,8 @@ func TestZZBattleDaySweep(t *testing.T) {
 		t.Logf("候選 %2d %-8q → 天數 %d；走到 %v；讀鍵的呼叫端 %v；"+
 			"命令收到 %v；欄位收到 %v\n        盤面 %s",
 			ci+1, cand, day(), route, who, cmdKeys, keys, board.String())
+		for i, m := range melee {
+			t.Logf("        交戰 %d 進去時：%s", i+1, m)
+		}
 	}
 }
