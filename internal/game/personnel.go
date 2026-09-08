@@ -294,14 +294,51 @@ func (g *State) AppointChief(prefectureID, targetIndex int, by state.FactionID) 
 	if f == nil {
 		return ErrNotYours
 	}
-	// 前任軍師回任現役將領（說明書 p.23）。
+	g.installChief(f, t)
+	p.Commanded = true
+	return nil
+}
+
+// appointChief 是電腦諸侯那一條（`0xd7ae`）。原版三件事與玩家那條不同：
+// **君主不必在場**（整支常式沒有這個檢查）、**候選不比對勢力**
+// （名單就是指定太守用的那一份，`docs/re/07` §6），以及智力門檻是
+// 現任軍師的智而不是固定的 80。
+func (g *State) appointChief(prefectureID, targetIndex int, by state.FactionID) error {
+	p := g.Prefecture(prefectureID)
+	if p == nil || !p.Owned() || p.Owner != by {
+		return ErrNotYours
+	}
+	t := g.General(targetIndex)
+	if t == nil || !t.Employed() || t.Location != prefectureID {
+		return ErrUnknownUnit
+	}
+	// `0xd862`：候選的身分限太守或一般武將。
+	if t.Status != state.StatusGovernor && t.Status != state.StatusOfficer {
+		return ErrUnknownUnit
+	}
+	f := g.Faction(by)
+	if f == nil {
+		return ErrNotYours
+	}
+	g.installChief(f, t)
+	return nil
+}
+
+// installChief 換軍師：前任回任，新任上任（`0xd8b0`–`0xd905`）。
+func (g *State) installChief(f *Faction, t *General) {
 	if old := g.General(f.Chief); old != nil && old.Status == state.StatusChief {
+		// 前任回任現役將領（說明書 p.23），**但他若是所在郡的主事者就是
+		// 太守**（`0xd8dc` 比的是州郡 offset 32 的存值）。少了這個例外，
+		// 那一格會指到一個身分 3 的人，而原版保證它指到的是 0、1 或 2
+		//（`docs/re/07` §7）。這裡讀 `p.governor` 而不是 `Governor()`
+		// ——後者在存著的那位失聯時會重新指派並寫回去，比的就不是存值了。
 		old.Status = state.StatusOfficer
+		if q := g.Prefecture(old.Location); q != nil && q.governor == old.Index {
+			old.Status = state.StatusGovernor
+		}
 	}
 	t.Status = state.StatusChief
 	f.Chief = t.Index
-	p.Commanded = true
-	return nil
 }
 
 // AppointGovernor 是「指定太守」（說明書 p.23）：

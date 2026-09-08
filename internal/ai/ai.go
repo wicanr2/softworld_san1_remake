@@ -210,7 +210,8 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		out = append(out, game.TrainOrder{At: p})
 		// 指定軍師（表 `0x5694`）：跑在指定太守之前。
 		if x := betterChief(g, id, p); x != nil {
-			out = append(out, game.AppointChiefOrder{At: p, Target: x.Index})
+			out = append(out, game.AppointChiefOrder{
+				At: p, Target: x.Index, Auto: true})
 		}
 		// 指定太守（表 `0x5674`）：守軍按魅力由高到低排序，第一位當
 		// 太守。**已經是他就不必再指一次**——原版那一段是直接寫欄位，
@@ -983,19 +984,18 @@ func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture in
 //
 // ⚠ **「最後一位」跟著清單順序走，而清單順序還沒解**（`L3`）。
 // 這裡取 remake 自己的守軍順序中的最後一位，形狀對、人選不保證相同。
+//
+// **君主不必在場**（`0xd7ae` 整支常式沒有這個檢查——它從州郡 offset 30
+// 取所屬，直接改諸侯 offset 6），**候選也不比對勢力**（走的是指定太守
+// 那一份名單，`docs/re/07` §6）。兩件都走 `AppointChiefOrder.Auto`。
 func betterChief(g *game.State, id state.FactionID, prefecture int) *game.General {
-	// **君主不在就拜不了軍師**（`game.AppointChief` 的 `requireLordAt`）。
-	// 送出去只會被擋，然後同一輪後面的命令全部作廢。
-	if lord := g.Lord(id); lord == nil || lord.Location != prefecture {
-		return nil
-	}
 	floor := state.ChiefIntelFloor
 	if cur := g.Chief(id); cur != nil {
 		floor = int(cur.Intel)
 	}
 	var pick *game.General
 	for _, x := range g.Garrison(prefecture) {
-		if x.Faction != id || int(x.Intel) <= floor {
+		if int(x.Intel) <= floor {
 			continue
 		}
 		if x.Status != state.StatusGovernor && x.Status != state.StatusOfficer {

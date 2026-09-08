@@ -296,10 +296,19 @@ func (o DismissOrder) Describe(g *State) string {
 	return tf("log.dismiss", byWhom(g, o.Target))
 }
 
-type AppointChiefOrder struct{ At, Target int }
+type AppointChiefOrder struct {
+	At, Target int
+
+	// Auto 為真表示走電腦諸侯那一條（`0xd7ae`）：君主不必在場，
+	// 候選也不比對勢力。
+	Auto bool
+}
 
 func (o AppointChiefOrder) Prefecture() int { return o.At }
 func (o AppointChiefOrder) Apply(g *State, by state.FactionID) error {
+	if o.Auto {
+		return g.appointChief(o.At, o.Target, by)
+	}
 	return g.AppointChief(o.At, o.Target, by)
 }
 func (o AppointChiefOrder) Describe(g *State) string {
