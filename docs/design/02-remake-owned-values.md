@@ -77,6 +77,7 @@
 | `TuneRewardLoyalty` | `RewardEffect`／`RewardGain`：增幅 ＝ (RND(加成/2)＋魅力/3＋加成) × 金 ÷ 100 | `0xd302` |
 | `TuneReliefRice`／`TuneReliefLoyalty` | `ReliefGain`：撥的是**金**不是米，增幅上限 ＝ 太守魅力 ÷ 2 | `0xc8f6` |
 | 買米的換算 | `RicePerGold`：一金買到 `(100 − 物價) ÷ 10` 單位 | `0xc634` |
+| `TuneRestMove` 的上限 | `Rest`：+2 之後**夾在 15**（手冊只給了那個 2）| `0x27c00`／`0x27c2d` |
 | `TuneChiefWeight` 等四項 | `PlotScore`：雙方各取「軍師與君主裡謀略較高的那位」，人望與使者魅力只扣分，沒有擲骰 | `0x2dd66` |
 | `TuneInciteLoss` | `Sabotage`：民忠、洪水率、土地價值、米、金五刀，量都跟著使者魅力 | `0x2d6e0` |
 

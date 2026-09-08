@@ -301,9 +301,14 @@ func (u *Unit) MovePoints() int {
 	return int(float64(num)/float64(den)*10+0.5) + MoveFloor
 }
 
-// MoveFloor 是移動力的底（`0x271b8` 的 `inc ax` 兩次，以及 `0x271f9`
-// 那條分支寫死的 2）。**沒有上限**：訓練與武裝都拉滿也只到 12。
+// MoveFloor 是移動力上限的底（`0x271b8` 的 `inc ax` 兩次，以及
+// `0x271f9` 那條分支寫死的 2）。訓練與武裝都拉滿，上限本身也只到 12。
 const MoveFloor = 2
+
+// MoveMax 是**剩下的**移動力的天花板，休息累加時夾在這裡
+//（`0x27c2d` 的 `cmpw $0xf`）。上限本身（`MovePoints`）到不了它，
+// 但一天 +2 的休息會——原版量到連休七天的部隊停在 15。
+const MoveMax = 15
 
 // OriginalIndex 是原版部隊陣列裡的軍力編號。
 //

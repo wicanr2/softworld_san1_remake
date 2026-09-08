@@ -269,12 +269,25 @@ func (b *Battle) sideAlive(s Side) bool {
 	return false
 }
 
-// Rest 是「休息」：在原地不動，**增加移動力 2**（說明書 p.29、p.30）。
+// Rest 是「休息」：在原地不動，**增加移動力 2、夾在 15**
+//（原版 `0x27c00`，`L0`）：
+//
+//	addw $2, es:[bx+0x3526]        ; 部隊記錄 offset 36
+//	cmpw $0xf, es:[bx+0x3526]
+//	jle  skip
+//	movw $0xf, es:[bx+0x3526]
+//
+// 說明書 p.29、p.30 的「每休息一次可增加移動力 2」只給了那個 2，
+// **上限 15 是碼裡才有的**——原版量到連休七天的部隊停在 15
+//（`TestBattleUnitsMatchTheOriginal`）。
 func (b *Battle) Rest(u *Unit) error {
 	if err := b.canAct(u); err != nil {
 		return err
 	}
 	u.Move += TuneRestMove
+	if u.Move > MoveMax {
+		u.Move = MoveMax
+	}
 	// 「並恢復將領的體力」（p.30）。
 	for i := range u.Leaders {
 		if u.Leaders[i].Stamina < 100 {

@@ -72,6 +72,12 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 	})
 	fielded := 0
 	o.OnCall(addr(0x22704), func(o *oracle.Oracle) { fielded++ })
+	// `0x27a63` 是每天的命令提示讀鍵那一支（`lcall 1058:0e24`），
+	// `0x27a68` 是它回來的那一刻——**攔回來的位址**，那是確定的指令
+	// 邊界。它一跑就代表紮寨問完、命令提示已經把一個鍵吃掉了。
+	// **紮寨要幾個鍵不固定**，用這個當判準比數按鍵可靠。
+	cmdReads := 0
+	o.OnCall(addr(0x27a68), func(o *oracle.Oracle) { cmdReads++ })
 
 	driveIntoBattle(t, o, at, to)
 	if dgroup == 0 {
@@ -150,96 +156,118 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 	}
 	t.Logf("整編出 %d 支部隊，比了 %d 個欄位，對不上 %d 個", units, checked, bad)
 
-	// **移動力（offset 36）是「這一天剩下的」，佈陣完還是 0**——
-	// 位置也都在 (0,0)，紮寨還沒送。紮寨的提示是
-	// `數字鍵選方向 / 4 5 6 / 1 2 3 / 0:紮寨`：**1–6 是移游標，`0` 才是
-	// 紮下去**（`DS:0x7f9e`）。一支一支問，全部就位之後才進第一天。
-	for step := 1; step <= 10; step++ {
+	// 紮寨：提示是 `數字鍵選方向 / 4 5 6 / 1 2 3 / 0:紮寨`（`DS:0x7f9e`），
+	// **1–6 移游標、`0` 才是紮下去**，一支一支問。要幾個鍵不固定，所以
+	// 判準是**命令選單有沒有印出來**（`0x27a40`），不是數按鍵。
+	// 提示出現之後就不能再送——那一鍵會被當成當天的命令吃掉。
+	for step := 1; step <= 10 && cmdReads == 0; step++ {
 		o.Drain()
 		o.PressScan("0")
 		if err := o.Run(40_000_000); err != nil {
 			t.Fatalf("紮寨第 %d 步停止：%v", step, err)
 		}
-		var sb strings.Builder
-		placed := 0
-		for _, s := range slots {
-			col, row, mov := w16(s.rec+unitCol), w16(s.rec+unitRow), w16(s.rec+unitMove)
-			if col != 0 || row != 0 || mov != 0 {
-				placed++
-			}
-			fmt.Fprintf(&sb, "[%d-%d 格 %d,%d 移 %d／remake %d] ",
-				s.army, s.team, col, row, mov, s.u.MovePoints())
-		}
-		t.Logf("紮寨第 %2d 步：%s", step, sb.String())
-		if placed == len(slots) {
-			t.Logf("全部 %d 支都就位了", placed)
-			break
-		}
 	}
+	if cmdReads == 0 {
+		t.Fatal("紮完寨沒走到每天的命令提示（0x27a68 沒被執行到）")
+	}
+	t.Logf("紮完寨，最後一個 `0` 已經被當成第 1 天的命令（休息）")
 
 	// **移動力要等紮完寨才比**：offset 36 是「這一天剩下的」，佈陣的
-	// 時候還是 0。offset 34 是這支部隊一天的上限，開始新的一天時
-	// 36 ← 34（`0x27200`）。
-	for _, s := range slots {
-		cap34, left36 := w16(s.rec+unitCap), w16(s.rec+unitMove)
+	// 時候還是 0。offset 34 是這支部隊一天的上限。
+	for _, sl := range slots {
+		cap34 := w16(sl.rec + unitCap)
 		var who strings.Builder
-		for _, l := range s.u.Leaders {
+		for _, l := range sl.u.Leaders {
 			fmt.Fprintf(&who, "槽 %d 訓 %d 武裝 %d 兵 %d；",
 				l.Index, l.Training, l.Arms, l.Soldiers)
 		}
 		checked++
-		if got := s.u.MovePoints(); got != cap34 {
+		if got := sl.u.MovePoints(); got != cap34 {
 			bad++
 			t.Errorf("%d-%d 移動力上限：原版 %d／remake %d｜%s",
-				s.army, s.team, cap34, got, who.String())
+				sl.army, sl.team, cap34, got, who.String())
 		}
 		t.Logf("%d-%d 移動力上限 %d（剩 %d）｜%s",
-			s.army, s.team, cap34, left36, who.String())
+			sl.army, sl.team, cap34, w16(sl.rec+unitMove), who.String())
 	}
-	t.Logf("連移動力一起算：比了 %d 個欄位，對不上 %d 個", checked, bad)
 
-	// 逐日對拍的下一步：把一天送完。主戰場的選單是
-	// `1.移動 2.對戰 3.快戰 4.死戰 5.弓箭 6.策略 7.查看 8.退兵 0.休息`
-	// （`DS:0x7f22`）。**全部休息**是最乾淨的一天：不動、不打，
-	// 只看天數跳不跳、移動力怎麼被夾。
+	// ── 逐日對拍 ─────────────────────────────────────────────
 	//
-	// 天數在 `es:[0x2100]`，而 `es` 在戰術層是從好幾格取的
-	// （`ds:0xa872`／`0xa896`／`0xa89e`／`0xa8a8`／`0xa8ce`）——
-	// 先把每一格當段去讀 0x2100，看哪一個像天數。
-	segs := []uint16{0xa872, 0xa896, 0xa89e, 0xa8a8, 0xa8ce}
-	dayOf := func() string {
-		var sb strings.Builder
-		for _, g := range segs {
-			seg := o.Word(oracle.Addr{Seg: dgroup, Off: g})
-			fmt.Fprintf(&sb, "ds:%#x→%#x:[0x2100]=%d ", g, seg,
-				o.Word(oracle.Addr{Seg: seg, Off: 0x2100}))
-		}
-		return sb.String()
+	// 玩家的部隊休息一天就是兩個鍵：`0`（選單 `DS:0x7f22` 的 0.休息）
+	// 再 `Y`（`0x1538c` 的 Y/N 確認）。**命令是單一 ASCII 不是數字欄位**，
+	// 送 Enter 答 Y/N 的話天數會一直停在 1（`docs/re/05` §7.0）。
+	//
+	// 每天結束時原版把剩下的移動力回填到上限：`剩下的 ← max(剩下的, 上限)`
+	// （`0x24ee1`）。這裡逐日比那一欄——**只比沒動過的部隊**：兵、欄、列
+	// 都沒變才代表它這一天沒走也沒打，那一支的轉移才是我們模型裡的那條。
+	type dayState struct{ move, sol, col, row int }
+	read := func(rec int) dayState {
+		return dayState{w16(rec + unitMove), w16(rec + unitSoldiers),
+			w16(rec + unitCol), w16(rec + unitRow)}
 	}
-	t.Logf("紮完寨：%s", dayOf())
-	for step := 1; step <= 10; step++ {
-		// **兩種輸入都試**：紮寨讀的是掃描碼（`PressScan` 有效），
-		// 命令欄位可能讀字元（`Press`）。奇數步送掃描碼、偶數步送字元，
-		// 哪一種讓天數動起來就是哪一種。
-		send, kind := o.PressScan, "掃描碼"
-		if step%2 == 0 {
-			send, kind = o.Press, "字元"
+	prev := make([]dayState, len(slots))
+	for i, sl := range slots {
+		prev[i] = read(sl.rec)
+	}
+	days, moved := 0, 0
+	for d := 1; d <= 7; d++ {
+		// 第 1 天的 `0` 在紮寨那一段就被吃掉了，只補確認。
+		keys := []string{"0", "Y"}
+		if d == 1 {
+			keys = []string{"Y"}
 		}
-		for _, k := range []string{"0", "\r"} {
+		for _, k := range keys {
 			o.Drain()
-			send(k)
+			o.PressScan(k)
 			if err := o.Run(60_000_000); err != nil {
-				t.Fatalf("休息第 %d 步（%s %q）停止：%v", step, kind, k, err)
+				t.Fatalf("第 %d 天送 %q 停止：%v", d, k, err)
 			}
 		}
-		var sb strings.Builder
-		for _, sl := range slots {
-			fmt.Fprintf(&sb, "[%d-%d 兵 %d 移 %d/%d] ", sl.army, sl.team,
-				w16(sl.rec+unitSoldiers), w16(sl.rec+unitMove), w16(sl.rec+unitCap))
+		got := int(o.Word(oracle.Addr{Seg: work, Off: 0x2100}))
+		if got != d+1 {
+			t.Fatalf("送完第 %d 天的命令，天數是 %d，應該是 %d"+
+				"——按鍵序列不對（`docs/re/05` §7.0）", d, got, d+1)
 		}
-		t.Logf("休息第 %2d 步（%s）：%s｜%s", step, kind, dayOf(), sb.String())
+		days++
+		var sb strings.Builder
+		for i, sl := range slots {
+			cur := read(sl.rec)
+			// remake 這一邊的日轉移。**每一支都休息**：玩家那一支是
+			// 我們送的 `0`，電腦那幾支是它自己選的，量到的四支守軍
+			// 每天也是 +2。休息夾在 15（`0x27c2d`），開新的一天再把
+			// 不足上限的補到上限（`0x24ee1`）。
+			want := prev[i].move + battle.TuneRestMove
+			if want > battle.MoveMax {
+				want = battle.MoveMax
+			}
+			if capMove := sl.u.MovePoints(); want < capMove {
+				want = capMove
+			}
+			same := cur.sol == prev[i].sol && cur.col == prev[i].col &&
+				cur.row == prev[i].row
+			if !same {
+				moved++
+				fmt.Fprintf(&sb, "[%d-%d 動了 兵 %d→%d 格 %d,%d→%d,%d] ",
+					sl.army, sl.team, prev[i].sol, cur.sol,
+					prev[i].col, prev[i].row, cur.col, cur.row)
+				prev[i] = cur
+				continue
+			}
+			checked++
+			if cur.move != want {
+				bad++
+				t.Errorf("第 %d 天 %d-%d 剩下的移動力：原版 %d／remake %d"+
+					"（前一天 %d，上限 %d）", d, sl.army, sl.team,
+					cur.move, want, prev[i].move, sl.u.MovePoints())
+			}
+			fmt.Fprintf(&sb, "[%d-%d 移 %d] ", sl.army, sl.team, cur.move)
+			prev[i] = cur
+		}
+		t.Logf("第 %d 天（天數 %d）：%s", d, got, sb.String())
 	}
-	dumpScreen(t, o, "battle-rested")
+	t.Logf("逐日跑了 %d 天，其中 %d 支次動過不比；三欄總共比了 %d 個，對不上 %d 個",
+		days, moved, checked, bad)
+	dumpScreen(t, o, "battle-day7")
 }
 
 // unitSlot 是一支部隊在原版記錄裡的位置，加上 remake 這一邊對應的物件。
