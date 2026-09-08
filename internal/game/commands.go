@@ -436,17 +436,23 @@ func (g *State) TradeRiceTo(prefectureID, target int, by state.FactionID) error 
 	if f := g.Faction(by); f != nil && f.ByComputer {
 		rate = AIRicePerGold(p.PriceLevel, f.AILevel)
 	}
-	gap := float64(target - p.Rice)
-	left := float64(p.Gold) - gap/float64(rate)
-	if left < 0 {
-		left = 0
+	gap := target - p.Rice
+	left := float64(p.Gold) - float64(gap)/float64(rate)
+	got := gap
+	switch {
+	case left < 0:
+		// 缺口大到把郡的金花光：買到的是「金 × 量」。
+		left, got = 0, p.Gold*rate
+	case left > MaxGold:
+		left, got = MaxGold, (p.Gold-MaxGold)*rate
 	}
-	if left > MaxGold {
-		left = MaxGold
-	}
-	got := (float64(p.Gold) - left) * float64(rate)
+	// **沒撞到上下限時 `買到` 就等於缺口**（代數上
+	// `(金 − (金 − 缺口÷量)) × 量 == 缺口`），所以米正好落在目標上。
+	// ⚠ 不要照字面用 float64 回推——`金` 上萬時那一次相減會抵消掉有效
+	// 位數，`170/7 × 7` 算出 169.999… 被截成 169，米就多一單位。
+	// 原版是 8087 的 80 位元中間值，抵消是準的（郡 22 量到過）。
 	p.Gold = int(left)
-	p.Rice = clampTo(p.Rice+int(got), MaxRice)
+	p.Rice = clampTo(p.Rice+got, MaxRice)
 	if p.Rice < 0 {
 		p.Rice = 0
 	}
