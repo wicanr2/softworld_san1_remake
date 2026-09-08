@@ -434,7 +434,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 徵兵（表 `0x5574`）：預算是**剩下的**金的 30–50 %。
 		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
 		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
-		drafted := conscript(g, p, aiBudget(gold(), aiLevel, tableConscript))
+		drafted := conscript(g, p, aiLevel, aiBudget(gold(), aiLevel, tableConscript))
 		for _, o := range drafted {
 			emit(o)
 		}
@@ -863,7 +863,7 @@ func aiBudget(gold, level, table int) int {
 //
 // 徵完人口等量減少，訓練度與武裝度都按新的兵力重算——**新兵沒受訓
 // 也沒武器**，兩個欄位走的是同一個加權平均（`game.ArmsOf`）。
-func conscript(g *game.State, prefecture, budget int) []game.Order {
+func conscript(g *game.State, prefecture, level, budget int) []game.Order {
 	p := g.Prefecture(prefecture)
 	if p == nil {
 		return nil
@@ -871,6 +871,10 @@ func conscript(g *game.State, prefecture, budget int) []game.Order {
 	people := p.Population
 	var out []game.Order
 	for _, x := range g.Garrison(prefecture) {
+		// **預算 ≤ 0 就收工**（`0xbf1a`）。
+		if budget <= 0 {
+			break
+		}
 		n := x.TroopCap() - x.Soldiers
 		if n > budget {
 			n = budget
@@ -878,10 +882,16 @@ func conscript(g *game.State, prefecture, budget int) []game.Order {
 		if room := people - game.MinPopulationToConscript; n > room {
 			n = room
 		}
+		// **`<= 0` 是整個迴圈結束，不是跳過這一位**（`0xbf98` 跳出去）。
 		if n <= 0 {
-			continue
+			break
 		}
-		budget -= n
+		// **扣掉的是花掉的金，不是人數**（`0xc061` 走付錢那一支）。
+		// 電腦有折扣，等級 5 是 0.75——所以徵 323 人只花 242 金，
+		// 預算從 323 掉到 81 而不是掉到 0，下一位還徵得到。
+		// 量到的一輪：323 → 81 → 21 → 6 → 2 → 1 → 1…（郡 11，26 位守軍）。
+		// 寫成 `budget -= n` 會讓第一位吃光整份預算，其餘掛零。
+		budget -= state.AICost(n*game.CostConscriptPerSoldier, level)
 		people -= n
 		out = append(out, game.ConscriptOrder{At: prefecture, General: x.Index, Count: n})
 	}

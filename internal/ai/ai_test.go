@@ -448,7 +448,7 @@ func TestConscriptFillsToCap(t *testing.T) {
 
 	// 預算與人口都不設限：每一位都該徵到滿編。
 	pref.Population = 100000
-	for _, o := range conscript(g, p, 1000000) {
+	for _, o := range conscript(g, p, 0, 1000000) {
 		c := o.(game.ConscriptOrder)
 		x := g.General(c.General)
 		if want := x.TroopCap() - x.Soldiers; c.Count != want {
@@ -457,17 +457,26 @@ func TestConscriptFillsToCap(t *testing.T) {
 	}
 	// **人口下限**：人口剛好在下限上，一個都徵不到。
 	pref.Population = game.MinPopulationToConscript
-	if n := conscript(g, p, 1000000); len(n) != 0 {
+	if n := conscript(g, p, 0, 1000000); len(n) != 0 {
 		t.Errorf("人口只剩下限卻還徵了 %d 道", len(n))
 	}
-	// **預算**：每人 1 金，所以總人數不超過預算。
+	// **預算扣的是花掉的金，不是人數**（`0xc061`）：等級 0 沒有折扣，
+	// 每人 1 金，所以總人數還是不超過預算；但**扣完之後預算沒歸零的話
+	// 後面的人還徵得到**，所以這裡只釘總量。
 	pref.Population = 100000
 	total := 0
-	for _, o := range conscript(g, p, 250) {
+	for _, o := range conscript(g, p, 0, 250) {
 		total += o.(game.ConscriptOrder).Count
 	}
 	if total > 250 {
 		t.Errorf("預算 250 金卻徵了 %d 人", total)
+	}
+	// 等級 5 有 0.75 折：同一份預算徵得到更多人，而且**不會第一位
+	// 就吃光**——量到的一輪是 323 → 81 → 21 → 6 → 2 → 1…
+	pref.Population = 100000
+	got := conscript(g, p, 5, 250)
+	if len(got) < 2 {
+		t.Errorf("等級 5 的 250 金只徵了 %d 道，第一位就把預算吃光了", len(got))
 	}
 }
 

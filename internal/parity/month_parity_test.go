@@ -418,6 +418,17 @@ func TestZZMonthParity(t *testing.T) {
 	// BX ＝ 30 × 人物槽號）。原版是走名單逐一補，remake 先前讓第一位
 	// 吃光預算——量的差八成在這裡。
 	csLog := []string{}
+	// `0xbf63` 那一刻 ES 已經指向含 `es:[0x3d16]`（本回合預算）的段，
+	// AX ＝ 這一位的空額。郡的金直接從 `base` 讀。
+	o.OnCall(addr(0xbf63), func(o *oracle.Oracle) {
+		if watch >= 0 && curDisp == watch {
+			at := base + uint32(nMas) + uint32(watch)*176
+			csLog = append(csLog, fmt.Sprintf("（空額 %d 預算 %d 金 %d）",
+				int(o.AX()),
+				int(o.Word(addr(uint32(o.ES())*16+0x3d16))),
+				int(o.Word(addr(at+18)))))
+		}
+	})
 	o.OnCall(addr(0xc025), func(o *oracle.Oracle) {
 		if watch >= 0 && curDisp == watch {
 			csLog = append(csLog,
