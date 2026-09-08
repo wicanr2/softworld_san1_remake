@@ -259,29 +259,51 @@ func (u *Unit) Name() string {
 	return fmt.Sprintf("%s%s", u.Side, u.Formation)
 }
 
-// MovePoints 是這支部隊一天的移動力。
+// MovePoints 是這支部隊一天的移動力上限（原版 `0x27114`–`0x271dc`，`L0`）。
 //
-// 原版對每一位將領各算一次（`0x2e07a`，`L0`）：
+// 走十個將領槽，空的（`0xFFFF`）跳過：
 //
-//	移動力 ＝ min(15, (訓練度 − 武裝度 + 100) ÷ 10 + 1)
+//	每一位：值 ＝ ftol((訓練 × 0.75 + 武裝 ÷ 4) × 兵力 × 0.01 + 0.5)
+//	上限   ＝ ftol(Σ值 ÷ Σ兵力 × 10 + 0.5) + 2
+//	Σ兵力 ≤ 0 → 上限 ＝ 2（`0x271f9` 那條分支）
 //
-// 訓練度愈高愈遠、武裝度愈高愈近，正是手冊 p.29–30 說的
-// 「移動力來源是訓練度」「全副武裝將稍減移動力」。範圍 1–15。
+// 訓練度愈高愈遠、武裝度愈高**愈遠**——武裝在這裡是加分不是扣分
+// （係數 ¼），與說明書 p.29–30 的「移動力來源是訓練度」「全副武裝將
+// 稍減移動力」後半句不合。**以碼為準**：訓 97／武裝 97 的部隊量到 12，
+// 訓 50／武裝 50 量到 7，訓 80／武裝 80 量到 10，三支都對得上
+// （`TestBattleUnitsMatchTheOriginal`）。
 //
-// remake 這一層算的是部隊不是單一將領，所以拿部隊的加權平均代入。
+// 常數 0.75／0.01／0.5／10.0 是 `DS:0xa8fc`／`0xa8d2`／`0xa8ec`／`0xa904`
+// 四個 double，直接從資料段讀出來的。
+//
+// ⚠ **兩個累計器都是 16 位元**（`add %ax,-0x2(%bp)`／`-0x6(%bp)`），
+// 而且分母走 `fidivs`（整數除數）——十位將領的兵加起來超過 32767 就會
+// 繞回去。那是原版的行為，照抄。
+//
+// ⚠ **`0x2e07a` 的 `min(15, (訓練 − 武裝 + 100) ÷ 10 + 1)` 是另一件事**：
+// 那一支算的是對戰子畫面裡**單一將領**的值，不是部隊在 12×10 的戰場上
+// 一天能走多遠。
 func (u *Unit) MovePoints() int {
-	mp := (u.AvgTraining()-u.AvgArms()+100)/10 + 1
-	if mp > MoveMax {
-		mp = MoveMax
+	var num, den int16
+	for i := range u.Leaders {
+		x := &u.Leaders[i]
+		if x.Dead || x.Captured || x.Soldiers <= 0 {
+			continue
+		}
+		v := (float64(x.Training)*0.75 + float64(int(x.Arms)/4)) *
+			float64(x.Soldiers) * 0.01
+		num += int16(v + 0.5)
+		den += int16(x.Soldiers)
 	}
-	if mp < 1 {
-		mp = 1
+	if den <= 0 {
+		return MoveFloor
 	}
-	return mp
+	return int(float64(num)/float64(den)*10+0.5) + MoveFloor
 }
 
-// MoveMax 是移動力的上限，原版寫死在 `0x2e08f`。
-const MoveMax = 15
+// MoveFloor 是移動力的底（`0x271b8` 的 `inc ax` 兩次，以及 `0x271f9`
+// 那條分支寫死的 2）。**沒有上限**：訓練與武裝都拉滿也只到 12。
+const MoveFloor = 2
 
 // OriginalIndex 是原版部隊陣列裡的軍力編號。
 //

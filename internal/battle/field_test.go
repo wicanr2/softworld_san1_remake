@@ -252,15 +252,19 @@ func TestLeaderPower(t *testing.T) {
 	}
 }
 
-// TestMovePointsFormula 釘住移動力（`0x2e07a`，`L0`）：
+// TestMovePointsFormula 釘住一天的移動力上限（`0x27114`–`0x271dc`，`L0`）：
 //
-//	min(15, (訓練度 − 武裝度 + 100) ÷ 10 + 1)
+//	每一位：值 ＝ ftol((訓練 × 0.75 + 武裝 ÷ 4) × 兵力 × 0.01 + 0.5)
+//	上限   ＝ ftol(Σ值 ÷ Σ兵力 × 10 + 0.5) + 2
+//
+// 前三組是**原版量出來的**（`TestBattleUnitsMatchTheOriginal`：
+// 訓 50／武裝 50 是 7、訓 80／武裝 80 是 10、訓 97／武裝 97 是 12）。
 func TestMovePointsFormula(t *testing.T) {
 	for _, c := range []struct {
 		train, arms, want int
 	}{
-		{50, 50, 11}, {100, 0, 15}, {0, 100, 1}, {100, 100, 11}, {80, 20, 15},
-		{60, 50, 12},
+		{50, 50, 7}, {80, 80, 10}, {97, 97, 12},
+		{100, 0, 10}, {0, 100, 5}, {100, 100, 12}, {80, 20, 9}, {60, 50, 8},
 	} {
 		u := &Unit{Leaders: []Leader{{
 			Training: uint8(c.train), Arms: uint8(c.arms), Soldiers: 1000,

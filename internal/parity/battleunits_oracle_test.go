@@ -40,6 +40,7 @@ const (
 	unitLeaders  = 28 // 將領人數
 	unitSoldiers = 30 // 兵士數
 	unitAbility  = 32 // 綜合能力
+	unitCap      = 34 // 這支部隊一天的移動力上限（`0x271d7` 寫）
 	unitMove     = 36 // 這一天剩下的移動力
 )
 
@@ -92,6 +93,7 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 		return int(v)
 	}
 	units, checked, bad := 0, 0, 0
+	var slots []unitSlot
 	for army := 0; army < battleArmies; army++ {
 		for team := 0; team < battleTeams; team++ {
 			rec := battleUnitBase + (army*battleUnitPer+team)*battleUnitSize
@@ -124,16 +126,14 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 			for _, l := range leaders {
 				sum += l.Soldiers
 			}
-			gotSol, gotAbi, gotMov := w16(rec+unitSoldiers), w16(rec+unitAbility), w16(rec+unitMove)
-			line := fmt.Sprintf("軍力 %d 隊伍 %d（%d 位將，格 %d,%d）",
-				army, team, n, w16(rec+unitCol), w16(rec+unitRow))
+			gotSol, gotAbi := w16(rec+unitSoldiers), w16(rec+unitAbility)
+			line := fmt.Sprintf("軍力 %d 隊伍 %d（%d 位將）", army, team, n)
 			for _, x := range []struct {
-				name      string
+				name       string
 				orig, ours int
 			}{
 				{"兵士數", gotSol, sum},
 				{"綜合能力", gotAbi, u.Ability()},
-				{"移動力", gotMov, u.MovePoints()},
 			} {
 				checked++
 				if x.orig != x.ours {
@@ -141,13 +141,70 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 					t.Errorf("%s：%s 原版 %d／remake %d", line, x.name, x.orig, x.ours)
 				}
 			}
-			t.Logf("%s 兵 %d 綜合能力 %d 移動力 %d", line, gotSol, gotAbi, gotMov)
+			t.Logf("%s 兵 %d 綜合能力 %d", line, gotSol, gotAbi)
+			slots = append(slots, unitSlot{army, team, rec, u})
 		}
 	}
 	if units == 0 {
 		t.Fatal("一支部隊都沒讀到——部隊記錄的位置或工作區的段不對")
 	}
 	t.Logf("整編出 %d 支部隊，比了 %d 個欄位，對不上 %d 個", units, checked, bad)
+
+	// **移動力（offset 36）是「這一天剩下的」，佈陣完還是 0**——
+	// 位置也都在 (0,0)，紮寨還沒送。紮寨的提示是
+	// `數字鍵選方向 / 4 5 6 / 1 2 3 / 0:紮寨`：**1–6 是移游標，`0` 才是
+	// 紮下去**（`DS:0x7f9e`）。一支一支問，全部就位之後才進第一天。
+	for step := 1; step <= 10; step++ {
+		o.Drain()
+		o.PressScan("0")
+		if err := o.Run(40_000_000); err != nil {
+			t.Fatalf("紮寨第 %d 步停止：%v", step, err)
+		}
+		var sb strings.Builder
+		placed := 0
+		for _, s := range slots {
+			col, row, mov := w16(s.rec+unitCol), w16(s.rec+unitRow), w16(s.rec+unitMove)
+			if col != 0 || row != 0 || mov != 0 {
+				placed++
+			}
+			fmt.Fprintf(&sb, "[%d-%d 格 %d,%d 移 %d／remake %d] ",
+				s.army, s.team, col, row, mov, s.u.MovePoints())
+		}
+		t.Logf("紮寨第 %2d 步：%s", step, sb.String())
+		if placed == len(slots) {
+			t.Logf("全部 %d 支都就位了", placed)
+			break
+		}
+	}
+
+	// **移動力要等紮完寨才比**：offset 36 是「這一天剩下的」，佈陣的
+	// 時候還是 0。offset 34 是這支部隊一天的上限，開始新的一天時
+	// 36 ← 34（`0x27200`）。
+	for _, s := range slots {
+		cap34, left36 := w16(s.rec+unitCap), w16(s.rec+unitMove)
+		var who strings.Builder
+		for _, l := range s.u.Leaders {
+			fmt.Fprintf(&who, "槽 %d 訓 %d 武裝 %d 兵 %d；",
+				l.Index, l.Training, l.Arms, l.Soldiers)
+		}
+		checked++
+		if got := s.u.MovePoints(); got != cap34 {
+			bad++
+			t.Errorf("%d-%d 移動力上限：原版 %d／remake %d｜%s",
+				s.army, s.team, cap34, got, who.String())
+		}
+		t.Logf("%d-%d 移動力上限 %d（剩 %d）｜%s",
+			s.army, s.team, cap34, left36, who.String())
+	}
+	t.Logf("連移動力一起算：比了 %d 個欄位，對不上 %d 個", checked, bad)
+	dumpScreen(t, o, "battle-day1")
+}
+
+// unitSlot 是一支部隊在原版記錄裡的位置，加上 remake 這一邊對應的物件。
+type unitSlot struct {
+	army, team int
+	rec        int
+	u          *battle.Unit
 }
 
 // driveIntoBattle 送「軍事 → 發動戰役 → 出兵郡 → 目標郡 → 整編」那一串鍵。

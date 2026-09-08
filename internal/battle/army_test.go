@@ -132,15 +132,24 @@ func TestTroopIsMajorityBySoldiers(t *testing.T) {
 	}
 }
 
-// TestMovePointsHasFloor 釘住移動力的下限。
+// TestMovePointsHasFloor 釘住移動力的下限與方向。
 //
-// 原版的公式 `(訓練 − 武裝 + 100)/10 + 1` 在訓練 0、武裝 100 時是 1，
-// 而最便宜的地形要 2——**原版就是讓這種部隊動不了**。這裡只擋住
-// 資料越界（武裝度存的是 `u8`）算出負數。
+// 下限是 2：`0x271b8` 對算出來的值 `inc ax` 兩次，一個人都沒有的部隊
+// 走 `0x271f9` 那條分支，直接寫 2。
+//
+// ⚠ **武裝度在這條公式裡是加分**（係數 ¼），與說明書 p.30
+// 「全副武裝將稍減移動力」相反。**以碼為準**：`0x2716c` 是 `fiadds`，
+// 而且原版量到訓 97／武裝 97 的部隊是 12、訓 80／武裝 80 是 10
+// （`TestBattleUnitsMatchTheOriginal`），都高過同訓練度輕裝的值。
+// 說明書那半句對應的是對戰子畫面裡的另一支（`0x2e07a`）。
 func TestMovePointsHasFloor(t *testing.T) {
+	empty := &Unit{}
+	if got := empty.MovePoints(); got != MoveFloor {
+		t.Errorf("空部隊的移動力是 %d，應該是下限 %d", got, MoveFloor)
+	}
 	u := &Unit{Leaders: []Leader{{Soldiers: 100, Training: 0, Arms: 255}}}
-	if got := u.MovePoints(); got < 1 {
-		t.Errorf("移動力 %d 低於下限 1", got)
+	if got := u.MovePoints(); got < MoveFloor {
+		t.Errorf("移動力 %d 低於下限 %d", got, MoveFloor)
 	}
 	// 訓練度高的走得比較遠（說明書 p.30：「移動力來源是訓練度…」）。
 	slow := &Unit{Leaders: []Leader{{Soldiers: 100, Training: 0, Arms: 0}}}
@@ -149,11 +158,11 @@ func TestMovePointsHasFloor(t *testing.T) {
 		t.Errorf("訓練度 100 的移動力 %d 沒有多於訓練度 0 的 %d",
 			fast.MovePoints(), slow.MovePoints())
 	}
-	// 「全副武裝將稍減移動力」（p.30）。
 	light := &Unit{Leaders: []Leader{{Soldiers: 100, Training: 100, Arms: 0}}}
 	heavy := &Unit{Leaders: []Leader{{Soldiers: 100, Training: 100, Arms: 100}}}
-	if heavy.MovePoints() >= light.MovePoints() {
-		t.Errorf("全副武裝的移動力 %d 沒有少於輕裝的 %d",
+	if heavy.MovePoints() <= light.MovePoints() {
+		t.Errorf("全副武裝的移動力 %d 沒有多於輕裝的 %d——"+
+			"這條公式裡武裝是加分（0x2716c 的 fiadds）",
 			heavy.MovePoints(), light.MovePoints())
 	}
 }
