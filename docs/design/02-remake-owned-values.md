@@ -78,6 +78,8 @@
 | `TuneReliefRice`／`TuneReliefLoyalty` | `ReliefGain`：撥的是**金**不是米，增幅上限 ＝ 太守魅力 ÷ 2 | `0xc8f6` |
 | 買米的換算 | `RicePerGold`：一金買到 `(100 − 物價) ÷ 10` 單位 | `0xc634` |
 | `TuneRestMove` 的上限 | `Rest`：+2 之後**夾在 15**（手冊只給了那個 2）| `0x27c00`／`0x27c2d` |
+| `TuneArrowDamage` | `ArrowTerrainValue`／`ArrowSurvivors`：一箭的殺傷有自己的地形表，形狀與交戰相同但**沒有那道 −1** | `0x2aa3b`／`DS:0x81c0` |
+| `TuneHit*`（整組）| `battle.exchange`：交戰結算看的是**部隊的**綜合能力與 `DS:0x8162`／`DS:0x8182`，不是逐將領的戰力值 | `0x2a224` |
 | `TuneChiefWeight` 等四項 | `PlotScore`：雙方各取「軍師與君主裡謀略較高的那位」，人望與使者魅力只扣分，沒有擲骰 | `0x2dd66` |
 | `TuneInciteLoss` | `Sabotage`：民忠、洪水率、土地價值、米、金五刀，量都跟著使者魅力 | `0x2d6e0` |
 
@@ -117,7 +119,6 @@
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneArrowDamage` | 6 | 只給了**次數**公式，沒給單次殺傷（相對白刃相接的百分比）|
 | `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` / `TuneStratagemRange` | 140／3／30／3 | 自動作戰什麼時候該死戰、叫陣、退兵、用計——手冊是寫給玩家看的，沒有這一層 |
 
 `TuneDuelWarEdge` 的 3 **有上界**：對方接不接受叫陣看
@@ -143,10 +144,9 @@
 `TuneCaptureOnDuel` 一樣退役，單挑落敗的處置是 `RND(7)`，只有 0 才死
 （`docs/re/05` §9.4）。
 
-戰術層剩下的 remake 決定只有兩類：**弓箭的單次殺傷**（手冊只給次數
-公式），以及**自動作戰的四個門檻**（什麼時候該死戰、叫陣、退兵、用計）
-——那一層手冊沒有，原版的對應邏輯在對戰子地圖那一側，而 remake
-刻意不做那一層（`docs/design/03` §6）。
+戰術層剩下的 remake 決定只有一類：**自動作戰的四個門檻**（什麼時候該
+死戰、叫陣、退兵、用計）——那一層手冊沒有，原版的對應邏輯在對戰
+子地圖那一側，而 remake 刻意不做那一層（`docs/design/03` §6）。
 
 ### 謀略
 

@@ -453,6 +453,36 @@ func (b *Battle) exchange(a, d *Unit, mode int) (int, int) {
 	return wasD - d.Soldiers(), wasA - a.Soldiers()
 }
 
+// arrowTerrain 是弓箭的地形表（`DS:0x81c0`，`L0`）。
+//
+// **第三張表**：交戰查 `DS:0x8162`／`DS:0x8182`，對戰子畫面查
+// `DS:0x85c2`／`DS:0x85e2`，弓箭查這一張。深水最重、山丘最輕
+// ——空曠處沒有遮蔽。
+var arrowTerrain = [terrainCount]int{
+	Hill: 5, Shallow: 16, Deep: 20, City: 7,
+	Fort: 8, Plain: 12, Forest: 9, Desert: 13, Mountain: 0,
+}
+
+// ArrowTerrainValue 是弓箭的地形值。
+func ArrowTerrainValue(t Terrain) int { return arrowTerrain[t] }
+
+// ArrowSurvivors 是一位將領挨了一次箭之後剩下的兵：
+//
+//	max(0, ftol(兵 × (1 − 比例)))
+//
+// **沒有交戰那道 −1**（`0x2aae3` 只把 ≤ 0 夾成 0），迴圈也是從第 0 格
+// 往第 9 格走，與交戰相反。
+func ArrowSurvivors(soldiers int, ratio float64) int {
+	f := new(big.Float).SetPrec(64).Sub(x87(1),
+		new(big.Float).SetPrec(64).SetFloat64(ratio))
+	f.Mul(f, x87(int64(soldiers)))
+	v, _ := f.Int64()
+	if v < 0 {
+		v = 0
+	}
+	return int(v)
+}
+
 // MeleeAttackValue／MeleeDefendValue 是交戰結算的地形值
 //（`DS:0x8162`／`DS:0x8182`）。
 func MeleeAttackValue(t Terrain) int { return meleeAttack[t] }
@@ -691,12 +721,32 @@ func (b *Battle) Archery(a *Unit, target Hex) error {
 	// （`DS:0x80ae`「弓箭攻擊 次數:%d」）；remake 一次把整壺射完，
 	// 因為一次一箭配上一次一回合，在收斂成部隊對部隊的這一層太細。
 	// 次數本身是量到的（`ArrowCount`），而且**會用完**。
+	// 一箭的殺傷照原版（`0x2aa3b`–`0x2ab00`，`L0`）：
+	//
+	//	殺傷 ＝ ftol(弓箭表[射手那格] × 射手.兵士數 × 射手.綜合能力 × 1e-4)
+	//	比例 ＝ 殺傷 ÷ 目標.兵士數
+	//	逐將領：新兵 ＝ max(0, ftol(兵 × (1 − 比例)))
 	total := 0
 	for i := 0; i < n; i++ {
 		if !t.Alive() {
 			break
 		}
-		total += b.hit(a, t, TuneArrowDamage)
+		d := MeleeDamage(ArrowTerrainValue(b.Field.At(a.At)),
+			a.Soldiers(), a.Ability(), 1, MeleeDefendScale)
+		r := MeleeRatio(d, t.Soldiers())
+		was := t.Soldiers()
+		for j := range t.Leaders {
+			x := &t.Leaders[j]
+			if x.Dead || x.Captured || x.Soldiers <= 0 {
+				continue
+			}
+			x.Soldiers = ArrowSurvivors(x.Soldiers, r)
+		}
+		total += was - t.Soldiers()
+	}
+	if t.Soldiers() == 0 && !t.Wiped {
+		t.Wiped = true
+		b.note("%s 全滅", t.Name())
 	}
 	a.Arrows = 0
 	b.note("%s 射了 %d 次箭，%s 折損 %d", a.Name(), n, t.Name(), total)

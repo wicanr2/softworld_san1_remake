@@ -77,6 +77,9 @@ func TestZZBattleDaySweep(t *testing.T) {
 		{0x21816, "戰場迴圈"}, {0x24ee1, "夾移動力"}, {0x24f8c, "統帥條件"},
 		{0x250d4, "三十天"}, {0x27114, "算移動力上限"}, {0x2a224, "交戰結算"},
 		{0x2eafc, "紮寨休息"},
+		// 計謀的四道門（`docs/re/05` §4）。
+		{0x28bef, "計謀:費用門"}, {0x28c3e, "計謀:智力門"},
+		{0x28c67, "計謀:天候位置門"}, {0x28c95, "計謀:執行"},
 	}
 	hit := map[string]int{}
 	for _, m := range marks {
@@ -160,8 +163,17 @@ func TestZZBattleDaySweep(t *testing.T) {
 	// **移動模式只有 Enter 離得開**（`0x27d63` 的 `cmpw $0xd`）：
 	// 1–6 一律當方向，其餘的鍵忽略後繼續問。
 	E := enterMark
+	// 計謀：命令 `6`，選單 `1.火攻 2.水渰 3.陷阱 4.誘敵 5.燒糧 6.圍攻`
+	// （`DS:0x8113`），四道門在 `0x28bef`／`0x28c3e`／`0x28c67`／`0x28c95`。
+	// 先走到守軍旁邊（`1|5|5|` ＋ Enter 結束這一天），隔天再下計謀。
+	move := "1|5|5|" + E
 	cands := []string{
-		"1|5|5|" + E + "|2",
+		move + "|6",
+		move + "|6|1",
+		move + "|6|2",
+		move + "|6|3",
+		move + "|6|3|5",
+		move + "|6|6",
 	}
 	const settle = 40_000_000
 	for ci, cand := range cands {
