@@ -610,8 +610,19 @@ func (g *State) autumn() []Event {
 			p.Population)
 		rice := HarvestRice(charm, int(p.LandValue), int(p.FloodRate),
 			int(p.PublicLoyalty), p.Population)
-		p.Gold = clampTo(p.Gold+gold, HarvestGoldCap)
-		p.Rice = clampTo(p.Rice+rice, MaxRice)
+		// **收成之後是 0 就改抽亂數**（`0x16a87`／`0x16b60`，`L0`）：
+		// 金抽 `RND(土地價值 + 50)`、米抽 `RND((土地價值 + 50) × 2)`，
+		// 而且是**取代**不是相加。地力與忠誠都被打到 0 的郡才走得到
+		// ——那是一個保底，不然那個郡永遠翻不了身。
+		gotGold, gotRice := p.Gold+gold, p.Rice+rice
+		if gotGold <= 0 {
+			gotGold = g.Roll(int(p.LandValue)+HarvestFloorBase, p.ID, 30)
+		}
+		if gotRice <= 0 {
+			gotRice = g.Roll((int(p.LandValue)+HarvestFloorBase)*2, p.ID, 31)
+		}
+		p.Gold = clampTo(gotGold, HarvestGoldCap)
+		p.Rice = clampTo(gotRice, MaxRice)
 		out = append(out, Event{p.ID,
 			tf("ev.harvest", placeName(p.Name), rice, gold)})
 	}
@@ -673,6 +684,9 @@ func HarvestRice(governorCharm, landValue, floodRate, loyalty, population int) i
 		(HarvestFloodBase - floodRate) + loyalty*HarvestLoyaltyWeight
 	return term * (population / 100) / HarvestRiceDivisor
 }
+
+// HarvestFloorBase 是收成保底那條的常數（`0x16a89`／`0x16b62` 的 `+50`）。
+const HarvestFloorBase = 50
 
 // 秋收的米那一半的常數（`DS:0xa76e` ＝ 3.0、`DS:0xa776` ＝ 0.005）。
 const (
