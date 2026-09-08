@@ -783,7 +783,9 @@ func (g *State) winter() []Event {
 			}
 			got[t] = v
 		}
-		got[g.Roll(int(treasureCount), int(f.ID), 33)]++
+		// **`RND(4)` 對四種**，不是對整個列舉——列舉的第 0 格是玉璽，
+		// 而玉璽只能諸侯持有、不在進貢的四種裡（`0x1723c`）。
+		got[int(TreasureBook)+g.Roll(4, int(f.ID), 33)]++
 		n := 0
 		for t := TreasureBook; t < treasureCount; t++ {
 			f.Treasury[t] = clampTo(f.Treasury[t]+got[t], TreasuryCap)

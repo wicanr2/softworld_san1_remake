@@ -171,13 +171,14 @@ func (f *faithful) Coverage() (int, int) { return 18, 18 }
 //
 // 內政（原版的分派表 `0x5534`，`docs/re/03` §1.4）：
 //
-//	r = RND(K)      K ＝ [4,4,4,3,3,2]，由勢力的 AI 等級選
-//	r == 0 → 土地開發
-//	r == 1 → 洪水防治
-//	否則   → 這回合不做
+//	r1 = RND(K)     K ＝ [4,4,4,3,3,2]，由勢力的 AI 等級選
+//	r1 == 0 → 土地開發（**不再擲**）
+//	否則 r2 = RND(K)
+//	r2 == 1 → 洪水防治
+//	否則    → 這回合不做
 //
-// **等級越高範圍越小、動手的機率越大**：等級 5 是 `RND(2)`，兩件事
-// 各半、從不閒著；等級 0 是 `RND(4)`，一半的回合什麼都不做。
+// **等級越高範圍越小、動手的機率越大**：等級 5 是 `RND(2)`，開墾 ½、
+// 防洪 ¼、閒著 ¼；等級 0 是 `RND(4)`，9/16 的回合什麼都不做。
 //
 // 「做多少」也跟著等級走（`game.AffairsTier`）：開墾的底是
 // `[50,60,60,50,40,50]`、防洪的除數是 `[10,15,15,14,12,10]`。
@@ -348,22 +349,30 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 守軍算，沒有額外的條件。
 		emit(game.TrainOrder{At: p})
 		mark("訓練")
-		// 內政（表 `0x5534`）
-		switch g.Roll(k, int(id), p, 0x5534) {
-		case 0:
+		// 內政（表 `0x5534`，六份常式 `0xba9c`／`0xbb12`／`0xbb88`／
+		// `0xbbfe`／`0xbc74`／`0xbcea`，`L0`）。**是兩次擲骰不是一次**：
+		//
+		//	r1 = RND(K)                    ; 0xbcf5
+		//	r1 == 0 → 開墾，**不再擲**      ; 0xbcff 的 jne 跳過第二次
+		//	否則 r2 = RND(K)               ; 0xbd2a
+		//	r2 == 1 → 防洪，否則這回合不做  ; 0xbd36 的 dec/jne
+		//
+		// 所以機率是開墾 `1/K`、防洪 `(1−1/K)/K`——**不是各 `1/K`**。
+		// 等級 5（K ＝ 2）是開墾 ½、防洪 ¼、閒著 ¼。
+		if g.Roll(k, int(id), p, 0x5534) == 0 {
 			// 開墾不會因為錢不夠而失敗（「若財庫已空則徒手開墾」）。
 			purse -= min(purse, game.CostReclaim)
 			emit(game.ReclaimOrder{At: p, General: gov.Index})
-		case 1:
+		} else if g.Roll(k, int(id), p, 0x5534, 1) == 1 {
 			if afford(game.CostFloodControl) {
 				emit(game.FloodControlOrder{At: p, General: gov.Index})
 			}
 		}
 		mark("內政")
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
-		for _, o := range f.rewards(g, id, p) {
-			emit(o)
-		}
+		// 四種寶物各記一個桶，才對得上原版那四支常式
+		// （`0xd962`／`0xdac0`／`0xdc1e`／`0xdd94`）的分帳。
+		f.rewards(g, id, p, emit, mark)
 		mark("賞賜物品")
 		// 購置武器（表 `0x5594`）：預算是郡的金的 2 %。
 		bought := armsPurchase(g, p, aiBudget(gold(), aiLevel, tableArms))
@@ -1072,15 +1081,15 @@ func armsPurchase(g *game.State, prefecture, budget int) []game.Order {
 //	存量 <= RND(2) + 2 → 跳過      ; 手上要夠多才送得出去
 //	按「該寶物要提升的能力 ＋ 加權表[身分]」排序，挑第一個過門檻的
 //	該人能力與忠誠上升，寶物存量 −1
-func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []game.Order {
+func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int,
+	emit func(game.Order), mark func(string)) {
 	if g.AILevel(id) < 3 {
-		return nil // 等級 0–2 那三格是空操作
+		return // 等級 0–2 那三格是空操作
 	}
 	fa := g.Faction(id)
 	if fa == nil {
-		return nil
+		return
 	}
-	var out []game.Order
 	// 四支各一次，形狀相同（`0xe03c` 等級 5、`0xdfcc` 等級 4、
 	// `0xdf5c` 等級 3）：
 	//
@@ -1104,19 +1113,24 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []
 	} {
 		r := g.Roll(2, int(id), prefecture, i) + 2
 		if g.Roll(100, int(id), prefecture, i, 0x56b4) > bar {
+			mark(treasureBucket[i])
 			continue
 		}
 		if fa.Treasury[t] <= r {
+			mark(treasureBucket[i])
 			continue
 		}
 		who := f.rewardTarget(g, id, prefecture, t, i)
 		if who == nil {
+			mark(treasureBucket[i])
 			continue
 		}
-		out = append(out, game.GiftOrder{
+		// **就地發下去**：原版是常式自己改人物表（`0xda36` 起的
+		// `RND(2)+2` 與 `RND(30)`），那兩次抽樣屬於這一支。
+		emit(game.GiftOrder{
 			At: prefecture, Target: who.Index, What: t, Auto: true})
+		mark(treasureBucket[i])
 	}
-	return out
 }
 
 
@@ -1136,6 +1150,11 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []
 // treasureBar 是賞賜物品傳進 `0xd962` 的那個常數，隨等級變（`L0`）：
 // 等級 3 是 `0x28`（40，`0xdf72`）、4 是 `0x3c`（60，`0xdfe2`）、
 // 5 是 `0x50`（80，`0xe052`）。等級 0–2 那三格是空操作。
+// treasureBucket 對上原版四支常式的位址，逐種分帳用。
+var treasureBucket = [4]string{
+	"賞賜物品：兵書", "賞賜物品：寶刀", "賞賜物品：美女", "賞賜物品：駿馬",
+}
+
 func treasureBar(level int) int {
 	switch {
 	case level >= 5:

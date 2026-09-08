@@ -94,6 +94,10 @@ func TestZZMonthParity(t *testing.T) {
 	// 逐郡歸戶：`curDisp` 是「現在跑的是哪個郡的分派器」，−1 表示不在
 	// 郡回合裡（開月、每月結算那些）。
 	curDisp := -1
+	// 第一個對不上的那一格要拆到「哪一張表」。順序表第 0 格是郡 1
+	// （`docs/re/08` §2 量到的那一份順序表），逐表歸戶只對它做。
+	const firstGapAt = 1
+	firstTbl := map[string]int{}
 	randBy := map[int]int{}
 	// 再歸一次戶：十八張表各自抽了幾次。分派點是 `0xe926`–`0xec1b`
 	// （`docs/re/03` §1.4），攔在 `lcall` 上（呼叫前），所以下一個攔截點
@@ -124,6 +128,10 @@ func TestZZMonthParity(t *testing.T) {
 		// 所以進貢那 69 次裡可能有一次其實是這裡的。
 		{0x1746e, "郡回合入口"},
 		{0x1734f, "進貢之後"},
+		// 月迴圈每前進一格的那一次 `RND(12)`（`0x15790`）。它排在
+		// `0x1746e` 之前，不分出來的話會記在**前一個郡最後一張表**
+		// （出兵）的帳上。
+		{0x15790, "月迴圈每格"},
 		// `0x1734f` 之後第一件事是**整張地圖重繪**（`0x32fb8`：郡 1..42
 		// 逐一呼叫 `0x32fe6`，讀 offset 30 決定顏色，再走間接的
 		// `lcall *es:[0x20ea]`）。那一段與月迴圈要分開數。
@@ -153,6 +161,9 @@ func TestZZMonthParity(t *testing.T) {
 	o.OnCall(oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, func(*oracle.Oracle) {
 		randCalls++
 		randBy[curDisp]++
+		if curDisp == firstGapAt {
+			firstTbl[curTable]++
+		}
 		randTbl[curTable]++
 	})
 	// **從月底結算那一刻接上**，不是從快照那一刻。快照到月底之間是
@@ -296,6 +307,22 @@ func TestZZMonthParity(t *testing.T) {
 		origTributeSeed = uint32(o.Word(addr(ds+0xa3ae))) |
 			uint32(o.Word(addr(ds+0xa3b0)))<<16
 	})
+	// 寶庫（諸侯 offset 14–18）在**接上的那一刻**與**進貢之後**各拍一份。
+	// 賞賜物品那四支拿存量當閘門（`0xd9b4`），存量差一格就整支不跑。
+	dumpTreasury := func(o *oracle.Oracle) [16][5]int {
+		var out [16][5]int
+		ds := uint32(o.DSReg()) * 16
+		seg := uint32(o.Word(addr(ds+0xa734))) * 16
+		for i := 0; i < 16; i++ {
+			for k := 0; k < 5; k++ {
+				out[i][k] = int(o.Byte(addr(seg + uint32(i*0x48+14+k))))
+			}
+		}
+		return out
+	}
+	var tbBefore, tbAfter [16][5]int
+	o.OnCall(addr(0x170a2), func(o *oracle.Oracle) { tbBefore = dumpTreasury(o) })
+	o.OnCall(addr(0x1734f), func(o *oracle.Oracle) { tbAfter = dumpTreasury(o) })
 	o.OnCall(addr(0x1713e), func(*oracle.Oracle) { tbLand++ })
 	o.OnCall(addr(0x17167), func(*oracle.Oracle) { tbTalent++ })
 	// 四種寶物的「重抽」各一段（`c < v → v = RND(5)+8`）。
@@ -441,6 +468,15 @@ func TestZZMonthParity(t *testing.T) {
 		ids = append(ids, int(f.ID))
 	}
 	t.Logf("remake 的勢力槽號：%v（原版走的是 0..15 全部）", ids)
+	ra := [16][5]int{}
+	rb := [16][5]int{}
+	for _, f := range g.Factions() {
+		if int(f.ID) < 16 {
+			rb[f.ID] = f.Treasury
+		}
+	}
+	t.Logf("寶庫（進貢前）原版 %v", tbBefore)
+	t.Logf("寶庫（進貢前）remake %v", rb)
 	t.Logf("進貢的兩張表（remake）：領地 %v", rl)
 	t.Logf("進貢的兩張表（remake）：人才 %v", rt)
 
@@ -452,6 +488,11 @@ func TestZZMonthParity(t *testing.T) {
 	g.EndMonth()
 	t.Logf("起點：接上的是 0x%08x，remake 走完 0 步是 0x%08x（該相同）",
 		seedAtSettle, phaseSeed["換月"])
+	for _, f := range g.Factions() {
+		if int(f.ID) < 16 {
+			ra[f.ID] = f.Treasury
+		}
+	}
 	t.Logf("進貢前的狀態：原版 0x%08x，remake 0x%08x（民亂判定之後）",
 		origTributeSeed, phaseSeed["民亂判定"])
 	for _, k := range []string{"換月", "物價", "洗牌", "人口成長", "民亂判定", "四季"} {
@@ -465,6 +506,7 @@ func TestZZMonthParity(t *testing.T) {
 		t.Fatalf("%s 不支援逐郡執行", brain.Name())
 	}
 	pp.TraceDraws(mineTbl)
+	firstMine := map[string]int{}
 	firstGap := -1
 	for i := winFrom; i < winTo && i < len(turnSeq); i++ {
 		// 月迴圈每一格都先抽一次（`0x15790`），跳過的格子也算。
@@ -488,10 +530,22 @@ func TestZZMonthParity(t *testing.T) {
 				}())
 		}
 		d0 := g.RandDraws()
+		if at == firstGapAt {
+			for k, v := range mineTbl {
+				firstMine[k] = -v
+			}
+		}
 		if _, n, err := pp.ActPrefecture(g, q.Owner, at, g.AILevel(q.Owner)); err != nil {
 			t.Errorf("郡 %d（勢力 %d）的命令有 %d 道成立，然後：%v", at, q.Owner, n, err)
 		}
 		mineBy[at] = g.RandDraws() - d0
+		if at == firstGapAt {
+			for k, v := range mineTbl {
+				if firstMine[k] += v; firstMine[k] == 0 {
+					delete(firstMine, k)
+				}
+			}
+		}
 	}
 
 	rm, rs, rg, err := g.Tables()
@@ -516,9 +570,13 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	t.Logf("兵書那一支的漏斗：進入 %d → 過 RND(100) %d → 過庫存 %d", fIn, fRnd, fStock)
 	// 四支寶物常式的桶要併回賞賜物品，否則比較欄位對不起來。
+	t.Log("四種寶物逐支（原版／remake）：")
 	for _, k := range []string{"賞賜物品：兵書", "賞賜物品：寶刀",
 		"賞賜物品：美女", "賞賜物品：駿馬"} {
+		t.Logf("　  %s 原版 %4d／remake %4d（差 %+d）",
+			k, randTbl[k], mineTbl[k], mineTbl[k]-randTbl[k])
 		randTbl["賞賜物品"] += randTbl[k]
+		mineTbl["賞賜物品"] += mineTbl[k]
 	}
 	t.Logf("原版挖角觸發 %d 次：郡 %v", len(hhAt), hhAt)
 	for k, v := range mineTbl {
@@ -553,6 +611,28 @@ func TestZZMonthParity(t *testing.T) {
 			break
 		}
 		t.Logf("    郡 %2d：原版 %3d／remake %3d（差 %+d）", x.p, x.a, x.b, x.b-x.a)
+	}
+	t.Logf("寶庫（進貢後）原版 %v", tbAfter)
+	t.Logf("寶庫（進貢後）remake %v", ra)
+	for k, v := range mineTbl {
+		if strings.HasPrefix(k, "內政：郡 1 ") {
+			t.Logf("remake 的內政：%s（%d 次）", k, v)
+		}
+	}
+	t.Logf("郡 %d 逐表（原版）：%v", firstGapAt, firstTbl)
+	t.Logf("郡 %d 逐表（remake）：%v", firstGapAt, firstMine)
+	t.Log("照順序表的次序（第一個對不上的就是要追的）：")
+	for i := winFrom; i < winTo && i < len(turnSeq); i++ {
+		at := turnSeq[i]
+		if randBy[at] == 0 && mineBy[at] == 0 {
+			continue
+		}
+		flag := ""
+		if randBy[at] != mineBy[at] {
+			flag = "  ←"
+		}
+		t.Logf("    第 %2d 格 郡 %2d：原版 %3d／remake %3d%s",
+			i, at, randBy[at], mineBy[at], flag)
 	}
 	t.Logf("原版 vs remake：差 %d 個位元組%s",
 		differs8(after, mine), where(after, mine, nMas, nSta))

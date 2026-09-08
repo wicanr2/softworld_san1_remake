@@ -105,8 +105,13 @@ func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) erro
 	}
 	add := ReclaimGain(intel)
 	if f := g.Faction(by); f != nil && f.ByComputer {
+		// **`RND(2)` 只有在算出來非正時才擲**（`0xba02`：
+		// `cmpw $0x0,0x6(%bp)`，`jg` 就直接用算出來的量）。
+		// 無條件擲會讓智力高的太守也多消耗一次亂數。
 		t := AffairsTierFor(f.AILevel)
-		add = AIReclaimGain(intel, t.LandFloor, g.Roll(2, prefectureID, 0xba02))
+		if add = AIReclaimGain(intel, t.LandFloor, 0); add <= 0 {
+			add = g.Roll(2, prefectureID, 0xba02)
+		}
 	}
 	p.Gold -= min(p.Gold, g.price(by, CostReclaim))
 	p.LandValue = uint8(clampTo(int(p.LandValue)+add, 100))
