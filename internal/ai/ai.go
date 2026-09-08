@@ -1158,9 +1158,12 @@ func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture in
 		return ability(list[a])+weight(list[a]) > ability(list[b])+weight(list[b])
 	})
 	for i, x := range list {
+		// **`RND(20)` 在迴圈頂端，每一筆都抽**（`0xd9f2`）——包括能力
+		// 已經到頂、以及君主那種不必比的。寫成短路條件會把那些抽樣吃掉
+		// （Go 的 `&&`／`||` 都短路），整條序列跟著錯開。
+		r := g.Roll(20, int(id), prefecture, salt, i, 0x56b4) + 60
 		if v := ability(x); v < game.TreasureCap &&
-			(x.Status == state.StatusLord ||
-				v > g.Roll(20, int(id), prefecture, salt, i, 0x56b4)+60) {
+			(x.Status == state.StatusLord || v > r) {
 			return x
 		}
 	}
