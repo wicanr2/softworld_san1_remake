@@ -138,6 +138,52 @@ sign_windows() {
   echo "  Windows 執行檔已簽章"
 }
 
+# ── 冒煙測試 ───────────────────────────────────────────────────
+#
+# **建得出來不等於跑得起來。** Ebiten 在 package init 就開 GLFW，
+# 少一個共享函式庫、字型路徑寫錯、資產讀法改過——這些都不會讓
+# `go build` 失敗，只會讓玩家一按下去就閃退。
+#
+# 所以這裡真的把包解開來跑一次：先 `-h`（確認起得來），再帶原版素材
+# 跑 25 秒（確認載得進去、不會中途崩）。跑滿 25 秒被 timeout 砍掉
+# （退出碼 124）才是通過——**自己結束反而是壞消息**。
+#
+# 只驗 Linux：另外三個平台在這台機器上執行不了，硬要驗會變成假綠。
+smoke_linux() {
+  local d="$1"
+  if [[ -z "${SAN1_ORIG:-$ROOT/org_game}" ]] || [[ ! -d "${SAN1_ORIG:-$ROOT/org_game}" ]]; then
+    echo "  跳過冒煙測試：沒有原版素材"
+    return 0
+  fi
+  local orig="${SAN1_ORIG:-$ROOT/org_game}"
+  docker run --rm --network none --memory 2g --cpus 2 --pids-limit 128 \
+    --log-opt max-size=10m --log-opt max-file=3 \
+    -u "$(id -u):$(id -g)" \
+    -v "$d:/pkg:ro" -v "$orig:/orig:ro" -e HOME=/tmp -w /pkg \
+    "${SAN1_GO_IMAGE:-rich2-go-ebiten:latest}" bash -c '
+      command -v xvfb-run >/dev/null || { echo "  跳過：image 裡沒有 xvfb-run"; exit 0; }
+      xvfb-run -a ./san1 -h >/dev/null 2>&1 || true
+      # **不要 set -e**：timeout 砍掉的那個 124 才是我們要的結果，
+      # set -e 會在讀到 $? 之前就把腳本結束掉。
+      rc=0
+      xvfb-run -a timeout -s INT 25 ./san1 -root "/orig/三國演義" -music=false \
+        >/tmp/smoke.log 2>&1 || rc=$?
+      if [[ $rc -ne 124 ]]; then
+        echo "  ✗ 冒煙測試：跑了不到 25 秒就結束（退出碼 $rc）"
+        tail -20 /tmp/smoke.log
+        exit 1
+      fi
+      echo "  ✓ 冒煙測試：帶原版素材跑滿 25 秒沒有崩"
+    '
+}
+
+echo
+echo "== 冒煙測試（Linux）"
+for d in "$OUT"/stage/*linux*/; do
+  [[ -d "$d" ]] || continue
+  smoke_linux "$d"
+done
+
 echo
 echo "== 簽章"
 for d in "$OUT"/stage/*windows*/; do

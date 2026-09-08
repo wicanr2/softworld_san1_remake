@@ -151,3 +151,21 @@ SAN1_GPG_KEY=<金鑰 ID> tools/release.sh
 tools/release.sh 0.0.0-check && cp workplace/release/SHA256SUMS /tmp/a
 tools/release.sh 0.0.0-check && diff /tmp/a workplace/release/SHA256SUMS
 ```
+
+## 冒煙測試
+
+**建得出來不等於跑得起來。** Ebiten 在 package init 就開 GLFW，
+所以少一個共享函式庫、字型路徑寫錯、資產讀法改過——這些都不會讓
+`go build` 失敗，只會讓玩家一按下去就閃退。
+
+`tools/release.sh` 因此把 Linux 那個包解開來真的跑一次：先 `-h`
+確認起得來，再帶原版素材跑 25 秒。**跑滿 25 秒被 `timeout` 砍掉
+（退出碼 124）才是通過——自己結束反而是壞消息。**
+
+只驗 Linux：另外三個平台在這台機器上執行不了，硬要驗會變成假綠。
+Windows 與 macOS 的包目前只有型別檢查（`file` 認得出 PE／Mach-O）
+與可重現雜湊。
+
+⚠ **無顯示環境連 `san1 -h` 都會 panic**（`glfw: The GLFW library is
+not initialized`）。那是 Ebiten 的 package init 行為，不是 remake 的
+問題；容器裡要 `xvfb-run`。
