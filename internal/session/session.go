@@ -213,13 +213,21 @@ func (s *Session) PlayerTerritory() []int { return s.G.Territory(s.Player) }
 
 // PlayerAlive 回報玩家還在不在。
 //
+// **判準是「有沒有繼承人」不是「有沒有領地」**（原版 `0x15924`，`L0`）：
+// 掃十六個諸侯槽，只要有一個是玩家操縱**而且君主欄不是 `0xFFFF`**
+// 就繼續；一個都沒有才印「所有玩家皆無繼承人 遊戲結束」
+// （`DS:0x97d4`）。所以**君主還活著、領地被打光的玩家，原版照樣讓他
+// 繼續**——他還能靠麾下的武將翻身。
+//
+// 先前這裡看的是 `Faction.Alive`（最後一個郡失守就標記死亡），
+// 那兩者在「有君主沒領地」這個狀態上會分岔。
+//
 // **沒有這一個的話，被消滅之後畫面只是變成空白**——玩家會以為是壞掉。
 func (s *Session) PlayerAlive() bool {
 	if s.Player == state.NoFaction {
 		return true // 純觀戰
 	}
-	f := s.G.Faction(s.Player)
-	return f != nil && f.Alive
+	return s.G.Lord(s.Player) != nil
 }
 
 

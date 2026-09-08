@@ -865,6 +865,13 @@ func (g *State) retire(x *General) {
 		if g.SucceedLord(faction) != nil {
 			return
 		}
+		// **沒有繼承人就把君主欄清成哨兵**（原版寫 `0xFFFF`）。
+		// 輸的定義是「絕嗣」不是「沒領地」（`0x15924`，`docs/mechanics/80`
+		// §1.1），這一格不清的話那個判定永遠成立——它會一直指著
+		// 已故的那一位。
+		if f := g.Faction(faction); f != nil {
+			f.Lord = -1
+		}
 	} else if succ := g.successorFor(at, x.Index, faction); succ != nil {
 		succ.Status = state.StatusGovernor
 		return

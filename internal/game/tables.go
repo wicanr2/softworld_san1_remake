@@ -91,7 +91,13 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 		if int(f.ID)*masRecord+masLord+2 > len(mas) {
 			continue
 		}
-		put16(mas[int(f.ID)*masRecord+masLord:], f.Lord)
+		// **絕嗣的勢力君主欄要寫哨兵**（原版 `0xFFFF`）：`f.Lord` 是 −1
+		// 時直接 put 會寫成 `0xFFFF` 的補數，讀回來就變成一個真的槽號。
+		lord := state.NoValue16
+		if f.Lord >= 0 {
+			lord = f.Lord
+		}
+		put16(mas[int(f.ID)*masRecord+masLord:], lord)
 		// 軍師（offset 6）。**不寫的話換軍師存不下來**——`f.Chief` 改了，
 		// 存檔還是舊的那一位，讀回來門檻又變回他的智。
 		chief := state.NoValue16
