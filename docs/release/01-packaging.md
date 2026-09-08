@@ -123,3 +123,31 @@ SAN1_GPG_KEY=<金鑰 ID> tools/release.sh
 ```
 
 產出 `SHA256SUMS.asc`。公鑰要另外公布（README 或 release 頁）。
+
+## 可重現建置
+
+**四個包逐位元組可重現**：同一份原始碼建兩次，`SHA256SUMS` 的四行完全
+相同（2026-09-09 實測三次）。
+
+沒有憑證的時候，這是唯一能讓別人獨立驗證「這個包確實是這份原始碼建出
+來的」的東西——而它只有在「同一份內容每次壓出同一個位元組串」時才有
+意義。預設的 `tar`／`gzip`／`zip` 會把**修改時間、擁有者、檔案順序**
+寫進檔頭，於是同一份內容每次的雜湊都不一樣，而**看起來完全正常**。
+
+做法：
+
+| 環節 | 措施 |
+|---|---|
+| Go 建置 | `-trimpath`（拿掉建置路徑）|
+| 檔案時間 | 壓縮前一律 `touch -h -d @0`；`SOURCE_DATE_EPOCH` 可覆蓋 |
+| tar | `--sort=name --mtime --owner=0 --group=0 --numeric-owner` |
+| gzip | `-n`（不寫檔名與時戳）|
+| zip | `-X`（不寫額外屬性）＋ 檔案清單先 `LC_ALL=C sort` |
+
+驗證方式：建兩次、比 `SHA256SUMS`。**不能只看旗標加對了**——
+旗標加對但漏掉某一環的話，雜湊照樣每次不同。
+
+```
+tools/release.sh 0.0.0-check && cp workplace/release/SHA256SUMS /tmp/a
+tools/release.sh 0.0.0-check && diff /tmp/a workplace/release/SHA256SUMS
+```

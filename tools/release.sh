@@ -19,6 +19,11 @@ VER="${1:-$(cd "$ROOT" && git describe --tags --always --dirty 2>/dev/null || ec
 OUT="$ROOT/workplace/release"
 MAC_IMAGE="${SAN1_MAC_IMAGE:-eob-remake-macos:1.26.7-ebiten2.9.9-audio}"
 
+# SOURCE_DATE 是包裡所有檔案的時間戳。**固定值不是「現在」**：
+# 時間戳進了 tar 與 zip 的檔頭，用現在的話同一份內容每次雜湊都不同。
+# 可以用 SOURCE_DATE_EPOCH 覆蓋（reproducible-builds.org 的慣例）。
+SOURCE_DATE="@${SOURCE_DATE_EPOCH:-0}"
+
 # **舊版本的包要先清掉。** 檔名帶版本號，所以舊包不會被覆蓋而是留在旁邊，
 # 而最後的 sha256sum 掃的是整個目錄——校驗碼清單於是會混進上一次建的東西，
 # 而且看起來完全正常（每一行的雜湊都是對的，只是那個檔不屬於這一版）。
@@ -149,12 +154,33 @@ fi
 
 echo
 echo "== 壓縮"
+# **包要逐位元組可重現。** 沒有憑證的時候，`SHA256SUMS` 是唯一能讓別人
+# 獨立驗證「這個包確實是這份原始碼建出來的」的東西——而它只有在同一份
+# 原始碼每次都壓出同一個位元組串時才有意義。
+#
+# 預設的 tar／gzip／zip 會把**修改時間、擁有者、檔案順序**寫進去，
+# 於是同一份內容每次的雜湊都不一樣，看起來完全正常。
+#
+#   tar   --sort=name 固定順序、--mtime 固定時間、--owner/--group/--numeric-owner
+#         固定擁有者；gzip -n 不寫檔名與時戳
+#   zip   -X 不寫額外屬性；檔案的 mtime 要先自己統一（zip 沒有 --mtime）
+#
+# Go 那一邊 `-trimpath` 已經拿掉了建置路徑。
+export TZ=UTC
+find "$OUT/stage" -exec touch -h -d "$SOURCE_DATE" {} +
 cd "$OUT/stage"
 for d in */; do
   d="${d%/}"
   case "$d" in
-    *windows*) (cd "$OUT/stage" && zip -qr "$OUT/$d.zip" "$d") ; echo "  $d.zip" ;;
-    *)         tar -czf "$OUT/$d.tar.gz" "$d" ; echo "  $d.tar.gz" ;;
+    *windows*)
+      (cd "$OUT/stage" && find "$d" -print | LC_ALL=C sort | \
+        zip -qX -@ "$OUT/$d.zip")
+      echo "  $d.zip" ;;
+    *)
+      tar --sort=name --mtime="$SOURCE_DATE" \
+          --owner=0 --group=0 --numeric-owner \
+          -cf - "$d" | gzip -n -9 > "$OUT/$d.tar.gz"
+      echo "  $d.tar.gz" ;;
   esac
 done
 cd "$ROOT"
