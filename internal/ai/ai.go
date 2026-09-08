@@ -524,17 +524,30 @@ func sortie(g *game.State, prefecture int, id state.FactionID, purse int) (game.
 		troops += x.Soldiers
 	}
 	units := troops / 100 // 原版整份用「百」當單位
-	// **金看的是這一輪還剩多少**，不是月初的餘額：出兵是分派器的最後
-	// 一張，前面十七張已經花過了（`es:[0x3d16]` 一路扣下來）。
-	if units < SortieMinTroops || units > purse || p.Rice < units*SortieRicePerUnit {
+	// **入口只有一道門檻**：`0xb666`／`0xb696`／`0xb6c6` 三個等級的碼
+	// 一模一樣，都只判「州郡 offset 16（兵士，百）>= 5」，然後就
+	// `0xb2b4`（編隊）再 `0xb47a`（挑目標）。
+	if units < SortieMinTroops {
 		return nil, false
 	}
 
 	free, mine, foe := neighbourLists(g, p, id)
 	want := sortieTarget(g, prefecture, foe)
 
-	// 第一次編隊（`0xb2b4`）：留守吃光了就整次作廢。
-	if len(muster(g, prefecture, id, want, 2, false)) == 0 {
+	// **先編隊再擋。** 金與米那兩道在 `0xb47a` 裡，而編隊的洗牌
+	// （`0xb2b4`）排在它前面——所以被擋下來的那幾次，原版**還是抽過了**。
+	// 先擋再編會少抽一整批（月度對拍量到出兵這一支少 106 次）。
+	survivors := muster(g, prefecture, id, want, 2, false)
+
+	// `0xb47a` 的三道，順序照原版：
+	//
+	//	兵士(百) > 州郡 offset 18（金）→ 作廢          ; 0xb49c
+	//	兵士(百) × 15 > 州郡 offset 20（米）→ 作廢     ; 0xb4cb
+	//	清單長度 < 1 → 作廢                            ; 0xb4d8
+	//
+	// **金看的是郡的金，不是本回合預算**——出兵是分派器的最後一張，
+	// 前面十七張花掉的錢不影響這一道。
+	if units > p.Gold || p.Rice < units*SortieRicePerUnit || len(survivors) == 0 {
 		return nil, false
 	}
 
