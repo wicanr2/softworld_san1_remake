@@ -407,12 +407,11 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		}
 		if g.Roll(k, int(id), p, 0x5534) == 0 {
 			// 開墾不會因為錢不夠而失敗（「若財庫已空則徒手開墾」）。
-			purse -= min(purse, game.CostReclaim)
-			emit(game.ReclaimOrder{At: p, General: brain.Index})
+			// **電腦那一條不收錢**（`0xba02`／`0xbd39` 都沒碰
+			// 州郡 offset 18），所以也沒有「付不付得起」這一關。
+			emit(game.ReclaimOrder{At: p, General: brain.Index, Auto: true})
 		} else if g.Roll(k, int(id), p, 0x5534, 1) == 1 {
-			if afford(game.CostFloodControl) {
-				emit(game.FloodControlOrder{At: p, General: brain.Index})
-			}
+			emit(game.FloodControlOrder{At: p, General: brain.Index, Auto: true})
 		}
 		mark("內政")
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
@@ -435,6 +434,15 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
 		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
 		drafted := conscript(g, p, aiLevel, aiBudget(gold(), aiLevel, tableConscript))
+		if f.trace != nil && p == watch {
+			out := ""
+			for _, o := range drafted {
+				c := o.(game.ConscriptOrder)
+				out += fmt.Sprintf(" %d:+%d", c.General, c.Count)
+			}
+			f.trace[fmt.Sprintf("徵兵｜郡 %d 預算 %d 金 %d%s", p,
+				aiBudget(gold(), aiLevel, tableConscript), gold(), out)]++
+		}
 		for _, o := range drafted {
 			emit(o)
 		}
@@ -870,7 +878,9 @@ func conscript(g *game.State, prefecture, level, budget int) []game.Order {
 	}
 	people := p.Population
 	var out []game.Order
-	for _, x := range g.Garrison(prefecture) {
+	// **走排序後的名單**（`es:[0x58c]`，行動者那一張排完的順序），
+	// 不是槽號順序——前面的人先徵，而預算是遞減的，順序換了配額就換人。
+	for _, x := range roster(g, prefecture) {
 		// **預算 ≤ 0 就收工**（`0xbf1a`）。
 		if budget <= 0 {
 			break

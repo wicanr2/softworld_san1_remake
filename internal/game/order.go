@@ -27,11 +27,16 @@ type Order interface {
 type ReclaimOrder struct {
 	At      int
 	General int
+
+	// Auto 為真表示走電腦諸侯那一條（`0xbcea` 起的六支 → `0xba02`）。
+	// **原版那一條不收錢**：`0xba02` 只寫州郡 offset 27（土地價值）與
+	// 人口，從頭到尾沒有碰 offset 18。10 金是說明書 p.21 給玩家的規則。
+	Auto bool
 }
 
 func (o ReclaimOrder) Prefecture() int { return o.At }
 func (o ReclaimOrder) Apply(g *State, by state.FactionID) error {
-	return g.Reclaim(o.At, o.General, by)
+	return g.reclaim(o.At, o.General, by, !o.Auto)
 }
 func (o ReclaimOrder) Describe(g *State) string {
 	return tf("log.reclaim", prefName(g, o.At), byWhom(g, o.General))
@@ -41,11 +46,14 @@ func (o ReclaimOrder) Describe(g *State) string {
 type FloodControlOrder struct {
 	At      int
 	General int
+
+	// Auto 同 `ReclaimOrder`：電腦那一條（`0xbd39`）只寫洪水率，不收錢。
+	Auto bool
 }
 
 func (o FloodControlOrder) Prefecture() int { return o.At }
 func (o FloodControlOrder) Apply(g *State, by state.FactionID) error {
-	return g.FloodControl(o.At, o.General, by)
+	return g.floodControl(o.At, o.General, by, !o.Auto)
 }
 func (o FloodControlOrder) Describe(g *State) string {
 	return tf("log.flood", prefName(g, o.At), byWhom(g, o.General))

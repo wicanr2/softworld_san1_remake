@@ -94,6 +94,13 @@ func (g *State) price(by state.FactionID, base int) int {
 // 為止、效果照給（`0x1a796` 的 `sub` 後面跟著 `jns` 夾 0），
 // 不是效果減半。
 func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) error {
+	return g.reclaim(prefectureID, generalIndex, by, true)
+}
+
+// reclaim 是本體。`charge` 分開玩家與電腦兩條——電腦那一條不收錢
+// （`0xba02` 沒碰州郡 offset 18）。
+func (g *State) reclaim(prefectureID, generalIndex int, by state.FactionID,
+	charge bool) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
@@ -115,7 +122,9 @@ func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) erro
 			add = g.Roll(2, prefectureID, 0xba02)
 		}
 	}
-	p.Gold -= min(p.Gold, g.price(by, CostReclaim))
+	if charge {
+		p.Gold -= min(p.Gold, g.price(by, CostReclaim))
+	}
 	p.LandValue = uint8(clampTo(int(p.LandValue)+add, 100))
 	p.Commanded = true
 	return nil
@@ -125,13 +134,23 @@ func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) erro
 // **負責治水的將領謀略越高，洪水發生機率下降越多**。
 // 「沒錢就不能修浚」——與開墾不同，這一項錢不夠就是失敗。
 func (g *State) FloodControl(prefectureID, generalIndex int, by state.FactionID) error {
+	return g.floodControl(prefectureID, generalIndex, by, true)
+}
+
+// floodControl 是本體。`charge` 分開玩家與電腦兩條——電腦那一條
+// （`0xbd39`）只寫洪水率，不收錢也沒有「錢不夠就失敗」。
+func (g *State) floodControl(prefectureID, generalIndex int, by state.FactionID,
+	charge bool) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
 	}
-	fee := g.price(by, CostFloodControl)
-	if p.Gold < fee {
-		return ErrNoGold
+	fee := 0
+	if charge {
+		fee = g.price(by, CostFloodControl)
+		if p.Gold < fee {
+			return ErrNoGold
+		}
 	}
 	drop := 0
 	if x := g.General(generalIndex); x != nil && x.Faction == by &&
