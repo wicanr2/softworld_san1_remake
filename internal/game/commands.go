@@ -436,23 +436,32 @@ func (g *State) TradeRiceTo(prefectureID, target int, by state.FactionID) error 
 	if f := g.Faction(by); f != nil && f.ByComputer {
 		rate = AIRicePerGold(p.PriceLevel, f.AILevel)
 	}
-	gap := target - p.Rice
-	left := float64(p.Gold) - float64(gap)/float64(rate)
-	got := gap
-	switch {
-	case left < 0:
-		// 缺口大到把郡的金花光：買到的是「金 × 量」。
-		left, got = 0, p.Gold*rate
-	case left > MaxGold:
-		left, got = MaxGold, (p.Gold-MaxGold)*rate
+	// **逐字照抄那一串 8087 指令**（`0xc6c3`–`0xc767`），順序不能動：
+	//
+	//	剩金 ← 金 − 缺口 ÷ 量        ; filds/fldl/fidivs/fsubrp，量是整數
+	//	剩金 夾在 [0, 30000]
+	//	新米 ← (金 − 剩金) × 量 + 米 ; fsubl/fimuls/**fiadds**
+	//	金 ← trunc(剩金)；米 ← trunc(新米)
+	//
+	// ⚠ **米要先加進去再截尾**（`fiadds` 在 `ftol` 之前）。先把「買到」
+	// 截成整數再相加會差一單位——`金` 上萬時 `缺口÷量×量` 會抵消掉有效
+	// 位數，算出 −169.999… 或 −705.000…1，截尾的方向剛好相反。
+	// 代數上那個乘積等於缺口，但**原版的捨入誤差是它行為的一部分**：
+	// 郡 22 落在目標上（3060），郡 30 落在目標下面一格（3054）。
+	gap := float64(target - p.Rice)
+	left := float64(p.Gold) - gap/float64(rate)
+	if left < 0 {
+		left = 0
 	}
-	// **沒撞到上下限時 `買到` 就等於缺口**（代數上
-	// `(金 − (金 − 缺口÷量)) × 量 == 缺口`），所以米正好落在目標上。
-	// ⚠ 不要照字面用 float64 回推——`金` 上萬時那一次相減會抵消掉有效
-	// 位數，`170/7 × 7` 算出 169.999… 被截成 169，米就多一單位。
-	// 原版是 8087 的 80 位元中間值，抵消是準的（郡 22 量到過）。
+	if left > MaxGold {
+		left = MaxGold
+	}
+	newRice := (float64(p.Gold)-left)*float64(rate) + float64(p.Rice)
 	p.Gold = int(left)
-	p.Rice = clampTo(p.Rice+got, MaxRice)
+	p.Rice = clampTo(int(newRice), MaxRice)
+	if p.Rice < 0 {
+		p.Rice = 0
+	}
 	if p.Rice < 0 {
 		p.Rice = 0
 	}
