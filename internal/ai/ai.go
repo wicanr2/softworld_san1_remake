@@ -1029,15 +1029,32 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []
 		return nil
 	}
 	var out []game.Order
+	// 四支各一次，形狀相同（`0xe03c` 等級 5、`0xdfcc` 等級 4、
+	// `0xdf5c` 等級 3）：
+	//
+	//	r = RND(2) + 2
+	//	0xd962(門檻, r)          ; 門檻 40／60／80，隨等級
+	//
+	// 常式裡（`0xd962`）再抽一次 `RND(100)`，**門檻就是那個常數**：
+	//
+	//	RND(100) > 門檻 → 回                 ; 0xd97a，40／60／80
+	//	諸侯[所屬] 的庫存 <= r → 回          ; 0xd9b4
+	//	掃名單挑人（迴圈裡每個都抽 RND(20)）  ; 0xd9f2
+	//
+	// **兩次抽樣的順序是「呼叫端的 `RND(2)` 在前、常式裡的 `RND(100)`
+	// 在後」**，而且兩次都一定會抽。remake 原本只抽一次、門檻寫死 40，
+	// 而且順序相反。
+	bar := treasureBar(g.AILevel(id))
 	// 諸侯 offset 15–18 那四格會被送出去；14 是玉璽（不能送人）。
 	for i, t := range []game.Treasure{
 		game.TreasureBook, game.TreasureBlade,
 		game.TreasureBeauty, game.TreasureHorse,
 	} {
-		if g.Roll(100, int(id), prefecture, i, 0x56b4) > 40 {
+		r := g.Roll(2, int(id), prefecture, i) + 2
+		if g.Roll(100, int(id), prefecture, i, 0x56b4) > bar {
 			continue
 		}
-		if fa.Treasury[t] <= g.Roll(2, int(id), prefecture, i)+2 {
+		if fa.Treasury[t] <= r {
 			continue
 		}
 		who := f.rewardTarget(g, id, prefecture, t, i)
@@ -1064,6 +1081,20 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []
 // （權重 2000 壓過任何能力值），所以只要他那一項還沒滿 90，寶物就是他的。
 //
 // ⚠ 門檻是**逐人重擲**的：`RND` 的呼叫點（`0xd9f2`）在迴圈裡面。
+// treasureBar 是賞賜物品傳進 `0xd962` 的那個常數，隨等級變（`L0`）：
+// 等級 3 是 `0x28`（40，`0xdf72`）、4 是 `0x3c`（60，`0xdfe2`）、
+// 5 是 `0x50`（80，`0xe052`）。等級 0–2 那三格是空操作。
+func treasureBar(level int) int {
+	switch {
+	case level >= 5:
+		return 80
+	case level == 4:
+		return 60
+	default:
+		return 40
+	}
+}
+
 func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture int,
 	t game.Treasure, salt int) *game.General {
 	ability := func(x *game.General) int {
