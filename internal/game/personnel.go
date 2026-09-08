@@ -322,6 +322,27 @@ func (g *State) AppointGovernor(prefectureID, targetIndex int, by state.FactionI
 	if t == nil || t.Faction != by || t.Location != prefectureID {
 		return ErrUnknownUnit
 	}
+	return g.installGovernor(prefectureID, t, by)
+}
+
+// appointGovernor 是指定太守的本體。`sameFaction` 分開玩家與電腦兩條：
+// 原版的電腦那一支挑名單時**不比對勢力**（`docs/re/07` §6，28 次量過），
+// 所以目標可能是站在郡裡的外勢力武將。
+func (g *State) appointGovernor(prefectureID, targetIndex int,
+	by state.FactionID, sameFaction bool) error {
+	p := g.Prefecture(prefectureID)
+	if p == nil || !p.Owned() || p.Owner != by {
+		return ErrNotYours
+	}
+	t := g.General(targetIndex)
+	if t == nil || !t.Employed() || t.Location != prefectureID ||
+		(sameFaction && t.Faction != by) {
+		return ErrUnknownUnit
+	}
+	return g.installGovernor(prefectureID, t, by)
+}
+
+func (g *State) installGovernor(prefectureID int, t *General, by state.FactionID) error {
 	for _, x := range g.Garrison(prefectureID) {
 		if x.Faction == by && x.Status == state.StatusGovernor {
 			x.Status = state.StatusOfficer

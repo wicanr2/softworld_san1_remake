@@ -306,10 +306,19 @@ func (o AppointChiefOrder) Describe(g *State) string {
 	return tf("log.chief", byWhom(g, o.Target))
 }
 
-type AppointGovernorOrder struct{ At, Target int }
+type AppointGovernorOrder struct {
+	At, Target int
+
+	// Auto 為真表示走電腦諸侯那一條（`0xd652`）。**原版挑名單時不比對
+	// 勢力**，所以目標可能是站在郡裡的外勢力武將；玩家那一條不收這種。
+	Auto bool
+}
 
 func (o AppointGovernorOrder) Prefecture() int { return o.At }
 func (o AppointGovernorOrder) Apply(g *State, by state.FactionID) error {
+	if o.Auto {
+		return g.appointGovernor(o.At, o.Target, by, false)
+	}
 	return g.AppointGovernor(o.At, o.Target, by)
 }
 func (o AppointGovernorOrder) Describe(g *State) string {

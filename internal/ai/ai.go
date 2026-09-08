@@ -216,7 +216,8 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 太守。**已經是他就不必再指一次**——原版那一段是直接寫欄位，
 		// remake 這一邊走命令，重複指定會白費一道紀錄。
 		if best := mostCharming(g, id, p); best != nil && best.Index != gov.Index {
-			out = append(out, game.AppointGovernorOrder{At: p, Target: best.Index})
+			out = append(out, game.AppointGovernorOrder{
+				At: p, Target: best.Index, Auto: true})
 		}
 		// 尋訪人才（表 `0x5614`）：`RND(10) > Bar[等級]`。
 		// **三個常數都隨等級變**（`game.SearchTierFor`，`L1`）：
@@ -1046,18 +1047,22 @@ func actor(g *game.State, id state.FactionID, prefecture int) *game.General {
 // （`0xf600` 起的交換排序，比的是人物 offset 11），然後取第一位。
 // 說明書只說「太守魅力越高，登用與賑民的效果越好」——這裡是 AI 實際
 // 用的判準。
+// mostCharming 是指定太守要指的那一位（`0xd652`，`L0`＋`L1`）。
+//
+// **名單不比對勢力**（28 次量過）：混編的郡裡站著別的勢力的武將時，
+// 他也在候選之列——原版的主事者本來就可能是外人（月度對拍量到郡 13 的
+// 主事者是荀彧，勢力 5，站在勢力 4 的郡裡）。挑的是清單順序裡**第一個
+// 最大魅力**的人（25 次逐次相同）。
+//
+// ⚠ 「君主在的郡不指太守」是 remake 這邊的權宜：原版判的是**州郡 offset 32
+// （主事者）的身分是不是 0**（`CONTEXT.md` R28）。照原版改過一輪量出來
+// 更差，成因另在別處，先留著。
 func mostCharming(g *game.State, id state.FactionID, prefecture int) *game.General {
-	// **君主在的郡不指太守**：`game.AppointGovernor` 擋這一種，而
-	// `ApplyAll` 把擋下來的命令當成違規、中斷同一輪後面全部的命令。
-	// AI 不該送出套不上去的命令（`order.go` 的 `ApplyAll`）。
 	if lord := g.Lord(id); lord != nil && lord.Location == prefecture {
 		return nil
 	}
 	var best *game.General
 	for _, x := range g.Garrison(prefecture) {
-		if x.Faction != id {
-			continue
-		}
 		if best == nil || x.Charm > best.Charm {
 			best = x
 		}
