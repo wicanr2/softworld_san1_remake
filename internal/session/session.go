@@ -27,6 +27,11 @@ type Session struct {
 	// Over 為真表示已經有人一統天下並拿到玉璽。
 	Over bool
 
+	// MonthOrder 是這個月郡的處理順序（43 格，洗過），MonthCursor 是
+	// 走到哪一格。兩者都是原版的存檔欄位（`docs/re/08` §2）。
+	MonthOrder  []int
+	MonthCursor int
+
 	battles []*game.BattleResult
 }
 
@@ -93,6 +98,83 @@ func (s *Session) drainBattles() {
 	}
 }
 
+// MonthOrder 是這個月的郡順序（43 格），`MonthCursor` 是走到哪一格。
+//
+// 原版把這兩樣連同「這個月下過令沒有」的旗標一起存進進度檔
+// （`docs/re/08` §2）：開月時順序表填成 0..42、**洗五輪**（每輪逐格與
+// `RND(43)` 交換），旗標全設成 `0xFFFF`，第 0 格（啞元郡）單獨清掉。
+//
+// **順序有意義**：郡的回合是一條全域的迴圈，不是「一個勢力跑完換下一個」
+// ——誰排在前面誰先花錢、先徵兵、先出兵。
+func (s *Session) shuffleMonth() {
+	s.MonthOrder = make([]int, 43)
+	for i := range s.MonthOrder {
+		s.MonthOrder[i] = i
+	}
+	for round := 0; round < 5; round++ {
+		for i := range s.MonthOrder {
+			j := s.G.Roll(43, round, i, 0x17371)
+			s.MonthOrder[i], s.MonthOrder[j] = s.MonthOrder[j], s.MonthOrder[i]
+		}
+	}
+	s.MonthCursor = 0
+}
+
+// runPrefectureTurns 走完這個月的郡順序。
+//
+// 每一格照 `0x17471`：無主的郡跳過；重算所屬；**玩家的郡不跑分派器**
+// （原版是在那裡停下來讓玩家下令，remake 這一邊玩家已經先下過了）；
+// 自治的郡拿 offset 12 減一當等級跑同一個分派器（`0x17550`）。
+func (s *Session) runPrefectureTurns() {
+	planner, ok := s.Brain.(ai.PrefecturePlanner)
+	if !ok {
+		return
+	}
+	if len(s.MonthOrder) != 43 {
+		s.shuffleMonth()
+	}
+	done := map[state.FactionID]int{}
+	for ; s.MonthCursor < len(s.MonthOrder); s.MonthCursor++ {
+		at := s.MonthOrder[s.MonthCursor]
+		p := s.G.Prefecture(at)
+		if p == nil || !p.Owned() {
+			continue
+		}
+		id, level := p.Owner, s.G.AILevel(p.Owner)
+		if id == s.Player {
+			// 自治的郡是玩家的地盤，交給電腦按指定的性格經營
+			// （`game.AutonomousFor`）；其餘的玩家已經自己下過令了。
+			lv, auto := s.G.AutonomousFor(at)
+			if !auto || p.Commanded {
+				continue
+			}
+			level = lv
+		}
+		_, n, err := planner.ActPrefecture(s.G, id, at, level)
+		s.drainBattles()
+		if err != nil {
+			s.note("⚠ %s 的命令被擋下：%v", prefectureName(s.G, at), err)
+		}
+		if n > 0 && id != s.Player {
+			done[id] += n
+		}
+	}
+	// **紀錄按勢力彙總。** 一郡一行會把紀錄淹掉，而玩家關心的是
+	// 「這個月哪個諸侯動得多」。
+	for _, f := range s.G.Factions() {
+		n := done[f.ID]
+		if n == 0 {
+			continue
+		}
+		name := fmt.Sprintf("勢力 %d", f.ID)
+		if lord := s.G.Lord(f.ID); lord != nil {
+			name = lord.Name
+		}
+		s.note("%s 下了 %d 個命令", name, n)
+	}
+	s.shuffleMonth()
+}
+
 // MaxBattles 是保留幾場戰役的逐日戰報。
 const MaxBattles = 8
 
@@ -101,29 +183,7 @@ const MaxBattles = 8
 // 順序是**先電腦後推進**：玩家已經在這個月下過令了，電腦要在同一個
 // 月份裡回應。推進之後才清掉各郡的下令旗標。
 func (s *Session) EndMonth() {
-	s.runAutonomy()
-	for _, f := range s.G.Factions() {
-		if f.ID == s.Player || !f.Alive {
-			continue
-		}
-		// **發一道套一道**（`Brain.Act`）：原版的分派器是逐表即時執行
-		// 的，先排完再一次套上會讓後面的表看到月初的盤面。
-		_, n, err := s.Brain.Act(s.G, f.ID)
-		s.drainBattles()
-		if err != nil {
-			// AI 產出違規命令是 bug。**記下來不要吞掉**——
-			// 吞掉會讓它看起來像「電腦這回合比較保守」。
-			s.note("⚠ 電腦（勢力 %d）的命令被擋下：%v", f.ID, err)
-		}
-		if n > 0 {
-			lord := s.G.Lord(f.ID)
-			name := fmt.Sprintf("勢力 %d", f.ID)
-			if lord != nil {
-				name = lord.Name
-			}
-			s.note("%s 下了 %d 個命令", name, n)
-		}
-	}
+	s.runPrefectureTurns()
 	wasAlive := s.PlayerAlive()
 	events := s.G.EndMonth()
 	s.drainBattles()
@@ -163,35 +223,6 @@ func (s *Session) PlayerAlive() bool {
 	return f != nil && f.Alive
 }
 
-// runAutonomy 讓玩家勢力裡授權自治的郡由電腦代下命令。
-//
-// 原版的郡回合入口（`0x17550`）看到州郡 offset 12 不是 0、而且主事者
-// 不是君主，就拿那個值減一當 AI 等級去跑同一個分派器——**自治不是
-// 「這個郡自己會長大」，是「這個郡交給電腦按某種性格經營」**
-// （`game.AutonomousFor`）。
-//
-// 這一步要在電腦諸侯之前跑：自治的郡是玩家的地盤，順序與玩家自己
-// 下令的那一刻相同。
-func (s *Session) runAutonomy() {
-	planner, ok := s.Brain.(ai.PrefecturePlanner)
-	if !ok || s.Player == state.NoFaction {
-		return
-	}
-	for _, at := range s.G.Territory(s.Player) {
-		level, auto := s.G.AutonomousFor(at)
-		if !auto {
-			continue
-		}
-		if p := s.G.Prefecture(at); p == nil || p.Commanded {
-			continue // 玩家這個月已經自己下過令了
-		}
-		_, _, err := planner.ActPrefecture(s.G, s.Player, at, level)
-		if err != nil {
-			s.note("⚠ %s 的自治命令被擋下：%v", prefectureName(s.G, at), err)
-		}
-		s.drainBattles()
-	}
-}
 
 func prefectureName(g *game.State, at int) string {
 	if p := g.Prefecture(at); p != nil {

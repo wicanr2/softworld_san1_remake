@@ -48,6 +48,28 @@ const (
 	sellRiceBatch = 1000
 )
 
+// PlanPrefecture 只替一個郡挑一件事做。`enhanced` 不看 AI 等級
+// （它是 remake 自己的 AI，不是還原），所以 `level` 收下不用。
+func (e *enhanced) PlanPrefecture(g *game.State, f state.FactionID,
+	prefectureID, level int) []game.Order {
+	p := g.Prefecture(prefectureID)
+	if p == nil || p.Commanded {
+		return nil
+	}
+	if o := e.planOne(g, f, p); o != nil {
+		return []game.Order{o}
+	}
+	return nil
+}
+
+// ActPrefecture 是逐郡的執行版。
+func (e *enhanced) ActPrefecture(g *game.State, f state.FactionID,
+	prefectureID, level int) ([]game.Order, int, error) {
+	out := e.PlanPrefecture(g, f, prefectureID, level)
+	n, err := g.ApplyAll(out, f)
+	return out, n, err
+}
+
 // Act 是 `enhanced` 的執行版。它**每郡只下一道令**，所以「發一道套一道」
 // 與「排完再一次套上」在同一個郡裡沒有差別——`enhanced` 是創作不是還原，
 // 這裡照 `Plan` ＋ `ApplyAll` 走就好（`Brain.Act`）。

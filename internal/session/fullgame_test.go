@@ -150,8 +150,12 @@ func TestLogMentionsWar(t *testing.T) {
 	for i := 0; i < 5*12; i++ {
 		s.EndMonth()
 	}
+	// **釘的是戰報，不是命令的描述。** `AttackOrder.Describe`（「某某出兵攻
+	// 某某」）只會在命令**被擋下**時隨錯誤訊息進紀錄——拿它當判準等於在
+	// 釘一個 bug 的症狀：命令改成套得上去之後，那一行就消失了。
+	// 戰役真的打起來的證據是戰報（`BattleResult.Summary`）。
 	for _, line := range s.Log {
-		if strings.Contains(line, "出兵攻") {
+		if strings.Contains(line, "攻") && strings.Contains(line, "折損") {
 			return
 		}
 	}
