@@ -108,5 +108,10 @@ func ReadOriginal(c *assets.Container, slot int, ed state.Edition) (*game.State,
 	if err != nil {
 		return nil, fmt.Errorf("save: 原版進度 %d：%w", slot, err)
 	}
+	// **載入之後郡的所屬要重算一次**（`0x1e394`）。原版讀完存檔的記憶體
+	// 與檔案裡的 offset 30 不一定相同——量到的一例是進度 1 的郡 13：
+	// 檔案存 5，原版載入之後是 4（`TestOriginalSaveLoadsIdentically`）。
+	// 所屬是從人物表推出來的，存檔裡那一格是寫檔當下的快照。
+	g.RecomputeOwners()
 	return g, nil
 }
