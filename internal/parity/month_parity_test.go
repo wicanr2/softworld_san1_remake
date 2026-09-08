@@ -109,9 +109,24 @@ func TestZZMonthParity(t *testing.T) {
 		{0xeb78, "賞賜金帛"}, {0xebd7, "挖角"}, {0xebe8, "計略"},
 		{0xebf9, "調整兵力"}, {0xec0a, "買米"}, {0xec1b, "出兵"},
 	}
+	// 賞賜物品的 `lcall`（`0xe99d`，4 bytes）回到 `0xe9a1`，之後到
+	// `0xe9fc`（武器）之間是「呼叫前先算本回合預算」那一段。分成兩個桶
+	// 才知道那 271 次是常式裡的迴圈還是預算計算。
+	extra := []struct {
+		at   uint32
+		name string
+	}{
+		{0xe9a1, "賞賜物品之後的預算計算"},
+		{0xd962, "賞賜物品：兵書"}, {0xdac0, "賞賜物品：寶刀"},
+		{0xdc1e, "賞賜物品：美女"}, {0xdd94, "賞賜物品：駿馬"},
+	}
 	curTable := "郡回合之外"
 	randTbl := map[string]int{}
 	for _, tb := range tables {
+		name := tb.name
+		o.OnCall(addr(tb.at), func(*oracle.Oracle) { curTable = name })
+	}
+	for _, tb := range extra {
 		name := tb.name
 		o.OnCall(addr(tb.at), func(*oracle.Oracle) { curTable = name })
 	}
@@ -205,6 +220,14 @@ func TestZZMonthParity(t *testing.T) {
 		}
 	})
 	o.OnCall(addr(0x174f3), func(*oracle.Oracle) { curDisp = -1 })
+
+	// 兵書那一支的漏斗：進入 → 過了 RND(100) → 過了庫存。
+	// 靜態讀出來的條件是「庫存 > r」而 r ∈ {2,3}，可是盤面上的庫存多半
+	// 是 1–2——照那樣算迴圈跑不到，但抽樣次數說它跑得到。數一次就知道。
+	var fIn, fRnd, fStock int
+	o.OnCall(addr(0x0d962), func(*oracle.Oracle) { fIn++ })
+	o.OnCall(addr(0x0d988), func(*oracle.Oracle) { fRnd++ })
+	o.OnCall(addr(0x0d9bc), func(*oracle.Oracle) { fStock++ })
 
 	// 指定軍師（`0xd7ae`）逐次記下來：郡、所屬、舊軍師、門檻，以及
 	// 寫完之後諸侯 offset 6 的值。remake 在郡 13 把勢力 4 的軍師換掉，
@@ -351,6 +374,10 @@ func TestZZMonthParity(t *testing.T) {
 		}
 	}
 	t.Logf("　  %-8s %4d", "郡回合之外", randTbl["郡回合之外"])
+	for _, tb := range extra {
+		t.Logf("　  %s %4d", tb.name, randTbl[tb.name])
+	}
+	t.Logf("兵書那一支的漏斗：進入 %d → 過 RND(100) %d → 過庫存 %d", fIn, fRnd, fStock)
 	t.Log("逐表抽亂數：原版／remake")
 	for _, tb := range tables {
 		if randTbl[tb.name] > 0 || mineTbl[tb.name] > 0 {
