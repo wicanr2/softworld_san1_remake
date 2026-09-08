@@ -332,6 +332,10 @@ type State struct {
 	randSeed  uint32
 	randDraws int
 	randOn    bool
+
+	// phaseTrace 非 nil 時，換月的每一段各抽了幾次會記進去（對拍用）。
+	phaseTrace map[string]int
+	phaseLast  int
 }
 
 // DrainReports 取走並清空累積的戰報。

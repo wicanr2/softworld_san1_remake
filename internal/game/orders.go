@@ -235,6 +235,10 @@ func (g *State) EndMonth() []Event {
 	// 少了這一步，電腦諸侯的出兵就完全沒有意義：原版的「出兵」只是把
 	// 部隊搬進目標郡，郡易主全靠這次重算。
 	g.RecomputeOwners()
+	g.markPhase("換月")
 	g.repriceAll()
-	return g.RunSeason()
+	g.markPhase("物價")
+	out := g.RunSeason()
+	g.markPhase("四季")
+	return out
 }

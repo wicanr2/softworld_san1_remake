@@ -698,6 +698,7 @@ func (g *State) winter() []Event {
 				int(p.LandValue), int(p.PublicLoyalty))
 		}
 	}
+	g.markPhase("人口成長")
 	if g.Date.Month != tributeMonth {
 		return out
 	}

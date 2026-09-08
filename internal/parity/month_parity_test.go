@@ -396,8 +396,13 @@ func TestZZMonthParity(t *testing.T) {
 		t.Fatal("沒攔到月底結算——亂數對不起來")
 	}
 	g.SeedRand(seedAtSettle)
+	phase := map[string]int{}
+	g.TracePhases(phase)
 	t.Logf("兩邊都從月底結算那一刻的亂數狀態 0x%08x 接上", seedAtSettle)
 	g.EndMonth()
+	for _, k := range []string{"換月", "物價", "人口成長", "四季"} {
+		t.Logf("remake 換月各段：%s %d 次", k, phase[k])
+	}
 	// 開月的洗牌（`0x1740a`）——**它會消耗 215 次亂數**，不跑的話接下來
 	// 每一次抽樣都錯開。順序這裡不用（照原版的順序表走），但抽樣要抽。
 	g.ShuffleTurnOrder()
