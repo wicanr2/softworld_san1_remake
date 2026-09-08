@@ -444,6 +444,14 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		for _, o := range drafted {
 			purse -= o.(game.ConscriptOrder).Count
 		}
+		if f.trace != nil && p == watch {
+			out := ""
+			for _, x := range g.Garrison(p) {
+				out += fmt.Sprintf(" [%d 兵 %d 訓 %d 武裝 %d]",
+					x.Index, x.Soldiers, x.Training, x.Arms)
+			}
+			f.trace["守軍｜徵兵之後"+out]++
+		}
 		mark("徵兵")
 		// 開倉賑民（表 `0x55f4`）：民眾忠誠低於「底 ＋ RND(20)」才做，
 		// 撥的是**整份預算**（郡的金的 10–20 %）。

@@ -152,6 +152,23 @@ func TestZZMonthParity(t *testing.T) {
 	// **州郡記錄直接從 `base` 讀**，和倒三張表用的是同一塊記憶體。
 	// 自己算 DS 相對的段選擇子會拿到別的東西——同一個位址在不同的
 	// 呼叫點對到不同的段。
+	// 守軍的兵力／訓練／武裝，逐人列出來。徵兵、訓練、武器那三支動的
+	// 就是這三欄，而它們佔了剩下位元組差的八成。
+	gar := func(o *oracle.Oracle, p int) string {
+		out := ""
+		for i := 0; i < 350; i++ {
+			at := base + uint32(nMas) + uint32(nSta) + uint32(i)*30
+			if int(o.Byte(addr(at+19))) != p {
+				continue
+			}
+			if st := int(o.Byte(addr(at + 17))); st > 3 {
+				continue
+			}
+			out += fmt.Sprintf(" [%d 兵 %d 訓 %d 武裝 %d]", i,
+				o.Word(addr(at+22)), o.Byte(addr(at+24)), o.Byte(addr(at+25)))
+		}
+		return out
+	}
 	sta := func(o *oracle.Oracle, p int) string {
 		at := base + uint32(nMas) + uint32(p)*176
 		return fmt.Sprintf("兵(百) %d 金 %d 米 %d",
@@ -173,6 +190,10 @@ func TestZZMonthParity(t *testing.T) {
 			if watch >= 0 && curDisp == watch {
 				valLog = append(valLog,
 					fmt.Sprintf("進 %-10s 之前　%s", name, sta(o, watch)))
+				if name == "賑民" || name == "武器" {
+					valLog = append(valLog,
+						fmt.Sprintf("　  守軍（進 %s 之前）%s", name, gar(o, watch)))
+				}
 				if name == "內政" {
 					// 主事者（州郡 offset 32）與他的智（人物 offset 9）
 					// ——開墾的量是 `(智 − 底) ÷ 12`，非正才多擲一次。
@@ -390,6 +411,17 @@ func TestZZMonthParity(t *testing.T) {
 			}
 			valLog = append(valLog,
 				fmt.Sprintf("　  原版開墾的行動者 %d 智 %d", who, intel))
+		}
+	})
+
+	// 徵兵逐人配額（`0xc025` 那一刻 AX ＝ 這一位徵到的人數、
+	// BX ＝ 30 × 人物槽號）。原版是走名單逐一補，remake 先前讓第一位
+	// 吃光預算——量的差八成在這裡。
+	csLog := []string{}
+	o.OnCall(addr(0xc025), func(o *oracle.Oracle) {
+		if watch >= 0 && curDisp == watch {
+			csLog = append(csLog,
+				fmt.Sprintf("%d:+%d", int(o.BX())/30, int(o.AX())))
 		}
 	})
 
@@ -721,6 +753,9 @@ func TestZZMonthParity(t *testing.T) {
 			t.Logf("remake 的內政：%s（%d 次）", k, v)
 		}
 	}
+	if len(csLog) > 0 {
+		t.Logf("原版徵兵逐人（順序即名單順序）：%s", strings.Join(csLog, " "))
+	}
 	for _, ln := range valLog {
 		t.Logf("原版逐表的值：%s", ln)
 	}
@@ -765,6 +800,27 @@ func TestZZMonthParity(t *testing.T) {
 	t.Logf("原版 vs remake：差 %d 個位元組%s",
 		differs8(after, mine), where(after, mine, nMas, nSta))
 	t.Log(byPrefecture(after, mine, nMas, nSta))
+
+	// 人物表逐人：兵力／訓練／武裝三欄佔了剩下位元組差的八成，
+	// 而抽樣次數已經對上——列出來才知道是哪幾支算式還沒對。
+	gb := after[nMas+nSta:]
+	gm := mine[nMas+nSta:]
+	shown := 0
+	for i := 0; i+30 <= len(gb) && i+30 <= len(gm); i += 30 {
+		a, b := gb[i:i+30], gm[i:i+30]
+		if a[22] == b[22] && a[23] == b[23] && a[24] == b[24] && a[25] == b[25] {
+			continue
+		}
+		if shown++; shown > 12 {
+			continue
+		}
+		t.Logf("    人物 %3d（郡 %d 勢力 %d 身分 %d）："+
+			"兵 %5d／%5d　訓 %3d／%3d　武裝 %3d／%3d",
+			i/30, a[19], a[18], a[17],
+			int(a[22])|int(a[23])<<8, int(b[22])|int(b[23])<<8,
+			a[24], b[24], a[25], b[25])
+	}
+	t.Logf("兵力／訓練／武裝對不上的人物共 %d 位", shown)
 }
 
 // byPrefecture 把州郡表的差異逐郡列出來，欄位印名字。
