@@ -86,6 +86,115 @@ func TestZZMonthParity(t *testing.T) {
 	g.Date = game.Date{Year: 197, Month: 9}
 	t.Logf("兩邊都從 %d 年 %d 月出發", g.Date.Year, g.Date.Month)
 
+	// 每個郡的回合（`0x1746e`）：走到幾個、其中幾個真的跑了分派器。
+	// **`0x17471` 的最後一道閘門讀的是重算過的所屬**（`0x1e394` 在同一支
+	// 常式裡先跑），所以「這個郡有沒有輪到」是動態的，靜態盤面看不出來。
+	// **旗標陣列是存檔欄位**（`es:[0x24d8]`，43 格；`docs/re/08` §2）：
+	// 0xFFFF ＝ 這個月還沒下令，0 ＝ 已經下過。載入的進度是月中存的，
+	// 所以一開始就有幾格是 0——那幾個郡這個月**不會**輪到。
+	// remake 那邊要照同一份旗標跳過，否則是拿 37 個郡的原版比 42 個郡的
+	// remake，兩邊做的事情不一樣多。
+	staBase := base + uint32(state.MasterTableSize)
+	genBase := staBase + uint32(state.PrefectureTableSize)
+	turnFlags := make([]bool, 43) // true ＝ 這個月還沒下令
+	flagsRead := false
+	visited := map[int]int{}
+	dispatched := map[int]bool{}
+	gate := map[int]string{}
+	curTurn := -1
+	o.OnCall(addr(0x1746e), func(o *oracle.Oracle) {
+		if !flagsRead {
+			ds := uint32(o.DSReg()) * 16
+			flags := uint32(o.Word(addr(ds+0xa730)))*16 + 0x24d8
+			for i := range turnFlags {
+				turnFlags[i] = o.Word(addr(flags+uint32(i*2))) == 0xFFFF
+			}
+			// 游標 `es:[0x20f4]` 與順序表 `es:[0x0e]`（`docs/re/08` §2）。
+			cur := int(int16(o.Word(addr(uint32(o.Word(addr(ds+0xa726)))*16 + 0x20f4))))
+			ord := uint32(o.Word(addr(ds+0xa72c)))*16 + 0x0e
+			seq := make([]int, 43)
+			for i := range seq {
+				seq[i] = int(int16(o.Word(addr(ord + uint32(i*2)))))
+			}
+			t.Logf("第一個郡的回合時：游標 %d，順序表 %v", cur, seq)
+			// **對拍的視窗到玩家那一格為止。** 月內迴圈走到玩家的郡就停下來
+			// 等玩家下令（`0x17471` 的 `諸侯 offset0 == 2` 不成立，接著跳進
+			// 主命令提示），游標留在那裡下次接著跑。所以這一段量到的是
+			// 「玩家回合 → 排在玩家前面的郡 → 又輪到玩家」，**不是一整個月**
+			// ——排在玩家後面的郡要等下一輪才動。remake 那邊要照同一個視窗。
+			stop := len(seq)
+			for i := cur; i < len(seq); i++ {
+				p := seq[i]
+				if p <= 0 || p >= 43 {
+					continue
+				}
+				if state.FactionID(o.Byte(addr(staBase+uint32(p*176+30)))) == player {
+					stop = i
+					break
+				}
+			}
+			for i := 0; i < len(seq); i++ {
+				if i >= cur && i < stop {
+					continue
+				}
+				if p := seq[i]; p >= 0 && p < len(turnFlags) {
+					turnFlags[p] = false
+				}
+			}
+			t.Logf("對拍視窗：順序表 [%d, %d)，共 %d 個郡", cur, stop, stop-cur)
+			flagsRead = true
+		}
+		curTurn = int(int16(o.Arg(0)))
+		visited[curTurn]++
+	})
+	o.OnCall(addr(0x174e4), func(o *oracle.Oracle) {
+		if curTurn < 0 || curTurn >= 43 {
+			return
+		}
+		own := int(o.Byte(addr(base + uint32(state.MasterTableSize) + uint32(curTurn*176+30))))
+		mode := -1
+		if own < 16 {
+			mode = int(int16(o.Word(addr(base + uint32(own*72)))))
+		}
+		gate[curTurn] = fmt.Sprintf("重算後所屬 %d、諸侯 offset0 %d", own, mode)
+	})
+	o.OnCall(addr(0x174ec), func(o *oracle.Oracle) {
+		if curTurn >= 0 && curTurn < 43 {
+			dispatched[curTurn] = true
+		}
+	})
+
+	// 指定軍師（`0xd7ae`）逐次記下來：郡、所屬、舊軍師、門檻，以及
+	// 寫完之後諸侯 offset 6 的值。remake 在郡 13 把勢力 4 的軍師換掉，
+	// 而原版這個月一個身分都沒動——要知道原版在那個郡到底做了什麼。
+	var sg sortieGlobals
+	sgOK := false
+	chiefLog := []string{}
+	curOwner, curOld := 0, -1
+	o.OnCall(addr(0x0d7ae), func(o *oracle.Oracle) {
+		if !sgOK {
+			sg, sgOK = resolveSortieGlobals(o), true
+		}
+		pref := int(int16(o.Word(addr(sg.pref))))
+		curOwner = int(o.Byte(addr(staBase + uint32(pref*176+30))))
+		curOld = int(int16(o.Word(addr(base + uint32(curOwner*72+6)))))
+		floor := 79
+		if curOld >= 0 && curOld < state.GeneralTableSize/state.GeneralRecordSize {
+			floor = int(o.Byte(addr(genBase + uint32(curOld*state.GeneralRecordSize+9))))
+		}
+		chiefLog = append(chiefLog,
+			fmt.Sprintf("郡 %d 所屬 %d 舊 %d 門檻 %d", pref, curOwner, curOld, floor))
+	})
+	o.OnCall(addr(0x0d8b0), func(o *oracle.Oracle) {
+		if !sgOK || len(chiefLog) == 0 {
+			return
+		}
+		now := int(int16(o.Word(addr(base + uint32(curOwner*72+6)))))
+		if now != curOld {
+			chiefLog[len(chiefLog)-1] += fmt.Sprintf(" → 換成 %d", now)
+		}
+	})
+
 	// 原版：走一個月。玩家只有一個郡，所以一次「內政 → 休息 → Y」
 	// 就把玩家的回合用掉，接著是電腦諸侯與每月結算。
 	seq := strings.Split(envOr("SAN1_TURNKEY", "4\r|4\r|Y"), "|")
@@ -103,6 +212,44 @@ func TestZZMonthParity(t *testing.T) {
 			}
 		}
 	}
+	// **月內迴圈會中途停下來等按鍵。** `0x15758` 的迴圈本體看 `es:0x80`，
+	// 被清掉就退出；游標 `es:0x20f4` 是存檔欄位，所以下一次進來會接著跑
+	//（`docs/re/08` §2）。空轉沒有用——它在等輸入。不補按的話快照是在
+	// **月中**拍的，拿沒跑完的原版比跑完的 remake。
+	// `0x15772`：迴圈每一輪都輪詢鍵盤，**有鍵就退出**（游標留著，下次接著
+	// 跑）。按鍵送完之後緩衝區還有殘留的話，電腦的回合會在半路被打斷——
+	// 而半路停下來看起來只是「原版這個月做得少」。清空再空轉，讓它跑完。
+	for i := 0; i < 20 && len(visited) < 42; i++ {
+		n := len(visited)
+		o.Drain()
+		if err := o.Run(settle * 3); err != nil {
+			t.Fatalf("續跑第 %d 輪時停止：%v", i+1, err)
+		}
+		if len(visited) == n {
+			break
+		}
+	}
+	t.Logf("清鍵盤續跑之後走到 %d 個郡", len(visited))
+
+	done := []int{}
+	for i, ok := range turnFlags {
+		if !ok {
+			done = append(done, i)
+		}
+	}
+	t.Logf("出發時旗標已清（這個月不會輪到）的郡：%v（讀到旗標：%v）", done, flagsRead)
+	t.Logf("每個郡的回合：走到 %d 個，其中 %d 個跑了分派器", len(visited), len(dispatched))
+	for p := 0; p < 43; p++ {
+		if visited[p] > 0 && !dispatched[p] {
+			t.Logf("    郡 %d 走到了但沒跑分派器：%s", p, gate[p])
+		}
+	}
+
+	t.Logf("原版的指定軍師走了 %d 次：", len(chiefLog))
+	for _, l := range chiefLog {
+		t.Log("    " + l)
+	}
+
 	after := o.Bytes(addr(base), total)
 	dumpTables(t, after, "parity-01-原版走完")
 	t.Logf("原版：三張表動了 %d 個位元組%s",
@@ -124,8 +271,18 @@ func TestZZMonthParity(t *testing.T) {
 		// **套不上去的命令是 bug，不是雜訊。** `ApplyAll` 會中斷同一輪
 		// 後面全部的命令，所以一道擋下來就少算一整個勢力的行動——
 		// 只印一行 log 的話，對拍的差異看起來像是公式不準。
-		if _, n, err := brain.Act(g, f.ID); err != nil {
-			t.Errorf("勢力 %d 的命令有 %d 道成立，然後：%v", f.ID, n, err)
+		// 照原版的旗標跳過已經下過令的郡（見上）。
+		for _, p := range g.Territory(f.ID) {
+			if p >= 0 && p < len(turnFlags) && !turnFlags[p] {
+				continue
+			}
+			pp, ok := brain.(ai.PrefecturePlanner)
+			if !ok {
+				t.Fatalf("%s 不支援逐郡執行", brain.Name())
+			}
+			if _, n, err := pp.ActPrefecture(g, f.ID, p, g.AILevel(f.ID)); err != nil {
+				t.Errorf("勢力 %d 郡 %d 的命令有 %d 道成立，然後：%v", f.ID, p, n, err)
+			}
 		}
 	}
 	g.EndMonth()
