@@ -19,6 +19,7 @@ package ai
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -870,16 +871,12 @@ func armsPurchase(g *game.State, prefecture, budget int) []game.Order {
 
 // rewards 是「賞賜物品」（表 `0x56b4`，`L0`、`[base]`）。
 //
-// 三種寶物各跑一次（諸侯 offset 16／17／18），每一次：
+// 四種寶物各跑一次（諸侯 offset 15／16／17／18），每一次：
 //
 //	RND(100) > 40 → 跳過          ; 41 % 才進行
 //	存量 <= RND(2) + 2 → 跳過      ; 手上要夠多才送得出去
-//	排序守軍、挑一位**非君主**的
-//	該人忠誠上升，寶物存量 −1
-//
-// ⚠ **忠誠上升多少還沒解**（`L3`）——常式裡看得到 0–100 的夾取，
-// 增幅那一段在讀到的範圍之外。`game.GiftTreasure` 用的還是 remake
-// 自己的幅度。
+//	按「該寶物要提升的能力 ＋ 加權表[身分]」排序，挑第一個過門檻的
+//	該人能力與忠誠上升，寶物存量 −1
 func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []game.Order {
 	if g.AILevel(id) < 3 {
 		return nil // 等級 0–2 那三格是空操作
@@ -889,9 +886,10 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []
 		return nil
 	}
 	var out []game.Order
-	// 只有 offset 16／17／18 那三格會被送出去；14 是玉璽（不能送人）。
+	// 諸侯 offset 15–18 那四格會被送出去；14 是玉璽（不能送人）。
 	for i, t := range []game.Treasure{
-		game.TreasureBlade, game.TreasureBeauty, game.TreasureHorse,
+		game.TreasureBook, game.TreasureBlade,
+		game.TreasureBeauty, game.TreasureHorse,
 	} {
 		if g.Roll(100, int(id), prefecture, i, 0x56b4) > 40 {
 			continue
@@ -899,11 +897,12 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int) []
 		if fa.Treasury[t] <= g.Roll(2, int(id), prefecture, i)+2 {
 			continue
 		}
-		who := f.rewardTarget(g, id, prefecture)
+		who := f.rewardTarget(g, id, prefecture, t, i)
 		if who == nil {
 			continue
 		}
-		out = append(out, game.GiftOrder{At: prefecture, Target: who.Index, What: t})
+		out = append(out, game.GiftOrder{
+			At: prefecture, Target: who.Index, What: t, Auto: true})
 	}
 	return out
 }
@@ -921,21 +920,54 @@ func (f *faithful) recruitTarget(g *game.State, prefecture int) *game.General {
 	return nil
 }
 
-// rewardTarget 是賞賜的對象：守軍裡忠誠最低的非君主。
+// rewardTarget 是賞賜的對象（`0xd9bc`／`0xdb1a`／`0xdc78`／`0xddee`，`L0`）。
 //
-// 原版在挑人之前先排序清單並跳過身分 0（君主）。**排序的鍵還沒解**
-// （`L3`），這裡用「忠誠最低」——那是最合理的猜測，而且標了出來。
-func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture int) *game.General {
-	var pick *game.General
-	for _, x := range g.Garrison(prefecture) {
-		if x.Faction != id || x.Status == state.StatusLord {
-			continue
-		}
-		if pick == nil || x.Loyalty < pick.Loyalty {
-			pick = x
+// 四支各自呼叫**不同的排序常式**，鍵是「那件寶物要提升的能力 ＋
+// 加權表[身分]」——加權表就是 `actorWeight` 那一張（`DS:0x5986`）：
+//
+//	兵書 → 謀略（0xf360）    寶刀 → 戰力（0xf440）
+//	美女 → 魅力（0xf520）    駿馬 → 戰力（0xf440）
+//
+// 排完之後從頭找第一個「該能力 > `RND(20) + 60`，**或者是君主**」而且
+// 該能力 < 90 的人。**君主一律跳過能力門檻**，而且君主本來就排在最前面
+// （權重 2000 壓過任何能力值），所以只要他那一項還沒滿 90，寶物就是他的。
+//
+// ⚠ 門檻是**逐人重擲**的：`RND` 的呼叫點（`0xd9f2`）在迴圈裡面。
+func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture int,
+	t game.Treasure, salt int) *game.General {
+	ability := func(x *game.General) int {
+		switch t {
+		case game.TreasureBook:
+			return int(x.Intel)
+		case game.TreasureBeauty:
+			return int(x.Charm)
+		default: // 寶刀與駿馬都看戰力
+			return int(x.War)
 		}
 	}
-	return pick
+	weight := func(x *game.General) int {
+		if int(x.Status) < len(actorWeight) {
+			return actorWeight[x.Status]
+		}
+		return 0
+	}
+	var list []*game.General
+	for _, x := range g.Garrison(prefecture) {
+		if x.Faction == id {
+			list = append(list, x)
+		}
+	}
+	sort.SliceStable(list, func(a, b int) bool {
+		return ability(list[a])+weight(list[a]) > ability(list[b])+weight(list[b])
+	})
+	for i, x := range list {
+		if v := ability(x); v < game.TreasureCap &&
+			(x.Status == state.StatusLord ||
+				v > g.Roll(20, int(id), prefecture, salt, i, 0x56b4)+60) {
+			return x
+		}
+	}
+	return nil
 }
 
 // betterChief 是守軍裡可以接任軍師的人（`L0`、`[base]`）。

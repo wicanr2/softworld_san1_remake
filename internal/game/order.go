@@ -332,10 +332,18 @@ func (o AutonomyOrder) Describe(g *State) string {
 type GiftOrder struct {
 	At, Target int
 	What       Treasure
+
+	// Auto 為真表示走電腦諸侯那一條（`0xd961` 起的四支）。**原版那四支
+	// 沒有「君主要在場」的檢查**——那是說明書給玩家的規則（p.24），
+	// 兩條不是同一組。
+	Auto bool
 }
 
 func (o GiftOrder) Prefecture() int { return o.At }
 func (o GiftOrder) Apply(g *State, by state.FactionID) error {
+	if o.Auto {
+		return g.giftTreasure(o.At, o.Target, o.What, by, false)
+	}
 	return g.GiftTreasure(o.At, o.Target, o.What, by)
 }
 func (o GiftOrder) Describe(g *State) string {

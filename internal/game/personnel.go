@@ -347,8 +347,18 @@ func (g *State) SetAutonomy(prefectureID int, mode Autonomy, by state.FactionID)
 // GiftTreasure 是「賞賜物品」（說明書 p.24）：
 // 玉璽不能送人；靠賞賜提升的能力上限是 90。
 func (g *State) GiftTreasure(prefectureID, targetIndex int, t Treasure, by state.FactionID) error {
-	if err := g.requireLordAt(prefectureID, by); err != nil {
-		return err
+	return g.giftTreasure(prefectureID, targetIndex, t, by, true)
+}
+
+// giftTreasure 是賞賜物品的本體。`needLord` 分開玩家與電腦兩條：
+// 說明書 p.24 的「君主賞賜」是**玩家**的規則，原版電腦那四支
+// （`0xd961` 起）從 `RND(100)` 直接判到存量，**沒有君主在場的檢查**。
+func (g *State) giftTreasure(prefectureID, targetIndex int, t Treasure,
+	by state.FactionID, needLord bool) error {
+	if needLord {
+		if err := g.requireLordAt(prefectureID, by); err != nil {
+			return err
+		}
 	}
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
