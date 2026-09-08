@@ -67,6 +67,9 @@ func TestStratagemsRunLive(t *testing.T) {
 	// 天候與戰場地圖各自從 DGROUP 的段變數取（`docs/re/05` §4.0）。
 	wxSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9d6})
 	mapSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa99e})
+	occSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9ca}) // 佔位圖
+	colSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9c8}) // 欄位移表
+	rowSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9c6}) // 列位移表
 	weatherAt := oracle.Addr{Seg: wxSeg, Off: 0x17bc}
 	t.Logf("工作區段 %#06x｜天候段 %#06x（現值 %d）｜地圖段 %#06x",
 		work, wxSeg, o.Word(weatherAt), mapSeg)
@@ -209,7 +212,36 @@ func TestStratagemsRunLive(t *testing.T) {
 		}},
 		{"4", battle.Lure, nil},
 		{"5", battle.Burn, nil},
-		{"6", battle.Siege, nil},
+		{"6", battle.Siege, func() {
+			// **圍攻要目標旁邊我方兩支以上**（§4.0），而這一場攻方
+			// 只有一支部隊。條件與效果都只讀佔位圖，所以把我方那支
+			// **真實**部隊的編號多寫進一個空的鄰格：門檻與逐格迴圈
+			// 都走得到，而 `0x2a224` 拿到的仍是真的部隊記錄。
+			//
+			// ⚠ **這是擺出來的佔位，不是第二支部隊。** 它驗得了
+			// 「條件怎麼算、費用扣多少、每個鄰格叫一次結算」，
+			// 驗不了「兩支各自的傷亡」——那要攻方真的整編出兩支。
+			col := w16(slots[adj].rec + unitCol)
+			row := w16(slots[adj].rec + unitRow)
+			idx := slots[me].army*battleUnitPer + slots[me].team
+			par := col % 2
+			for d := 0; d < 6; d++ {
+				i := uint16((par*6 + d) * 2)
+				dc := int(int16(o.Word(oracle.Addr{Seg: colSeg, Off: 0x7c6a + i})))
+				dr := int(int16(o.Word(oracle.Addr{Seg: rowSeg, Off: 0x7c82 + i})))
+				c, r := col+dc, row+dr
+				if c < 0 || c >= 12 || r < 0 || r >= 10 {
+					continue
+				}
+				at := oracle.Addr{Seg: occSeg, Off: uint16(0x2532 + (r*12+c)*2)}
+				if o.Word(at) != 0xFFFF {
+					continue
+				}
+				o.SetWord(at, uint16(idx))
+				t.Logf("圍攻：把我方部隊 %d 的佔位多擺一格到 (%d,%d)", idx, c, r)
+				break
+			}
+		}},
 	}
 
 	type shot struct {
