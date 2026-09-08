@@ -17,7 +17,32 @@ import (
 //
 // ⚠ **這不是原版的亂數。** 原版的亂數產生器還沒反組譯到；
 // 換掉它的時候，這一層的介面不用動。
+// SeedRand 接上原版的亂數狀態（`DS:0xa3ae`，`docs/re/03` §1.45）。
+//
+// 接上之後 `roll`／`Roll` 改抽同一條 LCG，與局面綁定的雜湊就不用了。
+// 對拍要兩邊從同一個狀態出發，這是唯一的入口。
+func (g *State) SeedRand(seed uint32) {
+	g.randSeed, g.randOn, g.randDraws = seed, true, 0
+}
+
+// RandDraws 是接上之後抽了幾次。
+//
+// **這比位元組數利**：抽的次數對不上，表示某一支常式的分支或迴圈次數
+// 與原版不同——那是可以逐支定位的；位元組數只告訴你「有差」。
+func (g *State) RandDraws() int { return g.randDraws }
+
+// nextRand 抽一次原版的亂數（0..32767）。
+func (g *State) nextRand() int {
+	seed, out := MSCRand(g.randSeed)
+	g.randSeed = seed
+	g.randDraws++
+	return out
+}
+
 func (g *State) roll(salt ...int) int {
+	if g.randOn {
+		return g.nextRand() % 100
+	}
 	h := uint32(2166136261)
 	mix := func(v int) {
 		h ^= uint32(v)
@@ -65,6 +90,11 @@ func MSCRand(seed uint32) (uint32, int) {
 func (g *State) Roll(n int, salt ...int) int {
 	if n <= 0 {
 		return 0
+	}
+	if g.randOn {
+		// 原版是 `RND(n)`：`rand()` 對 n 取餘數（`0x10b0c`），
+		// **不是先取 100 再取 n**——那會多一層取模偏差。
+		return g.nextRand() % n
 	}
 	return g.roll(salt...) % n
 }

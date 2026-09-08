@@ -86,6 +86,46 @@ func TestZZMonthParity(t *testing.T) {
 	g.Date = game.Date{Year: 197, Month: 9}
 	t.Logf("兩邊都從 %d 年 %d 月出發", g.Date.Year, g.Date.Month)
 
+	// **兩邊從同一個亂數狀態出發**（`DS:0xa3ae`，`docs/re/03` §1.45）。
+	// 原版每呼叫一次 `rand()` 就抽一次；remake 這一邊 `RandDraws()` 數同
+	// 一件事。**抽的次數對不上比位元組數好定位**：某一支常式的分支或
+	// 迴圈次數與原版不同，次數就會差。
+	randCalls := 0
+	// 逐郡歸戶：`curDisp` 是「現在跑的是哪個郡的分派器」，−1 表示不在
+	// 郡回合裡（開月、每月結算那些）。
+	curDisp := -1
+	randBy := map[int]int{}
+	// 再歸一次戶：十八張表各自抽了幾次。分派點是 `0xe926`–`0xec1b`
+	// （`docs/re/03` §1.4），攔在 `lcall` 上（呼叫前），所以下一個攔截點
+	// 之前的抽樣都算這一張的。
+	tables := []struct {
+		at   uint32
+		name string
+	}{
+		{0xe926, "行動者"}, {0xe937, "指定軍師"}, {0xe948, "指定太守"},
+		{0xe959, "尋訪"}, {0xe96a, "登用"}, {0xe97b, "訓練"},
+		{0xe98c, "內政"}, {0xe99d, "賞賜物品"}, {0xe9fc, "武器"},
+		{0xea5b, "徵兵"}, {0xeaba, "0x5514"}, {0xeb19, "賑民"},
+		{0xeb78, "賞賜金帛"}, {0xebd7, "挖角"}, {0xebe8, "計略"},
+		{0xebf9, "調整兵力"}, {0xec0a, "買米"}, {0xec1b, "出兵"},
+	}
+	curTable := "郡回合之外"
+	randTbl := map[string]int{}
+	for _, tb := range tables {
+		name := tb.name
+		o.OnCall(addr(tb.at), func(*oracle.Oracle) { curTable = name })
+	}
+	o.OnCall(addr(0x174f3), func(*oracle.Oracle) { curTable = "郡回合之外" })
+	o.OnCall(oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, func(*oracle.Oracle) {
+		randCalls++
+		randBy[curDisp]++
+		randTbl[curTable]++
+	})
+	seed0 := uint32(o.Word(addr(uint32(o.DSReg())*16+0xa3ae))) |
+		uint32(o.Word(addr(uint32(o.DSReg())*16+0xa3b0)))<<16
+	g.SeedRand(seed0)
+	t.Logf("兩邊都從亂數狀態 0x%08x 出發", seed0)
+
 	// 每個郡的回合（`0x1746e`）：走到幾個、其中幾個真的跑了分派器。
 	// **`0x17471` 的最後一道閘門讀的是重算過的所屬**（`0x1e394` 在同一支
 	// 常式裡先跑），所以「這個郡有沒有輪到」是動態的，靜態盤面看不出來。
@@ -161,8 +201,10 @@ func TestZZMonthParity(t *testing.T) {
 	o.OnCall(addr(0x174ec), func(o *oracle.Oracle) {
 		if curTurn >= 0 && curTurn < 43 {
 			dispatched[curTurn] = true
+			curDisp = curTurn
 		}
 	})
+	o.OnCall(addr(0x174f3), func(*oracle.Oracle) { curDisp = -1 })
 
 	// 指定軍師（`0xd7ae`）逐次記下來：郡、所屬、舊軍師、門檻，以及
 	// 寫完之後諸侯 offset 6 的值。remake 在郡 13 把勢力 4 的軍師換掉，
@@ -252,10 +294,12 @@ func TestZZMonthParity(t *testing.T) {
 
 	after := o.Bytes(addr(base), total)
 	dumpTables(t, after, "parity-01-原版走完")
+	t.Logf("原版抽了 %d 次亂數", randCalls)
 	t.Logf("原版：三張表動了 %d 個位元組%s",
 		differs8(before, after), where(before, after, nMas, nSta))
 
 	// remake：玩家休息，電腦諸侯各自出手，然後結算。
+	mineBy := map[int]int{}
 	brain, err := ai.New(ai.ModeBase)
 	if err != nil {
 		t.Fatal(err)
@@ -280,9 +324,11 @@ func TestZZMonthParity(t *testing.T) {
 			if !ok {
 				t.Fatalf("%s 不支援逐郡執行", brain.Name())
 			}
+			d0 := g.RandDraws()
 			if _, n, err := pp.ActPrefecture(g, f.ID, p, g.AILevel(f.ID)); err != nil {
 				t.Errorf("勢力 %d 郡 %d 的命令有 %d 道成立，然後：%v", f.ID, p, n, err)
 			}
+			mineBy[p] = g.RandDraws() - d0
 		}
 	}
 	g.EndMonth()
@@ -294,6 +340,33 @@ func TestZZMonthParity(t *testing.T) {
 	mine := append(append(append([]byte{}, rm...), rs...), rg...)
 	dumpTables(t, mine, "parity-02-remake走完")
 
+	t.Logf("抽亂數：原版 %d 次、remake %d 次（郡回合之外原版抽了 %d 次）",
+		randCalls, g.RandDraws(), randBy[-1])
+	t.Log("原版逐表抽亂數的次數：")
+	for _, tb := range tables {
+		if n := randTbl[tb.name]; n > 0 {
+			t.Logf("　  %-8s %4d", tb.name, n)
+		}
+	}
+	t.Logf("　  %-8s %4d", "郡回合之外", randTbl["郡回合之外"])
+
+	type gap struct{ p, a, b int }
+	var gaps []gap
+	for p := 0; p < 43; p++ {
+		if randBy[p] != 0 || mineBy[p] != 0 {
+			gaps = append(gaps, gap{p, randBy[p], mineBy[p]})
+		}
+	}
+	sort.Slice(gaps, func(i, j int) bool {
+		return abs(gaps[i].a-gaps[i].b) > abs(gaps[j].a-gaps[j].b)
+	})
+	t.Log("逐郡抽亂數的次數（原版／remake，差最多的在前）：")
+	for i, x := range gaps {
+		if i >= 12 {
+			break
+		}
+		t.Logf("    郡 %2d：原版 %3d／remake %3d（差 %+d）", x.p, x.a, x.b, x.b-x.a)
+	}
 	t.Logf("原版 vs remake：差 %d 個位元組%s",
 		differs8(after, mine), where(after, mine, nMas, nSta))
 	t.Log(byPrefecture(after, mine, nMas, nSta))

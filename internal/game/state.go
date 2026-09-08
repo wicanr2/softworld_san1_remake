@@ -322,6 +322,16 @@ type State struct {
 
 	// 開局時三張表的原始位元組。存檔要用它保住還沒解出來的欄位（tables.go）。
 	rawMas, rawSta, rawGen []byte
+
+	// randSeed 是原版那條 LCG 的狀態（`MSCRand`）。`randOn` 為真時
+	// `roll`／`Roll` 改抽這一條，抽幾次記在 `randDraws`。
+	//
+	// **預設不開**：對齊序列要求每一處消耗的次數與順序都跟原版一樣，
+	// 那是逐支常式要驗的事（`CONTEXT.md` 的「亂數對齊」）。沒對齊就開，
+	// 只會把「與局面綁定、可重播」換成「與原版無關、也不可讀」。
+	randSeed  uint32
+	randDraws int
+	randOn    bool
 }
 
 // DrainReports 取走並清空累積的戰報。
