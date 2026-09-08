@@ -83,6 +83,8 @@ func TestGovernorSortListShape(t *testing.T) {
 	resolved := false
 
 	calls, lordSeen, lordInList := 0, 0, 0
+	picks, badPick := 0, 0
+	var preList []int
 	fit := map[string]int{}
 	var notes []string
 
@@ -94,8 +96,10 @@ func TestGovernorSortListShape(t *testing.T) {
 		p := int(int16(o.Word(addr(g.pref))))
 		n := int(int16(o.Word(addr(g.count))))
 		got := map[int]bool{}
+		preList = preList[:0]
 		for i := 0; i < n; i++ {
 			v := int(int16(o.Word(addr(g.list + uint32(i*2)))))
+			preList = append(preList, v)
 			if v >= 0 && v < genCount {
 				got[v] = true
 			}
@@ -150,6 +154,33 @@ func TestGovernorSortListShape(t *testing.T) {
 		fit[hit]++
 	})
 
+	// 排序之後 `list[0]` 就是新太守（`0xd6e7` 讀的就是它）。判準：
+	// **排序前那一份清單裡第一個魅力最大的人**——`0xf600` 的交換條件是
+	// 嚴格大於，同分保留前者。
+	o.OnCall(addr(0x0d6c7), func(o *oracle.Oracle) {
+		if !resolved || len(preList) == 0 {
+			return
+		}
+		picks++
+		gotPick := int(int16(o.Word(addr(g.list))))
+		want, best := -1, -1
+		for _, who := range preList {
+			if who < 0 || who >= genCount {
+				continue
+			}
+			if v := int(int8(o.Byte(addr(rec(who) + 11)))); v > best {
+				want, best = who, v
+			}
+		}
+		if gotPick != want {
+			if badPick < 6 {
+				t.Errorf("原版排完之後排頭是槽 %d，第一個最大魅力是槽 %d（清單 %v）",
+					gotPick, want, preList)
+			}
+			badPick++
+		}
+	})
+
 	const settle = 40_000_000
 	for m := 0; m < 2; m++ {
 		for _, k := range []string{"4\r", "4\r", "Y"} {
@@ -165,6 +196,7 @@ func TestGovernorSortListShape(t *testing.T) {
 		rnd, calls, fit)
 	t.Logf("君主在郡裡而且不是主事者：%d 次，其中 %d 次他在名單裡",
 		lordSeen, lordInList)
+	t.Logf("排序之後的排頭核對 %d 次，%d 次對不上", picks, badPick)
 	for _, s := range notes {
 		t.Log(s)
 	}
