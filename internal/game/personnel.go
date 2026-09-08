@@ -209,6 +209,12 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 // 效力於第三方就是一道牆。指向自己的人（346 筆裡 176 筆）在野時
 // 那一格自然是在野，所以走能力值那條。
 func (g *State) recruitDifficulty(t *General, prefectureID int, by state.FactionID) int {
+	// **兩次能力值的抽樣無條件先抽**（`0xce8c`：難度先算，牽絆的兩種
+	// 例外是抽完之後才蓋上去的）。寫成先判牽絆再算，那兩次就不會發生，
+	// 整條亂數序列跟著錯開——同尋訪、計略、賑民那一族。
+	hard := RecruitDifficulty(int(t.Intel), int(t.War),
+		g.Roll(4, prefectureID, t.Index, 1),
+		g.Roll(4, prefectureID, t.Index, 2))
 	if b := g.General(t.Bond); b != nil {
 		switch {
 		case b.Employed() && b.Faction == by:
@@ -217,9 +223,7 @@ func (g *State) recruitDifficulty(t *General, prefectureID int, by state.Faction
 			return RecruitBondWall + g.Roll(10, prefectureID, t.Index, 0x5634)
 		}
 	}
-	return RecruitDifficulty(int(t.Intel), int(t.War),
-		g.Roll(4, prefectureID, t.Index, 1),
-		g.Roll(4, prefectureID, t.Index, 2))
+	return hard
 }
 
 // Reward 是「賞賜金帛」（說明書 p.23）：賞金上限 100，
