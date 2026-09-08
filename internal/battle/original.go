@@ -47,6 +47,12 @@ var terrainOf = [16]Terrain{
 	6: Fort, 7: Plain, 8: Forest, 9: Desert,
 }
 
+// TerrainOfCode 把原版的地形碼（`0..15`，戰場地圖每格的低四位）
+// 換成 Terrain。碼 0 與 10–15 沒有定義，一律回 Plain。
+//
+// 對拍要拿原版自己的地圖去查花費，所以這個對照要能從外面呼叫。
+func TerrainOfCode(code byte) Terrain { return terrainOf[code&0x0f] }
+
 // terrainCode 是 terrainOf 的反向，寫回原版格式用。
 //
 // **不能直接把 terrainOf 倒過來走**：`Plain` 的列舉值是 0，而

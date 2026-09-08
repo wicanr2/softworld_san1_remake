@@ -267,6 +267,74 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 	}
 	t.Logf("逐日跑了 %d 天，其中 %d 支次動過不比；三欄總共比了 %d 個，對不上 %d 個",
 		days, moved, checked, bad)
+
+	// ── 移動的花費 ───────────────────────────────────────────
+	//
+	// 命令 `1` 進移動模式，之後 1–6 一律當方向（`DS:0x7f9e` 的
+	// `4 5 6` 在上、`1 2 3` 在下），**只有 Enter 離得開**
+	// （`0x27d63` 的 `cmpw $0xd`）。
+	//
+	// 戰場地圖在工作區的 `0x163a + 列×12 + 欄`，每格低四位是地形碼。
+	// 走進一格扣掉的移動力應該等於 `DS:0x7c42` 那張表——remake 這一邊
+	// 是 `battle.MoveCost`，地形碼的對照是 `battle.TerrainOfCode`。
+	var me *unitSlot
+	for i := range slots {
+		if slots[i].army == 2 {
+			me = &slots[i]
+		}
+	}
+	if me == nil {
+		t.Fatal("盤面上找不到主攻軍——玩家沒有部隊就走不了")
+	}
+	terrainAt := func(col, row int) byte {
+		return byte(o.Word(oracle.Addr{
+			Seg: work, Off: uint16(0x163a + row*12 + col)})) & 0x0f
+	}
+	o.Drain()
+	o.PressScan("1")
+	if err := o.Run(40_000_000); err != nil {
+		t.Fatalf("進移動模式停止：%v", err)
+	}
+	steps := 0
+	for step := 1; step <= 2; step++ {
+		was := read(me.rec)
+		o.Drain()
+		o.PressScan("5") // 5 ＝ 往上
+		if err := o.Run(40_000_000); err != nil {
+			t.Fatalf("移動第 %d 步停止：%v", step, err)
+		}
+		now := read(me.rec)
+		if now.col == was.col && now.row == was.row {
+			t.Logf("移動第 %d 步沒走成（格 %d,%d，剩 %d）——大概是走不進去",
+				step, was.col, was.row, was.move)
+			break
+		}
+		steps++
+		code := terrainAt(now.col, now.row)
+		want := battle.MoveCost(battle.TerrainOfCode(code), 0)
+		got := was.move - now.move
+		checked++
+		if got != want {
+			bad++
+			t.Errorf("移動第 %d 步走進 (%d,%d)（地形碼 %d ＝ %v）："+
+				"原版扣 %d 點／remake 的表是 %d 點",
+				step, now.col, now.row, code,
+				battle.TerrainOfCode(code), got, want)
+		}
+		t.Logf("移動第 %d 步：(%d,%d)→(%d,%d) 地形碼 %d（%v）扣 %d 點，剩 %d",
+			step, was.col, was.row, now.col, now.row, code,
+			battle.TerrainOfCode(code), got, now.move)
+	}
+	if steps == 0 {
+		t.Error("一步都沒走成——移動模式的按鍵或方向不對")
+	}
+	o.Drain()
+	o.PressScan("\r") // 離開移動模式
+	if err := o.Run(40_000_000); err != nil {
+		t.Fatalf("離開移動模式停止：%v", err)
+	}
+	t.Logf("走了 %d 步；三欄加移動花費總共比了 %d 個，對不上 %d 個",
+		steps, checked, bad)
 	dumpScreen(t, o, "battle-day7")
 }
 

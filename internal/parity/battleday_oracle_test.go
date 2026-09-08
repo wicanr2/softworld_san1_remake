@@ -114,11 +114,25 @@ func TestZZBattleDaySweep(t *testing.T) {
 	// 下完命令之後接的是 **Y/N 確認**（`0x1538c`：讀一個鍵，
 	// `0x153a2` 寫 `'Y'`、`0x153aa` 寫 `'N'`），不是「請按任一鍵」——
 	// 送 Enter 答不了它，所以先前怎麼送天數都不動。
-	cands := []string{"0", "0|Y"}
-	seq := "0|Y"
-	for i := 0; i < 6; i++ {
-		seq += "|0|Y"
-		cands = append(cands, seq)
+	//
+	// 休息（`0`）那條已經逐日對拍過了。這一輪要問的是**會打起來的
+	// 那幾個命令**：每一個按下去之後接的是哪個提示、盤面動了什麼。
+	// 判準是讀鍵的呼叫端與部隊記錄，不是畫面。
+	// 量到的：`1`（移動）之後讀方向鍵（`0x27d3e`），
+	// 六方向照 `DS:0x7f9e` 的 `4 5 6` 在上、`1 2 3` 在下。
+	// 玩家那支在 (6,6)，`1|5` 走到 (6,5) 花 2 點、再一步到 (6,4) 花 3 點
+	// ——與地形花費表 `DS:0x7c42` 對得上。守軍 0-2 在 (6,3)，
+	// 走兩步就相鄰，接著 `2`（對戰）往上打。
+	// **移動模式只有 Enter 離得開**（`0x27d63` 的 `cmpw $0xd`）：
+	// 1–6 一律當方向，其餘的鍵忽略後繼續問。
+	E := enterMark
+	cands := []string{
+		"1|5|5|" + E,
+		"1|5|5|" + E + "|2",
+		"1|5|5|" + E + "|2|5",
+		"1|5|5|" + E + "|2|5|Y",
+		"1|5|5|" + E + "|2|5|Y|Y",
+		"1|5|5|" + E + "|2|5|" + E,
 	}
 	const settle = 40_000_000
 	for ci, cand := range cands {
@@ -154,8 +168,22 @@ func TestZZBattleDaySweep(t *testing.T) {
 			who = append(who, fmt.Sprintf("%#07x×%d", a, n))
 		}
 		sort.Strings(who)
-		t.Logf("候選 %d %-14q → 天數 %d；走到 %v；讀鍵的呼叫端 %v；"+
-			"命令收到 %v；欄位收到 %v",
-			ci+1, cand, day(), route, who, cmdKeys, keys)
+		var board strings.Builder
+		for army := 0; army < battleArmies; army++ {
+			for team := 0; team < battleTeams; team++ {
+				rec := battleUnitBase + (army*battleUnitPer+team)*battleUnitSize
+				w := func(off int) int {
+					return int(o.Word(oracle.Addr{Seg: work, Off: uint16(rec + off)}))
+				}
+				if w(0) == 0xFFFF || w(unitLeaders) <= 0 {
+					continue
+				}
+				fmt.Fprintf(&board, "[%d-%d 格 %d,%d 兵 %d 移 %d] ",
+					army, team, w(unitCol), w(unitRow), w(unitSoldiers), w(unitMove))
+			}
+		}
+		t.Logf("候選 %2d %-8q → 天數 %d；走到 %v；讀鍵的呼叫端 %v；"+
+			"命令收到 %v；欄位收到 %v\n        盤面 %s",
+			ci+1, cand, day(), route, who, cmdKeys, keys, board.String())
 	}
 }
