@@ -117,8 +117,12 @@ func TestZZBattleDaySweep(t *testing.T) {
 				col, row := w(unitCol), w(unitRow)
 				code := o.Word(oracle.Addr{
 					Seg: work, Off: uint16(0x163a + row*12 + col)}) & 0x0f
-				fmt.Fprintf(&sb, "[%d-%d 格 %d,%d 地形 %d 兵 %d 能力 %d] ",
-					army, team, col, row, code, w(unitSoldiers), w(unitAbility))
+				// **將領人數要一起量**：傷亡是逐將領
+				// `新兵 ＝ ftol(兵 × (1 − 比例))`，每一位各截一次尾，
+				// 所以整支比理論值少幾個，要先知道它有幾位將領才判得出來。
+				fmt.Fprintf(&sb, "[%d-%d 格 %d,%d 地形 %d 兵 %d 能力 %d 將 %d] ",
+					army, team, col, row, code, w(unitSoldiers), w(unitAbility),
+					w(unitLeaders))
 			}
 		}
 		melee = append(melee, sb.String())
