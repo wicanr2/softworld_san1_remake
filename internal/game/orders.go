@@ -98,9 +98,11 @@ func (g *State) Reclaim(prefectureID, generalIndex int, by state.FactionID) erro
 	if err != nil {
 		return err
 	}
+	// **不比對勢力**：原版讀的是行動者的智（`0xbd13`），而行動者的名單
+	// 不比對勢力（`ai.actor`）。混編的郡由別的勢力的人出面時，用的還是
+	// 他的智。
 	intel := 0
-	if x := g.General(generalIndex); x != nil && x.Faction == by &&
-		x.Location == prefectureID {
+	if x := g.General(generalIndex); x != nil && x.Location == prefectureID {
 		intel = int(x.Intel)
 	}
 	add := ReclaimGain(intel)

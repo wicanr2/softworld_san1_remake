@@ -301,6 +301,12 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			continue
 		}
 		gov := act
+		// **內政與尋訪讀的是「智最高」那個全域**（`es:[0x4196]`），
+		// 不是行動者。
+		brain := smartest(g, p)
+		if brain == nil {
+			brain = act
+		}
 		// **本回合預算的分母是「當下的郡的金」，不是一路扣下來的錢包。**
 		// 分派器在那六張表之前各算一次（`0xe9a1`–`0xe9fc`）：
 		//
@@ -321,6 +327,17 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 是前面改過的盤面，而錢包也一路扣下去。
 		mark("行動者")
 		// 指定軍師（表 `0x5694`）：跑在指定太守之前。
+		if f.trace != nil && p == watch {
+			who := -1
+			if x := betterChief(g, id, p); x != nil {
+				who = x.Index
+			}
+			cur := -1
+			if fa := g.Faction(id); fa != nil {
+				cur = fa.Chief
+			}
+			f.trace[fmt.Sprintf("軍師｜郡 %d 現任 %d 換成 %d", p, cur, who)]++
+		}
 		if x := betterChief(g, id, p); x != nil {
 			emit(game.AppointChiefOrder{At: p, Target: x.Index, Auto: true})
 		}
@@ -339,7 +356,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 所以「付不付得起」根本不是條件。加上它會讓窮郡少做一次尋訪，
 		// 而且郡的金也跟著錯。
 		if g.Roll(10, int(id), p, 0x5614) > game.SearchTierFor(aiLevel).Bar {
-			emit(game.SearchOrder{At: p, General: gov.Index, Auto: true})
+			emit(game.SearchOrder{At: p, General: brain.Index, Auto: true})
 		}
 		mark("尋訪")
 		// 登用人才（表 `0x5634`）。**每郡最多 50 位將軍**
@@ -377,13 +394,24 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		//
 		// 所以機率是開墾 `1/K`、防洪 `(1−1/K)/K`——**不是各 `1/K`**。
 		// 等級 5（K ＝ 2）是開墾 ½、防洪 ¼、閒著 ¼。
+		if f.trace != nil && p == watch {
+			for i, x := range roster(g, p) {
+				f.trace[fmt.Sprintf("名單｜郡 %d 第 %d 位 %d 勢力 %d 身分 %d "+
+					"智 %d 武 %d 魅 %d 鍵 %d", p, i, x.Index, x.Faction,
+					x.Status, x.Intel, x.War, x.Charm, actorKey(x))]++
+			}
+			t := game.AffairsTierFor(aiLevel)
+			f.trace[fmt.Sprintf("內政｜郡 %d 等級 %d K %d 智最高 %d 智 %d 底 %d 量 %d",
+				p, aiLevel, k, brain.Index, brain.Intel, t.LandFloor,
+				(int(brain.Intel)-t.LandFloor)/12)]++
+		}
 		if g.Roll(k, int(id), p, 0x5534) == 0 {
 			// 開墾不會因為錢不夠而失敗（「若財庫已空則徒手開墾」）。
 			purse -= min(purse, game.CostReclaim)
-			emit(game.ReclaimOrder{At: p, General: gov.Index})
+			emit(game.ReclaimOrder{At: p, General: brain.Index})
 		} else if g.Roll(k, int(id), p, 0x5534, 1) == 1 {
 			if afford(game.CostFloodControl) {
-				emit(game.FloodControlOrder{At: p, General: gov.Index})
+				emit(game.FloodControlOrder{At: p, General: brain.Index})
 			}
 		}
 		mark("內政")
@@ -1304,15 +1332,46 @@ var actorWeight = [12]int{2000, 1600, 1200, 800, 2000, 1600, 1200, 800, 0, 0, 40
 //
 // 分派器的第一個呼叫把它寫進全域，**後面八種行為讀的都是它**
 // （`docs/re/03` §1.4）。
+// actor 是行動者：**排序後名單的第一位**（`0x54d4` → `0xf170`）。
+//
+// **不比對勢力**——建表的 `buildRoster(郡, 模式 2)` 只看「所在郡相同、
+// 身分 ≤ 3」（`docs/re/07` §6）。混編的郡因此可能由別的勢力的人出面，
+// 而原版就是這樣：月度對拍量到郡 14（勢力 5）的行動者是 124，
+// 而州郡 offset 32 記著的是 91——兩個人的智差 1，`(智 − 底) ÷ 12` 一個
+// 是 1 一個是 0，開墾那一支因此差一次亂數（`0xba02` 只有量非正才擲）。
 func actor(g *game.State, id state.FactionID, prefecture int) *game.General {
-	var best *game.General
-	bestKey := -1
-	for _, x := range g.Garrison(prefecture) {
-		if x.Faction != id {
-			continue
-		}
-		if k := actorKey(x); k > bestKey {
-			best, bestKey = x, k
+	if list := roster(g, prefecture); len(list) > 0 {
+		return list[0]
+	}
+	return nil
+}
+
+// smartest 是名單裡**智最高**的一位（`0xec86` 的 `es:[0x4196]`，`L0`）。
+//
+// 分派器在跑十八張表之前先呼叫 `0xec86(郡)`：建表 → 按
+// `智 + 武 + 加權表[身分]` 排序 → 然後**從第一位開始逐一比**，
+// 挑出三個人存進三個全域：
+//
+//	es:0x4196 ← 智最高（人物 offset 9）   ; 0xed1e —— 內政、尋訪讀它
+//	es:0x3c94 ← 武最高（offset 10）       ; 0xed66
+//	es:0x20ee ← 魅最高（offset 11）       ; 0xedae
+//
+// 三個都是「嚴格大於才換」，所以並列時**排序後排在前面的留下**——
+// 排序的順序因此仍然有意義。
+//
+// ⚠ **不是行動者**：行動者（名單第一位）是 `智 + 武 + 加權` 的最大，
+// 加權讓太守壓過武將；智最高的可以是另一個人。月度對拍量到郡 14
+// 兩者相差一人（太守 91 智 61、武將 124 智 62），而開墾的量
+// `(智 − 底) ÷ 12` 一個是 0 一個是 1——差一次亂數。
+func smartest(g *game.State, prefecture int) *game.General {
+	list := roster(g, prefecture)
+	if len(list) == 0 {
+		return nil
+	}
+	best := list[0]
+	for _, x := range list[1:] {
+		if x.Intel > best.Intel {
+			best = x
 		}
 	}
 	return best

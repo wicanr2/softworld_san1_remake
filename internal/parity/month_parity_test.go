@@ -173,6 +173,27 @@ func TestZZMonthParity(t *testing.T) {
 			if watch >= 0 && curDisp == watch {
 				valLog = append(valLog,
 					fmt.Sprintf("進 %-10s 之前　%s", name, sta(o, watch)))
+				if name == "內政" {
+					// 主事者（州郡 offset 32）與他的智（人物 offset 9）
+					// ——開墾的量是 `(智 − 底) ÷ 12`，非正才多擲一次。
+					at := base + uint32(nMas) + uint32(watch)*176
+					who := int(o.Word(addr(at + 32)))
+					intel := -1
+					if who >= 0 && who < 350 {
+						intel = int(o.Byte(addr(base + uint32(nMas) +
+							uint32(nSta) + uint32(who)*30 + 9)))
+					}
+					owner := int(o.Byte(addr(at + 30)))
+					lvl := -1
+					if owner >= 0 && owner < 16 {
+						lvl = int(o.Byte(addr(base + uint32(owner)*72 + 4)))
+					}
+					valLog = append(valLog,
+						fmt.Sprintf("　  原版的主事者 %d 智 %d；所屬 %d "+
+							"AI 等級 %d；自治欄(offset 12) %d",
+							who, intel, owner, lvl,
+							o.Word(addr(at+12))))
+				}
 			}
 		})
 	}
@@ -356,6 +377,22 @@ func TestZZMonthParity(t *testing.T) {
 	var tbBefore, tbAfter [16][5]int
 	o.OnCall(addr(0x170a2), func(o *oracle.Oracle) { tbBefore = dumpTreasury(o) })
 	o.OnCall(addr(0x1734f), func(o *oracle.Oracle) { tbAfter = dumpTreasury(o) })
+	// 開墾讀的是**行動者**（`es:[0x4196]`），不是州郡 offset 32 那位。
+	// `0xbd0d` 那一刻 AX ＝ 30 × 行動者，直接從暫存器拿，免得自己算
+	// DS 相對的段選擇子。等級 5 那一支（`0xbcea`）。
+	o.OnCall(addr(0xbd0d), func(o *oracle.Oracle) {
+		if watch >= 0 && curDisp == watch {
+			who := int(o.AX()) / 30
+			intel := -1
+			if who >= 0 && who < 350 {
+				intel = int(o.Byte(addr(base + uint32(nMas) +
+					uint32(nSta) + uint32(who)*30 + 9)))
+			}
+			valLog = append(valLog,
+				fmt.Sprintf("　  原版開墾的行動者 %d 智 %d", who, intel))
+		}
+	})
+
 	// 出兵那三道閘門（`0xb47a`）：兵士(百) > 金、兵士(百)×15 > 米、
 	// 清單長度 < 1。進到 `0xb47a` 表示編隊已經洗過了，所以這裡讀到的
 	// 是**擋下來之前**的盤面。
