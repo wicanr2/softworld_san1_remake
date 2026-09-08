@@ -116,7 +116,8 @@ func TestZZMonthParity(t *testing.T) {
 		at   uint32
 		name string
 	}{
-		{0x1581c, "月底結算"}, {0x16e70, "冬季事件"},
+		{0x1581c, "月底結算"}, {0x16e70, "冬季事件（人口成長）"},
+		{0x1712a, "進貢"},
 		{0x17371, "開月"}, {0x1740a, "開月洗牌"},
 		{0xe9a1, "賞賜物品之後的預算計算"},
 		{0xd962, "賞賜物品：兵書"}, {0xdac0, "賞賜物品：寶刀"},
@@ -138,10 +139,20 @@ func TestZZMonthParity(t *testing.T) {
 		randBy[curDisp]++
 		randTbl[curTable]++
 	})
-	seed0 := uint32(o.Word(addr(uint32(o.DSReg())*16+0xa3ae))) |
-		uint32(o.Word(addr(uint32(o.DSReg())*16+0xa3b0)))<<16
-	g.SeedRand(seed0)
-	t.Logf("兩邊都從亂數狀態 0x%08x 出發", seed0)
+	// **從月底結算那一刻接上**，不是從快照那一刻。快照到月底之間是
+	// **玩家自己的回合**（原版按了「內政 → 休息」，會抽亂數），而 remake
+	// 這一邊的玩家什麼都不做——量到那一段原版抽了 38 次。
+	// 從結算接上，比較的窗口才對齊。
+	seedAtSettle := uint32(0)
+	haveSettleSeed := false
+	o.OnCall(addr(0x1581c), func(o *oracle.Oracle) {
+		if haveSettleSeed {
+			return
+		}
+		ds := uint32(o.DSReg()) * 16
+		seedAtSettle = uint32(o.Word(addr(ds+0xa3ae))) | uint32(o.Word(addr(ds+0xa3b0)))<<16
+		haveSettleSeed = true
+	})
 
 	// 每個郡的回合（`0x1746e`）：走到幾個、其中幾個真的跑了分派器。
 	// **`0x17471` 的最後一道閘門讀的是重算過的所屬**（`0x1e394` 在同一支
@@ -358,6 +369,11 @@ func TestZZMonthParity(t *testing.T) {
 	// 月 10 的前 37 個郡 → 又輪到玩家。remake 這一邊要照同一個相位：
 	// **先結算再跑郡回合**，否則郡回合看到的是進貢之前的庫存
 	//（賞賜物品那一支因此少抽 271 次），而人口成長也會落在錯的一邊。
+	if !haveSettleSeed {
+		t.Fatal("沒攔到月底結算——亂數對不起來")
+	}
+	g.SeedRand(seedAtSettle)
+	t.Logf("兩邊都從月底結算那一刻的亂數狀態 0x%08x 接上", seedAtSettle)
 	g.EndMonth()
 	// 開月的洗牌（`0x1740a`）——**它會消耗 215 次亂數**，不跑的話接下來
 	// 每一次抽樣都錯開。順序這裡不用（照原版的順序表走），但抽樣要抽。
