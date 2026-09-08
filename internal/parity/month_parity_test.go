@@ -254,6 +254,29 @@ func TestZZMonthParity(t *testing.T) {
 	o.OnCall(addr(0x0d988), func(*oracle.Oracle) { fRnd++ })
 	o.OnCall(addr(0x0d9bc), func(*oracle.Oracle) { fStock++ })
 
+	// 進貢的漏斗：迴圈頭 → 過領地閘門（要 RND(10)）→ 過人才閘門（要抽四種）。
+	var tbLoop, tbLand, tbTalent int
+	tbDumped := false
+	o.OnCall(addr(0x1712a), func(o *oracle.Oracle) {
+		tbLoop++
+		if tbDumped {
+			return
+		}
+		tbDumped = true
+		ds := uint32(o.DSReg()) * 16
+		land := uint32(o.Word(addr(ds+0xa73c)))*16 + 0x24b2
+		tal := uint32(o.Word(addr(ds+0xa77e)))*16 + 0x2e36
+		a, b2 := make([]int, 16), make([]int, 16)
+		for i := 0; i < 16; i++ {
+			a[i] = int(int16(o.Word(addr(land + uint32(i*2)))))
+			b2[i] = int(int16(o.Word(addr(tal + uint32(i*2)))))
+		}
+		t.Logf("進貢的兩張表：0x24b2 %v", a)
+		t.Logf("進貢的兩張表：0x2e36 %v", b2)
+	})
+	o.OnCall(addr(0x1713e), func(*oracle.Oracle) { tbLand++ })
+	o.OnCall(addr(0x17167), func(*oracle.Oracle) { tbTalent++ })
+
 	// 指定軍師（`0xd7ae`）逐次記下來：郡、所屬、舊軍師、門檻，以及
 	// 寫完之後諸侯 offset 6 的值。remake 在郡 13 把勢力 4 的軍師換掉，
 	// 而原版這個月一個身分都沒動——要知道原版在那個郡到底做了什麼。
@@ -445,6 +468,7 @@ func TestZZMonthParity(t *testing.T) {
 			t.Logf("remake 挖角觸發：%s ×%d", k, v)
 		}
 	}
+	t.Logf("進貢漏斗：迴圈 %d 次 → 過領地 %d → 過人才 %d", tbLoop, tbLand, tbTalent)
 	t.Log("逐表抽亂數：原版／remake")
 	for _, tb := range tables {
 		if randTbl[tb.name] > 0 || mineTbl[tb.name] > 0 {

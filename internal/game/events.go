@@ -37,9 +37,13 @@ const (
 	// ⚠ TuneAgingStamina 已經被量到的公式取代（`AgingDrop`，`L0`）。
 	// 留著只為讓 `docs/design/02` 的對照表讀得下去。
 	TuneAgingStamina = 1
-	// 進貢的上限（`0x171e0`：`RND(5) + 8`，`L0`）。
+	// 進貢的上限（`RND(5) + 8`，`L0`）。
 	TributeCapSpread = 5
 	TributeCapFloor  = 8
+
+	// TributeDivisorFloor 是「人才量 ÷ (RND(10) + 80)」裡的 80
+	// （`0x1714e` 的 `add $0x50,%cx`，`L0`）。
+	TributeDivisorFloor = 80
 	// TreasuryCap 是寶庫裡每一種寶物的上限（`0x1731d`，`L0`）。
 	// 欄位是一個 byte，原版自己夾在 100。
 	//
@@ -655,24 +659,6 @@ func LocustStrikes(loyalty, landValue, loyaltyRoll, landRoll int) bool {
 	return landValue > landRoll+LocustLandFloor
 }
 
-// TributeCount 是一種寶物今年進貢幾件（`0x17164`，`L0`）：
-//
-//	n ＝ RND(領地數 + 1)
-//	若 RND(5) + 8 < n → n ＝ RND(5) + 8
-//
-// 也就是 `min(RND(領地數 + 1), RND(5) + 8)`：領地越多越接近上限，
-// **上限本身是 8–12，每一種寶物各擲一次**。手冊 p.37 只說
-// 「領地越多，貢品越多」，沒說有上限——一統天下的勢力不會拿到四十件。
-func TributeCount(land, landRoll, capRoll int) int {
-	n := landRoll
-	if c := capRoll + TributeCapFloor; c < n {
-		n = c
-	}
-	if n < 0 {
-		n = 0
-	}
-	return n
-}
 
 // GrowPopulation 是一年一次的人口成長（`0x16ec2`–`0x16f16`，`L0`）：
 //
@@ -717,27 +703,54 @@ func (g *State) winter() []Event {
 	}
 	// 「各州郡每年進貢寶物給諸侯，領地越多，貢品越多」（說明書 p.37）。
 	//
-	// 原版（`0x17164`–`0x1724c`，`L0`）**四種寶物各算一次**，
-	// 再隨機挑一種多給一件。玉璽不在裡面——它只能諸侯持有，
-	// 而且是勝利條件（說明書 p.24、p.37）。
-	for i := range g.factions {
-		f := &g.factions[i]
-		if !f.Alive {
+	// 原版（`0x170b2`–`0x17363`，`L0`＋`L1`）先掃一次州郡湊兩張 16 格的表，
+	// 再逐勢力發：
+	//
+	//	for 郡 = 1..42：所屬 != 0xFF →
+	//	    領地數[所屬]++
+	//	    人才量[所屬] += 民眾忠誠/4 + 土地價值/2
+	//	for 勢力 = 0..15：
+	//	    領地數 == 0 → 跳過
+	//	    基數 = 人才量 ÷ (RND(10) + 80)        ; 0x1714c–0x1715b
+	//	    基數 == 0 → 跳過                       ; 0x17162
+	//	    每種寶物：v = RND(基數 + 1)            ; 0x17167
+	//	              c = RND(5) + 8
+	//	              c < v → v = RND(5) + 8      ; 再抽一次覆蓋
+	//	              庫存 = min(100, 庫存 + v)
+	//
+	// **只有一個郡的勢力拿不到東西**：人才量約 75，除以 80–89 之後是 0。
+	// 玉璽不在裡面——它只能諸侯持有，而且是勝利條件（說明書 p.24、p.37）。
+	//
+	// ⚠ **`RND(10)` 對每個有領地的勢力都要抽**（基數是不是 0 是後面才判
+	// 的），四種寶物的兩次抽樣也一樣是無條件的。
+	land := make([]int, len(g.factions)+16)
+	talent := make([]int, len(land))
+	for i := range g.prefectures {
+		p := &g.prefectures[i]
+		if !p.Owned() || int(p.Owner) >= len(land) {
 			continue
 		}
-		land := len(g.Territory(f.ID))
+		land[p.Owner]++
+		talent[p.Owner] += int(p.PublicLoyalty)/4 + int(p.LandValue)/2
+	}
+	for i := range g.factions {
+		f := &g.factions[i]
+		if int(f.ID) >= len(land) || land[f.ID] == 0 {
+			continue
+		}
+		base := talent[f.ID] / (g.Roll(10, int(f.ID), 30) + TributeDivisorFloor)
+		if base <= 0 {
+			continue
+		}
 		n := 0
 		for t := TreasureBook; t < treasureCount; t++ {
-			got := TributeCount(land,
-				g.roll(int(f.ID), int(t), 30)%max(1, land+1),
-				g.roll(int(f.ID), int(t), 31)%TributeCapSpread)
+			got := g.Roll(base+1, int(f.ID), int(t), 30)
+			if cap := g.Roll(TributeCapSpread, int(f.ID), int(t), 31) + TributeCapFloor; cap < got {
+				got = g.Roll(TributeCapSpread, int(f.ID), int(t), 32) + TributeCapFloor
+			}
 			f.Treasury[t] = clampTo(f.Treasury[t]+got, TreasuryCap)
 			n += got
 		}
-		// 再挑一種多給一件（`0x1723c` 的 `RND(4)`）。
-		bonus := TreasureBook + Treasure(g.roll(int(f.ID), 0, 32)%int(treasureCount-1))
-		f.Treasury[bonus] = clampTo(f.Treasury[bonus]+1, TreasuryCap)
-		n++
 		if n > 0 {
 			lord := g.Lord(f.ID)
 			name := tf("fld.factionN", f.ID)

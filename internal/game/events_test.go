@@ -501,40 +501,57 @@ func TestDisasterLossesAreMeasured(t *testing.T) {
 //
 // **上限是重點**：手冊 p.37 只說「領地越多，貢品越多」，照字面寫成
 // 正比的話，一統天下的勢力一年會拿到四十件——而寶物是賞賜用的，
-// 那等於忠誠無限。
-func TestTributeFollowsTerritoryWithACap(t *testing.T) {
-	// 領地少 → 跟著領地走。
-	if got := TributeCount(2, 2, 4); got != 2 {
-		t.Errorf("領地 2 擲到 2，應該是 2，得到 %d", got)
-	}
-	// 領地多 → 被上限夾住。
-	if got := TributeCount(40, 35, 0); got != TributeCapFloor {
-		t.Errorf("領地 40 擲到 35、上限擲 0，應該夾成 %d，得到 %d",
-			TributeCapFloor, got)
-	}
-	// 上限本身會浮動：8–12。
-	if TributeCount(40, 40, 0) != 8 || TributeCount(40, 40, 4) != 12 {
-		t.Error("上限應該落在 8–12")
-	}
-
+// TestTributeNeedsMoreThanOnePrefecture 釘住進貢的基數怎麼算（`L0`＋`L1`）。
+//
+// 原版是 `基數 = Σ(民眾忠誠/4 + 土地價值/2) ÷ (RND(10) + 80)`，四種寶物
+// 各抽 `RND(基數 + 1)`。**一個郡的勢力拿不到東西**：那一份和大約 75，
+// 除以 80–89 之後是 0——這不是「拿得少」，是**一件都沒有**，而畫面上
+// 看起來只是「今年沒有進貢的訊息」。
+func TestTributeNeedsMoreThanOnePrefecture(t *testing.T) {
 	g := newGame(t)
-	f := g.Faction(g.Factions()[0].ID)
-	before := f.Treasury
+	// 找地最多與只有一個郡的兩個勢力。
+	var big, small *Faction
+	for i := range g.factions {
+		f := &g.factions[i]
+		if !f.Alive {
+			continue
+		}
+		n := len(g.Territory(f.ID))
+		if big == nil || n > len(g.Territory(big.ID)) {
+			big = f
+		}
+		if n == 1 && small == nil {
+			small = f
+		}
+	}
+	if big == nil {
+		t.Skip("這個劇本沒有活著的勢力")
+	}
+	sum := func(f *Faction) int {
+		n := 0
+		for tr := TreasureBook; tr < treasureCount; tr++ {
+			n += f.Treasury[tr]
+		}
+		return n
+	}
+	seal := big.Treasury[TreasureSeal]
+	b0 := sum(big)
+	s0 := 0
+	if small != nil {
+		s0 = sum(small)
+	}
 	g.Date = Date{Year: 189, Month: 9}
 	g.EndMonth() // → 十月，冬季常式（進貢與人口成長同一支）
-	if f.Treasury[TreasureSeal] != before[TreasureSeal] {
+
+	if big.Treasury[TreasureSeal] != seal {
 		t.Error("玉璽不進貢")
 	}
-	got := 0
-	for tr := TreasureBook; tr < treasureCount; tr++ {
-		got += f.Treasury[tr] - before[tr]
+	if sum(big) == b0 {
+		t.Errorf("地最多的勢力（%d 個郡）十月沒有收到任何貢品",
+			len(g.Territory(big.ID)))
 	}
-	if got == 0 {
-		t.Error("十月沒有收到任何貢品")
-	}
-	// 四種各一次 ＋ 一件紅利，所以上界是 4×12＋1。
-	if max := 4*(TributeCapFloor+TributeCapSpread-1) + 1; got > max {
-		t.Errorf("一年收到 %d 件貢品，上界是 %d", got, max)
+	if small != nil && sum(small) != s0 {
+		t.Errorf("只有一個郡的勢力不該收到貢品，卻多了 %d 件", sum(small)-s0)
 	}
 }
 
