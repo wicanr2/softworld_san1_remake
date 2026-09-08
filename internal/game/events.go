@@ -608,7 +608,8 @@ func (g *State) autumn() []Event {
 		}
 		gold := HarvestGold(charm, int(p.LandValue), int(p.PublicLoyalty),
 			p.Population)
-		rice := int(p.LandValue) * TuneHarvestRicePerLand * (p.Population / 1000) / 10
+		rice := HarvestRice(charm, int(p.LandValue), int(p.FloodRate),
+			int(p.PublicLoyalty), p.Population)
 		p.Gold = clampTo(p.Gold+gold, HarvestGoldCap)
 		p.Rice = clampTo(p.Rice+rice, MaxRice)
 		out = append(out, Event{p.ID,
@@ -652,6 +653,33 @@ func HarvestGold(governorCharm, landValue, loyalty, population int) int {
 	term := governorCharm + landValue*HarvestLandWeight + loyalty*HarvestLoyaltyWeight
 	return term * (population / 100) / HarvestDivisor
 }
+
+// HarvestRice 是秋收進倉的米（`0x16afa`–`0x16ba1`，`L0`）：
+//
+//	收入 ＝ (太守魅力 + 土地價值 × 3 + (100 − 洪水率) + 民眾忠誠 × 2)
+//	        × 人口 × 0.005
+//
+// **與金那一半不是同一組權重**：土地價值在這裡是 ×3 不是 ×4，
+// 而且**洪水率會進算式**（`100 − 洪水率`，`0x16b18`）——水利做得好
+// 收成才多，那正是「防洪」這道指令的回報。金那一半完全不看洪水率。
+//
+// 人口用的是**存的值**（實際值 ÷ 100）。太守空缺時魅力算 0。
+//
+// ⚠ **還有一條沒實作**：`0x16b60` 那個分支——收入加上原有的米之後
+// 不大於 0 時，改成 `RND((土地價值 + 50) × 2)`。金那一半也有同形狀的
+// 分支（`docs/re/06` §6），兩邊都還沒做；只有整郡數值全 0 才走得到。
+func HarvestRice(governorCharm, landValue, floodRate, loyalty, population int) int {
+	term := governorCharm + landValue*HarvestRiceLandWeight +
+		(HarvestFloodBase - floodRate) + loyalty*HarvestLoyaltyWeight
+	return term * (population / 100) / HarvestRiceDivisor
+}
+
+// 秋收的米那一半的常數（`DS:0xa76e` ＝ 3.0、`DS:0xa776` ＝ 0.005）。
+const (
+	HarvestRiceLandWeight = 3
+	HarvestFloodBase      = 100
+	HarvestRiceDivisor    = 200
+)
 
 // 秋收的三個權重（`DS:0xa74e` ＝ 4.0、`DS:0xa756` ＝ 1/300）。
 const (

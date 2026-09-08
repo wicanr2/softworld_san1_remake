@@ -80,6 +80,7 @@
 | `TuneRestMove` 的上限 | `Rest`：+2 之後**夾在 15**（手冊只給了那個 2）| `0x27c00`／`0x27c2d` |
 | `TuneArrowDamage` | `ArrowTerrainValue`／`ArrowSurvivors`：一箭的殺傷有自己的地形表，形狀與交戰相同但**沒有那道 −1** | `0x2aa3b`／`DS:0x81c0` |
 | `TuneHit*`（整組）| `battle.exchange`：交戰結算看的是**部隊的**綜合能力與 `DS:0x8162`／`DS:0x8182`，不是逐將領的戰力值 | `0x2a224` |
+| `TuneHarvestRicePerLand` | `HarvestRice`：`(魅力 + 地力×3 + (100 − 洪水率) + 忠誠×2) × 人口 ÷ 200`——**洪水率只進米這一半** | `0x16afa` |
 | `TuneChiefWeight` 等四項 | `PlotScore`：雙方各取「軍師與君主裡謀略較高的那位」，人望與使者魅力只扣分，沒有擲骰 | `0x2dd66` |
 | `TuneInciteLoss` | `Sabotage`：民忠、洪水率、土地價值、米、金五刀，量都跟著使者魅力 | `0x2d6e0` |
 
