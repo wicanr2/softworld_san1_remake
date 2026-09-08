@@ -717,8 +717,13 @@ func (g *State) winter() []Event {
 				g.roll(int(Winter), p.ID, 9)%100 >= PopulationOwnerlessChance {
 				continue
 			}
+			// **人口存的是「百」**（州郡 offset 14，`實際值 ÷ 100`），
+			// 所以成長之後的零頭在寫回去的那一刻就沒了——徵兵那一支
+			// 讀的是存回去的值（`0xbed9` 的 `filds 0x48e`），不是內部的
+			// 精確數。留著零頭會讓當月徵完兵之後的人口多出一百
+			//（月度對拍量到四個郡）。
 			p.Population = GrowPopulation(p.Population,
-				int(p.LandValue), int(p.PublicLoyalty))
+				int(p.LandValue), int(p.PublicLoyalty)) / 100 * 100
 		}
 	}
 	g.markPhase("人口成長")

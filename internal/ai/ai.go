@@ -256,8 +256,8 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 				for _, x := range g.Garrison(curP) {
 					n += x.Soldiers
 				}
-				f.trace[fmt.Sprintf("值|%-10s 兵(百) %3d 金 %5d 米 %5d",
-					name, n/100, q.Gold, q.Rice)]++
+				f.trace[fmt.Sprintf("值|%-10s 人口 %6d 兵(百) %3d 金 %5d 米 %5d",
+					name, q.Population, n/100, q.Gold, q.Rice)]++
 			}
 		}
 	}

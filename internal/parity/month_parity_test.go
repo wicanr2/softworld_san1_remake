@@ -171,8 +171,9 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	sta := func(o *oracle.Oracle, p int) string {
 		at := base + uint32(nMas) + uint32(p)*176
-		return fmt.Sprintf("兵(百) %d 金 %d 米 %d",
-			o.Word(addr(at+16)), o.Word(addr(at+18)), o.Word(addr(at+20)))
+		return fmt.Sprintf("人口(百) %d 兵(百) %d 金 %d 米 %d",
+			o.Word(addr(at+14)), o.Word(addr(at+16)),
+			o.Word(addr(at+18)), o.Word(addr(at+20)))
 	}
 	// 逐表記下**進這一張表之前**郡的兵金米。remake 那邊記的是
 	// 「跑完這一張表之後」，所以原版的第 n+1 筆對 remake 的第 n 筆。
