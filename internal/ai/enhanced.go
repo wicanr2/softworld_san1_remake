@@ -48,6 +48,9 @@ const (
 	sellRiceBatch = 1000
 )
 
+// TraceDraws 對 `enhanced` 沒有意義（它不是還原），收下不用。
+func (e *enhanced) TraceDraws(map[string]int) {}
+
 // PlanPrefecture 只替一個郡挑一件事做。`enhanced` 不看 AI 等級
 // （它是 remake 自己的 AI，不是還原），所以 `level` 收下不用。
 func (e *enhanced) PlanPrefecture(g *game.State, f state.FactionID,

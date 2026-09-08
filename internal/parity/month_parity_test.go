@@ -300,6 +300,7 @@ func TestZZMonthParity(t *testing.T) {
 
 	// remake：玩家休息，電腦諸侯各自出手，然後結算。
 	mineBy := map[int]int{}
+	mineTbl := map[string]int{}
 	brain, err := ai.New(ai.ModeBase)
 	if err != nil {
 		t.Fatal(err)
@@ -324,6 +325,7 @@ func TestZZMonthParity(t *testing.T) {
 			if !ok {
 				t.Fatalf("%s 不支援逐郡執行", brain.Name())
 			}
+			pp.TraceDraws(mineTbl)
 			d0 := g.RandDraws()
 			if _, n, err := pp.ActPrefecture(g, f.ID, p, g.AILevel(f.ID)); err != nil {
 				t.Errorf("勢力 %d 郡 %d 的命令有 %d 道成立，然後：%v", f.ID, p, n, err)
@@ -349,6 +351,14 @@ func TestZZMonthParity(t *testing.T) {
 		}
 	}
 	t.Logf("　  %-8s %4d", "郡回合之外", randTbl["郡回合之外"])
+	t.Log("逐表抽亂數：原版／remake")
+	for _, tb := range tables {
+		if randTbl[tb.name] > 0 || mineTbl[tb.name] > 0 {
+			t.Logf("　  %-8s 原版 %4d／remake %4d（差 %+d）",
+				tb.name, randTbl[tb.name], mineTbl[tb.name],
+				mineTbl[tb.name]-randTbl[tb.name])
+		}
+	}
 
 	type gap struct{ p, a, b int }
 	var gaps []gap
