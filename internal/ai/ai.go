@@ -951,11 +951,14 @@ func plot(g *game.State, prefecture int, id state.FactionID) (game.PlotOrder, bo
 	if level < 3 {
 		return game.PlotOrder{}, false
 	}
-	chief := g.Chief(id)
-	if chief == nil || chief.Location != prefecture {
+	// **先擲再看軍師在不在。** 原版這一次亂數是無條件抽的——月度對拍
+	// 量到計略這一支剛好每郡一次（32／32），而 remake 先擋軍師只抽了 7 次。
+	// 與尋訪、出兵、賞賜物品同一個形狀：做不做得成不影響抽不抽。
+	if g.Roll(plotRange(level), int(id), prefecture, tablePlot) != 0 {
 		return game.PlotOrder{}, false
 	}
-	if g.Roll(plotRange(level), int(id), prefecture, tablePlot) != 0 {
+	chief := g.Chief(id)
+	if chief == nil || chief.Location != prefecture {
 		return game.PlotOrder{}, false
 	}
 	envoy := mostCharmingHere(g, id, prefecture)
