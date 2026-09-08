@@ -250,6 +250,13 @@ func TestZZMonthParity(t *testing.T) {
 		chiefLog = append(chiefLog,
 			fmt.Sprintf("郡 %d 所屬 %d 舊 %d 門檻 %d", pref, curOwner, curOld, floor))
 	})
+	// 挖角真的掃名單的次數（`0xe0bc`）——入口擲骰不算。
+	hhAt := []int{}
+	o.OnCall(addr(0x0e0bc), func(o *oracle.Oracle) {
+		if sgOK {
+			hhAt = append(hhAt, int(int16(o.Word(addr(sg.pref)))))
+		}
+	})
 	o.OnCall(addr(0x0d8b0), func(o *oracle.Oracle) {
 		if !sgOK || len(chiefLog) == 0 {
 			return
@@ -392,6 +399,12 @@ func TestZZMonthParity(t *testing.T) {
 	for _, k := range []string{"賞賜物品：兵書", "賞賜物品：寶刀",
 		"賞賜物品：美女", "賞賜物品：駿馬"} {
 		randTbl["賞賜物品"] += randTbl[k]
+	}
+	t.Logf("原版挖角觸發 %d 次：郡 %v", len(hhAt), hhAt)
+	for k, v := range mineTbl {
+		if len(k) > 6 && k[:9] == "挖角：" {
+			t.Logf("remake 挖角觸發：%s ×%d", k, v)
+		}
 	}
 	t.Log("逐表抽亂數：原版／remake")
 	for _, tb := range tables {

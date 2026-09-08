@@ -440,9 +440,14 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		mark("賞賜金帛")
 		// 挖角（表 `0x56d4`）：**君主要在本郡**，機率隨等級 30／60／80 %，
 		// 預算要 ≥ 100，費用是直接扣的 100 金。
+		hhBefore := g.RandDraws()
 		if o, ok := headhunt(g, p, id, gold()); ok {
 			emit(o)
 			purse -= game.CostHeadhunt
+		}
+		// 掃描一次約抽兩百次，所以「有沒有觸發」用抽了幾次就分得出來。
+		if f.trace != nil && g.RandDraws()-hhBefore > 5 {
+			f.trace[fmt.Sprintf("挖角：郡 %d 金 %d", p, gold())]++
 		}
 		mark("挖角")
 		// 計略（表 `0x56f4`）：**軍師本人要在這個郡**，機率隨等級
