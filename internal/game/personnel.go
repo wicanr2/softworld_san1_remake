@@ -30,8 +30,8 @@ func (g *State) SeedRand(seed uint32) {
 func (g *State) RandSeed() uint32 { return g.randSeed }
 
 // TracePhases 打開換月各段的抽樣計數，寫進 m。傳 nil 關掉。
-func (g *State) TracePhases(m map[string]int) {
-	g.phaseTrace, g.phaseLast = m, g.randDraws
+func (g *State) TracePhases(m map[string]int, seeds map[string]uint32) {
+	g.phaseTrace, g.phaseSeed, g.phaseLast = m, seeds, g.randDraws
 }
 
 // markPhase 把上一個標記點到現在的抽樣次數記到 name 名下。
@@ -41,6 +41,9 @@ func (g *State) markPhase(name string) {
 	}
 	g.phaseTrace[name] += g.randDraws - g.phaseLast
 	g.phaseLast = g.randDraws
+	if g.phaseSeed != nil {
+		g.phaseSeed[name] = g.randSeed
+	}
 }
 
 // RandDraws 是接上之後抽了幾次。

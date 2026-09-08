@@ -323,6 +323,11 @@ type State struct {
 	// 開局時三張表的原始位元組。存檔要用它保住還沒解出來的欄位（tables.go）。
 	rawMas, rawSta, rawGen []byte
 
+	// turnOrder 是**下個月**的郡順序，由 `EndMonth` 的開月那一段洗出來
+	// （`0x17364`）。原版把它連同旗標寫進進度檔，所以它是盤面的一部分，
+	// 不是 session 的暫存。
+	turnOrder []int
+
 	// randSeed 是原版那條 LCG 的狀態（`MSCRand`）。`randOn` 為真時
 	// `roll`／`Roll` 改抽這一條，抽幾次記在 `randDraws`。
 	//
@@ -335,6 +340,7 @@ type State struct {
 
 	// phaseTrace 非 nil 時，換月的每一段各抽了幾次會記進去（對拍用）。
 	phaseTrace map[string]int
+	phaseSeed  map[string]uint32
 	phaseLast  int
 }
 
@@ -558,6 +564,11 @@ func (g *State) Territory(f state.FactionID) []int {
 // ⚠ **它會消耗亂數**（5 × 43 ＝ 215 次）。原版的序列裡有這一段，所以
 // 即使呼叫端不打算用回傳值也要跑，否則接下來的每一次抽樣都錯開
 // （`CONTEXT.md` 的亂數路線圖：原版「郡回合之外」414 次裡有 215 次是它）。
+// TurnOrder 是開月時洗出來的郡順序（43 格）。還沒開過月時是空的。
+func (g *State) TurnOrder() []int {
+	return g.turnOrder
+}
+
 func (g *State) ShuffleTurnOrder() []int {
 	// 43 格：州郡表的筆數，第 0 筆是啞元（`docs/formats/03`）。
 	const slots = 43

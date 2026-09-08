@@ -119,6 +119,11 @@ func TestZZMonthParity(t *testing.T) {
 		{0x1581c, "月底結算"}, {0x16e70, "冬季事件（人口成長）"},
 		{0x1712a, "進貢"},
 		{0x17371, "開月"}, {0x1740a, "開月洗牌"},
+		// 郡回合的入口（`0x1746e`）到分派器之間（`0x174f3`）。
+		// 這一段先前落在**前一張表**的桶裡：進貢之後緊接著就是第一個郡，
+		// 所以進貢那 69 次裡可能有一次其實是這裡的。
+		{0x1746e, "郡回合入口"},
+		{0x1734f, "進貢之後"},
 		{0xe9a1, "賞賜物品之後的預算計算"},
 		{0xd962, "賞賜物品：兵書"}, {0xdac0, "賞賜物品：寶刀"},
 		{0xdc1e, "賞賜物品：美女"}, {0xdd94, "賞賜物品：駿馬"},
@@ -129,9 +134,15 @@ func TestZZMonthParity(t *testing.T) {
 		name := tb.name
 		o.OnCall(addr(tb.at), func(*oracle.Oracle) { curTable = name })
 	}
+	// 這些攔截點不只要記抽了幾次，還要記**被呼叫幾次**——一個桶是 0
+	// 有兩種意思：常式跑了但沒抽亂數，或者它在這個窗口裡根本沒跑。
+	hits := map[string]int{}
 	for _, tb := range extra {
 		name := tb.name
-		o.OnCall(addr(tb.at), func(*oracle.Oracle) { curTable = name })
+		o.OnCall(addr(tb.at), func(*oracle.Oracle) {
+			curTable = name
+			hits[name]++
+		})
 	}
 	o.OnCall(addr(0x174f3), func(*oracle.Oracle) { curTable = "郡回合之外" })
 	o.OnCall(oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, func(*oracle.Oracle) {
@@ -145,6 +156,9 @@ func TestZZMonthParity(t *testing.T) {
 	// 從結算接上，比較的窗口才對齊。
 	seedAtSettle := uint32(0)
 	haveSettleSeed := false
+	// 從**月底結算的入口**接（`0x1581c`）：量到那裡到開月之間原版
+	// 一次亂數都沒抽，所以兩邊在這一點的狀態可以直接對齊，
+	// 而接下來的開月（物價 ＋ 洗牌）兩邊都會跑。
 	o.OnCall(addr(0x1581c), func(o *oracle.Oracle) {
 		if haveSettleSeed {
 			return
@@ -257,6 +271,7 @@ func TestZZMonthParity(t *testing.T) {
 	// 進貢的漏斗：迴圈頭 → 過領地閘門（要 RND(10)）→ 過人才閘門（要抽四種）。
 	var tbLoop, tbLand, tbTalent int
 	tbDumped := false
+	var origTributeSeed uint32
 	o.OnCall(addr(0x1712a), func(o *oracle.Oracle) {
 		tbLoop++
 		if tbDumped {
@@ -273,9 +288,18 @@ func TestZZMonthParity(t *testing.T) {
 		}
 		t.Logf("進貢的兩張表：0x24b2 %v", a)
 		t.Logf("進貢的兩張表：0x2e36 %v", b2)
+		origTributeSeed = uint32(o.Word(addr(ds+0xa3ae))) |
+			uint32(o.Word(addr(ds+0xa3b0)))<<16
 	})
 	o.OnCall(addr(0x1713e), func(*oracle.Oracle) { tbLand++ })
 	o.OnCall(addr(0x17167), func(*oracle.Oracle) { tbTalent++ })
+	// 四種寶物的「重抽」各一段（`c < v → v = RND(5)+8`）。
+	// 進貢那 69 次拆成 13 次閘門 ＋ 6 勢力 × 9 ＋ 重抽，
+	// 而 13＋54＋2 與 12＋54＋3 都湊得出來——要數才知道是哪一種。
+	var tbAgain int
+	for _, at := range []uint32{0x17188, 0x171be, 0x171f4, 0x1722a} {
+		o.OnCall(addr(at), func(*oracle.Oracle) { tbAgain++ })
+	}
 
 	// 指定軍師（`0xd7ae`）逐次記下來：郡、所屬、舊軍師、門檻，以及
 	// 寫完之後諸侯 offset 6 的值。remake 在郡 13 把勢力 4 的軍師換掉，
@@ -395,18 +419,39 @@ func TestZZMonthParity(t *testing.T) {
 	if !haveSettleSeed {
 		t.Fatal("沒攔到月底結算——亂數對不起來")
 	}
+	// 進貢的兩張表 remake 這一邊也印一份。進貢的抽樣次數只差「重抽」
+	// 那一次，而重抽要 `c < v`、`v = RND(基數+1)`——次數相同表示迴圈
+	// 結構一致，所以差別只能在**基數的分子**，也就是這兩張表。
+	rl, rt := make([]int, 16), make([]int, 16)
+	for i := 0; i <= 42; i++ {
+		q := g.Prefecture(i)
+		if q == nil || !q.Owned() || int(q.Owner) >= 16 {
+			continue
+		}
+		rl[q.Owner]++
+		rt[q.Owner] += int(q.PublicLoyalty)/4 + int(q.LandValue)/2
+	}
+	ids := []int{}
+	for _, f := range g.Factions() {
+		ids = append(ids, int(f.ID))
+	}
+	t.Logf("remake 的勢力槽號：%v（原版走的是 0..15 全部）", ids)
+	t.Logf("進貢的兩張表（remake）：領地 %v", rl)
+	t.Logf("進貢的兩張表（remake）：人才 %v", rt)
+
 	g.SeedRand(seedAtSettle)
 	phase := map[string]int{}
-	g.TracePhases(phase)
+	phaseSeed := map[string]uint32{}
+	g.TracePhases(phase, phaseSeed)
 	t.Logf("兩邊都從月底結算那一刻的亂數狀態 0x%08x 接上", seedAtSettle)
 	g.EndMonth()
-	for _, k := range []string{"換月", "物價", "人口成長", "民亂判定", "四季"} {
+	t.Logf("起點：接上的是 0x%08x，remake 走完 0 步是 0x%08x（該相同）",
+		seedAtSettle, phaseSeed["換月"])
+	t.Logf("進貢前的狀態：原版 0x%08x，remake 0x%08x（民亂判定之後）",
+		origTributeSeed, phaseSeed["民亂判定"])
+	for _, k := range []string{"換月", "物價", "洗牌", "人口成長", "民亂判定", "四季"} {
 		t.Logf("remake 換月各段：%s %d 次", k, phase[k])
 	}
-	// 開月的洗牌（`0x1740a`）——**它會消耗 215 次亂數**，不跑的話接下來
-	// 每一次抽樣都錯開。順序這裡不用（照原版的順序表走），但抽樣要抽。
-	g.ShuffleTurnOrder()
-
 	// **照原版的順序跑。** 郡的回合是一條全域的洗牌迴圈，不是「一個勢力
 	// 跑完換下一個」——即使每一張表抽的次數都對，消耗的**順序**不同，
 	// 亂數序列一開始就岔開。順序表直接用原版那一份（`turnSeq`）。
@@ -459,7 +504,8 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	t.Logf("　  %-8s %4d", "郡回合之外", randTbl["郡回合之外"])
 	for _, tb := range extra {
-		t.Logf("　  %s %4d", tb.name, randTbl[tb.name])
+		t.Logf("　  %-16s 抽 %4d 次（進去 %d 次）",
+			tb.name, randTbl[tb.name], hits[tb.name])
 	}
 	t.Logf("兵書那一支的漏斗：進入 %d → 過 RND(100) %d → 過庫存 %d", fIn, fRnd, fStock)
 	// 四支寶物常式的桶要併回賞賜物品，否則比較欄位對不起來。
@@ -473,7 +519,8 @@ func TestZZMonthParity(t *testing.T) {
 			t.Logf("remake 挖角觸發：%s ×%d", k, v)
 		}
 	}
-	t.Logf("進貢漏斗：迴圈 %d 次 → 過領地 %d → 過人才 %d", tbLoop, tbLand, tbTalent)
+	t.Logf("進貢漏斗（原版）：迴圈 %d 次 → 過領地 %d → 過人才 %d → 重抽 %d 次"+
+		"（合計 %d）", tbLoop, tbLand, tbTalent, tbAgain, tbLand+tbTalent*9+tbAgain)
 	t.Log("逐表抽亂數：原版／remake")
 	for _, tb := range tables {
 		if randTbl[tb.name] > 0 || mineTbl[tb.name] > 0 {

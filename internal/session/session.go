@@ -106,8 +106,13 @@ func (s *Session) drainBattles() {
 //
 // **順序有意義**：郡的回合是一條全域的迴圈，不是「一個勢力跑完換下一個」
 // ——誰排在前面誰先花錢、先徵兵、先出兵。
+// **洗牌本身在 `State.EndMonth` 裡**（開月常式 `0x17364`），這裡只是把
+// 洗好的順序接過來。盤面上還沒有順序時（開局第一個月）才自己洗一次。
 func (s *Session) shuffleMonth() {
-	s.MonthOrder = s.G.ShuffleTurnOrder()
+	s.MonthOrder = s.G.TurnOrder()
+	if len(s.MonthOrder) != 43 {
+		s.MonthOrder = s.G.ShuffleTurnOrder()
+	}
 	s.MonthCursor = 0
 }
 
@@ -163,7 +168,6 @@ func (s *Session) runPrefectureTurns() {
 		}
 		s.note("%s 下了 %d 個命令", name, n)
 	}
-	s.shuffleMonth()
 }
 
 // MaxBattles 是保留幾場戰役的逐日戰報。
@@ -177,6 +181,8 @@ func (s *Session) EndMonth() {
 	s.runPrefectureTurns()
 	wasAlive := s.PlayerAlive()
 	events := s.G.EndMonth()
+	// 開月在結算裡跑完了，順序表換成新的一份。
+	s.shuffleMonth()
 	s.drainBattles()
 	if wasAlive && !s.PlayerAlive() {
 		s.note("✗ 你的勢力已被消滅")

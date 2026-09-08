@@ -552,33 +552,41 @@ const (
 	growthMonth  = 10 // 冬季常式，與進貢同一支
 )
 
-// repriceAll 每個月替每一個郡重抽物價。
+// repriceAll 每個月替每一個郡重抽物價（`0x17396`–`0x173ea`，`L0`）。
 //
-// **原版每個月幾乎四十二個郡一起換**（連走十六個月，`L1`）。
-// 量到的範圍是 30–68，而值的分布在 44–50 隆起、兩端收斂——不是平的，
-// 所以不是單一個均勻亂數（`docs/mechanics/60-economy.md` §1.2）。
+// 它在**開月**常式 `0x17364` 的迴圈裡，和「旗標全開、順序表填成 0..42」
+// 同一趟走完 43 筆：
 //
-// 形狀與「兩個 0–19 的亂數相加」相符（峰值 49），這裡就照那個做。
+//	cx  = RND(20)                                 ; 0x17396
+//	基  = 民眾忠誠 − 洪水率÷2 + 土地價值          ; 0x173a0–0x173cd
+//	物價 = RND(基) ÷ 10 + cx + 30                 ; 0x173d2–0x173ea
 //
-// 它**不是**郡狀態的函數：把地力每十格掃一次，物價在 31–40 之間亂跳，
-// 沒有單調性，而且民忠也在跳（民忠怎麼看都不該進物價）。
-// 那是原版自己的亂數被災害判定位移造成的，不是因果
-// （`docs/mechanics/60-economy` §1.2）。
+// 兩個加數都落在 0–19，所以範圍是 30–68，與連走十六個月量到的相符；
+// 分布在中間隆起也是兩個近似均勻量相加的形狀。**郡的狀態確實是輸入**
+// ——民眾忠誠與土地價值抬高上限、洪水率壓低它——只是除以 10 之後
+// 影響被壓到和 `RND(20)` 同一個量級，掃描單一欄位看不出單調性。
+//
+// 每郡兩次亂數，43 筆共 86 次，全部在四季常式之前。
 func (g *State) repriceAll() {
 	// **啞元那一筆也要重抽。** 原版的州郡表有 43 筆，第 0 筆是啞元
 	// （`docs/formats/03`），而重抽物價的迴圈走完整張表——月度對拍的
 	// 差異清單裡「郡 0：物價」一直都在。remake 的 `prefectures` 只有
 	// 42 筆，少抽兩次，而**那是整條亂數序列第一個岔開的地方**。
+	price := func(loyalty, land, flood, salt int) uint8 {
+		a := g.Roll(PriceSpread+1, int(priceSalt), salt)
+		// `RND(n)` 在 n <= 0 時直接回 0 **而且不抽**（`0x10b0c`），
+		// `Roll` 同樣的行為，所以荒地那幾筆不會位移亂數序列。
+		b := g.Roll(loyalty-flood/2+land, int(priceSalt), salt, 1) / 10
+		return uint8(PriceMin + a + b)
+	}
 	if len(g.rawSta) > staPrice {
-		a := g.roll(int(priceSalt), 0) % (PriceSpread + 1)
-		b := g.roll(int(priceSalt), 0, 1) % (PriceSpread + 1)
-		g.rawSta[staPrice] = byte(PriceMin + a + b)
+		g.rawSta[staPrice] = price(int(g.rawSta[staLoyalty]),
+			int(g.rawSta[staLandValue]), int(g.rawSta[staFloodRate]), 0)
 	}
 	for i := range g.prefectures {
 		p := &g.prefectures[i]
-		a := g.roll(int(priceSalt), p.ID) % (PriceSpread + 1)
-		b := g.roll(int(priceSalt), p.ID, 1) % (PriceSpread + 1)
-		p.PriceLevel = uint8(PriceMin + a + b)
+		p.PriceLevel = price(int(p.PublicLoyalty), int(p.LandValue),
+			int(p.FloodRate), p.ID)
 	}
 }
 
@@ -760,14 +768,26 @@ func (g *State) winter() []Event {
 		if base <= 0 {
 			continue
 		}
+		// 四種的件數先各自擲好放著（`0x17167`–`0x1723b`，四段展開的碼，
+		// 不是迴圈），**擲完之後再 `RND(4)` 挑一種多給一件**
+		// （`0x1723c`：`incw -0x8(%bp,%si)`，加在件數上而不是庫存上），
+		// 最後才逐種進庫（`0x172f8`：`庫存 = min(100, 庫存 + 件數)`）。
+		//
+		// 那一次 `RND(4)` 是**無條件**的——四種都擲到 0 也照抽，
+		// 所以它算進每個過閘門的勢力固定的 9 次裡。
+		var got [treasureCount]int
+		for t := TreasureBook; t < treasureCount; t++ {
+			v := g.Roll(base+1, int(f.ID), int(t), 30)
+			if cap := g.Roll(TributeCapSpread, int(f.ID), int(t), 31) + TributeCapFloor; cap < v {
+				v = g.Roll(TributeCapSpread, int(f.ID), int(t), 32) + TributeCapFloor
+			}
+			got[t] = v
+		}
+		got[g.Roll(int(treasureCount), int(f.ID), 33)]++
 		n := 0
 		for t := TreasureBook; t < treasureCount; t++ {
-			got := g.Roll(base+1, int(f.ID), int(t), 30)
-			if cap := g.Roll(TributeCapSpread, int(f.ID), int(t), 31) + TributeCapFloor; cap < got {
-				got = g.Roll(TributeCapSpread, int(f.ID), int(t), 32) + TributeCapFloor
-			}
-			f.Treasury[t] = clampTo(f.Treasury[t]+got, TreasuryCap)
-			n += got
+			f.Treasury[t] = clampTo(f.Treasury[t]+got[t], TreasuryCap)
+			n += got[t]
 		}
 		if n > 0 {
 			lord := g.Lord(f.ID)

@@ -494,13 +494,6 @@ func TestDisasterLossesAreMeasured(t *testing.T) {
 	}
 }
 
-// TestTributeFollowsTerritoryWithACap 釘住進貢的件數（`0x17164`，`L0`）。
-//
-// `min(RND(領地數 + 1), RND(5) + 8)`，**四種寶物各擲一次**，
-// 再隨機挑一種多給一件。
-//
-// **上限是重點**：手冊 p.37 只說「領地越多，貢品越多」，照字面寫成
-// 正比的話，一統天下的勢力一年會拿到四十件——而寶物是賞賜用的，
 // TestTributeNeedsMoreThanOnePrefecture 釘住進貢的基數怎麼算（`L0`＋`L1`）。
 //
 // 原版是 `基數 = Σ(民眾忠誠/4 + 土地價值/2) ÷ (RND(10) + 80)`，四種寶物
