@@ -1184,6 +1184,15 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int,
 // treasureBar 是賞賜物品傳進 `0xd962` 的那個常數，隨等級變（`L0`）：
 // 等級 3 是 `0x28`（40，`0xdf72`）、4 是 `0x3c`（60，`0xdfe2`）、
 // 5 是 `0x50`（80，`0xe052`）。等級 0–2 那三格是空操作。
+// treasureFloor 是候選門檻 `RND(20) + 底` 裡的底（`L0`、`[base]`）。
+// 駿馬那一支是 70，其餘三支是 60。
+func treasureFloor(t game.Treasure) int {
+	if t == game.TreasureHorse {
+		return 70
+	}
+	return 60
+}
+
 // treasureBucket 對上原版四支常式的位址，逐種分帳用。
 var treasureBucket = [4]string{
 	"賞賜物品：兵書", "賞賜物品：寶刀", "賞賜物品：美女", "賞賜物品：駿馬",
@@ -1231,7 +1240,11 @@ func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture in
 		// **`RND(20)` 在迴圈頂端，每一筆都抽**（`0xd9f2`）——包括能力
 		// 已經到頂、以及君主那種不必比的。寫成短路條件會把那些抽樣吃掉
 		// （Go 的 `&&`／`||` 都短路），整條序列跟著錯開。
-		r := g.Roll(20, int(id), prefecture, salt, i, 0x56b4) + 60
+		// **門檻的底四支不一樣**（`L0`）：兵書 `0xd9fa`、寶刀 `0xdb58`、
+		// 美女 `0xdcb6` 都是 `add $0x3c`（60），駿馬 `0xde2c` 是
+		// `add $0x46`（**70**）。寬度四支都是 `RND(20)`。
+		// 駿馬那一支因此挑剔得多——武力 70 以下的人幾乎拿不到。
+		r := g.Roll(20, int(id), prefecture, salt, i, 0x56b4) + treasureFloor(t)
 		if v := ability(x); v < game.TreasureCap &&
 			(x.Status == state.StatusLord || v > r) {
 			return x

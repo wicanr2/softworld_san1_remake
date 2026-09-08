@@ -95,9 +95,14 @@ func TestZZMonthParity(t *testing.T) {
 	// 逐郡歸戶：`curDisp` 是「現在跑的是哪個郡的分派器」，−1 表示不在
 	// 郡回合裡（開月、每月結算那些）。
 	curDisp := -1
-	// 第一個對不上的那一格要拆到「哪一張表」。順序表第 0 格是郡 1
-	// （`docs/re/08` §2 量到的那一份順序表），逐表歸戶只對它做。
-	const firstGapAt = 1
+	// 第一個對不上的那一格要拆到「哪一張表」。要追哪一個郡用
+	// `SAN1_WATCH` 指定（remake 那邊同一個環境變數），預設郡 1。
+	firstGapAt := 1
+	if v := os.Getenv("SAN1_WATCH"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			firstGapAt = n
+		}
+	}
 	firstTbl := map[string]int{}
 	randBy := map[int]int{}
 	// 再歸一次戶：十八張表各自抽了幾次。分派點是 `0xe926`–`0xec1b`
