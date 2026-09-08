@@ -559,6 +559,15 @@ const (
 // 那是原版自己的亂數被災害判定位移造成的，不是因果
 // （`docs/mechanics/60-economy` §1.2）。
 func (g *State) repriceAll() {
+	// **啞元那一筆也要重抽。** 原版的州郡表有 43 筆，第 0 筆是啞元
+	// （`docs/formats/03`），而重抽物價的迴圈走完整張表——月度對拍的
+	// 差異清單裡「郡 0：物價」一直都在。remake 的 `prefectures` 只有
+	// 42 筆，少抽兩次，而**那是整條亂數序列第一個岔開的地方**。
+	if len(g.rawSta) > staPrice {
+		a := g.roll(int(priceSalt), 0) % (PriceSpread + 1)
+		b := g.roll(int(priceSalt), 0, 1) % (PriceSpread + 1)
+		g.rawSta[staPrice] = byte(PriceMin + a + b)
+	}
 	for i := range g.prefectures {
 		p := &g.prefectures[i]
 		a := g.roll(int(priceSalt), p.ID) % (PriceSpread + 1)
