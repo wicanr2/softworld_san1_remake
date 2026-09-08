@@ -106,7 +106,8 @@ func (e *enhanced) planOne(g *game.State, f state.FactionID, p *game.Prefecture)
 	// 1. 水患優先：洪水率高的時候收成與人口都保不住。
 	if p.FloodRate >= floodDanger && spendable >= game.CostFloodControl {
 		if x := e.wisest(g, f, p.ID); x != nil {
-			return game.FloodControlOrder{At: p.ID, General: x.Index}
+			// 電腦那一條不收錢（`0xbd39`），`spendable` 的閘門只是保守。
+			return game.FloodControlOrder{At: p.ID, General: x.Index, Auto: true}
 		}
 	}
 
@@ -162,7 +163,8 @@ func (e *enhanced) planOne(g *game.State, f state.FactionID, p *game.Prefecture)
 	// 8. 沒有急事就開墾。
 	if p.LandValue < landTarget && spendable >= game.CostReclaim {
 		if x := e.wisest(g, f, p.ID); x != nil {
-			return game.ReclaimOrder{At: p.ID, General: x.Index}
+			// 同上（`0xba02`）。
+			return game.ReclaimOrder{At: p.ID, General: x.Index, Auto: true}
 		}
 	}
 	return nil
