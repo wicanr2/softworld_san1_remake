@@ -71,8 +71,55 @@ san1 -root /path/to/三國演義
 
 ## 6. 還沒做的
 
-- **簽章**：Windows 的 code signing 與 macOS 的 notarization 都沒做。
-  未簽章的 macOS 執行檔第一次開要右鍵「打開」。
+- **簽章**：管線寫好了（`tools/release.sh` 的「簽章」那一段），
+  缺的是憑證本身——那是要花錢申請的東西，不在這個 repo 裡。見下一節。
 - **AppImage**：`eob-remake-release` 的 image 裡有 appimage-tools，
   還沒接進來。
 - **arm64 Linux**：沒有交叉工具鏈。
+
+## 簽章
+
+**憑證不進 repo 也不進容器**，一律走環境變數。沒設就跳過並在畫面上
+說明「這不是簽過」——與 macOS 交叉編譯那一段同一個原則：**不假裝成功**。
+
+### Windows
+
+```
+SAN1_WIN_PFX=/path/to/cert.pfx SAN1_WIN_PFX_PASS=… tools/release.sh
+```
+
+用 `osslsigncode`（Linux 上簽 PE 的標準做法）帶時戳簽 `san1.exe`。
+要的東西是一張 **code signing 憑證**（OV 或 EV）。沒有簽章的話
+SmartScreen 會擋，玩家要點「其他資訊 → 仍要執行」。
+
+### macOS
+
+**codesign 與 notarytool 不能交叉執行**——osxcross 只負責編譯。
+所以 `release.sh` 只把待簽的執行檔列出來，實際三道指令要在真的
+macOS 上跑：
+
+```
+codesign --force --options runtime --timestamp \
+  --sign "Developer ID Application: <名字> (<TeamID>)" san1
+ditto -c -k --keepParent san1 san1.zip
+xcrun notarytool submit san1.zip --apple-id <帳號> \
+  --team-id <TeamID> --password <app-specific 密碼> --wait
+```
+
+要的東西是 **Apple Developer Program 會籍**（年費）加上一張
+Developer ID Application 憑證。沒有 notarize 的話 Gatekeeper 會擋，
+玩家第一次開要在 Finder 裡右鍵「打開」。
+
+⚠ **單檔執行檔不能 `xcrun stapler staple`**——stapler 只認
+`.app`／`.dmg`／`.pkg`。單檔要嘛接受「第一次開要連線驗證」，
+要嘛包成 `.app` 再 staple。
+
+### Linux
+
+沒有平台級的簽章慣例。發行走 `SHA256SUMS` ＋ GPG 分離簽章：
+
+```
+SAN1_GPG_KEY=<金鑰 ID> tools/release.sh
+```
+
+產出 `SHA256SUMS.asc`。公鑰要另外公布（README 或 release 頁）。

@@ -102,6 +102,51 @@ else
   echo "  （skill osxcross-macos-cross-build）。**這不是打包成功**。"
 fi
 
+# ── 簽章 ───────────────────────────────────────────────────────
+#
+# **憑證不進這個 repo，也不進容器。** 三個平台各自要的東西：
+#
+#   Windows  SAN1_WIN_PFX ＝ .pfx 檔、SAN1_WIN_PFX_PASS ＝ 它的密碼
+#            用 osslsigncode 簽（Linux 上簽 PE 的標準做法）
+#   macOS    SAN1_MAC_IDENTITY ＝ "Developer ID Application: …"
+#            **要在真的 macOS 上跑**：codesign 與 notarytool 都不能
+#            交叉執行，osxcross 只負責編譯。這裡只產出待簽清單。
+#   Linux    沒有平台級的簽章慣例；發行用 SHA256SUMS ＋ GPG 分離簽章
+#            （SAN1_GPG_KEY ＝ 金鑰 ID）
+#
+# **沒有設就跳過並說明，不假裝簽過**——與 macOS 那一段同一個原則。
+sign_windows() {
+  local exe="$1"
+  if [[ -z "${SAN1_WIN_PFX:-}" ]]; then
+    echo "  跳過 Windows 簽章：沒設 SAN1_WIN_PFX。**這不是簽過**"
+    return 0
+  fi
+  if ! command -v osslsigncode >/dev/null 2>&1; then
+    echo "  ⚠ 沒有 osslsigncode，Windows 簽章跳過"
+    return 0
+  fi
+  osslsigncode sign -pkcs12 "$SAN1_WIN_PFX" \
+    -pass "${SAN1_WIN_PFX_PASS:-}" \
+    -n "三國演義 remake" -i "https://github.com/wicanr2/softworld_san1_remake" \
+    -t http://timestamp.digicert.com \
+    -in "$exe" -out "$exe.signed" && mv "$exe.signed" "$exe"
+  echo "  Windows 執行檔已簽章"
+}
+
+echo
+echo "== 簽章"
+for d in "$OUT"/stage/*windows*/; do
+  [[ -d "$d" ]] || continue
+  sign_windows "$d/san1.exe"
+done
+if [[ -n "${SAN1_MAC_IDENTITY:-}" ]]; then
+  echo "  ⚠ macOS 的 codesign／notarytool 不能在 Linux 上跑。"
+  echo "    待簽的執行檔：$(ls -d "$OUT"/stage/*darwin*/ 2>/dev/null | tr '\n' ' ')"
+  echo "    在 macOS 上跑 docs/release/01 §簽章 那一節的三道指令。"
+else
+  echo "  跳過 macOS 簽章：沒設 SAN1_MAC_IDENTITY。**這不是簽過**"
+fi
+
 echo
 echo "== 壓縮"
 cd "$OUT/stage"
@@ -118,5 +163,11 @@ rm -rf "$OUT/stage"
 echo
 echo "校驗碼："
 (cd "$OUT" && sha256sum ./*.zip ./*.tar.gz 2>/dev/null | tee SHA256SUMS)
+if [[ -n "${SAN1_GPG_KEY:-}" ]] && command -v gpg >/dev/null 2>&1; then
+  (cd "$OUT" && gpg --batch --yes --local-user "$SAN1_GPG_KEY" \
+    --detach-sign --armor SHA256SUMS) && echo "  SHA256SUMS.asc 已簽"
+else
+  echo "  跳過 SHA256SUMS 的 GPG 簽章：沒設 SAN1_GPG_KEY。**這不是簽過**"
+fi
 echo
 echo "⚠ 這些包不含原版檔案；玩家要自備原版目錄。"
