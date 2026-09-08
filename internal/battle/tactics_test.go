@@ -116,24 +116,34 @@ func TestWeatherGates(t *testing.T) {
 	}
 }
 
-// TestFloodNeedsWaterOrShore 釘住「目標必須在水上或岸邊」（說明書 p.33）。
-func TestFloodNeedsWaterOrShore(t *testing.T) {
+// TestFloodNeedsShallowNextDoor 釘住水淹的岸邊判準（`L0`、`0x2bfa2`）。
+//
+// 說明書 p.33 寫「目標必須在水上或岸邊」，原版的碼比這句窄：它掃目標的
+// 六個鄰格，**只認地形碼 3（淺水）**——深水不算，目標自己站在水上
+// 也不算。位階以反組譯為準（`CLAUDE.md` §4）。
+func TestFloodNeedsShallowNextDoor(t *testing.T) {
 	// 一片乾地：不成立。
 	b, u, e := plotting(Plain, Rainy, 100, 10000)
 	if err := b.UseStratagem(u, Flood, e.At); err == nil {
 		t.Error("目標在乾地上不該水淹得了")
 	}
-	// 目標腳下就是水：成立。
+	// 目標腳下是淺水，但六個鄰格都是乾地：原版不算岸邊。
 	b, u, e = plotting(Plain, Rainy, 100, 10000)
 	b.Field.Set(e.At, Shallow)
-	if err := b.UseStratagem(u, Flood, e.At); err != nil {
-		t.Errorf("目標在水上，水淹應該成立：%v", err)
+	if err := b.UseStratagem(u, Flood, e.At); err == nil {
+		t.Error("原版只看鄰格，目標自己站在水上不該讓水淹成立")
 	}
-	// 岸邊也算。
+	// 鄰格是深水：也不算。
 	b, u, e = plotting(Plain, Rainy, 100, 10000)
 	b.Field.Set(e.At.Step(DirUp), Deep)
+	if err := b.UseStratagem(u, Flood, e.At); err == nil {
+		t.Error("原版只認淺水，鄰格是深水不該讓水淹成立")
+	}
+	// 鄰格是淺水：成立。
+	b, u, e = plotting(Plain, Rainy, 100, 10000)
+	b.Field.Set(e.At.Step(DirUp), Shallow)
 	if err := b.UseStratagem(u, Flood, e.At); err != nil {
-		t.Errorf("目標在岸邊，水淹應該成立：%v", err)
+		t.Errorf("鄰格有淺水，水淹應該成立：%v", err)
 	}
 }
 

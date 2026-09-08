@@ -406,8 +406,11 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		if b.Weather != Rainy {
 			return fmt.Errorf("battle: 水淹要下雨天才能用")
 		}
-		if !terrain.Water() && !b.nextToWater(target) {
-			return fmt.Errorf("battle: 水淹的目標必須在水上或岸邊")
+		// **岸邊的判準是「六個鄰格裡有一格淺水」**（`L0`、`0x2bfa2`）：
+		// 原版掃目標的六個方向，只認地形碼 3（淺水），深水不算，
+		// 目標自己站在水上也不算。
+		if !b.nextToShallow(target) {
+			return fmt.Errorf("battle: 水淹的目標旁邊要有淺水")
 		}
 	case Burn:
 		if b.Weather == Rainy {
@@ -421,8 +424,12 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 			return fmt.Errorf("battle: 陷阱不得用在水上、城池或關寨中")
 		}
 	case Siege:
-		if b.alliesAround(u, target) == 0 {
-			return fmt.Errorf("battle: 圍攻要目標旁邊尚有其他友軍")
+		// **目標周圍我方的部隊要有兩支以上**（`L0`、`0x2c140`）：原版數
+		// 目標的六個鄰格，佔位圖（`es:[0x2532]`）不是 `0xFFFF` 而且
+		// 陣營與目標不同的就記一筆，**施法者自己也在裡面**，
+		// 最後要 `> 1`。這裡的 `alliesAround` 不含施法者，所以門檻是 1。
+		if b.alliesAround(u, target) < 1 {
+			return fmt.Errorf("battle: 圍攻要目標旁邊還有另一支我方部隊")
 		}
 	}
 
@@ -504,10 +511,10 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	return nil
 }
 
-// nextToWater 回報一格是不是岸邊。
-func (b *Battle) nextToWater(h Hex) bool {
+// nextToShallow 回報一格的六個鄰格裡有沒有淺水（`0x2bfa2` 的岸邊判準）。
+func (b *Battle) nextToShallow(h Hex) bool {
 	for _, d := range Dirs() {
-		if b.Field.At(h.Step(d)).Water() {
+		if b.Field.At(h.Step(d)) == Shallow {
 			return true
 		}
 	}
