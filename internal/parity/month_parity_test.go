@@ -400,7 +400,7 @@ func TestZZMonthParity(t *testing.T) {
 	g.TracePhases(phase)
 	t.Logf("兩邊都從月底結算那一刻的亂數狀態 0x%08x 接上", seedAtSettle)
 	g.EndMonth()
-	for _, k := range []string{"換月", "物價", "人口成長", "四季"} {
+	for _, k := range []string{"換月", "物價", "人口成長", "民亂判定", "四季"} {
 		t.Logf("remake 換月各段：%s %d 次", k, phase[k])
 	}
 	// 開月的洗牌（`0x1740a`）——**它會消耗 215 次亂數**，不跑的話接下來

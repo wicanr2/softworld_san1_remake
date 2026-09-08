@@ -149,6 +149,7 @@
   "ev.quake": "%s: earthquake",
   "ev.seal": "%s obtained the Imperial Seal",
   "ev.tribute": "%s received %d tributes",
+  "ev.unrest": "Unrest stirs in %s",
   "fld.active": "Officers",
   "fld.activeFree": "%d / free %d",
   "fld.age": "Age",

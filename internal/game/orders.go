@@ -236,9 +236,12 @@ func (g *State) EndMonth() []Event {
 	// 部隊搬進目標郡，郡易主全靠這次重算。
 	g.RecomputeOwners()
 	g.markPhase("換月")
-	g.repriceAll()
-	g.markPhase("物價")
+	// **順序照原版**：四季常式（人口成長 → 民亂 → 進貢）在前，
+	// 物價重抽在**開月**那一段、四季之後（`0x15c48` → `0x16e70` → `0x17371`）。
+	// 反過來的話整條亂數序列從第一個郡就對不上。
 	out := g.RunSeason()
 	g.markPhase("四季")
+	g.repriceAll()
+	g.markPhase("物價")
 	return out
 }

@@ -149,6 +149,7 @@
   "ev.quake": "%s で地震",
   "ev.seal": "%s が伝国の玉璽を手に入れた",
   "ev.tribute": "%s が貢ぎ物を %d 件受け取った",
+  "ev.unrest": "%s の民心が揺れる",
   "fld.active": "武将数",
   "fld.activeFree": "%d／在野 %d",
   "fld.age": "齢",

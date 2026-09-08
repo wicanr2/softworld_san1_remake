@@ -41,6 +41,12 @@ const (
 	TributeCapSpread = 5
 	TributeCapFloor  = 8
 
+	// 冬季民亂的三個常數（`0x16f48`／`0x16f6c`，`L0`）：門檻是
+	// `RND(20) + 50`（民眾忠誠）與 `RND(20) + 30`（人望）。
+	UnrestSpread         = 20
+	UnrestLoyaltyFloor   = 50
+	UnrestPrestigeFloor  = 30
+
 	// TributeDivisorFloor 是「人才量 ÷ (RND(10) + 80)」裡的 80
 	// （`0x1714e` 的 `add $0x50,%cx`，`L0`）。
 	TributeDivisorFloor = 80
@@ -708,6 +714,8 @@ func (g *State) winter() []Event {
 		}
 	}
 	g.markPhase("人口成長")
+	out = append(out, g.winterUnrest()...)
+	g.markPhase("民亂判定")
 	if g.Date.Month != tributeMonth {
 		return out
 	}
@@ -932,4 +940,35 @@ func AgingDrop(stamina, age, lifespan, roll int) int {
 		return 0
 	}
 	return n
+}
+
+// winterUnrest 是冬季常式在人口成長之後的那一段（`0x16f22`–`0x16f95`，`L0`）：
+// 抽一個郡，民眾忠誠低而諸侯人望又低，那個郡就出事。
+//
+//	郡 = RND(42) + 1
+//	所屬 == 0xFF → 結束                      ; 0x16f3d
+//	門檻 = RND(20) + 50                      ; 0x16f48
+//	民眾忠誠（offset 26）>= 門檻 → 結束      ; 0x16f65
+//	c = RND(20) + 30                         ; 0x16f6c
+//	諸侯[所屬] 的人望（offset 8）>= c → 結束 ; 0x16f8e
+//	→ 出事
+//
+// ⚠ **出事之後做什麼還沒解**：`0x16f98` 顯示 `DS:0x680a` 的訊息，接著對
+// 那個郡做一次間接呼叫（`lcall *es:[0x20ea]`，參數 28）。所以這裡只還原
+// 判定與**抽樣的次數**——少了這三次，整條亂數序列就對不上
+//（`CONTEXT.md` 的亂數路線圖）。
+func (g *State) winterUnrest() []Event {
+	at := g.Roll(len(g.prefectures), 40) + 1
+	p := g.Prefecture(at)
+	if p == nil || !p.Owned() {
+		return nil
+	}
+	if int(p.PublicLoyalty) >= g.Roll(UnrestSpread, at, 41)+UnrestLoyaltyFloor {
+		return nil
+	}
+	f := g.Faction(p.Owner)
+	if f == nil || f.Prestige >= g.Roll(UnrestSpread, at, 42)+UnrestPrestigeFloor {
+		return nil
+	}
+	return []Event{{p.ID, tf("ev.unrest", p.Name)}}
 }
