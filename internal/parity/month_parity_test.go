@@ -167,8 +167,15 @@ func byPrefecture(a, b []byte, nMas, nSta int) string {
 		sort.Strings(names)
 		// **所屬要一起印。** 「哪個欄位變了」不接上「那是誰的郡」，
 		// 就分不出是電腦諸侯下的令還是每月結算。
-		lines = append(lines, fmt.Sprintf("    郡 %2d（勢力 %d）：%s",
-			i, b[lo+30], strings.Join(names, " ")))
+		line := fmt.Sprintf("    郡 %2d（勢力 %d）：%s",
+			i, b[lo+30], strings.Join(names, " "))
+		// 主事者（offset 32）差的時候把兩邊的槽號印出來——欄位名說不出
+		// 「差在哪一位」，而那正是唯一有用的線索。
+		if fields[fieldName(prefField, 32)] || fields[fieldName(prefField, 33)] {
+			line += fmt.Sprintf("｜主事者 原版 %d／remake %d",
+				int(a[lo+32])|int(a[lo+33])<<8, int(b[lo+32])|int(b[lo+33])<<8)
+		}
+		lines = append(lines, line)
 	}
 	if len(lines) == 0 {
 		return "    州郡表逐郡相同"
