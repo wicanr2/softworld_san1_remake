@@ -124,6 +124,11 @@ func TestZZMonthParity(t *testing.T) {
 		// 所以進貢那 69 次裡可能有一次其實是這裡的。
 		{0x1746e, "郡回合入口"},
 		{0x1734f, "進貢之後"},
+		// `0x1734f` 之後第一件事是**整張地圖重繪**（`0x32fb8`：郡 1..42
+		// 逐一呼叫 `0x32fe6`，讀 offset 30 決定顏色，再走間接的
+		// `lcall *es:[0x20ea]`）。那一段與月迴圈要分開數。
+		{0x32fb8, "地圖重繪"},
+		{0x1735c, "重繪之後到第一個郡"},
 		{0xe9a1, "賞賜物品之後的預算計算"},
 		{0xd962, "賞賜物品：兵書"}, {0xdac0, "賞賜物品：寶刀"},
 		{0xdc1e, "賞賜物品：美女"}, {0xdd94, "賞賜物品：駿馬"},
@@ -462,6 +467,8 @@ func TestZZMonthParity(t *testing.T) {
 	pp.TraceDraws(mineTbl)
 	firstGap := -1
 	for i := winFrom; i < winTo && i < len(turnSeq); i++ {
+		// 月迴圈每一格都先抽一次（`0x15790`），跳過的格子也算。
+		g.TurnTick()
 		at := turnSeq[i]
 		q := g.Prefecture(at)
 		if q == nil || !q.Owned() || q.Owner == player {

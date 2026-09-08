@@ -131,6 +131,8 @@ func (s *Session) runPrefectureTurns() {
 	}
 	done := map[state.FactionID]int{}
 	for ; s.MonthCursor < len(s.MonthOrder); s.MonthCursor++ {
+		// 月迴圈每一格先抽一次（`0x15790`），跳過的格子也算。
+		s.G.TurnTick()
 		at := s.MonthOrder[s.MonthCursor]
 		p := s.G.Prefecture(at)
 		if p == nil || !p.Owned() {
