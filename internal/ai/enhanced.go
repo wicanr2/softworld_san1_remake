@@ -48,6 +48,15 @@ const (
 	sellRiceBatch = 1000
 )
 
+// Act 是 `enhanced` 的執行版。它**每郡只下一道令**，所以「發一道套一道」
+// 與「排完再一次套上」在同一個郡裡沒有差別——`enhanced` 是創作不是還原，
+// 這裡照 `Plan` ＋ `ApplyAll` 走就好（`Brain.Act`）。
+func (e *enhanced) Act(g *game.State, f state.FactionID) ([]game.Order, int, error) {
+	out := e.Plan(g, f)
+	n, err := g.ApplyAll(out, f)
+	return out, n, err
+}
+
 // Plan 對每一個自己的郡挑一件事做。每郡每月只能下一次令（說明書 p.17），
 // 所以每個郡最多產出一個命令。
 func (e *enhanced) Plan(g *game.State, f state.FactionID) []game.Order {

@@ -18,6 +18,7 @@
 package ai
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -45,6 +46,10 @@ func Modes() []Mode { return []Mode{ModeBase, ModePlus, ModeEnhanced} }
 // 沒有實作這個介面的 Brain，自治就只是一個設定不會有動作。
 type PrefecturePlanner interface {
 	PlanPrefecture(g *game.State, id state.FactionID, prefectureID, level int) []game.Order
+
+	// ActPrefecture 是執行版：發一道套一道（見 `Brain.Act`）。
+	ActPrefecture(g *game.State, id state.FactionID,
+		prefectureID, level int) ([]game.Order, int, error)
 }
 
 type Brain interface {
@@ -74,7 +79,23 @@ type Brain interface {
 	Coverage() (done, total int)
 
 	// Plan 回傳某個勢力這個月要下的命令。**不改變局面**。
+	//
+	// ⚠ 它算出來的是「對著月初的盤面，這十八張表會做什麼」。原版不是
+	// 這樣跑的——見 `Act`。要**執行**電腦的回合請用 `Act`，`Plan` 只
+	// 適合預覽。
 	Plan(g *game.State, f state.FactionID) []game.Order
+
+	// Act 跑完某個勢力這個月的回合：**發一道就套一道**。
+	//
+	// 原版的分派器是逐郡、逐表即時執行的，所以第 n 張表看到的是前
+	// n−1 張改過的盤面——徵兵加了兵，接著的調整兵力就攤平新的總數；
+	// 開墾改了地力，接著的收成就用新的。`Plan` ＋ `ApplyAll` 是先對
+	// 月初的盤面把十八張表全部算完再一次套上，兩者在**同一個郡裡**
+	// 就會分岔（`docs/mechanics/70-ai` §2.14）。
+	//
+	// 回傳發出去的命令、成功套上的道數，以及第一道套不上去的錯誤。
+	// **套不上去是 bug**：原版每一支常式自己檢查前提，不會失敗。
+	Act(g *game.State, f state.FactionID) ([]game.Order, int, error)
 }
 
 // Edition 是這個 AI 要還原的原版版本；`enhanced` 沒有對應的版本，回空字串。
@@ -154,7 +175,13 @@ func (f *faithful) Coverage() (int, int) { return 18, 18 }
 // `[50,60,60,50,40,50]`、防洪的除數是 `[10,15,15,14,12,10]`。
 // 六支常式是同一段碼，只有這三個立即數不同。
 func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
-	return f.planIn(g, id, g.Territory(id), g.AILevel(id))
+	out, _, _ := f.planIn(g, id, g.Territory(id), g.AILevel(id), false)
+	return out
+}
+
+// Act 是實際跑電腦的回合：發一道套一道（`Brain.Act`）。
+func (f *faithful) Act(g *game.State, id state.FactionID) ([]game.Order, int, error) {
+	return f.planIn(g, id, g.Territory(id), g.AILevel(id), true)
 }
 
 // PlanPrefecture 只替一個郡規劃，而且用指定的 AI 等級。
@@ -164,14 +191,45 @@ func (f *faithful) Plan(g *game.State, id state.FactionID) []game.Order {
 // ——所以自治的郡跑的是電腦的行為，只是等級由玩家指定的型態決定。
 func (f *faithful) PlanPrefecture(g *game.State, id state.FactionID,
 	prefectureID, level int) []game.Order {
-	return f.planIn(g, id, []int{prefectureID}, level)
+	out, _, _ := f.planIn(g, id, []int{prefectureID}, level, false)
+	return out
+}
+
+// ActPrefecture 是自治郡那一條的執行版：同樣發一道套一道。
+func (f *faithful) ActPrefecture(g *game.State, id state.FactionID,
+	prefectureID, level int) ([]game.Order, int, error) {
+	return f.planIn(g, id, []int{prefectureID}, level, true)
 }
 
 func (f *faithful) planIn(g *game.State, id state.FactionID,
-	territory []int, aiLevel int) []game.Order {
+	territory []int, aiLevel int, live bool) ([]game.Order, int, error) {
 	var out []game.Order
+	var failed error
+	applied := 0
+	// emit 是「發一道」。`live` 為真時**當場套上去**，後面的表因此看到
+	// 前面改過的盤面——原版的分派器就是這樣跑的。
+	emit := func(o game.Order) {
+		if failed != nil {
+			return
+		}
+		out = append(out, o)
+		if !live {
+			return
+		}
+		// **`ErrDeclined` 不算違規**：登用被婉拒是判定的正常結果，
+		// 命令本身執行成功了（`game.ApplyAll` 同一條判準）。當成中斷
+		// 的理由會讓一次登用失敗吃掉同一輪後面所有的命令。
+		if err := o.Apply(g, id); err != nil && !errors.Is(err, game.ErrDeclined) {
+			failed = fmt.Errorf("第 %d 道（%s）：%w", len(out), o.Describe(g), err)
+			return
+		}
+		applied++
+	}
 	k := internalAffairsRange(aiLevel)
 	for _, p := range territory {
+		if failed != nil {
+			break
+		}
 		// **錢包要跟著這一輪扣。** 原版每一支常式開頭都看一次本回合的
 		// 預算（`es:[0x3d16]`）；remake 這一邊沒有那個數，用郡的金頂著。
 		// 對著開局餘額規劃的話，後面幾道會被 `ErrNoGold` 擋下來，
@@ -199,40 +257,37 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		case 0:
 			// 開墾不會因為錢不夠而失敗（「若財庫已空則徒手開墾」）。
 			purse -= min(purse, game.CostReclaim)
-			out = append(out, game.ReclaimOrder{At: p, General: gov.Index})
+			emit(game.ReclaimOrder{At: p, General: gov.Index})
 		case 1:
 			if afford(game.CostFloodControl) {
-				out = append(out, game.FloodControlOrder{At: p, General: gov.Index})
+				emit(game.FloodControlOrder{At: p, General: gov.Index})
 			}
 		}
 		// 訓練兵士（表 `0x5554`）：分派器每回合都跑，常式自己對整個
 		// 守軍算，沒有額外的條件。
-		out = append(out, game.TrainOrder{At: p})
+		emit(game.TrainOrder{At: p})
 		// 指定軍師（表 `0x5694`）：跑在指定太守之前。
 		if x := betterChief(g, id, p); x != nil {
-			out = append(out, game.AppointChiefOrder{
-				At: p, Target: x.Index, Auto: true})
+			emit(game.AppointChiefOrder{At: p, Target: x.Index, Auto: true})
 		}
 		// 指定太守（表 `0x5674`）：守軍按魅力由高到低排序，第一位當
 		// 太守。**已經是他就不必再指一次**——原版那一段是直接寫欄位，
 		// remake 這一邊走命令，重複指定會白費一道紀錄。
 		if best := mostCharming(g, id, p); best != nil && best.Index != gov.Index {
-			out = append(out, game.AppointGovernorOrder{
-				At: p, Target: best.Index, Auto: true})
+			emit(game.AppointGovernorOrder{At: p, Target: best.Index, Auto: true})
 		}
 		// 尋訪人才（表 `0x5614`）：`RND(10) > Bar[等級]`。
 		// **三個常數都隨等級變**（`game.SearchTierFor`，`L1`）：
 		// 出手的機率從 20 % 升到 50 %，門檻從 30–94 降到 15–34。
 		if g.Roll(10, int(id), p, 0x5614) > game.SearchTierFor(aiLevel).Bar &&
 			afford(game.CostSearch) {
-			out = append(out, game.SearchOrder{At: p, General: gov.Index})
+			emit(game.SearchOrder{At: p, General: gov.Index})
 		}
-		// 登用人才（表 `0x5634`）：掃本郡身分 8（在野露面）的人。
-		// **每郡最多 50 位將軍**（`0xced2` 的 `cmpw es:[0xc],50`）。
-		// 判定在 `game.Recruit`（`0xce8c`，`docs/re/03` §1.4）；
-		// 等級參數 (30,0)/(20,10)/(10,20)/(0,40) 是**費用與加成**。
-		// ⚠ 原版掃的是身分 8 **與 10**，而 10 是什麼還沒解；
-		// 有好幾位可選時它挑誰也還沒讀。
+		// 登用人才（表 `0x5634`）。**每郡最多 50 位將軍**
+		//（`0xced2` 的 `cmpw es:[0xc],50`）；判定在 `game.Recruit`
+		//（`0xce8c`，`docs/re/03` §1.4），等級參數
+		// (30,0)/(20,10)/(10,20)/(0,40) 是**費用與加成**。
+		//
 		// **不挑人，全部都試一遍**（`0xd0ae`）：掃 0–349，所在郡相符
 		// 且身分 ∈ {8, 10} 的每一位都呼叫一次 `0xce8c`，照槽號由小到大。
 		// 擋住的是 `0xce8c` 裡的每回合預算（`es:[0x3d16]`）與 50 位上限，
@@ -246,13 +301,17 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 				break
 			}
 			seats--
-			out = append(out, game.RecruitOrder{At: p, Target: who.Index})
+			emit(game.RecruitOrder{At: p, Target: who.Index})
 		}
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
-		out = append(out, f.rewards(g, id, p)...)
+		for _, o := range f.rewards(g, id, p) {
+			emit(o)
+		}
 		// 購置武器（表 `0x5594`）：預算是郡的金的 2 %。
 		bought := armsPurchase(g, p, aiBudget(purse, aiLevel, tableArms))
-		out = append(out, bought...)
+		for _, o := range bought {
+			emit(o)
+		}
 		// **扣的是真的花掉的，不是配下去的額度**：原版每一支常式都重讀
 		// 一次郡的金，而金只被實際的支出扣減。
 		for _, o := range bought {
@@ -262,7 +321,9 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
 		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
 		drafted := conscript(g, p, aiBudget(purse, aiLevel, tableConscript))
-		out = append(out, drafted...)
+		for _, o := range drafted {
+			emit(o)
+		}
 		// 徵兵是一兵一金（說明書 p.20），錢包一樣要跟著扣——
 		// **不扣的話最後那一張「出兵」會拿月初的餘額去算隨行的錢**，
 		// 執行時就撞上 `ErrNoGold`，而 `ApplyAll` 會把整批作廢。
@@ -273,46 +334,48 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// thunk 到同一支 `0xc2c4`。它把整郡的兵按帶兵上限重新攤平，
 		// 訓練度與武裝度拉到全郡的加權平均。
 		if who := garrisonIndices(g, p); len(who) >= 2 {
-			out = append(out, game.RedistributeOrder{At: p, Units: who})
+			emit(game.RedistributeOrder{At: p, Units: who})
 		}
 		// 開倉賑民（表 `0x55f4`）：民眾忠誠低於「底 ＋ RND(20)」才做，
 		// 撥的是**整份預算**（郡的金的 10–20 %）。
 		if o, ok := relief(g, p, id, aiBudget(purse, aiLevel, tableRelief)); ok {
-			out = append(out, o)
+			emit(o)
 			purse -= o.Gold
 		}
 		// 賞賜金帛（表 `0x5654`）：走守軍清單，君主自己不受賞，
 		// 每人上限 100 金，發到預算用完為止。
 		paid := rewardGold(g, p, id, aiBudget(purse, aiLevel, tableReward))
-		out = append(out, paid...)
+		for _, o := range paid {
+			emit(o)
+		}
 		for _, o := range paid {
 			purse -= o.(game.RewardOrder).Gold
 		}
 		// 買入米糧（表 `0x55d4`）：**不走回合預算也不打折**，
 		// 它是市場交易。存糧目標跟著兵力走，不夠就用郡的金補到滿。
 		if o, ok := buyRice(g, p, id, purse); ok {
-			out = append(out, o)
+			emit(o)
 			purse -= o.Units / game.AIRicePerGold(g.Prefecture(p).PriceLevel, aiLevel)
 		}
 		// 挖角（表 `0x56d4`）：**君主要在本郡**，機率隨等級 30／60／80 %，
 		// 預算要 ≥ 100，費用是直接扣的 100 金。
 		if o, ok := headhunt(g, p, id, purse); ok {
-			out = append(out, o)
+			emit(o)
 			purse -= game.CostHeadhunt
 		}
 		// 計略（表 `0x56f4`）：**軍師本人要在這個郡**，機率隨等級
 		// 10／12.5／20 %；目標是**全圖**任何一個敵郡，使者取本郡魅力
 		// 最高的人。
 		if o, ok := plot(g, p, id); ok {
-			out = append(out, o)
+			emit(o)
 		}
 		// 出兵／移防（表 `0x54f4`）：**分派器的最後一張**，等級 3 以上
 		// 才做。四道門檻、洗牌編隊、三選一目標，見 sortie。
 		if o, ok := sortie(g, p, id, purse); ok {
-			out = append(out, o)
+			emit(o)
 		}
 	}
-	return out
+	return out, applied, failed
 }
 
 // 出兵的四道門檻（`0xb666`／`0xb47a`，`L0`、`[base]`）。

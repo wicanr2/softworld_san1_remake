@@ -106,8 +106,9 @@ func (s *Session) EndMonth() {
 		if f.ID == s.Player || !f.Alive {
 			continue
 		}
-		orders := s.Brain.Plan(s.G, f.ID)
-		n, err := s.G.ApplyAll(orders, f.ID)
+		// **發一道套一道**（`Brain.Act`）：原版的分派器是逐表即時執行
+		// 的，先排完再一次套上會讓後面的表看到月初的盤面。
+		_, n, err := s.Brain.Act(s.G, f.ID)
 		s.drainBattles()
 		if err != nil {
 			// AI 產出違規命令是 bug。**記下來不要吞掉**——
@@ -184,8 +185,8 @@ func (s *Session) runAutonomy() {
 		if p := s.G.Prefecture(at); p == nil || p.Commanded {
 			continue // 玩家這個月已經自己下過令了
 		}
-		orders := planner.PlanPrefecture(s.G, s.Player, at, level)
-		if _, err := s.G.ApplyAll(orders, s.Player); err != nil {
+		_, _, err := planner.ActPrefecture(s.G, s.Player, at, level)
+		if err != nil {
 			s.note("⚠ %s 的自治命令被擋下：%v", prefectureName(s.G, at), err)
 		}
 		s.drainBattles()

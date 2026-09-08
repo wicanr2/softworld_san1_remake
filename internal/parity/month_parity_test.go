@@ -124,7 +124,7 @@ func TestZZMonthParity(t *testing.T) {
 		// **套不上去的命令是 bug，不是雜訊。** `ApplyAll` 會中斷同一輪
 		// 後面全部的命令，所以一道擋下來就少算一整個勢力的行動——
 		// 只印一行 log 的話，對拍的差異看起來像是公式不準。
-		if n, err := g.ApplyAll(brain.Plan(g, f.ID), f.ID); err != nil {
+		if _, n, err := brain.Act(g, f.ID); err != nil {
 			t.Errorf("勢力 %d 的命令有 %d 道成立，然後：%v", f.ID, n, err)
 		}
 	}

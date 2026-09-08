@@ -19,6 +19,8 @@ import (
 	"os"
 	"sort"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/ai"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -26,7 +28,27 @@ func main() {
 	quiet := flag.Bool("quiet", false, "只印推論，不印逐欄位的差異")
 	price := flag.Bool("price", false, "印每個郡的物價時間序列（吃任意多個檔）")
 	lords := flag.Bool("lords", false, "印十六個諸侯槽的君主與領地")
+	plan := flag.Bool("plan", false, "從盤面跑 remake 的一個月，逐道印電腦諸侯發出的命令")
+	out := flag.String("out", "", "-plan 跑完之後把盤面寫成 .bin")
+	month := flag.Int("month", 9, "-plan 的起始月（年月不在三張表裡）")
+	year := flag.Int("year", 197, "-plan 的起始年")
 	flag.Parse()
+	if *plan {
+		if flag.NArg() != 1 {
+			fmt.Fprintln(os.Stderr, "用法：san1turndiff -plan 盤面.bin [-out 走完.bin]")
+			os.Exit(2)
+		}
+		sc, err := load(flag.Arg(0))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := planMonth(sc, *year, *month, *out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *price {
 		if flag.NArg() < 2 {
 			fmt.Fprintln(os.Stderr, "用法：san1turndiff -price 盤面1.bin 盤面2.bin …")
@@ -415,4 +437,56 @@ func showLords(sc *state.Scenario) {
 				i, g.Index, g.Name, g.IsPerson, owned[i], lv)
 		}
 	}
+}
+
+// planMonth 從一份盤面跑 remake 的一個月，把電腦諸侯發出的每一道命令
+// 印出來。
+//
+// 這是**對拍的快速迴圈**：出發局面是 `internal/parity` 倒出來的 `.bin`，
+// remake 這一邊不需要 oracle 就能重跑，所以「remake 為什麼多做了這件事」
+// 可以在幾秒內問一次，不必每次都等四分鐘的對拍。
+//
+// ⚠ 它只跑 remake 那一半，**證明不了原版做了什麼**。要比對還是得跑
+// `TestZZMonthParity`。
+func planMonth(sc *state.Scenario, year, month int, outPath string) error {
+	players := sc.Players()
+	if len(players) == 0 {
+		return fmt.Errorf("這個盤面沒有玩家控制的勢力")
+	}
+	player := state.FactionID(players[0])
+	g, err := game.New(sc, player, 5, state.EditionBase)
+	if err != nil {
+		return err
+	}
+	g.Date = game.Date{Year: year, Month: month}
+	brain, err := ai.New(ai.ModeBase)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("玩家勢力 %d，從 %d 年 %d 月走一個月\n", player, year, month)
+	for _, f := range g.Factions() {
+		if !f.Alive || f.ID == player {
+			continue
+		}
+		orders, n, err := brain.Act(g, f.ID)
+		if len(orders) == 0 {
+			continue
+		}
+		fmt.Printf("勢力 %d（%d 道，套上 %d 道）\n", f.ID, len(orders), n)
+		for i, o := range orders {
+			fmt.Printf("  %2d 郡 %2d  %s\n", i+1, o.Prefecture(), o.Describe(g))
+		}
+		if err != nil {
+			fmt.Printf("  ⚠ %v\n", err)
+		}
+	}
+	g.EndMonth()
+	if outPath == "" {
+		return nil
+	}
+	m, st, gn, err := g.Tables()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(outPath, append(append(append([]byte{}, m...), st...), gn...), 0o644)
 }
