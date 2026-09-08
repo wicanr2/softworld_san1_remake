@@ -216,6 +216,15 @@ func TestZZMonthParity(t *testing.T) {
 		}
 		gate[curTurn] = fmt.Sprintf("重算後所屬 %d、諸侯 offset0 %d", own, mode)
 	})
+	// 每個郡的回合**開始前**的亂數狀態，照順序表的順序記。
+	origSeed := map[int]uint32{}
+	o.OnCall(addr(0x174ec), func(o *oracle.Oracle) {
+		if curTurn >= 0 && curTurn < 43 {
+			ds := uint32(o.DSReg()) * 16
+			origSeed[curTurn] = uint32(o.Word(addr(ds+0xa3ae))) |
+				uint32(o.Word(addr(ds+0xa3b0)))<<16
+		}
+	})
 	o.OnCall(addr(0x174ec), func(o *oracle.Oracle) {
 		if curTurn >= 0 && curTurn < 43 {
 			dispatched[curTurn] = true
@@ -360,11 +369,25 @@ func TestZZMonthParity(t *testing.T) {
 		t.Fatalf("%s 不支援逐郡執行", brain.Name())
 	}
 	pp.TraceDraws(mineTbl)
+	firstGap := -1
 	for i := winFrom; i < winTo && i < len(turnSeq); i++ {
 		at := turnSeq[i]
 		q := g.Prefecture(at)
 		if q == nil || !q.Owned() || q.Owner == player {
 			continue
+		}
+		if s0, ok := origSeed[at]; ok && firstGap < 0 && s0 != g.RandSeed() {
+			firstGap = i
+			t.Logf("第一個岔開：順序表第 %d 格（郡 %d，勢力 %d）"+
+				"開始前原版的狀態 0x%08x，remake 0x%08x"+
+				"——前一個郡（%d）消耗的次數不一樣",
+				i, at, q.Owner, s0, g.RandSeed(),
+				func() int {
+					if i > winFrom {
+						return turnSeq[i-1]
+					}
+					return -1
+				}())
 		}
 		d0 := g.RandDraws()
 		if _, n, err := pp.ActPrefecture(g, q.Owner, at, g.AILevel(q.Owner)); err != nil {

@@ -25,6 +25,10 @@ func (g *State) SeedRand(seed uint32) {
 	g.randSeed, g.randOn, g.randDraws = seed, true, 0
 }
 
+// RandSeed 是目前的亂數狀態。對拍拿它逐郡比對——**第一個對不上的郡就是
+// 第一個岔開的地方**，後面的差異全是它的連鎖。
+func (g *State) RandSeed() uint32 { return g.randSeed }
+
 // RandDraws 是接上之後抽了幾次。
 //
 // **這比位元組數利**：抽的次數對不上，表示某一支常式的分支或迴圈次數
