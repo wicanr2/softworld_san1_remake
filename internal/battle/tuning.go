@@ -47,6 +47,13 @@ const (
 	TuneStratagemRange = 3
 )
 
+// RiceUpkeepEvery 是幾天扣一次糧（`0x2508a`：`天數 % 3`，`L0`）。
+//
+// **不是每天**：三十天下來只扣十次，所以實際耗用是兵士（百）× 10，
+// 而出兵畫面印的「30日須耗用%d米」是兵士（百）× 30
+// （`RiceForCampaign`）——原版報的是三倍。
+const RiceUpkeepEvery = 3
+
 // BattleDays 是一場戰役最多打幾天。**這個有出處**：
 // 手冊 p.35「守方能堅持抗戰滿卅天，且城池未被奪去就算衛郡成功」。
 // BattleDays 是一場戰役打幾天。原版第 1 天開始（`0x20253`），
