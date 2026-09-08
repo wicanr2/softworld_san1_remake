@@ -456,7 +456,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		//
 		// 划不划算看的是「目標的攻擊力 vs 施法者的防禦力」——引一支弱的
 		// 部隊來撞自己的硬點才是這一招的用法。
-		lost, back := b.exchange(t, u, StrikeMultiplier(LureStrike))
+		lost, back := b.exchange(t, u, LureStrike)
 		b.note("%s 誘敵成功，%s 中計來攻：%s 折損 %d，%s 折損 %d",
 			u.Name(), t.Name(), u.Name(), back, t.Name(), lost)
 	case Trap:
@@ -486,7 +486,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 			if !t.Alive() {
 				break
 			}
-			lost, _ := b.exchange(x, t, StrikeMultiplier(SiegeStrike))
+			lost, _ := b.exchange(x, t, SiegeStrike)
 			total += lost
 			n++
 		}

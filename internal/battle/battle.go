@@ -2,6 +2,7 @@ package battle
 
 import (
 	"fmt"
+	"math/big"
 	"sort"
 )
 
@@ -390,6 +391,9 @@ var strikeMultiplier = [8]int{80, 100, 150, 200, 250, 300, 350, 400}
 const (
 	// SiegeStrike 是圍攻每一支參戰部隊的倍率格（`0x2bc95` 傳 0）。
 	SiegeStrike = 0
+	// MeleeStrike 是主戰場「對戰」的倍率格。**原版傳 8**（量到的），
+	// 落在 0..7 之外被 `0x2a2c9` 夾成 1，所以倍率是 100。
+	MeleeStrike = 1
 	// LureStrike 是誘敵的倍率格。**原版傳的是 8（施法者謀略 ≥ 98 時 9），
 	// 兩個都在 0..7 之外，被 `0x2a2c9` 夾成 1**——所以那個「謀略高就
 	// 加碼」完全沒有作用，是原版的 bug。remake 照它，不修。
@@ -407,15 +411,138 @@ func StrikeMultiplier(mode int) int {
 	return strikeMultiplier[mode]
 }
 
-// exchange 是一次交戰結算（原版 `0x2a224`）：a 打 d，倍率 pct，
+// 交戰結算的兩張地形表（`DS:0x8162` 攻／`DS:0x8182` 守，`L0`）。
+//
+// **與 `terrainAttack`／`terrainDefence` 不是同一組。** 那兩張是對戰
+// 子畫面裡算單一將領戰力值用的（`0x2e01a`／`0x2e13a`）；主戰場的交戰
+// 結算查的是這兩張，而且乘的是**部隊的**綜合能力不是將領的戰力
+//（`docs/re/05` §3.6）。
+var (
+	meleeAttack = [terrainCount]int{
+		Hill: 30, Shallow: 15, Deep: 10, City: 40,
+		Fort: 30, Plain: 25, Forest: 20, Desert: 20, Mountain: 0,
+	}
+	meleeDefend = [terrainCount]int{
+		Hill: 30, Shallow: 20, Deep: 10, City: 50,
+		Fort: 40, Plain: 20, Forest: 25, Desert: 20, Mountain: 0,
+	}
+)
+
+// exchange 是一次交戰結算（原版 `0x2a224`，`L0`）：a 打 d，
 // 雙方同時互扣，回傳（d 的損失, a 的損失）。
 //
-// **雙向是 `L2`**：`0x2a224` 收尾時對兩邊各查一次「將領人數 ≤ 0」，
-// 是的話把那一格畫回地形（`0x2a732`／`0x2a790`）——兩邊都可能在這一次
-// 結算裡消失。倍率只乘在出手的那一邊：表只被讀一次（`0x2a444`）。
-func (b *Battle) exchange(a, d *Unit, pct int) (int, int) {
-	pa, pd := b.power(a)*pct/100, b.defence(d)
-	return b.apply(d, pa), b.apply(a, pd)
+//	a 的殺傷 ＝ ftol(攻值[a 那格] × a.兵士數 × a.綜合能力 × 倍率[模式] × 1e-6)
+//	d 的殺傷 ＝ ftol(守值[d 那格] × d.兵士數 × d.綜合能力 × 1e-4)
+//	a 的比例 ＝ d 的殺傷 ÷ a.兵士數      （兵士數 ≤ 0 → 0）
+//	d 的比例 ＝ a 的殺傷 ÷ d.兵士數
+//
+// **倍率只乘在出手的那一邊**：表只被讀一次（`0x2a444`）。`1e-4` 正好是
+// `1e-6 × 100`，也就是模式 1 的倍率——兩邊同一個尺度。
+//
+// **兩個比例都要在扣兵之前算完**：原版先把雙方的殺傷都算出來
+//（`0x2a457`／`0x2a498`）再逐將領套，先扣一邊會讓先手佔便宜。
+func (b *Battle) exchange(a, d *Unit, mode int) (int, int) {
+	da := MeleeDamage(MeleeAttackValue(b.Field.At(a.At)),
+		a.Soldiers(), a.Ability(), StrikeMultiplier(mode), MeleeAttackScale)
+	dd := MeleeDamage(MeleeDefendValue(b.Field.At(d.At)),
+		d.Soldiers(), d.Ability(), 1, MeleeDefendScale)
+	ra, rd := MeleeRatio(dd, a.Soldiers()), MeleeRatio(da, d.Soldiers())
+	wasA, wasD := a.Soldiers(), d.Soldiers()
+	b.thin(a, ra)
+	b.thin(d, rd)
+	return wasD - d.Soldiers(), wasA - a.Soldiers()
+}
+
+// MeleeAttackValue／MeleeDefendValue 是交戰結算的地形值
+//（`DS:0x8162`／`DS:0x8182`）。
+func MeleeAttackValue(t Terrain) int { return meleeAttack[t] }
+func MeleeDefendValue(t Terrain) int { return meleeDefend[t] }
+
+// 兩邊的比例常數（`DS:0xa986`／`DS:0xa98e`）。守方那一邊不乘倍率，
+// 而 `1e-4` 正好是 `1e-6 × 100`，也就是模式 1 的倍率。
+const (
+	MeleeAttackScale = 1e-6
+	MeleeDefendScale = 1e-4
+)
+
+// x87 的暫存器是 **80 位元、64 位元尾數**，Go 的 `float64` 只有 53 位元。
+// 這個差在交戰結算上看得到：`1500 × (1 − 585/1500)` 數學上是 915，
+// 用 `float64` 算會捨進成剛好 `915.0`（915 附近的間距是 1.1e-13，
+// 誤差 2e-14 不到半格），用 64 位元尾數算是 `914.99999999999998`
+// ——`ftol` 截尾差 1，量到的原版是後者。所以這幾支照 x87 的寬度算。
+func x87(v int64) *big.Float { return new(big.Float).SetPrec(64).SetInt64(v) }
+
+// MeleeDamage 是交戰結算的殺傷。**照指令順序乘**，不要代數化簡——
+// 原版的捨入誤差是行為的一部分（`docs/playtest/02`）。
+//
+//	filds 地形值；fimuls 兵士數；fimuls 綜合能力；fimuls 倍率；fmull k；ftol
+func MeleeDamage(terrain, soldiers, ability, mult int, k float64) int {
+	f := x87(int64(terrain))
+	f.Mul(f, x87(int64(soldiers)))
+	f.Mul(f, x87(int64(ability)))
+	f.Mul(f, x87(int64(mult)))
+	f.Mul(f, new(big.Float).SetPrec(64).SetFloat64(k))
+	n, _ := f.Int64() // ftol 截尾
+	return int(n)
+}
+
+// MeleeRatio 是傷亡比例。兵士數 ≤ 0 時原版取 `DS:0xa996` ＝ 0.0
+//（`0x2a4a0`）。
+//
+// `fidivrs` 在 80 位元算完之後 `fstpl` 存成 **double**，所以比例本身
+// 是 `float64`——這一步的捨入是原版就有的。
+func MeleeRatio(damage, soldiers int) float64 {
+	if soldiers <= 0 {
+		return 0
+	}
+	q := new(big.Float).SetPrec(64).Quo(x87(int64(damage)), x87(int64(soldiers)))
+	v, _ := q.Float64()
+	return v
+}
+
+// MeleeSurvivors 是一位將領在交戰之後剩下的兵：
+//
+//	max(0, ftol(兵 × (1 − 比例)) − 1)
+//
+// **那個 −1 是原版的**（`0x2a5c9` 的 `dec ax`）。
+func MeleeSurvivors(soldiers int, ratio float64) int {
+	f := new(big.Float).SetPrec(64).Sub(x87(1),
+		new(big.Float).SetPrec(64).SetFloat64(ratio))
+	f.Mul(f, x87(int64(soldiers)))
+	v, _ := f.Int64() // ftol 截尾
+	n := int(v) - 1
+	if n < 0 {
+		n = 0
+	}
+	return n
+}
+
+// thin 把傷亡比例逐將領套上去（`0x2a57d`–`0x2a603`）。
+//
+//	新兵 ＝ max(0, ftol(兵 × (1 − 比例)) − 1)
+//
+// **那個 −1 是原版的**（`0x2a5c9` 的 `dec ax`）：少了它，量到的四項裡
+// 三項會多 1。歸 0 的將領當場被俘、從部隊裡除名。
+//
+// 原版**從第 9 格往第 0 格走**，所以這裡也倒著走——同分時誰先被結算
+// 會影響被俘的順序。
+func (b *Battle) thin(u *Unit, ratio float64) {
+	for i := len(u.Leaders) - 1; i >= 0; i-- {
+		x := &u.Leaders[i]
+		if x.Dead || x.Captured || x.Soldiers <= 0 {
+			continue
+		}
+		n := MeleeSurvivors(x.Soldiers, ratio)
+		if n == 0 {
+			x.Captured = true
+			b.note("%s 兵盡被擒", x.Name)
+		}
+		x.Soldiers = n
+	}
+	if u.Soldiers() == 0 && !u.Wiped {
+		u.Wiped = true
+		b.note("%s 全滅", u.Name())
+	}
 }
 
 // apply 把一次殺傷落到部隊上，回傳實際的損失。
@@ -511,8 +638,10 @@ func (b *Battle) melee(a *Unit, d Dir, toTheDeath bool) error {
 		// **同時**：原版先把雙方的殺傷都算出來，再各自扣兵
 		// （`0x30618`／`0x306bb`）。先扣一邊再算另一邊的話，
 		// 先手會佔到不該有的便宜。
-		pa, pd := b.power(a), b.defence(t)
-		la, lb := b.apply(t, pa), b.apply(a, pd)
+		// 主戰場的交戰走 `0x2a224`（`docs/re/05` §3.6）。量到玩家的
+		// 「對戰」傳的模式是 8——落在 0..7 之外，被 `0x2a2c9` 夾成 1，
+		// 也就是倍率 100。
+		la, lb := b.exchange(a, t, MeleeStrike)
 		if !t.Alive() {
 			b.note("%s 擊潰 %s（斬 %d）", a.Name(), t.Name(), la)
 			break

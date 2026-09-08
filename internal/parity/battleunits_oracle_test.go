@@ -98,6 +98,43 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 		v := o.Word(oracle.Addr{Seg: work, Off: uint16(off)})
 		return int(v)
 	}
+	// ── 交戰的傷亡：鉤子要早早掛上 ─────────────────────────
+	//
+	// **交戰不必自己按 `2` 才會發生**：玩家那支一走到守軍旁邊，
+	// 電腦就會打過來。攔截點掛晚了那幾次就漏掉了——量到的一次是
+	// 第 8 天，等移動走完才掛就一次都沒收到。
+	//
+	// 每一次交戰結算（`0x2a224`）進去時把參與者、模式與雙方的兵、
+	// 綜合能力、所在地形讀下來。**參與者不用從差值反推**，
+	// `o.Arg` 直接讀得到五個參數（`docs/re/05` §3.6）。
+	type bout struct {
+		aArmy, aTeam, dArmy, dTeam, mode   int
+		aSol, aAbi, aTer, dSol, dAbi, dTer int
+	}
+	var bouts []bout
+	recOf := func(army, team int) int {
+		return battleUnitBase + (army*battleUnitPer+team)*battleUnitSize
+	}
+	terrainAt := func(col, row int) byte {
+		return byte(o.Word(oracle.Addr{
+			Seg: work, Off: uint16(0x163a + row*12 + col)})) & 0x0f
+	}
+	terrainOfUnit := func(rec int) int {
+		return int(terrainAt(w16(rec+unitCol), w16(rec+unitRow)))
+	}
+	o.OnCall(addr(0x2a224), func(o *oracle.Oracle) {
+		aa, at2 := int(o.Arg(0)), int(o.Arg(1))
+		da, dt := int(o.Arg(2)), int(o.Arg(3))
+		ra, rd := recOf(aa, at2), recOf(da, dt)
+		bouts = append(bouts, bout{
+			aArmy: aa, aTeam: at2, dArmy: da, dTeam: dt, mode: int(o.Arg(4)),
+			aSol: w16(ra + unitSoldiers), aAbi: w16(ra + unitAbility),
+			aTer: terrainOfUnit(ra),
+			dSol: w16(rd + unitSoldiers), dAbi: w16(rd + unitAbility),
+			dTer: terrainOfUnit(rd),
+		})
+	})
+
 	units, checked, bad := 0, 0, 0
 	var slots []unitSlot
 	for army := 0; army < battleArmies; army++ {
@@ -286,10 +323,6 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 	if me == nil {
 		t.Fatal("盤面上找不到主攻軍——玩家沒有部隊就走不了")
 	}
-	terrainAt := func(col, row int) byte {
-		return byte(o.Word(oracle.Addr{
-			Seg: work, Off: uint16(0x163a + row*12 + col)})) & 0x0f
-	}
 	o.Drain()
 	o.PressScan("1")
 	if err := o.Run(40_000_000); err != nil {
@@ -335,6 +368,74 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 	}
 	t.Logf("走了 %d 步；三欄加移動花費總共比了 %d 個，對不上 %d 個",
 		steps, checked, bad)
+
+	// ── 交戰的傷亡：比對上面收到的每一次 ────────────────────
+	board := func(tag string) {
+		var sb strings.Builder
+		for _, sl := range slots {
+			c := read(sl.rec)
+			fmt.Fprintf(&sb, "[%d-%d 格 %d,%d 兵 %d 移 %d] ",
+				sl.army, sl.team, c.col, c.row, c.sol, c.move)
+		}
+		t.Logf("%s：天數 %d｜%s", tag,
+			o.Word(oracle.Addr{Seg: work, Off: 0x2100}), sb.String())
+	}
+	board("離開移動模式之後")
+	if len(bouts) == 0 {
+		// 電腦沒打過來就自己按一次對戰。
+		o.Drain()
+		o.PressScan("2")
+		if err := o.Run(120_000_000); err != nil {
+			t.Fatalf("對戰停止：%v", err)
+		}
+		board("按了對戰之後")
+	}
+	if len(bouts) == 0 {
+		t.Fatal("一次交戰結算都沒跑——玩家那支大概沒和守軍相鄰")
+	}
+	// 第 i 次的結果就是第 i+1 次進去時的兵；最後一次拿收工的盤面比。
+	after := func(i, army, team int) int {
+		if i+1 < len(bouts) {
+			b := bouts[i+1]
+			if b.aArmy == army && b.aTeam == team {
+				return b.aSol
+			}
+			if b.dArmy == army && b.dTeam == team {
+				return b.dSol
+			}
+		}
+		return w16(recOf(army, team) + unitSoldiers)
+	}
+	for i, b := range bouts {
+		da := battle.MeleeDamage(battle.MeleeAttackValue(battle.TerrainOfCode(byte(b.aTer))),
+			b.aSol, b.aAbi, battle.StrikeMultiplier(b.mode), battle.MeleeAttackScale)
+		dd := battle.MeleeDamage(battle.MeleeDefendValue(battle.TerrainOfCode(byte(b.dTer))),
+			b.dSol, b.dAbi, 1, battle.MeleeDefendScale)
+		wantA := battle.MeleeSurvivors(b.aSol, battle.MeleeRatio(dd, b.aSol))
+		wantD := battle.MeleeSurvivors(b.dSol, battle.MeleeRatio(da, b.dSol))
+		gotA := after(i, b.aArmy, b.aTeam)
+		gotD := after(i, b.dArmy, b.dTeam)
+		for _, x := range []struct {
+			who        string
+			got, want  int
+		}{
+			{fmt.Sprintf("甲 %d-%d", b.aArmy, b.aTeam), gotA, wantA},
+			{fmt.Sprintf("乙 %d-%d", b.dArmy, b.dTeam), gotD, wantD},
+		} {
+			checked++
+			if x.got != x.want {
+				bad++
+				t.Errorf("交戰 %d（模式 %d）%s 的兵：原版 %d／remake %d",
+					i+1, b.mode, x.who, x.got, x.want)
+			}
+		}
+		t.Logf("交戰 %d：%d-%d（地形 %d 兵 %d 能力 %d）打 %d-%d"+
+			"（地形 %d 兵 %d 能力 %d）模式 %d｜殺傷 %d／%d → 兵 %d／%d",
+			i+1, b.aArmy, b.aTeam, b.aTer, b.aSol, b.aAbi,
+			b.dArmy, b.dTeam, b.dTer, b.dSol, b.dAbi, b.mode, da, dd, gotA, gotD)
+	}
+	t.Logf("打了 %d 次交戰；整支對拍總共比了 %d 個欄位，對不上 %d 個",
+		len(bouts), checked, bad)
 	dumpScreen(t, o, "battle-day7")
 }
 
