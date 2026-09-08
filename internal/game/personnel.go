@@ -385,7 +385,13 @@ func (g *State) installGovernor(prefectureID int, t *General, by state.FactionID
 			x.Status = state.StatusOfficer
 		}
 	}
-	t.Status = state.StatusGovernor
+	// **只把身分 3 升成 2**（`0xd715`：`新的身分 == 3 → 新的身分 = 2`）。
+	// 挑中的是軍師（身分 1）時原版不動他的身分——他成為主事者，但還是
+	// 軍師。無條件寫 `StatusGovernor` 會順手廢掉一位軍師，而畫面上只
+	// 看得到「這個勢力的軍師欄空了」。
+	if t.Status == state.StatusOfficer {
+		t.Status = state.StatusGovernor
+	}
 	return nil
 }
 

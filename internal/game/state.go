@@ -412,10 +412,13 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 				fa.Treasury[i] = n
 			}
 		}
-		for _, x := range sc.Retinue(f) {
-			if x.Status == state.StatusChief {
-				fa.Chief = x.Index
-			}
+		// **軍師讀諸侯 offset 6 的存值，不從人物表重推**（`0xd7ae` 讀的
+		// 就是那一格）。掃 `Retinue` 找身分 1 會漏掉**別的勢力的軍師**
+		// ——月度對拍量到勢力 4 的軍師槽指向徐庶，而徐庶是勢力 5 的人。
+		// 漏掉的後果是換軍師的門檻由「現任的智」掉回 79，於是每個月都
+		// 換一次人（`docs/re/07` §7 的同一個形狀：存值不重推）。
+		if c := sc.ChiefIndex(f); c >= 0 && c < len(g.generals) {
+			fa.Chief = c
 		}
 		g.factions = append(g.factions, fa)
 		if state.FactionID(f) == player {

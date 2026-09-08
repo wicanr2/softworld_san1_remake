@@ -1042,8 +1042,8 @@ func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture in
 // 謀略不得低於 80」。門檻在迴圈裡**不更新**，所以原版取的是清單順序中
 // 最後一位合格者，不是智力最高的那位。
 //
-// ⚠ **「最後一位」跟著清單順序走，而清單順序還沒解**（`L3`）。
-// 這裡取 remake 自己的守軍順序中的最後一位，形狀對、人選不保證相同。
+// 「最後一位」跟著清單順序走，而**清單順序就是行動者那一張表排完的
+// 順序**（`roster`）：`智 + 武 + 加權表[身分]` 由大到小。
 //
 // **君主不必在場**（`0xd7ae` 整支常式沒有這個檢查——它從州郡 offset 30
 // 取所屬，直接改諸侯 offset 6），**候選也不比對勢力**（走的是指定太守
@@ -1054,7 +1054,7 @@ func betterChief(g *game.State, id state.FactionID, prefecture int) *game.Genera
 		floor = int(cur.Intel)
 	}
 	var pick *game.General
-	for _, x := range g.Garrison(prefecture) {
+	for _, x := range roster(g, prefecture) {
 		if int(x.Intel) <= floor {
 			continue
 		}
@@ -1090,15 +1090,49 @@ func actor(g *game.State, id state.FactionID, prefecture int) *game.General {
 		if x.Faction != id {
 			continue
 		}
-		w := 0
-		if int(x.Status) < len(actorWeight) {
-			w = actorWeight[x.Status]
-		}
-		if k := int(x.Intel) + int(x.War) + w; k > bestKey {
+		if k := actorKey(x); k > bestKey {
 			best, bestKey = x, k
 		}
 	}
 	return best
+}
+
+// actorKey 是行動者那一張表的排序鍵：`智 + 武 + 加權表[身分]`。
+func actorKey(x *game.General) int {
+	w := 0
+	if int(x.Status) < len(actorWeight) {
+		w = actorWeight[x.Status]
+	}
+	return int(x.Intel) + int(x.War) + w
+}
+
+// roster 是分派器手上那一份名單（`es:[0x58c]`），**照原版的順序**。
+//
+// 建表的是 `buildRoster(郡, 模式 2)`：所在郡相同、身分 ≤ 3，**不比對
+// 勢力**（`docs/re/07` §6，28 次量過集合相等）。接著**行動者那一張表
+// （`0x54d4`）就地按 `智 + 武 + 加權表[身分]` 由大到小排**，後面的表
+// 看到的就是排完的順序——`0xd652`（指定太守）與 `0xd7ae`（指定軍師）
+// 都不自己建表。
+//
+// **順序會改變結果**：指定太守取「第一個最大魅力」（`0xf600` 的交換
+// 條件是嚴格大於，並列時排在前面的留下），指定軍師取「最後一位合格
+// 者」。加權讓身分 2（太守，1200）排在身分 3（武將，800）前面，所以
+// 魅力並列時現任太守本來就站在前面，原版因此常常什麼都不換——照槽號
+// 掃會在每個並列的郡都換一次人（月度對拍量到 5 個郡）。
+func roster(g *game.State, prefecture int) []*game.General {
+	out := append([]*game.General(nil), g.Garrison(prefecture)...)
+	// **交換排序**（`0xf170`，`L0`）：內層一比到更大的就**當場對調**，
+	// 不是記下最大值再換一次。位置 0 因此落在「第一個最大」上，而同鍵
+	// 的其餘元素會被交換打亂——換成穩定排序會有差（`docs/playtest/02`
+	// 量到 25 次裡有 3 次差在相鄰一對）。
+	for i := range out {
+		for j := i + 1; j < len(out); j++ {
+			if actorKey(out[j]) > actorKey(out[i]) {
+				out[i], out[j] = out[j], out[i]
+			}
+		}
+	}
+	return out
 }
 
 // mostCharming 是守軍裡魅力最高的一位。
@@ -1122,7 +1156,7 @@ func mostCharming(g *game.State, id state.FactionID, prefecture int) *game.Gener
 		return nil
 	}
 	var best *game.General
-	for _, x := range g.Garrison(prefecture) {
+	for _, x := range roster(g, prefecture) {
 		if best == nil || x.Charm > best.Charm {
 			best = x
 		}

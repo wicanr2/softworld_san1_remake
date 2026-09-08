@@ -84,6 +84,9 @@ func TestGovernorSortListShape(t *testing.T) {
 
 	calls, lordSeen, lordInList := 0, 0, 0
 	picks, badPick := 0, 0
+	orders, badOrder := 0, 0
+	// actorW 是行動者那一張表的加權（`0xf1d7` 的 `DS:0x5986`）。
+	actorW := [12]int{2000, 1600, 1200, 800, 2000, 1600, 1200, 800, 0, 0, 400, 0}
 	var preList []int
 	fit := map[string]int{}
 	var notes []string
@@ -152,6 +155,78 @@ func TestGovernorSortListShape(t *testing.T) {
 			}
 		}
 		fit[hit]++
+
+		// **順序也要對。** 指定太守取「第一個最大魅力」、指定軍師取
+		// 「最後一位合格者」，兩者都吃順序。假說：名單是行動者那一張
+		// （`0x54d4`）就地排完留下的，鍵是 `智 + 武 + 加權表[身分]`。
+		orders++
+		model := make([]int, 0, len(preList))
+		for i := 0; i < genCount; i++ {
+			if int(o.Byte(addr(rec(i)+19))) != p || o.Byte(addr(rec(i)+17)) > 3 {
+				continue
+			}
+			model = append(model, i)
+		}
+		key := func(i int) int {
+			w := 0
+			if r := int(o.Byte(addr(rec(i) + 17))); r < len(actorW) {
+				w = actorW[r]
+			}
+			return int(o.Byte(addr(rec(i)+9))) + int(o.Byte(addr(rec(i)+10))) + w
+		}
+		// `0xf170` 是**交換排序**：內層一比到更大的就當場對調。
+		for i := range model {
+			for j := i + 1; j < len(model); j++ {
+				if key(model[j]) > key(model[i]) {
+					model[i], model[j] = model[j], model[i]
+				}
+			}
+		}
+		same := len(model) == len(preList)
+		for i := range model {
+			if same && model[i] != preList[i] {
+				same = false
+			}
+		}
+		if !same {
+			if badOrder < 4 {
+				t.Logf("郡 %d：原版順序 %v，行動者鍵排出來 %v", p, preList, model)
+			}
+			badOrder++
+		}
+	})
+
+	// 指定軍師（`0xd7ae`）：入口記下郡、所屬、舊軍師與門檻，
+	// `0xd8ab` 記下真的寫進諸侯 offset 6 的值。
+	chiefCalls, chiefChanged := 0, 0
+	curOld, curOwner := -1, 0
+	o.OnCall(addr(0x0d7ae), func(o *oracle.Oracle) {
+		if !resolved {
+			return
+		}
+		chiefCalls++
+		pref := int(int16(o.Word(addr(g.pref))))
+		owner := o.Byte(addr(staBase + uint32(pref*176+30)))
+		curOwner = int(owner)
+		curOld = int(int16(o.Word(addr(base + uint32(int(owner)*72+6)))))
+		floor := 79
+		if curOld >= 0 && curOld < genCount {
+			floor = int(o.Byte(addr(rec(curOld) + 9)))
+		}
+		if chiefCalls <= 6 {
+			t.Logf("指定軍師：郡 %d 所屬 %d 舊軍師 %d 門檻 %d",
+				pref, owner, curOld, floor)
+		}
+	})
+	// **寫完之後再讀那一格。** `0xd8ab` 寫的值在 AX 裡，堆疊上沒有；
+	// 下一條指令（`0xd8b0`）之前諸侯 offset 6 已經是新值了。
+	o.OnCall(addr(0x0d8b0), func(o *oracle.Oracle) {
+		if !resolved {
+			return
+		}
+		if now := int(int16(o.Word(addr(base + uint32(curOwner*72+6))))); now != curOld {
+			chiefChanged++
+		}
 	})
 
 	// 排序之後 `list[0]` 就是新太守（`0xd6e7` 讀的就是它）。判準：
@@ -197,6 +272,8 @@ func TestGovernorSortListShape(t *testing.T) {
 	t.Logf("君主在郡裡而且不是主事者：%d 次，其中 %d 次他在名單裡",
 		lordSeen, lordInList)
 	t.Logf("排序之後的排頭核對 %d 次，%d 次對不上", picks, badPick)
+	t.Logf("名單順序核對 %d 次，%d 次與「行動者鍵」排出來的不同", orders, badOrder)
+	t.Logf("指定軍師走到 %d 次，其中 %d 次真的換人", chiefCalls, chiefChanged)
 	for _, s := range notes {
 		t.Log(s)
 	}

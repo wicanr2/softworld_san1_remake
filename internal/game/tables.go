@@ -58,6 +58,10 @@ const (
 // 讀檔會拿回開局那位——而且那個人已經不在了。
 const masLord = 2
 
+// masChief 是諸侯表裡軍師的人物槽號（uint16，`0xFFFF` ＝ 沒有）。
+// 「指定軍師」讀它當換人的門檻（`docs/mechanics/70-ai` §2.7）。
+const masChief = 6
+
 const (
 	staRecord = 176
 	genRecord = 30
@@ -83,6 +87,13 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 			continue
 		}
 		put16(mas[int(f.ID)*masRecord+masLord:], f.Lord)
+		// 軍師（offset 6）。**不寫的話換軍師存不下來**——`f.Chief` 改了，
+		// 存檔還是舊的那一位，讀回來門檻又變回他的智。
+		chief := state.NoValue16
+		if f.Chief >= 0 {
+			chief = f.Chief
+		}
+		put16(mas[int(f.ID)*masRecord+masChief:], chief)
 	}
 
 	for i := range g.prefectures {
