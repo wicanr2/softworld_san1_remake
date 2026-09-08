@@ -808,10 +808,15 @@ func conscript(g *game.State, prefecture, budget int) []game.Order {
 // 等級 4、5 門檻回到 80，但每一分錢換到的忠誠多（除數 9 與 7）。
 func relief(g *game.State, prefecture int, id state.FactionID, budget int) (game.ReliefOrder, bool) {
 	p := g.Prefecture(prefecture)
-	if p == nil || budget <= 0 {
+	if p == nil {
 		return game.ReliefOrder{}, false
 	}
+	// **先擲再看預算。** 原版這一次無條件抽（月度對拍量到每郡一次，
+	// 32／32），預算是不是 0 是後面才判的。
 	bar := game.ReliefThreshold(g.AILevel(id)) + g.Roll(20, int(id), prefecture, tableRelief)
+	if budget <= 0 {
+		return game.ReliefOrder{}, false
+	}
 	if int(p.PublicLoyalty) >= bar {
 		return game.ReliefOrder{}, false
 	}
@@ -835,14 +840,18 @@ func relief(g *game.State, prefecture int, id state.FactionID, budget int) (game
 // 這一支不經過折扣常式 `0xec24`，所以電腦諸侯買米沒有折扣。
 func buyRice(g *game.State, prefecture int, id state.FactionID, purse int) (game.BuyRiceOrder, bool) {
 	p := g.Prefecture(prefecture)
-	if p == nil || purse <= 0 {
+	if p == nil {
 		return game.BuyRiceOrder{}, false
 	}
 	troops := 0
 	for _, x := range g.Garrison(prefecture) {
 		troops += x.Soldiers
 	}
+	// **先擲再看錢。** 同賑民：原版每郡都抽一次（32／32）。
 	want := troops / 100 * (g.Roll(10, int(id), prefecture, tableRice) + 12)
+	if purse <= 0 {
+		return game.BuyRiceOrder{}, false
+	}
 	if want > game.MaxRice {
 		want = game.MaxRice
 	}
