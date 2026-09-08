@@ -40,6 +40,7 @@ const (
 	unitLeaders  = 28 // 將領人數
 	unitSoldiers = 30 // 兵士數
 	unitAbility  = 32 // 綜合能力
+	unitTrapped  = 26 // 中陷阱之後不能動的天數（`0x2b648`）
 	unitCap      = 34 // 這支部隊一天的移動力上限（`0x271d7` 寫）
 	unitMove     = 36 // 這一天剩下的移動力
 )
@@ -78,6 +79,10 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 	// **紮寨要幾個鍵不固定**，用這個當判準比數按鍵可靠。
 	cmdReads := 0
 	o.OnCall(addr(0x27a68), func(o *oracle.Oracle) { cmdReads++ })
+	// `0x28af5` 是計謀選單讀完鍵回來的那一刻——**攔回來的位址**才是
+	// 確定的指令邊界（`docs/re/05` §7.0 的那個坑）。
+	plotMenu := 0
+	o.OnCall(addr(0x28af5), func(o *oracle.Oracle) { plotMenu++ })
 
 	driveIntoBattle(t, o, at, to)
 	if dgroup == 0 {
@@ -436,6 +441,72 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 	}
 	t.Logf("打了 %d 次交戰；整支對拍總共比了 %d 個欄位，對不上 %d 個",
 		len(bouts), checked, bad)
+
+	// ── 計謀 ─────────────────────────────────────────────────
+	//
+	// 命令 `6` 進計謀選單（`DS:0x8113`：`1.火攻 2.水渰 3.陷阱 4.誘敵
+	// 5.燒糧 6.圍攻`），選單讀一個 ASCII（`0x28af5`），`鍵 − '1'` 落在
+	// 0–5 之外就取消。接著 `0x28d7a` 用 `DS:0x7c82` 的位移表算目標格
+	// ——**那一格沒有敵人就直接回 −1**，所以要先走到守軍旁邊。
+	//
+	// 這裡要問的是「這六支在實跑裡走得到嗎」，不是它們的亂數結果。
+	// 判準是**費用有沒有照 `DS:0x7f62` 扣**（陷阱 100 金）與
+	// 陷阱的天數落在 1..5（`0x2b648`：`RND(5) + 1`）。
+	armyRec := func(army int) int { return 0x175e + army*22 }
+	goldBefore := w16(armyRec(2) + 6)
+	// **要分得出 `6` 是被誰吃掉的。** 命令提示讀走一個鍵時 `0x27a68`
+	// 會跑一次；沒跑就代表這一鍵落到別的提示上，那時再送選項會被
+	// 計謀選單當成選擇（第一版就是這樣選到圍攻的）。
+	chose := false
+	for try := 1; try <= 4 && !chose; try++ {
+		was := cmdReads
+		o.Drain()
+		o.PressScan("6")
+		if err := o.Run(80_000_000); err != nil {
+			t.Fatalf("送計謀第 %d 次停止：%v", try, err)
+		}
+		if cmdReads == was {
+			continue // 這一鍵不是命令提示收的，再試
+		}
+		// **計謀先問方向再問哪一計。** `0x28d7a` 把那個鍵當方向索引，
+		// 查 `DS:0x7c6a`（欄位移）與 `DS:0x7c82`（列位移）——兩張各
+		// 12 格，`(欄 % 2) × 6 + 方向`——算出目標格；**那一格沒有敵人
+		// 就直接回 −1**。玩家那支在 (6,4)、守軍 0-2 在 (6,3)，
+		// 所以方向是 `5`（往上，索引 4：欄位移 0、列位移 −1）。
+		for _, k := range []string{"5", "3"} {
+			o.Drain()
+			o.PressScan(k)
+			if err := o.Run(80_000_000); err != nil {
+				t.Fatalf("送計謀的 %q 停止：%v", k, err)
+			}
+		}
+		chose = true
+	}
+	if !chose {
+		t.Fatal("送了四次 `6` 都不是命令提示收的——玩家那支這時沒輪到")
+	}
+	goldAfter := w16(armyRec(2) + 6)
+	t.Logf("計謀：選單進去 %d 次；主攻軍的金 %d → %d（陷阱的費用是 %d）",
+		plotMenu, goldBefore, goldAfter, battle.Trap.Cost())
+	trapped := 0
+	for _, sl := range slots {
+		if d := w16(sl.rec + unitTrapped); d > 0 {
+			trapped++
+			checked++
+			// **智 98 起跳會加碼**（`0x2b648`：再加 `RND(5) + 2`），
+			// 而 stageABattle 把玩家的智墊到 99，所以上限是 11 不是 5。
+			hi := battle.TrapDays(99, battle.TrapSpread-1, battle.TrapSpread-1)
+			if d < 1 || d > hi {
+				bad++
+				t.Errorf("%d-%d 中陷阱 %d 天，原版的範圍是 1..%d", sl.army, sl.team, d, hi)
+			}
+			t.Logf("%d-%d 中陷阱 %d 天", sl.army, sl.team, d)
+		}
+	}
+	if trapped == 0 && goldBefore == goldAfter {
+		t.Log("陷阱沒放成（費用沒扣、也沒有人中招）——四道門有一道擋下來了")
+	}
+	t.Logf("整支對拍最後：比了 %d 個欄位，對不上 %d 個", checked, bad)
 	dumpScreen(t, o, "battle-day7")
 }
 

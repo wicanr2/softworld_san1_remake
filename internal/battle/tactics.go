@@ -380,6 +380,14 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	if b.Gold[u.Side] < s.Cost() {
 		return fmt.Errorf("battle: %s 要 %d 金，隨軍只有 %d", s, s.Cost(), b.Gold[u.Side])
 	}
+	// **目標只能是相鄰的六格**（`L0`）：原版下計謀時**先問方向**
+	// （`0x28af5` 讀 `1`–`6`），`0x28d7a` 拿那個索引查
+	// `DS:0x7c6a`（欄位移）與 `DS:0x7c82`（列位移）算出目標格
+	// ——兩張各 12 格，`(欄 % 2) × 6 + 方向`——那一格沒有敵人就直接
+	// 取消。所以計謀根本沒有「隔空指定一格」這回事。
+	if Distance(u.At, target) != 1 {
+		return fmt.Errorf("battle: 計謀只能對相鄰的格子用")
+	}
 	t := b.UnitAt(target)
 	if t == nil {
 		return fmt.Errorf("battle: 那裡沒有部隊")

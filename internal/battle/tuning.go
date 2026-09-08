@@ -43,7 +43,9 @@ const (
 	// 叫陣一定被拒，整條單挑就永遠打不起來。
 	TuneDuelWarEdge = 3
 
-	// TuneStratagemRange 是自動作戰考慮用計的距離上限（格）。
+	// TuneStratagemRange 退役了：計謀的射程是 1，而且那是**規則**不是
+	// 自動作戰的取捨——原版下計謀先問方向，目標一定是六個鄰格之一
+	//（`0x28d7a`）。常數留著讓 `docs/design/02` 的替換表讀得下去。
 	TuneStratagemRange = 3
 )
 

@@ -247,6 +247,10 @@ func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
 		}
 		put16(r, 22, 3000)
 		r[24], r[25] = 80, 80
+		// **智也要墊高**：計謀的門檻表 `DS:0x7f6e` 最低 60（陷阱、誘敵）、
+		// 最高 80（火攻），領隊的智不夠的話那六支一律被擋在第二道門，
+		// 實跑就走不到計謀（`docs/re/05` §4）。
+		r[9] = 99
 		mine++
 	}
 	put16(sta[at*176:], 16, mine*30)

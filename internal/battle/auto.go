@@ -26,6 +26,21 @@ func (b *Battle) AutoTurn(u *Unit) {
 			return
 		}
 	}
+	// 用計：把付得起的一個一個試過去。
+	//
+	// ⚠ **不能只試第一個。** 六種計謀各有天氣與地形限制，只試最貴的
+	// 那一種，就會變成「刮風天才用得出計，其餘時候一招都不用」。
+	//
+	// **排在近戰前面是 remake 的取捨**（自動作戰那一層本來就是，
+	// `docs/design/03` §6）：計謀與近戰的目標都只能是相鄰的格子
+	//（`UseStratagem`），排在後面的話「貼身就開打」會把它整個蓋掉
+	// ——量到過，一整批戰役六種計謀一次都沒用出來。
+	// 計謀花錢、有門檻，而且不會挨反擊，付得起就先用。
+	for _, c := range b.stratagemOptions(u) {
+		if err := b.UseStratagem(u, c.what, c.at); err == nil {
+			return
+		}
+	}
 	// 貼身的敵人：直接開打。
 	for _, d := range Dirs() {
 		t := b.UnitAt(u.At.Step(d))
@@ -55,15 +70,6 @@ func (b *Battle) AutoTurn(u *Unit) {
 		}
 		_ = b.QuickBattle(u, d)
 		return
-	}
-	// 用計：把付得起的一個一個試過去。
-	//
-	// ⚠ **不能只試第一個。** 六種計謀各有天氣與地形限制，只試最貴的
-	// 那一種，就會變成「刮風天才用得出計，其餘時候一招都不用」。
-	for _, c := range b.stratagemOptions(u) {
-		if err := b.UseStratagem(u, c.what, c.at); err == nil {
-			return
-		}
 	}
 	// 射箭。
 	for _, t := range b.enemies(u) {
@@ -167,9 +173,12 @@ func (b *Battle) stratagemOptions(u *Unit) []scheme {
 	if wise == nil {
 		return nil
 	}
+	// **計謀只能對相鄰的格子用**（`L0`）：原版下計謀先問方向，
+	// 目標一定是六個鄰格之一（`UseStratagem` 的註解）。這不是自動作戰
+	// 的取捨，是規則。
 	var near []*Unit
 	for _, t := range b.enemies(u) {
-		if Distance(u.At, t.At) <= TuneStratagemRange {
+		if Distance(u.At, t.At) == 1 {
 			near = append(near, t)
 		}
 	}
