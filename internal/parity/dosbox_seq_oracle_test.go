@@ -86,6 +86,8 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 	// 道指令」把腳本裡的秒數換成指令上限——寧可給多不要給少，
 	// **給少了畫面會停在動畫中間，看起來像 dosgolem 少做了什麼**。
 	const stepsPerSec = 30_000_000
+	// menuStep 是第一個「按選單」的步驟（前面都是開場動畫）。
+	const menuStep = 7
 	// idleSteps 是「畫面連續多久沒變」才算停下來。取約 0.7 秒。
 	const idleSteps = 20_000_000
 	waits := loadWaits(filepath.Join(filepath.Dir(dir), "keys.txt"))
@@ -98,6 +100,17 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 
 	var worst, worstAt, stableN int
 	var reported int
+	// **開場不能用時間對齊。** 它是計時動畫，兩邊的時鐘不同，
+	// 照秒數換算走到第十步就在不同畫面上——實測 dosgolem 停在
+	// 「建安二年」的密碼畫面，而原版在「中平六年」的主畫面。
+	//
+	// 路標改成程式行為：**主選單自己裝 `int 09h` 處理常式**
+	//（`docs/re/02` §2），向量的段值一變就表示它上來了。
+	stub := o.Word(oracle.Addr{Seg: 0, Off: 0x09*4 + 2})
+	menuUp := oracle.NewCond("主選單裝好自己的 int 09h", func(o *oracle.Oracle) bool {
+		return o.Word(oracle.Addr{Seg: 0, Off: 0x09*4 + 2}) != stub
+	})
+
 	for n, s := range steps {
 		// **裝置三題走 int 21h，其餘走硬體掃描碼**（`docs/re/02` §3）。
 		//
@@ -126,7 +139,14 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		// **先跑滿預算，再等靜止。** 只等靜止是不夠的：開場是好幾段動畫
 		// 接起來的，第一次停格就回來的話，下一個鍵會送在還沒走完的畫面上
 		// ——之後每一步都對不上，而每一步看起來都「靜止」。
-		if err := o.Run(budget); err != nil {
+		if n == menuStep-1 {
+			// 走到主選單為止，不管花多少指令。
+			if err := o.RunUntil(menuUp, oracle.Budget(20*stepsPerSec)); err != nil {
+				t.Fatalf("等主選單時停止：%v", err)
+			}
+			t.Logf("主選單在第 %d 道指令上來（int 09h 段 %04X → %04X）",
+				o.Steps(), stub, o.Word(oracle.Addr{Seg: 0, Off: 0x09*4 + 2}))
+		} else if err := o.Run(budget); err != nil {
 			t.Fatalf("第 %d 步（%s）停止：%v", n+1, s.keys, err)
 		}
 		err := o.RunUntil(oracle.ScreenIdle(idleSteps), oracle.Budget(4*idleSteps))
