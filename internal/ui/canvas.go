@@ -134,14 +134,29 @@ func (c *Canvas) drawRunePx(px, py int, r rune, fg color.RGBA) {
 // （`assets.MenuLabelScaleX`）。**只放寬不放高**——高度跟著放大就變成
 // 32 列，牌子的內框裝不下四個字。
 func (c *Canvas) DrawRuneWidePx(px, py int, r rune, fg color.RGBA, sx int) int {
+	return c.DrawRuneScaledPx(px, py, r, fg, sx, 1)
+}
+
+// DrawRuneScaledPx 從像素座標畫一個放大的字，回傳畫掉的寬度。
+//
+// 主畫面的郡名是 32×32（`sx=2, sy=2`），面板上的編號是雙倍寬
+// （`sx=2, sy=1`）——原版兩種都用。
+func (c *Canvas) DrawRuneScaledPx(px, py int, r rune, fg color.RGBA, sx, sy int) int {
 	if sx < 1 {
 		sx = 1
 	}
-	c.drawRuneWidePx(px, py, r, fg, sx)
+	if sy < 1 {
+		sy = 1
+	}
+	c.drawRuneScaledPx(px, py, r, fg, sx, sy)
 	return cells.RuneWidth(r) * CellW * sx
 }
 
 func (c *Canvas) drawRuneWidePx(px, py int, r rune, fg color.RGBA, sx int) {
+	c.drawRuneScaledPx(px, py, r, fg, sx, 1)
+}
+
+func (c *Canvas) drawRuneScaledPx(px, py int, r rune, fg color.RGBA, sx, sy int) {
 	g, ok := c.face.Glyph(r)
 	if !ok {
 		c.Missing[r]++
@@ -155,20 +170,22 @@ func (c *Canvas) drawRuneWidePx(px, py int, r rune, fg color.RGBA, sx int) {
 		off = 0
 	}
 	for gy := 0; gy < g.H; gy++ {
-		yy := py + gy + off
-		if yy < 0 || yy >= c.Img.Bounds().Dy() {
-			continue
-		}
-		for gx := 0; gx < g.W; gx++ {
-			if !g.At(gx, gy) {
+		for ky := 0; ky < sy; ky++ {
+			yy := py + (gy+off)*sy + ky
+			if yy < 0 || yy >= c.Img.Bounds().Dy() {
 				continue
 			}
-			for k := 0; k < sx; k++ {
-				xx := px + gx*sx + k
-				if xx < 0 || xx >= c.Img.Bounds().Dx() {
+			for gx := 0; gx < g.W; gx++ {
+				if !g.At(gx, gy) {
 					continue
 				}
-				c.Img.SetRGBA(xx, yy, fg)
+				for kx := 0; kx < sx; kx++ {
+					xx := px + gx*sx + kx
+					if xx < 0 || xx >= c.Img.Bounds().Dx() {
+						continue
+					}
+					c.Img.SetRGBA(xx, yy, fg)
+				}
 			}
 		}
 	}

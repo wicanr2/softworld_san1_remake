@@ -36,6 +36,13 @@ type ArtScreen struct {
 	// fills 是州郡的填色圖樣（`EGAFILL.PAL`）；沒有原版的 `DATA1` 就是
 	// nil，那時退回 `artFactionColour`。
 	fills *[16]assets.FillPattern
+
+	// panels 是右側兩塊面板的外框拼件（`SIDEB`／`SIDED`），frame 是
+	// 肖像框（`FBRD` 四塊）。havePanel 為假時兩者都不畫——沒有 `DATA1`
+	// 的人看到的仍是底圖，不是一塊空白。
+	panels    [2]assets.SideFrame
+	frame     [4]*assets.Image
+	havePanel bool
 }
 
 // NewArtScreen 拼出主畫面的底圖，順便留著容器好取肖像。
@@ -51,6 +58,19 @@ func NewArtScreen(data3, data1 *assets.Container) (*ArtScreen, error) {
 	if data1 != nil {
 		if f, err := assets.FillPatterns(data1); err == nil {
 			a.fills = &f
+		}
+		ok := true
+		for i, p := range assets.MainPanels() {
+			f, err := assets.LoadSideFrame(data1, p.Letter)
+			if err != nil {
+				ok = false
+				break
+			}
+			a.panels[i] = f
+		}
+		if fr, err := assets.PortraitFrame(data1, 'D'); err == nil && ok {
+			a.frame = fr
+			a.havePanel = true
 		}
 	}
 	return a, nil
@@ -68,24 +88,66 @@ func (a *ArtScreen) Portrait(n int) *assets.Image {
 	}
 	return im
 }
-
-// 原版畫面上的幾個位置（像素），量自 `workplace/shots/orig-main.png`。
+// 原版畫面上的位置（像素），量自 `workplace/shots/orig-main.png`
+// （`docs/spec/005` §6.2）。**版面是按像素排的不是按格**，
+// 而且幾列之間留了空行，所以每一列的 y 都是逐列量的不是等距算的。
 const (
 	artPanelX = 408 // 右面板左緣
 	artPanelW = 224
-	artMapX   = 72  // 地圖區左緣（左邊那 72 像素是花邊直條）
-	artMsgY   = 302 // 底部訊息列
+	artMapX   = 72 // 地圖區左緣（左邊那 72 像素是花邊直條）
 
-	// artPortraitX／Y 是肖像的位置。**量出來的**：拿原版的主畫面截圖
-	// 與 256 張 `F###.FAC` 逐一比對，`F228.FAC` 在 (536,116) 逐像素
-	// 100% 相符（`cmd/san1imgcheck`）。
+	// 郡名是 32×32 的雙倍字；州名與編號疊在它右邊，君主與人望再右邊。
+	artNameX = 424
+	artNameY = 52
+	artProvX = 488
+	artProvY = 52
+	artIDY   = 68
+	artLordX = 536
+	artLordY = 52
+	artFameY = 68
+
+	// 面板上的資料排成**兩欄**：左欄標籤從 424 起、數值靠右對齊到 520；
+	// 右欄從 536 起、數值靠右對齊到 616。
+	artAutoX  = 432
+	artAutoY  = 100
+	artFieldX = 424
+	artValueR = 520
+	artRightX = 536
+	artRightR = 616
+
+	// artPortraitX／Y 是肖像，artFrameX／Y 是它的框（`FBRD`，四塊）。
+	// **量出來的**：`F228.FAC` 在 (536,116) 逐像素 100% 相符
+	// （`cmd/san1imgcheck`），四塊框各自也 100%。
 	artPortraitX = 536
 	artPortraitY = 116
+	artFrameX    = 528
+	artFrameY    = 108
+
+	// 下面板兩行提示。
+	artMsgX  = 424
+	artMsgY  = 300
+	artMsgDY = 16
 
 	// artDateCol 是左側直條上年月的位置（原版直排在那裡）。
 	artDateCol = 1
 	artDateRow = 4
 )
+
+// 面板上的字色，量自原版畫面。**每一格不同，是量的不是挑的**：
+// 郡名黃、州名與編號洋紅、君主白、人望黃、金米黃、欄位淺青、
+// 主事者姓名淺綠、在野武將白。
+var (
+	artInkName  = color.RGBA{0xFF, 0xFF, 0x55, 0xFF} // 14
+	artInkProv  = color.RGBA{0xFF, 0x55, 0xFF, 0xFF} // 13
+	artInkLord  = color.RGBA{0xFF, 0xFF, 0xFF, 0xFF} // 15
+	artInkFame  = color.RGBA{0xFF, 0xFF, 0x55, 0xFF} // 14
+	artInkAuto  = color.RGBA{0xFF, 0xFF, 0xFF, 0xFF} // 15
+	artInkField = color.RGBA{0x55, 0xFF, 0xFF, 0xFF} // 11
+	artInkGold  = color.RGBA{0xFF, 0xFF, 0x55, 0xFF} // 14
+	artInkGov   = color.RGBA{0x55, 0xFF, 0x55, 0xFF} // 10
+	artInkMsg   = color.RGBA{0xFF, 0xFF, 0x55, 0xFF} // 14
+)
+
 
 // artFactionColour 是**沒有原版素材時**的退路：一組看得出區別的色號。
 //
@@ -132,76 +194,107 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	}
 
 	im := a.Compose(g, sel)
-	// 主事者的肖像疊在底圖上，位置與原版相同。
+	// 右側兩塊面板：先拼外框與底色，再把肖像與它的框疊上去。
+	//
+	// **底圖的 `MAINMAPB`／`MAINMAPC` 會被整片蓋掉**——那兩張是黃色與
+	// 灰色的雜訊底，原版畫主畫面時同樣覆蓋掉它們。
+	if a.havePanel {
+		for i, pn := range assets.MainPanels() {
+			im.DrawPanel(pn, a.panels[i])
+		}
+	}
 	if who := g.Governor(sel); who != nil {
 		if face := a.Portrait(int(who.Portrait)); face != nil {
 			im.Blit(face, artPortraitX, artPortraitY)
 		}
 	}
+	if a.havePanel {
+		im.Blit(a.frame[0], artFrameX, artFrameY)       // 上
+		im.Blit(a.frame[1], artFrameX, artFrameY+88)    // 下
+		im.Blit(a.frame[2], artFrameX, artPortraitY)    // 左
+		im.Blit(a.frame[3], artFrameX+72, artPortraitY) // 右
+	}
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{}, draw.Src)
 
-	col := artPanelX / CellW // 右面板從第 51 格開始
-	row := 3
-	ink := color.RGBA{0x00, 0x00, 0x00, 0xFF} // 面板底色是亮的，字用黑
-
 	// 年月直排在左側直條上，與原版一樣。
 	for i, r := range []rune(g.Date.Format(v.Calendar)) {
-		c.DrawText(artDateCol, artDateRow+i, string(r), ink)
+		c.DrawText(artDateCol, artDateRow+i, string(r),
+			color.RGBA{0x00, 0x00, 0x00, 0xFF})
 	}
-	// 第一列照原版：郡名、州名、編號。
-	c.DrawText(col, row, p.Name, ink)
-	c.DrawText(col+5, row, state.ProvinceName(int(p.Province)),
-		color.RGBA{0xAA, 0x00, 0x00, 0xFF})
-	c.DrawText(col+10, row, fmt.Sprintf("%2d", p.ID), ink)
-	row++
+
+	// 第一列：郡名是 32×32 的雙倍字，州名與編號在它右邊。
+	x := artNameX
+	for _, r := range p.Name {
+		x += c.DrawRuneScaledPx(x, artNameY, r, artInkName, 2, 2)
+	}
+	c.DrawTextPx(artProvX, artProvY,
+		state.ProvinceName(int(p.Province)), artInkProv)
+	x = artProvX
+	for _, r := range fmt.Sprintf("%2d", p.ID) {
+		x += c.DrawRuneScaledPx(x, artIDY, r, artInkProv, 2, 1)
+	}
+
 	if lord := g.Lord(p.Owner); lord != nil {
-		c.DrawText(col, row, "君主 "+lord.Name, ink)
+		c.DrawTextPx(artLordX, artLordY, "君主"+lord.Name, artInkLord)
 		if f := g.Faction(p.Owner); f != nil {
-			c.DrawText(col+13, row, fmt.Sprintf("人望%3d", f.Prestige), ink)
+			c.DrawTextPx(artLordX, artFameY,
+				fmt.Sprintf("人望：%3d", f.Prestige), artInkFame)
 		}
 	} else {
-		c.DrawText(col, row, "無　主", ink)
+		c.DrawTextPx(artLordX, artLordY, "無　主", artInkLord)
 	}
-	row++
-	c.DrawText(col+2, row, game.AutonomyName(p.Autonomy), ink)
-	row++
-	for _, line := range []string{
-		fmt.Sprintf("土地價值 %3d", p.LandValue),
-		fmt.Sprintf("洪水率   %3d", p.FloodRate),
-		fmt.Sprintf("物價     %3d", p.PriceLevel),
-		fmt.Sprintf("民眾忠誠 %3d", p.PublicLoyalty),
-		fmt.Sprintf("人口   %5d", p.Population),
-		"",
-		fmt.Sprintf("金     %5d", p.Gold),
-		fmt.Sprintf("米     %5d", p.Rice),
+	c.DrawTextPx(artAutoX, artAutoY, game.AutonomyName(p.Autonomy), artInkAuto)
+
+	// 欄位表：標籤靠左、數值靠右對齊。
+	//
+	// **原版的數值是靠右不是靠標籤排的**：位數變了整欄還是對齊，
+	// 用空白填出來的版面只有在位數剛好時才一樣。
+	num := func(v int) string { return fmt.Sprintf("%d", v) }
+	right := func(rx, ry int, s string, fg color.RGBA) {
+		c.DrawTextPx(rx-len([]rune(s))*CellW, ry, s, fg)
+	}
+	for _, f := range []struct {
+		y     int
+		label string
+		value string
+		fg    color.RGBA
+	}{
+		{116, "土地價值", num(int(p.LandValue)), artInkField},
+		{132, "洪水率", num(int(p.FloodRate)), artInkField},
+		{148, "物價", num(int(p.PriceLevel)), artInkField},
+		{164, "民眾忠誠", num(int(p.PublicLoyalty)), artInkField},
+		{180, "人口", num(int(p.Population)), artInkField},
+		{212, "金", num(int(p.Gold)), artInkGold},
+		{228, "米", num(int(p.Rice)), artInkGold},
+		{260, "在野武將", num(g.FreeGenerals(p.ID)), artInkAuto},
 	} {
-		c.DrawText(col, row, line, ink)
-		row++
+		c.DrawTextPx(artFieldX, f.y, f.label, f.fg)
+		right(artValueR, f.y, f.value, f.fg)
 	}
-	row++
-	c.DrawText(col, row, fmt.Sprintf("現役武將 %2d", len(g.Garrison(p.ID))), ink)
-	row++
-	c.DrawText(col, row, fmt.Sprintf("兵士   %5d", g.Soldiers(p.ID)), ink)
-
-	// 主事者的姓名寫在肖像下面。
+	// 右欄：主事者姓名（32×32 的雙倍字）、現役將、兵士。
 	if who := g.Governor(sel); who != nil {
-		c.DrawText(artPortraitX/CellW, (artPortraitY+80)/CellH+1, who.Name, ink)
+		gx := artRightX
+		for _, r := range who.Name {
+			gx += c.DrawRuneScaledPx(gx, 212, r, artInkGov, 2, 2)
+		}
 	}
+	c.DrawTextPx(artRightX, 244, "現役將", artInkField)
+	right(artRightR, 244, num(len(g.Garrison(p.ID))), artInkField)
+	c.DrawTextPx(artRightX, 260, "兵士", artInkField)
+	right(artRightR, 260, num(g.Soldiers(p.ID)), artInkField)
 
-	// 底部訊息列：原版在地圖區底下壓一條，字用亮色。
+	// 下面板兩行提示。**它有自己的底色與外框**，不是壓在地圖上的一條。
 	msg := v.Prompt
 	if msg == "" && len(log) > 0 {
 		msg = log[len(log)-1]
 	}
 	if msg != "" {
-		c.FillRect(artMapX, artMsgY, artPanelX-8, assets.ScreenH-4,
-			color.RGBA{0x00, 0x00, 0xAA, 0xFF})
-		c.DrawText(artMapX/CellW+1, (artMsgY+6)/CellH,
-			cells.Truncate(msg, (artPanelX-artMapX)/CellW-3),
-			color.RGBA{0xFF, 0xFF, 0x55, 0xFF})
+		w := (artRightR - artMsgX) / CellW
+		c.DrawTextPx(artMsgX, artMsgY, cells.Truncate(msg, w), artInkMsg)
 	}
 }
+
 
 // TitleScreen 是主選單畫面（原版開機後的那一張）。
 //

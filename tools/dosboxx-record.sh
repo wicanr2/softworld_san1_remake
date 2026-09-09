@@ -19,6 +19,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KEYS="${1:?要給一個按鍵腳本}"
 OUT="${2:-$ROOT/workplace/rec}"
+case "$OUT" in /*) ;; *) OUT="$PWD/$OUT" ;; esac
 IMAGE="${SAN1_DOSBOX_IMAGE:-civ1-dosboxx-input:20260830}"
 GAME="${SAN1_DOSBOX_GAME:-$ROOT/org_game/三國演義}"
 FPS="${SAN1_REC_FPS:-4}"
@@ -60,23 +61,26 @@ WIN=$(xdotool search --name 'DOSBox-X' | tail -1)
 # 而畫面照樣在動，看起來像遊戲卡住。
 xdotool windowfocus --sync "$WIN"
 sleep 1
+FPSV=${FPS:-4}
+
+# **用 x11grab 連續錄，不要逐格 import。**
+# 一格 import ＋ convert 要 0.4 秒，按鍵腳本裡的「秒」會變成假的
+# ——等 60 秒實際等了 144 秒，時序全部對不上。
+ffmpeg -f x11grab -framerate $FPSV -video_size 640x408 -i :99 \
+  -vf "crop=640:350:0:0,scale=1280:700:flags=neighbor" \
+  -c:v libx264 -preset veryfast -pix_fmt yuv420p -y /out/parity.mp4 \
+  >/tmp/ff.log 2>&1 &
+FF=$!
+sleep 1
 
 N=0
-grab() {  # 抓一格；視窗是 640×408，畫面本體在左上角 640×350
+snap() {  # 在關鍵時刻另外存一張 640×350 的原尺寸圖，給逐格比對用
   N=$((N+1))
   import -window "$WIN" /tmp/f.png 2>/dev/null || return 0
   convert /tmp/f.png -crop 640x350+0+0 +repage \
-    "$(printf '/out/frames/%05d.png' $N)"
+    "$(printf '/out/frames/%03d-%s.png' $N "$1")"
 }
 
-# 一邊等一邊抓：等待期間也要有畫面，動畫才錄得到。
-wait_grab() {  # wait_grab <秒>
-  local n=$(( $1 * FPSV ))
-  local i
-  for ((i=0;i<n;i++)); do grab; sleep $(awk "BEGIN{print 1/$FPSV}"); done
-}
-
-FPSV=${FPS:-4}
 while IFS= read -r line; do
   line="${line%%#*}"
   [ -z "${line// /}" ] && continue
@@ -86,15 +90,17 @@ while IFS= read -r line; do
     xdotool key --clearmodifiers "$k"
     sleep 0.15
   done
-  wait_grab "$secs"
+  sleep "$secs"
+  snap "$(echo "$keys" | tr -d ' ')"
 done < /out/keys.txt
 
+sleep 1
+kill -INT $FF 2>/dev/null || true
+wait $FF 2>/dev/null || true
 kill $DBX 2>/dev/null || true
 sleep 1
-echo "抓了 $N 格"
-ffmpeg -y -framerate $FPSV -i /out/frames/%05d.png \
-  -vf "scale=1280:700:flags=neighbor" -c:v libx264 -pix_fmt yuv420p \
-  /out/parity.mp4 >/tmp/ff.log 2>&1 && echo "影片 → parity.mp4" || tail -5 /tmp/ff.log
+echo "關鍵畫面 $N 張，影片 parity.mp4"
+ls -l /out/parity.mp4 2>/dev/null || tail -5 /tmp/ff.log
 EOF
 
 echo "tools/dosboxx-record.sh：跑 DOSBox-X 錄製（一個容器、2 核）" >&2
