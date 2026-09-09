@@ -392,8 +392,9 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 	for _, p := range sc.Prefectures() {
 		g.prefectures = append(g.prefectures, Prefecture{
 			ID: p.ID, Name: p.Name,
-			Owner: state.FactionID(p.Owner),
-			MapX:  int(p.MapX), MapY: int(p.MapY),
+			Owner:    state.FactionID(p.Owner),
+			Province: p.Province,
+			MapX:     int(p.MapX), MapY: int(p.MapY),
 			Population: p.People(),
 			Gold:       int(p.Gold), Rice: int(p.Rice),
 			PublicLoyalty: p.PublicLoyalty, LandValue: p.LandValue,

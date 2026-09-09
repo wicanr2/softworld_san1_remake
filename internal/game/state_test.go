@@ -347,3 +347,28 @@ func TestDifficultyBoundsFollowEdition(t *testing.T) {
 		t.Error("不認識的版本應該擋下來")
 	}
 }
+
+// TestPrefectureKeepsItsProvince 釘住州別欄有被帶進來。
+//
+// **漏一個欄位不會報錯**：`Province` 的零值是 0，而 0 是合法的州（幽州），
+// 所以每一個郡都會顯示成幽州而不是空白——畫面上看起來只是「州名不對」，
+// 不像資料沒載進來。齊郡在原版是青州（2）。
+func TestPrefectureKeepsItsProvince(t *testing.T) {
+	g := newGame(t)
+	for _, tc := range []struct{ id, want int }{
+		{1, 0},  // 遼東 幽州
+		{7, 2},  // 北海 青州
+		{8, 2},  // 齊郡 青州
+		{41, 13}, // 南海 交州
+	} {
+		p := g.Prefecture(tc.id)
+		if p == nil {
+			t.Fatalf("沒有郡 %d", tc.id)
+		}
+		if int(p.Province) != tc.want {
+			t.Errorf("郡 %d %s 的州別是 %d（%s），應該是 %d（%s）",
+				tc.id, p.Name, p.Province, state.ProvinceName(int(p.Province)),
+				tc.want, state.ProvinceName(tc.want))
+		}
+	}
+}
