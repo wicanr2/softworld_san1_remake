@@ -1256,7 +1256,29 @@ remake 的 `battle.exchange` 照這條寫，戰力值走 `LeaderPower`
 
 ## 8. Worklist
 
-按 `CLAUDE.md` §10 的 M0 出口條件排：
+### 只剩兩件，兩件都不在這個工作區裡
+
+技術面 M0–M8 全部達成、九份機制文件的「還缺什麼」欄全空、對拍閘門全綠、
+發行包逐位元組可重現（`VERIFICATION-MATRIX.md`）。卡住的是外部資源：
+
+- [ ] **推送**。`master` 領先 `origin/master` 187 筆、落後 0 筆，
+      工作區乾淨，是乾淨的 fast-forward。這一步在目前的工作階段被權限
+      分類器擋下，要嘛在設定裡加一條允許 `git push` 的 Bash 規則，
+      要嘛自己跑：
+
+      ```
+      cd ~/cht/softworld_san     && git push origin master
+      cd ~/cht/dosgolem-san      && git push origin san1-msc-oracle
+      ```
+
+- [ ] **三平台簽章**。管線寫好了（`tools/release.sh`），沒有憑證時會跳過
+      並明說「這不是簽過」。缺的是要申請、要付費、綁著人的身分的東西：
+      Windows 的 code signing 憑證（`SAN1_WIN_PFX`）、Apple Developer
+      Program 會籍與 Developer ID Application 憑證（`SAN1_MAC_IDENTITY`，
+      而且 `codesign`／`notarytool` 必須在真的 macOS 上跑）、
+      一把 GPG 金鑰（`SAN1_GPG_KEY`）。
+
+以下是 M0 起的歷史紀錄，按 `CLAUDE.md` §10 的出口條件排：
 
 - [ ] 兩版抽檔，每檔記 SHA-256，分開放 `workplace/orig/{base,plus}/`
 - [ ] `tools/ida.sh` 包裝器（照 sangokushi 的形狀），對兩支 EXE 產 `.i64`
@@ -1282,7 +1304,8 @@ remake 的 `battle.exchange` 照這條寫，戰力值走 `LeaderPower`
       **offset 28 ＝ 壽命**（幾歲開始走下坡不是幾歲一定死，`0x15d5d`）
 - [x] 人物 3／15／23 不是獨立欄位（姓名與相鄰 `u16` 的位元組），
       20 全是 `0xFF`、29 全是 0，兩者都沒有任何讀寫（`docs/spec/003` §2.9）
-- [ ] 人物 offset 6 還沒解
+- [x] **人物 offset 6 ＝ 姓名的結尾 `0`**：姓名是 Big5 三個字剛好填滿 0–5，
+      結尾沒有位置放。兩版六個劇本 4200 個槽全部是 0（`docs/spec/003` §2.9）
 - [x] 州郡的相鄰表 → offset 45–52（F53）
 - [x] **州郡 offset 12 ＝ 郡縣自治型態**（0 正常、1 內政、2 軍事、3 自冶）：
       非零的郡由電腦拿「值 − 1」當 AI 等級跑分派器（`0x17550`）——
