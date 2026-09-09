@@ -23,7 +23,7 @@ import (
 // 玩家那支放在**同一直線相隔一格**（弓箭的射程，§4）。
 const unitArrows = 20
 
-func TestUnitAIArcheryOption(t *testing.T) {
+func TestUnitAIRangedAndPlotOptions(t *testing.T) {
 	root := origRoot(t)
 	c := openContainer(t, filepath.Join(root, "DATA2"))
 	sc0, err := state.LoadScenario(c, state.Slot("001"))
@@ -99,6 +99,20 @@ func TestUnitAIArcheryOption(t *testing.T) {
 		}
 	})
 
+	// **「動作碼 2 ＝ 對戰」要複驗。** 誘敵與圍攻也會跑交戰結算，
+	// 而金的寫入端有一個在計謀模組（`0x2a22` 段）——所以光看交戰結算
+	// 分不出電腦是在對戰還是在用計。六支效果常式與成功判定一起攔。
+	plots := map[string]int{}
+	for name, a := range map[string]uint32{
+		"成功判定 0x2abb8": 0x2abb8, "火攻 0x2adec": 0x2adec,
+		"水淹 0x2b15a": 0x2b15a, "陷阱 0x2b648": 0x2b648,
+		"誘敵 0x2b6aa": 0x2b6aa, "圍攻 0x2bb00": 0x2bb00,
+		"扣錢 0x2ada7": 0x2ada7,
+	} {
+		n, at := name, a
+		o.OnCall(addr(at), func(*oracle.Oracle) { plots[n]++ })
+	}
+
 	driveIntoBattle(t, o, at, to)
 	if dgroup == 0 {
 		t.Fatal("沒有進到主戰場")
@@ -153,35 +167,42 @@ func TestUnitAIArcheryOption(t *testing.T) {
 	}
 	// 電腦那支的弓箭次數補滿。
 	setw(foe+unitArrows, 10)
-	// 玩家那支擺到同一直線、相隔一格的位置。
+	// **計謀那條路也一起備齊**：守方軍團的金拉高、那一支的領隊智力拉滿。
+	// 沒錢或智力不夠時六種計謀一律被擋在門檻（§4），那樣的零沒有意義。
+	staBase := base + uint32(state.MasterTableSize)
+	genBase := staBase + uint32(state.PrefectureTableSize)
+	armyGold := 0x175e + 0*22 + 6 // 守方主軍團（軍力 0）的金
+	setw(armyGold, 9000)
+	if who := w16(foe + 38); who >= 0 && who < 350 {
+		o.SetByte(addr(genBase+uint32(who)*30+9), 99)
+		t.Logf("守方軍團的金拉到 %d；那一支的領隊是人物 %d，智力拉到 99",
+			w16(armyGold), who)
+	}
+	// **這一輪改成貼身**：計謀與對戰的目標都只能是相鄰的格子（§4.0），
+	// 上一輪擺在射程外，六種計謀連門都進不去。
 	fc, fr := w16(foe+unitCol), w16(foe+unitRow)
 	placed := false
 	for dir := 0; dir < 6 && !placed; dir++ {
 		dc, dr := off(fc, dir)
-		mc, mr := fc+dc, fr+dr
-		if mc < 0 || mc >= 12 || mr < 0 || mr >= 10 {
-			continue
-		}
-		dc2, dr2 := off(mc, dir)
-		c, r := mc+dc2, mr+dr2
-		if c < 0 || c >= 12 || r < 0 || r >= 10 {
-			continue
-		}
-		if o.Word(occ(c, r)) != 0xFFFF || o.Word(occ(mc, mr)) != 0xFFFF {
+		c, r := fc+dc, fr+dr
+		if c < 0 || c >= 12 || r < 0 || r >= 10 || o.Word(occ(c, r)) != 0xFFFF {
 			continue
 		}
 		o.SetWord(occ(w16(me+unitCol), w16(me+unitRow)), 0xFFFF)
 		setw(me+unitCol, c)
 		setw(me+unitRow, r)
 		o.SetWord(occ(c, r), 20)
-		t.Logf("電腦 (%d,%d) 弓箭次數補到 %d；玩家擺到 (%d,%d)，中間 (%d,%d) 空著",
-			fc, fr, w16(foe+unitArrows), c, r, mc, mr)
+		t.Logf("電腦 (%d,%d) 弓箭 %d 次；玩家貼到 (%d,%d)",
+			fc, fr, w16(foe+unitArrows), c, r)
 		placed = true
 	}
 	if !placed {
-		t.Fatal("找不到同一直線相隔一格的空位")
+		t.Fatal("守軍旁邊沒有空格")
 	}
 
+	// **金被花光了要知道是誰花的。** 守方軍團的金欄位盯著。
+	goldWr := o.WatchWritesAt(
+		uint32(work)<<4+uint32(armyGold), uint32(work)<<4+uint32(armyGold)+1)
 	seen := len(decisions)
 	for d := 1; d <= 5; d++ {
 		keys := []string{"0", "Y"}
@@ -223,5 +244,13 @@ func TestUnitAIArcheryOption(t *testing.T) {
 	for _, k := range keys {
 		t.Logf("  %s → 動作碼分布 %v（0xFFFF ＝ 65535）", k, byOpt[k])
 	}
-	t.Logf("電腦那支剩下的弓箭次數：%d", w16(foe+unitArrows))
+	o.StopWatchingWrites()
+	gIP := map[string]int{}
+	for _, w := range *goldWr {
+		gIP[fmt.Sprintf("%#06x:%#06x", w.IP.Seg, w.IP.Off)]++
+	}
+	t.Logf("跑完之後：電腦那支剩下的弓箭次數 %d、守方軍團的金 %d",
+		w16(foe+unitArrows), w16(armyGold))
+	t.Logf("守方軍團的金被寫 %d 次，來自 %v", len(*goldWr), gIP)
+	t.Logf("計謀那一組攔到的：%v", plots)
 }
