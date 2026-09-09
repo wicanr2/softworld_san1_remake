@@ -36,8 +36,12 @@ import (
 // `battle.AutoResolveAI`（不進戰術層、只用兩個數），有玩家才走
 // `p.B.Auto()` 打滿三十天。
 //
-// 所以這支測試現在會 skip：判準寫好了、正對照（戰役有沒有開場）也擋著，
-// 等到有一條路徑真的走進日循環（玩家親征）就會自動生效。
+// 所以這支測試在**電腦對電腦**那條路上會 skip：判準寫好了、正對照
+// （戰役有沒有開場）也擋著，但那條路不進日循環。
+//
+// **玩家親征那條路已經補上了**：`TestBattleFinishesWithPlayer` 把玩家
+// 驅動進主戰場、打到分出勝負，統帥條件 `0x24f8c` 跑了 105 次、
+// 三十天判定 `0x250d4` 跑了 5 次，勝負也比過了。
 
 // TestBattleOutcomeMatchesTheOriginal 釘住統帥條件與三十天期滿的判定。
 func TestBattleOutcomeMatchesTheOriginal(t *testing.T) {
