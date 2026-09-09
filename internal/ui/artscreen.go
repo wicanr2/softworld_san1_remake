@@ -229,25 +229,58 @@ func TitleItems() [6]string {
 }
 
 // DrawTitle 畫主選單。sel 是反白的項目（0–5，負數表示沒有）。
+//
+// 六個項目的顏色照原版是同一個黃（原版沒有選取記號，靠按數字鍵選）。
+// **反白是 remake 自己加的**：remake 支援上下鍵移動，沒有記號就看不出
+// 停在哪一項，所以選到的那一項改畫白色。
 func DrawTitle(c *Canvas, ts *TitleScreen, sel int) {
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		ts.bg.RGBA(), image.Point{}, draw.Src)
-	ink := color.RGBA{0x55, 0xFF, 0xFF, 0xFF}
-	hot := color.RGBA{0xFF, 0xFF, 0x55, 0xFF}
-	// 左邊那面牌子：原版有一張 `MENU1.IMG`，但位置還沒定得下來
-	// （`internal/assets` 的說明），所以先由 remake 自己畫一個框。
-	c.DrawBox(7, 13, 12, 8, ink)
-	for i, r := range []rune("主選擇單") {
-		c.DrawText(12, 15+i, string(r), ink)
-	}
+	label := color.RGBA{0x55, 0xFF, 0xFF, 0xFF}
+	ink := color.RGBA{0xFF, 0xFF, 0x55, 0xFF}
+	hot := color.RGBA{0xFF, 0xFF, 0xFF, 0xFF}
+	DrawMenuLabel(c, "主選擇單", label)
 	for i, s := range TitleItems() {
 		b := assets.MenuButtons()[i]
-		col := hot
-		if i != sel {
-			col = ink
+		col := ink
+		if i == sel {
+			col = hot
 		}
-		// 按鈕是 200×46；字往內縮 16 像素、直向置中。
-		c.DrawText((b[0]+16)/CellW, (b[1]+15)/CellH, s, col)
+		DrawMenuItem(c, b[0], b[1], s, col)
+	}
+}
+
+// DrawMenuLabel 把左側直牌上的字畫上去（由上往下一個字一列）。
+func DrawMenuLabel(c *Canvas, s string, fg color.RGBA) {
+	y := assets.MenuLabelY
+	for _, r := range s {
+		c.DrawRuneWidePx(assets.MenuLabelX, y, r, fg, assets.MenuLabelScaleX)
+		y += assets.MenuLabelPitch
+	}
+}
+
+// DrawMenuItem 照原版的版面把一行字寫在按鈕上，(bx, by) 是按鈕左上角。
+//
+// 原版**每個全形字前面都有一個空的半形格**，所以中文的字距是 24 不是 16
+// （`assets.MenuTextCJKPitch`）。少了那個空格，五個字只佔 80 像素，
+// 擠在 200 寬的按鈕左半邊，右半邊空著。
+//
+// 字串裡本來就有的空白算數（「1. 開始新遊戲」在編號後面已經有一個），
+// **不再補第二個**——補了整串中文會往右挪 8 像素。
+func DrawMenuItem(c *Canvas, bx, by int, s string, fg color.RGBA) {
+	x, y := bx+assets.MenuTextX, by+assets.MenuTextY
+	blank := true
+	for _, r := range s {
+		w := cells.RuneWidth(r)
+		if w == 0 {
+			continue
+		}
+		if w > 1 && !blank {
+			x += CellW
+		}
+		c.DrawRuneWidePx(x, y, r, fg, 1)
+		x += w * CellW
+		blank = r == ' '
 	}
 }
 

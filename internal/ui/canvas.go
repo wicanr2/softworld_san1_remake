@@ -125,6 +125,23 @@ func (c *Canvas) drawRune(col, row int, r rune, fg color.RGBA) {
 }
 
 func (c *Canvas) drawRunePx(px, py int, r rune, fg color.RGBA) {
+	c.drawRuneWidePx(px, py, r, fg, 1)
+}
+
+// DrawRuneWidePx 從像素座標畫一個橫向放大的字，回傳畫掉的寬度。
+//
+// 原版主選單左邊那面直牌上的四個字是這樣畫的：16×16 的字模畫成 32×16
+// （`assets.MenuLabelScaleX`）。**只放寬不放高**——高度跟著放大就變成
+// 32 列，牌子的內框裝不下四個字。
+func (c *Canvas) DrawRuneWidePx(px, py int, r rune, fg color.RGBA, sx int) int {
+	if sx < 1 {
+		sx = 1
+	}
+	c.drawRuneWidePx(px, py, r, fg, sx)
+	return cells.RuneWidth(r) * CellW * sx
+}
+
+func (c *Canvas) drawRuneWidePx(px, py int, r rune, fg color.RGBA, sx int) {
 	g, ok := c.face.Glyph(r)
 	if !ok {
 		c.Missing[r]++
@@ -146,11 +163,13 @@ func (c *Canvas) drawRunePx(px, py int, r rune, fg color.RGBA) {
 			if !g.At(gx, gy) {
 				continue
 			}
-			xx := px + gx
-			if xx < 0 || xx >= c.Img.Bounds().Dx() {
-				continue
+			for k := 0; k < sx; k++ {
+				xx := px + gx*sx + k
+				if xx < 0 || xx >= c.Img.Bounds().Dx() {
+					continue
+				}
+				c.Img.SetRGBA(xx, yy, fg)
 			}
-			c.Img.SetRGBA(xx, yy, fg)
 		}
 	}
 }

@@ -108,10 +108,11 @@ func TestMainScreenPiecesCoverTheWidth(t *testing.T) {
 // `TestZZOriginalOpeningScreens` 產（第 6 步）。
 const menuShotPath = "../../workplace/shots/open/open-06.png"
 
-// TestMenuScreenMatchesTheOriginal 釘住主選單的兩塊標題牌。
+// TestMenuScreenMatchesTheOriginal 釘住主選單五張圖的位置。
 //
 // 主選單跑在開機鏈的第二層（`DATA0.GRP`），碼段 dump 涵蓋不到，
-// 所以位置**只能拿畫面比對出來**。判準因此要嚴：兩塊 100%。
+// 所以位置**只能拿畫面比對出來**。判準因此要嚴：沒有字蓋在上面的
+// 兩塊標題牌要 100%，其餘三張扣掉字與那格動畫之後也要接近滿分。
 func TestMenuScreenMatchesTheOriginal(t *testing.T) {
 	f, err := os.Open(menuShotPath)
 	if err != nil {
@@ -136,6 +137,9 @@ func TestMenuScreenMatchesTheOriginal(t *testing.T) {
 		{"標題牌左半 MENU0A", image.Rect(40, 27, 320, 207), 100},
 		{"標題牌右半 MENU0B", image.Rect(320, 27, 608, 207), 100},
 		{"按鈕列（字寫在上面）", image.Rect(152, 215, 352, 261), 90},
+		{"第三列按鈕（y=320 不是 319）", image.Rect(152, 320, 352, 350), 90},
+		{"左側直牌 MENU1（字寫在上面）", image.Rect(56, 215, 152, 350), 92},
+		{"右下角小飾框 MENU3（裡面會動）", image.Rect(576, 320, 616, 350), 88},
 	} {
 		same, n := 0, 0
 		for y := tc.r.Min.Y; y < tc.r.Max.Y; y++ {
