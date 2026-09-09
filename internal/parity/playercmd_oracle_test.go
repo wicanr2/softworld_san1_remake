@@ -404,6 +404,22 @@ func runPlayerCommands(t *testing.T,
 				pick, gi, before[loy], after[loy], got[loy])
 			t.Logf("原版動到的記錄：%s", changedRecords(before, after, nMas, nSta))
 			t.Logf("兩邊不同的記錄：%s", changedRecords(after, got, nMas, nSta))
+			// **原版沒動過、兩邊卻不同的位元組，一定是 remake 自己多做的。**
+			// 把它與命令的效果分開報：混在一起看不出來是解碼／編碼的來回
+			// 沒保真，還是這道命令算錯。
+			var stray []string
+			for i := range after {
+				if after[i] == got[i] || before[i] != after[i] {
+					continue
+				}
+				if len(stray) < 8 {
+					stray = append(stray, fmt.Sprintf("%s：原版 %d／remake %d",
+						whichTable(i, nMas, nSta), after[i], got[i]))
+				}
+			}
+			if len(stray) > 0 {
+				t.Logf("原版沒動過卻不同的：%s", strings.Join(stray, "、"))
+			}
 
 			// **判準是這道命令該碰的範圍，不是整份盤面。**
 			// 帶 ＊ 的命令（休息、開墾……）下完就轉移控制權；玩家只有
