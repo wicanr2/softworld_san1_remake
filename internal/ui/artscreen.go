@@ -92,9 +92,8 @@ func (a *ArtScreen) Portrait(n int) *assets.Image {
 // （`docs/spec/005` §6.2）。**版面是按像素排的不是按格**，
 // 而且幾列之間留了空行，所以每一列的 y 都是逐列量的不是等距算的。
 const (
-	artPanelX = 408 // 右面板左緣
-	artPanelW = 224
-	artMapX   = 72 // 地圖區左緣（左邊那 72 像素是花邊直條）
+	// 面板本身的位置與拼件在 `assets.MainPanels()`；這裡只留文字要用的。
+	artMapX = 72 // 地圖區左緣（左邊那 72 像素是花邊直條）
 
 	// 郡名是 32×32 的雙倍字；州名與編號疊在它右邊，君主與人望再右邊。
 	artNameX = 424
