@@ -123,10 +123,16 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		if n < len(waits) {
 			budget = uint64(waits[n]+2) * stepsPerSec
 		}
-		err := o.RunUntil(oracle.ScreenIdle(idleSteps), oracle.Budget(budget))
+		// **先跑滿預算，再等靜止。** 只等靜止是不夠的：開場是好幾段動畫
+		// 接起來的，第一次停格就回來的話，下一個鍵會送在還沒走完的畫面上
+		// ——之後每一步都對不上，而每一步看起來都「靜止」。
+		if err := o.Run(budget); err != nil {
+			t.Fatalf("第 %d 步（%s）停止：%v", n+1, s.keys, err)
+		}
+		err := o.RunUntil(oracle.ScreenIdle(idleSteps), oracle.Budget(4*idleSteps))
 		var be *oracle.BudgetError
 		if err != nil && !errors.As(err, &be) {
-			t.Fatalf("第 %d 步（%s）停止：%v", n+1, s.keys, err)
+			t.Fatalf("第 %d 步（%s）等靜止時停止：%v", n+1, s.keys, err)
 		}
 		settled := err == nil
 		// 進了遊戲之後每一步都把兩個開關寫開（冪等）。
