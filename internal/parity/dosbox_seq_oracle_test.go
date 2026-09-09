@@ -30,9 +30,15 @@ import (
 // ⚠ **時間軸不能照抄。** DOSBox 用真實秒數，dosgolem 用指令數；
 // 對齊點要是**畫面靜止**不是「第幾秒」。
 func TestZZDosgolemMatchesDosbox(t *testing.T) {
+	// ⚠ **路徑是相對於這個套件的目錄**（`go test` 的工作目錄），
+	// 不是儲存庫根。給 `workplace/rec7/frames` 會找不到而且只是 skip
+	// ——看起來像「沒錄過」而不像路徑寫錯。
 	dir := os.Getenv("SAN1_REC")
 	if dir == "" {
-		dir = "../../workplace/rec4/frames"
+		dir = "../../workplace/rec7/frames"
+	}
+	if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
+		dir = filepath.Join("../..", dir)
 	}
 	shots, err := filepath.Glob(filepath.Join(dir, "*[0-9a-zA-Z].png"))
 	if err != nil || len(shots) == 0 {
