@@ -75,7 +75,7 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		steps = append(steps, step{
 			file:   f,
 			keys:   b[i+1:],
-			stable: sameFile(f, strings.TrimSuffix(f, ".png")+".b.png"),
+			stable: nearlySame(f, strings.TrimSuffix(f, ".png")+".b.png", 400),
 		})
 	}
 	t.Logf("參照畫面 %d 張，來源 %s", len(steps), dir)
@@ -187,17 +187,44 @@ func isPassword(k string) bool {
 	return true
 }
 
-// sameFile 比兩個檔的內容。第二個檔不在就回 false。
-func sameFile(a, b string) bool {
-	x, err := os.ReadFile(a)
+// nearlySame 比兩張圖，差異在 tol 點以內就算「同一格畫面」。
+//
+// ⚠ **不能要求逐位元組相同。** 提示列尾巴那個游標一直在閃，
+// 隔一秒拍兩張永遠不會完全一樣——照那個標準判，**每一步都是「動畫中」**，
+// 判準就整個空掉了。容差取得住游標與小飾框的動畫（各百來點）即可。
+func nearlySame(a, b string, tol int) bool {
+	x, err := decodePNG(a)
 	if err != nil {
 		return false
 	}
-	y, err := os.ReadFile(b)
+	y, err := decodePNG(b)
 	if err != nil {
 		return false
 	}
-	return string(x) == string(y)
+	n := 0
+	for py := 0; py < scrH; py++ {
+		for px := 0; px < scrW; px++ {
+			if color.RGBAModel.Convert(x.At(px, py)) !=
+				color.RGBAModel.Convert(y.At(px, py)) {
+				n++
+				if n > tol {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func decodePNG(path string) (interface {
+	At(x, y int) color.Color
+}, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return imgpng.Decode(f)
 }
 
 func loadWaits(path string) []int {
