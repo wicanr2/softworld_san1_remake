@@ -101,5 +101,43 @@ func TestZZPlayerCharmSweep(t *testing.T) {
 			cm, o.Byte(addr(pref+26)), int(o.Byte(addr(pref+26)))-10,
 			o.Word(addr(pref+20)))
 	}
-	_ = fmt.Sprint
+	// **金與米那一維也要量。** 上面兩串都固定在金 100、米 300 一個點上，
+	// 所以係數落在「魅力那一邊」還是「金那一邊」分不出來。魅力釘在 99
+	// （賑民的上限 33 夠高，原始增幅看得見），掃金與米。
+	t.Log("賞賜金帛（魅力 99、忠誠起點 5，掃金）：")
+	for _, g := range []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100} {
+		o.Restore(snap)
+		o.SetWord(addr(pref+18), 9000)
+		o.SetWord(addr(pref+20), 9000)
+		o.SetByte(addr(gen+generalCharmOff), 99)
+		o.SetByte(addr(gen+generalLoyaltyOff), 5)
+		for _, k := range []string{"6\r", "3\r", "1\r", fmt.Sprintf("%d\r", g)} {
+			o.PressScan(k)
+			if err := o.Run(playerSettle); err != nil {
+				t.Fatalf("金 %d 送 %q 時停止：%v", g, k, err)
+			}
+		}
+		t.Logf("  金 %3d → 忠誠 %3d（增幅 %3d）、郡庫 %d",
+			g, o.Byte(addr(gen+generalLoyaltyOff)),
+			int(o.Byte(addr(gen+generalLoyaltyOff)))-5,
+			o.Word(addr(pref+18)))
+	}
+
+	t.Log("開倉賑民（魅力 99、民心起點 5，掃米）：")
+	for _, r := range []int{10, 25, 50, 75, 100, 125, 150, 175, 200, 300} {
+		o.Restore(snap)
+		o.SetWord(addr(pref+18), 9000)
+		o.SetWord(addr(pref+20), 9000)
+		o.SetByte(addr(gen+generalCharmOff), 99)
+		o.SetByte(addr(pref+26), 5)
+		for _, k := range []string{"5\r", "3\r", fmt.Sprintf("%d\r", r)} {
+			o.PressScan(k)
+			if err := o.Run(playerSettle); err != nil {
+				t.Fatalf("米 %d 送 %q 時停止：%v", r, k, err)
+			}
+		}
+		t.Logf("  米 %3d → 民心 %3d（增幅 %3d）、郡庫 %d",
+			r, o.Byte(addr(pref+26)), int(o.Byte(addr(pref+26)))-5,
+			o.Word(addr(pref+20)))
+	}
 }

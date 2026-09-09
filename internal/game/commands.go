@@ -523,7 +523,7 @@ func (g *State) Relief(prefectureID, gold int, by state.FactionID) error {
 			return ErrNoRice
 		}
 		p.Rice -= gold
-		add := ReliefGainFromRice(p.Population, gold, charm)
+		add := ReliefGainFromRice(p.Population, gold, charm/3)
 		p.PublicLoyalty = uint8(clampTo(int(p.PublicLoyalty)+add, 100))
 		p.Commanded = true
 		return nil
