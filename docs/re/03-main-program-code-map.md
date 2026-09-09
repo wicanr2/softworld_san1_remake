@@ -602,8 +602,9 @@ c18e: 26 88 87 29 22       mov   es:[bx+0x2229], al ; 寫回武裝度
 缺口大於零已經蘊含兵力大於武器數 ≥ 0。它是防禦性的，
 形狀與訓練度那一支相同。
 
-⚠ **兵力與武器的絕對單位還沒量**（`L3`）：這一支只證明兩者同單位、
-一金換 100 件。remake 的實作在 `internal/game/rules.go` 的
+這一支證明兵力與武器同單位、一金換 100 件；**單位本身是「人」**
+（徵兵從人口扣掉的正好是募到的人數，`docs/mechanics/10-strategy` §5.1）。
+remake 的實作在 `internal/game/rules.go` 的
 `Weapons`／`ArmsOf`／`ArmsAfterPurchase`，AI 那一面在
 `internal/ai/ai.go` 的 `armsPurchase`。
 
