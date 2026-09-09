@@ -194,8 +194,15 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 	// 不是從外面推的。
 	const (
 		numInputFn = 0x33d8*16 + 0x115e // 數字欄位，要 Enter
-		keyInputFn = 0x1538c            // 讀一個鍵
+		keyInputFn = 0x1538c            // Y/N 判定，內部再叫 ascInputFn
 		ascInputFn = 0x1058*16 + 0xe24  // 讀一個 ASCII
+		// 數字欄位的函式體範圍：`0x34f86` 的收鍵迴圈、`0x3503e` 的範圍
+		// 檢查都在裡面（`docs/re/03` §1.5）。
+		numInputEnd = 0x35200
+		// `0x15397` 的 `lcall 1058:0e24` 的下一道指令。Y/N 判定叫 getch
+		// 時回返位址就是這裡——這是**確定的指令邊界**，比拿函式起點當
+		// 攔截點可靠（`docs/re/05` §7.0）。
+		ynGetchRet = 0x1539c
 	)
 	type ask struct {
 		kind   string
@@ -203,6 +210,7 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 		prompt string // 呼叫當下**最後**讀到的那一條，就是提示本身
 		seen   []string
 		at     uint64
+		from   uint32 // 誰呼叫的（遠呼叫的回返位址，線性）
 	}
 	var asks []ask
 	note := func(kind string, a, b int) {
@@ -216,8 +224,10 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 			}
 			p = stringAt(last.Off)
 		}
-		asks = append(asks, ask{kind: kind, lo: a, hi: b,
-			prompt: p, seen: clusters(), at: o.Steps()})
+		c := o.Caller()
+		asks = append(asks, ask{kind: kind, lo: a, hi: b, prompt: p,
+			seen: clusters(), at: o.Steps(),
+			from: uint32(c.Seg)*16 + uint32(c.Off)})
 		// 攔到的當下清掉，下一個問題的窗口就正好是「這一問到下一問之間」。
 		*log = (*log)[:0]
 	}
@@ -253,6 +263,9 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 		{want: "攜帶多少米", keys: "100", kind: "數字"},
 	}
 
+	// assigned ＝ 這一個軍團已經編進去幾位（「請按任一鍵…整編」時歸零）。
+	assigned := 0
+
 	// answer 回傳 (要送的鍵, 認不認得)。
 	//
 	// **先用 hook 給的 `(kind, lo, hi)` 篩掉不可能的規則再比字串。**
@@ -264,15 +277,22 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 	// 印完之後還會畫一份郡名清單，最後一條讀取是清單的格式字串 `%2d%s`
 	// 不是提示，這種才需要退回整個窗口。
 	answer := func(a ask) (string, bool) {
-		for _, seen := range append([]string{a.prompt}, a.seen...) {
-			// 「請按任一鍵」吃任何鍵；每個軍團整編前各一次。
-			if strings.Contains(seen, "請按任一鍵") {
-				return "Y", true
-			}
-		}
+		// 「請按任一鍵」不必特別列一條：非數字欄位的預設就是 Y。
+		// ⚠ **特例掃整個窗口是會出事的**：整編畫面重繪時會把那一句再讀
+		// 一次，於是「攜帶多少金( 0-9000 )」也被當成請按任一鍵答了 Y，
+		// 欄位收不到數字就重問。窗口只能拿來當退路，不能當捷徑。
 		fits := func(r reply) bool {
 			return (r.kind == "" || r.kind == a.kind) &&
 				(r.lo == 0 || r.lo == a.lo) && (r.hi == 0 || r.hi == a.hi)
+		}
+		// ⚠ **「分配完畢」只在「分配那一位將軍」被取消時才問**
+		//（`0x21475: cmpw $0xffff,-0xe(%bp); jne 0x214a6`），而取消 ＝
+		// **空欄位按 Enter**（`0x115e` 回 `0xFFFF`）。而且已經分配過的人
+		// 會被退回重問（`0x214af: cmpw $0, es:0x3494(%bx)`）——所以一直
+		// 送同一個號碼就是無限迴圈，量到過上千次。
+		// 一個軍團只編一位：第一次送 `1`，之後送空的 Enter 收尾。
+		if strings.Contains(a.prompt, "分配那一位將軍") && assigned > 0 {
+			return "", true
 		}
 		for _, r := range rules {
 			if fits(r) && strings.Contains(a.prompt, r.want) {
@@ -304,8 +324,8 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 	}
 	dumpAsks := func() {
 		for i, a := range asks {
-			t.Logf("  #%02d %s(%d-%d) @%d 提示「%s」窗口 %q", i, a.kind,
-				a.lo, a.hi, a.at,
+			t.Logf("  #%02d %s(%d-%d) @%d 誰要的 %#07x 提示「%s」窗口 %q",
+				i, a.kind, a.lo, a.hi, a.at, a.from,
 				strings.ReplaceAll(a.prompt, "\n", "\\n"), a.seen)
 		}
 	}
@@ -351,22 +371,43 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 				maxNudge, answered, o.Steps(), err)
 		}
 		nudge = 0
-		// ⚠ **上一題之後什麼字都沒印，就不是新的問題。** 數字欄位是用
-		// `1058:0e24` 一個字元一個字元讀的，所以送「1⏎」會多出兩筆
-		// 空提示、空窗口的「字元」——那是同一題的內部讀鍵。
-		// **千萬不能去回答它們**：回答前的 `o.Drain()` 會把還沒被取走的
-		// 那個 Enter 洗掉，欄位永遠等不到 Enter 就重問，量到的就是
-		// 「分配那一位將軍」一路問到底的無限迴圈。
-		for answered < len(asks) && asks[answered].kind == "字元" &&
-			asks[answered].prompt == "" && len(asks[answered].seen) == 0 {
-			answered++
-		}
-		if answered >= len(asks) {
-			continue
-		}
 		a := asks[answered]
 		answered++
+		// **這一次 getch 是誰要的，問回返位址就知道**，不必從提示去猜，
+		// 也不必猜節奏。三種來源意思完全不同：
+		//
+		//   數字欄位體內（`33d8:115e`，0x34ede 起）
+		//       ——**那是同一題在跟我要下一個字元**。它要一個我就給一個。
+		//   回到 0x1539c
+		//       ——那是 Y/N 判定（`0x1538c`）自己叫的 getch，鍵在上一問
+		//       就送過了。⚠ 它把 **Enter 當成 N**（`153b9`），所以那一問
+		//       送的是 Y；送 Enter 就是「分配完畢」答 N 再分一位。
+		//   其他
+		//       ——真正的「請按任一鍵」。
+		//
+		// ⚠ **送進欄位的數字不保證等於打出去的數字。** `PressScan` 走的是
+		// 硬體佇列（`o.Drain()` 只清 DOS 的 stdin，對它無效），佇列是
+		// **一個 timer tick 放一個**（`DefaultIRQ0Every` ＝ 16.5 萬條指令），
+		// 而欄位滿了會提早收工。四種送法都量過，每一種都在某個欄寬上掉鍵：
+		// 整批送時「攜帶多少金」只收到三個鍵、值 0，同樣送法的「攜帶多少
+		// 米」四個鍵都到、值 100；改成照 getch 一問一答，兩位數的
+		// 「從那一郡攻打」又只吃兩個鍵就收工，選到郡 1 被退回重問。
+		//
+		// **所以不要拿「我打了什麼」當輸入**，要拿原版自己記下來的。
+		// 出兵帶的錢糧在軍團記錄 offset 6／8（`0x20c89`／`0x20c8e` 寫入），
+		// 那才是它實際收到的值——與「編進去的是誰」讀部隊記錄同一個原則。
+		if a.kind == "字元" && (a.from >= numInputFn && a.from < numInputEnd ||
+			a.from == ynGetchRet) {
+			continue
+		}
+		// 「請按任一鍵…整編」＝ 換下一個軍團，重新算這一團編了幾位。
+		if strings.Contains(a.prompt, "請按任一鍵") {
+			assigned = 0
+		}
 		keys, ok := answer(a)
+		if strings.Contains(a.prompt, "分到那一軍") {
+			assigned++
+		}
 		if !ok {
 			dumpScreen(t, o, "sortie-driven")
 			dumpAsks()
@@ -374,55 +415,55 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 				a.lo, a.hi, a.seen)
 		}
 		// 數字欄位一定要 Enter，**一位數的也要**（`docs/re/03` §1.5）。
-		// 「一位數欄位滿了會自己收工、多的 Enter 漏到下一個讀鍵點」量過，
-		// 不成立：不送 Enter 的話 `(1-3)` 的軍事子選單當場就不動了。
+		// 「一位數欄位滿了會自己收工」量過，不成立：不送 Enter 的話
+		// `(1-3)` 的軍事子選單當場就不動了。
 		if a.kind == "數字" {
 			keys += "\r"
 		}
-		t.Logf("#%02d %s(%d-%d)「%s」→ 送 %q　編成 %v", answered-1, a.kind,
-			a.lo, a.hi, strings.ReplaceAll(a.prompt, "\n", "\\n"), keys,
-			corpsRoster(o, work))
+		t.Logf("#%02d %s(%d-%d)「%s」→ 送 %q", answered-1, a.kind,
+			a.lo, a.hi, strings.ReplaceAll(a.prompt, "\n", "\\n"), keys)
 		if strings.Contains(a.prompt, "分配那一位將軍") {
 			if asked++; asked > 12 {
 				dumpAsks()
-				t.Fatal("「分配那一位將軍」問了十二次還沒進到下一句——" +
-					"看上面每一問的編成有沒有長，就知道是分配沒生效還是被退回")
+				t.Fatal("「分配那一位將軍」問了十二次還沒進到下一句")
 			}
 		}
-		// **這一刻才是清鍵盤的安全點**：原版剛進輸入常式，該收的都收了，
-		// 留在緩衝區的一定是我上一次多送的。中途清會吃掉對白還沒取走的鍵。
-		o.Drain()
-		for j, r := range keys {
-			if j > 0 {
-				if err := o.Run(keyGap); err != nil {
-					t.Fatalf("送鍵時停止：%v", err)
-				}
-			}
-			o.PressScan(string(r))
-		}
-		// 讓最後一個鍵被取走再往下走，否則它會活到下一次 `Drain`。
+		o.PressScan(keys)
+		// ⚠ **送完要跑一段再回去等下一問。** 少了這一行，`RunUntil` 會停在
+		// 欄位的第一次 getch，之後每停一次就少送一個 tick 的鍵——量到的是
+		// 兩位數的「從那一郡攻打」只吃到兩個鍵就收工，選到的郡被退回重問，
+		// 一路重問到底。
 		if err := o.Run(keyGap); err != nil {
 			t.Fatalf("送完鍵之後停止：%v", err)
 		}
-		// ⚠ **空提示的「字元」不能丟掉。** 它們看起來像是數字欄位自己的
-		// 內部讀鍵（`33d8:115e` 用 `1058:0e24` 一個字元一個字元讀），
-		// 丟掉不餵卻會讓後面的鍵被它們吃掉——量到的是「11⏎」送出去，
-		// 原版把欄位重畫一次再問（`0x1d4ec` 的不在清單裡就重來，
-		// 症狀正是「進得去、回不來」）。一律餵 Y：非數字會被欄位丟掉，
-		// 對白與 Y/N 則剛好答對。
 	}
 	dumpAsks()
 	// 最後的確認之後才扣錢糧，所以等郡庫動了再取樣。
 	changed := oracle.NewCond("郡庫動了", func(o *oracle.Oracle) bool {
 		return o.Word(addr(purse+18)) != 9000 || o.Word(addr(purse+20)) != 9000
 	})
+	// ⚠ **金與米不是同一刻扣的**，只等「郡庫動了」會停在扣完米、還沒扣金
+	// 的中間。確認之後接的是戰場的紮寨提示，那裡會停下來等鍵，所以多跑
+	// 一段是安全的——盤面不會再往前走。
 	if err := o.RunUntil(changed, oracle.Budget(6*playerSettle)); err != nil {
 		dumpScreen(t, o, "sortie-driven-end")
 		t.Fatalf("整編走完了但郡庫沒動：%v", err)
 	}
+	if err := o.Run(playerSettle); err != nil {
+		t.Fatalf("扣完錢糧之後停止：%v", err)
+	}
 	after := board()
 
-	g, err := game.New(sc, me, 5, state.EditionBase)
+	off18 := nMas + at*state.PrefectureRecordSize + 18
+
+	// **盤面要取墊過錢糧之後的那一份。** 前面那次解碼在墊之前，拿它建
+	// remake 會用到劇本原值（金 339、米 1164），比出來的差異全是假的。
+	planted, err := state.DecodeTables(state.Slot("001"),
+		before[:nMas], before[nMas:nMas+nSta], before[nMas+nSta:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err := game.New(planted, me, 5, state.EditionBase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,8 +485,21 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 		t.Fatal("部隊記錄裡一個將領都沒有——整編沒走完")
 	}
 	t.Logf("原版編進攻方軍團的槽號 %v", picked)
-	if _, err := g.BeginAttack(at, to, picked, me,
-		game.Supply{Gold: 100, Rice: 100}); err != nil {
+	// 軍團記錄 22 bytes、基底 `es:[0x175e]`，offset 6／8 是隨軍的金／米
+	//（`docs/re/05` §3.3；寫入端 `0x20c89`／`0x20c8e`）。原版自己記了多少，
+	// 拿來跟郡庫扣了多少對照——扣款是 `0x20c6d`／`0x20c75` 相鄰兩道指令，
+	// 只有一邊動就表示送進欄位的值不是我打的那個。
+	corpsAt := func(off uint16) int {
+		return int(o.Word(oracle.Addr{Seg: work, Off: 0x175e + 2*22 + off}))
+	}
+	t.Logf("軍團隨軍 金 %d 米 %d；郡庫 金 %d→%d 米 %d→%d",
+		corpsAt(6), corpsAt(8),
+		int(before[off18])|int(before[off18+1])<<8,
+		int(after[off18])|int(after[off18+1])<<8,
+		int(before[off18+2])|int(before[off18+3])<<8,
+		int(after[off18+2])|int(after[off18+3])<<8)
+	supply := game.Supply{Gold: corpsAt(6), Rice: corpsAt(8)}
+	if _, err := g.BeginAttack(at, to, picked, me, supply); err != nil {
 		t.Fatalf("remake 這一邊：%v", err)
 	}
 	rm, rs, rg, err := g.Tables()
@@ -458,11 +512,46 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 	t.Logf("原版動了 %d 個位元組；動到的記錄：%s",
 		diffCount(before, after), changedRecords(before, after, nMas, nSta))
 	t.Logf("兩邊不同的記錄：%s", changedRecords(after, got, nMas, nSta))
+	// 出征讓將領離開原郡（人物記錄 offset 19 ← 0），而**這三格 remake 是
+	// 從人物表導出來的、原版是存起來的快照**：兵士（16）、現役將（22）、
+	// 太守槽（32/33）。原版要到換月才重算，所以出征當下它們不動，remake
+	// 立刻少掉出征的那一位。這是 `VERIFICATION-MATRIX` §3 已經記載的取捨
+	//（郡 28 位移 16 是同一類），不是這一道新帶進來的差異——換月後兩邊
+	// 會一致，`TestZZMonth*` 那組守著。
+	derived := map[int]string{16: "兵士", 22: "現役將", 32: "太守槽", 33: "太守槽"}
 	off := nMas + at*state.PrefectureRecordSize
 	for i := off; i < off+state.PrefectureRecordSize; i++ {
+		if why, ok := derived[i-off]; ok {
+			if after[i] != got[i] {
+				t.Logf("州郡表第 %d 筆位移 %d（%s）：原版 %d／remake %d"+
+					"——導出值與快照的取捨，換月後一致",
+					at, i-off, why, after[i], got[i])
+			}
+			continue
+		}
 		if after[i] != got[i] {
 			t.Errorf("州郡表第 %d 筆位移 %d：原版 %d／remake %d（原本 %d）",
 				at, i-off, after[i], got[i], before[i])
 		}
+	}
+	// **被編進去的將領也要比。** 原版在整編的收尾把每一位出征將領的
+	// 人物記錄改了一個位元組（`0x20ce0: movb $0x0, es:0x2223(%bx)`，
+	// 基底 0x2210 → 記錄位移 19），只比郡的話這一格看不到。
+	// 其他十四道的判準就是「郡 ＋ 被挑到的將領 ＋ 君主」，這一道照辦。
+	for _, gi := range picked {
+		g0 := nMas + nSta + gi*state.GeneralRecordSize
+		for i := g0; i < g0+state.GeneralRecordSize; i++ {
+			if after[i] != got[i] {
+				t.Errorf("人物表第 %d 筆位移 %d：原版 %d／remake %d（原本 %d）",
+					gi, i-g0, after[i], got[i], before[i])
+			}
+		}
+	}
+	// 原版沒動過、兩邊卻不同的位元組，一定是 remake 自己多做的。
+	for i := range after {
+		if after[i] == got[i] || before[i] != after[i] {
+			continue
+		}
+		t.Logf("原版沒動過卻不同：位移 %d 原版 %d／remake %d", i, after[i], got[i])
 	}
 }

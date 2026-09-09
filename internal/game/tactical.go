@@ -340,6 +340,18 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 		setup.AidDefenders = append(setup.AidDefenders, toLeader(x))
 	}
 
+	// **出征的將領離開原本的郡**：原版在整編收尾走完該軍團的五支部隊，
+	// 把每一位將領的人物記錄 offset 19（所在郡）寫 0
+	//（`0x20ce0: movb $0x0, es:0x2223(%bx)`，基底 0x2210）。主守軍走的
+	// `0x20ac3` 那條也 `jmp 0x20c5e` 進同一段，所以四個軍團都會清——
+	// 只是主守軍本來就在戰場那個郡，清完打完再寫回 `p.to` 等於沒動。
+	// 郡的歸屬是從人物表導出來的（`docs/re/03` §1.5），所以這一格會讓
+	// 出征中的部隊不再替原郡撐著旗。打完由 `p.to` 補回去。
+	for _, x := range append(append([]*General{}, att...), aidAtt...) {
+		if x != nil {
+			x.Location = 0
+		}
+	}
 	return &Pending{B: battle.New(setup), from: from, to: to, by: by,
 		att: att, def: def, aidAtt: aidAtt, aidDef: aidDef, result: r}
 }
