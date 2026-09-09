@@ -34,7 +34,7 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 	if dir == "" {
 		dir = "../../workplace/rec4/frames"
 	}
-	shots, err := filepath.Glob(filepath.Join(dir, "*.png"))
+	shots, err := filepath.Glob(filepath.Join(dir, "*[0-9a-zA-Z].png"))
 	if err != nil || len(shots) == 0 {
 		t.Skipf("沒有 DOSBox 參照畫面 %s（跑 tools/dosboxx-record.sh 產）", dir)
 	}
@@ -49,17 +49,28 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 
 	// 每一張參照畫面的檔名帶著那一步送了什麼鍵。
 	type step struct {
-		file string
-		keys string
+		file   string
+		keys   string
+		stable bool
 	}
 	var steps []step
 	for _, f := range shots {
 		b := strings.TrimSuffix(filepath.Base(f), ".png")
+		if strings.HasSuffix(b, ".b") {
+			continue
+		}
 		i := strings.IndexByte(b, '-')
 		if i < 0 {
 			continue
 		}
-		steps = append(steps, step{file: f, keys: b[i+1:]})
+		// **同一步存了兩張、隔一秒**：兩張一樣才表示畫面靜止。
+		// 還在動的那一步不能當判準——動畫在兩個實作上不會停在同一格，
+		// 而那不是誰做錯了。沒有第二張時當成不穩定。
+		steps = append(steps, step{
+			file:   f,
+			keys:   b[i+1:],
+			stable: sameFile(f, strings.TrimSuffix(f, ".png")+".b.png"),
+		})
 	}
 	t.Logf("參照畫面 %d 張，來源 %s", len(steps), dir)
 
@@ -69,7 +80,7 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 	// **給少了畫面會停在動畫中間，看起來像 dosgolem 少做了什麼**。
 	const stepsPerSec = 30_000_000
 	waits := loadWaits(filepath.Join(filepath.Dir(dir), "keys.txt"))
-	var worst, worstAt int
+	var worst, worstAt, stableN int
 	var reported int
 	for n, s := range steps {
 		// **裝置三題走 int 21h，其餘走硬體掃描碼**（`docs/re/02` §3）。
@@ -107,22 +118,47 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 				}
 			}
 		}
-		if bad > worst {
+		// **前三步是文字模式**（裝置三題），兩邊都不是 EGA 平面畫面，
+		// 拿 `IndexedEGA` 解出來的東西沒有意義——不列入最大差異。
+		if n >= 3 && s.stable && bad > worst {
 			worst, worstAt = bad, n+1
+			stableN++
 		}
 		pct := 100 * float64(scrW*scrH-bad) / float64(scrW*scrH)
-		if bad > 0 && reported < 20 {
+		mark := "動畫中"
+		if s.stable {
+			mark = "靜止"
+		}
+		if bad > 0 && reported < 26 {
 			reported++
-			t.Logf("第 %2d 步 送 %-12s 差 %6d 點（%.2f%% 相同）",
-				n+1, s.keys, bad, pct)
+			t.Logf("第 %2d 步 送 %-12s %s 差 %6d 點（%.2f%% 相同）",
+				n+1, s.keys, mark, bad, pct)
 		}
 		dumpScreen(t, o, fmt.Sprintf("seq-%03d", n+1))
 	}
-	t.Logf("最大差異在第 %d 步：%d 點（%.2f%%）",
+	if stableN == 0 {
+		t.Logf("沒有任何一步是靜止的——參照畫面是舊版錄的（一步只存一張），" +
+			"重跑 tools/dosboxx-record.sh 才有靜止判斷")
+		return
+	}
+	t.Logf("靜止的步驟裡最大差異在第 %d 步：%d 點（%.2f%%）",
 		worstAt, worst, 100*float64(scrW*scrH-worst)/float64(scrW*scrH))
 }
 
 // loadWaits 讀按鍵腳本裡每一步的等待秒數。
+// sameFile 比兩個檔的內容。第二個檔不在就回 false。
+func sameFile(a, b string) bool {
+	x, err := os.ReadFile(a)
+	if err != nil {
+		return false
+	}
+	y, err := os.ReadFile(b)
+	if err != nil {
+		return false
+	}
+	return string(x) == string(y)
+}
+
 func loadWaits(path string) []int {
 	b, err := os.ReadFile(path)
 	if err != nil {

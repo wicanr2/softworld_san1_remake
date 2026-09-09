@@ -74,11 +74,18 @@ FF=$!
 sleep 1
 
 N=0
-snap() {  # 在關鍵時刻另外存一張 640×350 的原尺寸圖，給逐格比對用
+snap() {  # 在關鍵時刻存 640×350 的原尺寸圖，給逐格比對用
+  # **存兩張，隔一秒。** 兩張一樣才表示畫面靜止；不一樣就是還在動，
+  # 那一步不能拿來當對拍的判準——動畫在兩個實作上不會停在同一格，
+  # 而那不是誰做錯了。
   N=$((N+1))
   import -window "$WIN" /tmp/f.png 2>/dev/null || return 0
   convert /tmp/f.png -crop 640x350+0+0 +repage \
     "$(printf '/out/frames/%03d-%s.png' $N "$1")"
+  sleep 1
+  import -window "$WIN" /tmp/f2.png 2>/dev/null || return 0
+  convert /tmp/f2.png -crop 640x350+0+0 +repage \
+    "$(printf '/out/frames/%03d-%s.b.png' $N "$1")"
 }
 
 while IFS= read -r line; do
