@@ -388,6 +388,26 @@ func (g *State) BuyRice(prefectureID, units int, by state.FactionID) error {
 //
 // 所以同一個月買進再賣出剛好不賺不賠，**零頭還會被整數除法吃掉**：
 // 賣 rate−1 米一個銅板也拿不到。
+// BuyRiceForGold 是玩家那一條：**原版問的是金不是米**。提示是
+// 「1 金 = %d 米\n您想買多少金的米(0-%d):」（`docs/re/04` §2 的 `0x4999f`），
+// 打進去的數字是要花掉的金。實測送 100：郡庫金 9000 → 8900、
+// 米 9000 → 9500，當月匯率 1 金 5 米（`docs/playtest/04`）。
+//
+// `BuyRice` 收的是**米的數量**，兩者差一個匯率。少了這一層，介面照著
+// 原版的提示收數字再送進 `BuyRice`，玩家會用 100 金的價錢買到 100 米
+// ——畫面與原版一樣，數字差五倍。
+func (g *State) BuyRiceForGold(prefectureID, gold int, by state.FactionID) error {
+	p := g.Prefecture(prefectureID)
+	if p == nil || !p.Owned() || p.Owner != by {
+		return ErrNotYours
+	}
+	rate := RicePerGold(p.PriceLevel)
+	if f := g.Faction(by); f != nil && f.ByComputer {
+		rate = AIRicePerGold(p.PriceLevel, f.AILevel)
+	}
+	return g.BuyRice(prefectureID, gold*rate, by)
+}
+
 func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
