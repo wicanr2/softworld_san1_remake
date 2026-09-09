@@ -255,6 +255,15 @@ func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID
 // **關寨數與地圖是同一件事的兩份記錄**，所以這裡也要一起改；
 // remake 自己挑格子（原版由玩家指），那是登記在案的差異。
 func (g *State) BuildFort(prefectureID, generalIndex int, by state.FactionID) error {
+	// 沒指定位置就自己挑一格——**這是 remake 差異**，原版是玩家在
+	// 「數字鍵選方向」那個畫面用游標挑的。
+	return g.BuildFortAt(prefectureID, generalIndex, -1, by)
+}
+
+// BuildFortAt 指定蓋在哪一格（戰場地圖的索引，`列 × 12 + 欄`）。
+// `spot` 給負數就沿用 `fortSpotFor` 自己挑。
+func (g *State) BuildFortAt(prefectureID, generalIndex, spot int,
+	by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
@@ -273,8 +282,11 @@ func (g *State) BuildFort(prefectureID, generalIndex int, by state.FactionID) er
 	if p.Gold < cost {
 		return ErrNoGold
 	}
-	spot := fortSpotFor(p.BattleField)
 	if spot < 0 {
+		spot = fortSpotFor(p.BattleField)
+	}
+	if spot < 0 || spot >= len(p.BattleField) ||
+		!CanBuildFortOn(p.BattleField[spot]) {
 		return ErrTooManyForts // 地圖上沒有可以蓋的格子
 	}
 	// 原版寫的是 `(格 & 0xF6) | 0x06`（`0x1afae`）：低四位變 6、高四位留著。

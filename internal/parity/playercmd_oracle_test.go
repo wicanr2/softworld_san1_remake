@@ -42,6 +42,8 @@ type playerCase struct {
 	// plant 在送鍵之前直接寫原版的記憶體，用來把局面擺成要驗的樣子
 	// （`CLAUDE.md`：對拍的盤面自己擺，不靠原版的 `RND()` 湊）。
 	plant func(o *oracle.Oracle, genRec func(int) uint32, gi int)
+	// plantPref 同上，但拿到的是**目前這個郡的州郡記錄位址**。
+	plantPref func(o *oracle.Oracle, pref uint32)
 	// keys 裡的 `@to` 會換成目標郡的編號（出兵用）。
 	keys []string
 	// allKeys 為真時把鍵全部送完再取樣，不用「命令結束」的路標。
@@ -56,6 +58,10 @@ type playerCase struct {
 	// trace 為真時每送一段鍵存一張畫面，用來找序列在哪一步走偏。
 	trace bool
 	apply  func(g *game.State, at, to, gi int, me state.FactionID) error
+	// applyWith 給需要看原版盤面才做得出來的命令用（有它就不看 apply）。
+	// **不是拿答案回填**：只用來取原版自己挑的那一格，規則仍由 remake 算。
+	applyWith func(g *game.State, at, to, gi int, me state.FactionID,
+		before, after []byte) error
 }
 
 // playerSettle 是每送一段鍵之後給原版跑多少。
@@ -97,6 +103,14 @@ const generalLoyaltyOff = 16
 // 魅力在人物記錄的位移（`internal/state`：`Charm: rec[11]`）。
 // 賑民的上限與賞賜的效果都是從主事者的魅力算的。
 const generalCharmOff = 11
+
+func runApply(tc playerCase, g *game.State, at, to, gi int,
+	me state.FactionID, before, after []byte) error {
+	if tc.applyWith != nil {
+		return tc.applyWith(g, at, to, gi, me, before, after)
+	}
+	return tc.apply(g, at, to, gi, me)
+}
 
 func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 	runPlayerCommands(t, bootToGame)
@@ -244,6 +258,9 @@ func runPlayerCommands(t *testing.T,
 			if tc.plant != nil {
 				tc.plant(o, genRec, gi)
 			}
+			if tc.plantPref != nil {
+				tc.plantPref(o, purse)
+			}
 			before := board()
 			seed := seedOf()
 
@@ -361,7 +378,7 @@ func runPlayerCommands(t *testing.T,
 					t.Fatalf("remake 開不了局：%v", err)
 				}
 				g.SeedRand(seed)
-				if err := tc.apply(g, at, to, gi, me); err != nil {
+				if err := runApply(tc, g, at, to, gi, me, before, after); err != nil {
 					t.Logf("兩邊都不做這道命令（remake：%v）", err)
 					return
 				}
@@ -381,7 +398,7 @@ func runPlayerCommands(t *testing.T,
 				t.Fatalf("remake 開不了局：%v", err)
 			}
 			g.SeedRand(seed)
-			if err := tc.apply(g, at, to, pick, me); err != nil {
+			if err := runApply(tc, g, at, to, pick, me, before, after); err != nil {
 				t.Fatalf("remake 這一邊：%v", err)
 			}
 			rm, rs, rg, err := g.Tables()
@@ -587,12 +604,37 @@ func playerCases() []playerCase {
 			},
 		},
 		{
+			// 挑完將領直接進地圖游標畫面（`DS:0x70cc`「數字鍵選方向」），
+			// **`0` 就是蓋下去**，中間沒有 Y/N（`fort_oracle_test.go`）。
+			// 蓋完再一個 `Y` 收掉確認。
 			name: "建築關寨",
-			keys: []string{"4\r", "3\r", "1\r"},
-			todo: "選完將領之後還要指定蓋在哪一格，那段子流程還沒解出來——" +
-				"實測畫面停在「號 姓名 .謀略 / 1. 曹操 . 95」的名單上",
-			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.BuildFort(at, gi, me)
+			// `0` 選定那一格之後**還有一道 Y/N 確認**（`0x1aef1`，非 Y 就
+			// 退回游標），最後的 `N` 收掉外層的「主公是否繼續呢(Y/N)」
+			//（`0x1aa60`，蓋完第一座才會問）。
+			keys: []string{"4\r", "3\r", "1\r", "0", "Y", "N"},
+			// **游標停在哪一格是盤面決定的**，而那一格不一定蓋得起來
+			//（限山丘／平原／樹林且不是通往鄰郡的通道格）。曹操的郡 11
+			// 起始格就不能蓋，按 `0` 沒有反應、金與關寨都不動，看起來
+			// 像按鍵序列錯了。所以照慣例直接擺盤面：整張戰場地圖填成
+			// **平原（低四位 7）＋ 無標記（高四位 15）**，哪一格都能蓋。
+			plantPref: func(o *oracle.Oracle, pref uint32) {
+				field := make([]byte, 120)
+				for i := range field {
+					field[i] = 0xF7
+				}
+				o.SetBytes(addr(pref+55), field)
+			},
+			// **蓋在哪一格是玩家用游標挑的**，不是規則算出來的：原版停在
+			// 游標的起始位置，remake 的 UI 還沒有那個畫面所以自己挑一格。
+			// 挑法不同不該算成規則不同——拿原版挑的那一格來比，其餘
+			// （花費、座數、那一格的編碼）仍由 remake 自己算。
+			applyWith: func(g *game.State, at, to, gi int, me state.FactionID,
+				before, after []byte) error {
+				spot := fortSpotOf(before, after, at)
+				if spot < 0 {
+					return g.BuildFort(at, gi, me)
+				}
+				return g.BuildFortAt(at, gi, spot, me)
 			},
 		},
 		{
@@ -672,15 +714,16 @@ func playerCases() []playerCase {
 			// 再問攜帶多少金、多少米。
 			name:  "出兵攻擊",
 			trace: true,
-			todo: "整編之後的錢糧那三格對不上節奏：畫面比按鍵慢一格，" +
-				"照秒數補鍵補到「攜帶多少米」就停住，而多送一個空 Enter " +
-				"會讓整編整個重來（五個隊歸零）。已經走到的部分是" +
-				"軍事 → 發動戰役 → 出兵郡 → 目標郡 → 宣戰對白 → " +
-				"分配將軍 → 分到那一軍 → 分配完畢(Y⏎) → 攜帶多少金。" +
-				"監看字串讀取也不行（TestZZPlayerSortieDriven）：整編畫面" +
-				"建立時就把自己所有的字串讀過一遍，「被讀過」不代表" +
-				"「正在問這一句」。下一個槓桿是盤面狀態——部隊記錄的" +
-				"將領欄從 0xFFFF 變成槽號（docs/re/05 §3.3）。",
+			// **這一道改由 `TestZZPlayerSortieDriven` 對拍，已經通過。**
+			// 固定按鍵在這張表裡走不完：整編是個迴圈（分配將軍 → 分到
+			// 那一軍 → 分配完畢），而「分配完畢」只在「分配那一位將軍」
+			// 被取消時才問（`0x21475`），取消 ＝ 空欄位按 Enter。要走完
+			// 得照原版當下在問什麼決定送什麼——攔它自己的輸入常式
+			//（`docs/playtest/04` §出兵）。那需要每一步都看回返位址，
+			// 這張表的「一串固定按鍵」放不進去，所以另立一支。
+			todo: "改由 TestZZPlayerSortieDriven 對拍（已通過）——" +
+				"整編是迴圈而不是固定步驟，要攔原版的輸入常式才走得完，" +
+				"這張表的固定按鍵放不下那個做法",
 			keys: []string{
 				// **第一個提示問的是「從那一郡攻打」**，也就是出兵的郡，
 				// 不是目標。把目標送進去會被原版擋掉（那不是自己的郡），
@@ -743,4 +786,16 @@ func playerCases() []playerCase {
 			},
 		},
 	}
+}
+
+// fortSpotOf 回報原版把關寨蓋在戰場地圖的哪一格。州郡記錄 offset 55–174
+// 是 12 欄 × 10 列的地圖（`docs/spec/003` §3.3），蓋關寨只動一格。
+func fortSpotOf(before, after []byte, at int) int {
+	off := state.MasterTableSize + at*state.PrefectureRecordSize + 55
+	for i := 0; i < 120; i++ {
+		if before[off+i] != after[off+i] {
+			return i
+		}
+	}
+	return -1
 }

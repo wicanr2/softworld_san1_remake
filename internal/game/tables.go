@@ -33,6 +33,8 @@ const (
 	staAutonomy   = 12
 	staForts      = 25
 	staOwner      = 30
+	// 戰場地圖：offset 55–174，12 欄 × 10 列（`docs/spec/003` §3.3）。
+	staField, staFieldLen = 55, 120
 	staGovernor   = 32
 
 	genAge      = 7
@@ -136,6 +138,12 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 		rec[staFloodRate] = p.FloodRate
 		rec[staPrice] = p.PriceLevel
 		rec[staOwner] = byte(p.Owner)
+		// **戰場地圖要寫回去。** 漏掉這一段，建築關寨改的那一格
+		//（低四位變 6）在 `Tables()` 就消失了——郡表的金與關寨數對得上，
+		// 只有地圖那一格還是舊值，而存讀一輪之後關寨也跟著不見。
+		if len(p.BattleField) == staFieldLen {
+			copy(rec[staField:staField+staFieldLen], p.BattleField)
+		}
 		// 主事者（offset 32）。**先問一次 Governor** 讓它把失聯的那一位
 		// 重新指派好，否則存檔帶著一個已經不在的人，讀回來又要重推——
 		// 而重推在君主與太守同郡時給不出唯一解。
