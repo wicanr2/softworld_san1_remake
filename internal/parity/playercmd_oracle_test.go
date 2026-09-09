@@ -44,9 +44,12 @@ type playerCase struct {
 	plant func(o *oracle.Oracle, genRec func(int) uint32, gi int)
 	// keys 裡的 `@to` 會換成目標郡的編號（出兵用）。
 	keys []string
-	// stopAt 是這道命令的取樣點：那支常式被呼叫就表示命令做完了。
-	// 0 表示用預設規則（換郡或進月迴圈）。
-	stopAt uint32
+	// allKeys 為真時把鍵全部送完再取樣，不用「命令結束」的路標。
+	//
+	// 出兵要這樣：整編是在主戰場常式（`0x2053c`）**裡面**跑的
+	//（`docs/re/05` §1 開頭就呼叫四次軍團編成），拿它當「做完了」會在
+	// 玩家還沒分配將軍之前就停下來，取到的盤面什麼都還沒動。
+	allKeys bool
 	// todo 非空表示這道命令的按鍵序列還沒解完，先跳過並說明卡在哪。
 	// **跳過不是綠**（`CLAUDE.md` §7 第 18 條），所以理由要寫清楚。
 	todo string
@@ -61,6 +64,10 @@ type playerCase struct {
 // 「休息 (Y/N):Y」的 Y 還留在提示上沒被取走就取樣了，看起來像
 // 「按鍵序列沒走到底」。既有的月度對拍用的是 120M。
 const playerSettle = 120_000_000
+
+// keyGap 是同一段鍵裡兩個按鍵之間讓原版跑多少。錄製腳本是 0.15 秒，
+// DOSBox 那一側約九百萬道指令。
+const keyGap = 6_000_000
 
 // 名單是原版自己建的（`buildRoster`，`docs/re/07` §6）：合格的槽號寫進
 // 段 `[0xa668]` 的 `0x58c`，筆數在段 `[0xa666]` 的 `0x0c`。
@@ -254,14 +261,10 @@ func runPlayerCommands(t *testing.T,
 			// 不是這道命令的。
 			monthBegun := false
 			o.OnCall(addr(monthLoopTick), func(*oracle.Oracle) { monthBegun = true })
-			hitStop := false
-			if tc.stopAt != 0 {
-				o.OnCall(addr(tc.stopAt), func(*oracle.Oracle) { hitStop = true })
-			}
 			moved := oracle.NewCond("命令結束（換郡或進月迴圈）",
 				func(o *oracle.Oracle) bool {
-					if tc.stopAt != 0 {
-						return hitStop
+					if tc.allKeys {
+						return false
 					}
 					return monthBegun ||
 						int(o.Word(oracle.Addr{Seg: work, Off: curPrefOff})) != at
@@ -295,7 +298,18 @@ func runPlayerCommands(t *testing.T,
 				if i == 0 {
 					o.Drain()
 				}
-				o.PressScan(k)
+				// **同一段裡兩個鍵之間也要留空隙。** 連著灌進去的話，
+				// 畫重繪的那幾步會把第二個鍵吃掉——實測「休息 (Y/N):」
+				// 收下 Y 之後，緊跟著的 Enter 掉了，畫面停在
+				// 「休息 (Y/N):Y」，看起來像按鍵序列沒走到底。
+				for j, r := range k {
+					if j > 0 {
+						if err := o.Run(keyGap); err != nil {
+							t.Fatalf("送 %q 的第 %d 個鍵時停止：%v", k, j+1, err)
+						}
+					}
+					o.PressScan(string(r))
+				}
 				err := o.RunUntil(moved, oracle.Budget(playerSettle))
 				roster()
 				if tc.trace {
@@ -313,6 +327,19 @@ func runPlayerCommands(t *testing.T,
 				// 不轉移控制權的命令（徵兵、購買武器）：再沉澱一次就好。
 				if err := o.Run(playerSettle); err != nil {
 					t.Fatalf("沉澱時停止：%v", err)
+				}
+			}
+			if tc.allKeys {
+				// **等盤面真的動了再取樣。** 出兵的扣款發生在最後一個
+				// 確認之後，而畫面比按鍵慢一格；照「送完就取」會取到
+				// 什麼都還沒扣的盤面，看起來像原版拒絕了這道命令。
+				purseGold := oracle.NewCond("郡庫動了", func(o *oracle.Oracle) bool {
+					return o.Word(addr(purse+18)) != 9000 ||
+						o.Word(addr(purse+20)) != 9000
+				})
+				err := o.RunUntil(purseGold, oracle.Budget(4*playerSettle))
+				if err != nil && !errors.As(err, &be) {
+					t.Fatalf("等盤面變動時停止：%v", err)
 				}
 			}
 			after := board()
@@ -629,16 +656,27 @@ func playerCases() []playerCase {
 			// 再問攜帶多少金、多少米。
 			name:  "出兵攻擊",
 			trace: true,
+			todo: "整編之後的錢糧那三格對不上節奏：畫面比按鍵慢一格，" +
+				"照秒數補鍵補到「攜帶多少米」就停住，而多送一個空 Enter " +
+				"會讓整編整個重來（五個隊歸零）。已經走到的部分是" +
+				"軍事 → 發動戰役 → 出兵郡 → 目標郡 → 宣戰對白 → " +
+				"分配將軍 → 分到那一軍 → 分配完畢(Y⏎) → 攜帶多少金。" +
+				"下一步不要再猜鍵：拿 TestZZPlayerMenuPrompts 那個" +
+				"「看原版讀了哪些字串常數」的儀器改成即時的，" +
+				"照原版當下在問什麼決定送什麼。",
 			keys: []string{
 				// **第一個提示問的是「從那一郡攻打」**，也就是出兵的郡，
 				// 不是目標。把目標送進去會被原版擋掉（那不是自己的郡），
 				// 後面的鍵就散在主選單上——實測最後停在「查看」裡。
 				"2\r", "2\r", "@at\r", "@to\r",
 				"\r", "\r", "\r", "\r", "\r",
-				"1\r", "1\r", "Y",
-				"100\r", "100\r", "Y",
+				// **Y/N 的提示都要補 Enter**（與「休息 (Y/N):」同一個形狀）。
+				// 少了它，「分配完畢(Y/N)」會被當成沒答，畫面回到
+				// 「分配那一位將軍(1-7)」，看起來像鍵沒送進去。
+				"1\r", "1\r", "Y\r",
+				"100\r", "100\r", "Y\r",
 			},
-			stopAt: 0x2053c,
+			allKeys: true,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				_, err := g.BeginAttack(at, to, []int{gi}, me,
 					game.Supply{Gold: 100, Rice: 100})
