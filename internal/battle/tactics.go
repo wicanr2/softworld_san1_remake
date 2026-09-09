@@ -492,11 +492,26 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	case Siege:
 		// 原版 `0x2bd49`–`0x2bdfb`：掃目標的六個鄰格，格內有部隊、
 		// **與目標不同陣營**、而且目標的將領人數還大於 0，就各對目標
-		// 打一次交戰，倍率 `DS:0x81a2[0]` ＝ 80。
+		// 打一次交戰。
 		//
 		// **判準是「與目標不同陣營」，不是「不是施法者」**，所以貼著
 		// 目標的施法者自己也會打一次。打光就停——原版每一輪都重查
 		// 目標的將領人數。
+		// **倍率格不是常數**（`L0`，`0x2bc95`–`0x2bd44`）：從 0 起算，
+		// 目標六個鄰格裡每有一支與目標不同陣營的部隊就加一
+		// （`0x2bd04`），施法者的領隊謀略到 98 再加一（`0x2bd41`，
+		// `[bp+6]`／`[bp+8]` 是施法者）。所以**圍的人愈多打得愈重**，
+		// 名副其實。
+		mode := 0
+		for _, d := range Dirs() {
+			x := b.UnitAt(target.Step(d))
+			if x != nil && x.Alive() && x.Side.Attacking() != t.Side.Attacking() {
+				mode++
+			}
+		}
+		if w := u.Smartest(); w != nil && int(w.Intel) >= StratagemGeniusIntel {
+			mode++
+		}
 		total, n := 0, 0
 		for _, d := range Dirs() {
 			x := b.UnitAt(target.Step(d))
@@ -506,7 +521,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 			if !t.Alive() {
 				break
 			}
-			lost, _ := b.exchange(x, t, SiegeStrike)
+			lost, _ := b.exchange(x, t, mode)
 			total += lost
 			n++
 		}

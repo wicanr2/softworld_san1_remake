@@ -237,8 +237,14 @@ func TestStrikeMultiplierTable(t *testing.T) {
 			t.Errorf("模式 %d 越界，倍率是 %d，原版夾成第 1 格 ＝ 100", bad, got)
 		}
 	}
-	if StrikeMultiplier(SiegeStrike) != 80 || StrikeMultiplier(LureStrike) != 100 {
-		t.Error("圍攻用第 0 格（80）、誘敵落在第 1 格（100）")
+	if StrikeMultiplier(LureStrike) != 100 {
+		t.Error("誘敵落在第 1 格（100）")
+	}
+	// **圍攻沒有固定的格子**：從 0 起算，每一支圍著目標的敵方部隊加一，
+	// 施法者的領隊謀略到 98 再加一（`0x2bc95`–`0x2bd44`）。所以最少是
+	// 1（施法者自己貼著），圍滿六格又有神算的話是 7。
+	if StrikeMultiplier(1) != 100 || StrikeMultiplier(7) != 400 {
+		t.Error("圍攻的倍率格會在 1..7 之間跑")
 	}
 }
 
