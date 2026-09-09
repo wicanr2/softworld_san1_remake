@@ -3,6 +3,7 @@
 package parity
 
 import (
+	"errors"
 	"fmt"
 	"image/color"
 	imgpng "image/png"
@@ -85,6 +86,8 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 	// 道指令」把腳本裡的秒數換成指令上限——寧可給多不要給少，
 	// **給少了畫面會停在動畫中間，看起來像 dosgolem 少做了什麼**。
 	const stepsPerSec = 30_000_000
+	// idleSteps 是「畫面連續多久沒變」才算停下來。取約 0.7 秒。
+	const idleSteps = 20_000_000
 	waits := loadWaits(filepath.Join(filepath.Dir(dir), "keys.txt"))
 	// 順便驗語音：這一串按鍵會走到宣戰對白（`docs/re/09` 的訊息常式
 	// `0x3273e`），那正是原版會講話的地方。**兩個開關要直接寫記憶體**
@@ -112,13 +115,20 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		default:
 			o.PressScan(k)
 		}
+		// **對齊的是「畫面靜止」不是時間。** 兩邊的時鐘不同（DOSBox 用
+		// 真實秒數、dosgolem 用指令數），而錄製那一側每一步還多花一秒
+		// 拍第二張——照秒數換算的預算會讓 dosgolem 永遠落後一點，
+		// 而落後的畫面看起來像「dosgolem 少畫了東西」。
 		budget := uint64(10) * stepsPerSec
 		if n < len(waits) {
-			budget = uint64(waits[n]) * stepsPerSec
+			budget = uint64(waits[n]+2) * stepsPerSec
 		}
-		if err := o.Run(budget); err != nil {
+		err := o.RunUntil(oracle.ScreenIdle(idleSteps), oracle.Budget(budget))
+		var be *oracle.BudgetError
+		if err != nil && !errors.As(err, &be) {
 			t.Fatalf("第 %d 步（%s）停止：%v", n+1, s.keys, err)
 		}
+		settled := err == nil
 		// 進了遊戲之後每一步都把兩個開關寫開（冪等）。
 		if n >= 14 {
 			work := o.ES()
@@ -142,14 +152,18 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		}
 		// **前三步是文字模式**（裝置三題），兩邊都不是 EGA 平面畫面，
 		// 拿 `IndexedEGA` 解出來的東西沒有意義——不列入最大差異。
-		if n >= 3 && s.stable && bad > worst {
+		if n >= 3 && s.stable && settled && bad > worst {
 			worst, worstAt = bad, n+1
 			stableN++
 		}
 		pct := 100 * float64(scrW*scrH-bad) / float64(scrW*scrH)
 		mark := "動畫中"
-		if s.stable {
+		if s.stable && settled {
 			mark = "靜止"
+		} else if s.stable {
+			mark = "原版靜止／dosgolem 還在動"
+		} else if settled {
+			mark = "dosgolem 靜止／原版還在動"
 		}
 		if bad > 0 && reported < 26 {
 			reported++

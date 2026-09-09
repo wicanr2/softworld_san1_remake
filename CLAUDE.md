@@ -181,6 +181,11 @@ DATA1／2／3 的 `.IDX` 末值精準等於 `.GRP` 長度，round-trip 通過。
    設定見 `~/.claude/knowledge-base/retro/dosbox-game-configs.md`；
    **`cycles=auto` 是可重現性的敵人**，對拍一律固定 cycles
    （兩份 bundle 附的 `.jsdos/dosbox.conf` 都是 `cycles=auto`，不要直接拿來用）。
+
+   工具在 `tools/`：`dosboxx.sh` 抓單張畫面，`dosboxx-record.sh` 拿按鍵
+   腳本驅動並錄影、每一步存兩張（隔一秒，判斷畫面靜止）。
+   比對在 `internal/parity` 的 `TestZZDosgolemMatchesDosbox`，
+   做法與坑寫在 `docs/playtest/03`。
 4. **說明書**：繁中原文的權威來源；規則與數值僅供提示（§2.2）。
 5. **社群 wiki、攻略、影片**——最低，只能當提示（§2.3）。
 
