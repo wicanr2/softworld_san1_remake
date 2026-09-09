@@ -64,3 +64,18 @@ func TestReliefGainPlayerMatchesTheMeasurements(t *testing.T) {
 		}
 	}
 }
+
+func TestTrainGainPlayerMatchesTheMeasurements(t *testing.T) {
+	// 訓練度從 0 起，掃智與武。**除數固定 5，不隨難度變**——
+	// 電腦那條才是 `AITrainDivisor`（等級 ≤2 給 5、≤4 給 4、其餘 3）。
+	for _, c := range []struct{ intel, war, want int }{
+		{95, 82, 14}, {0, 0, 0}, {30, 0, 2}, {60, 0, 4}, {90, 0, 6},
+		{99, 0, 6}, {0, 30, 3}, {0, 60, 6}, {0, 90, 9}, {0, 99, 9},
+		{30, 30, 5}, {60, 60, 10}, {99, 99, 16}, {12, 88, 9}, {88, 12, 7},
+	} {
+		got := (c.intel/3 + c.war/2) / TrainDivisorPlayer
+		if got != c.want {
+			t.Errorf("智 %d 武 %d：原版 %d，remake %d", c.intel, c.war, c.want, got)
+		}
+	}
+}

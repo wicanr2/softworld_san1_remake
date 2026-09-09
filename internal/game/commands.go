@@ -161,7 +161,10 @@ func (g *State) Train(prefectureID int, by state.FactionID) error {
 	if err != nil {
 		return err
 	}
-	div := AITrainDivisor(g.AILevel(by))
+	div := TrainDivisorPlayer
+	if g.byComputer(by) {
+		div = AITrainDivisor(g.AILevel(by))
+	}
 	for _, x := range g.Garrison(prefectureID) {
 		if x.Soldiers == 0 {
 			// 沒有兵的部隊訓練度與武裝度都歸零（`0xbd70`／`0xc168`，

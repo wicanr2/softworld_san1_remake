@@ -47,10 +47,34 @@ type playerCase struct {
 	// stopAt 是這道命令的取樣點：那支常式被呼叫就表示命令做完了。
 	// 0 表示用預設規則（換郡或進月迴圈）。
 	stopAt uint32
+	// todo 非空表示這道命令的按鍵序列還沒解完，先跳過並說明卡在哪。
+	// **跳過不是綠**（`CLAUDE.md` §7 第 18 條），所以理由要寫清楚。
+	todo string
+	// trace 為真時每送一段鍵存一張畫面，用來找序列在哪一步走偏。
+	trace bool
 	apply  func(g *game.State, at, to, gi int, me state.FactionID) error
 }
 
-const playerSettle = 40_000_000
+// playerSettle 是每送一段鍵之後給原版跑多少。
+//
+// **40M 不夠。** 郡裡人多的時候（曹操那一局七位將領）畫面重繪比較久，
+// 「休息 (Y/N):Y」的 Y 還留在提示上沒被取走就取樣了，看起來像
+// 「按鍵序列沒走到底」。既有的月度對拍用的是 120M。
+const playerSettle = 120_000_000
+
+// 名單是原版自己建的（`buildRoster`，`docs/re/07` §6）：合格的槽號寫進
+// 段 `[0xa668]` 的 `0x58c`，筆數在段 `[0xa666]` 的 `0x0c`。
+//
+// **每道命令的排序鍵不一樣**（`TestZZPlayerMenuPrompts` 印出來的欄位：
+// 土地開墾按謀略、徵兵按兵士、購買武器按武裝、賞賜按忠誠），所以
+// 「送 1 選到誰」不能自己排——問原版。郡裡只有一位將領時看不出差別，
+// 七位就會選到別人，而畫面照樣往前走。
+const (
+	rosterListSegAt = 0xa668
+	rosterCntSegAt  = 0xa666
+	rosterListOff   = 0x58c
+	rosterCntOff    = 0x0c
+)
 
 // 目前的郡在工作段的位移（`docs/re/03`：`imul es:[0x30fc]` × 176）。
 const curPrefOff = 0x30fc
@@ -68,6 +92,17 @@ const generalLoyaltyOff = 16
 const generalCharmOff = 11
 
 func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
+	runPlayerCommands(t, bootToGame)
+}
+
+// runPlayerCommands 是本體；`boot` 決定從哪個局面出發。
+//
+// 兩種局面各驗一次：`bootToGame` 走「載入舊進度」（建安二年、南海、
+// 一位將領），`bootToNewGame` 開新局選君主（中平六年、有兵有將、
+// 旁邊有敵人）。**出兵那一道只有後者驗得到**——前者的郡把人派出去就
+// 沒有人治理，兩邊都會拒絕。
+func runPlayerCommands(t *testing.T,
+	boot func(*testing.T, *oracle.Oracle, []byte) uint32) {
 	root := origRoot(t)
 	c := openContainer(t, filepath.Join(root, "DATA2"))
 	sc0, err := state.LoadScenario(c, state.Slot("001"))
@@ -81,7 +116,7 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer o.Close()
-	base := bootToGame(t, o, seedMas)
+	base := boot(t, o, seedMas)
 
 	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize,
 		state.GeneralTableSize
@@ -182,6 +217,9 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 	snap := o.Save()
 	for _, tc := range playerCases() {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.todo != "" {
+				t.Skip(tc.todo)
+			}
 			if to == 0 && strings.Contains(strings.Join(tc.keys, ""), "@to") {
 				t.Skip("沒有可以打的鄰郡")
 			}
@@ -230,7 +268,25 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 				})
 			var be *oracle.BudgetError
 			done := false
+			// pick 是原版名單的第一位——送 `1` 選到的那個人。
+			pick := gi
+			roster := func() {
+				cnt := o.Word(addr(ds + rosterCntSegAt))
+				lst := o.Word(addr(ds + rosterListSegAt))
+				if cnt == 0 || lst == 0 {
+					return
+				}
+				n := o.Word(oracle.Addr{Seg: cnt, Off: rosterCntOff})
+				if n == 0 || n > 350 {
+					return
+				}
+				first := int(o.Word(oracle.Addr{Seg: lst, Off: rosterListOff}))
+				if first >= 0 && first < nGen/state.GeneralRecordSize {
+					pick = first
+				}
+			}
 			for i, k := range tc.keys {
+				k = strings.ReplaceAll(k, "@at", fmt.Sprint(at))
 				k = strings.ReplaceAll(k, "@to", fmt.Sprint(to))
 				// **同一道命令裡不要再 Drain。** 對白有顯示時間，
 				// 送早了的那個鍵還在佇列裡等它來取；下一段開頭再 Drain
@@ -241,6 +297,10 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 				}
 				o.PressScan(k)
 				err := o.RunUntil(moved, oracle.Budget(playerSettle))
+				roster()
+				if tc.trace {
+					dumpScreen(t, o, fmt.Sprintf("trace-%s-%02d", tc.name, i+1))
+				}
 				if err == nil {
 					done = true
 					break
@@ -294,7 +354,7 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 				t.Fatalf("remake 開不了局：%v", err)
 			}
 			g.SeedRand(seed)
-			if err := tc.apply(g, at, to, gi, me); err != nil {
+			if err := tc.apply(g, at, to, pick, me); err != nil {
 				t.Fatalf("remake 這一邊：%v", err)
 			}
 			rm, rs, rg, err := g.Tables()
@@ -311,9 +371,10 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 				"整份盤面兩邊差 %d 個（remake 抽了 %d 次）",
 				seed, diffCount(before, after), diffCount(after, got),
 				g.RandDraws())
-			loy := nMas + nSta + gi*state.GeneralRecordSize + generalLoyaltyOff
-			t.Logf("將領 %d 的忠誠：原本 %d → 原版 %d／remake %d",
-				gi, before[loy], after[loy], got[loy])
+			loy := nMas + nSta + pick*state.GeneralRecordSize + generalLoyaltyOff
+			t.Logf("原版名單第一位是槽號 %d（我們算的是 %d）；"+
+				"他的忠誠：原本 %d → 原版 %d／remake %d",
+				pick, gi, before[loy], after[loy], got[loy])
 			t.Logf("原版動到的記錄：%s", changedRecords(before, after, nMas, nSta))
 			t.Logf("兩邊不同的記錄：%s", changedRecords(after, got, nMas, nSta))
 
@@ -340,8 +401,8 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 			}{
 				{fmt.Sprintf("州郡表第 %d 筆", at),
 					nMas + at*state.PrefectureRecordSize, state.PrefectureRecordSize},
-				{fmt.Sprintf("人物表第 %d 筆", gi),
-					nMas + nSta + gi*state.GeneralRecordSize, state.GeneralRecordSize},
+				{fmt.Sprintf("人物表第 %d 筆", pick),
+					nMas + nSta + pick*state.GeneralRecordSize, state.GeneralRecordSize},
 				{fmt.Sprintf("諸侯表第 %d 筆", int(me)),
 					int(me) * state.MasterRecordSize, state.MasterRecordSize},
 			} {
@@ -363,8 +424,14 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 								i-r.off, after[i], got[i], before[i]))
 						}
 					}
-					t.Errorf("%s 差 %d 個位元組：%s",
-						r.name, bad, strings.Join(where, "、"))
+					stat := ""
+					if strings.HasPrefix(r.name, "人物表") {
+						stat = fmt.Sprintf("（智 %d 武 %d 魅 %d 兵 %d）",
+							before[r.off+9], before[r.off+10], before[r.off+11],
+							int(before[r.off+22])|int(before[r.off+23])<<8)
+					}
+					t.Errorf("%s%s 差 %d 個位元組：%s",
+						r.name, stat, bad, strings.Join(where, "、"))
 				}
 			}
 		})
@@ -453,8 +520,11 @@ func whichTable(off, nMas, nSta int) string {
 func playerCases() []playerCase {
 	return []playerCase{
 		{
+			// **`Y` 之後還要一個 Enter。** 提示是「休息 (Y/N):」，
+			// `Y` 只是打進欄位裡；郡裡人多的時候看得特別清楚——畫面停在
+			// 「休息 (Y/N):Y」，看起來像按鍵序列沒走到底。
 			name: "休息",
-			keys: []string{"4\r", "4\r", "Y"},
+			keys: []string{"4\r", "4\r", "Y\r"},
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.Rest(at, me)
 			},
@@ -476,6 +546,8 @@ func playerCases() []playerCase {
 		{
 			name: "建築關寨",
 			keys: []string{"4\r", "3\r", "1\r"},
+			todo: "選完將領之後還要指定蓋在哪一格，那段子流程還沒解出來——" +
+				"實測畫面停在「號 姓名 .謀略 / 1. 曹操 . 95」的名單上",
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.BuildFort(at, gi, me)
 			},
@@ -555,9 +627,13 @@ func playerCases() []playerCase {
 			// 按鍵序列出自 `workplace/rec10`：宣戰對白三個 Enter、
 			// 「請按任一鍵」一個、分配將軍兩步一位、`Y` 收工，
 			// 再問攜帶多少金、多少米。
-			name: "出兵攻擊",
+			name:  "出兵攻擊",
+			trace: true,
 			keys: []string{
-				"2\r", "2\r", "@to\r",
+				// **第一個提示問的是「從那一郡攻打」**，也就是出兵的郡，
+				// 不是目標。把目標送進去會被原版擋掉（那不是自己的郡），
+				// 後面的鍵就散在主選單上——實測最後停在「查看」裡。
+				"2\r", "2\r", "@at\r", "@to\r",
 				"\r", "\r", "\r", "\r", "\r",
 				"1\r", "1\r", "Y",
 				"100\r", "100\r", "Y",
