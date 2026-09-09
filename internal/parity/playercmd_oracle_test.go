@@ -63,6 +63,10 @@ const monthLoopTick = 0x15790
 // **在野者是 0xFF 不是 0。**
 const generalLoyaltyOff = 16
 
+// 魅力在人物記錄的位移（`internal/state`：`Charm: rec[11]`）。
+// 賑民的上限與賞賜的效果都是從主事者的魅力算的。
+const generalCharmOff = 11
+
 func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 	root := origRoot(t)
 	c := openContainer(t, filepath.Join(root, "DATA2"))
@@ -317,6 +321,19 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 			// 帶 ＊ 的命令（休息、開墾……）下完就轉移控制權；玩家只有
 			// 一個郡時，那一下就把整個月跑完了，電腦諸侯全部動過一輪。
 			// 拿整份盤面比，量到的是「原版多跑了一個月」不是這道命令。
+			// **人口與物價不列入判準。** 帶 ＊ 的命令一下完就轉移控制權，
+			// 玩家只有一個郡時那一下會把月結算跑掉；州郡記錄的
+			// **位移 14（人口 ÷ 100）**與**位移 29（物價）**都是開月時
+			// 原版自己算的（`docs/spec/003` §3.3、`docs/mechanics/60` §1.2），
+			// 與這道命令無關。實測每一道帶 ＊ 的命令都只差這兩格。
+			skip := map[int]bool{}
+			if !strings.HasPrefix(tc.name, "徵兵") &&
+				!strings.HasPrefix(tc.name, "購買武器") &&
+				!strings.HasPrefix(tc.name, "賞賜") {
+				skip[nMas+at*state.PrefectureRecordSize+14] = true
+				skip[nMas+at*state.PrefectureRecordSize+15] = true
+				skip[nMas+at*state.PrefectureRecordSize+29] = true
+			}
 			for _, r := range []struct {
 				name     string
 				off, n   int
@@ -330,7 +347,7 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 			} {
 				bad, first := 0, -1
 				for i := r.off; i < r.off+r.n; i++ {
-					if after[i] != got[i] {
+					if after[i] != got[i] && !skip[i] {
 						bad++
 						if first < 0 {
 							first = i - r.off
@@ -340,7 +357,7 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 				if bad != 0 {
 					var where []string
 					for i := r.off; i < r.off+r.n && len(where) < 8; i++ {
-						if after[i] != got[i] {
+						if after[i] != got[i] && !skip[i] {
 							where = append(where, fmt.Sprintf(
 								"位移 %d：原版 %d／remake %d（原本 %d）",
 								i-r.off, after[i], got[i], before[i]))
@@ -509,6 +526,20 @@ func playerCases() []playerCase {
 			},
 		},
 		{
+			// **把太守的魅力擺成 60，並且給多一點米讓上限真的咬到。**
+			// 送 100 米時原始增幅是 100 ÷ 每格 5 ＝ 20，而原版只給 14；
+			// 魅力 43 的一半是 21、三分之一是 14，兩個假說在那一點分不開。
+			// 送 300 米時原始增幅 60，兩個假說給 30 與 20，分得開。
+			name: "開倉賑民（魅力 60，送 300）",
+			keys: []string{"5\r", "3\r", "300\r"},
+			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
+				o.SetByte(addr(genRec(gi)+generalCharmOff), 60)
+			},
+			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
+				return g.Relief(at, 300, me)
+			},
+		},
+		{
 			name: "賣出米糧",
 			keys: []string{"5\r", "2\r", "100\r"},
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
@@ -550,6 +581,21 @@ func playerCases() []playerCase {
 			keys: []string{"6\r", "3\r", "1\r", "100\r"},
 			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
 				o.SetByte(addr(genRec(gi)+generalLoyaltyOff), 100)
+			},
+			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
+				return g.Reward(at, gi, 100, me)
+			},
+		},
+		{
+			// 同一道賞賜換一個魅力：效果那條式子是
+			// `RND(加成 ÷ 2) ＋ 太守魅力 ÷ 3 ＋ 加成`。魅力 43 那次
+			// remake 算出 14（＝ 43 ÷ 3，加成 0），原版給 27——差的 13
+			// 是玩家那條的加成加上骰子。換成魅力 60 再量一次就框得出加成。
+			name: "賞賜金帛（魅力 60，忠誠 50）",
+			keys: []string{"6\r", "3\r", "1\r", "100\r"},
+			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
+				o.SetByte(addr(genRec(gi)+generalCharmOff), 60)
+				o.SetByte(addr(genRec(gi)+generalLoyaltyOff), 50)
 			},
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.Reward(at, gi, 100, me)

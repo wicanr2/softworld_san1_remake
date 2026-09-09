@@ -1,0 +1,105 @@
+//go:build oracle
+
+package parity
+
+import (
+	"fmt"
+	"path/filepath"
+	"testing"
+
+	"github.com/wicanr2/dosgolem/oracle"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
+)
+
+// 賞賜金帛與開倉賑民**玩家那條**的效果，對主事者的魅力掃一遍。
+//
+// 兩點框不出式子：賞賜在魅力 43 給 +27、魅力 60 給 +38，兩點差 11，
+// 而 `魅力÷3` 只差 6、`÷2` 差 9，都不對。與其在兩點上湊係數，
+// 不如把魅力擺成一串值各量一次——**開機一次、存快照，每一格還原重試**，
+// 一格五秒。
+//
+// 賑民那一邊順便驗上限：送 300 米、每格 5，原始增幅 60，
+// 所有候選魅力的上限都咬得到，所以量到的就是上限本身。
+func TestZZPlayerCharmSweep(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	base := bootToGame(t, o, seedMas)
+
+	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize,
+		state.GeneralTableSize
+	work := o.ES()
+	at := int(o.Word(oracle.Addr{Seg: work, Off: curPrefOff}))
+	raw := o.Bytes(addr(base), nMas+nSta+nGen)
+	gi := -1
+	for i := 0; i < nGen/state.GeneralRecordSize; i++ {
+		r := raw[nMas+nSta+i*state.GeneralRecordSize:]
+		if r[17] <= 3 && int(r[19]) == at {
+			gi = i
+			break
+		}
+	}
+	if gi < 0 {
+		t.Fatalf("郡 %d 沒有在職武將", at)
+	}
+	pref := base + uint32(nMas+at*state.PrefectureRecordSize)
+	gen := base + uint32(nMas+nSta+gi*state.GeneralRecordSize)
+	t.Logf("郡 %d、將領槽號 %d、人口 %d00、物價 %d",
+		at, gi, o.Word(addr(pref+14)), o.Byte(addr(pref+29)))
+
+	snap := o.Save()
+	charms := []int{6, 12, 24, 30, 43, 51, 60, 75, 90, 99}
+
+	// 賞賜：忠誠擺 10 留出空間（上限 100 會把大的增幅截掉，
+	// 截掉之後量到的是 90 不是效果）。
+	t.Log("賞賜金帛（賞 100 金，忠誠起點 10）：")
+	for _, cm := range charms {
+		o.Restore(snap)
+		o.SetWord(addr(pref+18), 9000)
+		o.SetWord(addr(pref+20), 9000)
+		o.SetByte(addr(gen+generalCharmOff), uint8(cm))
+		o.SetByte(addr(gen+generalLoyaltyOff), 10)
+		gold0 := o.Word(addr(pref + 18))
+		for _, k := range []string{"6\r", "3\r", "1\r", "100\r"} {
+			o.PressScan(k)
+			if err := o.Run(playerSettle); err != nil {
+				t.Fatalf("魅力 %d 送 %q 時停止：%v", cm, k, err)
+			}
+		}
+		t.Logf("  魅力 %3d → 忠誠 %3d（增幅 %3d）、金 %d → %d",
+			cm, o.Byte(addr(gen+generalLoyaltyOff)),
+			int(o.Byte(addr(gen+generalLoyaltyOff)))-10,
+			gold0, o.Word(addr(pref+18)))
+	}
+
+	// 賑民：送 300 米，原始增幅 300 ÷ 每格；量到的是上限。
+	t.Log("開倉賑民（給 300 米）：")
+	for _, cm := range charms {
+		o.Restore(snap)
+		o.SetWord(addr(pref+18), 9000)
+		o.SetWord(addr(pref+20), 9000)
+		o.SetByte(addr(gen+generalCharmOff), uint8(cm))
+		o.SetByte(addr(pref+26), 10) // 民心起點
+		for _, k := range []string{"5\r", "3\r", "300\r"} {
+			o.PressScan(k)
+			if err := o.Run(playerSettle); err != nil {
+				t.Fatalf("魅力 %d 送 %q 時停止：%v", cm, k, err)
+			}
+		}
+		t.Logf("  魅力 %3d → 民心 %3d（增幅 %3d）、米 %d",
+			cm, o.Byte(addr(pref+26)), int(o.Byte(addr(pref+26)))-10,
+			o.Word(addr(pref+20)))
+	}
+	_ = fmt.Sprint
+}
