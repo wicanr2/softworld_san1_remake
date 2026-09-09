@@ -67,6 +67,18 @@ func TestUnitAIDecisionChain(t *testing.T) {
 		seg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa92e})
 		return int(o.Word(oracle.Addr{Seg: seg, Off: 0x31c0}))
 	}
+	// 四個決策變數一起讀（寫入端見 `docs/re/05` §12 的表）。
+	vars := func() [4]int {
+		var out [4]int
+		if dgroup == 0 {
+			return out
+		}
+		seg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa92e})
+		for i, off := range []uint16{0x31a8, 0x31ae, 0x31b8, 0x31c0} {
+			out[i] = int(o.Word(oracle.Addr{Seg: seg, Off: off}))
+		}
+		return out
+	}
 
 	type step struct {
 		opt  uint32
@@ -76,6 +88,7 @@ func TestUnitAIDecisionChain(t *testing.T) {
 		army, team int
 		trace      []step
 		final      int
+		vals       [4]int
 	}
 	var decisions []decision
 	cur := -1
@@ -99,7 +112,17 @@ func TestUnitAIDecisionChain(t *testing.T) {
 			return
 		}
 		decisions[cur].final = slot()
+		decisions[cur].vals = vars()
 		cur = -1
+	})
+
+	// 交戰結算逐次記下來：`es:[0x31a8]` ＝ 2 的那幾次是不是真的在打，
+	// 判準要是這一支有沒有跑，不是兵少了一兩個。
+	type bout struct{ aArmy, aTeam, dArmy, dTeam, mode int }
+	var bouts []bout
+	o.OnCall(addr(0x2a224), func(o *oracle.Oracle) {
+		bouts = append(bouts, bout{int(o.Arg(0)), int(o.Arg(1)),
+			int(o.Arg(2)), int(o.Arg(3)), int(o.Arg(4))})
 	})
 
 	driveIntoBattle(t, o, at, to)
@@ -170,6 +193,26 @@ func TestUnitAIDecisionChain(t *testing.T) {
 	decSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa92e})
 	wr := o.WatchWritesAt(uint32(decSeg)<<4+0x3180, uint32(decSeg)<<4+0x31d0)
 
+	type snapshot struct{ col, row, sol, move int }
+	unitsOf := func() map[string]snapshot {
+		out := map[string]snapshot{}
+		for army := 0; army < battleArmies; army++ {
+			for team := 0; team < battleTeams; team++ {
+				rec := recOf(army, team)
+				if w16(rec) == 0xFFFF || w16(rec+unitLeaders) <= 0 {
+					continue
+				}
+				out[fmt.Sprintf("%d-%d", army, team)] = snapshot{
+					w16(rec + unitCol), w16(rec + unitRow),
+					w16(rec + unitSoldiers), w16(rec + unitMove)}
+			}
+		}
+		return out
+	}
+	prevUnits := unitsOf()
+	seenDecisions := 0
+	seenBouts := 0
+
 	for d := 1; d <= 5; d++ {
 		keys := []string{"0", "Y"}
 		if d == 1 {
@@ -182,6 +225,41 @@ func TestUnitAIDecisionChain(t *testing.T) {
 				t.Fatalf("第 %d 天送 %q 停止：%v", d, k, err)
 			}
 		}
+		now := unitsOf()
+		dayBouts := bouts[seenBouts:]
+		seenBouts = len(bouts)
+		var line string
+		for _, dec := range decisions[seenDecisions:] {
+			k := fmt.Sprintf("%d-%d", dec.army, dec.team)
+			a, b := prevUnits[k], now[k]
+			what := "沒動"
+			if a.col != b.col || a.row != b.row {
+				what = fmt.Sprintf("移動 (%d,%d)→(%d,%d)", a.col, a.row, b.col, b.row)
+			}
+			if a.sol != b.sol {
+				what += fmt.Sprintf(" 兵 %d→%d", a.sol, b.sol)
+			}
+			decider := "?"
+			for i, st := range dec.trace {
+				if st.seen != 0xFFFF && st.seen >= 0 && i > 0 {
+					decider = fmt.Sprintf("%#x", dec.trace[i-1].opt)
+					break
+				}
+				if i == len(dec.trace)-1 {
+					decider = fmt.Sprintf("%#x", st.opt)
+				}
+			}
+			line += fmt.Sprintf("\n    %s 由 %s 定案，四個變數 %v｜%s",
+				k, decider, dec.vals, what)
+		}
+		var bl string
+		for _, b := range dayBouts {
+			bl += fmt.Sprintf(" [%d-%d→%d-%d 模式 %d]",
+				b.aArmy, b.aTeam, b.dArmy, b.dTeam, b.mode)
+		}
+		t.Logf("第 %d 天：交戰結算 %d 次%s%s", d, len(dayBouts), bl, line)
+		seenDecisions = len(decisions)
+		prevUnits = now
 	}
 
 	if len(decisions) == 0 {
