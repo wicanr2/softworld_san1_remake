@@ -514,7 +514,15 @@ func ReliefGain(priceLevel, population, gold, governorCharm, level int) int {
 // ⚠ 乘出來的量是 **16 位元有號**，郡的金拉到上限時真的會溢位
 // （量 6 × 預算 6000 ＝ 36000 → −29536），所以截斷留在呼叫端做。
 func ReliefGainFromRice(population, rice, cap int) int {
-	per := ReliefPerStep(population)
+	return reliefGain(ReliefPerStep(population), rice, cap)
+}
+
+// ReliefGainPlayer 是玩家那條：每格的米數與上限都與電腦那條不同。
+func ReliefGainPlayer(population, rice, governorCharm int) int {
+	return reliefGain(ReliefPerStepPlayer(population), rice, governorCharm/3)
+}
+
+func reliefGain(per, rice, cap int) int {
 	if per <= 0 {
 		return 0
 	}
@@ -540,6 +548,17 @@ func ReliefRateOf(priceLevel, level int) int {
 // ReliefPerStep 是「多少人口換一格忠誠」（原版 `0xc95c` 的 `idiv 12`，
 // 而人口存的是實際值 ÷ 100，所以是 人口 ÷ 1200）。
 func ReliefPerStep(population int) int { return population / 100 / 12 }
+
+// ReliefPerStepPlayer 是玩家那條的「多少米換一格民心」。
+//
+// **除數是 10 不是 12**：人口 7000 時每格 7，掃米九點
+//（10／25／50／75／100／125／150／175／200）得增幅
+// 1 3 7 10 14 17 21 25 28，逐點等於 `米 ÷ 7`（`docs/playtest/04`）。
+// 電腦那條的 ÷12 有 99 次對拍背書，兩條各走各的。
+//
+// ⚠ 只在人口 7000 這一個點上量過，所以「(人口 ÷ 100) ÷ 10」與
+// 「人口 ÷ 1000」在這份資料上分不開——換一個人口再量才定得下來。
+func ReliefPerStepPlayer(population int) int { return population / 100 / 10 }
 
 // ReliefSecondCharge 是賑民**第二次**扣的錢（`L1`、`0xc9d6`）。
 //
@@ -586,6 +605,34 @@ func RewardEffect(governorCharm, bonus, roll int) int {
 
 // RewardGain 是賞 gold 金換到的忠誠（還沒夾上限）。
 func RewardGain(effect, gold int) int { return effect * gold / 100 }
+
+// RewardGainPlayer 是**玩家**賞賜換到的忠誠（`L1`）。
+//
+// 電腦那條是 `RND(加成 ÷ 2) ＋ 魅力 ÷ 3 ＋ 加成`（`0xd374`，六個等級對拍
+// 過 605 次）；玩家那條**不擲骰、也沒有加成**，量出來是
+//
+//	增幅 ＝ 魅力 × 0.64 × 金 ÷ 100
+//
+// 兩串掃描各十點逐點相同（`docs/playtest/04`）：魅力 6..99 固定賞 100 金
+// 得 3 7 15 19 27 32 38 48 57 63；魅力 99 掃金 10..100 得
+// 6 12 19 25 31 38 44 50 57 63。
+//
+// **乘完才截斷。** 先把效果截成整數 63 再乘金的話，金 30／60／90 會算出
+// 18／37／56，實測是 19／38／57。這裡用整數乘除照做，避免浮點的進位。
+//
+// 二十四個點沒有任何散布，所以玩家那條不消耗亂數——這件事對長序列的
+// 對拍有影響：多抽一次，之後每一格都會岔開。
+//
+// ⚠ **係數本身還沒解出來，只夾出區間。** 魅力 89 賞 100 金給 57
+// （所以係數 ≥ 57/89 ＝ 0.6405），魅力 14 給 8（所以 < 9/14 ＝ 0.6429）。
+// 這個區間裡沒有分母小的分數，`0.64` 也在區間外——它在魅力 89 上會算成
+// 56。下面用 641/1000，二十四個量到的點全部重現；要把常數定死得讀
+// 反組譯，那時這裡改成 `L0`。
+const rewardCoeffNum, rewardCoeffDen = 641, 1000
+
+func RewardGainPlayer(governorCharm, gold int) int {
+	return governorCharm * rewardCoeffNum * gold / (rewardCoeffDen * 100)
+}
 
 // RewardCost 是照實際增幅反算回來的花費。
 func RewardCost(effect, gain int) int {

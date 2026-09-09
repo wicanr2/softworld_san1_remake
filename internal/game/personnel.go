@@ -282,23 +282,26 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 	if gov := g.Governor(prefectureID); gov != nil {
 		charm = int(gov.Charm)
 	}
-	bonus := RewardBonus(g.aiLevelOf(by))
-	effect := RewardEffect(charm, bonus, g.Roll(max(bonus/2, 1), prefectureID, targetIndex, 0x5654))
 	t.Rewarded = true
-	if t.HasLoyalty() {
-		was := int(t.Loyalty)
-		t.Loyalty = uint8(clampTo(was+RewardGain(effect, gold), 100))
-		// **照增幅反算花費是電腦那條專有的**（`0xd3ed`，六個等級對拍過
-		// 605 次）。玩家照打進去的數字付：實測忠誠已滿、增幅是 0 的時候
-		// 原版照樣扣 100 金，忠誠 50 那次也是扣滿 100
-		//（`docs/playtest/04`）。
-		//
-		// 文件自己就寫了這是 AI 的形狀——「先用整份預算算出想要的效果，
-		// 夾住之後再回頭付帳」（`rules.go` 的 `RewardBonus` 註解）。
-		// 開倉賑民是同一個形狀，玩家那條也一樣照數字收。
-		if f := g.Faction(by); f != nil && f.ByComputer {
+	// **兩條路完全分開。** 電腦那條擲一次骰、照加成算效果、再照實際增幅
+	// 反算花費（`0xd374`／`0xd3ed`，六個等級對拍過 605 次）；玩家那條
+	// **不擲骰、沒有加成、照打進去的數字付**——增幅是
+	// `魅力 × 0.64 × 金 ÷ 100`，兩串掃描各十點逐點相同
+	//（`RewardGainPlayer`，`docs/playtest/04`）。
+	//
+	// 少了這個分岔，玩家那邊會多消耗一次亂數，之後每一格都跟著岔開。
+	if g.byComputer(by) {
+		bonus := RewardBonus(g.aiLevelOf(by))
+		effect := RewardEffect(charm, bonus,
+			g.Roll(max(bonus/2, 1), prefectureID, targetIndex, 0x5654))
+		if t.HasLoyalty() {
+			was := int(t.Loyalty)
+			t.Loyalty = uint8(clampTo(was+RewardGain(effect, gold), 100))
 			gold = RewardCost(effect, int(t.Loyalty)-was)
 		}
+	} else if t.HasLoyalty() {
+		t.Loyalty = uint8(clampTo(
+			int(t.Loyalty)+RewardGainPlayer(charm, gold), 100))
 	}
 	if gold > p.Gold {
 		gold = p.Gold

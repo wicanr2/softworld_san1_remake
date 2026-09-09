@@ -59,7 +59,11 @@ func TestZZPlayerCharmSweep(t *testing.T) {
 		at, gi, o.Word(addr(pref+14)), o.Byte(addr(pref+29)))
 
 	snap := o.Save()
-	charms := []int{6, 12, 24, 30, 43, 51, 60, 75, 90, 99}
+	// **14／28／42／89 是拿來分辨係數的。** 掃出來的範圍是
+	// 0.64 ≤ k < 0.6444，而 0.64 剛好貼在下界；這四個魅力值上，
+	// `0.64` 與任何略大的係數會差一格（例如 14 × 0.64 ＝ 8.96 → 8，
+	// 14 × 0.6429 ＝ 9.0 → 9）。貼著邊界的常數要挑會分家的點驗。
+	charms := []int{6, 12, 14, 24, 28, 30, 42, 43, 51, 60, 75, 89, 90, 99}
 
 	// 賞賜：忠誠擺 10 留出空間（上限 100 會把大的增幅截掉，
 	// 截掉之後量到的是 90 不是效果）。
@@ -121,6 +125,27 @@ func TestZZPlayerCharmSweep(t *testing.T) {
 			g, o.Byte(addr(gen+generalLoyaltyOff)),
 			int(o.Byte(addr(gen+generalLoyaltyOff)))-5,
 			o.Word(addr(pref+18)))
+	}
+
+	// 人口那一維：每格的除數是 10 還是 12，在人口 7000 這一個點上
+	// 分不開（70 ÷ 10 ＝ 7、70 ÷ 12 ＝ 5，量到的是 7，但「人口 ÷ 1000」
+	// 也是 7）。換幾個人口再量才定得下來。
+	t.Log("開倉賑民（魅力 99、米 100、民心起點 5，掃人口）：")
+	for _, pop := range []int{30, 50, 84, 100, 120, 144, 200} {
+		o.Restore(snap)
+		o.SetWord(addr(pref+18), 9000)
+		o.SetWord(addr(pref+20), 9000)
+		o.SetWord(addr(pref+14), uint16(pop)) // 人口 ÷ 100
+		o.SetByte(addr(gen+generalCharmOff), 99)
+		o.SetByte(addr(pref+26), 5)
+		for _, k := range []string{"5\r", "3\r", "100\r"} {
+			o.PressScan(k)
+			if err := o.Run(playerSettle); err != nil {
+				t.Fatalf("人口 %d00 送 %q 時停止：%v", pop, k, err)
+			}
+		}
+		t.Logf("  人口 %d00 → 民心 %3d（增幅 %3d）",
+			pop, o.Byte(addr(pref+26)), int(o.Byte(addr(pref+26)))-5)
 	}
 
 	t.Log("開倉賑民（魅力 99、民心起點 5，掃米）：")
