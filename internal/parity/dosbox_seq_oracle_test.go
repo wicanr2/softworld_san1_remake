@@ -90,11 +90,14 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		// `int 21h` 的提示堵死，而那看起來像「按了沒反應」。
 		k := strings.ReplaceAll(s.keys, "Return", "\r")
 		o.Drain()
-		if n < 3 {
+		switch {
+		case n < 3:
 			o.Press(k)
-		} else {
+		case isPassword(k):
+			// 防拷密碼那一關**不吃掃描碼**（`docs/re/02` §3.3），走字元。
+			o.Press(k)
+		default:
 			o.PressScan(k)
-			o.Press(k)
 		}
 		budget := uint64(10) * stepsPerSec
 		if n < len(waits) {
@@ -146,6 +149,23 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 }
 
 // loadWaits 讀按鍵腳本裡每一步的等待秒數。
+// isPassword 認出防拷密碼那一步：四個數字加 Enter。
+//
+// **兩條輸入路徑不能一起餵。** 讀掃描碼的提示同時收到字元副本時，
+// 一個「1」會被算成兩次——「有幾人玩」那一格就從 1 個玩家變成 11 個，
+// 之後每一步都在問「第 N 位」，畫面一直在動，看起來像 dosgolem 走錯了。
+func isPassword(k string) bool {
+	if len(k) != 5 || k[4] != '\r' {
+		return false
+	}
+	for i := 0; i < 4; i++ {
+		if k[i] < '0' || k[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // sameFile 比兩個檔的內容。第二個檔不在就回 false。
 func sameFile(a, b string) bool {
 	x, err := os.ReadFile(a)
