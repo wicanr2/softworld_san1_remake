@@ -290,8 +290,15 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 		msg = log[len(log)-1]
 	}
 	if msg != "" {
+		// 原版是**兩行**（「新君主主公,請到(41)」／「南海下您的命令:」），
+		// 一句話折過去，不是兩則訊息。
 		w := (artRightR - artMsgX) / CellW
-		c.DrawTextPx(artMsgX, artMsgY, cells.Truncate(msg, w), artInkMsg)
+		for i, line := range cells.Wrap(msg, w) {
+			if i >= 2 {
+				break
+			}
+			c.DrawTextPx(artMsgX, artMsgY+i*artMsgDY, line, artInkMsg)
+		}
 	}
 }
 

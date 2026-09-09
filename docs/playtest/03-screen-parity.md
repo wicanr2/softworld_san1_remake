@@ -39,7 +39,7 @@ DOSBox-X 2026.06.02、`machine=svga_s3`、`core=normal`、`cputype=386`、
 `tools/dosboxx-record.sh` 拿一個按鍵腳本驅動 DOSBox-X，一邊用
 `ffmpeg -f x11grab` 連續錄影，一邊在每一步之後存一張 640×350 的 PNG
 （檔名帶著那一步送了什麼鍵）。`internal/parity` 的
-`TestDosgolemMatchesDosboxKeySequence` 送同一串鍵給 dosgolem，
+`TestZZDosgolemMatchesDosbox` 送同一串鍵給 dosgolem，
 逐步比畫面。
 
 **這一支問的不是「remake 對不對」，是「執行器夠不夠」**：同一支原版、

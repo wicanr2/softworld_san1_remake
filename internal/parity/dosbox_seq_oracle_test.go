@@ -29,7 +29,7 @@ import (
 //
 // ⚠ **時間軸不能照抄。** DOSBox 用真實秒數，dosgolem 用指令數；
 // 對齊點要是**畫面靜止**不是「第幾秒」。
-func TestDosgolemMatchesDosboxKeySequence(t *testing.T) {
+func TestZZDosgolemMatchesDosbox(t *testing.T) {
 	dir := os.Getenv("SAN1_REC")
 	if dir == "" {
 		dir = "../../workplace/rec4/frames"
