@@ -129,6 +129,32 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 	gi = roster[0]
 	t.Logf("郡 %d 的駐紮名單 %v，第一位是槽號 %d", at, roster, gi)
 
+	// 主事者（太守）決定賑民的上限（魅力 ÷ 2）與賞賜的效果（魅力 ÷ 3），
+	// 所以兩邊挑到不同的人，兩道命令會同時對不上——那是一個根因不是兩個。
+	// 原版把主事者記在州郡 offset 32（`internal/game`：`p.governor`）。
+	govSlot := int(raw[nMas+at*state.PrefectureRecordSize+32]) |
+		int(raw[nMas+at*state.PrefectureRecordSize+33])<<8
+	govCharm := -1
+	if govSlot >= 0 && govSlot < nGen/state.GeneralRecordSize {
+		govCharm = int(raw[nMas+nSta+govSlot*state.GeneralRecordSize+11])
+	}
+	scNow, err := state.DecodeTables(state.Slot("001"),
+		raw[:nMas], raw[nMas:nMas+nSta], raw[nMas+nSta:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	gNow, err := game.New(scNow, me, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gov := gNow.Governor(at); gov != nil {
+		t.Logf("主事者：盤面記的是槽號 %d（魅力 %d），remake 挑到槽號 %d（魅力 %d）",
+			govSlot, govCharm, gov.Index, gov.Charm)
+	} else {
+		t.Logf("主事者：盤面記的是槽號 %d（魅力 %d），remake 挑不到人",
+			govSlot, govCharm)
+	}
+
 	// 出兵的目標：`at` 的鄰郡（州郡記錄 offset 45–54，`0xFF` 補齊）
 	// 裡屬於別的勢力的第一個。
 	to := 0

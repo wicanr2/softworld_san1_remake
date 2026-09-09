@@ -507,13 +507,30 @@ func (g *State) Relief(prefectureID, gold int, by state.FactionID) error {
 	if gold <= 0 {
 		return fmt.Errorf("game: 賑民要撥出正的金額，拿到 %d", gold)
 	}
-	fee := g.price(by, gold)
-	if p.Gold < fee {
-		return ErrNoGold
-	}
 	charm := 50
 	if gov := g.Governor(prefectureID); gov != nil {
 		charm = int(gov.Charm)
+	}
+	if !g.byComputer(by) {
+		// **玩家那條發下去的是米不是金。** 原版的提示是
+		// 「您給多少米(0-%d):」（`docs/re/04` §2 的 `0x49a88`），
+		// 實測送 100：郡庫米 9000 → 8900、金一毛不動、民心 36 → 50
+		//（`docs/playtest/04`）。
+		//
+		// 也**沒有第二次扣錢**：那是電腦那條「照實際增幅回頭付帳」的
+		// 形狀（`ReliefSecondCharge`，`0xc9d6`），玩家照打進去的數字收。
+		if p.Rice < gold {
+			return ErrNoRice
+		}
+		p.Rice -= gold
+		add := ReliefGainFromRice(p.Population, gold, charm)
+		p.PublicLoyalty = uint8(clampTo(int(p.PublicLoyalty)+add, 100))
+		p.Commanded = true
+		return nil
+	}
+	fee := g.price(by, gold)
+	if p.Gold < fee {
+		return ErrNoGold
 	}
 	p.Gold -= fee
 	level := g.aiLevelOf(by)

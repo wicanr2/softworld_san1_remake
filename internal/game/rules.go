@@ -495,11 +495,26 @@ func ReliefRate(level int) int {
 // 量 6 × 預算 6000 ＝ 36000 → −29536，忠誠反而暴跌。
 // 這不是模擬器的誤差，是原版的算術，99 次實跑逐次相同。
 func ReliefGain(priceLevel, population, gold, governorCharm, level int) int {
+	return ReliefGainFromRice(population,
+		int(int16(ReliefRateOf(priceLevel, level)*gold)), governorCharm)
+}
+
+// ReliefGainFromRice 是**發下去多少米換多少民心**，也就是上面那條式子
+// 去掉「拿金換米」那一層。
+//
+// 電腦那條給的是**金**（`0xc8f6` 的第一個參數是整份預算），照當月物價
+// 換成米；玩家那條在提示上直接問米（「您給多少米(0-%d):」，`0x49a88`），
+// 所以少一層換算。**兩條共用的是這一段**：每 `per` 個米一格民心，
+// 上限是太守魅力的一半。
+//
+// ⚠ 乘出來的量是 **16 位元有號**，郡的金拉到上限時真的會溢位
+// （量 6 × 預算 6000 ＝ 36000 → −29536），所以截斷留在呼叫端做。
+func ReliefGainFromRice(population, rice, governorCharm int) int {
 	per := ReliefPerStep(population)
 	if per <= 0 {
 		return 0
 	}
-	gain := int(int16(ReliefRateOf(priceLevel, level)*gold)) / per
+	gain := rice / per
 	if cap := governorCharm / 2; gain > cap {
 		gain = cap
 	}
