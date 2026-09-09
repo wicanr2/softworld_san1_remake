@@ -80,6 +80,13 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 	// **給少了畫面會停在動畫中間，看起來像 dosgolem 少做了什麼**。
 	const stepsPerSec = 30_000_000
 	waits := loadWaits(filepath.Join(filepath.Dir(dir), "keys.txt"))
+	// 順便驗語音：這一串按鍵會走到宣戰對白（`docs/re/09` 的訊息常式
+	// `0x3273e`），那正是原版會講話的地方。**兩個開關要直接寫記憶體**
+	// ——「其他」的子選單走另一條輸入路徑，送數字進去畫面不動。
+	var speaks, says int
+	o.OnCall(addr(speechSpeakFn), func(*oracle.Oracle) { speaks++ })
+	o.OnCall(addr(speechSayFn), func(*oracle.Oracle) { says++ })
+
 	var worst, worstAt, stableN int
 	var reported int
 	for n, s := range steps {
@@ -105,6 +112,12 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		}
 		if err := o.Run(budget); err != nil {
 			t.Fatalf("第 %d 步（%s）停止：%v", n+1, s.keys, err)
+		}
+		// 進了遊戲之後每一步都把兩個開關寫開（冪等）。
+		if n >= 14 {
+			work := o.ES()
+			o.SetWord(oracle.Addr{Seg: work, Off: sfxStateOff}, 0)
+			o.SetWord(oracle.Addr{Seg: work, Off: voiceStateOff}, 0)
 		}
 		want := loadShot(t, s.file)
 		got := o.IndexedEGA(scrW, scrH)
@@ -139,6 +152,8 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		}
 		dumpScreen(t, o, fmt.Sprintf("seq-%03d", n+1))
 	}
+	t.Logf("語音：訊息常式進去 %d 次、speak %d 次、喇叭切換 %d 次",
+		says, speaks, len(o.Speaker()))
 	if stableN == 0 {
 		t.Logf("沒有任何一步是靜止的——參照畫面是舊版錄的（一步只存一張），" +
 			"重跑 tools/dosboxx-record.sh 才有靜止判斷")
