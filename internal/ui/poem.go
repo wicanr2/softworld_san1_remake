@@ -56,7 +56,7 @@ const (
 	poemInk    = 11
 )
 
-// DrawImage 把一整張 640×350 的圖貼滿畫布。開場的三英圖
+// DrawImage 把一整張 640×408 的圖貼滿畫布。開場的三英圖
 // （`assets.TitleArt`）就只是一張圖，沒有疊字。
 func DrawImage(c *Canvas, im *assets.Image) {
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),

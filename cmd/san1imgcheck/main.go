@@ -12,7 +12,7 @@
 //	  -exe "/orig/三國演義/AA.EXE" -root "/orig/三國演義" \
 //	  -steps 3000000000 -keys '122' \
 //	  -keys-at '250000000:\r,900000000:1,1500000000:1' \
-//	  -ega-every '100000000:640x350=/src/workplace/shots/s'
+//	  -ega-every '100000000:640x408=/src/workplace/shots/s'
 //
 // 再把某幾個圖檔拿去那張畫面裡找：
 //

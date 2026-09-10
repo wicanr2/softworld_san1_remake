@@ -14,10 +14,13 @@ import (
 
 // 開場那張三英圖是 `TITL0`–`TITL3` 四塊拼出來的（`docs/formats/04`）。
 //
-// 四塊各 160×400，而畫面是 640×350——**多出來的 50 列不是垃圾，
-// 是資料裡真的有**，所以「怎麼擺」有兩個自由度：橫向是四塊並排還是
-// 交錯，縱向是從第幾列開始取。與其推，讓原版自己說：跑到那一格
+// 四塊各 160×400，並排正好 640×400，而畫面是 640×408
+//（`docs/spec/006`）——**底下 8 列不是素材畫的**。橫向是四塊並排還是
+// 交錯、縱向從第幾列開始取，與其推，讓原版自己說：跑到那一格
 // 把畫面倒出來，逐格比。
+//
+// ⚠ 比對只涵蓋素材有的那 400 列；底下 8 列由 `assets` 那一邊的
+// `TestTitleArtMatchesTheOriginal` 釘（它比的是整張 408 列）。
 //
 // 原版讀這四張的時機量得到（`TestZZOpeningAssetNames`）：約 1.9 億條
 // 指令，正好在第三格與第四格之間。
@@ -71,6 +74,10 @@ func TestTitleArtLayoutMatchesTheOriginal(t *testing.T) {
 		return pieces[x%4].Pix[y*160+x/4]
 	}}
 
+	// 只比素材涵蓋得到的列：四塊各 400 列，往下位移 dy 之後
+	// 剩 400−dy 列可比。**拿畫面的 408 列去索引 400 列的素材會爆**，
+	// 而那看起來像測試壞了不像前提改了。
+	const pieceH = 400
 	best := struct {
 		name string
 		dy   int
@@ -79,7 +86,7 @@ func TestTitleArtLayoutMatchesTheOriginal(t *testing.T) {
 	for _, l := range []layout{side, inter} {
 		for dy := 0; dy <= 50; dy++ {
 			bad := 0
-			for y := 0; y < scrH; y++ {
+			for y := 0; y < pieceH-dy; y++ {
 				for x := 0; x < scrW; x++ {
 					if l.at(x, y+dy) != pix[y*scrW+x]&15 {
 						bad++
@@ -91,7 +98,7 @@ func TestTitleArtLayoutMatchesTheOriginal(t *testing.T) {
 			}
 			if dy <= 2 || bad == 0 {
 				t.Logf("%s、往下取第 %d 列起：%d 格不同（共 %d）",
-					l.name, dy, bad, scrW*scrH)
+					l.name, dy, bad, scrW*(pieceH-dy))
 			}
 		}
 	}

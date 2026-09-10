@@ -51,11 +51,19 @@ type MainPanel struct {
 // MainPanels 是主畫面右側的兩塊面板，位置量自原版畫面。
 //
 // 上面板放郡的資料與主事者肖像，下面板放指令提示。
-// **下面板的下緣超出 350 被裁掉**，畫面上只看得到上半。
+//
+// 三個高度接得剛剛好：上面板 36–291（256）、下面板 292–371（80）、
+// 下方花邊 `MAINMAP2` 372–407（36），合起來就是畫面的 408 列。
+//
+// **下面板是 80 不是 256。** 256 是在 640×350 的畫布上量出來的——
+// 那時下緣落在畫面外，量不到，於是照上面板填了同一個數字。畫面改回
+// 408 之後量得到了：外框的角在 292–307 與 **356–371** 各出現一次
+//（`TestZMeasureLowerPanel` 的方法：拿 `SIDED16` 的每一列去比），
+// 高 ＝ 16 ＋ 8×6 ＋ 16 ＝ 80，而 292 ＋ 80 ＝ 372 正好接上花邊。
 func MainPanels() [2]MainPanel {
 	return [2]MainPanel{
 		{X: MainPanelX, Y: 36, W: MainPanelW, H: 256, Letter: 'B', Fill: 3},
-		{X: MainPanelX, Y: 292, W: MainPanelW, H: 256, Letter: 'D', Fill: 2},
+		{X: MainPanelX, Y: 292, W: MainPanelW, H: 80, Letter: 'D', Fill: 2},
 	}
 }
 

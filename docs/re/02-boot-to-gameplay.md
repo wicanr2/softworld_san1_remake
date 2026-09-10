@@ -40,7 +40,7 @@ DOSGOLEM_ORIG=~/cht/softworld_san/org_game tools/go.sh run ./cmd/probe \
   -exe "/orig/三國演義/AA.EXE" -root "/orig/三國演義" \
   -steps 3000000000 -keys '122' \
   -keys-at '250000000:\r,900000000:1,1500000000:1' \
-  -dump-ega '640x350=out.png'
+  -dump-ega '640x408=out.png'
 ```
 
 ⚠ **那幾個指令數是量出來的不是算出來的**，而且會隨執行器的改動而變。
@@ -75,7 +75,7 @@ DOSGOLEM_ORIG=~/cht/softworld_san/org_game tools/go.sh run ./cmd/probe \
 選君主、設難度都不會動到三張表。拿盤面當「輸入被收下了沒」的判準，
 每一種送法都會報「沒反應」——而那是**量錯了**，不是每一種都不對。
 
-畫面要用 `IndexedEGA(640, 350)` 解平面，而且**色盤用 EGA 的十六色**：
+畫面要用 `IndexedEGA(640, 408)` 解平面（`docs/spec/006`），而且**色盤用 EGA 的十六色**：
 `Palette()` 是 VGA 的 DAC，在這個模式下全黑，存出來的圖整張黑，
 看起來像畫面沒東西而不像色盤取錯。
 
@@ -218,7 +218,7 @@ DOSGOLEM_ORIG=~/cht/softworld_san/org_game tools/go.sh run ./cmd/probe \
 | 畫面 | 內容 |
 |---|---|
 | 裝置選單 | `Music` / `Graphic` / `Disk` 三題（文字模式）|
-| 發行商識別 ＋ 開場 | EGA 640×350 |
+| 發行商識別 ＋ 開場 | EGA 640×408 |
 | 主選擇單 | 開始新遊戲／載入舊進度／使用楷書字／使用隸書字／音樂欣賞／回作業系統 |
 | 選擇年代 | 中平六年／興平二年／建安六年／建安十三年／建安二十年／黃初元年 |
 | 君主選擇 | 中國地圖（42 個編號郡）＋ 六位君主頭像：劉備／曹操／孫堅／袁紹／袁術／董卓。左側直排「中平六年元月」|

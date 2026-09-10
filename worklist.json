@@ -1,0 +1,1148 @@
+{
+  "schema": "san1-worklist/1",
+  "note": "完成度與未完成項的單一真相（`rulebook/61`）。**verify 回答的是「這一條的 status 還成立嗎」，不是「這一項好不好」**——`done` 項驗證據還在，`open`／`blocked` 項驗未完成的訊號還在；任一邊翻面就是清單長出了過期斷言。跑法與四種結果的意思見 tools/worklist.py。VERIFICATION-MATRIX.md 的資料段由 `tools/worklist.py render` 產生，不要手改。",
+  "updated": "2026-09-10",
+  "items": [
+    {
+      "id": "parity-rand-lcg",
+      "title": "原版的亂數是 MSC 的 LCG",
+      "group": "對拍",
+      "milestone": "M1",
+      "status": "done",
+      "level": "L0",
+      "edition": "both",
+      "docs": [
+        "docs/playtest/02"
+      ],
+      "note": "核對 400 次逐次相同。**公式通用、進入點與狀態變數位址不通用**。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestRandIsTheMSCLCG",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-container-offsets",
+      "title": "容器項目邊界與原版算的一致",
+      "group": "對拍",
+      "milestone": "M2",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/formats/01"
+      ],
+      "note": "攔原版對 `DATA1.GRP` 的 seek，比它算出來的起點——逐項相符。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestContainerOffsetsMatchOriginal|TestContainerHeaderReadsAreComplete",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-tables-in-memory",
+      "title": "三張表在記憶體裡連續且位置找得到",
+      "group": "對拍",
+      "milestone": "M4",
+      "status": "done",
+      "level": "L0",
+      "edition": "base",
+      "docs": [
+        "docs/spec/003"
+      ],
+      "note": "拿劇本檔的位元組去搜，找到且三張連續（0x399B0）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestScenarioTablesLiveInMemory",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-save-load",
+      "title": "存檔載入：原版與 remake 讀同一格逐位元組相同",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/formats/05",
+        "docs/re/08"
+      ],
+      "note": "19,220 個位元組，**除兩個快照欄位之外完全相同**（兵士與在職將在存檔裡是寫檔當下的快照，原版載入時不重算）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestOriginalSaveLoadsIdentically",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-save-write",
+      "title": "存檔寫出：原版讀得回 remake 存的那一格",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/formats/05"
+      ],
+      "note": "remake 走完一個月存進第 1 格，六個項目換進**原版目錄複製品**的 `DATA2.GRP`，原版讀回來 **19,220 個位元組完全相同**，載入流程六個檢查點都是 0。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestRemakeSaveLoadsInOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-month",
+      "title": "一個月的狀態轉移差 0 個位元組",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/playtest/02"
+      ],
+      "note": "43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZMonthParity",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-player-commands",
+      "title": "玩家自己下的每一道命令",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/playtest/04"
+      ],
+      "note": "兩個盤面各十五道全部相同（建安二年／南海、劇本 1 曹操／郡 11）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestPlayerCommandsMatchTheOriginal|TestPlayerCommandsAsCaoCao",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-sortie",
+      "title": "出兵：整編、攜帶錢糧、確認",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/playtest/04"
+      ],
+      "note": "郡 11 打郡 4，走完軍事 → 發動戰役 → 選郡 → 整編 → 攜帶錢糧 → 確認，原版動的 3 個位元組逐格相同。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZPlayerSortieDriven|TestSortieMustersMatchTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-fort",
+      "title": "建築關寨的三道門與格子編碼",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L0",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/10"
+      ],
+      "note": "`DS:0x7134[地形碼] != 0`（山丘、平原、樹林）、`(格 & 0xF0) >= 0xA0` 擋通道格、Y/N 確認；寫入是 `(格 & 0xF6) | 6`。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestFortMatchesTheOriginal|TestZZFortPromptsAsCaoCao",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-battle-units",
+      "title": "戰役開打前的部隊三欄",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/05"
+      ],
+      "note": "兵士數、綜合能力、一天的移動力上限三欄 15 個位元組逐支相同。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestBattleUnitsMatchTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-battle-day",
+      "title": "戰役的逐日：移動力、移動花費、交戰傷亡",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/playtest/02",
+        "docs/re/05"
+      ],
+      "note": "**56 個欄位全中**（逐日 50 ＋ 移動花費 2 ＋ 兩次交戰各兩邊的兵 4）。修掉五個實作錯誤，見 `CONTEXT.md` R37／R38。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZBattleDaySweep",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-battle-outcome",
+      "title": "戰役的勝負判定",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/40"
+      ],
+      "note": "在判定發生的那一刻讀原版的軍團統帥與各軍排頭，套 `checkOver` 算勝方——一致。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestBattleFinishesWithPlayer|TestBattleOutcomeMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-battle-plots",
+      "title": "戰場六種計謀在實跑的戰役裡走過",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/05"
+      ],
+      "note": "陷阱那一支量到：隨軍的金 5000 → 4900（費用表 `DS:0x7f62`）、守軍被困 6 天。順帶解出計謀只能對相鄰六格用。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestBattlePlotsRunLive|TestSiegeWithTwoUnits",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-strategy-plots",
+      "title": "戰略層五種謀略在實跑裡走過",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/07",
+        "docs/mechanics/30"
+      ],
+      "note": "偽書使疑 15 次逐次相同；驅虎吞狼／遠交近攻／聯合出兵三支的結局是呼叫戰鬥子系統。**電腦只用偽書使疑**（R22）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestStratagemsRunLive|TestTigerWolfRunsLive|TestSabotageRunsLive|TestAIPlotMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-affairs",
+      "title": "分派表：內政",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai"
+      ],
+      "note": "58 次逐次相同、六個 AI 等級全部走到。玩家與電腦走不同常式。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestAffairsMatchTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-rice",
+      "title": "分派表：買米",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/playtest/02"
+      ],
+      "note": "136 次逐次相同。匯率除數 `[10,10,10,10,9,8]`——第六支的 3 是位移量不是除數。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestRicePurchaseMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-conscript",
+      "title": "分派表：徵兵",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/20"
+      ],
+      "note": "597 次，人口／訓練度／武裝度三欄逐次相同。稀釋是**兩層截斷**不是加權平均（R24）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestConscriptionMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-reward",
+      "title": "分派表：賞賜金帛與物品",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai"
+      ],
+      "note": "賞賜金帛 605 次、六個等級全走到；賞賜物品 186 次、四種寶物；挑誰另外 23 次。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestRewardGoldMatchesTheOriginal|TestTreasureGiftMatchesTheOriginal|TestTreasurePickMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-relief",
+      "title": "分派表：開倉賑民",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai"
+      ],
+      "note": "99 次、六個等級，含 16 位元溢位與第二次扣錢。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestReliefMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-arms-train",
+      "title": "分派表：購置武器與訓練兵士",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai"
+      ],
+      "note": "購置武器 505 次逐次相同；訓練兵士 260 次、六個等級。武裝度是百分比。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestArmsPurchaseMatchesTheOriginal|TestTrainingMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-personnel",
+      "title": "分派表：登用、尋訪、挖角、指定太守與軍師",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai"
+      ],
+      "note": "登用 128 次（含兩道牽絆閘門）、尋訪 33 次（三個常數都隨等級變，R26）、挖角 25 次判定、太守 28 ＋ 軍師 69 次（**軍師挑的是名單裡最後一個**超過門檻的）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestRecruitMatchesTheOriginal|TestSearchMatchesTheOriginal|TestHeadhuntMatchesTheOriginal|TestAppointGovernorMatchesTheOriginal|TestAppointChiefMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-actor",
+      "title": "分派表：選出行動者與名單順序",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/03"
+      ],
+      "note": "40 次；排序鍵是 `謀略 ＋ 戰力 ＋ 加權表[身分]`。交換排序不穩定，所以名單順序有意義。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestActorPickMatchesTheOriginal|TestChiefRosterOrder|TestGovernorSortListShape",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-ai-redistribute",
+      "title": "分派表：調整兵力與出兵移防",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai"
+      ],
+      "note": "調整兵力 40 郡次 279 人；編隊 61 次、帶走的錢糧 58 次、進攻門檻 20 次。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestRedistributeMatchesTheOriginal|TestRedistributeCountsForeignGenerals",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-events",
+      "title": "四季事件、蝗害、君主繼承、絕嗣",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/06",
+        "docs/mechanics/50"
+      ],
+      "note": "四種天災的機率與幅度、秋收、進貢、繼承的人望折損（3 次逐次相同）、絕嗣結束正反兩面各推過一個月。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestEventsMatchTheOriginal|TestLocustMatchesTheOriginal|TestSuccessionMatchesTheOriginal|TestNoHeirEndsTheGame",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-warrecruit",
+      "title": "戰場徵兵",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/40"
+      ],
+      "note": "與戰略層的徵兵是兩條路。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestWarRecruitMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-unit-ai",
+      "title": "部隊層 AI 的決策鏈",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L2",
+      "edition": "base",
+      "docs": [
+        "docs/re/05"
+      ],
+      "note": "決策鏈與遠攻／計謀選項的分支（R43：不在對戰子地圖那一側）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestUnitAIDecisionChain|TestUnitAIRangedAndPlotOptions|TestWhoMovesTheUnits",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-boot",
+      "title": "開機裝置選單與防拷密碼",
+      "group": "對拍",
+      "milestone": "M1",
+      "status": "done",
+      "level": "L0",
+      "edition": "base",
+      "docs": [
+        "docs/re/02"
+      ],
+      "note": "四題裝置選擇；防拷密碼**任何四位數都過得去**，兩個答案各走十六個月、十八份盤面逐位元組相同。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestBootPromptsMatchOriginal|TestBootAcceptsOnlyOneAndTwo|TestPasswordAnswerDoesNotMatter|TestZZPassword",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-newgame",
+      "title": "開新遊戲的盤面",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/02"
+      ],
+      "note": "**開新遊戲是一等驗收路徑**，從存檔載入看不到缺口（`CLAUDE.md` §7 第 12 條）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZNewGameBoardIsCaoCao|TestPlantedBoardReadsBack|TestLoadedPrefectureOwnersMatchTheSave",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-plus-boot",
+      "title": "加強版跑得起來",
+      "group": "對拍",
+      "milestone": "M1",
+      "status": "done",
+      "level": "L1",
+      "edition": "plus",
+      "docs": [
+        "docs/mechanics/90"
+      ],
+      "note": "`ASV.EXE` 載進 dosgolem、開 253 個檔、畫出標題。卡點是 `DATA0.GRP` 的 `e_cblp = 0xAA90` 只有低九位有意義。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZBootPlus",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-edition-diff",
+      "title": "兩版差異只繞著難度",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L0",
+      "edition": "both",
+      "docs": [
+        "docs/spec/004",
+        "docs/mechanics/90"
+      ],
+      "note": "上限 10 → 20、係數表 11 → 21 格（`DS:0x5430`）；字串 400 條只差一條；戰役勝負判定多兩條。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestWhoTouchesTheEditionTable|TestWhoReadsTheEditionWords",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "parity-speech",
+      "title": "PC 喇叭語音",
+      "group": "對拍",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/09"
+      ],
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestSpeechDrivesTheSpeaker",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "evidence"
+    },
+    {
+      "id": "push-master",
+      "title": "推送到 origin",
+      "group": "發行",
+      "milestone": "M8",
+      "status": "open",
+      "level": null,
+      "edition": null,
+      "docs": [],
+      "note": "⚠ **這個訊號是弱的**：`origin/master` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。核實時它回 0（本地與那個 ref 同步）——CONTEXT §8 原本記的「領先 187 筆」是舊資訊。真正要確認得連網 `git fetch`，而建置容器是 `--network none`。",
+      "acceptance": "`git rev-list --count origin/master..master` ＝ 0",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "git rev-list --count origin/master..master 2>/dev/null || echo ?",
+        "expect": "0"
+      },
+      "layer": "external"
+    },
+    {
+      "id": "release-signing",
+      "title": "三平台簽章",
+      "group": "發行",
+      "milestone": "M8",
+      "status": "blocked",
+      "level": null,
+      "edition": null,
+      "docs": [
+        "tools/release.sh",
+        "docs/release/01"
+      ],
+      "note": "管線寫好了，沒有憑證時會跳過並明說「這不是簽過」。**簽章不在 M8 的出口條件裡**。",
+      "acceptance": "`SAN1_WIN_PFX`／`SAN1_MAC_IDENTITY`／`SAN1_GPG_KEY` 三把都有，且 codesign／notarytool 在真的 macOS 上跑過",
+      "verify": {
+        "kind": "manual",
+        "why": "要申請、要付費、綁著人的身分：Windows code signing 憑證、Apple Developer Program 會籍與 Developer ID 憑證、一把 GPG 金鑰。**沒有機器訊號可綁**——憑證在不在本機不代表簽得過。",
+        "note": "接上時該綁的：`tools/release.sh` 現在在沒憑證時印「**這不是簽過**」（`sign_windows`／`sign_macos`／GPG 三處各一句）。三把憑證都齊之後那三句不會再走到——到時把這一條改成 `absent` 綁「這不是簽過」，或綁發行包裡的 `SHA256SUMS.asc`。⚠ **現在不能綁**：那三句是「沒設就跳過」的分支，憑證在不在本機與「這一版發行包簽過沒有」是兩件事，綁了會誤判。"
+      },
+      "layer": "external"
+    },
+    {
+      "id": "ida-i64-plus",
+      "title": "加強版的 `.i64` 還沒產",
+      "group": "素材",
+      "milestone": "M0",
+      "status": "open",
+      "level": null,
+      "edition": "plus",
+      "docs": [
+        "docs/re/01"
+      ],
+      "note": "`tools/ida.sh` 早就在了，`AA.EXE.i64` 也產出來了（3.9 MB）——**缺的只有加強版那支**。worklist 原本把整條記成「`tools/ida.sh` 包裝器（照 sangokushi 的形狀），對兩支 EXE 產 `.i64`」，而那是 M0 的出口條件之一，於是 M0 標「完成」與這一條沒打勾長期並存。",
+      "acceptance": "`workplace/ida/ASV.EXE.i64` 存在",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "test -f workplace/ida/ASV.EXE.i64",
+        "expect": "pass"
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "orig-extract-split",
+      "title": "兩版抽檔分開放 `workplace/orig/{base,plus}/`",
+      "group": "素材",
+      "milestone": "M0",
+      "status": "open",
+      "level": null,
+      "edition": "both",
+      "docs": [
+        "CLAUDE.md §3.4"
+      ],
+      "note": "`CLAUDE.md` §3.4 要求兩版都當一等公民抽檔、記雜湊、分開放。目前是直接唯讀掛 `org_game/`，那個目錄沒建。",
+      "acceptance": "兩個目錄都在，且各有一份雜湊清單",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "test -d workplace/orig/base -a -d workplace/orig/plus",
+        "expect": "pass"
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "probe-hercules-b0000",
+      "title": "probe 看不到 `B0000`（Hercules）",
+      "group": "dosgolem",
+      "milestone": "M1",
+      "status": "open",
+      "level": null,
+      "edition": "both",
+      "docs": [
+        "docs/re/00"
+      ],
+      "note": "目前只看 `A0000` 與 `B8000`，選 Hercules 時會得到**假零**——畫面明明有東西而 probe 說沒有。 ⚠ pattern 原本寫 `herc`（不分大小寫），而那會誤中 `OtherChannels` 裡的「herC」——**太寬會反過來誤判已完成**。改成完整字。",
+      "acceptance": "dosgolem 的畫面擷取涵蓋 `B0000` 這一段",
+      "verify": {
+        "kind": "absent",
+        "paths": [
+          "../dosgolem-san/internal/machine",
+          "../dosgolem-san/cmd"
+        ],
+        "pattern": "Hercules|HERCULES|monochrome graphics"
+      },
+      "layer": "feature"
+    },
+    {
+      "id": "boot-recipe-behavior-triggered",
+      "title": "開機配方還是指令數觸發，不是行為觸發",
+      "group": "dosgolem",
+      "milestone": "M1",
+      "status": "open",
+      "level": null,
+      "edition": "base",
+      "docs": [
+        "docs/re/02",
+        "docs/playtest/03"
+      ],
+      "note": "指令數會隨執行器改動而變，所以現在的配方當不了回歸測試。R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。 訊號是對拍測試裡寫死的指令數預算（`include_tests`）——**要換掉的就是它們**，所以綁在那裡是對的。",
+      "acceptance": "開機序列的每一步都由原版自己的行為觸發，沒有寫死的指令數",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/parity/turn_oracle_test.go",
+          "internal/parity/screenshot_oracle_test.go"
+        ],
+        "pattern": "o\\.Run\\(\\d+_\\d+_\\d+\\)",
+        "include_tests": true
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "okr-format",
+      "title": "`.OKR` 未解（共 465 項 ＝ DATA2 418 ＋ DATA3 47，壓縮過）",
+      "group": "資料格式",
+      "milestone": "M2",
+      "status": "open",
+      "level": "L2",
+      "edition": "both",
+      "docs": [
+        "docs/re/04",
+        "docs/mechanics/90"
+      ],
+      "note": "原版主戰場的地形版面在 `.OKR` 裡；remake 現在的版面是**自己生成的**（`battle.Generate`，`docs/design/03` 記為 remake 差異）。解出來也只作參考，美術素材不重製；能拿到的是版面尺寸與地形分佈這類規則性資訊。",
+      "acceptance": "`.OKR` 解得出版面，或確認它只是美術素材",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/battle/generate.go",
+          "internal/battle/field.go"
+        ],
+        "pattern": "\\.OKR.*未解|格式未解"
+      },
+      "layer": "feature"
+    },
+    {
+      "id": "msk-masks",
+      "title": "`.MSK` 怎麼與圖搭配還沒解",
+      "group": "資料格式",
+      "milestone": "M2",
+      "status": "open",
+      "level": null,
+      "edition": "base",
+      "docs": [
+        "docs/formats/01"
+      ],
+      "note": "`8x8AND*` 那四張已經解了（紮寨蓋的是 `AND0`，78 格裡 73 格逐像素相同，`TestCampMaskMatchesTheOriginal`）；剩下的是 `.MSK`——只有 `ENDO4.MSK`，而那一組不在容器裡。訊號綁 `docs/formats/07` 的「還沒解」清單。",
+      "acceptance": "`.MSK` 的用途有答案（或確認它不屬於這一款）",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "docs/formats/07-images.md"
+        ],
+        "pattern": "`\\.MSK` 與 `8x8AND\\*`（遮罩）怎麼與圖搭配"
+      },
+      "layer": "feature"
+    },
+    {
+      "id": "master-record-66-bytes",
+      "title": "諸侯記錄 72 個位元組裡還有 62 個沒解",
+      "group": "資料格式",
+      "milestone": "M4",
+      "status": "open",
+      "level": "L2",
+      "edition": "both",
+      "docs": [
+        "docs/spec/003"
+      ],
+      "note": "已解 10 個：offset 2 君主、4 AI 等級、6 軍師、8 人望、14–18 五格寶庫。**offset 10–13、19–71 不是外交狀態**——五支謀略讀寫的都是州郡與人物的欄位。",
+      "acceptance": "覆蓋率從 10/72 往上，或確認其餘是填充",
+      "verify": {
+        "kind": "manual",
+        "why": "沒有現成的機器訊號：欄位覆蓋率是人數的，`internal/state` 沒有一份「已解欄位」的清單可以數。",
+        "note": "接上時該綁的：把諸侯的欄位表做成 JSON（像 `docs/spec/003` 那張表），改用 `json_len` 綁項數——項數比註解穩。"
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "ai-vs-ai-campaign-parity",
+      "title": "電腦對電腦的戰役還沒被走到",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/05",
+        "docs/mechanics/40"
+      ],
+      "note": "照 `0x20471` 的分岔實作了（`battle.AutoResolveAI`，含傷亡寫回與四條單測），但那條路沒有實跑背書：原版的電腦對電腦戰役**不進戰術層**，日循環只有玩家在場才跑，所以對拍那一支在那條路上會 skip。**「AI 沒動」可能是正確的原版行為**（`CLAUDE.md` §7 第 14 條），要先確認前提滿足。 訊號在對拍測試裡（`include_tests`）：這是**驗證缺口**不是功能缺口——`battle.AutoResolveAI` 早就接上了，缺的是實跑背書，而「那條路上會 skip」這句話只會出現在對拍測試裡，因為那裡才是證據的所在地。",
+      "acceptance": "對拍裡真的走到一場電腦對電腦的戰役，傷亡與勝負逐格比",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/parity/battleover_oracle_test.go"
+        ],
+        "pattern": "電腦對電腦\\*\\*那條路上會 skip",
+        "include_tests": true
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "snapshot-fields",
+      "title": "兵士與在職將是快照不是推導值（已知差異）",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/formats/05"
+      ],
+      "note": "原版存檔的 offset 16／22 是寫檔當下的值，載入時原封不動；remake 一律從人物表推導。走完一個月兩邊會一致（月度對拍 0 個位元組），差別只在**剛載入那一刻**。要完全對齊得把它們改成「由改動它們的常式寫」，那是一次不小的重構。 訊號在對拍測試裡（`include_tests`）：同上，缺的是對齊不是實作。",
+      "acceptance": "剛載入時的三張表也逐位元組相同（19,220 全中，不是 19,218）",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/parity/loadsave_oracle_test.go"
+        ],
+        "pattern": "在存檔裡是快照",
+        "include_tests": true
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "unify-year-distribution",
+      "title": "統一年份的分布還沒對拍",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L2",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/80"
+      ],
+      "note": "全電腦對戰約五十年分出勝負，但那是 remake 自己跑的；原版跑同樣的劇本會在哪一年統一沒有比過。",
+      "acceptance": "原版與 remake 各跑同一個劇本到統一，年份分布可比",
+      "verify": {
+        "kind": "manual",
+        "why": "要跑到統一得推幾十年，dosgolem 那一側現在沒有這麼長的決定性重播。",
+        "note": "接上時該綁的：`internal/parity` 加一支長跑對拍，改綁那支測試。"
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "dosbox-seq-rerecord",
+      "title": "逐步對拍的參照畫面是舊尺寸，要重錄",
+      "group": "對拍",
+      "milestone": "M1",
+      "status": "open",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/playtest/03",
+        "docs/spec/006"
+      ],
+      "note": "畫面高度 2026-09-10 從 350 改成 408（R48），`workplace/rec7/frames` 那一批是 640×350 錄的。測試現在會明講並 skip，不會安靜地給一個偏低的百分比。重錄跑 `tools/dosboxx-record.sh`。 對拍那一支（`TestZZDosgolemMatchesDosbox`）因此會 skip；**skip 不是綠**，所以這一條留在未完成清單裡直到重錄完成。",
+      "acceptance": "`workplace/rec7/frames` 底下的 PNG 都是 640×408",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "f=$(ls workplace/rec7/frames/*.png 2>/dev/null | head -1); [ -n \"$f\" ] && file -b \"$f\" | grep -q '640 x 408'",
+        "expect": "pass"
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "battle-shot-408",
+      "title": "主戰場基準畫面的取法文件記錯了",
+      "group": "對拍",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/spec/006"
+      ],
+      "note": "成因查出來了：`TestZZBattleKeySweep` 帶 `SAN1_BATTLEKEY` 時 `cands` 只剩一個候選，所以迴圈只跑一輪、只產 `sweep-01.png`——而 `docs/spec/005` 記的取法說它產一整批，`battlefield_test.go` 的註解也說 `orig-battle.png` 由它產。實際上 `orig-battle.png` 是人工從其中一張改名來的。**`orig-battle.png` 已經換成 408 的那張**（場地區的比對在 y<350，換之後三支測試照樣全綠）；還沒解決的是 `sweep-04.png`（紮寨那一步，`TestCampMaskMatchesTheOriginal` 用）——它要另一組按鍵，那組還沒重跑。",
+      "acceptance": "`workplace/shots/bf/` 底下每一張基準都是 640×408，且取法在文件裡對得上",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "file -b workplace/shots/bf/sweep-04.png 2>/dev/null | grep -q '640 x 408'"
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "changsha-fill",
+      "title": "長沙的填色對不上",
+      "group": "畫面",
+      "milestone": "M4",
+      "status": "open",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/formats/07"
+      ],
+      "note": "原版畫圖樣 0（純淺紅），而州郡記錄的所屬寫的是 2。35 個有主的郡裡其餘 34 個全中。 訊號在 `internal/ui/artfill_test.go`（`include_tests`）：那一格是**已知例外**，容忍它的理由就寫在測試的註解裡。",
+      "acceptance": "長沙那一格也對得上，或解釋清楚原版為什麼畫 0",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/ui/artfill_test.go"
+        ],
+        "pattern": "長沙",
+        "include_tests": true
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "i18n-slot-overflow",
+      "title": "槽位溢出只處理了地圖",
+      "group": "多語系",
+      "milestone": "M7",
+      "status": "open",
+      "level": null,
+      "edition": null,
+      "docs": [
+        "CLAUDE.md §3.3"
+      ],
+      "note": "地圖格寬依最長郡名自動調整；其餘畫面的槽位長度是原版版面決定的，英文常比中文長，塞不下的地方要在 `docs/spec/` 記為 remake 差異。",
+      "acceptance": "三個語系在每一個畫面都不溢出，或溢出處逐一記成 remake 差異",
+      "verify": {
+        "kind": "manual",
+        "why": "「其餘未逐項驗」沒有對應的程式碼訊號——`internal/cells` 有的是「會處理溢出」的測試，不是「哪些畫面還沒驗」的清單。",
+        "note": "接上時該綁的：把每個畫面的槽位寬度做成一份 JSON，用 `json_len` 綁「已驗過的畫面數」——項數比註解穩。"
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "era-verification",
+      "title": "年號怎麼數還沒查證",
+      "group": "規則層",
+      "milestone": "M5",
+      "status": "open",
+      "level": "L2",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/10"
+      ],
+      "note": "年號表在手冊給的六個時期上全部對上，但**原版開局後怎麼數**沒查證——推過一年之後它顯示「中平七年」還是「初平元年」。",
+      "acceptance": "原版在 dosgolem 裡推過一年，畫面上的年號讀出來",
+      "verify": {
+        "kind": "manual",
+        "why": "要在 dosgolem 裡推一整年並讀畫面上的年號，現在沒有這一支對拍。",
+        "note": "接上時該綁的：`internal/parity` 加一支讀年號的測試，改綁那支。"
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "battle-bottom-date",
+      "title": "主戰場下方花邊上的日期沒畫",
+      "group": "畫面",
+      "layer": "feature",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/spec/006"
+      ],
+      "note": "畫面改回 408 之後看得到了：原版在 `MAINMAP8` 的花邊上寫一行灰色的年月（基準畫面上是「建安 二 年 九月 秋」，約 35 點／列，色號 7）。remake 的花邊畫對了（黃青圖樣兩邊逐列相同），缺的是那一行字。**這是 640×350 蓋掉的東西之一**，先前根本看不到。 ⚠ 這一條原本綁 `BattleDateY|花邊上的年月` 這種**猜想中的識別字**——一個都沒中，而且接上時也不保證會出現那些名字，所以它會永遠說「還沒做」而其實一次都沒真的看過（`rulebook/61`）。改綁產品碼裡的自承註解：接上那行字時註解會被刪掉，這一條就會開口。",
+      "acceptance": "主戰場底部的年月與原版同位置、同字色",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/ui/artbattle.go"
+        ],
+        "pattern": "remake 還沒畫下方花邊上的年月"
+      }
+    }
+  ],
+  "layers": {
+    "feature": "玩家會撞到的：功能還沒接",
+    "verification": "接了但沒驗過：程式在，證據不在",
+    "evidence": "已完成，這一條守的是「證據還在不在」",
+    "external": "卡在工作區外的資源（憑證、網路、要人做的事）"
+  }
+}

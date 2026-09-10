@@ -44,7 +44,7 @@ DOSGOLEM_ORIG=.../org_game tools/go.sh run ./cmd/probe \
   -exe "/orig/三國演義/AA.EXE" -root "/orig/三國演義" \
   -steps 3000000000 -keys '122' \
   -keys-at '250000000:\r,900000000:1,1500000000:1' \
-  -ega-every '100000000:640x350=/src/workplace/shots/s'
+  -ega-every '100000000:640x408=/src/workplace/shots/s'
 
 # 再比對
 tools/go.sh run ./cmd/san1imgcheck -shot workplace/lords.png \
@@ -100,7 +100,7 @@ tools/go.sh run ./cmd/san1assets -root /path/to/三國演義 -out workplace/asse
 
 ## 6. 還沒解的
 
-- `TITL0`–`3` 四張 160×400 的圖怎麼組成 640×350 的標題畫面。
+- `TITL0`–`3` 四張 160×400 的圖怎麼組成標題畫面（並排成 640×400，畫面 408 列）。
   拿它們去標題畫面裡找**找不到完全相符的位置**，所以不是單純的貼上——
   可能經過遮罩、轉置或動畫。
 - `.MSK` 與 `8x8AND*`（遮罩）怎麼與圖搭配。

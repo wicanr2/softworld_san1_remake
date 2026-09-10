@@ -76,6 +76,20 @@ func TestRoundTrip(t *testing.T) {
 	p.Forts = 3
 	p.Autonomy = game.AutoMilitary
 	p.Commanded = true
+	// **改一格戰場地圖**（州郡 offset 55–174）。關寨蓋在哪一格是地圖上的
+	// 事，郡表的「關寨數」對得上不代表地圖存下來了——兩者分家的時候
+	// 畫面完全正常，只有真的打起來才看得出那一格沒有關寨。
+	fortCell := -1
+	for i, b := range p.BattleField {
+		if b != 0xFF && b>>4 == 15 && b&0x0F == 7 { // 沒有標記的平原
+			p.BattleField[i] = b&0xF6 | 6 // 原版的寫法（`0x1afae`）
+			fortCell = i
+			break
+		}
+	}
+	if fortCell < 0 {
+		t.Fatal("郡 15 的戰場地圖上找不到一格沒有標記的平原")
+	}
 	g.General(0).Rewarded = true
 	if f := g.Faction(g.Player); f != nil {
 		f.Treasury[1] = 2
@@ -118,6 +132,19 @@ func TestRoundTrip(t *testing.T) {
 		// 的局面就從那一刻起分家，而畫面上看不出任何異狀。
 		if a.Autonomy != b.Autonomy {
 			t.Errorf("郡 %d 的自治型態存的是 %s，讀回來是 %s", id, a.Autonomy, b.Autonomy)
+		}
+		// **戰場地圖要逐格比**（offset 55–174）。`Tables()` 一度把郡表的
+		// 欄位一個個寫回去卻漏掉這一段，於是建築關寨改的那一格在編碼時
+		// 消失：關寨數與金都對得上，只有地圖那一格還是舊值。
+		if len(a.BattleField) != len(b.BattleField) {
+			t.Fatalf("郡 %d 的戰場地圖存的是 %d 格、讀回來 %d 格",
+				id, len(a.BattleField), len(b.BattleField))
+		}
+		for i := range a.BattleField {
+			if a.BattleField[i] != b.BattleField[i] {
+				t.Fatalf("郡 %d 的戰場地圖第 %d 格存的是 %#02x、讀回來 %#02x",
+					id, i, a.BattleField[i], b.BattleField[i])
+			}
 		}
 		x, y := g.Governor(id), h.Governor(id)
 		switch {

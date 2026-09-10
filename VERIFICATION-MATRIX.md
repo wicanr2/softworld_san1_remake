@@ -2,7 +2,15 @@
 
 **完成度的唯一數字來源。** README 只連過來，不重複數字。
 
-盤點日 2026-09-08。`CLAUDE.md` §8 的推論等級與版本標記在每一列上。
+`CLAUDE.md` §8 的推論等級與版本標記在每一列上。
+
+> **結構化的那一份是 `worklist.json`**（`rulebook/61`）：每一條掛一個跑得起來
+> 的 `verify`，狀態由跑出來的結果決定，不由人手打勾。§8 是它的產物。
+> 這一份其餘各節是**敘述層**——方法、坑、取捨這些跑不出來的東西。
+
+⚠ 這一份記過「主選單 208,050 點逐點相同」很久，而那個數字建立在「畫面是
+640×350」這個錯前提上（R48）。**數字沒錯，前提錯了**，而一張表分不出這兩件事
+——那就是把狀態改成由 `verify` 決定的理由。
 
 ## 1. 里程碑
 
@@ -11,7 +19,7 @@
 | # | 里程碑 | 狀態 | 卡在哪 |
 |---|---|---|---|
 | M0 | 環境 ＋ 素材 | **完成** | — |
-| M1 | dosgolem 跑得動 | **完成** | 原版走完 chain-load、載三組容器、畫出主選單；`-adlib` 之後音樂也放得出來。主選單那一張**拿 DOSBox-X 交叉驗證過**：兩個獨立實作扣掉右下角那格動畫之後 223,916 點逐點相同（`tools/dosboxx.sh`、`docs/playtest/03`）|
+| M1 | dosgolem 跑得動 | **完成** | 原版走完 chain-load、載三組容器、畫出主選單；`-adlib` 之後音樂也放得出來。主選單那一張**拿 DOSBox-X 交叉驗證過**：兩個獨立實作扣掉右下角那格動畫之後 **261,036 點**逐點相同（畫面是 640×408，`docs/spec/006`）（`tools/dosboxx.sh`、`docs/playtest/03`）|
 | M2 | 容器格式 | **完成** | `.IDX` 是結束位移，round-trip 通過，而且**得到原版行為背書**（見 §3）|
 | M3 | 文字與字型 | **完成** | Big5 字串抽出、CJK 畫布、字型涵蓋率有測試 |
 | M4 | 靜態資料 | **完成** | 三張表對得回原版執行期記憶體，**逐位元組相同**（見 §3）|
@@ -34,10 +42,10 @@
 | `EGAFILL.PAL`／`HERCFILL.PAL` | 解出：1024 B ＝ 16 × 64，一個勢力一塊 8×8 的填色圖樣（四塊純色、十二塊 2×2 網點）| `L1` | `[base]` | `docs/formats/07` |
 | `8x8AND*` 遮罩 | 解出：四張 8×8 的 AND 遮罩（1/4、1/2、1/8、1/2）；紮寨那一步蓋的是 `AND0`，78 格裡 73 格逐像素相同 | `L1` | `[base]` | `docs/formats/07` |
 | `.MSK` | **未解**（只有 `ENDO4.MSK`，而那一組不在容器裡）| — | — | `docs/formats/01` §4.1 |
-| `TITL0`–`3` 怎麼組成標題 | 開場的三英圖：四塊 160×400 並排（x ＝ 160i），取第 0–349 列，與原版逐格相同 | `L1` | `[base]` | `docs/spec/005` |
+| `TITL0`–`3` 怎麼組成標題 | 開場的三英圖：四塊 160×400 並排（x ＝ 160i）**取整整 400 列**，畫面 408 列、底下 8 列是貼圖前清成的黑，與原版逐格相同（先前記著「取第 0–349 列」，那是畫布設成 350 造成的，R48）| `L1` | `[base]` | `docs/spec/005`、`docs/spec/006` |
 | `SANTL`／`SANTR`（開場詞的底圖）| 解出：各 320×295，畫在 (0,49)／(320,49)，與原版逐格相同 | `L1` | `[base]` | `docs/spec/005` |
 | `EICON.GRP`（戰場地形圖塊）| 解出：36 筆 `.IMG` 首尾相接，每筆 772 B、48×32，**編號就是地形碼** | `L1` | `[base]` | `docs/spec/005` §8 |
-| `.OKR`（DATA2，418 項 R000–R427）| **未解**（已知是 1bpp 點陣資料）| `L2` | `[both]` | `docs/mechanics/90` §4 |
+| `.OKR`（**共 465 項** ＝ `DATA2` 418 ＋ `DATA3` 47）| **未解**（已知是 1bpp 點陣資料）| `L2` | `[both]` | `docs/re/04` §13、`docs/mechanics/90` §4 |
 | 戰場地圖（州郡 offset 55–174）| 解出 | `L0` | `[base]` | `docs/spec/003` §3.3、`docs/re/05` §2 |
 | `NAME001`–`006.SHA`（加強版）| **不是遊戲檔**：bundle 裡混進來的第三方命名軟體存檔，`ASV.EXE`／`SV.COM` 都沒有引用 | `L0` | `[plus]` | `docs/mechanics/90` §4.1 |
 | `PARTNSAV.FIL` | **不是遊戲檔**：`MIRROR 6.M`／`saved partitions` 簽章 ＝ MS-DOS 6.x 的分割表備份，`AA.EXE` 沒有引用 | `L0` | `[base]` | `docs/formats/01` §6 |
@@ -66,8 +74,8 @@
 | 畫面 | 狀態 | 證據 |
 |---|---|---|
 | 主選單的六個項目 | 接上行為 | 開場詞 → 主選單 → 選年代／選君主／選難度／載入／音樂欣賞／離開（版面 remake 自排，內容是原版資料）|
-| 主選單 | 接上 | 五張圖全部就位：`MENU0A`(40,27)／`MENU0B`(320,27) 各 **100%**、`MENU1`(56,215) 95.3%、`MENU2` 六格（x ∈ {152,376}、y ∈ {215,267,320}）93–97%、`MENU3`(576,320) 91%——不足的都是字寫在上面。字的落點也照原版量（中文字距 24、直牌四個字橫向拉兩倍寬）：**扣掉字與小飾框那格動畫之後 208,050 點逐點相同**。基準畫面另拿 DOSBox-X 交叉驗證過，兩個實作逐點相同（`docs/playtest/03`）|
-| 遊戲主畫面 | 接上 | 七張 `MAINMAP*` 的底圖：上方花邊與最右直條 **100%**，左直條 94.3%、地圖區 68.7%（差的是後來蓋上去的）；肖像 `F###.FAC` 在 (536,116) **100%**、肖像框 `FBRD` 四塊各 **100%**。右側兩塊面板的花邊外框是 `SIDE*` 拼件平鋪（`SIDEB`／`SIDED`），與原版 **10,400 點逐點相同**；面板上每一列的位置與字色也是量的（`docs/spec/005` §2.1）|
+| 主選單 | 接上 | 五張圖全部就位：`MENU0A`(40,27)／`MENU0B`(320,27) 各 **100%**、`MENU1`(56,215) 95.3%、`MENU2` 六格（x ∈ {152,376}、y ∈ {215,267,320}）93–97%、`MENU3`(576,320) 91%——不足的都是字寫在上面。字的落點也照原版量（中文字距 24、直牌四個字橫向拉兩倍寬）：**扣掉字與小飾框那格動畫之後 245,170 點逐點相同**。基準畫面另拿 DOSBox-X 交叉驗證過，兩個實作逐點相同（`docs/playtest/03`）|
+| 遊戲主畫面 | 接上 | 八張 `MAINMAP*` 的底圖：上方與**下方**花邊、最右直條各 **100%**，左直條 94.7%、地圖區 70.8%（差的是後來蓋上去的）；肖像 `F###.FAC` 在 (536,116) **100%**、肖像框 `FBRD` 四塊各 **100%**。右側兩塊面板的花邊外框是 `SIDE*` 拼件平鋪（`SIDEB`／`SIDED`），與原版 **12,544 點逐點相同**；面板上每一列的位置與字色也是量的（`docs/spec/005` §2.1）|
 | 主戰場的地形 | 接上 | 78 格裡 **73 格逐像素全中**，差的五格是五支部隊站的位置 |
 | 主戰場的上方花邊 | 接上 | 與主畫面共用 `MAINMAP1`，畫在 (0,0)（`0x2246a`／`0x2247c`）|
 | 主戰場的部隊標記 | 接上 | 五個標記全數 **100%**：`WFLAGD00`–`D03` 原色、陳就的中軍是 `WFLAGA00` 取補數；旗在格子左上角加 (8,0)，兵力牌 40×17 在旗下 15 |
@@ -79,7 +87,7 @@
 | 場地四周的階梯邊框 | 接上 | `0x21ee2`／`0x220f0` 的十六條線逐條抄；整片場地（含邊框與空隙）**121560 格逐格相同**，只挖掉五支部隊站的格子 |
 | 城門圖示（每組旗的第六張）| 解出格式、還沒用 | `WFLAG?5.IMG` 是 16×15 的城門圖，基準畫面上沒出現 |
 | 開場詞 | 接上 | `SANTL`(0,49)／`SANTR`(320,49) 兩張各 **94400 格全中**（基準是還沒寫字的那一格）；詞的欄距 42、列距 24、淺青配黑影，都量自前後兩格相減 |
-| 開場的三英圖 | 接上 | `TITL0`–`3` 四塊並排，**224,000 格全中**（`assets.TitleArt`）|
+| 開場的三英圖 | 接上 | `TITL0`–`3` 四塊並排成 640×400，畫面 408 列（底下 8 列是黑），**261,120 格全中**（`assets.TitleArt`）|
 | 版權畫面 | 解出、未接 | `CMARKL`／`CMARKR` 是智冠的商標畫面；`AA.EXE` 的開場十格裡沒出現，應該歸 `COPYRIG.EXE` |
 | 州郡的填色 | 接上 | `EGAFILL.PAL` ＝ 16 個勢力各一塊 8×8 圖樣；拿原版剛載完第一個進度的畫面逐格比，35 個有主的郡裡 **34 個全中**（長沙那一個未解）|
 
@@ -94,7 +102,7 @@
 |---|---|---|
 | 開機裝置選單 | 原版記憶體裡有沒有這些題目與選項 | 相符 |
 | **玩家自己下的每一道命令** | 同一道送進原版的選單、也送進 remake 的 API，亂數用原版的種子對齊，比三張表 | **兩個盤面各十五道**。建安二年／南海（守將一位）十五道全部相同；劇本 1 曹操／郡 11（守將七位、鄰郡有敵）十五道全部相同。**出兵另立一支對拍**（`TestZZPlayerSortieDriven`，郡 11 打郡 4）：走完軍事 → 發動戰役 → 選郡 → 整編 → 攜帶錢糧 → 確認，原版動的 3 個位元組逐格相同。量到五件事：買米問的是金、玩家照數字付而電腦照效果反算、賞賜與賑民的係數兩條路不同、**出征的將領所在郡歸 0**（`0x20ce0`）、**戰場地圖沒被寫回存檔**（`Tables()` 漏了 offset 55–174，建築關寨改的那一格存不下來）——後兩件是這一輪抓出來的 remake 缺口（`docs/playtest/04`）|
-| **dosgolem 與 DOSBox-X 走同一串按鍵** | 38 步（開局 → 選主君 → 出兵宣戰 → 軍團整編），逐步比 640×350 | 32 張列入判準：**20 張在 99.6% 以上（4 張逐點相同）**；2 張是防拷題目（95.4%，地支是抽的）；10 張落在一個 dosgolem 抽到、DOSBox 沒抽到的宣戰事件裡。另一輪獨立紀錄（33 步）對不上的是**不同的區間**，兩輪都自己收斂回來——差異來自兩邊的時鐘（`docs/playtest/03`）|
+| **dosgolem 與 DOSBox-X 走同一串按鍵** | 38 步（開局 → 選主君 → 出兵宣戰 → 軍團整編），逐步比 640×408 | 32 張列入判準：**20 張在 99.6% 以上（4 張逐點相同）**；2 張是防拷題目（95.4%，地支是抽的）；10 張落在一個 dosgolem 抽到、DOSBox 沒抽到的宣戰事件裡。另一輪獨立紀錄（33 步）對不上的是**不同的區間**，兩輪都自己收斂回來——差異來自兩邊的時鐘（`docs/playtest/03`）|
 | 容器項目邊界 | 攔原版對 `DATA1.GRP` 的 seek，比它算出來的起點 | 逐項相符 |
 | 三張表在記憶體的位置 | 拿劇本檔的位元組去搜 | 找到，且三張連續 |
 | 三張表的內容 | 與劇本檔逐位元組比 | 19,220 個裡只有 43 個不同（州郡表的物價，原版**開月時**自己算的，`docs/mechanics/60-economy` §1.2）|
@@ -221,11 +229,115 @@ grep -rn Tune internal/game internal/battle
 
 ## 7. 怎麼更新這一份
 
-改動影響到上表任一格時**同一個 commit 一起改**。
-數字用指令重數，不要憑印象：
+**結構化的欄位改 `worklist.json`，然後重跑 render**：
+
+```sh
+tools/worklist.py verify --status open blocked   # 先看未完成項還成不成立
+tools/worklist.py render                         # 產生 §8，貼回這一份
+```
+
+§1–§6 是敘述層，跑不出來的東西寫在那裡（方法、坑、取捨），
+改動影響到哪一段就**同一個 commit 一起改**。數字用指令重數，不要憑印象：
 
 ```sh
 grep -rc 'func Test' --include=*_test.go internal/ cmd/ | awk -F: '{s+=$2} END{print s}'
 find internal cmd -name '*.go' ! -name '*_test.go' | xargs wc -l | tail -1
 python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json'))))"
 ```
+
+## 8. 清單
+
+<!-- worklist:begin —— 這一段由 tools/worklist.py render 產生，不要手改。
+     要改內容改 worklist.json，然後重跑 render。 -->
+
+### 對拍
+
+| 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
+|---|---|---|---|---|---|
+| 電腦對電腦的戰役還沒被走到 | 未完成 | L1 | base | present：internal/parity/battleover_oracle_test.go 的「電腦對電腦**那條路上會 skip」 | 照 `0x20471` 的分岔實作了（`battle.AutoResolveAI`，含傷亡寫回與四條單測），但那條路沒有實跑背書：原版的電腦對電腦戰役**不進戰術層**，日循環只有玩家在場才跑，所以對拍那一支在那條路上會 skip。**「AI 沒動」可能是正確的原版行為**（`CLAUDE.md` §7 第 14 條），要先確認前提滿足。 訊號在對拍測試裡（`include_tests`）：這是**驗證缺口**不是功能缺口——`battle.AutoResolveAI` 早就接上了，缺的是實跑背書，而「那條路上會 skip」這句話只會出現在對拍測試裡，因為那裡才是證據的所在地。（`docs/re/05`、`docs/mechanics/40`） |
+| 主戰場基準畫面的取法文件記錯了 | 未完成 | L1 | base | 指令重數 | 成因查出來了：`TestZZBattleKeySweep` 帶 `SAN1_BATTLEKEY` 時 `cands` 只剩一個候選，所以迴圈只跑一輪、只產 `sweep-01.png`——而 `docs/spec/005` 記的取法說它產一整批，`battlefield_test.go` 的註解也說 `orig-battle.png` 由它產。實際上 `orig-battle.png` 是人工從其中一張改名來的。**`orig-battle.png` 已經換成 408 的那張**（場地區的比對在 y<350，換之後三支測試照樣全綠）；還沒解決的是 `sweep-04.png`（紮寨那一步，`TestCampMaskMatchesTheOriginal` 用）——它要另一組按鍵，那組還沒重跑。（`docs/spec/005`、`docs/spec/006`） |
+| 逐步對拍的參照畫面是舊尺寸，要重錄 | 未完成 | L1 | base | 指令重數 | 畫面高度 2026-09-10 從 350 改成 408（R48），`workplace/rec7/frames` 那一批是 640×350 錄的。測試現在會明講並 skip，不會安靜地給一個偏低的百分比。重錄跑 `tools/dosboxx-record.sh`。 對拍那一支（`TestZZDosgolemMatchesDosbox`）因此會 skip；**skip 不是綠**，所以這一條留在未完成清單裡直到重錄完成。（`docs/playtest/03`、`docs/spec/006`） |
+| 兵士與在職將是快照不是推導值（已知差異） | 未完成 | L1 | base | present：internal/parity/loadsave_oracle_test.go 的「在存檔裡是快照」 | 原版存檔的 offset 16／22 是寫檔當下的值，載入時原封不動；remake 一律從人物表推導。走完一個月兩邊會一致（月度對拍 0 個位元組），差別只在**剛載入那一刻**。要完全對齊得把它們改成「由改動它們的常式寫」，那是一次不小的重構。 訊號在對拍測試裡（`include_tests`）：同上，缺的是對齊不是實作。（`docs/formats/05`） |
+| 統一年份的分布還沒對拍 | 未完成 | L2 | base | **要人判** | 全電腦對戰約五十年分出勝負，但那是 remake 自己跑的；原版跑同樣的劇本會在哪一年統一沒有比過。（`docs/mechanics/80`） |
+| 分派表：選出行動者與名單順序 | 完成 | L1 | base | `TestActorPickMatchesTheOriginal`、`TestChiefRosterOrder`、`TestGovernorSortListShape` | 40 次；排序鍵是 `謀略 ＋ 戰力 ＋ 加權表[身分]`。交換排序不穩定，所以名單順序有意義。（`docs/re/03`） |
+| 分派表：內政 | 完成 | L1 | base | `TestAffairsMatchTheOriginal` | 58 次逐次相同、六個 AI 等級全部走到。玩家與電腦走不同常式。（`docs/mechanics/70-ai`） |
+| 分派表：購置武器與訓練兵士 | 完成 | L1 | base | `TestArmsPurchaseMatchesTheOriginal`、`TestTrainingMatchesTheOriginal` | 購置武器 505 次逐次相同；訓練兵士 260 次、六個等級。武裝度是百分比。（`docs/mechanics/70-ai`） |
+| 分派表：徵兵 | 完成 | L1 | base | `TestConscriptionMatchesTheOriginal` | 597 次，人口／訓練度／武裝度三欄逐次相同。稀釋是**兩層截斷**不是加權平均（R24）。（`docs/mechanics/20`） |
+| 分派表：登用、尋訪、挖角、指定太守與軍師 | 完成 | L1 | base | `TestRecruitMatchesTheOriginal`、`TestSearchMatchesTheOriginal`、`TestHeadhuntMatchesTheOriginal`、`TestAppointGovernorMatchesTheOriginal`、`TestAppointChiefMatchesTheOriginal` | 登用 128 次（含兩道牽絆閘門）、尋訪 33 次（三個常數都隨等級變，R26）、挖角 25 次判定、太守 28 ＋ 軍師 69 次（**軍師挑的是名單裡最後一個**超過門檻的）。（`docs/mechanics/70-ai`） |
+| 分派表：調整兵力與出兵移防 | 完成 | L1 | base | `TestRedistributeMatchesTheOriginal`、`TestRedistributeCountsForeignGenerals` | 調整兵力 40 郡次 279 人；編隊 61 次、帶走的錢糧 58 次、進攻門檻 20 次。（`docs/mechanics/70-ai`） |
+| 分派表：開倉賑民 | 完成 | L1 | base | `TestReliefMatchesTheOriginal` | 99 次、六個等級，含 16 位元溢位與第二次扣錢。（`docs/mechanics/70-ai`） |
+| 分派表：賞賜金帛與物品 | 完成 | L1 | base | `TestRewardGoldMatchesTheOriginal`、`TestTreasureGiftMatchesTheOriginal`、`TestTreasurePickMatchesTheOriginal` | 賞賜金帛 605 次、六個等級全走到；賞賜物品 186 次、四種寶物；挑誰另外 23 次。（`docs/mechanics/70-ai`） |
+| 分派表：買米 | 完成 | L1 | base | `TestRicePurchaseMatchesTheOriginal` | 136 次逐次相同。匯率除數 `[10,10,10,10,9,8]`——第六支的 3 是位移量不是除數。（`docs/playtest/02`） |
+| 戰役的逐日：移動力、移動花費、交戰傷亡 | 完成 | L1 | base | `TestZZBattleDaySweep` | **56 個欄位全中**（逐日 50 ＋ 移動花費 2 ＋ 兩次交戰各兩邊的兵 4）。修掉五個實作錯誤，見 `CONTEXT.md` R37／R38。（`docs/playtest/02`、`docs/re/05`） |
+| 戰役的勝負判定 | 完成 | L1 | base | `TestBattleFinishesWithPlayer`、`TestBattleOutcomeMatchesTheOriginal` | 在判定發生的那一刻讀原版的軍團統帥與各軍排頭，套 `checkOver` 算勝方——一致。（`docs/mechanics/40`） |
+| 戰場六種計謀在實跑的戰役裡走過 | 完成 | L1 | base | `TestBattlePlotsRunLive`、`TestSiegeWithTwoUnits` | 陷阱那一支量到：隨軍的金 5000 → 4900（費用表 `DS:0x7f62`）、守軍被困 6 天。順帶解出計謀只能對相鄰六格用。（`docs/re/05`） |
+| 戰役開打前的部隊三欄 | 完成 | L1 | base | `TestBattleUnitsMatchTheOriginal` | 兵士數、綜合能力、一天的移動力上限三欄 15 個位元組逐支相同。（`docs/re/05`） |
+| 開機裝置選單與防拷密碼 | 完成 | L0 | base | `TestBootPromptsMatchOriginal`、`TestBootAcceptsOnlyOneAndTwo`、`TestPasswordAnswerDoesNotMatter`、`TestZZPassword` | 四題裝置選擇；防拷密碼**任何四位數都過得去**，兩個答案各走十六個月、十八份盤面逐位元組相同。（`docs/re/02`） |
+| 容器項目邊界與原版算的一致 | 完成 | L1 | base | `TestContainerOffsetsMatchOriginal`、`TestContainerHeaderReadsAreComplete` | 攔原版對 `DATA1.GRP` 的 seek，比它算出來的起點——逐項相符。（`docs/formats/01`） |
+| 兩版差異只繞著難度 | 完成 | L0 | both | `TestWhoTouchesTheEditionTable`、`TestWhoReadsTheEditionWords` | 上限 10 → 20、係數表 11 → 21 格（`DS:0x5430`）；字串 400 條只差一條；戰役勝負判定多兩條。（`docs/spec/004`、`docs/mechanics/90`） |
+| 四季事件、蝗害、君主繼承、絕嗣 | 完成 | L1 | base | `TestEventsMatchTheOriginal`、`TestLocustMatchesTheOriginal`、`TestSuccessionMatchesTheOriginal`、`TestNoHeirEndsTheGame` | 四種天災的機率與幅度、秋收、進貢、繼承的人望折損（3 次逐次相同）、絕嗣結束正反兩面各推過一個月。（`docs/re/06`、`docs/mechanics/50`） |
+| 建築關寨的三道門與格子編碼 | 完成 | L0 | base | `TestFortMatchesTheOriginal`、`TestZZFortPromptsAsCaoCao` | `DS:0x7134[地形碼] != 0`（山丘、平原、樹林）、`(格 & 0xF0) >= 0xA0` 擋通道格、Y/N 確認；寫入是 `(格 & 0xF6) \| 6`。（`docs/mechanics/10`） |
+| 一個月的狀態轉移差 0 個位元組 | 完成 | L1 | base | `TestZZMonthParity` | 43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。（`docs/playtest/02`） |
+| 開新遊戲的盤面 | 完成 | L1 | base | `TestZZNewGameBoardIsCaoCao`、`TestPlantedBoardReadsBack`、`TestLoadedPrefectureOwnersMatchTheSave` | **開新遊戲是一等驗收路徑**，從存檔載入看不到缺口（`CLAUDE.md` §7 第 12 條）。（`docs/re/02`） |
+| 玩家自己下的每一道命令 | 完成 | L1 | base | `TestPlayerCommandsMatchTheOriginal`、`TestPlayerCommandsAsCaoCao` | 兩個盤面各十五道全部相同（建安二年／南海、劇本 1 曹操／郡 11）。（`docs/playtest/04`） |
+| 加強版跑得起來 | 完成 | L1 | plus | `TestZZBootPlus` | `ASV.EXE` 載進 dosgolem、開 253 個檔、畫出標題。卡點是 `DATA0.GRP` 的 `e_cblp = 0xAA90` 只有低九位有意義。（`docs/mechanics/90`） |
+| 原版的亂數是 MSC 的 LCG | 完成 | L0 | both | `TestRandIsTheMSCLCG` | 核對 400 次逐次相同。**公式通用、進入點與狀態變數位址不通用**。（`docs/playtest/02`） |
+| 存檔載入：原版與 remake 讀同一格逐位元組相同 | 完成 | L1 | base | `TestOriginalSaveLoadsIdentically` | 19,220 個位元組，**除兩個快照欄位之外完全相同**（兵士與在職將在存檔裡是寫檔當下的快照，原版載入時不重算）。（`docs/formats/05`、`docs/re/08`） |
+| 存檔寫出：原版讀得回 remake 存的那一格 | 完成 | L1 | base | `TestRemakeSaveLoadsInOriginal` | remake 走完一個月存進第 1 格，六個項目換進**原版目錄複製品**的 `DATA2.GRP`，原版讀回來 **19,220 個位元組完全相同**，載入流程六個檢查點都是 0。（`docs/formats/05`） |
+| 出兵：整編、攜帶錢糧、確認 | 完成 | L1 | base | `TestZZPlayerSortieDriven`、`TestSortieMustersMatchTheOriginal` | 郡 11 打郡 4，走完軍事 → 發動戰役 → 選郡 → 整編 → 攜帶錢糧 → 確認，原版動的 3 個位元組逐格相同。（`docs/playtest/04`） |
+| PC 喇叭語音 | 完成 | L1 | base | `TestSpeechDrivesTheSpeaker` | `docs/re/09` |
+| 戰略層五種謀略在實跑裡走過 | 完成 | L1 | base | `TestStratagemsRunLive`、`TestTigerWolfRunsLive`、`TestSabotageRunsLive`、`TestAIPlotMatchesTheOriginal` | 偽書使疑 15 次逐次相同；驅虎吞狼／遠交近攻／聯合出兵三支的結局是呼叫戰鬥子系統。**電腦只用偽書使疑**（R22）。（`docs/re/07`、`docs/mechanics/30`） |
+| 三張表在記憶體裡連續且位置找得到 | 完成 | L0 | base | `TestScenarioTablesLiveInMemory` | 拿劇本檔的位元組去搜，找到且三張連續（0x399B0）。（`docs/spec/003`） |
+| 部隊層 AI 的決策鏈 | 完成 | L2 | base | `TestUnitAIDecisionChain`、`TestUnitAIRangedAndPlotOptions`、`TestWhoMovesTheUnits` | 決策鏈與遠攻／計謀選項的分支（R43：不在對戰子地圖那一側）。（`docs/re/05`） |
+| 戰場徵兵 | 完成 | L1 | base | `TestWarRecruitMatchesTheOriginal` | 與戰略層的徵兵是兩條路。（`docs/mechanics/40`） |
+
+### 發行
+
+| 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
+|---|---|---|---|---|---|
+| 推送到 origin | 未完成 | — | — | 指令重數 | ⚠ **這個訊號是弱的**：`origin/master` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。核實時它回 0（本地與那個 ref 同步）——CONTEXT §8 原本記的「領先 187 筆」是舊資訊。真正要確認得連網 `git fetch`，而建置容器是 `--network none`。 |
+| 三平台簽章 | 卡住 | — | — | **要人判** | 管線寫好了，沒有憑證時會跳過並明說「這不是簽過」。**簽章不在 M8 的出口條件裡**。（`tools/release.sh`、`docs/release/01`） |
+
+### 素材
+
+| 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
+|---|---|---|---|---|---|
+| 加強版的 `.i64` 還沒產 | 未完成 | — | plus | `test -f workplace/ida/ASV.EXE.i64` | `tools/ida.sh` 早就在了，`AA.EXE.i64` 也產出來了（3.9 MB）——**缺的只有加強版那支**。worklist 原本把整條記成「`tools/ida.sh` 包裝器（照 sangokushi 的形狀），對兩支 EXE 產 `.i64`」，而那是 M0 的出口條件之一，於是 M0 標「完成」與這一條沒打勾長期並存。（`docs/re/01`） |
+| 兩版抽檔分開放 `workplace/orig/{base,plus}/` | 未完成 | — | both | 指令重數 | `CLAUDE.md` §3.4 要求兩版都當一等公民抽檔、記雜湊、分開放。目前是直接唯讀掛 `org_game/`，那個目錄沒建。（`CLAUDE.md §3.4`） |
+
+### dosgolem
+
+| 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
+|---|---|---|---|---|---|
+| 開機配方還是指令數觸發，不是行為觸發 | 未完成 | — | base | present：internal/parity/turn_oracle_test.go 的「o.Run(d+_d+_d+)」 | 指令數會隨執行器改動而變，所以現在的配方當不了回歸測試。R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。 訊號是對拍測試裡寫死的指令數預算（`include_tests`）——**要換掉的就是它們**，所以綁在那裡是對的。（`docs/re/02`、`docs/playtest/03`） |
+| probe 看不到 `B0000`（Hercules） | 未完成 | — | both | absent：../dosgolem-san/internal/machine 的「Hercules、HERCULES、monochrome graphic」 | 目前只看 `A0000` 與 `B8000`，選 Hercules 時會得到**假零**——畫面明明有東西而 probe 說沒有。 ⚠ pattern 原本寫 `herc`（不分大小寫），而那會誤中 `OtherChannels` 裡的「herC」——**太寬會反過來誤判已完成**。改成完整字。（`docs/re/00`） |
+
+### 資料格式
+
+| 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
+|---|---|---|---|---|---|
+| 諸侯記錄 72 個位元組裡還有 62 個沒解 | 未完成 | L2 | both | **要人判** | 已解 10 個：offset 2 君主、4 AI 等級、6 軍師、8 人望、14–18 五格寶庫。**offset 10–13、19–71 不是外交狀態**——五支謀略讀寫的都是州郡與人物的欄位。（`docs/spec/003`） |
+| `.MSK` 怎麼與圖搭配還沒解 | 未完成 | — | base | present：docs/formats/07-images.md 的「`.MSK` 與 `8x8AND*`（遮罩）怎麼與圖搭配」 | `8x8AND*` 那四張已經解了（紮寨蓋的是 `AND0`，78 格裡 73 格逐像素相同，`TestCampMaskMatchesTheOriginal`）；剩下的是 `.MSK`——只有 `ENDO4.MSK`，而那一組不在容器裡。訊號綁 `docs/formats/07` 的「還沒解」清單。（`docs/formats/01`） |
+| `.OKR` 未解（共 465 項 ＝ DATA2 418 ＋ DATA3 47，壓縮過） | 未完成 | L2 | both | present：internal/battle/generate.go 的「.OKR.*未解、格式未解」 | 原版主戰場的地形版面在 `.OKR` 裡；remake 現在的版面是**自己生成的**（`battle.Generate`，`docs/design/03` 記為 remake 差異）。解出來也只作參考，美術素材不重製；能拿到的是版面尺寸與地形分佈這類規則性資訊。（`docs/re/04`、`docs/mechanics/90`） |
+
+### 畫面
+
+| 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
+|---|---|---|---|---|---|
+| 主戰場下方花邊上的日期沒畫 | 未完成 | L1 | base | present：internal/ui/artbattle.go 的「remake 還沒畫下方花邊上的年月」 | 畫面改回 408 之後看得到了：原版在 `MAINMAP8` 的花邊上寫一行灰色的年月（基準畫面上是「建安 二 年 九月 秋」，約 35 點／列，色號 7）。remake 的花邊畫對了（黃青圖樣兩邊逐列相同），缺的是那一行字。**這是 640×350 蓋掉的東西之一**，先前根本看不到。 ⚠ 這一條原本綁 `BattleDateY\|花邊上的年月` 這種**猜想中的識別字**——一個都沒中，而且接上時也不保證會出現那些名字，所以它會永遠說「還沒做」而其實一次都沒真的看過（`rulebook/61`）。改綁產品碼裡的自承註解：接上那行字時註解會被刪掉，這一條就會開口。（`docs/spec/005`、`docs/spec/006`） |
+| 長沙的填色對不上 | 未完成 | L1 | base | present：internal/ui/artfill_test.go 的「長沙」 | 原版畫圖樣 0（純淺紅），而州郡記錄的所屬寫的是 2。35 個有主的郡裡其餘 34 個全中。 訊號在 `internal/ui/artfill_test.go`（`include_tests`）：那一格是**已知例外**，容忍它的理由就寫在測試的註解裡。（`docs/formats/07`） |
+
+### 多語系
+
+| 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
+|---|---|---|---|---|---|
+| 槽位溢出只處理了地圖 | 未完成 | — | — | **要人判** | 地圖格寬依最長郡名自動調整；其餘畫面的槽位長度是原版版面決定的，英文常比中文長，塞不下的地方要在 `docs/spec/` 記為 remake 差異。（`CLAUDE.md §3.3`） |
+
+### 規則層
+
+| 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
+|---|---|---|---|---|---|
+| 年號怎麼數還沒查證 | 未完成 | L2 | base | **要人判** | 年號表在手冊給的六個時期上全部對上，但**原版開局後怎麼數**沒查證——推過一年之後它顯示「中平七年」還是「初平元年」。（`docs/mechanics/10`） |
+
+<!-- worklist:end -->
+

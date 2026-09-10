@@ -46,8 +46,8 @@ func NewCanvas(cols, rows int, face *font.Face) *Canvas {
 
 // NewCanvasPx 開一張指定像素尺寸的畫布。
 //
-// 接原版素材的畫面要 640×350，那個高度不是列高的整數倍
-// （350 ÷ 16 ＝ 21.875）。**格數往下取整**，最後那一列會被裁掉一半
+// 接原版素材的畫面要 640×408，那個高度不是列高的整數倍
+// （408 ÷ 16 ＝ 25.5）。**格數往下取整**，最後那一列會被裁掉一半
 // ——原版的版面本來就是按像素排的，不是按格。
 func NewCanvasPx(w, h int, face *font.Face) *Canvas {
 	return &Canvas{

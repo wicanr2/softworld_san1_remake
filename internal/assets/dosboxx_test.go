@@ -21,7 +21,7 @@ var menuAnim = image.Rect(590, 328, 602, 345)
 // 是從那幾張比對出來的。**拿 dosgolem 自己畫的圖去驗從它比出來的版面
 // 等於自己驗自己**（`CLAUDE.md` §4）——所以要有第二個獨立實作。
 //
-// 兩邊唯一該不同的是那格動畫；其餘 640×350 逐點相同。
+// 兩邊唯一該不同的是那格動畫；其餘 640×408 逐點相同。
 func TestDosgolemMenuMatchesDosboxX(t *testing.T) {
 	dbx := openShot(t, dosboxxMenuPath, "跑 tools/dosboxx.sh 產")
 	dg := openShot(t, menuShotPath, "跑 internal/parity 的 TestZZOriginalOpeningScreens 產")

@@ -78,7 +78,7 @@ func TestFieldComesFromTheScenario(t *testing.T) {
 // TestFieldSizesAreTheTwoOriginalShapes 記錄原版只有兩種版面
 // （`L0`，劇本 001 的 42 個郡）：12 欄 × 7 列與 8 欄 × 10 列。
 //
-// 兩種都塞得進 640×350：`x ＝ 48欄 + 56`、`y ＝ 32列 + 36`（奇數欄再 +16）。
+// 兩種都塞得進 640×408：`x ＝ 48欄 + 56`、`y ＝ 32列 + 36`（奇數欄再 +16）。
 func TestFieldSizesAreTheTwoOriginalShapes(t *testing.T) {
 	g := newGame(t)
 	shapes := map[[2]int]int{}

@@ -87,7 +87,7 @@ func FieldCell(col, row int) (x, y int) {
 	return
 }
 
-// BattleField 把一個郡的戰場地圖畫成 640×350。
+// BattleField 把一個郡的戰場地圖畫成 640×408。
 //
 // field 是州郡記錄 offset 55–174 那 120 個位元組；`0xFF` 是圖外。
 // 只畫地形，標記（高四位）與部隊由上層疊。

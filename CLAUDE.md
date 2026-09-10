@@ -238,7 +238,13 @@ DATA1／2／3 的 `.IDX` 末值精準等於 `.GRP` 長度，round-trip 通過。
   **只有 `READY` 能授權寫進 `internal/` 的行為**。假說不進 production code、不進 golden test。
 - `docs/mechanics/`：這個遊戲怎麼運作（§6）。
 - `docs/playtest/`：原版與 remake 同狀態比較，含存檔雜湊、序列、dosgolem 對拍矩陣。
-- `VERIFICATION-MATRIX.md`：完成度的唯一數字來源；README 只連過去。
+- `worklist.json`：**待辦與完成度的權威**（`rulebook/61`）。每一條掛一個跑得
+  起來的 `verify`，回答「這一條的 status 還成立嗎」——`done` 驗證據還在、
+  `open` 驗未完成的訊號還在。**不要在 markdown 打勾**；跑
+  `tools/worklist.py verify`。
+- `VERIFICATION-MATRIX.md`：完成度的唯一數字來源；§8 由
+  `tools/worklist.py render` 產生，其餘各節是敘述層（方法、坑、取捨）。
+  README 只連過去。
 
 **⚠ 最常漏的一步：解完機制只寫了 `docs/re/`。** `docs/re/` 與 `docs/mechanics/` 兩份都要，
 實作完、測試完、commit 完都不代表這一步做了。

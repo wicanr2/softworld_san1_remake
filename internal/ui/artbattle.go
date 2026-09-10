@@ -50,7 +50,7 @@ func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, inf
 	ab.drawText(c, b, v, info)
 }
 
-// compose 把所有圖層拼成一張 640×350 的索引圖。
+// compose 把所有圖層拼成一張 640×408 的索引圖。
 func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo) *assets.Image {
 	var im *assets.Image
 	if ab.bg != nil {
@@ -69,6 +69,13 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 	if ab.top != nil {
 		im.Blit(ab.top, 0, 0)
 	}
+	if ab.bottom != nil {
+		im.Blit(ab.bottom, 0, assets.MapBorderBottomY)
+	}
+	// **remake 還沒畫下方花邊上的年月。** 原版在這條花邊上寫一行灰色的
+	// 年月（基準畫面是「建安 二 年 九月 秋」，色號 7，約 35 點／列）。
+	// 花邊本身兩邊逐列相同，缺的只有那一行字——它是畫面高度從 350 改回
+	// 408 之後才看得到的（`docs/spec/006`）。
 	im.FieldEdges()
 	im.BlitField(ab.tiles, info.Field)
 	ab.drawUnits(im, b, v)

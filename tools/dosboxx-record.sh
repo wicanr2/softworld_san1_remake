@@ -67,24 +67,24 @@ FPSV=${FPS:-4}
 # 一格 import ＋ convert 要 0.4 秒，按鍵腳本裡的「秒」會變成假的
 # ——等 60 秒實際等了 144 秒，時序全部對不上。
 ffmpeg -f x11grab -framerate $FPSV -video_size 640x408 -i :99 \
-  -vf "crop=640:350:0:0,scale=1280:700:flags=neighbor" \
+  -vf "scale=1280:816:flags=neighbor" \
   -c:v libx264 -preset veryfast -pix_fmt yuv420p -y /out/parity.mp4 \
   >/tmp/ff.log 2>&1 &
 FF=$!
 sleep 1
 
 N=0
-snap() {  # 在關鍵時刻存 640×350 的原尺寸圖，給逐格比對用
+snap() {  # 在關鍵時刻存 640×408 的原尺寸圖，給逐格比對用
   # **存兩張，隔一秒。** 兩張一樣才表示畫面靜止；不一樣就是還在動，
   # 那一步不能拿來當對拍的判準——動畫在兩個實作上不會停在同一格，
   # 而那不是誰做錯了。
   N=$((N+1))
   import -window "$WIN" /tmp/f.png 2>/dev/null || return 0
-  convert /tmp/f.png -crop 640x350+0+0 +repage \
+  convert /tmp/f.png +repage \
     "$(printf '/out/frames/%03d-%s.png' $N "$1")"
   sleep 1
   import -window "$WIN" /tmp/f2.png 2>/dev/null || return 0
-  convert /tmp/f2.png -crop 640x350+0+0 +repage \
+  convert /tmp/f2.png +repage \
     "$(printf '/out/frames/%03d-%s.b.png' $N "$1")"
 }
 

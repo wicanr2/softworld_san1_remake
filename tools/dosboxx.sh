@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 用 DOSBox-X 把原版跑到主選單，抓一張 640×350 的畫面。
+# 用 DOSBox-X 把原版跑到主選單，抓一張 640×408 的畫面。
 #
 # 這一張的用途是**驗 dosgolem**：`workplace/shots/open/` 那幾張是 dosgolem
 # 畫的，拿 dosgolem 自己畫的圖去驗 dosgolem 讀出來的版面等於自己驗自己
@@ -67,8 +67,11 @@ key 1; key 2; key 2 2          # 音效／繪圖／磁碟三題（int 21h AH=08�
 # 所以按過頭是安全的；方向鍵不是（會走進「載入進度」那一層）。
 for i in $(seq 1 30); do xdotool key --clearmodifiers Return; sleep 2; done
 import -window "$WIN" /tmp/raw.png
-# 視窗是 640×408（上下各一條黑邊），畫面本體在左上角 640×350。
-convert /tmp/raw.png -crop 640x350+0+0 +repage /out/menu.png
+# **640×408 就是畫面本體，不要裁。** 這裡原本寫著「上下各一條黑邊，
+# 畫面本體在左上角 640×350」，而那句話自己就矛盾——上下都有黑邊的話
+# 不會從左上角裁。原版寫進 CRTC 的 `[12] = 97h` 是 408 列
+#（`docs/spec/006`），DOSBox-X 是完整的 VGA 實作，它給的高度就是答案。
+cp /tmp/raw.png /out/menu.png
 cp /tmp/raw.png /out/menu-raw.png
 kill $DBX 2>/dev/null || true
 EOF

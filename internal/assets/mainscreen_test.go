@@ -43,8 +43,12 @@ func TestMainScreenMatchesTheOriginal(t *testing.T) {
 	shot := loadShot(t)
 	rgba := bg.RGBA()
 
+	// bad 收前幾個不合的點：**一個百分比看不出「差兩點」與「差兩千點」**，
+	// 而 99.99% 印出來就是 100.0%。
+	var bad []image.Point
 	match := func(r image.Rectangle) float64 {
 		same, n := 0, 0
+		bad = bad[:0]
 		for y := r.Min.Y; y < r.Max.Y; y++ {
 			for x := r.Min.X; x < r.Max.X; x++ {
 				a := color.RGBAModel.Convert(rgba.At(x, y)).(color.RGBA)
@@ -52,6 +56,8 @@ func TestMainScreenMatchesTheOriginal(t *testing.T) {
 				n++
 				if a == b {
 					same++
+				} else if len(bad) < 8 {
+					bad = append(bad, image.Pt(x, y))
 				}
 			}
 		}
@@ -63,12 +69,17 @@ func TestMainScreenMatchesTheOriginal(t *testing.T) {
 		min  float64
 	}{
 		{"上方花邊", image.Rect(0, 0, 640, 36), 100},
-		{"最右直條", image.Rect(632, 36, 640, 350), 100},
-		{"左側直條（年月蓋在上面）", image.Rect(0, 36, 72, 350), 90},
-		{"地圖區（換色與編號蓋在上面）", image.Rect(72, 36, 408, 350), 60},
+		// 下方花邊（`MAINMAP2`，372–408）與上方花邊一樣沒有東西蓋上去，
+		// 所以同樣要 100%。**它是這次把畫面高度改回 408 才進得了畫面的**
+		// （`docs/spec/006`）；先前記著「整張落在畫面外」。
+		{"下方花邊", image.Rect(0, MapBorderBottomY, 640, ScreenH), 100},
+		{"最右直條", image.Rect(632, 36, 640, MapBorderBottomY), 100},
+		{"左側直條（年月蓋在上面）", image.Rect(0, 36, 72, MapBorderBottomY), 90},
+		{"地圖區（換色與編號蓋在上面）", image.Rect(72, 36, 408, MapBorderBottomY), 60},
 	} {
 		if got := match(tc.r); got < tc.min {
-			t.Errorf("%s 相符 %.1f%%，至少要 %.0f%%", tc.name, got, tc.min)
+			t.Errorf("%s 相符 %.4f%%，至少要 %.0f%%（前幾個不合的點 %v）",
+				tc.name, got, tc.min, bad)
 		} else {
 			t.Logf("%-28s %.1f%%", tc.name, got)
 		}

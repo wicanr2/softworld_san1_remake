@@ -15,8 +15,9 @@ import "fmt"
 // 也就是**下凹**的立體邊。面板本身沒有底色，內容自己填：
 // 兩個軍力面板是藍底（1）配淺紅字（12），指令面板是青底（3）配黃字（14）。
 //
-// ⚠ 面板高 96，但畫面只有 350 高——原版的虛擬頁比畫面高
-// （`MAINMAP8` 畫在 y ＝ 372 也在畫面外），所以面板下緣看不到。
+// 面板在 y ＝ 268 高 96，下緣 364；`MAINMAP8` 畫在 y ＝ 372 高 36，
+// 下緣正好 408。**兩個都完整落在畫面裡**——上面那句「鋪到 640×408」
+// 就是原版自己的底紋迴圈給的高度（`docs/spec/006`）。
 const (
 	// BattleBGTile 是鋪滿畫面的底紋。
 	BattleBGTile = "8x8PAT0.IMG"
@@ -252,7 +253,9 @@ func TitleArt(data1 *Container) (*Image, error) {
 			return nil, fmt.Errorf("assets: %s 是 %d×%d，三英圖的一塊應該是 %d×%d",
 				name, p.W, p.H, TitleArtPieceW, TitleArtPieceH)
 		}
-		// 高度比畫面多 50 列，Blit 會照畫面裁掉。
+		// 四塊各 400 列，畫面 408 列——**底下 8 列不是素材畫的**，
+		// 原版在貼圖之前把畫面清成黑，那 8 列就一直是黑的
+		//（`TestTitleArtMatchesTheOriginal` 釘著）。
 		im.Blit(p, i*TitleArtPieceW, 0)
 	}
 	return im, nil

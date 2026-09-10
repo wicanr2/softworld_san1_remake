@@ -156,7 +156,7 @@ var artFactionColour = [...]byte{
 	9, 12, 10, 14, 13, 11, 6, 2, 1, 5, 4, 3, 8, 7, 9, 12,
 }
 
-// Compose 依目前局面畫一張 640×350 的圖。
+// Compose 依目前局面畫一張 640×408 的圖。
 func (a *ArtScreen) Compose(g *game.State, sel int) *assets.Image {
 	im := a.base.Clone()
 	for _, p := range g.Prefectures() {
@@ -176,7 +176,7 @@ func (a *ArtScreen) Compose(g *game.State, sel int) *assets.Image {
 
 // DrawArtSession 把接上原版素材的主畫面畫到畫布上。
 //
-// 畫布要正好 640×350（`assets.ScreenW`／`ScreenH`）——原版的版面是
+// 畫布要正好 640×408（`assets.ScreenW`／`ScreenH`）——原版的版面是
 // 按像素排的，格對不齊時字會壓到花邊上。
 func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View) {
 	sel := v.Sel
@@ -395,9 +395,10 @@ type ArtBattle struct {
 	frame   [4]*assets.Image
 	weather [3]*assets.Image
 	faces   *assets.Container
+	bottom  *assets.Image
 }
 
-// NewArtBattle 解出三十六張地形圖塊與上方花邊。data3 可以是 nil，
+// NewArtBattle 解出三十六張地形圖塊與上下兩條花邊。data3 可以是 nil，
 // 那時就不畫花邊。
 func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 	tiles, err := assets.BattleTiles(data1)
@@ -427,6 +428,15 @@ func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 		if i, ok := data3.ByName("MAINMAP1.IMG"); ok {
 			if im, err := assets.DecodeImage(data3.Data(i)); err == nil {
 				ab.top = im
+			}
+		}
+		// 下方花邊。原版 `0x2246a` 那一段載完 `MAINMAP1` 接著載
+		// `MAINMAP8`，畫在 (0,372)——640×36，下緣正好是畫面的 408
+		// （`docs/spec/006`）。先前把它記成「落在畫面外」，
+		// 那是畫布設成 350 的結果。
+		if i, ok := data3.ByName("MAINMAP8.IMG"); ok {
+			if im, err := assets.DecodeImage(data3.Data(i)); err == nil {
+				ab.bottom = im
 			}
 		}
 	}

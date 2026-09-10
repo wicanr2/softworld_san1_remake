@@ -5,6 +5,7 @@ package parity
 import (
 	"errors"
 	"fmt"
+	"image"
 	"image/color"
 	imgpng "image/png"
 	"os"
@@ -26,7 +27,7 @@ import (
 // 畫面照樣有東西、程式照樣往前走。
 //
 // 參照畫面由 `tools/dosboxx-record.sh` 產：`workplace/rec*/frames/`
-// 底下一步一張 640×350 的 PNG，檔名是 `<序號>-<那一步送的鍵>.png`。
+// 底下一步一張 640×408 的 PNG，檔名是 `<序號>-<那一步送的鍵>.png`。
 //
 // ⚠ **時間軸不能照抄。** DOSBox 用真實秒數，dosgolem 用指令數；
 // 對齊點要是**畫面靜止**不是「第幾秒」。
@@ -231,6 +232,16 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		}
 
 		want := loadShot(t, s.file)
+		// **參照畫面的高度要對得上取樣高度。** 對不上時 `want.At` 會在
+		// 缺的那幾列安靜地回零值（黑），百分比因此掉一截——而那看起來
+		// 像「dosgolem 少畫了東西」不像「這批參照畫面是舊尺寸的」。
+		// 畫面高度在 2026-09-10 從 350 改成 408（`docs/spec/006`），
+		// 之前錄的每一批都要重錄。
+		if b := want.Bounds(); b.Dx() != scrW || b.Dy() != scrH {
+			t.Skipf("參照畫面 %s 是 %d×%d，取樣是 %d×%d——"+
+				"這批是舊尺寸錄的，重跑 tools/dosboxx-record.sh",
+				filepath.Base(s.file), b.Dx(), b.Dy(), scrW, scrH)
+		}
 		got := o.IndexedEGA(scrW, scrH)
 		if len(got) < scrW*scrH {
 			t.Fatalf("第 %d 步畫面只有 %d 個像素", n+1, len(got))
@@ -351,9 +362,10 @@ func decodePNG(path string) (interface {
 	return imgpng.Decode(f)
 }
 
-func loadShot(t *testing.T, path string) interface {
-	At(x, y int) color.Color
-} {
+// loadShot 回 `image.Image`——**要 `Bounds()` 不只要 `At()`**：
+// 參照畫面的尺寸得檢查得到，否則舊尺寸的那一批會在缺的列上安靜地
+// 回零值（`docs/spec/006`）。
+func loadShot(t *testing.T, path string) image.Image {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
