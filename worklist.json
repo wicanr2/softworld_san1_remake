@@ -756,11 +756,11 @@
       "title": "推送到 origin",
       "group": "發行",
       "milestone": "M8",
-      "status": "open",
+      "status": "done",
       "level": null,
       "edition": null,
       "docs": [],
-      "note": "⚠ **這個訊號是弱的**：`origin/master` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。核實時它回 0（本地與那個 ref 同步）——CONTEXT §8 原本記的「領先 187 筆」是舊資訊。真正要確認得連網 `git fetch`，而建置容器是 `--network none`。",
+      "note": "推上去了（`e9fab0f`，2026-09-10）。⚠ **這個訊號是弱的**：`origin/master` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。這一條會隨著新 commit 來回翻面（有東西沒推就報過期），那是它的用途。CONTEXT §8 原本記的「領先 187 筆」是舊資訊。",
       "acceptance": "`git rev-list --count origin/master..master` ＝ 0",
       "verify": {
         "kind": "cmd",
@@ -792,23 +792,22 @@
     },
     {
       "id": "ida-i64-plus",
-      "title": "加強版的 `.i64` 還沒產",
+      "title": "兩支 EXE 都有 `.i64`（M0 出口條件）",
       "group": "素材",
       "milestone": "M0",
-      "status": "open",
-      "level": null,
+      "status": "done",
+      "level": "L0",
       "edition": "plus",
       "docs": [
         "docs/re/01"
       ],
-      "note": "`tools/ida.sh` 早就在了，`AA.EXE.i64` 也產出來了（3.9 MB）——**缺的只有加強版那支**。worklist 原本把整條記成「`tools/ida.sh` 包裝器（照 sangokushi 的形狀），對兩支 EXE 產 `.i64`」，而那是 M0 的出口條件之一，於是 M0 標「完成」與這一條沒打勾長期並存。",
+      "note": "2026-09-10 補上加強版那支：`tools/ida.sh analyze ASV.EXE` → `workplace/ida/ASV.EXE.i64`（2.25 MB），拿 `probe.py` 驗過——SHA-256 `ad18a251…88be5` 與素材相符、274 個函式、3 個段。**exit code 不算證據**（`tools/ida.sh` 開頭那條），判準是探針的 JSON。\n\n順帶量到一件事：加強版靜態只看得到解壓 stub。`ASV.EXE` 的 MZ 檔頭是**重定位 0 項、檔頭 512 B、最小配置 192,656 B**——自解壓的形狀；原版 `AA.EXE` 是 5,342 項／21,504 B／12,240 B。兩支都掃不到可辨識的壓縮簽章。**這解釋了為什麼兩版差異只能用執行期對讀解**（`docs/re/01` §3、`docs/spec/004`）。\n\nworklist 原本把整條記成「`tools/ida.sh` 包裝器，對兩支 EXE 產 `.i64`」而沒打勾——包裝器與原版那支早就在了，這是 M0 的出口條件之一，所以「M0 完成」與這一條沒打勾長期並存。",
       "acceptance": "`workplace/ida/ASV.EXE.i64` 存在",
       "verify": {
         "kind": "cmd",
-        "cmd": "test -f workplace/ida/ASV.EXE.i64",
-        "expect": "pass"
+        "cmd": "test -f workplace/ida/AA.EXE.i64 -a -f workplace/ida/ASV.EXE.i64"
       },
-      "layer": "verification"
+      "layer": "evidence"
     },
     {
       "id": "orig-extract-split",
@@ -1128,14 +1127,34 @@
         "docs/spec/005",
         "docs/spec/006"
       ],
-      "note": "畫面改回 408 之後看得到了：原版在 `MAINMAP8` 的花邊上寫一行灰色的年月（基準畫面上是「建安 二 年 九月 秋」，約 35 點／列，色號 7）。remake 的花邊畫對了（黃青圖樣兩邊逐列相同），缺的是那一行字。**這是 640×350 蓋掉的東西之一**，先前根本看不到。 ⚠ 這一條原本綁 `BattleDateY|花邊上的年月` 這種**猜想中的識別字**——一個都沒中，而且接上時也不保證會出現那些名字，所以它會永遠說「還沒做」而其實一次都沒真的看過（`rulebook/61`）。改綁產品碼裡的自承註解：接上那行字時註解會被刪掉，這一條就會開口。",
-      "acceptance": "主戰場底部的年月與原版同位置、同字色",
+      "note": "畫面改回 408 之後看得到了：原版在 `MAINMAP8` 的花邊上寫一行年月。**量到的（拿原版基準與 remake 逐點 diff，2026-09-10）**：\n・十格，每格 24×24，`x = 128 + 40i`（i ＝ 0..9），字的上緣 `y = 378`。\n・落點（單一樣本「建安二年九月秋」）：年號格 0–1、年數格 2–3（靠右，所以個位數的「二」在格 3）、**格 4 一直是空的**、「年」格 5、月份格 6–7（靠右）、「月」格 8、季節格 9。\n・字色**不是實心的**：灰（色號 7）538 點與綠（色號 2）502 點**交錯**——綠不在灰的右下（+1,+1 只有 4 點），(+1,0) 有 388、(0,+1) 有 329，是逐像素相鄰。所以那是網點或遮罩，不是「主色＋陰影」。**成因未解**，可能與還沒解的 `8x8AND*`／`.MSK` 遮罩是同一件事。\n\n⚠ **兩件事還不能實作**：(1) 版面規則只有**一個樣本**，年數或月份佔兩格時怎麼排沒驗過；(2) 網點的機制沒解，照「灰色實心字」畫會得到一個看起來對而機制錯的東西（`CLAUDE.md` §7 第 16 條：統計特徵不是語意）。",
+      "acceptance": "取到第二個日期的樣本驗證版面規則，且網點的畫法有答案；然後主戰場底部的年月與原版逐點相同",
       "verify": {
         "kind": "present",
         "paths": [
           "internal/ui/artbattle.go"
         ],
         "pattern": "remake 還沒畫下方花邊上的年月"
+      },
+      "blocked_by": "網點的機制與 `8x8AND*` 遮罩可能是同一件事（見 `msk-masks`）"
+    },
+    {
+      "id": "dosgolem-branch-name",
+      "title": "文件裡的 dosgolem 分支名要跟得上實際分支",
+      "group": "dosgolem",
+      "layer": "evidence",
+      "milestone": "M1",
+      "status": "done",
+      "level": null,
+      "edition": null,
+      "docs": [
+        "CLAUDE.md §4.1"
+      ],
+      "note": "2026-09-10 抓到：`CLAUDE.md` 兩處與 `CONTEXT.md` 一處都記著 `san1-msc-oracle`，而實際分支早就是 `san1-draw-speed-and-speech`（前者是後者的祖先）。`CLAUDE.md` 開頭寫著「規則裡不准出現不存在的檔案、目錄或工具」——分支名同理。改法是**不再寫死名字**，只寫「開獨立分支不要動 master」＋ 一句「用前先問 `git branch --show-current`」。",
+      "acceptance": "文件提到的分支名與 `git branch --show-current` 一致，或文件根本不寫死名字",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "b=$(git -C ../dosgolem-san branch --show-current); grep -q \"$b\" CLAUDE.md"
       }
     }
   ],

@@ -10,7 +10,7 @@
 |---|---|---|
 | 素材取得 | 兩版 js-dos bundle 下載完成、SHA-256 驗過 | 2026-09-06 |
 | 專案骨架 | 建立；`CLAUDE.md`／`LICENSE`／`.gitignore` 就位 | 2026-09-06 |
-| dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 `san1-msc-oracle`（基於 `origin/master`）| 2026-09-06 |
+| dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 `san1-draw-speed-and-speech`（`san1-msc-oracle` 是它的祖先）。**分支名會換，用前先問 `git branch --show-current`** | 2026-09-10 |
 | 說明書 | 46 頁解到 `workplace/manual/`，整理中 | 2026-09-06 |
 | dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |
 | 反組譯 | IDA 管線成立（`docs/re/01`）；主程式模組已用 objdump 逐段對讀 | 2026-09-06 |
@@ -75,6 +75,8 @@
 
 | **畫面尺寸訂正成 640×408** | 專案一路假設 640×350，那是推的。四條一手證據都給 408：原版寫進 CRTC 的 `[12] = 97h`（Vertical Display End ＝ 407 → 408 列）、DOSBox-X 自己截出來就是 640×408、主畫面的版面算術（36 ＋ 336 ＋ 36）、主戰場底紋「鋪到 640×408」的迴圈。被截掉的 58 列有東西：主選單第三列按鈕的下半與直牌最後一個字、主畫面與主戰場的下方花邊（`MAINMAP2`／`MAINMAP8`，先前記成「落在畫面外」）、三個面板的下緣。**兩個獨立實作在 350 上「逐點相同」通過很久**——取樣尺寸是共用的外部參數，前提錯了下游一致性看不出來（R48、`docs/spec/006`）| 2026-09-10 |
 
+| **兩支 EXE 都有 `.i64` 了** | 加強版那支 2026-09-10 補上（`workplace/ida/ASV.EXE.i64`，探針驗過 SHA-256 與 274 個函式）。M0 的出口條件之一，先前 worklist 沒打勾而 M0 標「完成」——是清單改成 verify 之後第一輪抓到的。順帶量到 `ASV.EXE` 是自解壓的（F5c），靜態只看得到 stub | 2026-09-10 |
+
 完成度的數字在 `VERIFICATION-MATRIX.md`（唯一來源）；文件放什麼在 `docs/INDEX.md`。
 
 里程碑定義在 `CLAUDE.md` §10。M5／M6 的觀測管線已經打通——原版開得進遊戲、
@@ -110,6 +112,7 @@ M3（文字與字型）畫面已通。**M1（dosgolem 跑得動）達成**：原
 | F3 | `DATA1.GRP`／`DATA3.GRP`／`DATA4.GRP` 兩版相同 | `L0` | `[both]` | 同上 |
 | F4 | `DATA0.GRP` 42,488 → 87,696；`DATA5.GRP` 145,378 → 287,590；`DATA2.GRP` 長度相同但內容不同 | `L0` | — | 同上 |
 | F5 | 加強版獨有 `NAME001`–`NAME006.SHA`、`SV.COM`、`CHKLIST.CPS`；原版獨有 `10/20/D5.GRP`、`PARTNSAV.FIL`、三個 `.BAT` | `L0` | — | 同上 |
+| F5c | **`ASV.EXE` 是自解壓的**：MZ 檔頭重定位 **0 項**、檔頭 512 B、最小配置 192,656 B（原版 `AA.EXE` 是 5,342 項／21,504 B／12,240 B）。IDA 靜態只看得到 274 個函式、3 個段，那是 stub 不是主體；兩支都掃不到可辨識的壓縮簽章。**兩版差異因此只能用執行期對讀解** | `L0` | `[plus]` | `docs/re/01` §3 |
 | F5b | **`NAME00n.SHA` 不是遊戲檔**：標頭 `WSHA V1B NewType`、內容是八字命名軟體的存檔（日期民國 87／91 年），而 `ASV.EXE`／`SV.COM` 連 `NAME00` 這個字串都沒有 | `L0` | `[plus]` | `docs/mechanics/90` §4.1 |
 | F6 | 兩份 bundle 附的 `dosbox.conf` 皆 `machine=svga_s3`、`memsize=16`、`core=auto`、`cycles=auto` | `L0` | `[both]` | `.jsdos/dosbox.conf`，兩版只差 autoexec 末行的執行檔名 |
 | F7 | 兩版啟動時的 DOS 服務輪廓**逐項相同**（`AH=35`×12、`25`×11、`44`×5、`30`×2、`4A`×2、`48`×1），停止位址只差 `0x21` | `L0` | `[both]` | dosgolem probe，`docs/re/00` |

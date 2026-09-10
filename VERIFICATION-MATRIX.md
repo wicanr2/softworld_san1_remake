@@ -295,15 +295,15 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
-| 推送到 origin | 未完成 | — | — | 指令重數 | ⚠ **這個訊號是弱的**：`origin/master` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。核實時它回 0（本地與那個 ref 同步）——CONTEXT §8 原本記的「領先 187 筆」是舊資訊。真正要確認得連網 `git fetch`，而建置容器是 `--network none`。 |
+| 推送到 origin | 完成 | — | — | 指令重數 | 推上去了（`e9fab0f`，2026-09-10）。⚠ **這個訊號是弱的**：`origin/master` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。這一條會隨著新 commit 來回翻面（有東西沒推就報過期），那是它的用途。CONTEXT §8 原本記的「領先 187 筆」是舊資訊。 |
 | 三平台簽章 | 卡住 | — | — | **要人判** | 管線寫好了，沒有憑證時會跳過並明說「這不是簽過」。**簽章不在 M8 的出口條件裡**。（`tools/release.sh`、`docs/release/01`） |
 
 ### 素材
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
-| 加強版的 `.i64` 還沒產 | 未完成 | — | plus | `test -f workplace/ida/ASV.EXE.i64` | `tools/ida.sh` 早就在了，`AA.EXE.i64` 也產出來了（3.9 MB）——**缺的只有加強版那支**。worklist 原本把整條記成「`tools/ida.sh` 包裝器（照 sangokushi 的形狀），對兩支 EXE 產 `.i64`」，而那是 M0 的出口條件之一，於是 M0 標「完成」與這一條沒打勾長期並存。（`docs/re/01`） |
 | 兩版抽檔分開放 `workplace/orig/{base,plus}/` | 未完成 | — | both | 指令重數 | `CLAUDE.md` §3.4 要求兩版都當一等公民抽檔、記雜湊、分開放。目前是直接唯讀掛 `org_game/`，那個目錄沒建。（`CLAUDE.md §3.4`） |
+| 兩支 EXE 都有 `.i64`（M0 出口條件） | 完成 | L0 | plus | 指令重數 | 2026-09-10 補上加強版那支：`tools/ida.sh analyze ASV.EXE` → `workplace/ida/ASV.EXE.i64`（2.25 MB），拿 `probe.py` 驗過——SHA-256 `ad18a251…88be5` 與素材相符、274 個函式、3 個段。**exit code 不算證據**（`tools/ida.sh` 開頭那條），判準是探針的 JSON。  順帶量到一件事：加強版靜態只看得到解壓 stub。`ASV.EXE` 的 MZ 檔頭是**重定位 0 項、檔頭 512 B、最小配置 192,656 B**——自解壓的形狀；原版 `AA.EXE` 是 5,342 項／21,504 B／12,240 B。兩支都掃不到可辨識的壓縮簽章。**這解釋了為什麼兩版差異只能用執行期對讀解**（`docs/re/01` §3、`docs/spec/004`）。  worklist 原本把整條記成「`tools/ida.sh` 包裝器，對兩支 EXE 產 `.i64`」而沒打勾——包裝器與原版那支早就在了，這是 M0 的出口條件之一，所以「M0 完成」與這一條沒打勾長期並存。（`docs/re/01`） |
 
 ### dosgolem
 
@@ -311,6 +311,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 |---|---|---|---|---|---|
 | 開機配方還是指令數觸發，不是行為觸發 | 未完成 | — | base | present：internal/parity/turn_oracle_test.go 的「o.Run(d+_d+_d+)」 | 指令數會隨執行器改動而變，所以現在的配方當不了回歸測試。R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。 訊號是對拍測試裡寫死的指令數預算（`include_tests`）——**要換掉的就是它們**，所以綁在那裡是對的。（`docs/re/02`、`docs/playtest/03`） |
 | probe 看不到 `B0000`（Hercules） | 未完成 | — | both | absent：../dosgolem-san/internal/machine 的「Hercules、HERCULES、monochrome graphic」 | 目前只看 `A0000` 與 `B8000`，選 Hercules 時會得到**假零**——畫面明明有東西而 probe 說沒有。 ⚠ pattern 原本寫 `herc`（不分大小寫），而那會誤中 `OtherChannels` 裡的「herC」——**太寬會反過來誤判已完成**。改成完整字。（`docs/re/00`） |
+| 文件裡的 dosgolem 分支名要跟得上實際分支 | 完成 | — | — | 指令重數 | 2026-09-10 抓到：`CLAUDE.md` 兩處與 `CONTEXT.md` 一處都記著 `san1-msc-oracle`，而實際分支早就是 `san1-draw-speed-and-speech`（前者是後者的祖先）。`CLAUDE.md` 開頭寫著「規則裡不准出現不存在的檔案、目錄或工具」——分支名同理。改法是**不再寫死名字**，只寫「開獨立分支不要動 master」＋ 一句「用前先問 `git branch --show-current`」。（`CLAUDE.md §4.1`） |
 
 ### 資料格式
 
@@ -324,7 +325,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
-| 主戰場下方花邊上的日期沒畫 | 未完成 | L1 | base | present：internal/ui/artbattle.go 的「remake 還沒畫下方花邊上的年月」 | 畫面改回 408 之後看得到了：原版在 `MAINMAP8` 的花邊上寫一行灰色的年月（基準畫面上是「建安 二 年 九月 秋」，約 35 點／列，色號 7）。remake 的花邊畫對了（黃青圖樣兩邊逐列相同），缺的是那一行字。**這是 640×350 蓋掉的東西之一**，先前根本看不到。 ⚠ 這一條原本綁 `BattleDateY\|花邊上的年月` 這種**猜想中的識別字**——一個都沒中，而且接上時也不保證會出現那些名字，所以它會永遠說「還沒做」而其實一次都沒真的看過（`rulebook/61`）。改綁產品碼裡的自承註解：接上那行字時註解會被刪掉，這一條就會開口。（`docs/spec/005`、`docs/spec/006`） |
+| 主戰場下方花邊上的日期沒畫 | 未完成 | L1 | base | present：internal/ui/artbattle.go 的「remake 還沒畫下方花邊上的年月」 | 畫面改回 408 之後看得到了：原版在 `MAINMAP8` 的花邊上寫一行年月。**量到的（拿原版基準與 remake 逐點 diff，2026-09-10）**： ・十格，每格 24×24，`x = 128 + 40i`（i ＝ 0..9），字的上緣 `y = 378`。 ・落點（單一樣本「建安二年九月秋」）：年號格 0–1、年數格 2–3（靠右，所以個位數的「二」在格 3）、**格 4 一直是空的**、「年」格 5、月份格 6–7（靠右）、「月」格 8、季節格 9。 ・字色**不是實心的**：灰（色號 7）538 點與綠（色號 2）502 點**交錯**——綠不在灰的右下（+1,+1 只有 4 點），(+1,0) 有 388、(0,+1) 有 329，是逐像素相鄰。所以那是網點或遮罩，不是「主色＋陰影」。**成因未解**，可能與還沒解的 `8x8AND*`／`.MSK` 遮罩是同一件事。  ⚠ **兩件事還不能實作**：(1) 版面規則只有**一個樣本**，年數或月份佔兩格時怎麼排沒驗過；(2) 網點的機制沒解，照「灰色實心字」畫會得到一個看起來對而機制錯的東西（`CLAUDE.md` §7 第 16 條：統計特徵不是語意）。（`docs/spec/005`、`docs/spec/006`） |
 | 長沙的填色對不上 | 未完成 | L1 | base | present：internal/ui/artfill_test.go 的「長沙」 | 原版畫圖樣 0（純淺紅），而州郡記錄的所屬寫的是 2。35 個有主的郡裡其餘 34 個全中。 訊號在 `internal/ui/artfill_test.go`（`include_tests`）：那一格是**已知例外**，容忍它的理由就寫在測試的註解裡。（`docs/formats/07`） |
 
 ### 多語系
