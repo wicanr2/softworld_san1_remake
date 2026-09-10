@@ -554,6 +554,15 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		mark("賞賜金帛")
 		// 挖角（表 `0x56d4`）：**君主要在本郡**，機率隨等級 30／60／80 %，
 		// 預算要 ≥ 100，費用是直接扣的 100 金。
+		if f.trace != nil && p == watch {
+			loc, lv := -1, g.AILevel(acting)
+			if l := g.Lord(acting); l != nil {
+				loc = l.Location
+			}
+			f.trace[fmt.Sprintf("挖角閘門｜郡 %d 勢力 %d 等級 %d 君主在 %d "+
+				"金 %d 預算 %d", p, acting, lv, loc, gold(),
+				gold()*HeadhuntBudget(lv, g.Date.Month%4)/100)]++
+		}
 		hhBefore := g.RandDraws()
 		if o, ok := headhunt(g, p, acting, gold()); ok {
 			emit(o)
@@ -748,7 +757,26 @@ func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 	// **先編隊再擋。** 金與米那兩道在 `0xb47a` 裡，而編隊的洗牌
 	// （`0xb2b4`）排在它前面——所以被擋下來的那幾次，原版**還是抽過了**。
 	// 先擋再編會少抽一整批（月度對拍量到出兵這一支少 106 次）。
-	survivors := muster(g, garrisonIndices(g, prefecture), prefecture, id, want, 2, false)
+	// **編隊洗的是「當下那一份清單」，不是重新拿的守軍**（`L1`）。
+	// `0xb2b4` 開頭直接洗 `es:0x58c`，自己不建清單——那份是分派器前面
+	// 某一張表留下來的，而且被排過。量到郡 2 進編隊時是 `[129 41 298]`，
+	// 槽號序是 `[41 129 298]`：三個候選鍵裡只有「智 ＋ 武 ＋ 加權表[身分]」
+	// 對得上（129 ＝ 63+88+2000 ＝ 2151、41 ＝ 927、298 ＝ 925），
+	// 也就是行動者那一張的鍵（`roster`）。
+	//
+	// ⚠ 只驗過郡 2 這一格。後面幾張表（四支賞賜、指定太守）各自用自己的
+	// 鍵再排一次同一份清單，所以「出兵看到的是哪一種順序」還要更多樣本
+	// 才敢說死——目前取行動者序，因為它是唯一對得上量到的那一格的。
+	cand := roster(g, prefecture)
+	candIdx := make([]int, 0, len(cand))
+	for _, x := range cand {
+		candIdx = append(candIdx, x.Index)
+	}
+	if f.trace != nil {
+		f.trace[fmt.Sprintf("編隊｜郡 %d 清單 %v 留守目標 %d",
+			prefecture, candIdx, want)]++
+	}
+	survivors := muster(g, candIdx, prefecture, id, want, 2, false)
 
 	// `0xb47a` 的三道，順序照原版：
 	//
@@ -824,6 +852,9 @@ func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 	// **整支隊伍一起搬**（`0x1938a` 的迴圈逐位寫人物 offset 19），
 	// 走 `RelocateOrder` 而不是玩家那一條 `MoveOrder`——差別見
 	// `docs/spec/007`。
+	if f.trace != nil {
+		f.trace[fmt.Sprintf("移防｜郡 %d → %d 帶走 %v", prefecture, to, force)]++
+	}
 	return game.RelocateOrder{
 		At: prefecture, To: to, Force: force,
 		Gold: min(game.SortieShare(purse, units, sent/100), purse),

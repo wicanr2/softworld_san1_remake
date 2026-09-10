@@ -399,6 +399,54 @@ func TestZZMonthParity(t *testing.T) {
 	// 內部那一道（`1058:05A7`）——36 次全部一樣，什麼都問不出來。
 	// 要問「誰在擲」得攔 **`RND(n)` 的入口**（`0x1058:0x058c` ＝ 線性
 	// `0x10b0c`），那一層的呼叫端才是產品碼。
+	// 挖角那一支的閘門（`docs/mechanics/70-ai` §2.13.6）：君主在不在本郡
+	// （`0xe414`）→ `RND(10) > 門檻` → 本回合預算 < 100（`0xe438`）。
+	// 兩邊的亂數在郡 1 之前是對齊的，所以 `RND(10)` 必然相同——判不一樣
+	// 就是兩道**非亂數**的閘門之一。逐點數「走到哪一關」才分得出是哪一道。
+	// 移防實際搬走了誰（`0x1938a`，`docs/spec/007`）。名單在 `es:0x58c`、
+	// 長度在 `es:0xc`，兩個 ES 分別從 `DS:0xa79c` 與 `DS:0xa7a0` 取
+	// （常式自己的 `mov -0x5864,%es`／`mov -0x5860,%es`）。
+	// 攔的是**函式入口**，所以 `o.Arg` 讀得到參數。
+	// 編隊之前那一份清單的**順序**（`0xb2b4` 入口，洗牌還沒開始）。
+	// 兩邊的抽樣次數與順序都一樣，出來的隊伍卻不同，那就只剩輸入順序。
+	// `0xb2b4` 自己不建清單——它洗的是分派器前面某一張表留下來的那一份。
+	musterLog := []string{}
+	o.OnCall(addr(0xb2b4), func(o *oracle.Oracle) {
+		ds := uint32(o.DSReg()) * 16
+		segList := uint32(o.Word(addr(ds+0xa57a))) * 16
+		segCnt := uint32(o.Word(addr(ds+0xa578))) * 16
+		n := int(int16(o.Word(addr(segCnt + 0xc))))
+		who := []int{}
+		for i := 0; i < n && i < 60; i++ {
+			who = append(who,
+				int(int16(o.Word(addr(segList+0x58c+uint32(i*2))))))
+		}
+		musterLog = append(musterLog,
+			fmt.Sprintf("郡 %d 編隊前的清單 %v", curDisp, who))
+	})
+	moveLog := []string{}
+	o.OnCall(addr(0x1938a), func(o *oracle.Oracle) {
+		ds := uint32(o.DSReg()) * 16
+		segList := uint32(o.Word(addr(ds+0xa79c))) * 16
+		segCnt := uint32(o.Word(addr(ds+0xa7a0))) * 16
+		n := int(int16(o.Word(addr(segCnt + 0xc))))
+		who := []int{}
+		for i := 0; i < n && i < 60; i++ {
+			who = append(who,
+				int(int16(o.Word(addr(segList+0x58c+uint32(i*2))))))
+		}
+		moveLog = append(moveLog, fmt.Sprintf("郡 %d → %d 金 %d 米 %d 帶走 %v",
+			int16(o.Arg(0)), int16(o.Arg(1)), int16(o.Arg(2)), int16(o.Arg(3)), who))
+	})
+	hhGate := map[string]map[int]int{}
+	for at, name := range map[uint32]string{
+		0x0e414: "挖角：到了君主檢查",
+		0x0e438: "挖角：到了預算檢查",
+	} {
+		n := name
+		hhGate[n] = map[int]int{}
+		o.OnCall(addr(at), func(*oracle.Oracle) { hhGate[n][curDisp]++ })
+	}
 	plotCallers := map[string]int{}
 	o.OnCall(oracle.Addr{Seg: 0x1058, Off: 0x058c}, func(o *oracle.Oracle) {
 		if curTable == "計略" {
@@ -970,6 +1018,22 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	for _, ln := range plotLog {
 		t.Logf("原版的計略：%s", ln)
+	}
+	for _, ln := range musterLog {
+		t.Logf("原版：%s", ln)
+	}
+	for _, ln := range moveLog {
+		t.Logf("原版的移防：%s", ln)
+	}
+	for k, v := range mineTbl {
+		if strings.HasPrefix(k, "移防｜") {
+			t.Logf("remake 的移防：%s（%d 次）", strings.TrimPrefix(k, "移防｜"), v)
+		}
+	}
+	for n, m := range hhGate {
+		t.Logf("原版 %s：共 %d 次，郡 %d 佔 %d 次",
+			n, func() int { s := 0; for _, v := range m { s += v }; return s }(),
+			firstGapAt, m[firstGapAt])
 	}
 	for k, v := range plotCallers {
 		t.Logf("計略那一段的擲點：%s ×%d", k, v)
