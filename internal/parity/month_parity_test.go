@@ -3,6 +3,7 @@
 package parity
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -77,6 +78,18 @@ func TestZZMonthParity(t *testing.T) {
 		}
 	}
 	before := driveToMonthStart(t, o, turnSeqKeys, base, total, seed)
+	// **出發盤面的幾個郡印出來。** 兩邊都從這一份走，所以它是共同的起點；
+	// 郡回合開始時對不上時，要先分得出「起點就不同」與「走的過程不同」。
+	for _, id := range []int{6, 10} {
+		at := state.MasterTableSize + id*176
+		t.Logf("出發盤面：郡 %d 金 %d 米 %d 兵(百) %d 人口(百) %d 主事者 %d",
+			id,
+			binary.LittleEndian.Uint16(before[at+18:]),
+			binary.LittleEndian.Uint16(before[at+20:]),
+			binary.LittleEndian.Uint16(before[at+16:]),
+			binary.LittleEndian.Uint16(before[at+14:]),
+			int16(binary.LittleEndian.Uint16(before[at+32:])))
+	}
 	dumpTables(t, before, "parity-00-出發")
 
 	// remake 這一邊從同一份位元組建局面。

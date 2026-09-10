@@ -1160,6 +1160,28 @@
         "kind": "cmd",
         "cmd": "b=$(git -C ../dosgolem-san branch --show-current); grep -q \"$b\" CONTEXT.md"
       }
+    },
+    {
+      "id": "sortie-supplies-at-month-end",
+      "title": "出兵的錢糧與部隊在月底結算之後才從郡搬走",
+      "group": "規則層",
+      "layer": "feature",
+      "milestone": "M5",
+      "status": "open",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/05"
+      ],
+      "note": "月度對拍在新起點上差 145，第一個岔開在順序表第 0 格——而岔開的不是亂數序列是**盤面**：原版在「月底結算 → 新月第一個郡」之間把那個郡的金扣了 8000、米扣了 3045、兵扣了 2000，remake 完全沒動。\\n\\n誰動的用攔寫入問出來（`TestZZWhoTakesGoldFromPrefecture6`）：金 `0x282df`、米 `0x282f8`、兵士 `0x28553`，三個都在戰役的碼段；那一段是部隊記錄的迴圈（`es:0x3502`、一個軍團五支、記錄 42 bytes），函式入口 `0x281ee` 參數 ×22 索引軍團記錄 `es:0x175e`。\\n\\n**原版是「郡回合決定出兵 → 月底結算之後才把錢糧與部隊搬進軍團」**，而 remake 的 `EndMonth` 沒有這一步。\\n\\n⚠ 還沒解：哪些軍團在這個時機被處理、條件是什麼、`0x281ee` 的呼叫端在月流程的哪一格。**在那之前不要動 `internal/`**——目前只是 `L1` 觀測，不是 `READY` spec（`CLAUDE.md` §5）。",
+      "acceptance": "原版那一段的流程解出來並寫成 READY spec，remake 照著實作之後月度對拍回到 0",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "docs/re/05-battle-layer.md"
+        ],
+        "pattern": "還沒解的\\*\\*：哪些軍團會在這個時機被處理"
+      }
     }
   ],
   "layers": {
