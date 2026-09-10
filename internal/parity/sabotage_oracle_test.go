@@ -142,6 +142,31 @@ func TestSabotageRunsLive(t *testing.T) {
 		before = read()
 		calls++
 	})
+	// **收尾要貼著常式量**：先前 `before` 在入口讀、`after` 卻等送完所有
+	// 鍵才讀，中間整段玩家流程都還在跑——量到「民眾忠誠 90 → 100」那種
+	// 這一支根本不會做的事（`0x2d70c` 是減不是加），比的就不是這五刀了。
+	// `0x2d7ef` 是五刀全部寫完、進畫面呼叫之前的第一道指令。
+	var after snap
+	gotAfter := false
+	o.OnCall(addr(0x2d7ef), func(*oracle.Oracle) {
+		if !gotAfter {
+			after, gotAfter = read(), true
+		}
+	})
+	// 五道 `RND` 的實際回傳值（攔的是**呼叫之後**那一道指令，AX 還握著
+	// 結果）。有了它就不必窮舉擲值，每條公式可以直接對算。
+	rolls := map[string]int{}
+	for at, name := range map[uint32]string{
+		0x2d6fb: "民眾忠誠", 0x2d728: "洪水率", 0x2d75b: "土地價值",
+		0x2d795: "米", 0x2d7cb: "金",
+	} {
+		n := name
+		o.OnCall(addr(at), func(o *oracle.Oracle) {
+			if _, seen := rolls[n]; !seen {
+				rolls[n] = int(o.AX())
+			}
+		})
+	}
 
 	// 主選單第 8 項是謀略，子選單第 4 項是策反人民
 	// （`docs/mechanics/10-strategy` §2、`docs/re/07`）。
@@ -182,10 +207,15 @@ func TestSabotageRunsLive(t *testing.T) {
 	if hitTarget != to {
 		t.Fatalf("細作去的是郡 %d，不是擺好的郡 %d", hitTarget, to)
 	}
-	now := read()
+	if !gotAfter {
+		t.Fatal("沒攔到 `0x2d7ef`——五刀寫完的那一刻沒量到，比出來的東西不算數")
+	}
+	now := after
 	t.Logf("郡 %d 魅力 %d：民忠 %d→%d 洪水 %d→%d 地力 %d→%d 米 %d→%d 金 %d→%d",
 		to, charm, before.loyal, now.loyal, before.flood, now.flood,
 		before.land, now.land, before.rice, now.rice, before.gold, now.gold)
+	t.Logf("原版五道 RND 的擲值：%v", rolls)
+	t.Logf("送完鍵之後（不是這五刀造成的部分也算進去）：%+v", read())
 
 	// 五刀逐條列舉合法的擲值。
 	checked, bad := 0, 0
