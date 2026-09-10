@@ -59,7 +59,24 @@ func TestZZMonthParity(t *testing.T) {
 
 	var atSettle []byte
 	// 盤面在**月初那一刻**取（hook 裡拍的），不是在 `bootToGame` 停的地方。
-	before := driveToMonthStart(t, o, turnSeqKeys, base, total)
+	// **亂數固定**，否則玩家排到第幾格是抽出來的，視窗大小每輪都不同
+	//（`SAN1_SEED` 可換；0 ＝ 不動，用原版自己抽的）。
+	//
+	// 這個值是 `TestZZSeedScan` 掃出來的：**判準是視窗大小，不是「哪個
+	// 種子讓測試變綠」**。視窗是 `[游標, 玩家的郡)`，玩家排得越後面比得
+	// 越多；`0x13579BDF` 讓玩家排第 38 格，是掃過的十個裡最大的
+	//（舊 base 那一輪是 37 格，所以涵蓋相當）。
+	//
+	// ⚠ 掃出來的分布很分散：同一批種子裡有 2 格的、5 格的、7 格的。
+	// **拿小視窗換綠是這裡最容易犯的錯**——`0x5A17C0DE`（7 格）一度讓
+	// 這支測試 PASS，而 38 格的視窗下差異又回來了。
+	seed := uint32(0x13579BDF)
+	if v := os.Getenv("SAN1_SEED"); v != "" {
+		if n, err := strconv.ParseUint(v, 0, 32); err == nil {
+			seed = uint32(n)
+		}
+	}
+	before := driveToMonthStart(t, o, turnSeqKeys, base, total, seed)
 	dumpTables(t, before, "parity-00-出發")
 
 	// remake 這一邊從同一份位元組建局面。

@@ -200,7 +200,7 @@ func bootToGame(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 //     `0x1581c` 這種是**映像位移**（`docs/re/03`）。`OnCall` 走的是同一套
 //     位址而測試一直用得好，所以攔截點沿用它。
 func driveToMonthStart(t *testing.T, o *oracle.Oracle, seq []string,
-	base uint32, total int) []byte {
+	base uint32, total int, seed uint32) []byte {
 	t.Helper()
 	const settle = 40_000_000
 	var at *oracle.State
@@ -243,6 +243,26 @@ func driveToMonthStart(t *testing.T, o *oracle.Oracle, seq []string,
 	// 視窗因此少掉前 10 格）。拍的是**整台機器**（`o.Save`）而不是三張表，
 	// 所以還原之後原版就真的站在結算的入口，後面的流程從那裡重新走。
 	o.Restore(at)
+
+	// **固定亂數，讓每月洗牌的結果可重現。**
+	//
+	// 對拍視窗是 `[游標, 玩家的郡)`，而玩家排到第幾格是**開月洗牌抽出來
+	// 的**——舊 base 上是第 37 格、換 base 之後是第 9 格。視窗大小因此
+	// 隨機，「差 N 個位元組」在不同輪之間不能比大小，樣本數也跟著浮動。
+	//
+	// 原版的亂數是 MSC 的 LCG，狀態就在 `DS:0xa3ae`／`0xa3b0` 兩格
+	//（`docs/re/03` §1.45）。**這一刻正好在洗牌之前**：月底結算本身不抽
+	// （實測 0 次），結算之後才是開月洗牌。所以在這裡寫進去，洗牌的結果
+	// 就固定了。
+	//
+	// remake 那一邊不必另外設：測試拿「結算那一刻的狀態」餵 `SeedRand`，
+	// 而那個狀態就是這裡寫進去的值——**兩邊自動同源**。
+	if seed != 0 {
+		ds := uint32(o.DSReg()) * 16
+		o.SetWord(addr(ds+0xa3ae), uint16(seed))
+		o.SetWord(addr(ds+0xa3b0), uint16(seed>>16))
+		t.Logf("亂數固定成 0x%08x（洗牌之前）", seed)
+	}
 	t.Logf("驅動到月底結算：游標 %d", monthCursor(o))
 	return o.Bytes(addr(base), total)
 }
