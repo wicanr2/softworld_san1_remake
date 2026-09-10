@@ -177,6 +177,19 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 			return true, err
 		}
 	}
+	// **計謀得手會多擲一次 `RND(4)`**（`0x32e4f`）。那一支（`0x32e40`）
+	// 是**畫面轉場**：四選一，每個分支跑一種抹除／拉幕效果。畫面上的
+	// 東西 remake 不必照做，但**那一次抽樣要照擲**——不擲的話整條亂數
+	// 序列從這裡開始錯開。
+	//
+	// 量法：把 `RND(n)` 的入口攔起來記呼叫端（攔 `rand()` 只會拿到
+	// `RND` 內部那一道，36 次全部一樣）。計略那一段的四個擲點是
+	// 等級 5 的 `RND(5)` ×28、等級 4 的 `RND(8)` ×4、挑目標 ×2，
+	// 以及這一支 ×2——而那個月剛好有 2 次計謀得手。
+	//
+	// ⚠ **只驗過「得手」這一條**：那個月兩次計謀都成功，所以「失敗時
+	// 會不會也轉場」沒有樣本。失敗那條路徑先不擲。
+	g.Roll(4, from, target, int(p))
 	return true, nil
 }
 
@@ -313,15 +326,21 @@ func (g *State) Forgery(target, envoyCharm int) {
 	if dst == nil {
 		return
 	}
+	// 名單是 `buildRoster(目標郡, 模式 2)`（`0x2d20e`）——**不比對勢力**，
+	// 混編的郡裡別家的人也會被離間。
 	for _, x := range g.Garrison(target) {
-		if x.Faction != dst.Owner || !x.HasLoyalty() {
+		// **忠誠讀的是有號位元組**（`0x2d234` 的 `cbtw`）。哨兵值 `0xFF`
+		// 因此是 −1 而不是 255——差別只在「哨兵會不會被當成全場最忠誠
+		// 的人」。實務上碰不到：`0xFF` 是**在野者**的哨兵（`docs/spec/003`
+		// §人物 offset 16，346 位裡 227 位），而在野者身分是 8／9，
+		// `buildRoster` 模式 2 只收身分 ≤ 3，兩邊都進不了名單。
+		// 照有號讀是為了與原版逐位元組一致，不是為了改變結果。
+		loyal := int(int8(x.Loyalty))
+		if loyal >= envoyCharm {
 			continue
 		}
-		if int(x.Loyalty) >= envoyCharm {
-			continue
-		}
-		roll := g.Roll(max(envoyCharm/2, 1), target, envoyCharm, int(x.Loyalty))
-		n := int(x.Loyalty) * (ForgeryScale - roll - envoyCharm) / ForgeryScale
+		roll := g.Roll(max(envoyCharm/2, 1), target, envoyCharm, loyal)
+		n := loyal * (ForgeryScale - roll - envoyCharm) / ForgeryScale
 		if n < 0 {
 			n = 0
 		}

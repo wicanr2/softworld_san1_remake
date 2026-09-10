@@ -245,6 +245,31 @@ func TestZZMonthParity(t *testing.T) {
 						name, sta(o, watch),
 						o.Byte(addr(base+uint32(nMas)+uint32(watch*176+30))),
 						top, topFac))
+				if name == "計略" {
+					// 計略的目標郡（`SAN1_WATCH2`）逐筆印：偽書使疑
+					// 逐人擲一次，所以名單與忠誠決定該擲幾下。
+					t2 := -1
+					if v := os.Getenv("SAN1_WATCH2"); v != "" {
+						if n, err := strconv.Atoi(v); err == nil {
+							t2 = n
+						}
+					}
+					if t2 >= 0 {
+						who := []string{}
+						for i := 0; i < 350; i++ {
+							g := base + uint32(nMas) + uint32(nSta) + uint32(i*30)
+							if int(o.Byte(addr(g+19))) != t2 {
+								continue
+							}
+							who = append(who,
+								fmt.Sprintf("%d/勢力%d/忠%d/身分%d", i,
+									o.Byte(addr(g+18)), int8(o.Byte(addr(g+16))),
+									o.Byte(addr(g+17))))
+						}
+						valLog = append(valLog,
+							fmt.Sprintf("　  原版：郡 %d 的人 %v", t2, who))
+					}
+				}
 				if name == "賞賜物品" {
 					// **四支寶物的第二道閘門比的是諸侯的庫存**
 					//（`0xd9b4`：`庫存 <= RND(2)+2` 就跳過）。
@@ -315,6 +340,54 @@ func TestZZMonthParity(t *testing.T) {
 		})
 	}
 	o.OnCall(addr(0x174f3), func(*oracle.Oracle) { curTable = "郡回合之外" })
+	// 計略的成敗常式 `0x2dd66` 是**函式入口**，所以 `o.Arg` 讀得到參數
+	// （攔在函式中間讀到的是垃圾——`docs/re/05` 末節的坑之一）：
+	// 0 ＝ 我方的郡、1 ＝ 目標郡、2 ＝ 使者魅力。目標是 `RND(候選表長)`
+	// 抽的，兩邊的候選表只要長度或順序差一格就會挑到別的郡。
+	// ⚠ **路標會挪動桶的邊界。** `extra` 裡每一條都會把 `curTable` 換成
+	// 自己，於是「它之後到下一個分派點之間」的抽樣全記到它頭上——把
+	// `0x2d1fa` 放進 `extra` 量到「偽書使疑抽了 1 次」，而那一支的迴圈
+	// 其實一次都沒進去（郡 7 五個人忠誠全 100，使者魅力 91，`0x2d23d`
+	// 的 `jge` 全部跳過）。要問「這一支抽了幾次」就攔它**自己那一道
+	// `RND` 的呼叫點**，不要用路標分帳。
+	// 計略鏈上的每一個 `RND` 呼叫點逐點計數（靜態掃 `9a 8c 05 58 10`
+	// 掃出來就這五個）。桶的分帳只告訴我們「這一段抽了幾次」，逐點才
+	// 說得出**是哪一道**。
+	plotRolls := map[string]int{}
+	plotRollsAt := map[string]map[int]int{}
+	for at, name := range map[uint32]string{
+		0x0e4ad: "計略：等級3的RND(10)",
+		0x0e52d: "計略：等級4的RND(8)",
+		0x0e5ad: "計略：等級5的RND(5)",
+		0x0e71f: "計略：挑目標RND(表長)",
+		0x2d24f: "計略：偽書使疑逐人",
+	} {
+		n := name
+		plotRollsAt[n] = map[int]int{}
+		o.OnCall(addr(at), func(*oracle.Oracle) {
+			plotRolls[n]++
+			plotRollsAt[n][curDisp]++
+		})
+	}
+	plotLog := []string{}
+	o.OnCall(addr(0x2dd66), func(o *oracle.Oracle) {
+		plotLog = append(plotLog, fmt.Sprintf("郡 %d → %d 魅 %d",
+			int16(o.Arg(0)), int16(o.Arg(1)), int16(o.Arg(2))))
+	})
+	// 計略那一段裡「桶記到 36、五個 RND 呼叫點加起來只有 34」的兩次，
+	// 記下它們的呼叫端。`Caller()` 只在剛進入常式時有效（這裡就是），
+	// 而 near／far 的堆疊版面不同，所以兩種都印出來自己判。
+	// ⚠ 攔 `rand()`（`0x5c4:0x2cb0`）讀 `Caller()` 只會拿到 `RND(n)`
+	// 內部那一道（`1058:05A7`）——36 次全部一樣，什麼都問不出來。
+	// 要問「誰在擲」得攔 **`RND(n)` 的入口**（`0x1058:0x058c` ＝ 線性
+	// `0x10b0c`），那一層的呼叫端才是產品碼。
+	plotCallers := map[string]int{}
+	o.OnCall(oracle.Addr{Seg: 0x1058, Off: 0x058c}, func(o *oracle.Oracle) {
+		if curTable == "計略" {
+			plotCallers[fmt.Sprintf("far %s／near %s",
+				o.Caller(), o.NearCaller())]++
+		}
+	})
 	o.OnCall(oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, func(*oracle.Oracle) {
 		randCalls++
 		randBy[curDisp]++
@@ -878,6 +951,16 @@ func TestZZMonthParity(t *testing.T) {
 		if !modelled {
 			absent = append(absent, i)
 		}
+	}
+	for _, ln := range plotLog {
+		t.Logf("原版的計略：%s", ln)
+	}
+	for k, v := range plotCallers {
+		t.Logf("計略那一段的擲點：%s ×%d", k, v)
+	}
+	for n, v := range plotRolls {
+		t.Logf("原版 %s：共 %d 次，郡 %d 佔 %d 次",
+			n, v, firstGapAt, plotRollsAt[n][firstGapAt])
 	}
 	t.Logf("寶庫（進貢後）原版 %v", tbAfter)
 	t.Logf("寶庫（進貢後）remake %v（remake 沒建模的勢力槽：%v，"+

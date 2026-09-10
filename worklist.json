@@ -1202,6 +1202,25 @@
         "cmd": "grep -q 'p.Owner = t.Faction' internal/game/personnel.go && grep -q 'acting = q.Owner' internal/ai/ai.go",
         "expect": "pass"
       }
+    },
+    {
+      "id": "plot-transition-roll",
+      "title": "計謀得手會多擲一次 RND(4)（畫面轉場）",
+      "group": "規則層",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L0",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai"
+      ],
+      "note": "`0x32e4f` 的 `RND(4)`：`0x32e40` 是畫面轉場常式，四選一。表現層的抽樣 remake 也要照擲，否則亂數序列從那裡錯開（計略 36／34 → 36／36）。\n\n⚠ 失敗那條路徑沒有樣本，先不擲。",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "grep -q 'g.Roll(4, from, target, int(p))' internal/game/plot.go",
+        "expect": "pass"
+      }
     }
   ],
   "layers": {

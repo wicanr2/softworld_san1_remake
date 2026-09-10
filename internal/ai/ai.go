@@ -556,7 +556,68 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 10／12.5／20 %；目標是**全圖**任何一個敵郡，使者取本郡魅力
 		// 最高的人。
 		if o, ok := plot(g, p, acting); ok {
+			if f.trace != nil && p == watch {
+				ch := -1
+				if x := g.General(o.Envoy); x != nil {
+					ch = int(x.Charm)
+				}
+				// 偽書使疑逐人擲一次（`game.Forgery`），所以「該擲幾下」
+				// ＝ 目標郡裡忠誠低於使者魅力的人數。原版量到 1 下。
+				// 分成「同勢力」與「全部」兩個數：只有前者是 0 而後者
+				// 不是 0 時，差在 `Forgery` 的勢力過濾。
+				same, all := 0, 0
+				if q := g.Prefecture(o.To); q != nil {
+					for _, x := range g.Garrison(o.To) {
+						if !x.HasLoyalty() || int(x.Loyalty) >= ch {
+							continue
+						}
+						all++
+						if x.Faction == q.Owner {
+							same++
+						}
+					}
+				}
+				// 成敗是**決定性**的（`0x2dd66` 不擲骰）：我方分數 >
+				// 守方的「軍師與君主取智較高者」才成。分數算法逐項對過，
+				// 所以判不一樣就是輸入值不一樣——把四個輸入都印出來。
+				myChief, myLord, prestige := 0, 0, 0
+				if c := g.Chief(acting); c != nil {
+					myChief = int(c.Intel)
+				}
+				if l := g.Lord(acting); l != nil {
+					myLord = int(l.Intel)
+				}
+				if fa := g.Faction(acting); fa != nil {
+					prestige = fa.Prestige
+				}
+				def := 0
+				if q := g.Prefecture(o.To); q != nil && q.Owned() {
+					if c := g.Chief(q.Owner); c != nil {
+						def = int(c.Intel)
+					}
+					if l := g.Lord(q.Owner); l != nil && int(l.Intel) > def {
+						def = int(l.Intel)
+					}
+				}
+				// 目標郡的人與忠誠逐筆印出來——`Forgery` 逐人擲一次，
+				// 所以「該擲幾下」就等於忠誠低於使者魅力的人數。
+				who2 := []string{}
+				for _, x := range g.Garrison(o.To) {
+					who2 = append(who2,
+						fmt.Sprintf("%d/勢力%d/忠%d/身分%d",
+							x.Index, x.Faction, x.Loyalty, x.Status))
+				}
+				f.trace[fmt.Sprintf("計略目標｜郡 %d 的人 %v", o.To, who2)]++
+				f.trace[fmt.Sprintf("計略｜郡 %d → %d 使者 %d 魅 %d；"+
+					"我方 軍師智 %d 君主智 %d 人望 %d → 分 %d；守方 %d；"+
+					"目標郡忠誠<魅力 同勢力 %d／全部 %d",
+					p, o.To, o.Envoy, ch, myChief, myLord, prestige,
+					game.PlotScore(myChief, myLord, prestige, ch), def,
+					same, all)]++
+			}
 			emit(o)
+		} else if f.trace != nil && p == watch {
+			f.trace[fmt.Sprintf("計略｜郡 %d 沒發動", p)]++
 		}
 		mark("計略")
 		// 調整兵力（表 `0x55b4`）：**不花錢，也不隨等級變**——六格全部
