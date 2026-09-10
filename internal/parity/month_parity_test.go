@@ -290,7 +290,7 @@ func TestZZMonthParity(t *testing.T) {
 							watch, who,
 							o.Word(addr(base+uint32(nMas)+uint32(watch*176+14)))))
 				}
-				if name == "賞賜金帛" {
+				if name == "行動者" || name == "指定太守" || name == "賞賜金帛" {
 					// 外層迴圈（`0xd5e6`）走完整份名單、跳過君主，
 					// 每一位叫一次 `0xd302`；預算 > 0 就擲一次。所以
 					// 「擲了幾次」＝ 名單裡非君主的人數（預算夠的話）。
@@ -306,7 +306,8 @@ func TestZZMonthParity(t *testing.T) {
 							int8(o.Byte(addr(g+16)))))
 					}
 					valLog = append(valLog,
-						fmt.Sprintf("　  原版：郡 %d 的人 %v", watch, who))
+						fmt.Sprintf("　  原版（進 %s 之前）郡 %d 的人 %v",
+							name, watch, who))
 				}
 				if name == "計略" {
 					// 計略的目標郡（`SAN1_WATCH2`）逐筆印：偽書使疑
@@ -1073,6 +1074,14 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	for _, ln := range moveLog {
 		t.Logf("原版的移防：%s", ln)
+	}
+	for k, v := range mineTbl {
+		if strings.HasPrefix(k, "指派太守｜") {
+			t.Logf("remake %s（%d 次）", k, v)
+		}
+	}
+	if x := g.Governor(firstGapAt); x != nil {
+		t.Logf("remake 郡 %d 收工時的主事者：%d", firstGapAt, x.Index)
 	}
 	for k, v := range mineTbl {
 		if strings.HasPrefix(k, "移防｜") {
