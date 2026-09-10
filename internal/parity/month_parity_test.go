@@ -221,10 +221,34 @@ func TestZZMonthParity(t *testing.T) {
 		}
 	}
 	valLog := []string{}
+	// 十八張分派表**共用同一份守將清單**（`es:0x58c`／長度 `es:0xc`），
+	// 表自己不建清單，只就地重排或截短它。把每一張表**之前**的順序倒出來
+	// 才看得出「誰排過它、用什麼鍵」。段值從 `DS:0xa57a`／`DS:0xa578` 取
+	// （`0xb2b4` 自己用的那一組）。
+	rosterAt := func(o *oracle.Oracle) []int {
+		ds := uint32(o.DSReg()) * 16
+		segList := uint32(o.Word(addr(ds+0xa57a))) * 16
+		segCnt := uint32(o.Word(addr(ds+0xa578))) * 16
+		n := int(int16(o.Word(addr(segCnt + 0xc))))
+		if n < 0 || n > 60 {
+			return nil
+		}
+		out := make([]int, 0, n)
+		for i := 0; i < n; i++ {
+			out = append(out,
+				int(int16(o.Word(addr(segList+0x58c+uint32(i*2))))))
+		}
+		return out
+	}
+	rosterLog := []string{}
 	for _, tb := range tables {
 		name := tb.name
 		o.OnCall(addr(tb.at), func(o *oracle.Oracle) {
 			curTable = name
+			if watch >= 0 && curDisp == watch {
+				rosterLog = append(rosterLog,
+					fmt.Sprintf("進 %-10s 之前　清單 %v", name, rosterAt(o)))
+			}
 			if watch >= 0 && curDisp == watch {
 				// 郡的所屬（offset 30）與槽號最大的那位——`0x1e394` 是
 				// 「掃 0..349、後寫的蓋前寫的」，所以所屬應該等於這個郡
@@ -1040,6 +1064,9 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	for _, ln := range plotLog {
 		t.Logf("原版的計略：%s", ln)
+	}
+	for _, ln := range rosterLog {
+		t.Logf("原版的共用清單：%s", ln)
 	}
 	for _, ln := range musterLog {
 		t.Logf("原版：%s", ln)

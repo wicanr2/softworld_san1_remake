@@ -1051,9 +1051,12 @@ func conscript(g *game.State, prefecture, level, budget int, trace map[string]in
 			trace[fmt.Sprintf("徵兵候選｜%d 職位 %d 上限 %d 兵 %d",
 				x.Index, x.Rank, x.TroopCap(), x.Soldiers)]++
 		}
-		// **預算 ≤ 0 就收工**（`0xbf1a`）。
+		// **預算 ≤ 0 跳過這一位**（`0xbf1a` → `jmp 0xc0cd`，而 `0xc0cd`
+		// 是 `incw` 也就是迴圈的遞增）。預算一旦見底就不會再回頭，所以
+		// 這一道 break 或 continue 的結果相同；照原版寫是為了讓下一個
+		// 讀碼的人不必再判斷一次。
 		if budget <= 0 {
-			break
+			continue
 		}
 		n := x.TroopCap() - x.Soldiers
 		if n > budget {
@@ -1062,9 +1065,17 @@ func conscript(g *game.State, prefecture, level, budget int, trace map[string]in
 		if room := people - game.MinPopulationToConscript; n > room {
 			n = room
 		}
-		// **`<= 0` 是整個迴圈結束，不是跳過這一位**（`0xbf98` 跳出去）。
+		// **`<= 0` 是跳過這一位，不是結束迴圈**（`0xbf98` → `jmp 0xc0cd`
+		// ＝ `incw -0x10(%bp)`，迴圈的遞增；真正的出口在 `0xc0dc` 的
+		// 「走完名單」）。
+		//
+		// 差別只在「一位滿員的守將排在中間」時看得到：郡 1 的名單是
+		// `[53, 41, 336]`，41 已滿員（職位 5、上限 3000、兵 3000），
+		// 空額是 0。寫成 break 會讓 336 一兵都徵不到；原版跳過 41，
+		// 336 拿到 min(空額 325, 人口上限 75) ＝ **75**——而 75 正是
+		// 53 先拿走 325 之後人口上限（3400 − 3000 ＝ 400）剩下的。
 		if n <= 0 {
-			break
+			continue
 		}
 		// **扣掉的是花掉的金，不是人數**（`0xc061` 走付錢那一支）。
 		// 電腦有折扣，等級 5 是 0.75——所以徵 323 人只花 242 金，
