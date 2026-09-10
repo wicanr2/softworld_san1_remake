@@ -159,7 +159,7 @@
       "docs": [
         "docs/playtest/04"
       ],
-      "note": "2026-09-10 換 base 後 `TestPlayerCommandsAsCaoCao` 紅（13 pass / 2 fail / 1 skip）。與月度同源：起點漂移（R49）。 兩個盤面各十五道全部相同（建安二年／南海、劇本 1 曹操／郡 11）。",
+      "note": "2026-09-11 重測：原版動到州郡表 `[11]`，兩邊不同的是 `[3 29 36]`——玩家被驅動到**不同的郡**，送鍵配方在新 base 上漂移了（R49），不是指令規則錯。\n\n解法同 `parity-events`：起點改由原版的路標定位，不要靠指令數或固定鍵數。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -170,8 +170,7 @@
           "dosgolem-san"
         ]
       },
-      "layer": "verification",
-      "blocked_by": "對拍起點要在新 base 上重新校準（見 `boot-recipe-behavior-triggered`）"
+      "layer": "verification"
     },
     {
       "id": "parity-sortie",
@@ -330,7 +329,7 @@
         "docs/re/07",
         "docs/mechanics/30"
       ],
-      "note": "2026-09-10 換 base 後 `TestSabotageRunsLive` 紅。與月度同源（R49）。 偽書使疑 15 次逐次相同；驅虎吞狼／遠交近攻／聯合出兵三支的結局是呼叫戰鬥子系統。**電腦只用偽書使疑**（R22）。",
+      "note": "2026-09-11 重測：**真正的規則缺口**，與起點漂移無關。策反人民（`0x2d6e0`）的五刀比了 5 條、對不上 3 條，而且是「`RND(n)` 的 n 種擲值**一個都算不出來**」——民忠 原版給 100、米 1900、金 6780，三條公式都不對，不是擲值挑錯。\n\n盤面是測試自己擺的（玩家勢力 14 在郡 41、目標郡 25 屬勢力 1），分派器與效果常式各進去 1 次，所以觸發路徑是通的——要重讀的是 `0x2d6e0` 本身。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -341,8 +340,7 @@
           "dosgolem-san"
         ]
       },
-      "layer": "verification",
-      "blocked_by": "對拍起點要在新 base 上重新校準（見 `boot-recipe-behavior-triggered`）"
+      "layer": "verification"
     },
     {
       "id": "parity-ai-affairs",
@@ -572,7 +570,7 @@
         "docs/re/06",
         "docs/mechanics/50"
       ],
-      "note": "2026-09-10 換 base 後 `TestEventsMatchTheOriginal` 紅。與月度同源（R49）。 四種天災的機率與幅度、秋收、進貢、繼承的人望折損（3 次逐次相同）、絕嗣結束正反兩面各推過一個月。",
+      "note": "2026-09-11 重測：**量到的全部相同**（十二個月、亂數 15320 次正對照、老死判定 17 次，`0 次對不上`），紅的是測試自己的護欄——「一年裡一次蝗害都沒有」。也就是**盤面沒擺出蝗害**，不是規則錯（起點漂移，R49）。\n\n月度對拍已經有現成解法可以照搬：送鍵把原版驅動到路標（`driveToMonthStart`）、亂數種子固定、視窗用原版自己的順序表。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -583,8 +581,7 @@
           "dosgolem-san"
         ]
       },
-      "layer": "verification",
-      "blocked_by": "對拍起點要在新 base 上重新校準（見 `boot-recipe-behavior-triggered`）"
+      "layer": "verification"
     },
     {
       "id": "parity-warrecruit",
