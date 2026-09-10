@@ -365,6 +365,13 @@ func TestWriteIsAtomic(t *testing.T) {
 func TestOriginalTableKeepsHundreds(t *testing.T) {
 	g := newGame(t)
 	play(t, g, 24)
+	// **兵士是存值不是導出值**（`game.State.troops`，`0x1949e`）：原版只在
+	// 重整守將清單時刷新那一欄，所以它可以比駐軍加總舊。這支測試釘的是
+	// 「存的是實際值 ÷ 100」，不是刷新時機——先全部重整一次，兩件事才
+	// 不會混在同一個斷言裡。
+	for id := 1; id <= state.PrefectureCount; id++ {
+		g.RefreshTroops(id)
+	}
 	root := t.TempDir()
 	if err := save.Write(root, 1, g, ""); err != nil {
 		t.Fatal(err)

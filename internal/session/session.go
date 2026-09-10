@@ -134,6 +134,9 @@ func (s *Session) runPrefectureTurns() {
 		// 月迴圈每一格先抽一次（`0x15790`），跳過的格子也算。
 		s.G.TurnTick()
 		at := s.MonthOrder[s.MonthCursor]
+		// **回合入口先重整這個郡的守將清單**（`0x17471` 的第一道
+		// `call 0x1949e`），兵士那一欄跟著刷新。
+		s.G.RefreshTroops(at)
 		p := s.G.Prefecture(at)
 		// **跳過的判斷用重算之前的值**，重算才在後面（`0x17471`：
 		// 所屬 == 0xFF → 回 −1；接著才 `call 0x1e394`）。

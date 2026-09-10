@@ -80,10 +80,17 @@ type Prefecture struct {
 	// 換算在載入的唯一入口做完，規則層不再碰那個倍率。
 	Population int
 
-	// ⚠ **總兵力不存在這裡。** 手冊說它是「所有現役將麾下的兵力總合」
-	// （p.17），而原版的檔案也的確如此——四十二個郡逐一驗過，
-	// 郡的兵士欄與駐軍加總完全相等。存一份副本就會有兩個真相，
-	// 而災害的百分比縮放會讓它們慢慢分家。要數請用 State.Soldiers。
+	// troops 是州郡 offset 16（兵士，實際值 ÷ 100）。**它是存值不是導出值**
+	// （`L0`）：原版只在「重整守將清單」（`0x1949e` → `0x1964e`）時把
+	// 名單裡每個人的兵力加總除以 100 寫進去，而重整只發生在**那個郡自己**
+	// 被碰到的時候——郡回合入口、移防之後的來源與目標郡、戰役收尾。
+	//
+	// 所以搬進來的兵在原版那邊要等該郡被重整才算得進去。開局時它與駐軍
+	// 加總相等（四十二個郡逐一驗過），但**那只是初始值**：`bootToGame`
+	// 停在月中時量到郡 3 存著 39 而駐軍加總是 55。
+	//
+	// 要問「現在實際有多少兵」用 `State.Soldiers`；要寫回原版的表用這一格。
+	troops int
 
 	Gold int
 	Rice int
@@ -402,6 +409,7 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 			Forts:       int(p.Forts),
 			Autonomy:    Autonomy(p.Autonomy),
 			governor:    governorSlot(p.Governor),
+			troops:      int(p.Soldiers),
 			Neighbours:  append([]int(nil), p.Neighbours...),
 			BattleField: append([]byte(nil), p.BattleField...),
 		})
@@ -727,6 +735,26 @@ func (g *State) FreeGenerals(prefectureID int) int {
 		}
 	}
 	return n
+}
+
+// RefreshTroops 是原版的「重整守將清單」對州郡 offset 16 做的那一步
+// （`0x1949e` → `0x1964e`：名單逐人加總兵力，除以 100 寫回去）。
+//
+// **只在原版會重整的時候叫它**：郡回合入口、移防之後的來源與目標郡、
+// 戰役收尾。每次寫盤面都順手重算會讓那一欄變成導出值，而原版的它會
+// 陳舊——差別在「兵搬進來之後、那個郡還沒輪到」的窗口裡看得見。
+func (g *State) RefreshTroops(prefectureID int) {
+	if p := g.Prefecture(prefectureID); p != nil {
+		p.troops = g.Soldiers(prefectureID) / 100
+	}
+}
+
+// Troops 是州郡 offset 16 的存值（兵士，實際值 ÷ 100）。
+func (g *State) Troops(prefectureID int) int {
+	if p := g.Prefecture(prefectureID); p != nil {
+		return p.troops
+	}
+	return 0
 }
 
 // Soldiers 是某個郡的總兵力：駐軍麾下兵力的總合。

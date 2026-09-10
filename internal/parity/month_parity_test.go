@@ -932,6 +932,8 @@ func TestZZMonthParity(t *testing.T) {
 		// 月迴圈每一格都先抽一次（`0x15790`），跳過的格子也算。
 		g.TurnTick()
 		at := turnSeq[i]
+		// 回合入口先重整這個郡的守將清單（`0x1949e`），兵士欄跟著刷新。
+		g.RefreshTroops(at)
 		q := g.Prefecture(at)
 		// 照 `0x17471`：先用**重算之前**的所屬決定跳不跳過，再重算
 		// 全部 43 個郡（`0x1e394`），分派器看的是重算之後的那一位。
@@ -1220,6 +1222,12 @@ func byPrefecture(a, b []byte, nMas, nSta int) string {
 		if fields[fieldName(prefField, 32)] || fields[fieldName(prefField, 33)] {
 			line += fmt.Sprintf("｜主事者 原版 %d／remake %d",
 				int(a[lo+32])|int(a[lo+33])<<8, int(b[lo+32])|int(b[lo+33])<<8)
+		}
+		// 兵士（offset 16）是**存值**，只在重整守將清單時刷新
+		// （`0x1949e`）。差的時候要看得出是誰比較舊，欄位名說不出來。
+		if fields[fieldName(prefField, 16)] || fields[fieldName(prefField, 17)] {
+			line += fmt.Sprintf("｜兵士 原版 %d／remake %d",
+				int(a[lo+16])|int(a[lo+17])<<8, int(b[lo+16])|int(b[lo+17])<<8)
 		}
 		lines = append(lines, line)
 	}

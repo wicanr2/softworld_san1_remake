@@ -126,6 +126,10 @@ func (g *State) Relocate(from, to int, force []int, gold, rice int, by state.Fac
 		return fmt.Errorf("game: 隨行的金米不能是負數")
 	}
 	relocateSupplies(g, src, dst, force, to, gold, rice)
+	// **來源郡與目標郡各重整一次守將清單**（`0x1949e`，`docs/mechanics/70-ai`
+	// §「移動本身」），兵士那一欄跟著刷新。
+	g.RefreshTroops(from)
+	g.RefreshTroops(to)
 	src.Commanded = true
 	return nil
 }

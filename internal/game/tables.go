@@ -126,7 +126,8 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 		// 數字後面）。**除回去要無條件捨去**，四捨五入會讓存讀一輪之後
 		// 人口自己長大。
 		put16(rec[staPopulation:], p.Population/100)
-		put16(rec[staSoldiers:], g.Soldiers(p.ID)/100)
+		// **兵士寫的是存值，不是當下重算**（`State.troops`，`0x1949e`）。
+		put16(rec[staSoldiers:], g.Troops(p.ID))
 		put16(rec[staGold:], p.Gold)
 		put16(rec[staRice:], p.Rice)
 		rec[staActive] = clampByte(g.ActiveGenerals(p.ID))

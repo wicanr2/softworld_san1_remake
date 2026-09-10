@@ -666,6 +666,12 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 調整兵力（表 `0x55b4`）：**不花錢，也不隨等級變**——六格全部
 		// thunk 到同一支 `0xc2c4`。它把整郡的兵按帶兵上限重新攤平，
 		// 訓練度與武裝度拉到全郡的加權平均。
+		// **這一格會重建清單，順手刷新兵士**（`0xec86` 建表 ＋ 寫州郡
+		// offset 16，`0x0f072` 就在它裡面）。量到的證據有兩條：共用清單
+		// 在計略與買米之間被重建並按行動者鍵重排；以及郡回合入口那一次
+		// 刷新之後又被徵兵加了兵，而原版的兵士欄含進去了
+		// （郡 11 原版 405／只在入口刷新是 398）。
+		g.RefreshTroops(p)
 		if who := garrisonIndices(g, p); len(who) >= 2 {
 			if f.trace != nil && p == watch {
 				list := []string{}
