@@ -505,6 +505,15 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 「每人 100」久得多。原版一輪在這一支抽了 196 次，幾乎等於
 		// 名單的總長度（`CONTEXT.md` 的亂數路線圖）。
 		rewardBudget := aiBudget(gold(), aiLevel, tableReward)
+		if f.trace != nil && p == watch {
+			who := []string{}
+			for _, x := range roster(g, p) {
+				who = append(who, fmt.Sprintf("%d/勢力%d/身分%d/忠%d/已賞%v",
+					x.Index, x.Faction, x.Status, x.Loyalty, x.Rewarded))
+			}
+			f.trace[fmt.Sprintf("金帛名單｜郡 %d 預算 %d %v",
+				p, rewardBudget, who)]++
+		}
 		for _, x := range roster(g, p) {
 			if rewardBudget <= 0 {
 				break
@@ -512,7 +521,10 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			// **不比對勢力**（`L1`，`game.Reward` 的註解有量法）：
 			// 郡 13（勢力 4）的 10 位守將裡有 9 位是勢力 5 的人，原版
 			// 在這一支抽了 10 次——每一位一次，一個都沒跳過。
-			if x.Status == state.StatusLord || x.Rewarded {
+			// **只跳過君主**（`0xd5e6` 的 `cmpb $0, es:0x2221(si)`）。
+			// 「這個月領過了」是玩家的規則，電腦那一支沒有——會移動的
+			// 人因此可能一個月領兩次（`game.Reward` 的註解有量法）。
+			if x.Status == state.StatusLord {
 				continue
 			}
 			gold := rewardBudget

@@ -302,7 +302,15 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 	if t.Faction != by && !g.byComputer(by) {
 		return ErrUnknownUnit
 	}
-	if t.Rewarded {
+	// **「每月每人一次」只管玩家**（說明書 p.23）。電腦那一支的外層迴圈
+	// `0xd5e6` 走完整份名單、只跳過君主（`身分 == 0`），逐人叫 `0xd302`，
+	// **沒有任何「這個月領過了」的檢查**——`0xd302` 擋的是本回合預算
+	// （`es:0x3d16` <= 0 就回 `0xFFFF`，而且那時還沒擲）。
+	//
+	// 差別在會移動的人身上看得到：郡 4 的名單裡 81 號原本站在郡 6，
+	// 隨著移防搬過來，在郡 6 已經領過一次；原版在郡 4 照樣給他一份
+	// （量到原版擲 8 次 ＝ 名單裡的非君主人數，remake 擲 7 次）。
+	if t.Rewarded && !g.byComputer(by) {
 		return ErrAlreadyPaid
 	}
 	if p.Gold < gold {
@@ -312,7 +320,10 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 	if gov := g.Governor(prefectureID); gov != nil {
 		charm = int(gov.Charm)
 	}
-	t.Rewarded = true
+	// 旗標只給玩家那一條用；電腦那一條不讀也不寫。
+	if !g.byComputer(by) {
+		t.Rewarded = true
+	}
 	// **兩條路完全分開。** 電腦那條擲一次骰、照加成算效果、再照實際增幅
 	// 反算花費（`0xd374`／`0xd3ed`，六個等級對拍過 605 次）；玩家那條
 	// **不擲骰、沒有加成、照打進去的數字付**——增幅是

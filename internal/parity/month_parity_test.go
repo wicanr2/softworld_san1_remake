@@ -245,6 +245,24 @@ func TestZZMonthParity(t *testing.T) {
 						name, sta(o, watch),
 						o.Byte(addr(base+uint32(nMas)+uint32(watch*176+30))),
 						top, topFac))
+				if name == "賞賜金帛" {
+					// 外層迴圈（`0xd5e6`）走完整份名單、跳過君主，
+					// 每一位叫一次 `0xd302`；預算 > 0 就擲一次。所以
+					// 「擲了幾次」＝ 名單裡非君主的人數（預算夠的話）。
+					// 兩邊差一次就是名單差一個人——印出來比對。
+					who := []string{}
+					for i := 0; i < 350; i++ {
+						g := base + uint32(nMas) + uint32(nSta) + uint32(i*30)
+						if int(o.Byte(addr(g+19))) != watch {
+							continue
+						}
+						who = append(who, fmt.Sprintf("%d/勢力%d/身分%d/忠%d",
+							i, o.Byte(addr(g+18)), o.Byte(addr(g+17)),
+							int8(o.Byte(addr(g+16)))))
+					}
+					valLog = append(valLog,
+						fmt.Sprintf("　  原版：郡 %d 的人 %v", watch, who))
+				}
 				if name == "計略" {
 					// 計略的目標郡（`SAN1_WATCH2`）逐筆印：偽書使疑
 					// 逐人擲一次，所以名單與忠誠決定該擲幾下。
@@ -831,16 +849,14 @@ func TestZZMonthParity(t *testing.T) {
 		}
 		if s0, ok := origSeed[at]; ok && firstGap < 0 && s0 != g.RandSeed() {
 			firstGap = i
+			// ⚠ **不要說「前一個郡消耗的次數不一樣」**：`turnSeq[i-1]`
+			// 那一格可能根本沒跑分派器（無主、玩家的、或諸侯 offset 0
+			// 不是 2），指過去會把人帶到一個兩邊都空的郡。真正要追的是
+			// 下面那張「照順序表的次序」表裡**第一個標 ← 的格子**。
 			t.Logf("第一個岔開：順序表第 %d 格（郡 %d，勢力 %d）"+
 				"開始前原版的狀態 0x%08x，remake 0x%08x"+
-				"——前一個郡（%d）消耗的次數不一樣",
-				i, at, q.Owner, s0, g.RandSeed(),
-				func() int {
-					if i > winFrom {
-						return turnSeq[i-1]
-					}
-					return -1
-				}())
+				"——肇因在更前面，看「照順序表的次序」第一個標 ← 的格子",
+				i, at, q.Owner, s0, g.RandSeed())
 		}
 		if at == firstGapAt {
 			t.Logf("郡 %d 回合開始：原版 %s", at, startLog[at])
