@@ -49,11 +49,17 @@ func TestZZMonthParity(t *testing.T) {
 	defer o.Close()
 
 	base := bootToGame(t, o, seedMas)
+	// **從月初出發，不是從 `bootToGame` 停的地方。** 它停在玩家的郡
+	//（原版自動跑完電腦那些才停等輸入），從那裡取視窗會漏掉開月那一整段，
+	// 而且停在哪由指令預算決定、換執行器就漂（`CONTEXT.md` R49）。
+	// 這一步用原版自己的路標把它推到下個月的月初。
+	turnSeqKeys := strings.Split(envOr("SAN1_TURNKEY", "4\r|4\r|Y"), "|")
 	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
 	total := nMas + nSta + nGen
 
 	var atSettle []byte
-	before := o.Bytes(addr(base), total)
+	// 盤面在**月初那一刻**取（hook 裡拍的），不是在 `bootToGame` 停的地方。
+	before := driveToMonthStart(t, o, turnSeqKeys, base, total)
 	dumpTables(t, before, "parity-00-出發")
 
 	// remake 這一邊從同一份位元組建局面。
@@ -508,7 +514,7 @@ func TestZZMonthParity(t *testing.T) {
 
 	// 原版：走一個月。玩家只有一個郡，所以一次「內政 → 休息 → Y」
 	// 就把玩家的回合用掉，接著是電腦諸侯與每月結算。
-	seq := strings.Split(envOr("SAN1_TURNKEY", "4\r|4\r|Y"), "|")
+	seq := turnSeqKeys
 	turns := 1
 	if v, err := strconv.Atoi(os.Getenv("SAN1_TURNS")); err == nil && v > 0 {
 		turns = v
