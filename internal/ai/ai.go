@@ -147,6 +147,17 @@ func New(m Mode) (Brain, error) {
 // 沒解出來的一律不做——填一個「差不多的」策略進去，之後就再也分不出
 // 哪些行為是還原的、哪些是我編的。
 type faithful struct {
+	// order 是**行動者那一張排完之後**的守將順序（`0xf170`：智 ＋ 武 ＋
+	// 加權表[身分]）。十八張表共用同一份清單（原版 `es:[0x58c]`），表自己
+	// 不建清單、只就地重排，所以後面的表看到的是前面排完的順序
+	// （整輪的演變逐格量在 `docs/mechanics/70-ai` §2.5b）。
+	//
+	// 只留這一段是因為只有它量到會造成差異：`指定軍師` 排在 `指定太守`
+	// 前面而且會**對調兩個人的身分**。郡 13 進行動者之前是
+	// 146(身分1 鍵1785)、65(身分2 鍵1346)，所以 146 排前面；指定軍師把
+	// 65 升成軍師、146 降成 3 之後鍵翻轉成 65(1746) > 146(985)。兩人魅力
+	// 都是 90，於是「什麼時候排」直接決定太守是誰——原版拿 146。
+	order []*game.General
 	// trace 非 nil 時，`planIn` 會把每一張表抽了幾次亂數記進去。
 	// 對拍用：原版那一邊攔分派點就數得到，兩邊逐表比才定位得出
 	// 「哪一支的迴圈次數不一樣」（`CONTEXT.md` 的亂數路線圖）。
@@ -302,11 +313,12 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		}
 		// **行動者不是太守**：表 `0x54d4` 按「智 ＋ 武 ＋ 加權表[身分]」
 		// 排序，取第一位——君主優先，其次軍師、太守、一般武將。
+		// 行動者那一張排完的順序**留給後面的表**（見 `faithful.order`）。
+		f.order = roster(g, p)
 		act := actor(g, id, p)
 		if act == nil {
 			continue
 		}
-		gov := act
 		// **內政與尋訪讀的是「智最高」那個全域**（`es:[0x4196]`），
 		// 不是行動者。
 		brain := smartest(g, p)
@@ -351,7 +363,12 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 指定太守（表 `0x5674`）：守軍按魅力由高到低排序，第一位當
 		// 太守。**已經是他就不必再指一次**——原版那一段是直接寫欄位，
 		// remake 這一邊走命令，重複指定會白費一道紀錄。
-		if best := mostCharming(g, id, p); best != nil && best.Index != gov.Index {
+		// **挑中的就是現任也照樣發**：原版那一段不是「換人才做事」，
+		// 收尾無條件寫州郡 offset 32（`0xd705`）並把新主事者的身分
+		// 3 升成 2（`0xd715`）。先前為了省一道紀錄而加的
+		// 「已經是他就不必再指一次」把那個身分提升一起省掉了——郡 13
+		// 的 146 因此留在身分 3，而原版是 2。
+		if best := f.mostCharming(g, id, p); best != nil {
 			emit(game.AppointGovernorOrder{At: p, Target: best.Index, Auto: true})
 		}
 		// **指定太守可能讓這個郡易主**（`0xd74d`）。從這裡開始的表要
@@ -872,7 +889,13 @@ func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 	}
 	return game.RelocateOrder{
 		At: prefecture, To: to, Force: force,
-		Gold: min(game.SortieShare(purse, units, sent/100), purse),
+		// **兩個都用郡的金／米，不是本回合預算**（`0xb706`：
+		// `帶走的金 ＝ 本郡的金 ÷ 本郡兵士(百) × 出征兵力(百)`）。
+		// 金先前用 `purse`——那是 remake 模型化的預算，前面幾張表花掉的
+		// 會把它壓低，帶走的錢因此少一截。米一直是對的，兩邊不一致本身
+		// 就是線索。驗算：郡 1 出兵時金 4137、米 1155、兵 77 百，原版帶走
+		// 金 1558、米 435 —— `4137÷77×29` 與 `1155÷77×29` 同一個 29。
+		Gold: min(game.SortieShare(p.Gold, units, sent/100), p.Gold),
 		Rice: min(game.SortieShare(p.Rice, units, sent/100), p.Rice),
 	}, true
 }
@@ -1653,12 +1676,18 @@ func roster(g *game.State, prefecture int) []*game.General {
 // ⚠ 「君主在的郡不指太守」是 remake 這邊的權宜：原版判的是**州郡 offset 32
 // （主事者）的身分是不是 0**（`CONTEXT.md` R28）。照原版改過一輪量出來
 // 更差，成因另在別處，先留著。
-func mostCharming(g *game.State, id state.FactionID, prefecture int) *game.General {
+func (f *faithful) mostCharming(g *game.State, id state.FactionID, prefecture int) *game.General {
 	if lord := g.Lord(id); lord != nil && lord.Location == prefecture {
 		return nil
 	}
+	// **走行動者排完留下的順序**，不是在這裡重排——指定軍師剛剛才對調過
+	// 兩個人的身分，重排會用到新的加權（見 `faithful.order`）。
+	list := f.order
+	if len(list) == 0 {
+		list = roster(g, prefecture)
+	}
 	var best *game.General
-	for _, x := range roster(g, prefecture) {
+	for _, x := range list {
 		if best == nil || x.Charm > best.Charm {
 			best = x
 		}
