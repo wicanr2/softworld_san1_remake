@@ -507,10 +507,16 @@ func (g *State) appointGovernor(prefectureID, targetIndex int,
 }
 
 func (g *State) installGovernor(prefectureID int, t *General, by state.FactionID) error {
-	for _, x := range g.Garrison(prefectureID) {
-		if x.Faction == by && x.Status == state.StatusGovernor {
-			x.Status = state.StatusOfficer
-		}
+	p := g.Prefecture(prefectureID)
+	if p == nil {
+		return ErrNotYours
+	}
+	// **降的是州郡 offset 32 指到的那一位，而且身分正好是 2 才降**
+	// （`0xd6cd`–`0xd6e1`：`舊 == 0xFFFF → 跳過`、`身分 == 2 → 3`）。
+	// **不比對勢力**——混編的郡裡舊主事者本來就可能是外人，掃守軍找
+	// 「自己勢力的太守」會一個都找不到而讓他留著身分 2。
+	if old := g.General(p.governor); old != nil && old.Status == state.StatusGovernor {
+		old.Status = state.StatusOfficer
 	}
 	// **只把身分 3 升成 2**（`0xd715`：`新的身分 == 3 → 新的身分 = 2`）。
 	// 挑中的是軍師（身分 1）時原版不動他的身分——他成為主事者，但還是
@@ -519,6 +525,19 @@ func (g *State) installGovernor(prefectureID int, t *General, by state.FactionID
 	if t.Status == state.StatusOfficer {
 		t.Status = state.StatusGovernor
 	}
+	// 州郡 offset 32（主事者）← 新（`0xd705`）。
+	p.governor = t.Index
+	// **州郡 offset 30（所屬）← 新主事者的勢力**（`0xd74d`，`L0`）。
+	//
+	// 混編的郡指了別家的人當太守，那個郡就**當場易主**——郡 13（原本
+	// 所屬 4）的守軍十位裡九位是勢力 5 的人，魅力最高的是其中一位，
+	// 於是指定太守之後所屬變成 5，後面每一張表跟著換一個諸侯記錄
+	// （量到的是賞賜物品讀勢力 5 的寶庫 `[1 3 7 3 2]` 而不是勢力 4 的
+	// `[0 2 3 2 2]`，寶刀 7 對 3 剛好翻轉那道 `庫存 <= RND(2)+2` 的閘門）。
+	//
+	// 玩家那一條走 `AppointGovernor`，目標一定是自己人，所以這一行對他
+	// 是恆等——不必分兩條。
+	p.Owner = t.Faction
 	return nil
 }
 

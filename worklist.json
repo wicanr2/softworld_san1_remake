@@ -1183,6 +1183,25 @@
         ],
         "pattern": "^狀態：`READY`"
       }
+    },
+    {
+      "id": "governor-flips-prefecture-owner",
+      "title": "指定太守會把郡的所屬改成新太守的勢力",
+      "group": "規則層",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L0",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai"
+      ],
+      "note": "`0xd74d`：`州郡 offset 30 ← 新主事者的勢力`。名單不比對勢力，所以混編的郡指了別家的人當太守就當場易主，**同一個回合裡剩下的表全部換一個諸侯記錄**（原版每一支都是現讀 offset 30）。\n\n⚠ 這一行 2026-09-09 就寫在 `70-ai` §2.6 的虛擬碼裡，只是 remake 沒實作；2026-09-10 追月度對拍時繞了四輪才回頭看自己的文件（`CLAUDE.md` §7 第 1 條）。**文件寫了不等於程式做了**——這就是每條要掛 verify 的理由。",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "grep -q 'p.Owner = t.Faction' internal/game/personnel.go && grep -q 'acting = q.Owner' internal/ai/ai.go",
+        "expect": "pass"
+      }
     }
   ],
   "layers": {

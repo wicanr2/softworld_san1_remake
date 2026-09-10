@@ -219,6 +219,12 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 	var out []game.Order
 	var failed error
 	applied := 0
+	// acting 是「現在替這個郡下令的勢力」。**原版每一支常式都是現讀
+	// 州郡 offset 30**，而指定太守會改寫它（`0xd74d`）——混編的郡指了
+	// 別家的人當太守，那個郡當場易主，後面的表跟著換一個諸侯記錄。
+	// 用進來的 `id` 一路走到底，易主之後每一道命令都會被 `ErrNotYours`
+	// 擋下來，而那會讓這個郡剩下的表整批不跑。
+	acting := id
 	// emit 是「發一道」。`live` 為真時**當場套上去**，後面的表因此看到
 	// 前面改過的盤面——原版的分派器就是這樣跑的。
 	emit := func(o game.Order) {
@@ -232,7 +238,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// **`ErrDeclined` 不算違規**：登用被婉拒是判定的正常結果，
 		// 命令本身執行成功了（`game.ApplyAll` 同一條判準）。當成中斷
 		// 的理由會讓一次登用失敗吃掉同一輪後面所有的命令。
-		if err := o.Apply(g, id); err != nil && !errors.Is(err, game.ErrDeclined) {
+		if err := o.Apply(g, acting); err != nil && !errors.Is(err, game.ErrDeclined) {
 			failed = fmt.Errorf("第 %d 道（%s）：%w", len(out), o.Describe(g), err)
 			return
 		}
@@ -263,6 +269,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 	k := internalAffairsRange(aiLevel)
 	for _, p := range territory {
 		curP = p
+		acting = id
 		if failed != nil {
 			break
 		}
@@ -332,7 +339,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 				who = x.Index
 			}
 			cur := -1
-			if fa := g.Faction(id); fa != nil {
+			if fa := g.Faction(acting); fa != nil {
 				cur = fa.Chief
 			}
 			f.trace[fmt.Sprintf("軍師｜郡 %d 現任 %d 換成 %d", p, cur, who)]++
@@ -346,6 +353,11 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// remake 這一邊走命令，重複指定會白費一道紀錄。
 		if best := mostCharming(g, id, p); best != nil && best.Index != gov.Index {
 			emit(game.AppointGovernorOrder{At: p, Target: best.Index, Auto: true})
+		}
+		// **指定太守可能讓這個郡易主**（`0xd74d`）。從這裡開始的表要
+		// 用重讀出來的所屬，跟原版一樣。
+		if q := g.Prefecture(p); q != nil && q.Owned() {
+			acting = q.Owner
 		}
 		mark("指定太守")
 		// 尋訪人才（表 `0x5614`）：`RND(10) > Bar[等級]`。
@@ -416,7 +428,26 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 賞賜物品（表 `0x56b4`）：**等級 0–2 完全不做**（那三格是空操作）。
 		// 四種寶物各記一個桶，才對得上原版那四支常式
 		// （`0xd962`／`0xdac0`／`0xdc1e`／`0xdd94`）的分帳。
-		f.rewards(g, id, p, emit, mark)
+		if f.trace != nil && p == watch {
+			// 四支寶物的第二道閘門比的是**諸侯的庫存**（`0xd9b4`）。
+			// 兩邊的亂數在這裡對齊，所以 `RND(2)+2` 一定相同——
+			// 閘門判不一樣只可能是庫存不同，印出來才分得開。
+			box := [5]int{}
+			if fa := g.Faction(id); fa != nil {
+				for k := range box {
+					if k < len(fa.Treasury) {
+						box[k] = fa.Treasury[k]
+					}
+				}
+			}
+			who := []string{}
+			for _, x := range g.Garrison(p) {
+				who = append(who, fmt.Sprintf("%d/勢力%d", x.Index, x.Faction))
+			}
+			f.trace[fmt.Sprintf("寶庫｜郡 %d 所屬 %d %v；這個郡的人 %v",
+				p, acting, box, who)]++
+		}
+		f.rewards(g, acting, p, emit, mark)
 		mark("賞賜物品")
 		// 購置武器（表 `0x5594`）：預算是郡的金的 2 %。
 		bought := armsPurchase(g, p, aiBudget(gold(), aiLevel, tableArms))
@@ -462,7 +493,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		mark("徵兵")
 		// 開倉賑民（表 `0x55f4`）：民眾忠誠低於「底 ＋ RND(20)」才做，
 		// 撥的是**整份預算**（郡的金的 10–20 %）。
-		if o, ok := relief(g, p, id, aiBudget(gold(), aiLevel, tableRelief)); ok {
+		if o, ok := relief(g, p, acting, aiBudget(gold(), aiLevel, tableRelief)); ok {
 			emit(o)
 			purse -= o.Gold
 		}
@@ -512,7 +543,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 挖角（表 `0x56d4`）：**君主要在本郡**，機率隨等級 30／60／80 %，
 		// 預算要 ≥ 100，費用是直接扣的 100 金。
 		hhBefore := g.RandDraws()
-		if o, ok := headhunt(g, p, id, gold()); ok {
+		if o, ok := headhunt(g, p, acting, gold()); ok {
 			emit(o)
 			purse -= game.CostHeadhunt
 		}
@@ -524,7 +555,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 計略（表 `0x56f4`）：**軍師本人要在這個郡**，機率隨等級
 		// 10／12.5／20 %；目標是**全圖**任何一個敵郡，使者取本郡魅力
 		// 最高的人。
-		if o, ok := plot(g, p, id); ok {
+		if o, ok := plot(g, p, acting); ok {
 			emit(o)
 		}
 		mark("計略")
@@ -538,7 +569,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 米糧買賣（表 `0x55d4`）：**不走回合預算也不打折**，
 		// 它是市場交易，而且**雙向**——存糧目標跟著兵力走，低了買、
 		// 高了賣（`game.TradeRiceTo`）。
-		if o, ok := buyRice(g, p, id, gold()); ok {
+		if o, ok := buyRice(g, p, acting, gold()); ok {
 			was := 0
 			if q := g.Prefecture(p); q != nil {
 				was = q.Gold
@@ -551,7 +582,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		mark("買米")
 		// 出兵／移防（表 `0x54f4`）：**分派器的最後一張**，等級 3 以上
 		// 才做。四道門檻、洗牌編隊、三選一目標，見 sortie。
-		if o, ok := f.sortie(g, p, id, purse); ok {
+		if o, ok := f.sortie(g, p, acting, purse); ok {
 			emit(o)
 		}
 		mark("出兵")

@@ -226,8 +226,56 @@ func TestZZMonthParity(t *testing.T) {
 		o.OnCall(addr(tb.at), func(o *oracle.Oracle) {
 			curTable = name
 			if watch >= 0 && curDisp == watch {
+				// 郡的所屬（offset 30）與槽號最大的那位——`0x1e394` 是
+				// 「掃 0..349、後寫的蓋前寫的」，所以所屬應該等於這個郡
+				// 裡槽號最大的在職者的勢力。兩者對不上就表示**重算之後
+				// 有人變了**，時序才是問題所在。
+				top, topFac := -1, -1
+				for i := 0; i < 350; i++ {
+					g := base + uint32(nMas) + uint32(nSta) + uint32(i*30)
+					if int(o.Byte(addr(g+19))) != watch {
+						continue
+					}
+					if f := int(o.Byte(addr(g + 18))); f != 0xFF {
+						top, topFac = i, f
+					}
+				}
 				valLog = append(valLog,
-					fmt.Sprintf("進 %-10s 之前　%s", name, sta(o, watch)))
+					fmt.Sprintf("進 %-10s 之前　%s　所屬 %d（槽號最大的在職者 %d/勢力%d）",
+						name, sta(o, watch),
+						o.Byte(addr(base+uint32(nMas)+uint32(watch*176+30))),
+						top, topFac))
+				if name == "賞賜物品" {
+					// **四支寶物的第二道閘門比的是諸侯的庫存**
+					//（`0xd9b4`：`庫存 <= RND(2)+2` 就跳過）。
+					// 兩邊在這個時刻的亂數是對齊的，所以 `r` 一定
+					// 相同——閘門判不一樣只可能是庫存不同。
+					at := base + uint32(nMas) + uint32(watch)*176
+					owner := int(o.Byte(addr(at + 30)))
+					box := [5]int{}
+					if owner >= 0 && owner < 16 {
+						for k := range box {
+							box[k] = int(o.Byte(addr(base +
+								uint32(owner)*72 + 14 + uint32(k))))
+						}
+					}
+					// 郡的歸屬是**從人物表導出來的**（`0x1e394`：全部設成
+					// 無主，再掃 0..349，後寫的蓋前寫的）。歸屬不一樣
+					// 就會讀到別的勢力的寶庫——所以把原版這個郡的人
+					// 逐筆印出來（槽號、勢力），才分得出是誰決定了歸屬。
+					who := []string{}
+					for i := 0; i < 350; i++ {
+						g := base + uint32(nMas) + uint32(nSta) + uint32(i*30)
+						if int(o.Byte(addr(g+19))) != watch {
+							continue
+						}
+						who = append(who,
+							fmt.Sprintf("%d/勢力%d", i, o.Byte(addr(g+18))))
+					}
+					valLog = append(valLog,
+						fmt.Sprintf("　  原版的寶庫（所屬 %d）%v；這個郡的人 %v",
+							owner, box, who))
+				}
 				if name == "賑民" || name == "武器" {
 					valLog = append(valLog,
 						fmt.Sprintf("　  守軍（進 %s 之前）%s", name, gar(o, watch)))
