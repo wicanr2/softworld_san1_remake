@@ -88,7 +88,11 @@ func TestZZWhoTakesGoldFromPrefecture6(t *testing.T) {
 			t.Logf("  …（還有更多）")
 			break
 		}
-		t.Logf("  [%d] 位移 %04X：%02X → %02X　寫入者 %s（IDA %05X）",
-			w.Step, w.Off, w.Old, w.New, w.IP, o.ToIDA(w.IP))
+		// **兩個位址都印**：`IDA` 那一欄只能拿去 IDA 查，
+		// 攔截點（`o.OnCall`）與 `objdump` 要的是**線性位址**，
+		// 兩者差 `0xEF00`。只印一個就會被拿去用在另一個地方，
+		// 而反組譯落在別的函式上照樣讀得通（`CONTEXT.md` R50）。
+		t.Logf("  [%d] 位移 %04X：%02X → %02X　寫入者 %s（線性 %05X／IDA %05X）",
+			w.Step, w.Off, w.Old, w.New, w.IP, w.IP.Linear(), o.ToIDA(w.IP))
 	}
 }

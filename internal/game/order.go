@@ -238,6 +238,33 @@ func (o MoveOrder) Describe(g *State) string {
 		prefName(g, o.At), prefName(g, o.To))
 }
 
+// RelocateOrder 是**電腦諸侯**的移防（`docs/spec/007`，`L0`）。
+//
+// 與玩家的「調動軍隊」（`MoveOrder`／`0x18ce1`）是兩支不同的碼，
+// 三處不一樣，所以分成兩個命令型別而不是加旗標：
+//
+//	整份出征名單一起搬（`0x1938a` 的迴圈），不是一位
+//	目標郡的金米加完溢位時夾 30000，來源郡減完夾 0
+//	沒有「主事者要有人接手」這道閘門——整郡搬空是允許的
+type RelocateOrder struct {
+	At, To     int
+	Force      []int
+	Gold, Rice int
+}
+
+func (o RelocateOrder) Prefecture() int { return o.At }
+func (o RelocateOrder) Apply(g *State, by state.FactionID) error {
+	return g.Relocate(o.At, o.To, o.Force, o.Gold, o.Rice, by)
+}
+func (o RelocateOrder) Describe(g *State) string {
+	lead := -1
+	if len(o.Force) > 0 {
+		lead = o.Force[0]
+	}
+	return tf("log.move", byWhom(g, lead),
+		prefName(g, o.At), prefName(g, o.To))
+}
+
 type TransportOrder struct {
 	At, To     int
 	Gold, Rice int

@@ -135,8 +135,25 @@ func (g *State) search(prefectureID, generalIndex int, by state.FactionID,
 	if e != nil {
 		return nil, e
 	}
+	// **電腦那一條不比對勢力。** 尋訪者是從守將清單挑出來的智最高的
+	// 那一位，而 `buildRoster` 七個模式一個都沒有比對勢力（`docs/re/07`
+	// §6），`0xcc86` 自己也只讀他的智去比門檻（`docs/mechanics/70-ai`
+	// §2.9 的虛擬碼裡沒有勢力這一項）。混編的郡本來就有別人的敗兵——
+	// 月度對拍量到的一例是郡 13（勢力 4）站著荀彧（勢力 5），而他是
+	// 那個郡智最高的人。
+	//
+	// 比對勢力的後果不是「少做一次尋訪」而是**整個郡的回合斷在這裡**：
+	// `ApplyAll` 把 `ErrUnknownUnit` 當違規、停下後面所有的命令，於是
+	// 郡 13 的十八張表只跑了三張，少抽 16 次亂數，順序表後面 20 個郡
+	// 的亂數序列全部錯開。
+	//
+	// 玩家那一條維持比對：他是從自己的名單挑人，而原版玩家那一支
+	// （`0x1a…`）還沒讀過，沒有證據就不動。
 	x := g.General(generalIndex)
-	if x == nil || x.Faction != by || x.Location != prefectureID {
+	if x == nil || x.Location != prefectureID {
+		return nil, ErrUnknownUnit
+	}
+	if charge && x.Faction != by {
 		return nil, ErrUnknownUnit
 	}
 	// **收不收錢分兩條**：玩家一次 5 金（說明書 p.22），電腦那一條
@@ -268,8 +285,21 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 	if gold <= 0 || gold > MaxReward {
 		return fmt.Errorf("game: 賞金要在 1..%d，拿到 %d", MaxReward, gold)
 	}
+	// **電腦那一條不比對勢力**（`L1`）。名單是 `buildRoster` 模式 2 建的，
+	// 七個模式一個都沒有比對勢力（`docs/re/07` §6），四支賞賜物品的常式
+	// 早就確認「混編的郡裡別的勢力的人也收得到禮」
+	// （`docs/mechanics/70-ai` §2.8），賞賜金帛走的是同一份名單。
+	//
+	// 量到的證據：郡 13（勢力 4）站著 10 位守將，其中 9 位是勢力 5 的人。
+	// 原版在賞賜金帛那一支抽了 **10** 次（每一位一次 `RND(加成/2)`），
+	// 比對勢力的話只會抽 1 次——remake 先前正是 1 次。
+	//
+	// 玩家那一條維持比對：他是從自己的名單挑人，原版玩家那一支還沒讀過。
 	t := g.General(targetIndex)
-	if t == nil || t.Faction != by || t.Location != prefectureID {
+	if t == nil || t.Location != prefectureID {
+		return ErrUnknownUnit
+	}
+	if t.Faction != by && !g.byComputer(by) {
 		return ErrUnknownUnit
 	}
 	if t.Rewarded {

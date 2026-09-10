@@ -135,7 +135,7 @@
       "docs": [
         "docs/playtest/02"
       ],
-      "note": "2026-09-10 換 base 後差 339 個位元組。**規則層沒壞**——起點漂移（R49）。 43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。",
+      "note": "2026-09-10 換 base 後起點漂移（R49），在新起點上重新校準。**規則層沒壞**——舊 base 上走到過差 0。\n\n差異走勢：339 →（換對拍起點與固定種子）145 → 97 → 76 → **92**。位元組數不是單調的：修對一條規則會讓下游浮出更多不一致，**要看的是「第一個岔開在第幾格」與逐表的抽樣次數**（第 1 格 → 第 19 格；出兵 ±0、賞賜金帛 −12 → −2、賞賜物品 −38 → −11）。\n\n剩下的：郡 13 的賞賜物品：寶刀 原版 7／remake 2；挖角 +223 全部來自郡 1 多觸發一次（在第一個岔開的下游，先不追）。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -147,7 +147,7 @@
         ]
       },
       "layer": "verification",
-      "blocked_by": "對拍起點要在新 base 上重新校準（見 `boot-recipe-behavior-triggered`）"
+      "blocked_by": "郡 13 的賞賜物品：寶刀 抽樣次數對不上（原版 7／remake 2）"
     },
     {
       "id": "parity-player-commands",
@@ -1162,25 +1162,26 @@
       }
     },
     {
-      "id": "sortie-supplies-at-month-end",
-      "title": "出兵的錢糧與部隊在月底結算之後才從郡搬走",
+      "id": "sortie-move-supplies",
+      "title": "電腦諸侯的移防：整份名單、金米夾值、第二次編隊接第一次",
       "group": "規則層",
-      "layer": "feature",
+      "layer": "evidence",
       "milestone": "M5",
-      "status": "open",
-      "level": "L1",
+      "status": "done",
+      "level": "L0",
       "edition": "base",
       "docs": [
+        "docs/spec/007",
+        "docs/mechanics/70-ai",
         "docs/re/05"
       ],
-      "note": "月度對拍在新起點上差 145，第一個岔開在順序表第 0 格——而岔開的不是亂數序列是**盤面**：原版在「月底結算 → 新月第一個郡」之間把那個郡的金扣了 8000、米扣了 3045、兵扣了 2000，remake 完全沒動。\\n\\n誰動的用攔寫入問出來（`TestZZWhoTakesGoldFromPrefecture6`）：金 `0x282df`、米 `0x282f8`、兵士 `0x28553`，三個都在戰役的碼段；那一段是部隊記錄的迴圈（`es:0x3502`、一個軍團五支、記錄 42 bytes），函式入口 `0x281ee` 參數 ×22 索引軍團記錄 `es:0x175e`。\\n\\n**原版是「郡回合決定出兵 → 月底結算之後才把錢糧與部隊搬進軍團」**，而 remake 的 `EndMonth` 沒有這一步。\\n\\n⚠ 還沒解：哪些軍團在這個時機被處理、條件是什麼、`0x281ee` 的呼叫端在月流程的哪一格。**在那之前不要動 `internal/`**——目前只是 `L1` 觀測，不是 `READY` spec（`CLAUDE.md` §5）。",
-      "acceptance": "原版那一段的流程解出來並寫成 READY spec，remake 照著實作之後月度對拍回到 0",
+      "note": "`docs/spec/007`（`READY`）。三條 `L0`：\n\n1. `0x1938a` 的迴圈把**整份出征名單**的人物 offset 19 都寫成目標郡（remake 原本只搬 `force[0]`）。\n2. 來源郡的金米減完夾 0，目標郡加完在 16 位元變負時設成 30000。\n3. 沒有「主事者要有人接手」這道閘門——整郡搬空是允許的，歸屬由 `0x1e394` 從人物表重算。玩家的「調動軍隊」（`0x18ce1`）是另一支碼，**不合併**。\n\n同一輪修掉的還有編隊：`0xb2b4` 收尾把清單截短並寫回 `es:0xc`，`0xb706` 洗的是那一份截短的。remake 原本兩次都重新拿整份守軍，郡 6 因此多抽一次亂數（原版 7／remake 8），而它是視窗裡的第一格。",
       "verify": {
         "kind": "present",
         "paths": [
-          "docs/re/05-battle-layer.md"
+          "docs/spec/007-ai-relocation.md"
         ],
-        "pattern": "還沒解的\\*\\*：哪些軍團會在這個時機被處理"
+        "pattern": "^狀態：`READY`"
       }
     }
   ],

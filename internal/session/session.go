@@ -135,7 +135,15 @@ func (s *Session) runPrefectureTurns() {
 		s.G.TurnTick()
 		at := s.MonthOrder[s.MonthCursor]
 		p := s.G.Prefecture(at)
+		// **跳過的判斷用重算之前的值**，重算才在後面（`0x17471`：
+		// 所屬 == 0xFF → 回 −1；接著才 `call 0x1e394`）。
 		if p == nil || !p.Owned() {
+			continue
+		}
+		s.G.RecomputeOwners()
+		// 重算之後可能已經易主或變無主（別的郡搬空了它、或搬進來的人
+		// 槽號較大蓋過原主）——分派器看的是重算之後的那一位。
+		if p = s.G.Prefecture(at); p == nil || !p.Owned() {
 			continue
 		}
 		id, level := p.Owner, s.G.AILevel(p.Owner)

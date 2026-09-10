@@ -165,7 +165,8 @@ func TestZZMonthParity(t *testing.T) {
 		{0x1581c, "月底結算"}, {0x16e70, "冬季事件（人口成長）"},
 		{0x1712a, "進貢"},
 		{0x17371, "開月"}, {0x1740a, "開月洗牌"},
-		// 郡回合的入口（`0x1746e`）到分派器之間（`0x174f3`）。
+		// 郡回合的入口（`0x1746e`）到它跑完為止（`0x174f3` 是分派器那一道
+		// 呼叫的返回位址，不是分派器本身）。
 		// 這一段先前落在**前一張表**的桶裡：進貢之後緊接著就是第一個郡，
 		// 所以進貢那 69 次裡可能有一次其實是這裡的。
 		{0x1746e, "郡回合入口"},
@@ -477,11 +478,25 @@ func TestZZMonthParity(t *testing.T) {
 	// 清單長度 < 1。進到 `0xb47a` 表示編隊已經洗過了，所以這裡讀到的
 	// 是**擋下來之前**的盤面。
 	soLog := []string{}
-	// 郡回合**開始時**的金與米（`0x174f3`，分派器之前）。出兵那一道
-	// 比的是米，所以要知道差是回合開始就有、還是回合中某張表造成的。
+	// 郡回合**開始時**的金與米，記在郡回合的函式入口 `0x1746e`。出兵那
+	// 一道比的是米，所以要知道差是回合開始就有、還是回合中某張表造成的。
+	//
+	// ⚠ 這裡原本掛在 `0x174f3`，註解寫「分派器之前」——**是反的**。
+	// `0x174ec` 才是呼叫分派器那一道，`0x174f3` 是它的返回位址，也就是
+	// 這個郡整個回合**跑完之後**。實測的時間軸（`docs/re/05` 末節）：
+	//     郡回合入口(1746e) → 重算所屬 → 分派表：出兵(ec1b)
+	//         → 搬走金米(1938a) → 郡回合結束(174f3)
+	// 於是原版這一欄記的是出兵搬走**之後**的餘額，而 remake 那一側是在
+	// `ActPrefecture` **之前**讀的。兩個不同時刻的值放在一起比，會憑空
+	// 生出一個「郡 6 少了 8000 金」的差異——那是這一行造出來的，不是
+	// 規則缺口。**診斷欄位的讀取時機要和被比較的那一側對齊。**
+	//
+	// 這個 hook 註冊在 `0x1746e` 那一個之後，`curTurn` 已經填好了
+	// （`OnCall` 依註冊順序觸發，dosgolem `oracle/run.go` 的
+	// `fireCallHooksAt`）。
 	startLog := map[int]string{}
 	var atFirstTurn []byte
-	o.OnCall(addr(0x174f3), func(o *oracle.Oracle) {
+	o.OnCall(addr(0x1746e), func(o *oracle.Oracle) {
 		if curTurn >= 0 && curTurn <= 42 {
 			startLog[curTurn] = sta(o, curTurn)
 		}
@@ -684,7 +699,13 @@ func TestZZMonthParity(t *testing.T) {
 		g.TurnTick()
 		at := turnSeq[i]
 		q := g.Prefecture(at)
-		if q == nil || !q.Owned() || q.Owner == player {
+		// 照 `0x17471`：先用**重算之前**的所屬決定跳不跳過，再重算
+		// 全部 43 個郡（`0x1e394`），分派器看的是重算之後的那一位。
+		if q == nil || !q.Owned() {
+			continue
+		}
+		g.RecomputeOwners()
+		if q = g.Prefecture(at); q == nil || !q.Owned() || q.Owner == player {
 			continue
 		}
 		if s0, ok := origSeed[at]; ok && firstGap < 0 && s0 != g.RandSeed() {
@@ -794,8 +815,25 @@ func TestZZMonthParity(t *testing.T) {
 		}
 		t.Logf("    郡 %2d：原版 %3d／remake %3d（差 %+d）", x.p, x.a, x.b, x.b-x.a)
 	}
+	// ⚠ **`ra` 只有 remake 建了模型的勢力**（`g.Factions()` ＝ 有君主的
+	// 那些），沒領地也沒君主的槽在這裡印成全 0，而原版那一欄有值。
+	// **那不是差異**：`Tables()` 從 `rawMas` 起手，沒建模的槽位元組原封
+	// 帶過去。所以這兩列要對照著看，缺席的槽先排除再談差異。
+	absent := []int{}
+	for i := 0; i < 16; i++ {
+		modelled := false
+		for _, f := range g.Factions() {
+			if int(f.ID) == i {
+				modelled = true
+			}
+		}
+		if !modelled {
+			absent = append(absent, i)
+		}
+	}
 	t.Logf("寶庫（進貢後）原版 %v", tbAfter)
-	t.Logf("寶庫（進貢後）remake %v", ra)
+	t.Logf("寶庫（進貢後）remake %v（remake 沒建模的勢力槽：%v，"+
+		"那幾格的全 0 是印出來的空位不是差異）", ra, absent)
 	for k, v := range mineTbl {
 		if strings.HasPrefix(k, "內政：郡 1 ") {
 			t.Logf("remake 的內政：%s（%d 次）", k, v)

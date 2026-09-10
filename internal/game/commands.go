@@ -82,13 +82,81 @@ func (g *State) Move(from, to, generalIndex, gold, rice int, by state.FactionID)
 		succ.Status = state.StatusGovernor
 		x.Status = state.StatusOfficer
 	}
-	src.Gold -= gold
-	dst.Gold += gold
-	src.Rice -= rice
-	dst.Rice += rice
-	x.Location = to
+	relocateSupplies(g, src, dst, []int{x.Index}, to, gold, rice)
 	src.Commanded = true
 	return nil
+}
+
+// RelocateCap 是移防之後目標郡的金／米上限（`0x19413`／`0x1942c` 的
+// `movw $0x7530`，`L0`）。**它不是「加到這裡就停」的上限**——原版是先在
+// 16 位元把兩個數加起來，只有加出來變成負數（超過 32767）時才整個換成
+// 30000。所以 30001 到 32767 那一段留得住，超過就掉回 30000。
+const RelocateCap = 30000
+
+// Relocate 是**電腦諸侯**的移防（`docs/spec/007`，`0x1938a`，`L0`）。
+//
+// 與 `Move`（玩家的「調動軍隊」）刻意分開：那一支一次一位、而且要有人
+// 接手治理；這一支把整份出征名單搬過去，允許把來源郡搬空——郡的歸屬在
+// 下一個郡回合由 `0x1e394` 從人物表重算，搬空的郡就此變成無主
+// （`docs/mechanics/70-ai` §「搬進去之後」）。
+//
+// **不要合併成一條規則**：兩支是不同的碼，合併等於替其中一支發明規則。
+func (g *State) Relocate(from, to int, force []int, gold, rice int, by state.FactionID) error {
+	src, err := g.canOrder(from, by)
+	if err != nil {
+		return err
+	}
+	dst := g.Prefecture(to)
+	if dst == nil || (dst.Owned() && dst.Owner != by) {
+		return ErrNotYours
+	}
+	if !g.Adjacent(from, to) {
+		return ErrNotAdjacent
+	}
+	if len(force) == 0 {
+		return ErrUnknownUnit
+	}
+	for _, i := range force {
+		x := g.General(i)
+		if x == nil || x.Faction != by || x.Location != from {
+			return ErrUnknownUnit
+		}
+	}
+	if gold < 0 || rice < 0 {
+		return fmt.Errorf("game: 隨行的金米不能是負數")
+	}
+	relocateSupplies(g, src, dst, force, to, gold, rice)
+	src.Commanded = true
+	return nil
+}
+
+// relocateSupplies 是 `0x1938a` 本身——**兩條路徑共用一份**，因為原版
+// 就是共用的：電腦的移防從 `0xb9f3` 進來，玩家的「調動軍隊」從
+// `0x18fbc` 進來（`docs/spec/007` §1）。差別全在呼叫端的閘門。
+//
+//	名單裡每一位：人物 offset 19（所在郡）← 目標郡    ; 0x1939c–0x193c9
+//	來源郡的金／米 −= 帶走的量，變負夾 0              ; 0x193df／0x193f8
+//	目標郡的金／米 += 帶走的量，溢位夾 30000          ; 0x19411／0x1942a
+func relocateSupplies(g *State, src, dst *Prefecture, force []int, to, gold, rice int) {
+	for _, i := range force {
+		if x := g.General(i); x != nil {
+			x.Location = to
+		}
+	}
+	src.Gold = max(src.Gold-gold, 0)
+	src.Rice = max(src.Rice-rice, 0)
+	dst.Gold = relocateAdd(dst.Gold, gold)
+	dst.Rice = relocateAdd(dst.Rice, rice)
+}
+
+// relocateAdd 是 `0x1940c`／`0x19425` 的加法：在 **16 位元有號數**裡加，
+// 變負才夾成 30000。
+func relocateAdd(a, b int) int {
+	v := int16(uint16(a) + uint16(b))
+	if v < 0 {
+		return RelocateCap
+	}
+	return int(v)
 }
 
 // successorFor 找一位可以接手治理的守將（不含 exclude 本人）。

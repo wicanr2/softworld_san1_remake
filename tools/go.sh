@@ -22,10 +22,17 @@ mkdir -p "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"
 
 PASS=()
 # 對拍測試讀的環境變數要一起帶進容器。**漏一個不會報錯**——
-# 測試看到空字串就當「沒有設」，該存的圖或該倒的表安靜地不存。
-for v in GOOS GOARCH CGO_ENABLED SAN1_ORIG_DIR SAN1_SHOTS SAN1_DUMP \
-         SAN1_TURNS SAN1_TURNKEY SAN1_DIFFICULTY SAN1_BATTLEKEY SAN1_PLUSKEY \
-         SAN1_WATCH SAN1_REC SAN1_PLOTKEY; do
+# 測試看到空字串就當「沒有設」，該存的圖或該倒的表安靜地不存，
+# 而該固定的亂數種子安靜地不固定（`SAN1_SEED` 就這樣漏過一輪）。
+# 所以這裡不維護白名單:**凡 `SAN1_*` 一律帶進去**，只扣掉 go.sh
+# 自己吃掉的那幾個（`SAN1_ORIG` 在下面另外處理成容器內路徑）。
+for v in GOOS GOARCH CGO_ENABLED; do
+  [[ -n "${!v:-}" ]] && PASS+=(-e "$v=${!v}")
+done
+for v in $(compgen -v | grep '^SAN1_' || true); do
+  case "$v" in
+    SAN1_ORIG|SAN1_GO_IMAGE|SAN1_MEM|SAN1_CPUS|SAN1_TIMEOUT) continue ;;
+  esac
   [[ -n "${!v:-}" ]] && PASS+=(-e "$v=${!v}")
 done
 

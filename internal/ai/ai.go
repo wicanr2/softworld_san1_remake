@@ -478,9 +478,10 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			if rewardBudget <= 0 {
 				break
 			}
-			// ⚠ 原版的名單不比對勢力，但 `game.Reward` 要求同勢力
-			// ——`0xd302` 有沒有這一道還沒讀，先留著。
-			if x.Faction != id || x.Status == state.StatusLord || x.Rewarded {
+			// **不比對勢力**（`L1`，`game.Reward` 的註解有量法）：
+			// 郡 13（勢力 4）的 10 位守將裡有 9 位是勢力 5 的人，原版
+			// 在這一支抽了 10 次——每一位一次，一個都沒跳過。
+			if x.Status == state.StatusLord || x.Rewarded {
 				continue
 			}
 			gold := rewardBudget
@@ -643,7 +644,7 @@ func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 	// **先編隊再擋。** 金與米那兩道在 `0xb47a` 裡，而編隊的洗牌
 	// （`0xb2b4`）排在它前面——所以被擋下來的那幾次，原版**還是抽過了**。
 	// 先擋再編會少抽一整批（月度對拍量到出兵這一支少 106 次）。
-	survivors := muster(g, prefecture, id, want, 2, false)
+	survivors := muster(g, garrisonIndices(g, prefecture), prefecture, id, want, 2, false)
 
 	// `0xb47a` 的三道，順序照原版：
 	//
@@ -677,7 +678,14 @@ func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 	to := targets[g.Roll(len(targets), int(id), prefecture, tableSortie, 1)]
 
 	// 第二次編隊（`0xb706`）：另擲一輪，這一隊才是真的上路的。
-	force := muster(g, prefecture, id, want, 1000, true)
+	//
+	// **洗的是第一次留下來的那幾位，不是整個守軍清單**（`L0`）。
+	// `0xb2b4` 收尾時把清單截短並**把新長度寫回 `es:0xc`**（`0xb397`），
+	// 而 `0xb706` 開頭沒有重建清單——它的洗牌迴圈直接跑 `es:0xc` 次
+	// （`0xb73c`–`0xb783`）。重新拿整份守軍會多洗幾格，也就多抽幾次：
+	// 郡 6 守軍 3 位、第一次留下 2 位，原版出兵那一張抽 7 次
+	// （3 洗 ＋ 1 挑類別 ＋ 1 挑目標 ＋ 2 洗），重新拿守軍會變成 8 次。
+	force := muster(g, survivors, prefecture, id, want, 1000, true)
 	if len(force) == 0 {
 		return nil, false
 	}
@@ -708,8 +716,12 @@ func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 	}
 	// 無主的郡與自己的郡是移防，不是戰役。**帶走的錢糧按兵力比例**
 	// （`0xb706`）：`郡的金 ÷ 兵士（百） × 出征兵力（百）`，走浮點。
-	return game.MoveOrder{
-		At: prefecture, To: to, General: force[0],
+	//
+	// **整支隊伍一起搬**（`0x1938a` 的迴圈逐位寫人物 offset 19），
+	// 走 `RelocateOrder` 而不是玩家那一條 `MoveOrder`——差別見
+	// `docs/spec/007`。
+	return game.RelocateOrder{
+		At: prefecture, To: to, Force: force,
 		Gold: min(game.SortieShare(purse, units, sent/100), purse),
 		Rice: min(game.SortieShare(p.Rice, units, sent/100), p.Rice),
 	}, true
@@ -778,11 +790,16 @@ func sortieTarget(g *game.State, prefecture int, foe []int) int {
 // `keepOne` 是兩支的唯一差別：規劃那一次（`0xb2b4`）用 `jge`，位置 0
 // 也會被拿掉，整郡吃光就回空；出發那一次（`0xb706`）用 `jg`，位置 0
 // 永遠留著。
-func muster(g *game.State, prefecture int, id state.FactionID, want, salt int, keepOne bool) []int {
-	who := garrisonIndices(g, prefecture)
+//
+// **候選清單由呼叫端給**，因為原版兩支洗的不是同一份：`0xb2b4` 洗守將
+// 清單並把截短後的長度寫回 `es:0xc`（`0xb397`），`0xb706` 接著洗那一份
+// 截短的（它的迴圈跑 `es:0xc` 次，開頭沒有重建清單）。
+func muster(g *game.State, who []int, prefecture int, id state.FactionID,
+	want, salt int, keepOne bool) []int {
 	if len(who) == 0 {
 		return nil
 	}
+	who = append([]int(nil), who...)
 	// 逐格與 RND(n) 交換——原版就是這樣洗的。
 	for i := range who {
 		j := g.Roll(len(who), int(id), prefecture, tableSortie, salt+i)
