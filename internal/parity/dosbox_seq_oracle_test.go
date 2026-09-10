@@ -155,7 +155,7 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 			if scan {
 				o.PressScan(string(r))
 			} else {
-				o.Press(string(r))
+				o.TypeBoth(string(r))
 			}
 		}
 	}
@@ -196,7 +196,7 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 			// 量出來的指令數。清乾淨是必要的：佇列裡的殘鍵會堵住後面的讀取。
 			for at := uint64(0); !menuDrawn && at < openBudget; at += openChunk {
 				o.Drain()
-				o.Press("\r")
+				o.TypeBoth("\r")
 				if err := o.RunUntil(menuUp, oracle.Budget(openChunk)); err != nil &&
 					!errors.As(err, &be) {
 					t.Fatalf("開場停止：%v\n主控台 %q", err, o.Console())
@@ -242,7 +242,7 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 				"這批是舊尺寸錄的，重跑 tools/dosboxx-record.sh",
 				filepath.Base(s.file), b.Dx(), b.Dy(), scrW, scrH)
 		}
-		got := o.IndexedEGA(scrW, scrH)
+		got := o.IndexedEGASize(scrW, scrH)
 		if len(got) < scrW*scrH {
 			t.Fatalf("第 %d 步畫面只有 %d 個像素", n+1, len(got))
 		}

@@ -81,14 +81,14 @@ func TestZZOriginalOpeningScreens(t *testing.T) {
 	}
 	defer o.Close()
 
-	o.Press("122")
+	o.TypeBoth("122")
 	for i := 0; i < 10; i++ {
 		if err := o.Run(50_000_000); err != nil {
 			t.Fatalf("第 %d 步停止：%v", i, err)
 		}
 		dumpScreen(t, o, fmt.Sprintf("open-%02d", i))
 		if i == 4 {
-			o.Press("\r")
+			o.TypeBoth("\r")
 		}
 	}
 	t.Log("開場逐步畫面已存（要設 SAN1_SHOTS）")

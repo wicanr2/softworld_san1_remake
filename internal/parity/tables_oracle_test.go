@@ -44,7 +44,7 @@ func loadScenarioInOriginal(t *testing.T) *oracle.Oracle {
 	if err != nil {
 		t.Fatalf("載入原版：%v", err)
 	}
-	o.Press("122")
+	o.TypeBoth("122")
 	send := map[int]string{4: "\r", 17: "1", 23: "1"}
 	for i := 0; i < bootSteps/chunk; i++ {
 		if err := o.Run(chunk); err != nil {
@@ -52,7 +52,7 @@ func loadScenarioInOriginal(t *testing.T) *oracle.Oracle {
 			t.Fatalf("原版停止：%v", err)
 		}
 		if k, ok := send[i]; ok {
-			o.Press(k)
+			o.TypeBoth(k)
 		}
 	}
 	return o

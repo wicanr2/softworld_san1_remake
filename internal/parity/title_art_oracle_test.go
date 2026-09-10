@@ -52,12 +52,12 @@ func TestTitleArtLayoutMatchesTheOriginal(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer o.Close()
-	o.Press("122")
+	o.TypeBoth("122")
 	if err := o.Run(250_000_000); err != nil {
 		t.Fatalf("跑到三英圖那一格時停止：%v", err)
 	}
 	dumpScreen(t, o, "orig-title-art")
-	pix := o.IndexedEGA(scrW, scrH)
+	pix := o.IndexedEGASize(scrW, scrH)
 	if len(pix) < scrW*scrH {
 		t.Fatalf("畫面只有 %d 個像素", len(pix))
 	}

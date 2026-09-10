@@ -57,7 +57,9 @@ func TestContainerOffsetsMatchOriginal(t *testing.T) {
 		}
 		switch op.Op {
 		case "seek":
-			lastSeek = op.Result
+			// dosgolem 的 `FileOp.Result` 在 main 上拆成兩欄：`Pos`（seek 後的
+			// 位置／read 的起點）與 `Len`（實際的位元組數）。
+			lastSeek = op.Pos
 		case "read":
 			if lastSeek < 0 {
 				continue
@@ -127,7 +129,7 @@ func TestContainerHeaderReadsAreComplete(t *testing.T) {
 			}
 			seen = true
 			if op.Op == "read" {
-				got += op.Result
+				got += int64(op.Len) // 實際讀到的量（舊欄位 `Result`）
 			}
 		}
 		if !seen {

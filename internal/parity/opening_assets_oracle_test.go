@@ -49,7 +49,7 @@ func TestZZOpeningAssetNames(t *testing.T) {
 		names = append(names, fmt.Sprintf("%d\t%s\t槽 %d", step, b.String(), int16(o.Arg(2))))
 	})
 
-	o.Press("122")
+	o.TypeBoth("122")
 	seen := 0
 	for step = 0; step < 10; step++ {
 		if err := o.Run(50_000_000); err != nil {
@@ -57,7 +57,7 @@ func TestZZOpeningAssetNames(t *testing.T) {
 		}
 		dumpScreen(t, o, fmt.Sprintf("open-%02d", step))
 		if step == 4 {
-			o.Press("\r")
+			o.TypeBoth("\r")
 		}
 		if len(names) > seen {
 			t.Logf("第 %d 步載的圖：\n\t%s", step,
@@ -84,7 +84,7 @@ func TestZZOpeningAssetNames(t *testing.T) {
 			t.Logf("[%d] open %s（%d bytes）→ handle %d",
 				op.Step, op.Name, op.Arg, op.Handle)
 		case "seek":
-			last[op.Handle] = op.Result
+			last[op.Handle] = op.Pos // seek 後的位置（舊欄位 `Result`）
 		case "read":
 			at, ok := last[op.Handle]
 			if !ok {

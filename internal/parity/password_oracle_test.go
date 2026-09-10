@@ -66,7 +66,7 @@ func TestZZPassword(t *testing.T) {
 	}{
 		{"PressScan", func() { o.Drain(); o.PressScan("2492") }},
 		{"Type（字元佇列）", func() { o.Drain(); o.Type("2492") }},
-		{"Press（兩條都餵）", func() { o.Drain(); o.Press("2492") }},
+		{"Press（兩條都餵）", func() { o.Drain(); o.TypeBoth("2492") }},
 	} {
 		o.Restore(atPwd)
 		c.play()
@@ -118,11 +118,11 @@ func TestZZPassword(t *testing.T) {
 	for i, v := range cand {
 		o.Restore(atPwd)
 		o.Drain()
-		o.Press(fmt.Sprintf("%04d\r", v))
+		o.TypeBoth(fmt.Sprintf("%04d\r", v))
 		if err := o.Run(settle); err != nil {
 			continue
 		}
-		o.Press("Y\r")
+		o.TypeBoth("Y\r")
 		if err := o.Run(settle * 2); err != nil {
 			continue
 		}
@@ -140,7 +140,7 @@ func TestZZPassword(t *testing.T) {
 	// 比較的對象通常就在同一個結構或同一個堆疊框裡，印出鄰居就看得到。
 	o.Restore(atPwd)
 	o.Drain()
-	o.Press("2492")
+	o.TypeBoth("2492")
 	if err := o.Run(settle * 2); err != nil {
 		t.Logf("打字時停止：%v", err)
 		return
@@ -223,11 +223,11 @@ func TestPasswordAnswerDoesNotMatter(t *testing.T) {
 	answerThen := func(answer string) []byte {
 		o.Restore(atPwd)
 		o.Drain()
-		o.Press(answer + "\r")
+		o.TypeBoth(answer + "\r")
 		if err := o.Run(settle); err != nil {
 			t.Fatalf("作答時停止：%v", err)
 		}
-		o.Press("Y\r")
+		o.TypeBoth("Y\r")
 		if err := o.Run(settle * 3); err != nil {
 			t.Fatalf("確認時停止：%v", err)
 		}

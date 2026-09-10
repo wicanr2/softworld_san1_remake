@@ -157,14 +157,14 @@ const boardBase = 0x399b0
 // 畫面當然不動——那不是載入失敗。
 func bootLoadedSave(t *testing.T, o *oracle.Oracle, total int) [][]byte {
 	t.Helper()
-	o.Press("122")
+	o.TypeBoth("122")
 	send := map[int]string{4: "\r", 17: "2", 23: "1"}
 	for i := 0; i < 27; i++ {
 		if err := o.Run(50_000_000); err != nil {
 			t.Fatalf("停止：%v", err)
 		}
 		if k, ok := send[i]; ok {
-			o.Press(k)
+			o.TypeBoth(k)
 		}
 	}
 	snaps := [][]byte{append([]byte(nil), o.Bytes(addr(boardBase), total)...)}

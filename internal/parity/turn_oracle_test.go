@@ -34,7 +34,7 @@ const scrW, scrH = assets.ScreenW, assets.ScreenH
 // 就不必猜下一個鍵要送什麼。
 func dumpScreen(t *testing.T, o *oracle.Oracle, name string) {
 	t.Helper()
-	pix := o.IndexedEGA(scrW, scrH)
+	pix := o.IndexedEGASize(scrW, scrH)
 	if len(pix) < scrW*scrH {
 		t.Logf("畫面只有 %d 個像素，跳過存圖", len(pix))
 		return
@@ -70,7 +70,7 @@ func dumpScreen(t *testing.T, o *oracle.Oracle, name string) {
 // 而密碼表在說明書掃描裡判讀不出來。
 func bootToMain(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 	t.Helper()
-	o.Press("122")
+	o.TypeBoth("122")
 	send := map[int]string{4: "\r", 17: "2", 23: "1"}
 	var base uint32
 	for i := 0; i < 27; i++ {
@@ -78,7 +78,7 @@ func bootToMain(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 			t.Fatalf("停止：%v", err)
 		}
 		if k, ok := send[i]; ok {
-			o.Press(k)
+			o.TypeBoth(k)
 		}
 		if base == 0 {
 			if h := o.Search(mas[:48]); len(h) == 1 {
@@ -147,11 +147,11 @@ func bootToGame(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 	// 密碼那個提示**不吃掃描碼**（實測畫面差 240，與什麼都不送同級），
 	// 所以兩條路一起餵。
 	o.Drain()
-	o.Press(passwordAnswer + "\r")
+	o.TypeBoth(passwordAnswer + "\r")
 	if err := o.Run(settle); err != nil {
 		t.Fatalf("作答時停止：%v", err)
 	}
-	o.Press("Y\r")
+	o.TypeBoth("Y\r")
 	if err := o.Run(settle * 3); err != nil {
 		t.Fatalf("確認時停止：%v", err)
 	}
@@ -159,7 +159,7 @@ func bootToGame(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 }
 
 func screenOf(o *oracle.Oracle) []uint8 {
-	return append([]uint8(nil), o.IndexedEGA(scrW, scrH)...)
+	return append([]uint8(nil), o.IndexedEGASize(scrW, scrH)...)
 }
 
 // pixelDiff 數兩張畫面差幾個像素，`mask` 為真的位置不算。

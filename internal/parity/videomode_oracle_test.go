@@ -123,16 +123,16 @@ func TestZZScreenHeightProbe(t *testing.T) {
 		// ＋ 第 4 步的 `\r`）；主選單那一題**不答**，畫面就停在那裡。
 		// **不送鍵的話一步都走不動**——它卡在第一題等輸入，
 		// 而畫面全黑看起來像「還沒畫」不像「在等人回答」。
-		o.Press("122")
+		o.TypeBoth("122")
 		for i := 0; i < 17; i++ {
 			if err := o.Run(50_000_000); err != nil {
 				t.Fatalf("主選單：停止：%v", err)
 			}
 			if i == 4 {
-				o.Press("\r")
+				o.TypeBoth("\r")
 			}
 		}
-		pix := o.IndexedEGA(probeW, probeH)
+		pix := o.IndexedEGASize(probeW, probeH)
 		if len(pix) < probeW*probeH {
 			t.Fatalf("主選單：畫面只有 %d 個像素", len(pix))
 		}
@@ -141,17 +141,23 @@ func TestZZScreenHeightProbe(t *testing.T) {
 		// CRTC（`3D4`／`3D5`）是「畫面幾列高」唯一的一手來源。
 		// 索引 `12` ＝ Vertical Display End 的低八位，索引 `07` 的
 		// bit1／bit6 是它的第 8／9 位——`349` 與 `399` 差在這裡。
-		crtc := o.PortWrites(0x3D4, 0x3D5)
-		t.Logf("CRTC 寫入 %d 次", len(crtc))
+		// `PortWrites()` 回**全部**埠寫入，範圍過濾由呼叫端做
+		// （dosgolem `oracle/ports.go`）。
 		var idx uint8
+		n := 0
 		last := map[uint8]uint8{}
-		for _, w := range crtc {
+		for _, w := range o.PortWrites() {
+			if w.Port < 0x3D4 || w.Port > 0x3D5 {
+				continue
+			}
+			n++
 			if w.Port == 0x3D4 {
 				idx = w.Val
 				continue
 			}
 			last[idx] = w.Val
 		}
+		t.Logf("CRTC 寫入 %d 次", n)
 		for _, i := range []uint8{0x00, 0x01, 0x06, 0x07, 0x09, 0x10, 0x11, 0x12, 0x13, 0x15, 0x16, 0x17} {
 			if v, ok := last[i]; ok {
 				t.Logf("  CRTC[%02X] = %02X", i, v)
@@ -159,9 +165,16 @@ func TestZZScreenHeightProbe(t *testing.T) {
 		}
 		// 其他視訊埠也一起看：`3C2`（Miscellaneous Output，bit6–7 選
 		// 垂直大小）、`3C4`（序列器）、`3CE`（圖形控制器）。
-		for _, p := range []uint16{0x3C2, 0x3C3, 0x3CC} {
-			if ws := o.PortWrites(p, p); len(ws) > 0 {
-				t.Logf("  埠 %03X 最後寫入 %02X（共 %d 次）", p, ws[len(ws)-1].Val, len(ws))
+		for _, port := range []uint16{0x3C2, 0x3C3, 0x3CC} {
+			var lastVal uint8
+			cnt := 0
+			for _, w := range o.PortWrites() {
+				if w.Port == port {
+					lastVal, cnt = w.Val, cnt+1
+				}
+			}
+			if cnt > 0 {
+				t.Logf("  埠 %03X 最後寫入 %02X（共 %d 次）", port, lastVal, cnt)
 			}
 		}
 	}()
@@ -180,7 +193,7 @@ func TestZZScreenHeightProbe(t *testing.T) {
 		}
 		defer o.Close()
 		bootToMain(t, o, seedMas)
-		pix := o.IndexedEGA(probeW, probeH)
+		pix := o.IndexedEGASize(probeW, probeH)
 		if len(pix) < probeW*probeH {
 			t.Fatalf("主畫面：畫面只有 %d 個像素", len(pix))
 		}

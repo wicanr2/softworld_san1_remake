@@ -188,7 +188,7 @@ func TestZZBattleDaySweep(t *testing.T) {
 		for _, seg := range strings.Split(body, "|") {
 			k := strings.ReplaceAll(seg, enterMark, "\r")
 			if strings.HasPrefix(cand, "P:") {
-				o.Press(k)
+				o.TypeBoth(k)
 			} else {
 				o.PressScan(k)
 			}

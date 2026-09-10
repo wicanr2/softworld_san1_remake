@@ -191,10 +191,14 @@ DATA1／2／3 的 `.IDX` 末值精準等於 `.GRP` 長度，round-trip 通過。
 
 ### 4.1 `[HARD]` dosgolem 是主要驗證器
 
-工作副本 `~/cht/dosgolem-san`，**開獨立分支，不要動 `master`**。目前在
-`san1-draw-speed-and-speech`（`san1-msc-oracle` 是它的祖先——工作往前走時
-換過分支）。**分支名會隨工作階段換，判準是「不是 master」不是某個特定名字**；
-要用哪一條先跑 `git -C ~/cht/dosgolem-san branch --show-current` 問一次。
+工作副本 `~/cht/dosgolem-san`，**開獨立分支，不要動上游的整合分支**
+（上游現在整合到 `main`）。**這裡不寫分支名**——名字會隨工作階段換，
+寫死就會過期；現況記在 `CONTEXT.md` §1，用之前跑
+`git -C ~/cht/dosgolem-san branch --show-current` 問一次。
+
+換 base 時預期會撞到 API 漂移：上游動得快，`oracle` 的簽章與欄位會變。
+判準不是「編得過」是「對拍的數字沒變」——同一份原版、同一串按鍵，
+換 base 前後讀到的值要逐項相同（2026-09-10 那次的紀錄在 `CONTEXT.md` §1）。
 不要在 `~/cht/dosgolem` 本體上動——那份與其他遊戲的 session 共用。
 
 分層照 `dosgolem/docs/spec/006`，判準是一句話：

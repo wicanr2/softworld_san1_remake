@@ -1150,11 +1150,11 @@
       "docs": [
         "CLAUDE.md §4.1"
       ],
-      "note": "2026-09-10 抓到：`CLAUDE.md` 兩處與 `CONTEXT.md` 一處都記著 `san1-msc-oracle`，而實際分支早就是 `san1-draw-speed-and-speech`（前者是後者的祖先）。`CLAUDE.md` 開頭寫著「規則裡不准出現不存在的檔案、目錄或工具」——分支名同理。改法是**不再寫死名字**，只寫「開獨立分支不要動 master」＋ 一句「用前先問 `git branch --show-current`」。",
+      "note": "2026-09-10 抓到第一次：`CLAUDE.md` 兩處與 `CONTEXT.md` 一處都記著 `san1-msc-oracle`，而實際分支早就是 `san1-draw-speed-and-speech`。\n\n**同一天下午這條 verify 就開口第二次**——換 base 到 `origin/main` 之後分支變成 `san1-oracle-parity`，文件又落後了。加上去幾小時就抓到一次，這正是它存在的理由。\n\n改法分兩層：`CLAUDE.md`（規則）**完全不寫分支名**，只留「開獨立分支、用前先問 `git branch --show-current`」；`CONTEXT.md` §1（現況）記實際的那一條。verify 因此綁 `CONTEXT.md` 不綁 `CLAUDE.md`——規則檔裡放易變的東西，本來就是過期斷言的來源。",
       "acceptance": "文件提到的分支名與 `git branch --show-current` 一致，或文件根本不寫死名字",
       "verify": {
         "kind": "cmd",
-        "cmd": "b=$(git -C ../dosgolem-san branch --show-current); grep -q \"$b\" CLAUDE.md"
+        "cmd": "b=$(git -C ../dosgolem-san branch --show-current); grep -q \"$b\" CONTEXT.md"
       }
     }
   ],

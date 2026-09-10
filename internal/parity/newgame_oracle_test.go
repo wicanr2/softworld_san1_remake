@@ -28,7 +28,7 @@ import (
 //	…
 func bootToNewGame(t *testing.T, o *oracle.Oracle, lord int, mas []byte) uint32 {
 	t.Helper()
-	o.Press("122")
+	o.TypeBoth("122")
 	// 4 跳標題、17 開始新遊戲、23 中平六年——與 `loadScenarioInOriginal`
 	// 同一組數字，差別只在主選單送 1 不是 2。
 	send := map[int]string{4: "\r", 17: "1", 23: "1"}
@@ -38,7 +38,7 @@ func bootToNewGame(t *testing.T, o *oracle.Oracle, lord int, mas []byte) uint32 
 			t.Fatalf("開機停止：%v", err)
 		}
 		if k, ok := send[i]; ok {
-			o.Press(k)
+			o.TypeBoth(k)
 		}
 		if base == 0 {
 			if h := o.Search(mas[:48]); len(h) == 1 {
@@ -66,7 +66,7 @@ func bootToNewGame(t *testing.T, o *oracle.Oracle, lord int, mas []byte) uint32 
 		before := screenOf(o)
 		o.Drain()
 		if s.chars {
-			o.Press(s.keys)
+			o.TypeBoth(s.keys)
 		} else {
 			o.PressScan(s.keys)
 		}

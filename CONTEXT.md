@@ -10,7 +10,7 @@
 |---|---|---|
 | 素材取得 | 兩版 js-dos bundle 下載完成、SHA-256 驗過 | 2026-09-06 |
 | 專案骨架 | 建立；`CLAUDE.md`／`LICENSE`／`.gitignore` 就位 | 2026-09-06 |
-| dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 `san1-draw-speed-and-speech`（`san1-msc-oracle` 是它的祖先）。**分支名會換，用前先問 `git branch --show-current`** | 2026-09-10 |
+| dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 **`san1-oracle-parity`**，base 是 `origin/main`（`d351681`）。先前的 `san1-draw-speed-and-speech` **已經合併進 main**（`a4cb2b6`）。**分支名會換，用前先問 `git branch --show-current`** | 2026-09-10 |
 | 說明書 | 46 頁解到 `workplace/manual/`，整理中 | 2026-09-06 |
 | dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |
 | 反組譯 | IDA 管線成立（`docs/re/01`）；主程式模組已用 objdump 逐段對讀 | 2026-09-06 |
@@ -76,6 +76,8 @@
 | **畫面尺寸訂正成 640×408** | 專案一路假設 640×350，那是推的。四條一手證據都給 408：原版寫進 CRTC 的 `[12] = 97h`（Vertical Display End ＝ 407 → 408 列）、DOSBox-X 自己截出來就是 640×408、主畫面的版面算術（36 ＋ 336 ＋ 36）、主戰場底紋「鋪到 640×408」的迴圈。被截掉的 58 列有東西：主選單第三列按鈕的下半與直牌最後一個字、主畫面與主戰場的下方花邊（`MAINMAP2`／`MAINMAP8`，先前記成「落在畫面外」）、三個面板的下緣。**兩個獨立實作在 350 上「逐點相同」通過很久**——取樣尺寸是共用的外部參數，前提錯了下游一致性看不出來（R48、`docs/spec/006`）| 2026-09-10 |
 
 | **兩支 EXE 都有 `.i64` 了** | 加強版那支 2026-09-10 補上（`workplace/ida/ASV.EXE.i64`，探針驗過 SHA-256 與 274 個函式）。M0 的出口條件之一，先前 worklist 沒打勾而 M0 標「完成」——是清單改成 verify 之後第一輪抓到的。順帶量到 `ASV.EXE` 是自解壓的（F5c），靜態只看得到 stub | 2026-09-10 |
+
+| **dosgolem 換 base 到 `main`** | 上游把 `san1-draw-speed-and-speech` 合併進 `main`（`a4cb2b6`）之後，工作分支改成從 `origin/main` 開的 `san1-oracle-parity`。落後 548 筆帶來四處 API 漂移：`Press(s)` → **`TypeBoth(s)`**（名字讓給滑鼠的「原地按住」）、`IndexedEGA(w,h)` → `IndexedEGASize(w,h)`、`FileOp.Result` 拆成 `.Pos`／`.Len`、`PortWrites(lo,hi)` → 不帶參數的 `PortWrites()`（main 的 `oracle/ports.go` 已有更通用的版本，我那筆因此丟掉）。**判準不是「編得過」是「數字沒變」**：換 base 前後 CRTC 讀到的六個值、三英圖的 0 格不同、逐列墨水統計全部逐項相同 | 2026-09-10 |
 
 完成度的數字在 `VERIFICATION-MATRIX.md`（唯一來源）；文件放什麼在 `docs/INDEX.md`。
 

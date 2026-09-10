@@ -311,7 +311,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 |---|---|---|---|---|---|
 | 開機配方還是指令數觸發，不是行為觸發 | 未完成 | — | base | present：internal/parity/turn_oracle_test.go 的「o.Run(d+_d+_d+)」 | 指令數會隨執行器改動而變，所以現在的配方當不了回歸測試。R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。 訊號是對拍測試裡寫死的指令數預算（`include_tests`）——**要換掉的就是它們**，所以綁在那裡是對的。（`docs/re/02`、`docs/playtest/03`） |
 | probe 看不到 `B0000`（Hercules） | 未完成 | — | both | absent：../dosgolem-san/internal/machine 的「Hercules、HERCULES、monochrome graphic」 | 目前只看 `A0000` 與 `B8000`，選 Hercules 時會得到**假零**——畫面明明有東西而 probe 說沒有。 ⚠ pattern 原本寫 `herc`（不分大小寫），而那會誤中 `OtherChannels` 裡的「herC」——**太寬會反過來誤判已完成**。改成完整字。（`docs/re/00`） |
-| 文件裡的 dosgolem 分支名要跟得上實際分支 | 完成 | — | — | 指令重數 | 2026-09-10 抓到：`CLAUDE.md` 兩處與 `CONTEXT.md` 一處都記著 `san1-msc-oracle`，而實際分支早就是 `san1-draw-speed-and-speech`（前者是後者的祖先）。`CLAUDE.md` 開頭寫著「規則裡不准出現不存在的檔案、目錄或工具」——分支名同理。改法是**不再寫死名字**，只寫「開獨立分支不要動 master」＋ 一句「用前先問 `git branch --show-current`」。（`CLAUDE.md §4.1`） |
+| 文件裡的 dosgolem 分支名要跟得上實際分支 | 完成 | — | — | 指令重數 | 2026-09-10 抓到第一次：`CLAUDE.md` 兩處與 `CONTEXT.md` 一處都記著 `san1-msc-oracle`，而實際分支早就是 `san1-draw-speed-and-speech`。  **同一天下午這條 verify 就開口第二次**——換 base 到 `origin/main` 之後分支變成 `san1-oracle-parity`，文件又落後了。加上去幾小時就抓到一次，這正是它存在的理由。  改法分兩層：`CLAUDE.md`（規則）**完全不寫分支名**，只留「開獨立分支、用前先問 `git branch --show-current`」；`CONTEXT.md` §1（現況）記實際的那一條。verify 因此綁 `CONTEXT.md` 不綁 `CLAUDE.md`——規則檔裡放易變的東西，本來就是過期斷言的來源。（`CLAUDE.md §4.1`） |
 
 ### 資料格式
 

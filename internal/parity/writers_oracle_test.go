@@ -445,7 +445,7 @@ func TestZZBattleKeySweep(t *testing.T) {
 			// 其餘走硬體掃描碼。**兩條一起餵會產生重複的字元**，
 			// 所以要分開試而不是都送。
 			if strings.HasPrefix(cand, "P:") {
-				o.Press(strings.TrimPrefix(k, "P:"))
+				o.TypeBoth(strings.TrimPrefix(k, "P:"))
 			} else {
 				o.PressScan(k)
 			}

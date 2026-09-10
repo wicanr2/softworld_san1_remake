@@ -89,12 +89,12 @@ func TestZZBootPlus(t *testing.T) {
 			break
 		}
 		if k, ok := send[i]; ok {
-			o.Press(k)
+			o.TypeBoth(k)
 		}
 	}
 	// 主畫面出來之後會問防拷密碼。原版量過**任何四位數都過得去**
 	// （`CONTEXT.md` §1），加強版照送。
-	o.Press("1234\r")
+	o.TypeBoth("1234\r")
 	for i := 0; i < 6; i++ {
 		if err := o.Run(50_000_000); err != nil {
 			t.Logf("送密碼之後第 %d 段停止：%v", i, err)
@@ -192,10 +192,10 @@ func bootLikePlus(t *testing.T, o *oracle.Oracle) {
 			break
 		}
 		if k, ok := send[i]; ok {
-			o.Press(k)
+			o.TypeBoth(k)
 		}
 	}
-	o.Press("1234\r")
+	o.TypeBoth("1234\r")
 	for i := 0; i < 6; i++ {
 		if err := o.Run(50_000_000); err != nil {
 			t.Logf("送密碼之後第 %d 段停止：%v", i, err)
