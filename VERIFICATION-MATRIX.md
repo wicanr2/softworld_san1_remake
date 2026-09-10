@@ -124,7 +124,7 @@
 | **戰役的逐日** | 全部休息連走七天逐日比移動力；再走兩步逐步比移動花費；走到守軍旁邊之後電腦打過來，逐次比交戰的傷亡 | **56 個欄位全中**（逐日 50 ＋ 移動花費 2 ＋ 兩次交戰各兩邊的兵 4）。據此修掉三個實作錯誤：開新的一天是回填不是重設；休息 +2 之後**夾在 15**；交戰結算整條換成原版的（`0x2a224`）|
 | **存檔寫出** | remake 走完一個月存進第 1 格，把六個項目換進**原版目錄複製品**的 `DATA2.GRP`，讓原版讀那一格 | **19,220 個位元組完全相同**，而且載入流程的六個檢查點都是 0（換進去的內容與原本那一格差 2／168／255 個位元組，所以「相同」不是沒換到。`TestRemakeSaveLoadsInOriginal`，2026-09-09）|
 | **戰役的勝負** | 玩家親征打到分出勝負（守軍壓薄、貼身每天對戰），在**判定發生的那一刻**讀原版的軍團統帥與各軍第一支部隊的排頭，套 remake 的 `checkOver` 規則算勝方 | **一致**：守方統帥 96 在排頭、攻方統帥 331 不在，兩邊都算出 `0`（主守軍勝）。期間統帥條件 `0x24f8c` 跑 105 次、三十天判定 `0x250d4` 跑 5 次——電腦對電腦那條路兩支都是 0 次（`TestBattleFinishesWithPlayer`，2026-09-09）|
-| **一個月的狀態轉移** | 兩邊從同一份盤面各走同一個視窗，逐欄位比 | **差 0 個位元組**（43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。`TestZZMonthParity`，2026-09-08）|
+| **一個月的狀態轉移** | 兩邊從同一份盤面各走同一個視窗，逐欄位比 | ⚠ **2026-09-10 起是紅的（差 339）——起點漂移不是規則層壞了**（`CONTEXT.md` R49）。舊起點上曾**差 0 個位元組**（43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。`TestZZMonthParity`，2026-09-08）|
 | 年度人口成長 | 同上，只看人口欄 | **四十三筆逐格相同**（人口存的是「百」，成長的零頭寫回去就沒了）|
 
 **走到 0 的逐步紀錄在 `docs/playtest/02` 開頭**（起點 440，九個階段各解出
@@ -257,6 +257,10 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 電腦對電腦的戰役還沒被走到 | 未完成 | L1 | base | present：internal/parity/battleover_oracle_test.go 的「電腦對電腦**那條路上會 skip」 | 照 `0x20471` 的分岔實作了（`battle.AutoResolveAI`，含傷亡寫回與四條單測），但那條路沒有實跑背書：原版的電腦對電腦戰役**不進戰術層**，日循環只有玩家在場才跑，所以對拍那一支在那條路上會 skip。**「AI 沒動」可能是正確的原版行為**（`CLAUDE.md` §7 第 14 條），要先確認前提滿足。 訊號在對拍測試裡（`include_tests`）：這是**驗證缺口**不是功能缺口——`battle.AutoResolveAI` 早就接上了，缺的是實跑背書，而「那條路上會 skip」這句話只會出現在對拍測試裡，因為那裡才是證據的所在地。（`docs/re/05`、`docs/mechanics/40`） |
 | 主戰場基準畫面的取法文件記錯了 | 未完成 | L1 | base | 指令重數 | 成因查出來了：`TestZZBattleKeySweep` 帶 `SAN1_BATTLEKEY` 時 `cands` 只剩一個候選，所以迴圈只跑一輪、只產 `sweep-01.png`——而 `docs/spec/005` 記的取法說它產一整批，`battlefield_test.go` 的註解也說 `orig-battle.png` 由它產。實際上 `orig-battle.png` 是人工從其中一張改名來的。**`orig-battle.png` 已經換成 408 的那張**（場地區的比對在 y<350，換之後三支測試照樣全綠）；還沒解決的是 `sweep-04.png`（紮寨那一步，`TestCampMaskMatchesTheOriginal` 用）——它要另一組按鍵，那組還沒重跑。（`docs/spec/005`、`docs/spec/006`） |
 | 逐步對拍的參照畫面是舊尺寸，要重錄 | 未完成 | L1 | base | 指令重數 | 畫面高度 2026-09-10 從 350 改成 408（R48），`workplace/rec7/frames` 那一批是 640×350 錄的。測試現在會明講並 skip，不會安靜地給一個偏低的百分比。重錄跑 `tools/dosboxx-record.sh`。 對拍那一支（`TestZZDosgolemMatchesDosbox`）因此會 skip；**skip 不是綠**，所以這一條留在未完成清單裡直到重錄完成。（`docs/playtest/03`、`docs/spec/006`） |
+| 四季事件、蝗害、君主繼承、絕嗣 | 未完成 | L1 | base | `TestEventsMatchTheOriginal`、`TestLocustMatchesTheOriginal`、`TestSuccessionMatchesTheOriginal`、`TestNoHeirEndsTheGame` | 2026-09-10 換 base 後 `TestEventsMatchTheOriginal` 紅。與月度同源（R49）。 四種天災的機率與幅度、秋收、進貢、繼承的人望折損（3 次逐次相同）、絕嗣結束正反兩面各推過一個月。（`docs/re/06`、`docs/mechanics/50`） |
+| 一個月的狀態轉移差 0 個位元組 | 未完成 | L1 | base | `TestZZMonthParity` | 2026-09-10 換 base 後差 339 個位元組。**規則層沒壞**——起點漂移（R49）。 43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。（`docs/playtest/02`） |
+| 玩家自己下的每一道命令 | 未完成 | L1 | base | `TestPlayerCommandsMatchTheOriginal`、`TestPlayerCommandsAsCaoCao` | 2026-09-10 換 base 後 `TestPlayerCommandsAsCaoCao` 紅（13 pass / 2 fail / 1 skip）。與月度同源：起點漂移（R49）。 兩個盤面各十五道全部相同（建安二年／南海、劇本 1 曹操／郡 11）。（`docs/playtest/04`） |
+| 戰略層五種謀略在實跑裡走過 | 未完成 | L1 | base | `TestStratagemsRunLive`、`TestTigerWolfRunsLive`、`TestSabotageRunsLive`、`TestAIPlotMatchesTheOriginal` | 2026-09-10 換 base 後 `TestSabotageRunsLive` 紅。與月度同源（R49）。 偽書使疑 15 次逐次相同；驅虎吞狼／遠交近攻／聯合出兵三支的結局是呼叫戰鬥子系統。**電腦只用偽書使疑**（R22）。（`docs/re/07`、`docs/mechanics/30`） |
 | 兵士與在職將是快照不是推導值（已知差異） | 未完成 | L1 | base | present：internal/parity/loadsave_oracle_test.go 的「在存檔裡是快照」 | 原版存檔的 offset 16／22 是寫檔當下的值，載入時原封不動；remake 一律從人物表推導。走完一個月兩邊會一致（月度對拍 0 個位元組），差別只在**剛載入那一刻**。要完全對齊得把它們改成「由改動它們的常式寫」，那是一次不小的重構。 訊號在對拍測試裡（`include_tests`）：同上，缺的是對齊不是實作。（`docs/formats/05`） |
 | 統一年份的分布還沒對拍 | 未完成 | L2 | base | **要人判** | 全電腦對戰約五十年分出勝負，但那是 remake 自己跑的；原版跑同樣的劇本會在哪一年統一沒有比過。（`docs/mechanics/80`） |
 | 分派表：選出行動者與名單順序 | 完成 | L1 | base | `TestActorPickMatchesTheOriginal`、`TestChiefRosterOrder`、`TestGovernorSortListShape` | 40 次；排序鍵是 `謀略 ＋ 戰力 ＋ 加權表[身分]`。交換排序不穩定，所以名單順序有意義。（`docs/re/03`） |
@@ -275,18 +279,14 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 開機裝置選單與防拷密碼 | 完成 | L0 | base | `TestBootPromptsMatchOriginal`、`TestBootAcceptsOnlyOneAndTwo`、`TestPasswordAnswerDoesNotMatter`、`TestZZPassword` | 四題裝置選擇；防拷密碼**任何四位數都過得去**，兩個答案各走十六個月、十八份盤面逐位元組相同。（`docs/re/02`） |
 | 容器項目邊界與原版算的一致 | 完成 | L1 | base | `TestContainerOffsetsMatchOriginal`、`TestContainerHeaderReadsAreComplete` | 攔原版對 `DATA1.GRP` 的 seek，比它算出來的起點——逐項相符。（`docs/formats/01`） |
 | 兩版差異只繞著難度 | 完成 | L0 | both | `TestWhoTouchesTheEditionTable`、`TestWhoReadsTheEditionWords` | 上限 10 → 20、係數表 11 → 21 格（`DS:0x5430`）；字串 400 條只差一條；戰役勝負判定多兩條。（`docs/spec/004`、`docs/mechanics/90`） |
-| 四季事件、蝗害、君主繼承、絕嗣 | 完成 | L1 | base | `TestEventsMatchTheOriginal`、`TestLocustMatchesTheOriginal`、`TestSuccessionMatchesTheOriginal`、`TestNoHeirEndsTheGame` | 四種天災的機率與幅度、秋收、進貢、繼承的人望折損（3 次逐次相同）、絕嗣結束正反兩面各推過一個月。（`docs/re/06`、`docs/mechanics/50`） |
 | 建築關寨的三道門與格子編碼 | 完成 | L0 | base | `TestFortMatchesTheOriginal`、`TestZZFortPromptsAsCaoCao` | `DS:0x7134[地形碼] != 0`（山丘、平原、樹林）、`(格 & 0xF0) >= 0xA0` 擋通道格、Y/N 確認；寫入是 `(格 & 0xF6) \| 6`。（`docs/mechanics/10`） |
-| 一個月的狀態轉移差 0 個位元組 | 完成 | L1 | base | `TestZZMonthParity` | 43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。（`docs/playtest/02`） |
 | 開新遊戲的盤面 | 完成 | L1 | base | `TestZZNewGameBoardIsCaoCao`、`TestPlantedBoardReadsBack`、`TestLoadedPrefectureOwnersMatchTheSave` | **開新遊戲是一等驗收路徑**，從存檔載入看不到缺口（`CLAUDE.md` §7 第 12 條）。（`docs/re/02`） |
-| 玩家自己下的每一道命令 | 完成 | L1 | base | `TestPlayerCommandsMatchTheOriginal`、`TestPlayerCommandsAsCaoCao` | 兩個盤面各十五道全部相同（建安二年／南海、劇本 1 曹操／郡 11）。（`docs/playtest/04`） |
 | 加強版跑得起來 | 完成 | L1 | plus | `TestZZBootPlus` | `ASV.EXE` 載進 dosgolem、開 253 個檔、畫出標題。卡點是 `DATA0.GRP` 的 `e_cblp = 0xAA90` 只有低九位有意義。（`docs/mechanics/90`） |
 | 原版的亂數是 MSC 的 LCG | 完成 | L0 | both | `TestRandIsTheMSCLCG` | 核對 400 次逐次相同。**公式通用、進入點與狀態變數位址不通用**。（`docs/playtest/02`） |
 | 存檔載入：原版與 remake 讀同一格逐位元組相同 | 完成 | L1 | base | `TestOriginalSaveLoadsIdentically` | 19,220 個位元組，**除兩個快照欄位之外完全相同**（兵士與在職將在存檔裡是寫檔當下的快照，原版載入時不重算）。（`docs/formats/05`、`docs/re/08`） |
 | 存檔寫出：原版讀得回 remake 存的那一格 | 完成 | L1 | base | `TestRemakeSaveLoadsInOriginal` | remake 走完一個月存進第 1 格，六個項目換進**原版目錄複製品**的 `DATA2.GRP`，原版讀回來 **19,220 個位元組完全相同**，載入流程六個檢查點都是 0。（`docs/formats/05`） |
 | 出兵：整編、攜帶錢糧、確認 | 完成 | L1 | base | `TestZZPlayerSortieDriven`、`TestSortieMustersMatchTheOriginal` | 郡 11 打郡 4，走完軍事 → 發動戰役 → 選郡 → 整編 → 攜帶錢糧 → 確認，原版動的 3 個位元組逐格相同。（`docs/playtest/04`） |
 | PC 喇叭語音 | 完成 | L1 | base | `TestSpeechDrivesTheSpeaker` | `docs/re/09` |
-| 戰略層五種謀略在實跑裡走過 | 完成 | L1 | base | `TestStratagemsRunLive`、`TestTigerWolfRunsLive`、`TestSabotageRunsLive`、`TestAIPlotMatchesTheOriginal` | 偽書使疑 15 次逐次相同；驅虎吞狼／遠交近攻／聯合出兵三支的結局是呼叫戰鬥子系統。**電腦只用偽書使疑**（R22）。（`docs/re/07`、`docs/mechanics/30`） |
 | 三張表在記憶體裡連續且位置找得到 | 完成 | L0 | base | `TestScenarioTablesLiveInMemory` | 拿劇本檔的位元組去搜，找到且三張連續（0x399B0）。（`docs/spec/003`） |
 | 部隊層 AI 的決策鏈 | 完成 | L2 | base | `TestUnitAIDecisionChain`、`TestUnitAIRangedAndPlotOptions`、`TestWhoMovesTheUnits` | 決策鏈與遠攻／計謀選項的分支（R43：不在對戰子地圖那一側）。（`docs/re/05`） |
 | 戰場徵兵 | 完成 | L1 | base | `TestWarRecruitMatchesTheOriginal` | 與戰略層的徵兵是兩條路。（`docs/mechanics/40`） |
@@ -309,7 +309,13 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
-| 開機配方還是指令數觸發，不是行為觸發 | 未完成 | — | base | present：internal/parity/turn_oracle_test.go 的「o.Run(d+_d+_d+)」 | 指令數會隨執行器改動而變，所以現在的配方當不了回歸測試。R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。 訊號是對拍測試裡寫死的指令數預算（`include_tests`）——**要換掉的就是它們**，所以綁在那裡是對的。（`docs/re/02`、`docs/playtest/03`） |
+| 開機配方還是指令數觸發，不是行為觸發 | 未完成 | — | base | present：internal/parity/turn_oracle_test.go 的「o.Run(d+_d+_d+)」 | **2026-09-10：這一條的預言成真了。** 它原本寫著「指令數會隨執行器改動而變，所以現在的配方當不了回歸測試」——換 base 到 dosgolem `main` 之後，`bootToGame` 最後一步的 1.2 億道指令預算讓原版多跑了 29 格月迴圈，順序表整份不同，**四支對拍因此變紅**（月度、玩家命令、四季事件、策反）。
+
+原版在主畫面**不是靜止的**：沒有玩家輸入時它會自動跑完電腦的郡，一路跑到玩家的郡才停。所以「停在哪」由預算決定。新的停點（游標 28）其實**比舊的正確**——舊的游標 0 是預算用完的半路狀態。
+
+⚠ 已試過但**行不通**的修法：把停點改成「跑到游標歸零」。游標 0 一個月只出現一次，錯過就要等下個月，而原版停在玩家的郡不動——跑滿 2.4 億道指令游標還是 28。判準要換的是**視窗怎麼取**，不是只換停點。
+
+R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。`bootToGame` 現在會印停在第幾格（`monthCursor`），讓漂移看得見。（`docs/re/02`、`docs/playtest/03`） |
 | probe 看不到 `B0000`（Hercules） | 未完成 | — | both | absent：../dosgolem-san/internal/machine 的「Hercules、HERCULES、monochrome graphic」 | 目前只看 `A0000` 與 `B8000`，選 Hercules 時會得到**假零**——畫面明明有東西而 probe 說沒有。 ⚠ pattern 原本寫 `herc`（不分大小寫），而那會誤中 `OtherChannels` 裡的「herC」——**太寬會反過來誤判已完成**。改成完整字。（`docs/re/00`） |
 | 文件裡的 dosgolem 分支名要跟得上實際分支 | 完成 | — | — | 指令重數 | 2026-09-10 抓到第一次：`CLAUDE.md` 兩處與 `CONTEXT.md` 一處都記著 `san1-msc-oracle`，而實際分支早就是 `san1-draw-speed-and-speech`。  **同一天下午這條 verify 就開口第二次**——換 base 到 `origin/main` 之後分支變成 `san1-oracle-parity`，文件又落後了。加上去幾小時就抓到一次，這正是它存在的理由。  改法分兩層：`CLAUDE.md`（規則）**完全不寫分支名**，只留「開獨立分支、用前先問 `git branch --show-current`」；`CONTEXT.md` §1（現況）記實際的那一條。verify 因此綁 `CONTEXT.md` 不綁 `CLAUDE.md`——規則檔裡放易變的東西，本來就是過期斷言的來源。（`CLAUDE.md §4.1`） |
 

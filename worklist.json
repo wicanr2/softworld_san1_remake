@@ -129,13 +129,13 @@
       "title": "一個月的狀態轉移差 0 個位元組",
       "group": "對拍",
       "milestone": "M6",
-      "status": "done",
+      "status": "open",
       "level": "L1",
       "edition": "base",
       "docs": [
         "docs/playtest/02"
       ],
-      "note": "43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。",
+      "note": "2026-09-10 換 base 後差 339 個位元組。**規則層沒壞**——起點漂移（R49）。 43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -146,20 +146,21 @@
           "dosgolem-san"
         ]
       },
-      "layer": "evidence"
+      "layer": "verification",
+      "blocked_by": "對拍起點要在新 base 上重新校準（見 `boot-recipe-behavior-triggered`）"
     },
     {
       "id": "parity-player-commands",
       "title": "玩家自己下的每一道命令",
       "group": "對拍",
       "milestone": "M6",
-      "status": "done",
+      "status": "open",
       "level": "L1",
       "edition": "base",
       "docs": [
         "docs/playtest/04"
       ],
-      "note": "兩個盤面各十五道全部相同（建安二年／南海、劇本 1 曹操／郡 11）。",
+      "note": "2026-09-10 換 base 後 `TestPlayerCommandsAsCaoCao` 紅（13 pass / 2 fail / 1 skip）。與月度同源：起點漂移（R49）。 兩個盤面各十五道全部相同（建安二年／南海、劇本 1 曹操／郡 11）。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -170,7 +171,8 @@
           "dosgolem-san"
         ]
       },
-      "layer": "evidence"
+      "layer": "verification",
+      "blocked_by": "對拍起點要在新 base 上重新校準（見 `boot-recipe-behavior-triggered`）"
     },
     {
       "id": "parity-sortie",
@@ -322,14 +324,14 @@
       "title": "戰略層五種謀略在實跑裡走過",
       "group": "對拍",
       "milestone": "M5",
-      "status": "done",
+      "status": "open",
       "level": "L1",
       "edition": "base",
       "docs": [
         "docs/re/07",
         "docs/mechanics/30"
       ],
-      "note": "偽書使疑 15 次逐次相同；驅虎吞狼／遠交近攻／聯合出兵三支的結局是呼叫戰鬥子系統。**電腦只用偽書使疑**（R22）。",
+      "note": "2026-09-10 換 base 後 `TestSabotageRunsLive` 紅。與月度同源（R49）。 偽書使疑 15 次逐次相同；驅虎吞狼／遠交近攻／聯合出兵三支的結局是呼叫戰鬥子系統。**電腦只用偽書使疑**（R22）。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -340,7 +342,8 @@
           "dosgolem-san"
         ]
       },
-      "layer": "evidence"
+      "layer": "verification",
+      "blocked_by": "對拍起點要在新 base 上重新校準（見 `boot-recipe-behavior-triggered`）"
     },
     {
       "id": "parity-ai-affairs",
@@ -563,14 +566,14 @@
       "title": "四季事件、蝗害、君主繼承、絕嗣",
       "group": "對拍",
       "milestone": "M5",
-      "status": "done",
+      "status": "open",
       "level": "L1",
       "edition": "base",
       "docs": [
         "docs/re/06",
         "docs/mechanics/50"
       ],
-      "note": "四種天災的機率與幅度、秋收、進貢、繼承的人望折損（3 次逐次相同）、絕嗣結束正反兩面各推過一個月。",
+      "note": "2026-09-10 換 base 後 `TestEventsMatchTheOriginal` 紅。與月度同源（R49）。 四種天災的機率與幅度、秋收、進貢、繼承的人望折損（3 次逐次相同）、絕嗣結束正反兩面各推過一個月。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -581,7 +584,8 @@
           "dosgolem-san"
         ]
       },
-      "layer": "evidence"
+      "layer": "verification",
+      "blocked_by": "對拍起點要在新 base 上重新校準（見 `boot-recipe-behavior-triggered`）"
     },
     {
       "id": "parity-warrecruit",
@@ -864,8 +868,8 @@
         "docs/re/02",
         "docs/playtest/03"
       ],
-      "note": "指令數會隨執行器改動而變，所以現在的配方當不了回歸測試。R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。 訊號是對拍測試裡寫死的指令數預算（`include_tests`）——**要換掉的就是它們**，所以綁在那裡是對的。",
-      "acceptance": "開機序列的每一步都由原版自己的行為觸發，沒有寫死的指令數",
+      "note": "**2026-09-10：這一條的預言成真了。** 它原本寫著「指令數會隨執行器改動而變，所以現在的配方當不了回歸測試」——換 base 到 dosgolem `main` 之後，`bootToGame` 最後一步的 1.2 億道指令預算讓原版多跑了 29 格月迴圈，順序表整份不同，**四支對拍因此變紅**（月度、玩家命令、四季事件、策反）。\\n\\n原版在主畫面**不是靜止的**：沒有玩家輸入時它會自動跑完電腦的郡，一路跑到玩家的郡才停。所以「停在哪」由預算決定。新的停點（游標 28）其實**比舊的正確**——舊的游標 0 是預算用完的半路狀態。\\n\\n⚠ 已試過但**行不通**的修法：把停點改成「跑到游標歸零」。游標 0 一個月只出現一次，錯過就要等下個月，而原版停在玩家的郡不動——跑滿 2.4 億道指令游標還是 28。判準要換的是**視窗怎麼取**，不是只換停點。\\n\\nR46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。`bootToGame` 現在會印停在第幾格（`monthCursor`），讓漂移看得見。",
+      "acceptance": "開機序列的每一步都由原版自己的行為觸發，沒有寫死的指令數；且月度對拍在新起點上重新走回 0 個位元組",
       "verify": {
         "kind": "present",
         "paths": [

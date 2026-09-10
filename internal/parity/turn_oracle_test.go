@@ -152,10 +152,33 @@ func bootToGame(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 		t.Fatalf("作答時停止：%v", err)
 	}
 	o.TypeBoth("Y\r")
+	// ⚠ **這一步的停點是「預算用完」，不是判準**（`CONTEXT.md` R49）。
+	//
+	// 原版在主畫面不是靜止的：沒有玩家輸入時它會**自動跑完電腦的郡**，
+	// 一路跑到玩家的郡才停下來等。所以「停在哪」由預算決定——2026-09-10
+	// 換 base 到 dosgolem `main` 之後，同樣的 1.2 億道指令讓原版多跑了
+	// 29 格，順序表（每月洗牌的結果）因此整份不同，月度對拍從差 0 個
+	// 位元組變成差 339。
+	//
+	// **新的停點比較正確**：那是原版真的在等輸入的地方，舊的是半路
+	// （游標 0 ＝ 一格都還沒跑，而原版本來會自己跑完電腦那些）。
+	// 換掉這一段要連同「對拍視窗怎麼取」一起重想
+	//（worklist `boot-recipe-behavior-triggered`），不是單獨改預算。
 	if err := o.Run(settle * 3); err != nil {
 		t.Fatalf("確認時停止：%v", err)
 	}
+	t.Logf("bootToGame 停在游標 %d", monthCursor(o))
 	return base
+}
+
+// monthCursor 讀「這個月處理到第幾格」（`es:[0x20f4]`，`docs/re/08` §2）。
+//
+// 0 ＝ 開月了、一格都還沒跑。它是**存檔欄位**，所以跨執行器可比——
+// 診斷「原版停在哪」時比指令數有意義：指令數會隨執行器改動而變，
+// 這一格不會。
+func monthCursor(o *oracle.Oracle) int {
+	ds := uint32(o.DSReg()) * 16
+	return int(int16(o.Word(addr(uint32(o.Word(addr(ds+0xa726)))*16 + 0x20f4))))
 }
 
 func screenOf(o *oracle.Oracle) []uint8 {
