@@ -463,7 +463,12 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 徵兵（表 `0x5574`）：預算是**剩下的**金的 30–50 %。
 		// 原版每一支常式都重讀一次郡的金，所以後面的表看到的是
 		// 前面花剩的（`docs/mechanics/70-ai` §2.14）。
-		drafted := conscript(g, p, aiLevel, aiBudget(gold(), aiLevel, tableConscript))
+		var draftTrace map[string]int
+		if p == watch {
+			draftTrace = f.trace
+		}
+		drafted := conscript(g, p, aiLevel,
+			aiBudget(gold(), aiLevel, tableConscript), draftTrace)
 		if f.trace != nil && p == watch {
 			out := ""
 			for _, o := range drafted {
@@ -645,6 +650,16 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// thunk 到同一支 `0xc2c4`。它把整郡的兵按帶兵上限重新攤平，
 		// 訓練度與武裝度拉到全郡的加權平均。
 		if who := garrisonIndices(g, p); len(who) >= 2 {
+			if f.trace != nil && p == watch {
+				list := []string{}
+				for _, i := range who {
+					if x := g.General(i); x != nil {
+						list = append(list, fmt.Sprintf("%d 兵 %d 訓 %d 武裝 %d",
+							x.Index, x.Soldiers, x.Training, x.Arms))
+					}
+				}
+				f.trace[fmt.Sprintf("攤平前｜郡 %d %v", p, list)]++
+			}
 			emit(game.RedistributeOrder{At: p, Units: who})
 		}
 		mark("調整兵力")
@@ -1022,7 +1037,7 @@ func aiBudget(gold, level, table int) int {
 //
 // 徵完人口等量減少，訓練度與武裝度都按新的兵力重算——**新兵沒受訓
 // 也沒武器**，兩個欄位走的是同一個加權平均（`game.ArmsOf`）。
-func conscript(g *game.State, prefecture, level, budget int) []game.Order {
+func conscript(g *game.State, prefecture, level, budget int, trace map[string]int) []game.Order {
 	p := g.Prefecture(prefecture)
 	if p == nil {
 		return nil
@@ -1032,6 +1047,10 @@ func conscript(g *game.State, prefecture, level, budget int) []game.Order {
 	// **走排序後的名單**（`es:[0x58c]`，行動者那一張排完的順序），
 	// 不是槽號順序——前面的人先徵，而預算是遞減的，順序換了配額就換人。
 	for _, x := range roster(g, prefecture) {
+		if trace != nil {
+			trace[fmt.Sprintf("徵兵候選｜%d 職位 %d 上限 %d 兵 %d",
+				x.Index, x.Rank, x.TroopCap(), x.Soldiers)]++
+		}
 		// **預算 ≤ 0 就收工**（`0xbf1a`）。
 		if budget <= 0 {
 			break

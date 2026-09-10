@@ -245,6 +245,27 @@ func TestZZMonthParity(t *testing.T) {
 						name, sta(o, watch),
 						o.Byte(addr(base+uint32(nMas)+uint32(watch*176+30))),
 						top, topFac))
+				if name == "徵兵" {
+					// 空額 ＝ 帶兵上限[**職位**（人物 offset 12）] − 兵力，
+					// `<= 0` 是整個迴圈結束。兩邊對不上時要先分清楚是
+					// 職位不同還是上限表對不上——身分（offset 17）與職位
+					// 是兩個欄位。
+					who := []string{}
+					for i := 0; i < 350; i++ {
+						g := base + uint32(nMas) + uint32(nSta) + uint32(i*30)
+						if int(o.Byte(addr(g+19))) != watch {
+							continue
+						}
+						who = append(who,
+							fmt.Sprintf("%d 職位 %d 身分 %d 兵 %d", i,
+								o.Byte(addr(g+12)), o.Byte(addr(g+17)),
+								o.Word(addr(g+22))))
+					}
+					valLog = append(valLog,
+						fmt.Sprintf("　  原版：郡 %d 徵兵之前 %v（人口 %d）",
+							watch, who,
+							o.Word(addr(base+uint32(nMas)+uint32(watch*176+14)))))
+				}
 				if name == "賞賜金帛" {
 					// 外層迴圈（`0xd5e6`）走完整份名單、跳過君主，
 					// 每一位叫一次 `0xd302`；預算 > 0 就擲一次。所以
@@ -319,7 +340,8 @@ func TestZZMonthParity(t *testing.T) {
 						fmt.Sprintf("　  原版的寶庫（所屬 %d）%v；這個郡的人 %v",
 							owner, box, who))
 				}
-				if name == "賑民" || name == "武器" {
+				if name == "賑民" || name == "武器" || name == "調整兵力" ||
+					name == "買米" {
 					valLog = append(valLog,
 						fmt.Sprintf("　  守軍（進 %s 之前）%s", name, gar(o, watch)))
 				}
