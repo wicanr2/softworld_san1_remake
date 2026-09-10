@@ -83,6 +83,22 @@ func TestEventsMatchTheOriginal(t *testing.T) {
 			bad++
 		}
 	})
+	// 蝗害那一條鏈逐關計數：秋季常式 → 蝗害入口 → 真的改了地力。
+	// `locust == 0` 有三種意思，分開數才知道是哪一種
+	// （`~/diagnosis-notes/02`：查詢回空的四種形狀）。
+	// 四季常式一年各只跑一次（月 1 春、4 夏、7 秋、10 冬，`docs/re/06`）。
+	// 四個都數才知道十二輪按鍵到底走了幾個月——老死在春季，所以
+	// 「春跑了秋沒跑」不是閘門問題，是月份沒走滿。
+	season := map[string]int{}
+	for at, name := range map[uint32]string{
+		0x15c5c: "春", 0x164c8: "夏", 0x169d6: "秋", 0x16e70: "冬",
+	} {
+		n := name
+		o.OnCall(addr(at), func(*oracle.Oracle) { season[n]++ })
+	}
+	autumn, locustIn := 0, 0
+	o.OnCall(addr(0x169d6), func(*oracle.Oracle) { autumn++ })
+	o.OnCall(addr(0x16bd5), func(*oracle.Oracle) { locustIn++ })
 	o.OnCall(addr(0x16d26), func(o *oracle.Oracle) {
 		pref := int(o.SI()) / 176
 		if pref < 1 || pref > state.PrefectureCount {
@@ -131,27 +147,48 @@ func TestEventsMatchTheOriginal(t *testing.T) {
 		}
 	}
 
+	// **跑到四季都輪過為止，不是固定十二輪。** 四季常式一年各只跑一次
+	// （月 1／4／7／10），而 `bootToGame` 停在月中——第一輪按鍵是把
+	// 當下那個月走完，不是推進一個月。固定十二輪因此只推了約十個月，
+	// 從 9 月出發剛好差在秋季（春 1 夏 1 冬 1 秋 0），而測試的訊息寫成
+	// 「盤面沒擺好，或者秋季沒走到」，兩種病因混在同一行。
+	//
+	// 寫成「跑到四季齊了」直接表達要驗的東西，也不必跟著起點漂移改數字。
 	const settle = 40_000_000
-	for m := 0; m < 12; m++ {
+	months := 0
+	for ; months < 18 && len(season) < 4; months++ {
 		plant()
 		for _, k := range []string{"4\r", "4\r", "Y"} {
 			o.Drain()
 			o.PressScan(k)
 			if err := o.Run(settle * 3); err != nil {
-				t.Fatalf("第 %d 個月送 %q 時停止：%v", m+1, k, err)
+				t.Fatalf("第 %d 個月送 %q 時停止：%v", months+1, k, err)
 			}
 		}
 	}
 
-	t.Logf("十二個月：亂數 %d 次（正對照）、老死判定 %d 次、蝗害改地力 %d 次，%d 次對不上",
-		rnd, aging, locust, bad)
+	t.Logf("走了 %d 個月：亂數 %d 次（正對照）、老死判定 %d 次、蝗害改地力 %d 次，%d 次對不上",
+		months, rnd, aging, locust, bad)
+	t.Logf("蝗害那一條鏈：秋季常式進去 %d 次、蝗害入口 %d 次、真的改地力 %d 次",
+		autumn, locustIn, locust)
+	t.Logf("四季常式各跑了幾次：春 %d 夏 %d 秋 %d 冬 %d（一年各該一次）",
+		season["春"], season["夏"], season["秋"], season["冬"])
 	if rnd == 0 {
 		t.Fatal("連亂數都沒被呼叫：hook 沒掛上，或者按鍵序列沒推動月份")
 	}
 	if aging == 0 {
 		t.Error("一年裡一次老死判定都沒有——盤面沒擺好，或者元月沒走到")
 	}
+	if season["秋"] == 0 {
+		t.Fatalf("走了 %d 個月還沒輪到秋季（春 %d 夏 %d 冬 %d）"+
+			"——按鍵序列沒推動月份，蝗害的結果不算數",
+			months, season["春"], season["夏"], season["冬"])
+	}
 	if locust == 0 {
-		t.Error("一年裡一次蝗害都沒有——盤面沒擺好，或者秋季沒走到")
+		// 秋季走到了才有資格說「沒發生」。兩道閘門都對擺盤有利
+		// （民忠 0、地力 100，`docs/mechanics/50-events` §蝗害），
+		// 所以這裡真的為 0 是規則對不上，不是盤面問題。
+		t.Errorf("秋季走了 %d 次卻一次蝗害都沒有——擺盤是民忠 0、地力 100，"+
+			"兩道閘門都最有利，這裡為 0 表示判定條件對不上", season["秋"])
 	}
 }
