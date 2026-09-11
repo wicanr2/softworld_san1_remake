@@ -676,9 +676,10 @@ func HarvestGold(governorCharm, landValue, loyalty, population int) int {
 //
 // 人口用的是**存的值**（實際值 ÷ 100）。太守空缺時魅力算 0。
 //
-// ⚠ **還有一條沒實作**：`0x16b60` 那個分支——收入加上原有的米之後
-// 不大於 0 時，改成 `RND((土地價值 + 50) × 2)`。金那一半也有同形狀的
-// 分支（`docs/re/06` §6），兩邊都還沒做；只有整郡數值全 0 才走得到。
+// 收成之後不大於 0 時**改抽亂數**（`0x16b60`，金那一半是 `0x16a87`）：
+// 米抽 `RND((土地價值 + 50) × 2)`、金抽 `RND(土地價值 + 50)`，而且是
+// **取代**不是相加。兩條都在 `RunSeason` 的秋收那一段，不在這裡
+// ——這一支是純函式，抽亂數要在有 `State` 的地方做。
 func HarvestRice(governorCharm, landValue, floodRate, loyalty, population int) int {
 	term := governorCharm + landValue*HarvestRiceLandWeight +
 		(HarvestFloodBase - floodRate) + loyalty*HarvestLoyaltyWeight

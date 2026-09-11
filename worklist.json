@@ -1512,6 +1512,29 @@
         ],
         "pattern": "ENDO"
       }
+    },
+    {
+      "id": "new-game-flow",
+      "title": "開新局比原版少兩層：玩家人數與自創君主",
+      "group": "畫面",
+      "layer": "feature",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L2",
+      "edition": "base",
+      "docs": [
+        "docs/reference/01-manual-20-mechanics",
+        "docs/re/04"
+      ],
+      "note": "原版是「時期 → 玩家人數 → 角色 → 難度 →（選新君主就做七項設定）→ 密碼」（手冊 p.7／p.14）。remake 的 `internal/menu` 只有「劇本 → 君主 → 難度」，**少了玩家人數與自創君主兩層**。\n\n自創君主的七項在原版字串裡看得到（`0x47941`：`1.年齡` `2.體能` `3.謀略` `4.戰力` `5.魅力` `6.領地`／`新君主出現!!`），手冊說**四項能力共用 100 點**、領地只有一郡且必須是空白郡。存檔那一層 remake 已經做了（`BASEPRE.SV?` 的十二個字模往返）。\n\n⚠ **卡在同一個地方**：那一段跑在開機鏈第二層（`DATA0.GRP`），主程式的碼段 dump 涵蓋不到——與 `ending-screen`、`msk-masks` 是同一支 overlay。",
+      "acceptance": "開新局走得完原版那五層，且自創君主的七項設定與點數規則有 spec",
+      "verify": {
+        "kind": "absent",
+        "paths": [
+          "internal/menu"
+        ],
+        "pattern": "CustomLord"
+      }
     }
   ],
   "layers": {
