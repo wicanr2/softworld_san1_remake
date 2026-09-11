@@ -369,6 +369,14 @@ type State struct {
 	// 它不進存檔：原版也不存（`docs/re/08` 的進度檔沒有這一格）。
 	PendingWipe int
 
+	// glyphs 是自創君主名字的字模（`docs/spec/013` R4）。
+	//
+	// 原版把那三個字當**造字**（Big5 `A141`–`A14C`），字模隨進度存在
+	// `BASEPRE.SVn`——人物表裡放的只是碼位，沒有字模就是三個空白。
+	// 開自創君主的局時從原版出貨的那一份帶進來；沒有就是 nil，
+	// 存檔那一層會退回「讀上一次寫出去的」。
+	glyphs *state.Glyphs
+
 	// phaseTrace 非 nil 時，換月的每一段各抽了幾次會記進去（對拍用）。
 	phaseTrace map[string]int
 	phaseSeed  map[string]uint32
@@ -386,6 +394,12 @@ func (g *State) DrainReports() []*BattleResult {
 // 拿它當哨兵的話每一次載入都會多播一次轉場（`CLAUDE.md` §7 第 11 條：
 // 原版哨兵值不等於 Go 零值，要在唯一入口正規化）。
 const NoWipe = -1
+
+// Glyphs 是自創君主名字的字模；沒有回 nil。
+func (g *State) Glyphs() *state.Glyphs { return g.glyphs }
+
+// SetGlyphs 換一份字模。
+func (g *State) SetGlyphs(x *state.Glyphs) { g.glyphs = x }
 
 // TakeWipe 取走待播的轉場方向並清掉。沒有就回 NoWipe。
 //

@@ -84,12 +84,17 @@ remake 的規則：**四項能力從範本的底（90／60／80／90）往上加
 
 一個都沒有時當場說出來，不能讓玩家設定完才發現開不了局。
 
-### R4 存檔的字模還沒接（**已知缺口**）
+### R4 名字的字模跟著這一局走
 
-原版把自創君主的名字當造字，字模存在 `BASEPRE.SVn`。remake 現在存出去
-的是空字模，原版讀回來那三個字會是空白。名字固定是「新君主」，
-而出貨的 `BASEPRE` 內容正好就是它——接法是開局時把那一份帶進來
-（`worklist.json` 的 `custom-lord-glyphs`）。
+原版把自創君主的名字當**造字**（Big5 `A141`–`A14C`），字模存在
+`BASEPRE.SVn`——人物表裡只有碼位，沒有字模就是三個空白。
+
+remake 開自創君主的局時，把**原版出貨的那一份 `BASEPRE`** 帶進來
+（`DATA2` 的 `BASEPRE.SV1`；六個進度位元組完全相同，內容就是「新君主」
+三個字重複四次，`docs/re/08` §3）。存檔寫它、讀檔讀回來。
+
+**一般君主的局不帶**：那一局沒有造字要畫，存檔那一層會沿用上一次寫出去
+的——存讀一輪不該把別人畫好的字洗掉。
 
 ## 6. 驗收
 
@@ -100,6 +105,7 @@ remake 的規則：**四項能力從範本的底（90／60／80／90）往上加
 | 點數、空白郡、姓名的檢查 | `TestCustomLordValidate` |
 | 寫進去讀得回來、原件不動 | `TestWithCustomLordWritesTheTables` |
 | 整條流程走得完 | `internal/menu` 的 `TestPicksACustomLord` |
+| 字模帶得進去、存讀活得下來 | `TestCustomLordCarriesTheShippedGlyphs`、`internal/save` 的 `TestGlyphsSurviveASaveLoadRound` |
 
 ## 7. 還沒解的
 
@@ -107,5 +113,5 @@ remake 的規則：**四項能力從範本的底（90／60／80／90）往上加
 |---|---|
 | 點數怎麼花、上限多少 | §4 的 `L3` |
 | 年齡怎麼收 | R2 |
-| 姓名怎麼畫 | R2；remake 打算改成打字（字模從 remake 的字庫取）|
+| 姓名怎麼畫 | R2；名字固定「新君主」。要讓玩家改名就得自己產字模（從 remake 的字庫取），那一步還沒做 |
 | 玩家人數（多人）| 原版有，remake 沒做（`worklist.json` 的 `multiplayer`）|

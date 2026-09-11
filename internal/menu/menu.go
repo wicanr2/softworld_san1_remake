@@ -292,7 +292,8 @@ func (s *Screen) start(slot state.Slot, faction, difficulty int) *session.Sessio
 		return nil
 	}
 	// 選了新君主欄就先把那一位寫進劇本，再開局。
-	if s.custom != nil && s.custom.faction == faction {
+	custom := s.custom != nil && s.custom.faction == faction
+	if custom {
 		sc, err = sc.WithCustomLord(faction, s.custom.lord)
 		if err != nil {
 			s.note(i18n.S("title.newLord"), err.Error())
@@ -309,5 +310,32 @@ func (s *Screen) start(slot state.Slot, faction, difficulty int) *session.Sessio
 		s.note(i18n.S("title.pickScenario"), err.Error())
 		return nil
 	}
+	if custom {
+		// 名字的字模：人物表裡只有造字碼位，字模另外存
+		//（`docs/spec/013` R4）。名字固定是「新君主」，而**原版出貨的
+		// `BASEPRE` 內容正好就是它**（`docs/re/08` §3：六個進度位元組
+		// 完全相同），所以直接把出貨的那一份帶進這一局。
+		if x := shippedGlyphs(s.c2); x != nil {
+			g.SetGlyphs(x)
+		}
+	}
 	return session.New(g, brain, state.FactionID(faction))
+}
+
+// shippedGlyphs 取原版出貨的字模；讀不到回 nil。
+//
+// **讀不到不是錯誤**：沒有字模只是名字畫不出來，不該擋著開局。
+func shippedGlyphs(c *assets.Container) *state.Glyphs {
+	if c == nil {
+		return nil
+	}
+	i, ok := c.ByName("BASEPRE.SV1")
+	if !ok {
+		return nil
+	}
+	x, err := state.DecodeGlyphs(c.Data(i))
+	if err != nil {
+		return nil
+	}
+	return x
 }

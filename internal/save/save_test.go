@@ -716,3 +716,46 @@ func TestCommandedSurvivesInProgress(t *testing.T) {
 		}
 	}
 }
+
+// 存檔要寫這一局自己帶的字模，讀回來還在。
+//
+// **不接的話自創君主的名字存讀一輪就變空白**——人物表裡只有造字碼位
+//（`docs/spec/013` R4）。
+func TestGlyphsSurviveASaveLoadRound(t *testing.T) {
+	dir := t.TempDir()
+	g := newGame(t)
+	var want state.Glyphs
+	for i := range want {
+		for j := range want[i] {
+			want[i][j] = byte(i*7 + j)
+		}
+	}
+	g.SetGlyphs(&want)
+	if err := save.Write(dir, 1, g, "測試"); err != nil {
+		t.Fatal(err)
+	}
+	back, err := save.Read(dir, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := back.Glyphs()
+	if got == nil {
+		t.Fatal("讀回來沒有字模")
+	}
+	if *got != want {
+		t.Error("讀回來的字模與存進去的不同")
+	}
+
+	// 這一局沒帶字模時，**不要把上一次寫出去的洗掉**。
+	g2 := newGame(t)
+	if err := save.Write(dir, 1, g2, "測試"); err != nil {
+		t.Fatal(err)
+	}
+	back2, err := save.Read(dir, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back2.Glyphs() == nil || *back2.Glyphs() != want {
+		t.Error("沒帶字模的那一局把上一次的洗掉了")
+	}
+}

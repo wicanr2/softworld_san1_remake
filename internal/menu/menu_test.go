@@ -260,3 +260,56 @@ func TestOrdinaryLordDoesNotCarryCustomState(t *testing.T) {
 		t.Error("選一般君主也建了 custom 狀態")
 	}
 }
+
+// 自創君主的名字要帶著字模，否則存出去給原版讀是三個空白。
+func TestCustomLordCarriesTheShippedGlyphs(t *testing.T) {
+	s := newScreen(t)
+	s.Confirm(0)
+	s.Confirm(0)
+	first := len(s.lords) - len(s.customs)
+	s.Confirm(first)
+	s.Confirm(customRows - 1)
+	ss := s.Confirm(4)
+	if ss == nil {
+		t.Fatal("沒有開出一局")
+	}
+	gl := ss.G.Glyphs()
+	if gl == nil {
+		t.Fatal("自創君主的局沒有帶字模")
+	}
+	// 出貨的那一份是「新君主」三個字重複四次（`docs/re/08` §3），
+	// 所以**十二格都不是空的**，而且前三格與後面三組相同。
+	blank := 0
+	for i := range gl {
+		empty := true
+		for _, b := range gl[i] {
+			if b != 0 {
+				empty = false
+				break
+			}
+		}
+		if empty {
+			blank++
+		}
+	}
+	if blank != 0 {
+		t.Errorf("十二個字模裡有 %d 個是空的", blank)
+	}
+	for k := 1; k < state.CustomLords; k++ {
+		for i := 0; i < state.CustomLordNameChars; i++ {
+			if gl[k*state.CustomLordNameChars+i] != gl[i] {
+				t.Errorf("第 %d 組的第 %d 個字模與第一組不同——"+
+					"出貨的那一份應該是同三個字重複四次", k+1, i+1)
+			}
+		}
+	}
+
+	// 一般君主的局不帶字模：那一局沒有造字要畫。
+	s2 := newScreen(t)
+	s2.Confirm(0)
+	s2.Confirm(0)
+	s2.Confirm(0)
+	if ss2 := s2.Confirm(4); ss2 == nil || ss2.G.Glyphs() != nil {
+		t.Error("一般君主的局也帶了字模")
+	}
+}

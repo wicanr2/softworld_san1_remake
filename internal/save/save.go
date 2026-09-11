@@ -176,7 +176,7 @@ func Write(root string, slot int, g *game.State, name string) error {
 		{"BASESTA." + suffix, sta},
 		{"BASEGEN." + suffix, gen},
 		{"BASEPRO." + suffix, buildProgress(e, readProgress(dirFor(root, slot), slot)).Encode()},
-		{"BASEPRE." + suffix, glyphsFor(dirFor(root, slot), slot).Encode()},
+		{"BASEPRE." + suffix, glyphsOf(g, dirFor(root, slot), slot).Encode()},
 		{"REMAKE.JSON", blob},
 	}
 	for _, f := range files {
@@ -241,11 +241,26 @@ func readProgress(dir string, slot int) *state.Progress {
 	return p
 }
 
+// glyphsOf 挑這一局該寫出去的字模。
+//
+// **這一局自己帶的優先**（開自創君主的局時從原版出貨的那一份帶進來，
+// `docs/spec/013` R4）；沒有才退回「讀上一次寫出去的」——那是為了
+// 存讀一輪不要把別人畫好的字洗掉。
+func glyphsOf(g *game.State, dir string, slot int) *state.Glyphs {
+	if g != nil {
+		if x := g.Glyphs(); x != nil {
+			return x
+		}
+	}
+	return glyphsFor(dir, slot)
+}
+
 // glyphsFor 讀某個槽上一次寫出去的字模；沒有就回一組空的。
 //
-// **自創君主的字模還沒接**（`docs/spec/013` R4）：remake 做得出自創君主
-// 了，但名字的字模還沒寫進來，所以這裡多半是空的——**空的照樣要寫**，
-// 否則存檔目錄與原版的項目對不齊，將來要比對就少一份。
+// 這一局自己帶了字模就走 `glyphsOf`，走到這裡表示沒帶（一般君主的局），
+// 那就沿用上一次寫出去的——**存讀一輪不要把別人畫好的字洗掉**。
+// 都沒有就回一組空的：**空的照樣要寫**，否則存檔目錄與原版的項目
+// 對不齊，將來要比對就少一份。
 func glyphsFor(dir string, slot int) *state.Glyphs {
 	b, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("BASEPRE.SV%d", slot)))
 	if err == nil {
@@ -328,7 +343,16 @@ func Read(root string, slot int) (*game.State, error) {
 		copy(fx.Treasury[:], f.Treasury)
 		e.Factions[state.FactionID(id)] = fx
 	}
-	return game.Restore(sc, e)
+	g, err := game.Restore(sc, e)
+	if err != nil {
+		return nil, err
+	}
+	// **字模要跟著讀回來**：不讀的話存讀一輪之後自創君主的名字就變空白
+	// ——人物表裡只有造字碼位（`docs/spec/013` R4）。
+	if x := glyphsFor(dir, slot); x != nil {
+		g.SetGlyphs(x)
+	}
+	return g, nil
 }
 
 // List 回傳六個槽的概況，空槽也列出來。
