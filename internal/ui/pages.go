@@ -20,14 +20,12 @@ func GeneralList(g *game.State, prefectureID int) (string, []string) {
 	if p == nil {
 		return t("page.generals"), []string{t("msg.none")}
 	}
-	out := []string{
-		cells.Pad(t("fld.name"), 8) + cells.Pad(t("fld.rank"), 6) +
-			cells.Pad(t("fld.loyalty"), 4) + cells.Pad(t("fld.age"), 4) +
-			cells.Pad(t("fld.stamina"), 4) + cells.Pad(t("fld.intel"), 4) +
-			cells.Pad(t("fld.war"), 4) + cells.Pad(t("fld.charm"), 4) +
-			cells.Pad(t("fld.soldiers"), 7) + cells.Pad(t("fld.training"), 4) +
-			t("fld.arms"),
-	}
+	// 欄寬依內容決定（`cells.Columns`）：寫死的寬度是照中文兩個字挑的，
+	// 英文欄名一長就被截或黏到下一欄。忠誠欄是**將軍的**忠誠，
+	// 不是 `fld.loyalty`（那一格是民眾忠誠）。
+	rows := [][]string{{t("fld.name"), t("fld.rank"), t("col.loyalty"), t("fld.age"),
+		t("fld.stamina"), t("fld.intel"), t("fld.war"), t("fld.charm"),
+		t("fld.soldiers"), t("fld.training"), t("fld.arms")}}
 	for _, x := range g.Garrison(prefectureID) {
 		if x.Faction != p.Owner {
 			continue
@@ -36,16 +34,13 @@ func GeneralList(g *game.State, prefectureID int) (string, []string) {
 		if x.HasLoyalty() {
 			loyal = fmt.Sprintf("%d", x.Loyalty)
 		}
-		out = append(out, cells.Pad(PersonName(x.Name), 8)+cells.Pad(RankName(x.Rank), 6)+
-			cells.Pad(loyal, 4)+cells.Pad(fmt.Sprintf("%d", x.Age), 4)+
-			cells.Pad(fmt.Sprintf("%d", x.Stamina), 4)+
-			cells.Pad(fmt.Sprintf("%d", x.Intel), 4)+
-			cells.Pad(fmt.Sprintf("%d", x.War), 4)+
-			cells.Pad(fmt.Sprintf("%d", x.Charm), 4)+
-			cells.Pad(fmt.Sprintf("%d", x.Soldiers), 7)+
-			cells.Pad(fmt.Sprintf("%d", x.Training), 4)+
-			fmt.Sprintf("%d", x.Arms))
+		rows = append(rows, []string{PersonName(x.Name), RankName(x.Rank), loyal,
+			fmt.Sprintf("%d", x.Age), fmt.Sprintf("%d", x.Stamina),
+			fmt.Sprintf("%d", x.Intel), fmt.Sprintf("%d", x.War),
+			fmt.Sprintf("%d", x.Charm), fmt.Sprintf("%d", x.Soldiers),
+			fmt.Sprintf("%d", x.Training), fmt.Sprintf("%d", x.Arms)})
 	}
+	out := cells.Columns(rows)
 	free := g.Free(prefectureID)
 	if len(free) > 0 {
 		out = append(out, "", t("msg.freeList"))
@@ -68,28 +63,22 @@ func GeneralList(g *game.State, prefectureID int) (string, []string) {
 func TerritoryList(g *game.State, f state.FactionID) (string, []string) {
 	ids := g.Territory(f)
 	sort.Ints(ids)
-	out := []string{
-		cells.Pad(t("fld.prefecture"), 4) + cells.Pad(t("fld.name"), 6) +
-			cells.Pad(t("fld.governor"), 8) + cells.Pad(t("fld.gold"), 7) +
-			cells.Pad(t("fld.rice"), 7) + cells.Pad(t("fld.population"), 8) +
-			cells.Pad(t("fld.soldiers"), 7) + cells.Pad(t("fld.landValue"), 4) +
-			cells.Pad(t("fld.floodRate"), 4) + t("fld.loyalty"),
-	}
+	rows := [][]string{{t("fld.prefecture"), t("col.prefName"), t("fld.governor"),
+		t("fld.gold"), t("fld.rice"), t("fld.population"), t("fld.soldiers"),
+		t("col.land"), t("col.flood"), t("col.publicLoyalty")}}
 	for _, id := range ids {
 		p := g.Prefecture(id)
 		gov := "—"
 		if x := g.Governor(id); x != nil {
 			gov = PersonName(x.Name)
 		}
-		out = append(out, cells.Pad(fmt.Sprintf("%d", id), 4)+cells.Pad(PlaceName(p.Name), 6)+
-			cells.Pad(gov, 8)+cells.Pad(fmt.Sprintf("%d", p.Gold), 7)+
-			cells.Pad(fmt.Sprintf("%d", p.Rice), 7)+
-			cells.Pad(fmt.Sprintf("%d", p.Population), 8)+
-			cells.Pad(fmt.Sprintf("%d", g.Soldiers(id)), 7)+
-			cells.Pad(fmt.Sprintf("%d", p.LandValue), 4)+
-			cells.Pad(fmt.Sprintf("%d", p.FloodRate), 4)+
-			fmt.Sprintf("%d", p.PublicLoyalty))
+		rows = append(rows, []string{fmt.Sprintf("%d", id), PlaceName(p.Name), gov,
+			fmt.Sprintf("%d", p.Gold), fmt.Sprintf("%d", p.Rice),
+			fmt.Sprintf("%d", p.Population), fmt.Sprintf("%d", g.Soldiers(id)),
+			fmt.Sprintf("%d", p.LandValue), fmt.Sprintf("%d", p.FloodRate),
+			fmt.Sprintf("%d", p.PublicLoyalty)})
 	}
+	out := cells.Columns(rows)
 	lord := g.Lord(f)
 	name := tf("fld.factionN", f)
 	if lord != nil {

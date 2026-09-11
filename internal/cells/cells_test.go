@@ -174,3 +174,25 @@ func TestMinWidth(t *testing.T) {
 		t.Error("郡名的最小寬度不該超過 2")
 	}
 }
+
+// TestColumnsNeverTruncate 釘住表格的欄名不會被截、欄與欄不會黏在一起。
+//
+// 先前的表格欄寬是寫死的：英文「Governor」補到八格剛好沒有空白，
+// 與「Gold」黏成「GovernorGold」；「Flood Risk」被截成「Floo」。
+func TestColumnsNeverTruncate(t *testing.T) {
+	got := Columns([][]string{
+		{"No.", "Governor", "Flood Risk", "Loyal"},
+		{"1", "陳就", "43", "36"},
+		{"41", "Zhuge Liang", "7", "100"},
+	})
+	want := []string{
+		"No. Governor    Flood Risk Loyal",
+		"1   陳就        43         36",
+		"41  Zhuge Liang 7          100",
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("第 %d 列：\n  排出來 %q\n  想要   %q", i, got[i], want[i])
+		}
+	}
+}

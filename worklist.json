@@ -1080,22 +1080,47 @@
       "layer": "verification"
     },
     {
+      "id": "art-main-overlays",
+      "title": "原版素材主畫面看得到指令表、子選單、挑選清單與分頁",
+      "group": "畫面",
+      "layer": "feature",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014"
+      ],
+      "note": "預設畫面（`-art`）先前**只畫提示**：打開子選單、挑選清單、數字輸入或分頁，畫出來與沒打開差 0 個位元組——玩家看不到任何選項，只能靠記憶操作。文字版一直都有畫，所以別的測試看不出來。\n\n照原版補（`TestZZSubMenuScreens` 在 dosgolem 裡把九個子選單各存一張、逐列量墨水）：主提示時上面板是**十項指令表**（兩欄五列、雙倍字、偶數黃奇數洋紅），按 `0` 或方向鍵換郡才換成郡的資料；子選單畫在**下面板**四行，中文與原版字串逐行相同；分頁蓋整個內容區、藍底。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/ui",
+        "run": "TestArtSessionDrawsWhatThePlayerNeeds|TestSubMenuLinesMatchTheOriginal|TestSubMenusShowInFullInEveryLanguage|TestCommandMenuLayout|TestPagesFitTheOverlayInEveryLanguage",
+        "needs": [
+          "org_game"
+        ]
+      }
+    },
+    {
       "id": "i18n-slot-overflow",
-      "title": "槽位溢出只處理了地圖",
+      "title": "槽位溢出：選單與分頁量過了，郡的資料面板與年月直排還沒",
       "group": "多語系",
       "milestone": "M7",
       "status": "open",
       "level": null,
       "edition": null,
       "docs": [
-        "CLAUDE.md §3.3"
+        "CLAUDE.md §3.3",
+        "docs/spec/014"
       ],
-      "note": "地圖格寬依最長郡名自動調整；其餘畫面的槽位長度是原版版面決定的，英文常比中文長，塞不下的地方要在 `docs/spec/` 記為 remake 差異。",
+      "note": "**2026-09-11 量過的**（`docs/spec/014` §3）：\n① 子選單——中文九類與原版字串逐行相同；英文 1／3／7／9 類排不進下面板改畫上面板、8 類（`2.Befriend Afar, Attack Near` 28 格）改蓋內容區；日文九類都在下面板。\n② 十項指令表——十項有一項超過 4 格就整張改畫一倍字（英日文）。\n③ 分頁——表格改成依內容定欄寬（`cells.Columns`）。先前寫死的寬度會截斷：英文 `GovernorGold`、`Floo`、職位被截到六格；中文的將軍列表把將軍的忠誠欄標成「民眾」。現在三個語系在劇本 001 開局的每一個郡、勢力與將軍上都在 68 格內（繁中 60、英文 67、日文 52）。\n\n**還沒做的**：郡的資料面板的欄名是寫死的中文（標籤 ＋ 靠右的數值共 12 格，英文要短欄名）；左側直條的年月在英文下一個字母一列；戰場畫面的部隊表（`battlescreen.go` 還用寫死寬度的 `Pad`）沒量。",
       "acceptance": "三個語系在每一個畫面都不溢出，或溢出處逐一記成 remake 差異",
       "verify": {
-        "kind": "manual",
-        "why": "「其餘未逐項驗」沒有對應的程式碼訊號——`internal/cells` 有的是「會處理溢出」的測試，不是「哪些畫面還沒驗」的清單。",
-        "note": "接上時該綁的：把每個畫面的槽位寬度做成一份 JSON，用 `json_len` 綁「已驗過的畫面數」——項數比註解穩。"
+        "kind": "present",
+        "paths": [
+          "internal/ui/artscreen.go"
+        ],
+        "pattern": "欄名還沒接譯文"
       },
       "layer": "verification"
     },
@@ -1174,7 +1199,7 @@
       ],
       "note": "`docs/spec/007`（`READY`）。三條 `L0`：\n\n1. `0x1938a` 的迴圈把**整份出征名單**的人物 offset 19 都寫成目標郡（remake 原本只搬 `force[0]`）。\n2. 來源郡的金米減完夾 0，目標郡加完在 16 位元變負時設成 30000。\n3. 沒有「主事者要有人接手」這道閘門——整郡搬空是允許的，歸屬由 `0x1e394` 從人物表重算。玩家的「調動軍隊」（`0x18ce1`）是另一支碼，**不合併**。\n\n同一輪修掉的還有編隊：`0xb2b4` 收尾把清單截短並寫回 `es:0xc`，`0xb706` 洗的是那一份截短的。remake 原本兩次都重新拿整份守軍，郡 6 因此多抽一次亂數（原版 7／remake 8），而它是視窗裡的第一格。",
       "verify": {
-        "kind": "present",
+        "kind": "absent",
         "paths": [
           "docs/spec/007-ai-relocation.md"
         ],

@@ -178,6 +178,11 @@ func (a *ArtScreen) Compose(g *game.State, sel int) *assets.Image {
 //
 // 畫布要正好 640×408（`assets.ScreenW`／`ScreenH`）——原版的版面是
 // 按像素排的，格對不齊時字會壓到花邊上。
+//
+// 右側兩塊面板放什麼由 `View` 決定（`docs/spec/014`）：上面板是指令表、
+// 郡的資料或挑選清單，下面板是子選單或提示；分頁蓋掉整個內容區。
+// **每一樣都要畫出來**——這一支先前只畫提示，打開子選單與沒打開畫出來
+// 差 0 個位元組，玩家在預設畫面上看不到任何選項。
 func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View) {
 	sel := v.Sel
 	if sel <= 0 {
@@ -191,6 +196,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	if p == nil {
 		return
 	}
+	upper, subLower := artUpperOf(v)
 
 	im := a.Compose(g, sel)
 	// 右側兩塊面板：先拼外框與底色，再把肖像與它的框疊上去。
@@ -202,16 +208,18 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 			im.DrawPanel(pn, a.panels[i])
 		}
 	}
-	if who := g.Governor(sel); who != nil {
-		if face := a.Portrait(int(who.Portrait)); face != nil {
-			im.Blit(face, artPortraitX, artPortraitY)
+	if upper == artUpperStatus {
+		if who := g.Governor(sel); who != nil {
+			if face := a.Portrait(int(who.Portrait)); face != nil {
+				im.Blit(face, artPortraitX, artPortraitY)
+			}
 		}
-	}
-	if a.havePanel {
-		im.Blit(a.frame[0], artFrameX, artFrameY)       // 上
-		im.Blit(a.frame[1], artFrameX, artFrameY+88)    // 下
-		im.Blit(a.frame[2], artFrameX, artPortraitY)    // 左
-		im.Blit(a.frame[3], artFrameX+72, artPortraitY) // 右
+		if a.havePanel {
+			im.Blit(a.frame[0], artFrameX, artFrameY)       // 上
+			im.Blit(a.frame[1], artFrameX, artFrameY+88)    // 下
+			im.Blit(a.frame[2], artFrameX, artPortraitY)    // 左
+			im.Blit(a.frame[3], artFrameX+72, artPortraitY) // 右
+		}
 	}
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{}, draw.Src)
@@ -223,6 +231,255 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 			color.RGBA{0x00, 0x00, 0x00, 0xFF})
 	}
 
+	// **下面板先畫**：清單寬到要蓋整個內容區時，覆蓋頁要蓋在它上面，
+	// 不能讓提示字浮在覆蓋頁上。
+	drawArtLower(c, log, v, subLower)
+	switch upper {
+	case artUpperStatus:
+		drawArtStatus(c, g, p, sel)
+	case artUpperList:
+		if !drawArtList(c, v.Menu, v.Items) {
+			// 標籤寬過上面板（存檔槽的描述、英文的計略名）就改蓋整個內容區。
+			drawArtOverlay(c, v.Menu, commandLines(v.Items), t("hint.pick"))
+		}
+	default:
+		drawArtCommands(c)
+	}
+	if len(v.Page) > 0 {
+		drawArtOverlay(c, v.PageTitle, v.Page, t("hint.page"))
+	}
+}
+
+// artUpper 是上面板放什麼（`docs/spec/014` §3.1）。
+type artUpper int
+
+const (
+	artUpperCommands artUpper = iota // 十項指令表（原版主提示時的樣子）
+	artUpperStatus                   // 郡的資料（原版的「0.狀態」）
+	artUpperList                     // 挑選清單或數字輸入
+)
+
+// artUpperOf 決定上面板放什麼；第二個回傳值是「類別子選單畫在下面板」。
+func artUpperOf(v View) (artUpper, bool) {
+	if v.Menu != "" {
+		if k := subMenuKey(v.Menu); k != 0 && subMenuFitsLower(k, v.Items) {
+			// 子選單打開時上面板**維持指令表**（原版 `sub-9` 與 `sub-0`
+			// 的上面板逐段相同）。
+			return artUpperCommands, true
+		}
+		// 挑選清單、數字輸入，以及**譯文排不進下面板的子選單**
+		//（英文的計略名一項就 28 格）改成上面板一行一項。
+		return artUpperList, false
+	}
+	if v.Status {
+		return artUpperStatus, false
+	}
+	return artUpperCommands, false
+}
+
+// subMenuFitsLower 回報這一類的子選單排得進下面板（四行 × 24 格）。
+// 中文九類全部排得進，與原版一樣；放不下的是譯文。
+func subMenuFitsLower(k byte, items []Command) bool {
+	w := (artRightR - artMsgX) / CellW
+	lines := SubMenuLines(k, items, w)
+	if len(lines) > artLowerRows {
+		return false
+	}
+	for _, l := range lines {
+		if cells.Width(l) > w {
+			return false
+		}
+	}
+	return true
+}
+
+// subMenuKey 是這個標題屬於哪一類的子選單；不是類別子選單回 0。
+//
+// **用標題認，不另外記狀態**：挑選清單與數字輸入也用 `View.Menu`，
+// 多一個欄位就多一處會忘了清掉的狀態。挑選清單的標題是「挑哪一位」
+// 這一類問句，與九個類別名不會撞。
+func subMenuKey(title string) byte {
+	for k := byte('1'); k <= '9'; k++ {
+		if name, _ := SubMenu(k); name == title {
+			return k
+		}
+	}
+	return 0
+}
+
+// 上面板與內容區覆蓋頁的版面（`docs/spec/014` §2.1、§3.3）。
+const (
+	artUpperX    = 424 // 上面板文字區左緣
+	artUpperY    = 52  // 上面板文字區第一列
+	artUpperCols = 24  // 424–616
+	artUpperRows = 14  // 52–276
+
+	artCmdRightX = 536 // 指令表右欄
+	artCmdRowDY  = 48  // 指令表每列 +48
+	artCmdMaxW   = 4   // 名稱畫雙倍字最多幾格（64 像素，原版兩個全形字）
+	artCmdEdge   = 624 // 上面板內緣（右邊的外框從這裡開始）
+
+	artLowerRows = 4 // 下面板 300／316／332／348
+
+	artPageX0, artPageY0 = 72, 36   // 內容區：地圖 ＋ 右側面板
+	artPageX1, artPageY1 = 632, 372 // 70 格 × 21 行
+)
+
+// 指令表與覆蓋頁的字色（EGA 色號，量自原版畫面）。
+var (
+	artInkCmdEven = assets.EGAPalette[14] // 偶數項黃
+	artInkCmdOdd  = assets.EGAPalette[13] // 奇數項洋紅
+	artInkCmdKey  = assets.EGAPalette[15] // 編號白
+	artInkList    = assets.EGAPalette[15]
+	artInkPageBG  = assets.EGAPalette[1] // 分頁的藍底（原版將軍資料頁）
+	artInkPageDim = assets.EGAPalette[11]
+)
+
+// drawArtCommands 畫上面板的十項指令表（`docs/spec/014` §2.1）。
+//
+// 兩欄五列：編號「`0.`」是 16×16 貼在列的下半，名稱是 32×32 雙倍字；
+// 名稱**偶數項黃、奇數項洋紅**。
+//
+// 雙倍字的寬度是照原版兩個全形字排的（64 像素）：右欄的名稱從 552 起，
+// 到面板內緣只剩 72 像素。**十項有一項放不下就整張改畫一倍字**、垂直
+// 置中——同一張表大小混雜，看起來像排版壞了。中文十項都是兩個字，
+// 所以永遠是雙倍字，與原版相同。
+func drawArtCommands(c *Canvas) {
+	cmds := Commands()
+	double := true
+	for _, cmd := range cmds {
+		if cells.Width(cmd.Name) > artCmdMaxW {
+			double = false
+		}
+	}
+	for i, cmd := range cmds {
+		x, y := artUpperX, artUpperY+(i%5)*artCmdRowDY
+		limit := artCmdRightX // 左欄的名稱不能壓到右欄的編號
+		if i >= 5 {
+			x, limit = artCmdRightX, artCmdEdge
+		}
+		x += c.DrawTextPx(x, y+CellH, string(cmd.Key)+".", artInkCmdKey)
+		ink := artInkCmdEven
+		if i%2 == 1 {
+			ink = artInkCmdOdd
+		}
+		if double {
+			for _, r := range cmd.Name {
+				x += c.DrawRuneScaledPx(x, y, r, ink, 2, 2)
+			}
+			continue
+		}
+		c.DrawTextPx(x, y+CellH/2, cells.Truncate(cmd.Name, (limit-x)/CellW), ink)
+	}
+}
+
+// drawArtList 把挑選清單或數字輸入畫在上面板：標題一列、一行一項。
+// 標籤寬過上面板時回 false，讓呼叫端改畫在內容區。
+func drawArtList(c *Canvas, title string, items []Command) bool {
+	lines := commandLines(items)
+	if cells.Width(title) > artUpperCols {
+		return false
+	}
+	for _, l := range lines {
+		if cells.Width(l) > artUpperCols {
+			return false
+		}
+	}
+	c.DrawTextPx(artUpperX, artUpperY, title, artInkName)
+	for i, l := range lines {
+		if 1+i >= artUpperRows {
+			c.DrawTextPx(artUpperX, artUpperY+(artUpperRows-1)*CellH,
+				cells.Truncate(t("msg.more"), artUpperCols), artInkPageDim)
+			break
+		}
+		c.DrawTextPx(artUpperX, artUpperY+(1+i)*CellH, l, artInkList)
+	}
+	return true
+}
+
+// commandLines 把清單項目排成一行一項：數字鍵寫成原版的「`1.名稱`」。
+//
+// 數字輸入借 `Command` 放「= 數值」與「上限」兩行（`cmd/san1` 的
+// `showNumber`），那兩個鍵不是數字，照「`= 30`」印；鍵是空白的那一行
+// 不印編號。
+func commandLines(items []Command) []string {
+	out := make([]string, 0, len(items))
+	for _, it := range items {
+		switch {
+		case it.Key == ' ':
+			out = append(out, "  "+it.Name)
+		case it.Key >= '0' && it.Key <= '9':
+			out = append(out, string(it.Key)+"."+it.Name)
+		default:
+			out = append(out, string(it.Key)+" "+it.Name)
+		}
+	}
+	return out
+}
+
+// drawArtLower 畫下面板：類別子選單照原版斷行，其餘時候放提示或最後一則
+// 訊息，最多四行（`docs/spec/014` §3.2）。
+func drawArtLower(c *Canvas, log []string, v View, subLower bool) {
+	w := (artRightR - artMsgX) / CellW
+	var lines []string
+	k := subMenuKey(v.Menu)
+	switch {
+	case v.Menu != "" && k != 0 && subLower:
+		lines = SubMenuLines(k, v.Items, w)
+	case v.Menu != "" && k != 0:
+		// 子選單改畫在上面板了，下面板只留原版那一行提示字。
+		lines = []string{t(subMenuPrompt[k])}
+	default:
+		msg := v.Prompt
+		if msg == "" && len(log) > 0 {
+			msg = log[len(log)-1]
+		}
+		if v.Over {
+			lines = append(lines, cells.Wrap(t("msg.over"), w)...)
+		}
+		if msg != "" {
+			// 原版是**兩行**（「新君主主公,請到(41)」／「南海下您的命令:」），
+			// 一句話折過去，不是兩則訊息。
+			lines = append(lines, cells.Wrap(msg, w)...)
+		}
+	}
+	for i, line := range lines {
+		if i >= artLowerRows {
+			break
+		}
+		c.DrawTextPx(artMsgX, artMsgY+i*artMsgDY, line, artInkMsg)
+	}
+}
+
+// drawArtOverlay 把一整頁蓋在內容區上（`docs/spec/014` §3.3）：藍底、
+// 標題黃、內容白，最後一行是關閉的提示。
+func drawArtOverlay(c *Canvas, title string, body []string, hint string) {
+	c.FillRect(artPageX0, artPageY0, artPageX1, artPageY1, artInkPageBG)
+	cols := (artPageX1-artPageX0)/CellW - 2
+	rows := (artPageY1 - artPageY0) / CellH
+	x := artPageX0 + CellW
+	c.DrawTextPx(x, artPageY0, cells.Truncate(title, cols), artInkName)
+	last := rows - 1 // 最後一行留給提示
+	for i, line := range body {
+		row := 1 + i
+		if row >= last-1 && i < len(body)-1 {
+			c.DrawTextPx(x, artPageY0+row*CellH,
+				cells.Truncate(t("msg.more"), cols), artInkPageDim)
+			break
+		}
+		c.DrawTextPx(x, artPageY0+row*CellH, cells.Truncate(line, cols), artInkList)
+	}
+	if hint != "" {
+		c.DrawTextPx(x, artPageY0+last*CellH, cells.Truncate(hint, cols), artInkPageDim)
+	}
+}
+
+// drawArtStatus 畫上面板的郡的資料（原版的「0.狀態」，`docs/spec/005` §2.1）。
+//
+// ⚠ 欄名還沒接譯文：這一塊的字是照原版畫面寫死的中文，英日文下也顯示
+// 「土地價值」「人望」（`docs/spec/014` §6）。標籤 ＋ 靠右的數值共 12 格，
+// 英文要用短欄名才塞得進。
+func drawArtStatus(c *Canvas, g *game.State, p *game.Prefecture, sel int) {
 	// 第一列：郡名是 32×32 的雙倍字，州名與編號在它右邊。
 	x := artNameX
 	for _, r := range p.Name {
@@ -283,23 +540,6 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	right(artRightR, 244, num(len(g.Garrison(p.ID))), artInkField)
 	c.DrawTextPx(artRightX, 260, "兵士", artInkField)
 	right(artRightR, 260, num(g.Soldiers(p.ID)), artInkField)
-
-	// 下面板兩行提示。**它有自己的底色與外框**，不是壓在地圖上的一條。
-	msg := v.Prompt
-	if msg == "" && len(log) > 0 {
-		msg = log[len(log)-1]
-	}
-	if msg != "" {
-		// 原版是**兩行**（「新君主主公,請到(41)」／「南海下您的命令:」），
-		// 一句話折過去，不是兩則訊息。
-		w := (artRightR - artMsgX) / CellW
-		for i, line := range cells.Wrap(msg, w) {
-			if i >= 2 {
-				break
-			}
-			c.DrawTextPx(artMsgX, artMsgY+i*artMsgDY, line, artInkMsg)
-		}
-	}
 }
 
 

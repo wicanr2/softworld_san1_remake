@@ -73,6 +73,12 @@ type View struct {
 	// Calendar 是年月的表示方式（原版「其他 → 年號」，手冊 p.26）。
 	// 零值是中曆，與原版的預設相同。
 	Calendar game.Calendar
+
+	// Status 為真時，原版素材畫面的上面板畫**郡的資料**；否則畫十項
+	// 指令表（`docs/spec/014` §3.1）。原版等玩家下令時上面板是指令表，
+	// 按「0.狀態」才換成郡的資料——這一格就是那個開關。文字版的畫面
+	// 兩樣都一直畫著，不看它。
+	Status bool
 }
 
 // DrawMainScreen 畫遊戲主畫面。
@@ -355,6 +361,55 @@ func SubMenu(key byte) (string, []Command) {
 		items = append(items, Command{Key: MenuKey(i), Name: t(k)})
 	}
 	return t(title), items
+}
+
+// subMenuPrompt 是每一類子選單最後那一行的提示字（`docs/re/04` §2）。
+// 謀略的「那一頂:」是原版字，照原樣留著（同「洪水防冶」）。
+var subMenuPrompt = map[byte]string{
+	'1': "sub.choose", '2': "sub.order", '3': "sub.order", '4': "sub.order",
+	'5': "sub.order", '6': "sub.order", '7': "sub.order", '8': "sub.which",
+	'9': "sub.choose",
+}
+
+// subMenuPerLine 是原版斷行的例外：「軍事」一行一項
+//（`1.調動軍隊\n2.發動戰役\n3.運送錢糧\n請下命令:`），兩項其實塞得下。
+// 其餘八類都是「塞得下就接在同一行」。
+var subMenuPerLine = map[byte]int{'2': 1}
+
+// SubMenuLines 把一類的子選單排成原版下面板上的樣子
+//（`docs/spec/014` §2.2）：`編號.名稱`、項目之間一個半形空白、塞得下
+// 就接在同一行，最後一行是提示字。cols 是一行幾格。
+//
+// **中文照這個規則排出來與原版字串逐行相同**（`TestSubMenuLinesMatchTheOriginal`），
+// 所以英日文用同一個規則就是「原版會怎麼排」。項目多到四行放不下提示字
+// 時，提示字擠到最後一行後面（「其他」有十項，`docs/spec/014` §3.4）。
+func SubMenuLines(key byte, items []Command, cols int) []string {
+	var lines []string
+	cur, n := "", 0
+	per := subMenuPerLine[key]
+	for _, it := range items {
+		s := string(it.Key) + "." + it.Name
+		if cur != "" && (cells.Width(cur)+1+cells.Width(s) > cols || (per > 0 && n >= per)) {
+			lines = append(lines, cur)
+			cur, n = "", 0
+		}
+		if cur != "" {
+			cur += " "
+		}
+		cur += s
+		n++
+	}
+	if cur != "" {
+		lines = append(lines, cur)
+	}
+	prompt := t(subMenuPrompt[key])
+	if k := len(lines); k >= artLowerRows && k > 0 &&
+		cells.Width(lines[k-1])+1+cells.Width(prompt) <= cols {
+		lines[k-1] += " " + prompt
+	} else {
+		lines = append(lines, prompt)
+	}
+	return lines
 }
 
 // MenuKey 是子選單第 i 項的按鍵。

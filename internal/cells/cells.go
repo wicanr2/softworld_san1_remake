@@ -190,6 +190,43 @@ func Pad(s string, cols int) string {
 	return s
 }
 
+// Columns 把一張表排成等寬欄：每一欄取**那一欄最寬的格子**當欄寬，
+// 欄與欄之間空一格，最後一欄不補空白。
+//
+// **欄寬不能寫死。** 寫死的寬度是照中文兩個字（四格）挑的，換成英文
+// 「Governor」就一格空白都不剩地黏在下一欄上，「Flood Risk」被
+// `Pad` 截成「Floo」——而這些都不會報錯。依內容決定欄寬，欄名永遠
+// 不會被截。
+func Columns(rows [][]string) []string {
+	var widths []int
+	for _, r := range rows {
+		for i, c := range r {
+			if i >= len(widths) {
+				widths = append(widths, 0)
+			}
+			if w := Width(c); w > widths[i] {
+				widths[i] = w
+			}
+		}
+	}
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		line := ""
+		for i, c := range r {
+			if i == len(r)-1 {
+				line += c
+				break
+			}
+			line += c
+			for w := Width(c); w < widths[i]+1; w++ {
+				line += " "
+			}
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
 // Center 把字串置中到 cols 格。
 //
 // 多出來的一格放在**右邊**——原版的兩字郡名放在四格槽裡是

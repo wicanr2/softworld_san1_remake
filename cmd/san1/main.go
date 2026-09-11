@@ -222,6 +222,8 @@ func (a *app) cycle(d int) {
 	}
 	i = (i + d + len(own)) % len(own)
 	a.view.Sel = own[i]
+	// 換了郡就要看得到那一郡：上面板換成郡的資料（`docs/spec/014` §3.1）。
+	a.view.Status = true
 	a.dirty = true
 }
 
@@ -244,6 +246,8 @@ func (a *app) press(k byte) {
 		title, items := ui.SubMenu(k)
 		if items == nil {
 			if k == '0' {
+				// 原版的「0.狀態」：上面板換成郡的資料（`docs/spec/014` §2.1）。
+				a.view.Status = true
 				a.view.Prompt = t("msg.statusHere")
 			} else {
 				a.view.Prompt = tf("msg.notYet", commandName(k))
@@ -252,6 +256,8 @@ func (a *app) press(k byte) {
 		}
 		a.menu, a.view.Menu, a.view.Items = k, title, items
 		a.view.Prompt, a.view.Page = "", nil
+		// 子選單打開時上面板回到指令表，與原版相同（`docs/spec/014` §2.2）。
+		a.view.Status = false
 		return
 	}
 	a.begin(a.menu, k)
