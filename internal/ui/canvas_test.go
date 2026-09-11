@@ -233,16 +233,17 @@ func TestEveryMainCommandHasASubMenu(t *testing.T) {
 
 // TestTimeColumnShowsTheEra 釘住左側直排顯示的是年號，而且切得掉。
 //
-// 原版主畫面左側直排寫「中平六年元月」（F41）。這一條盯的是
-// **畫面上真的畫出那六個字**——`Date.Format` 對不代表有人叫它。
+// 原版主畫面左側直排寫「中平六年元月春」（F41 ＋ 季節那一格）。
+// 這一條盯的是**畫面上真的畫出那七個字**——`Date.FormatWithSeason` 對
+// 不代表有人叫它。
 func TestTimeColumnShowsTheEra(t *testing.T) {
 	face := testFace(t)
 	for _, c := range []struct {
 		cal  game.Calendar
 		text string
 	}{
-		{game.ChineseEra, "中平六年元月"},
-		{game.Western, "189年1月"},
+		{game.ChineseEra, "中平六年元月春"},
+		{game.Western, "189年1月春"},
 	} {
 		canvas := NewCanvas(Cols, Rows, face)
 		canvas.Fill(ColBG)

@@ -201,6 +201,7 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 			Field:      p.BattleField,
 			ID:         p.ID,
 			Portrait:   [2]int{-1, -1},
+			Date:       game.ScenarioStart[sc.Slot],
 		}
 		for k, side := range []battle.Side{battle.MainAttacker, battle.MainDefender} {
 			for _, u := range b.Units {

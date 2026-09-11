@@ -233,3 +233,50 @@ func (c *Canvas) InkAt(col, row int, bg color.RGBA) int {
 	}
 	return n
 }
+
+// DrawRuneBoxDitherPx 把一個字縮放進一個方框，前景用兩色棋盤畫。
+//
+// 兩件事是原版的（`docs/spec/011`）：
+//
+//   - **方框不是格**：主戰場下方花邊上的年月是十個 24 寬的格子，
+//     而 remake 的字模是 16×16。整數倍放不進去（16→24 是 1.5 倍），
+//     所以這裡按比例取樣，不是整數倍複製。
+//   - **前景是兩色棋盤**：`(x+y)` 是奇數用 a、偶數用 b。原版那一行字
+//     量到灰（色 7）538 點與綠（色 2）502 點逐像素交錯，相位就是這個
+//     ——不是「主色 ＋ 陰影」（右下只有 4 點）。
+//
+// 字模缺字時記一筆 Missing 就回來，與其他畫字的路徑一致。
+func (c *Canvas) DrawRuneBoxDitherPx(px, py, w, h int, r rune, a, b color.RGBA) {
+	if w <= 0 || h <= 0 {
+		return
+	}
+	g, ok := c.face.Glyph(r)
+	if !ok {
+		c.Missing[r]++
+		return
+	}
+	if g.W <= 0 || g.H <= 0 {
+		return
+	}
+	for dy := 0; dy < h; dy++ {
+		yy := py + dy
+		if yy < 0 || yy >= c.Img.Bounds().Dy() {
+			continue
+		}
+		gy := dy * g.H / h
+		for dx := 0; dx < w; dx++ {
+			xx := px + dx
+			if xx < 0 || xx >= c.Img.Bounds().Dx() {
+				continue
+			}
+			if !g.At(dx*g.W/w, gy) {
+				continue
+			}
+			fg := b
+			if (xx+yy)%2 == 1 {
+				fg = a
+			}
+			c.Img.SetRGBA(xx, yy, fg)
+		}
+	}
+}

@@ -63,6 +63,34 @@ const (
 // BattlePanelX 是三個面板的左緣：攻方、守方、指令列。
 var BattlePanelX = [3]int{64, 256, 448}
 
+// 主戰場下方花邊上那一行年月（`docs/spec/011`）。
+//
+// 量在原版基準畫面上（`workplace/shots/bf/orig-battle.png`，
+// 「建安二年九月秋」）：**十個格子**，每格 24 寬、左緣
+// `BattleDateX + i*BattleDateStep`，字的上緣 `BattleDateY`、高
+// `BattleDateH`。
+//
+// 十格裡只有七格有字——空的那三格（2、4、6 之中）是版面的一部分，
+// 不是漏畫：年數與月份各佔兩格且**靠右**，個位數就只用右邊那一格。
+const (
+	BattleDateX     = 128
+	BattleDateStep  = 40
+	BattleDateW     = 24
+	BattleDateY     = 378
+	BattleDateH     = 23
+	BattleDateCells = 10
+)
+
+// 那一行字的兩個色號。
+//
+// **不是「主色 ＋ 陰影」**：量到灰（7）538 點與綠（2）502 點**逐像素
+// 交錯**，(+1,0) 有 388、(0,+1) 有 329，而右下 (+1,+1) 只有 4 點——
+// 那是 `(x+y)` 的棋盤網點，不是位移的影子。
+const (
+	BattleDateInkOdd  = 7 // (x+y) 奇數
+	BattleDateInkEven = 2 // (x+y) 偶數
+)
+
 // BattleFrameX 是兩個肖像框的左緣。**攻方的框在左、守方的在右**，
 // 兩人因此面對面。
 var BattleFrameX = [2]int{64, 352}

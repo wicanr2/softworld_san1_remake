@@ -326,7 +326,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
 | 諸侯記錄 72 個位元組裡還有 62 個沒解 | 未完成 | L2 | both | **要人判** | 已解 10 個：offset 2 君主、4 AI 等級、6 軍師、8 人望、14–18 五格寶庫。**offset 10–13、19–71 不是外交狀態**——五支謀略讀寫的都是州郡與人物的欄位。（`docs/spec/003`） |
-| `.MSK` 怎麼與圖搭配還沒解 | 未完成 | — | base | present：docs/formats/07-images.md 的「`.MSK` 與 `8x8AND*`（遮罩）怎麼與圖搭配」 | `8x8AND*` 那四張已經解了（紮寨蓋的是 `AND0`，78 格裡 73 格逐像素相同，`TestCampMaskMatchesTheOriginal`）；剩下的是 `.MSK`——只有 `ENDO4.MSK`，而那一組不在容器裡。訊號綁 `docs/formats/07` 的「還沒解」清單。（`docs/formats/01`） |
+| `.MSK` 怎麼與圖搭配還沒解 | 未完成 | — | base | present：docs/formats/07-images.md 的「`.MSK` 與 `8x8AND*`（遮罩）怎麼與圖搭配」 | `8x8AND*` 那四張已經解了（紮寨蓋的是 `AND0`，78 格裡 73 格逐像素相同，`TestCampMaskMatchesTheOriginal`）；剩下的是 `.MSK`——只有 `ENDO4.MSK`，而那一組不在容器裡。訊號綁 `docs/formats/07` 的「還沒解」清單。  主戰場下方年月那一行的網點**與遮罩無關**，已經解成 `(x+y)%2` 的兩色棋盤（`docs/spec/011` §2）——這一條原本被當成它的 blocker，現在解開了。（`docs/formats/01`） |
 | 配樂的追認規格 | 完成 | L1 | both | `TestParseAllSongs`、`TestStreamSilenceKeepsTime`、`TestBadDataIsRejected` | `internal/music` 先寫完才補規格。規格只描述已經驗過的行為，沒驗的（滑音、每拍 tick 數、換曲時機、`MUSV` 在哪用）列在 §5。（`docs/spec/009`、`docs/formats/06`） |
 | `.OKR` 是 PC 喇叭的語音（共 465 項 ＝ DATA2 418 ＋ DATA3 47） | 完成 | L1 | both | `TestSpeechClipsAreTheAssetBytes` | 整支播放器解出來了：`.OKR` 是**一位元 PCM**，最高位先送，沒有表頭、沒有壓縮。長串的 `FF` 與 `00` 是靜音與飽和段。  ⚠ 這一條原本記著「壓縮過、格式未解」而且推論「原版主戰場的地形版面在 `.OKR` 裡」——**兩句都錯**。戰場地圖在州郡記錄的第 55–174 個位元組（`docs/spec/003`）；`internal/battle` 的註解已經跟著改掉。推翻紀錄在 `CONTEXT.md` R54。（`docs/re/09`、`docs/spec/008`） |
 
@@ -335,9 +335,9 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
 | 主選單小飾框那六格動畫的圖從哪來 | 未完成 | L1 | base | present：internal/assets/dosboxx_test.go 的「不參加逐點比對」 | 量到了：**六格**，一輪約 1,400 萬道指令（`TestZZMenuOrnamentFrames`）。先前只知道「連拍兩張會不同」。  還沒解的是**畫格從哪個素材來**——`MENU3.IMG` 是靜態外框，六格的圖不在裡面。在那之前 remake 不畫，那一塊也不參加逐點比對（`internal/assets` 的 `menuAnim`）。  順序也還沒定：取樣間隔（200 萬）與一格的長度（約 230 萬）太接近，量到的序列有別名，要更密的取樣。（`docs/re/10`、`docs/spec/005`） |
-| 主戰場下方花邊上的日期沒畫 | 未完成 | L1 | base | present：internal/ui/artbattle.go 的「remake 還沒畫下方花邊上的年月」 | 畫面改回 408 之後看得到了：原版在 `MAINMAP8` 的花邊上寫一行年月。**量到的（拿原版基準與 remake 逐點 diff，2026-09-10）**： ・十格，每格 24×24，`x = 128 + 40i`（i ＝ 0..9），字的上緣 `y = 378`。 ・落點（單一樣本「建安二年九月秋」）：年號格 0–1、年數格 2–3（靠右，所以個位數的「二」在格 3）、**格 4 一直是空的**、「年」格 5、月份格 6–7（靠右）、「月」格 8、季節格 9。 ・字色**不是實心的**：灰（色號 7）538 點與綠（色號 2）502 點**交錯**——綠不在灰的右下（+1,+1 只有 4 點），(+1,0) 有 388、(0,+1) 有 329，是逐像素相鄰。所以那是網點或遮罩，不是「主色＋陰影」。**成因未解**，可能與還沒解的 `8x8AND*`／`.MSK` 遮罩是同一件事。  ⚠ **兩件事還不能實作**：(1) 版面規則只有**一個樣本**，年數或月份佔兩格時怎麼排沒驗過；(2) 網點的機制沒解，照「灰色實心字」畫會得到一個看起來對而機制錯的東西（`CLAUDE.md` §7 第 16 條：統計特徵不是語意）。（`docs/spec/005`、`docs/spec/006`） |
 | 長沙的填色對不上 | 未完成 | L1 | base | present：internal/ui/artfill_test.go 的「長沙」 | 原版畫圖樣 0（純淺紅），而州郡記錄的所屬寫的是 2。35 個有主的郡裡其餘 34 個全中。 訊號在 `internal/ui/artfill_test.go`（`include_tests`）：那一格是**已知例外**，容忍它的理由就寫在測試的註解裡。（`docs/formats/07`） |
 | 計謀得手的四種拉幕轉場 | 完成 | L1 | base | `TestWipeStepCountsMatchTheOriginal`、`TestWipeTouchedAreaGrowsFromTheEdge`、`TestWipeSlidesTheNewPictureIn` | 四個分支逐步量畫面（`TestZZTransitionFrames`）：**效果是「新畫面整塊滑進來」**——第 n 步把新畫面靠對邊的那一塊貼到這一邊，最後一步兩邊重合、歸位。  判準是**與前一步差異的範圍**：量到的是整個已蓋區（分支 0 第 5 步 `y80–99`），「逐條露出」的話那只會是新增的 `y96–99`——兩個模型在縮圖上看起來一樣。  remake 是 `internal/ui.Wipe` ＋ `game.PendingWipe`，每一步一聲音效。⚠ **搬運常式 `es:[0x3efc]` 沒有反組譯**，結論是從行為量的；「失敗會不會也轉場」也還沒有樣本（`docs/spec/010` §7）。（`docs/re/10`、`docs/spec/010`） |
+| 主戰場下方花邊上的日期沒畫 | 完成 | L1 | base | `TestBattleDateCellsMatchTheOriginalSample`、`TestBattleDateCellsAlignRight`、`TestDrawRuneBoxDitherAlternates` | 十格版面（每格 24 寬、左緣 `128+40i`、上緣 `y=378`）與**兩色棋盤**（`(x+y)` 奇數色 7、偶數色 2）都量出來了，`drawBattleDate` 畫上去。  ⚠ 原本記著「網點的機制沒解，可能與 `8x8AND*`／`.MSK` 遮罩是同一件事」——**量相位就知道不必扯到遮罩**：(+1,0) 有 388、(0,+1) 有 329、右下 (+1,+1) 只有 4 點，那是 `(x+y)%2` 不是陰影。  ⚠ 還是**只有一個樣本**（建安二年九月秋）：年數三個中文字時怎麼排、西曆那條路寫什麼都沒量過（`docs/spec/011` §5）。字形也不與原版逐點比——remake 不內嵌原版字模（`CLAUDE.md` §3.3）。（`docs/spec/011`） |
 
 ### 多語系
 

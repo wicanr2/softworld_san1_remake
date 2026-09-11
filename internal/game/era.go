@@ -137,6 +137,18 @@ func (d Date) Format(c Calendar) string {
 	return tf("date.era", EraName(name), year, month)
 }
 
+// FormatWithSeason 是**原版寫在畫面上的日期**：年月之後再接一個季節字。
+//
+// 主畫面左側直排與主戰場下方花邊都是這樣寫的——原版三張畫面對出來的是
+// 元月春、四月夏、八月秋（`docs/mechanics/50-events` §1，`L1`）。
+// `Format` 不含季節，因為訊息裡的日期不寫季節。
+//
+// ⚠ **西曆那條路沒有樣本**：原版切成西曆時直排寫不寫季節沒量過。
+// 這裡照寫——季節是月份算出來的，與曆法無關。
+func (d Date) FormatWithSeason(c Calendar) string {
+	return d.Format(c) + d.Season().Name()
+}
+
 // numeral 是年月在畫面上的寫法。
 //
 // 中曆是「中平六年元月」不是「中平6年1月」，所以中日文用中文數字；

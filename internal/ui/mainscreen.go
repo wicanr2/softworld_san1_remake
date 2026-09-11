@@ -157,7 +157,7 @@ func drawLog(c *Canvas, log []string) {
 // 放在地圖區上緣——版面讓給可讀性。
 func drawTimeColumn(c *Canvas, d game.Date, cal game.Calendar) {
 	c.DrawBox(timeCol, 0, timeW, Rows, ColFrame)
-	s := d.Format(cal)
+	s := d.FormatWithSeason(cal)
 	if !hasWide(s) {
 		c.DrawText(mapCol+2, 0, s, ColFG)
 		return

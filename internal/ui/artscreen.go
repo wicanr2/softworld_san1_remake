@@ -216,8 +216,9 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{}, draw.Src)
 
-	// 年月直排在左側直條上，與原版一樣。
-	for i, r := range []rune(g.Date.Format(v.Calendar)) {
+	// 年月直排在左側直條上，與原版一樣——**最後一格是季節**
+	// （原版寫「建安二年八月秋」，七個字）。
+	for i, r := range []rune(g.Date.FormatWithSeason(v.Calendar)) {
 		c.DrawText(artDateCol, artDateRow+i, string(r),
 			color.RGBA{0x00, 0x00, 0x00, 0xFF})
 	}

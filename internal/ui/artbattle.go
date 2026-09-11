@@ -15,6 +15,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 )
 
 // ArtBattleInfo 是畫面上要寫、而戰場自己不知道的東西。
@@ -32,6 +33,10 @@ type ArtBattleInfo struct {
 
 	// ID 是郡編號，畫在左欄第一個框的最後一列。
 	ID int
+
+	// Date 與 Calendar 是下方花邊上那一行年月（`docs/spec/011`）。
+	Date     game.Date
+	Calendar game.Calendar
 
 	// Commander 是攻方與守方的統帥姓名，Portrait 是他們的肖像編號
 	// （−1 ＝ 沒有）。順序是攻方、守方，與 `assets.BattleFrameX` 相同。
@@ -72,10 +77,8 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 	if ab.bottom != nil {
 		im.Blit(ab.bottom, 0, assets.MapBorderBottomY)
 	}
-	// **remake 還沒畫下方花邊上的年月。** 原版在這條花邊上寫一行灰色的
-	// 年月（基準畫面是「建安 二 年 九月 秋」，色號 7，約 35 點／列）。
-	// 花邊本身兩邊逐列相同，缺的只有那一行字——它是畫面高度從 350 改回
-	// 408 之後才看得到的（`docs/spec/006`）。
+	// 下方花邊上那一行年月是**文字層**（`drawBattleDate`，`docs/spec/011`），
+	// 不在這裡——這一層只拼圖塊。
 	im.FieldEdges()
 	im.BlitField(ab.tiles, info.Field)
 	ab.drawUnits(im, b, v)
@@ -161,6 +164,7 @@ func (ab *ArtBattle) drawPlates(c *Canvas, b *battle.Battle, v BattleView) {
 // 混在一起畫會讓「哪一層蓋哪一層」變得不好講。
 func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info ArtBattleInfo) {
 	ab.drawPlates(c, b, v)
+	drawBattleDate(c, info.Date, info.Calendar)
 
 	// 左欄：郡名一個字一列（原版 32×32，這裡是 16×16）、州名、日數、天氣。
 	ink := assets.EGAPalette[14]
@@ -242,4 +246,89 @@ func (ab *ArtBattle) face(n int) *assets.Image {
 		return nil
 	}
 	return im
+}
+
+// drawBattleDate 畫下方花邊上那一行年月（`docs/spec/011`）。
+//
+// 十個格子的版面（量在原版基準畫面「建安二年九月秋」上）：
+//
+//	格 0–1  年號　　格 2–3  年數（靠右）　格 4  空
+//	格 5    「年」　格 6–7  月份（靠右）　格 8  「月」　格 9  季節
+//
+// 字用**兩色棋盤**畫（`assets.BattleDateInk*`）。
+func drawBattleDate(c *Canvas, d game.Date, cal game.Calendar) {
+	cell := battleDateCells(d, cal)
+	odd := assets.EGAPalette[assets.BattleDateInkOdd]
+	even := assets.EGAPalette[assets.BattleDateInkEven]
+	for i, s := range cell {
+		if s == "" {
+			continue
+		}
+		for _, r := range s {
+			c.DrawRuneBoxDitherPx(
+				assets.BattleDateX+i*assets.BattleDateStep, assets.BattleDateY,
+				assets.BattleDateW, assets.BattleDateH, r, odd, even)
+			break // 一格一個字
+		}
+	}
+}
+
+// battleDateCells 把一個年月排進十個格子。
+//
+// ⚠ **版面只有一個樣本**（「建安二年九月秋」，`docs/spec/011` §2）。
+// 靠右對齊是從那一個樣本推的：個位數的「二」落在格 3 而不是格 2。
+// **年數超過兩個中文字時怎麼排沒有樣本**——這裡退回半形數字，
+// 因為「二十一」取最後兩個字會變成「十一」，那是一個讀得通而錯的年份。
+func battleDateCells(d game.Date, cal game.Calendar) [assets.BattleDateCells]string {
+	var out [assets.BattleDateCells]string
+	put := func(lo int, s string) {
+		rs := []rune(s)
+		// 靠右：兩格放不下就從右邊開始塞，塞得下幾個算幾個。
+		for i := len(rs) - 1; i >= 0 && lo+1-(len(rs)-1-i) >= lo; i-- {
+			out[lo+1-(len(rs)-1-i)] = string(rs[i])
+		}
+	}
+	name, nth, ok := game.EraOf(d.Year)
+	if cal == game.Western || !ok {
+		// 西曆那條路**沒有樣本**：原版切西曆時這一行寫什麼沒量過。
+		// 這裡照同一個版面排阿拉伯數字，年放四格。
+		y := fmt.Sprintf("%d", d.Year)
+		for i, r := range y {
+			if i < 4 {
+				out[i] = string(r)
+			}
+		}
+		out[5] = t("date.yearChar")
+		put(6, fmt.Sprintf("%d", d.Month))
+		out[8] = t("date.monthChar")
+		out[9] = d.Season().Name()
+		return out
+	}
+	for i, r := range []rune(game.EraName(name)) {
+		if i < 2 {
+			out[i] = string(r)
+		}
+	}
+	put(2, battleNumeral(nth))
+	out[5] = t("date.yearChar")
+	put(6, battleNumeral(d.Month))
+	out[8] = t("date.monthChar")
+	out[9] = d.Season().Name()
+	return out
+}
+
+// battleNumeral 是年數／月份在那一行的寫法。
+//
+// 第一年與正月寫「元」（與主畫面直排同一個規則，`game.Date.Format`）。
+// **超過兩個中文字就退回半形數字**——那一格只有兩個位置，見
+// `battleDateCells` 的 ⚠。
+func battleNumeral(n int) string {
+	if n == 1 {
+		return t("date.first")
+	}
+	s := game.Chinese(n)
+	if len([]rune(s)) > 2 {
+		return fmt.Sprintf("%d", n)
+	}
+	return s
 }

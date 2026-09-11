@@ -55,6 +55,20 @@ const (
 	Winter
 )
 
+// Name 是季節在畫面上的那一個字（原版直排的最後一格）。
+func (s Season) Name() string {
+	switch s {
+	case Spring:
+		return t("season.spring")
+	case Summer:
+		return t("season.summer")
+	case Autumn:
+		return t("season.autumn")
+	default:
+		return t("season.winter")
+	}
+}
+
 // ScenarioStart 是六個劇本的起始年月。
 //
 // 出處是原版的「選擇年代」畫面：中平六年／興平二年／建安六年／

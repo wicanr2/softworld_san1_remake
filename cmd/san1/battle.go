@@ -323,6 +323,9 @@ func (a *app) battleMove(d battle.Dir) {
 // 郡編號、兩軍統帥的姓名與肖像。
 func (a *app) battleInfo() ui.ArtBattleInfo {
 	info := ui.ArtBattleInfo{Portrait: [2]int{-1, -1}}
+	if a.s != nil && a.s.G != nil {
+		info.Date, info.Calendar = a.s.G.Date, a.s.G.Options.Calendar
+	}
 	if a.fight == nil {
 		return info
 	}
