@@ -67,6 +67,16 @@ type optMeta struct {
 	SkipAIWar bool `json:"skip_ai_war"`
 	Calendar  int  `json:"calendar"`
 	Delay     int  `json:"delay"`
+
+	// AIMode／AIOrders 是 remake 加的兩項（`docs/design/02` §5）。
+	//
+	// **`omitempty` 是給讀的那一邊留餘地**：舊存檔沒有這兩個鍵，
+	// 讀進來就是零值，而零值要讀成「開局挑的那一個」與「預設道數」
+	// ——不是 `ai.Mode("")` 這種讀不出 AI 的局，也不是「一道令都不下」。
+	// 寫的那一邊 `AIOrders` 永遠是 1–5（`Options.AIOrders()` 夾過），
+	// 所以實際上只有 `ai_mode` 會被省略。
+	AIMode   string `json:"ai_mode,omitempty"`
+	AIOrders int    `json:"ai_orders,omitempty"`
 }
 
 type prefMeta struct {
@@ -149,6 +159,7 @@ func Write(root string, slot int, g *game.State, name string) error {
 		MusicOff: e.Options.MusicOff, SoundOff: e.Options.SoundOff,
 		VoiceOff: e.Options.VoiceOff, SkipAIWar: e.Options.SkipAIWar,
 		Calendar: int(e.Options.Calendar), Delay: e.Options.Delay(),
+		AIMode: e.Options.AIMode, AIOrders: e.Options.AIOrders(),
 	}
 	for id, f := range e.Factions {
 		m.Factions[fmt.Sprint(id)] = factMeta{f.Alive, f.Chief,
@@ -323,9 +334,16 @@ func Read(root string, slot int) (*game.State, error) {
 		MusicOff: m.Options.MusicOff, SoundOff: m.Options.SoundOff,
 		VoiceOff: m.Options.VoiceOff, SkipAIWar: m.Options.SkipAIWar,
 		Calendar: game.Calendar(m.Options.Calendar),
+		AIMode:   m.Options.AIMode,
 	}
 	if err := e.Options.SetDelay(m.Options.Delay); err != nil {
 		return nil, fmt.Errorf("save: 存檔 %d 的延時：%w", slot, err)
+	}
+	// 舊存檔沒有這個鍵（0），那就是預設道數，不是「0 道令」。
+	if m.Options.AIOrders != 0 {
+		if err := e.Options.SetAIOrders(m.Options.AIOrders); err != nil {
+			return nil, fmt.Errorf("save: 存檔 %d 的電腦指令數：%w", slot, err)
+		}
 	}
 	// `BASEPRO` 有的欄位以它為準——**同一個值不要有兩個真相**。
 	// 舊存檔沒有這個檔，那時 JSON 就是唯一來源。

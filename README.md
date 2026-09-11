@@ -177,6 +177,11 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 沒解出來的一律不做——**不會拿一個「差不多的」策略頂著**，
 `Coverage()` 會把「十八張表解出幾張」講出來（`docs/design/01`）。
 
+開局用 `-ai` 挑，遊戲中也換得掉：**「其他」的第九項「電腦AI」**在三個
+版本之間循環，**第十項「電腦指令」**調強化 AI 一個郡一個月下幾道令
+（1–5，預設 1）。原版的「其他」只有八項，這兩項是 remake 加的，
+記在 `docs/design/02` §5。
+
 完成度的數字以 [`VERIFICATION-MATRIX.md`](VERIFICATION-MATRIX.md) 為準；
 目前的實際狀態在 [`CONTEXT.md`](CONTEXT.md)。
 

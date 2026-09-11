@@ -5,6 +5,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/save"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -48,16 +49,29 @@ func Load(dir string, slot int, mode ai.Mode) (*Session, error) {
 	}
 	// 版本來自存檔，AI 版本來自旗標——**兩者可能不同版**。
 	// 還原型的 AI 配另一版的規則會安靜地算錯（`internal/ai` `CheckEdition`）。
-	if err := ai.CheckEdition(mode, g.Edition); err != nil {
-		return nil, err
-	}
-	brain, err := ai.New(mode)
+	brain, err := brainFor(g, mode)
 	if err != nil {
 		return nil, err
 	}
 	s := New(g, brain, g.Player)
 	s.note("讀入第 %d 個進度", slot)
 	return s, nil
+}
+
+// brainFor 決定這一局用哪一個 AI：**存檔裡有就聽存檔的**。
+//
+// 玩家在遊戲中換過 AI（「其他 → 電腦AI」）之後存檔，那一項會寫進
+// `Options.AIMode`。讀回來卻套旗標的版本，玩家看到的就是「設定沒存到」
+// ——而畫面上唯一的差別只是電腦諸侯下不同的命令，看不出來。
+// 沒有那一項（舊存檔、或從頭到尾沒動過）才用旗標。
+func brainFor(g *game.State, mode ai.Mode) (ai.Brain, error) {
+	if m := ai.Mode(g.Options.AIMode); m != "" {
+		mode = m
+	}
+	if err := ai.CheckEdition(mode, g.Edition); err != nil {
+		return nil, err
+	}
+	return ai.New(mode)
 }
 
 // LoadOriginal 讀玩家自己的**原版**進度（`DATA2.GRP` 裡的六個），
@@ -70,10 +84,7 @@ func LoadOriginal(c *assets.Container, slot int, ed state.Edition, mode ai.Mode)
 	if err != nil {
 		return nil, err
 	}
-	if err := ai.CheckEdition(mode, g.Edition); err != nil {
-		return nil, err
-	}
-	brain, err := ai.New(mode)
+	brain, err := brainFor(g, mode)
 	if err != nil {
 		return nil, err
 	}

@@ -39,17 +39,41 @@ type Session struct {
 func New(g *game.State, brain ai.Brain, player state.FactionID) *Session {
 	s := &Session{G: g, Brain: brain, Player: player, MaxLog: 200}
 	s.note("%d 年 %d 月　開局", g.Date.Year, g.Date.Month)
-	if !brain.Derived() {
-		// ⚠ **這一行不能省。** 一個只做一部分行為的電腦諸侯，在畫面上
-		// 看起來就只是「這個諸侯比較保守」——差別看不出來。
-		if done, total := brain.Coverage(); total > 0 {
-			s.note("⚠ %s 還原到 %d/%d 種行為，其餘的電腦諸侯不會做",
-				brain.Name(), done, total)
-		} else {
-			s.note("⚠ %s 不是還原，是 remake 自己的 AI", brain.Name())
-		}
-	}
+	s.noteBrain()
 	return s
+}
+
+// noteBrain 把「現在用的是哪一種 AI」記進 Log。
+func (s *Session) noteBrain() {
+	b := s.Brain
+	if b.Derived() {
+		return
+	}
+	// ⚠ **這一行不能省。** 一個只做一部分行為的電腦諸侯，在畫面上
+	// 看起來就只是「這個諸侯比較保守」——差別看不出來。
+	if done, total := b.Coverage(); total > 0 {
+		s.note("⚠ %s 還原到 %d/%d 種行為，其餘的電腦諸侯不會做",
+			b.Name(), done, total)
+	} else {
+		s.note("⚠ %s 不是還原，是 remake 自己的 AI", b.Name())
+	}
+}
+
+// SetBrain 在遊戲進行中換掉電腦 AI（「其他 → 電腦AI」）。
+//
+// **這是 remake 加的**（`docs/design/02` §5）：原版只有一套 AI。
+// 換的時候要記進 Log——AI 換了而畫面上沒留下痕跡，之後回頭問
+// 「這個諸侯為什麼突然不動了」就查不出來。
+//
+// 月中換也安全：AI 不帶跨郡的狀態，`runPrefectureTurns` 下一格就
+// 改問新的那一個。已經發出去的命令不會回頭。
+func (s *Session) SetBrain(b ai.Brain) {
+	if b == nil || b == s.Brain {
+		return
+	}
+	s.Brain = b
+	s.note("電腦 AI 換成 %s", b.Name())
+	s.noteBrain()
 }
 
 func (s *Session) note(format string, a ...any) {
@@ -240,7 +264,6 @@ func (s *Session) PlayerAlive() bool {
 	}
 	return s.G.Lord(s.Player) != nil
 }
-
 
 func prefectureName(g *game.State, at int) string {
 	if p := g.Prefecture(at); p != nil {

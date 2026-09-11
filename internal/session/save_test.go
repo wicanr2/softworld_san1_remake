@@ -87,3 +87,78 @@ func TestSaveNamesItselfAfterTheLord(t *testing.T) {
 		t.Errorf("存檔名稱是 %q，應該是君主的名字 %q", got, lord.Name)
 	}
 }
+
+// TestLoadKeepsTheAIChosenInGame 釘住讀檔沿用**存檔裡**的 AI 版本。
+//
+// 玩家在遊戲中換過 AI（「其他 → 電腦AI」）之後存檔，讀回來卻套旗標的
+// 版本，玩家看到的就是「設定沒存到」——而畫面上唯一的差別只是電腦
+// 諸侯下不同的命令，看不出來。
+func TestLoadKeepsTheAIChosenInGame(t *testing.T) {
+	s := newSession(t, ai.ModeEnhanced, state.NoFaction)
+	// 遊戲中換成還原版的 AI。
+	next := ai.NextMode(s.Brain.Mode(), s.G.Edition)
+	brain, err := ai.New(next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.SetBrain(brain)
+	s.G.Options.SetAIMode(string(next))
+	if err := s.G.Options.SetAIOrders(3); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := t.TempDir()
+	if err := s.Save(dir, 1, "換過AI"); err != nil {
+		t.Fatal(err)
+	}
+	// **旗標故意給另一個**：存檔裡有就該聽存檔的。
+	back, err := Load(dir, 1, ai.ModeEnhanced)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.Brain.Mode() != next {
+		t.Errorf("讀回來的 AI 是 %s，存的是 %s", back.Brain.Mode(), next)
+	}
+	if back.G.Options.AIOrders() != 3 {
+		t.Errorf("電腦指令數讀回來是 %d，存的是 3", back.G.Options.AIOrders())
+	}
+	// 沒動過的那一局照樣聽旗標。
+	plain := newSession(t, ai.ModeEnhanced, state.NoFaction)
+	if err := plain.Save(dir, 2, "沒動過"); err != nil {
+		t.Fatal(err)
+	}
+	b2, err := Load(dir, 2, ai.ModeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b2.Brain.Mode() != ai.ModeBase {
+		t.Errorf("沒動過設定的存檔讀回來是 %s，旗標給的是 %s",
+			b2.Brain.Mode(), ai.ModeBase)
+	}
+}
+
+// TestSetBrainLeavesATrace 釘住換 AI 會在訊息紀錄裡留下痕跡。
+//
+// **AI 換了而畫面上沒有任何痕跡**，之後回頭問「這個諸侯為什麼突然
+// 不動了」就查不出來。
+func TestSetBrainLeavesATrace(t *testing.T) {
+	s := newSession(t, ai.ModeEnhanced, state.NoFaction)
+	n := len(s.Log)
+	brain, err := ai.New(ai.ModeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.SetBrain(brain)
+	if len(s.Log) == n {
+		t.Fatal("換了 AI 卻沒有留下任何訊息")
+	}
+	if s.Brain.Mode() != ai.ModeBase {
+		t.Errorf("換完是 %s", s.Brain.Mode())
+	}
+	// 換成同一個不留痕跡——那不是一次「換」。
+	n = len(s.Log)
+	s.SetBrain(s.Brain)
+	if len(s.Log) != n {
+		t.Error("換成同一個 AI 也寫了一則訊息")
+	}
+}

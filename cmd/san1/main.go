@@ -15,9 +15,9 @@
 package main
 
 import (
-	"image"
 	"flag"
 	"fmt"
+	"image"
 	"os"
 	"sort"
 
@@ -52,9 +52,6 @@ type app struct {
 
 	// saveDir 是存檔目錄，空字串表示這一局不能存。
 	saveDir string
-	// aiMode 記著讀檔要用哪一種電腦 AI。
-	aiMode ai.Mode
-
 	// jb 是配樂；沒有原版的 DATA1 就是 nil。
 	jb *jukebox
 
@@ -371,6 +368,35 @@ func (a *app) begin(cat, item byte) {
 		// **沒存就離開是最貴的一次誤按**。
 		a.view.Prompt = t("msg.quitHint")
 		closeMenu()
+	case cat == '9' && item == '9':
+		// **remake 加的第九項**：換電腦用哪一版 AI（`docs/design/02` §5）。
+		// `NextMode` 只在「跑得動這一版規則」的版本裡繞，所以按下去
+		// 不會跳出「這個 AI 配不上這一版」——那種錯誤訊息玩家看起來
+		// 就像功能壞了。
+		next := ai.NextMode(a.s.Brain.Mode(), g.Edition)
+		brain, err := ai.New(next)
+		if err != nil {
+			a.view.Prompt = game.ErrorText(err)
+			break
+		}
+		a.s.SetBrain(brain)
+		g.Options.SetAIMode(string(next))
+		a.view.Prompt = tf("oth.ai.state", brain.Name())
+		closeMenu()
+	case cat == '9' && item == '0':
+		// **remake 加的第十項**：強化 AI 一個郡一個月下幾道令。
+		// 原版的電腦不受「每郡每月一道令」管（`docs/mechanics/70-ai`
+		// §2.12），所以這一格調的是**強化 AI 有多強**不是規則；
+		// 還原型的 AI 不看它。
+		a.askNumber(t("ask.aiOrders"),
+			tf("hint.aiOrders", g.Options.AIOrders(), game.AIOrdersMax),
+			game.AIOrdersMax, func(v int) {
+				if err := g.Options.SetAIOrders(v); err != nil {
+					a.view.Prompt = game.ErrorText(err)
+					return
+				}
+				a.view.Prompt = tf("oth.orders.set", v)
+			})
 
 	// ---- 1. 查看（不耗指令）----
 	case cat == '1' && item == '1':
@@ -954,7 +980,6 @@ func main() {
 		s:       s,
 		dirty:   true,
 		saveDir: *saveDir,
-		aiMode:  ai.Mode(*aiMode),
 		art:     art,
 	}
 	a.artBattle = artBattle

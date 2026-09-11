@@ -340,16 +340,33 @@ func SubMenu(key byte) (string, []Command) {
 		title, keys = "cmd.plot", []string{"plot.tiger", "plot.distant",
 			"plot.forge", "plot.incite", "plot.joint"}
 	case '9':
+		// 前八項是原版的（`docs/re/04` §3）。後兩項是 **remake 加的**：
+		// 原版只有一套 AI，也沒有「電腦一次下幾道令」這回事
+		//（`docs/design/02` §5）。加在最後是為了不動原版那八項的編號——
+		// 玩家的手指記得「9-3 是音樂」。
 		title, keys = "cmd.other", []string{"oth.quit", "oth.save", "oth.music",
-			"oth.sound", "oth.delay", "oth.war", "oth.era", "oth.voice"}
+			"oth.sound", "oth.delay", "oth.war", "oth.era", "oth.voice",
+			"oth.ai", "oth.orders"}
 	default:
 		return "", nil
 	}
 	items := make([]Command, 0, len(keys))
 	for i, k := range keys {
-		items = append(items, Command{Key: byte('1' + i), Name: t(k)})
+		items = append(items, Command{Key: MenuKey(i), Name: t(k)})
 	}
 	return t(title), items
+}
+
+// MenuKey 是子選單第 i 項的按鍵。
+//
+// **第十項是 `0` 不是 `:`。** 鍵盤只送得進 `0`–`9`
+//（`cmd/san1` 的 `press`），而 `byte('1'+i)` 到第十項會算出 `:`——
+// 那一項就永遠按不動，而且畫面上看起來完全正常。
+func MenuKey(i int) byte {
+	if i >= 9 {
+		return '0'
+	}
+	return byte('1' + i)
 }
 
 // ColSel 是選取中的顏色。

@@ -132,9 +132,9 @@ func CheckEdition(m Mode, ed state.Edition) error {
 func New(m Mode) (Brain, error) {
 	switch m {
 	case ModeBase:
-		return &faithful{mode: ModeBase, name: "三國演義（原版）"}, nil
+		return &faithful{mode: ModeBase, name: ModeName(ModeBase)}, nil
 	case ModePlus:
-		return &faithful{mode: ModePlus, name: "三國演義1加強版"}, nil
+		return &faithful{mode: ModePlus, name: ModeName(ModePlus)}, nil
 	case ModeEnhanced:
 		return NewEnhanced(0), nil
 	}
@@ -1434,7 +1434,6 @@ func (f *faithful) rewards(g *game.State, id state.FactionID, prefecture int,
 	}
 }
 
-
 // rewardTarget 是賞賜的對象（`0xd9bc`／`0xdb1a`／`0xdc78`／`0xddee`，`L0`）。
 //
 // 四支各自呼叫**不同的排序常式**，鍵是「那件寶物要提升的能力 ＋
@@ -1707,3 +1706,51 @@ func (f *faithful) mostCharming(g *game.State, id state.FactionID, prefecture in
 // 六份常式是同一段碼，只有 `mov ax,K` 的常數不同：
 // 等級 0–2 是 `RND(4)`、3–4 是 `RND(3)`、5 是 `RND(2)`。
 func internalAffairsRange(level int) int { return game.AffairsTierFor(level).Chance }
+
+// ModesFor 回傳能跑在這一版規則上的 AI 版本，順序同 `Modes()`。
+//
+// **遊戲中切換 AI 只能在這份清單裡繞**：還原型的 AI 配另一版的規則
+// 會安靜地算錯（見 `CheckEdition`），而選單上一個按下去會跳錯誤訊息的
+// 項目，玩家看起來就像這個功能壞了。
+func ModesFor(ed state.Edition) []Mode {
+	out := make([]Mode, 0, len(Modes()))
+	for _, m := range Modes() {
+		if CheckEdition(m, ed) == nil {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// NextMode 在 `ModesFor(ed)` 裡循環到下一個。
+//
+// 認不得 `m`（含空字串）時回傳清單的第一個。
+func NextMode(m Mode, ed state.Edition) Mode {
+	list := ModesFor(ed)
+	if len(list) == 0 {
+		return m
+	}
+	for i, x := range list {
+		if x == m {
+			return list[(i+1)%len(list)]
+		}
+	}
+	return list[0]
+}
+
+// ModeName 是給人看的名字，**不用先造出一個 Brain**——選單要在切換
+// 之前就顯示下一個是誰。
+//
+// 這裡是這三個名字的唯一來源，`New()` 與 `enhanced.Name()` 都回頭讀它
+//（教訓 6：一條規則只留一份實作）。
+func ModeName(m Mode) string {
+	switch m {
+	case ModeBase:
+		return "三國演義（原版）"
+	case ModePlus:
+		return "三國演義1加強版"
+	case ModeEnhanced:
+		return "remake 強化 AI"
+	}
+	return string(m)
+}

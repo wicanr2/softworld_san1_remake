@@ -33,7 +33,7 @@ func NewEnhanced(garrisonRatio int) Brain {
 }
 
 func (e *enhanced) Mode() Mode    { return ModeEnhanced }
-func (e *enhanced) Name() string  { return "remake 強化 AI" }
+func (e *enhanced) Name() string  { return ModeName(ModeEnhanced) }
 func (e *enhanced) Derived() bool { return false }
 
 // Coverage 對 remake 自己的 AI 沒有意義——它不是在還原什麼。
@@ -42,10 +42,35 @@ func (e *enhanced) Coverage() (int, int) { return 0, 0 }
 // 門檻。**這些是 remake 自己的判斷，不是原版的數字。**
 const (
 	floodDanger = 60  // 洪水率到這裡就優先防洪
-	landTarget  = 70  // 土地價值低於這裡就開墾
+	landTarget  = 90  // 土地價值低於這裡就開墾
 	loyaltyLow  = 70  // 民眾忠誠低於這裡就賑民
 	goldReserve = 200 // 不動用的存底
 	riceReserve = 800 // 不動用的存糧
+
+	// 底下三個是**收入那一段**的目標值。急難那一段（`floodDanger`、
+	// `loyaltyLow`）問的是「會不會出事」，這一段問的是「秋天收多少」。
+	//
+	// 槓桿全部來自秋收公式（`game.HarvestGold`／`HarvestRice`，`L0`）：
+	//
+	//	金 ＝ (太守魅力 + 土地價值×4 + 民忠×2) × 人口 ÷ 300
+	//	米 ＝ (太守魅力 + 土地價值×3 + (100−洪水率) + 民忠×2) × 人口 ÷ 200
+	//
+	// 所以四個可以操作的量是**土地價值、民眾忠誠、洪水率、太守魅力**，
+	// 而且權重差很多：土地價值一點抵金四點、忠誠一點抵兩點，洪水率
+	// 只進米那一半。強化 AI 的內政順序就照這個權重排。
+	//
+	// **這一段是 remake 自己的策略不是原版行為**：原版的內政那張表
+	// 只擲兩次亂數決定「開墾／防洪／閒著」（`docs/mechanics/70-ai` §2.11），
+	// 它不看收入。
+	floodIncome   = 20 // 洪水率壓到這裡（再低下去只換得到米）
+	loyaltyTarget = 90 // 民眾忠誠做到這裡
+
+	// TuneGovernorCharmGain 是「換太守至少要多幾點魅力才值得」。
+	//
+	// 換人會動到身分（舊的降回部將、新的升太守，`0xd6cd`），所以不為了
+	// 一兩點翻來覆去。魅力在秋收公式裡是 ×1，與土地價值的 ×4 比是小項——
+	// 但它**改一次就長期生效**，不像開墾每年被自然衰減吃掉。
+	TuneGovernorCharmGain = 10
 
 	// TuneEnhancedRelief 是強化 AI 一次賑民撥出去的金。**remake 自選**：
 	// 原版那一邊的量是分派器算出來的回合預算（`docs/mechanics/70-ai`
@@ -75,18 +100,21 @@ const (
 	// 強化 AI 要的是「打得下也守得住」，所以多這一道。
 	//
 	// **60 是掃出來的**（`TestZZGarrisonRatioSweep`，劇本 001 全電腦
-	// 三十六個月）：門檻越高兵留得越多、打得越少，而 60% 那一格
-	// 兵力幾乎不比 100% 少（149,155 vs 151,455）而擴張多一半
-	// （最大 12 郡 vs 8 郡）。守方本來就吃地利加成，不必一比一。
-	TuneGarrisonRatio = 60
-
-	// maxOrdersPerPrefecture 是一個郡一個月最多下幾道令。
+	// 三十六個月、每郡每月一道令）：
 	//
-	// **電腦不受「每郡每月一道令」管**（`docs/mechanics/70-ai` §2.12，
-	// `L1`）：原版的分派器對每個電腦的郡把十八張表全部跑一遍，量到
-	// 每郡每月九次。強化 AI 先前自己只下一道——那不是規則，是自我設限，
-	// 而代價是「要嘛打仗要嘛補兵，永遠二選一」。
-	maxOrdersPerPrefecture = 8
+	//	門檻      存活  最大  易主   總兵    總金
+	//	幾乎不設防   3   33 郡  33   39,983  68,018
+	//	40%        12   12 郡  16   93,685  58,672
+	//	60%        13   10 郡  12  110,377  47,260
+	//	80%        14    8 郡  10  134,704  26,824
+	//	100%       14    8 郡   8  131,096  29,209
+	//	140%       14    7 郡   8  135,721  27,765
+	//
+	// 兩端都是壞的：不設防那一格三十六個月就把世界打空（總兵只剩
+	// 四萬，一片守不住的地），80% 以上曲線就平了——多留的兵換不到
+	// 更安全，只換到不再擴張。60% 在「還打得動」與「守得住」之間。
+	// 守方本來就吃地利加成，不必一比一。
+	TuneGarrisonRatio = 60
 )
 
 // TraceDraws 對 `enhanced` 沒有意義（它不是還原），收下不用。
@@ -117,7 +145,15 @@ func (e *enhanced) PlanPrefecture(g *game.State, f state.FactionID,
 func (e *enhanced) ActPrefecture(g *game.State, f state.FactionID,
 	prefectureID, level int) ([]game.Order, int, error) {
 	var out []game.Order
-	for i := 0; i < maxOrdersPerPrefecture; i++ {
+	// **一個郡一個月下幾道令由玩家決定**（「其他 → 電腦指令」，
+	// 1–5，預設 1）。電腦不受「每郡每月一道令」管
+	//（`docs/mechanics/70-ai` §2.12，`L1`），所以這一格調的是
+	// **強化 AI 有多強**不是規則。
+	//
+	// `rounds` 是防呆不是規則：不耗指令的命令不算進道數（見下），
+	// 所以迴圈的次數不再由 `AIOrders()` 一個人決定。
+	const maxRounds = game.AIOrdersMax + 4
+	for i, rounds := 0, 0; i < g.Options.AIOrders() && rounds < maxRounds; rounds++ {
 		p := g.Prefecture(prefectureID)
 		if p == nil {
 			break
@@ -135,6 +171,12 @@ func (e *enhanced) ActPrefecture(g *game.State, f state.FactionID,
 			return out, len(out), err
 		}
 		out = append(out, o)
+		// **「指定太守」不耗指令**（說明書 p.23，`installGovernor`
+		// 也沒有碰 `Commanded`），所以不算進這個月的道數——否則一個郡
+		// 想換太守就等於整個月什麼都沒做。
+		if _, free := o.(game.AppointGovernorOrder); !free {
+			i++
+		}
 		// 出兵之後這個郡的守軍全變了，重新評估。
 		if _, ok := o.(game.AttackOrder); ok {
 			break
@@ -216,29 +258,118 @@ func (e *enhanced) planOne(g *game.State, f state.FactionID, p *game.Prefecture)
 		}
 	}
 
-	// 6. 兵力補到上限。
+	// ---- 收入 ----
+	//
+	// **這一段排在「兵力補到上限」前面。** 先前的順序是徵兵在前，
+	// 而徵兵幾乎永遠有空額可以補，於是開墾排在最後一條等於從來輪不到：
+	// 三十六個月跑下來平均地力只剩 7（`TestZZAIOrdersSweep` 改動前的
+	// 數字），而地力正是秋收公式裡權重最大的那一項。
+	//
+	// 換句話說，那一版的電腦把每一塊錢都變成兵，卻沒有人在賺錢。
+	// 收入這一段就是把「錢從哪來」接回去——秋天收進來的金，隔年
+	// 才有得徵兵。
+
+	// 6. 太守換成魅力最高的那一位（秋收的 `太守魅力` 那一項）。
+	//    **改一次就長期生效**，所以排在要按月重做的三項前面。
+	if o := e.betterGovernor(g, f, p); o != nil {
+		return o
+	}
+
+	// 7. 開墾：土地價值是秋收權重最大的因子（金 ×4、米 ×3），
+	//    而且每年都被自然衰減吃掉（`game.AnnualDecay`），要一直做。
+	if p.LandValue < landTarget && spendable >= game.CostReclaim {
+		// 電腦那一條不收錢（`0xba02`），`spendable` 的閘門只是保守。
+		if x := e.wisest(g, f, p.ID); x != nil {
+			return game.ReclaimOrder{At: p.ID, General: x.Index, Auto: true}
+		}
+	}
+
+	// 8. 防洪：洪水率只進米那一半（`100 − 洪水率`），權重比地力小，
+	//    所以排在開墾後面。急難那一段（門檻 60）已經先擋過一次。
+	if p.FloodRate > floodIncome && spendable >= game.CostFloodControl {
+		if x := e.wisest(g, f, p.ID); x != nil {
+			return game.FloodControlOrder{At: p.ID, General: x.Index, Auto: true}
+		}
+	}
+
+	// 9. 賑民把民眾忠誠推到高檔（金米都是 ×2）。**要留得起存底**
+	//    ——這一項按月花錢，把郡庫掏空換來的收入隔年才進帳。
+	if p.PublicLoyalty < loyaltyTarget && spendable >= TuneEnhancedRelief*2 {
+		return game.ReliefOrder{At: p.ID, Gold: TuneEnhancedRelief}
+	}
+
+	// ---- 兵 ----
+
+	// 10. 兵力補到上限。
 	if o := e.conscript(g, f, p, spendable, conscriptShare); o != nil {
 		return o
 	}
 
-	// 7. 兵多但訓練差就練兵。不花錢，所以放在募兵之後。
+	// 11. 兵多但訓練差就練兵。不花錢，所以放在募兵之後。
 	if x := e.leastTrained(g, f, p.ID); x != nil && x.Training < 80 && x.Soldiers > 0 {
 		return game.TrainOrder{At: p.ID}
 	}
 
-	// 8. 米太多就賣一些。
+	// 12. 米太多就賣一些。
 	if p.Rice > sellRiceAbove && p.Gold < game.MaxGold-1000 {
 		return game.SellRiceOrder{At: p.ID, Units: sellRiceBatch}
 	}
+	return nil
+}
 
-	// 9. 沒有急事就開墾。
-	if p.LandValue < landTarget && spendable >= game.CostReclaim {
-		if x := e.wisest(g, f, p.ID); x != nil {
-			// 同上（`0xba02`）。
-			return game.ReclaimOrder{At: p.ID, General: x.Index, Auto: true}
+// betterGovernor 把太守換成魅力最高的那一位。
+//
+// 秋收的三個因子裡（`game.HarvestGold`），太守魅力是唯一**改一次就
+// 長期生效**的——土地價值與忠誠每年都會被自然衰減吃掉。
+//
+// 三道閘門：
+//
+//   - **主事者是君主就不換**（`state.StatusLord`，不是 `StatusChief`
+//     ——那一個是軍師）。這一條與原版同向：原版判的也是「州郡
+//     offset 32 指到的那一位的身分」，不是「君主人在這個郡」
+//     （`docs/mechanics/70-ai` §2.6）。玩家那一條另外擋著
+//     （`game.AppointGovernor`：「君主自己在這個郡，不需要指定太守」）。
+//   - **只挑自己勢力的人——這一道是強化 AI 自己加的。** 原版的候選
+//     名單是「站在這個郡裡的人」（`buildRoster` 模式 2：所在郡相同 ＋
+//     身分 0–3），**範圍本來就限制在同一個郡**，只是不比對勢力
+//     （`docs/re/07` §6，七個模式一個都沒有）。那不是漏掉：郡的所屬
+//     每回合由駐軍重算、後寫的蓋前寫的，混編是表得出來的盤面，而
+//     主事者換人郡就跟著改所屬（`0xd74d`）——整套是自洽的。
+//     強化 AI 不想讓郡易主，所以多加這一道；**這是它與還原版分岔的
+//     地方，不是在修正原版**。
+//   - **至少要多 `TuneGovernorCharmGain` 點**才換，不為了一兩點翻來覆去。
+func (e *enhanced) betterGovernor(g *game.State, f state.FactionID,
+	p *game.Prefecture) game.Order {
+	cur := g.Governor(p.ID)
+	if cur != nil && cur.Status == state.StatusLord {
+		return nil
+	}
+	best := e.charmiest(g, f, p.ID)
+	if best == nil || (cur != nil && best.Index == cur.Index) {
+		return nil
+	}
+	now := 0
+	if cur != nil {
+		now = int(cur.Charm)
+	}
+	if int(best.Charm) < now+TuneGovernorCharmGain {
+		return nil
+	}
+	return game.AppointGovernorOrder{At: p.ID, Target: best.Index, Auto: true}
+}
+
+// charmiest 是這個郡裡自己勢力魅力最高的那一位。
+func (e *enhanced) charmiest(g *game.State, f state.FactionID, id int) *game.General {
+	var best *game.General
+	for _, x := range g.Garrison(id) {
+		if x.Faction != f {
+			continue
+		}
+		if best == nil || x.Charm > best.Charm {
+			best = x
 		}
 	}
-	return nil
+	return best
 }
 
 // conscript 是募兵。share 是「一次最多抽剩餘人口的幾分之一」。

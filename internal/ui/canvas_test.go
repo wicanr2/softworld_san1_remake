@@ -165,46 +165,79 @@ func TestSubMenusMatchTheOriginal(t *testing.T) {
 		key   byte
 		title string
 		items []string
+		// remake 是 remake 自己加在後面的項目。**分開列是為了讓
+		// 「原版有哪幾項」這個斷言不被稀釋**：混在同一個清單裡，
+		// 之後就沒有人分得出哪幾項是原版的。
+		remake []string
 	}{
-		{'1', "查看", []string{"選擇州郡", "將軍列表", "檢視將軍", "領土列表", "郡地理誌", "君主物品"}},
-		{'2', "軍事", []string{"調動軍隊", "發動戰役", "運送錢糧"}},
-		{'3', "兵士", []string{"訓練兵士", "徵兵", "購買武器", "調整兵力"}},
-		{'4', "內政", []string{"土地開發", "洪水防冶", "建築關寨", "休息"}},
-		{'5', "商業", []string{"買入米糧", "賣出米糧", "開倉賑民"}},
-		{'6', "人事", []string{"尋訪人才", "登用人才", "賞賜金帛", "撤職"}},
-		{'7', "君主", []string{"指定軍師", "指定太守", "郡縣自冶", "賞賜物品", "登用他國人才"}},
-		{'8', "謀略", []string{"驅虎吞狼", "遠交近攻", "偽書使疑", "策反人民", "聯合出兵"}},
-		{'9', "其他", []string{"結束", "儲存", "音樂", "音效", "延時", "戰役", "年號", "語音"}},
+		{'1', "查看", []string{"選擇州郡", "將軍列表", "檢視將軍", "領土列表", "郡地理誌", "君主物品"}, nil},
+		{'2', "軍事", []string{"調動軍隊", "發動戰役", "運送錢糧"}, nil},
+		{'3', "兵士", []string{"訓練兵士", "徵兵", "購買武器", "調整兵力"}, nil},
+		{'4', "內政", []string{"土地開發", "洪水防冶", "建築關寨", "休息"}, nil},
+		{'5', "商業", []string{"買入米糧", "賣出米糧", "開倉賑民"}, nil},
+		{'6', "人事", []string{"尋訪人才", "登用人才", "賞賜金帛", "撤職"}, nil},
+		{'7', "君主", []string{"指定軍師", "指定太守", "郡縣自冶", "賞賜物品", "登用他國人才"}, nil},
+		{'8', "謀略", []string{"驅虎吞狼", "遠交近攻", "偽書使疑", "策反人民", "聯合出兵"}, nil},
+		{'9', "其他", []string{"結束", "儲存", "音樂", "音效", "延時", "戰役", "年號", "語音"},
+			[]string{"電腦AI", "電腦指令"}},
 	}
 	for _, c := range cases {
 		title, items := SubMenu(c.key)
 		if title != c.title {
 			t.Errorf("第 %q 類叫 %q，原版寫 %q", c.key, title, c.title)
 		}
-		if len(items) != len(c.items) {
-			t.Errorf("%s 有 %d 項，原版是 %d 項", c.title, len(items), len(c.items))
+		want := append(append([]string(nil), c.items...), c.remake...)
+		if len(items) != len(want) {
+			t.Errorf("%s 有 %d 項，原版 %d 項 ＋ remake %d 項",
+				c.title, len(items), len(c.items), len(c.remake))
 			continue
 		}
-		for i, w := range c.items {
+		for i, w := range want {
 			if items[i].Name != w {
-				t.Errorf("%s 第 %d 項是 %q，原版寫 %q", c.title, i+1, items[i].Name, w)
+				t.Errorf("%s 第 %d 項是 %q，應該是 %q", c.title, i+1, items[i].Name, w)
 			}
-			if items[i].Key != byte('1'+i) {
-				t.Errorf("%s 的 %q 按鍵是 %q，應該是 %q", c.title, w, items[i].Key, byte('1'+i))
+			// **remake 加的項目不能擠動原版那幾項的編號**：玩家的手指
+			// 記得「9-3 是音樂」，換一個位置等於把原版的操作改掉。
+			if items[i].Key != MenuKey(i) {
+				t.Errorf("%s 的 %q 按鍵是 %q，應該是 %q", c.title, w, items[i].Key, MenuKey(i))
 			}
 		}
 	}
 }
 
-// TestOtherSubMenuIsEightItems 釘住「其他」的八項。
-func TestOtherSubMenuIsEightItems(t *testing.T) {
+// TestMenuKeyTenthIsZero 釘住第十項按 `0`。
+//
+// `byte('1'+i)` 到第十項會算出 `:`，而鍵盤只送得進 `0`–`9`
+//（`cmd/san1` 的 `press`）——那一項會永遠按不動，畫面上卻完全正常。
+func TestMenuKeyTenthIsZero(t *testing.T) {
+	seen := map[byte]bool{}
+	for i := 0; i < 10; i++ {
+		k := MenuKey(i)
+		if k < '0' || k > '9' {
+			t.Errorf("第 %d 項的鍵是 %q，鍵盤送不進來", i+1, k)
+		}
+		if seen[k] {
+			t.Errorf("第 %d 項的鍵 %q 與前面某一項重複", i+1, k)
+		}
+		seen[k] = true
+	}
+	if MenuKey(9) != '0' {
+		t.Errorf("第十項的鍵是 %q，應該是 '0'", MenuKey(9))
+	}
+}
+
+// TestOtherSubMenuKeepsTheOriginalEight 釘住「其他」的前八項還是原版那八項。
+//
+// remake 在後面加了「電腦AI」與「電腦指令」（`docs/design/02` §5）。
+// **加在後面是條件**：原版的八項要留在原來的編號上。
+func TestOtherSubMenuKeepsTheOriginalEight(t *testing.T) {
 	title, items := SubMenu('9')
 	if title != "其他" {
 		t.Errorf("第 9 類叫 %q，應該是「其他」", title)
 	}
 	want := []string{"結束", "儲存", "音樂", "音效", "延時", "戰役", "年號", "語音"}
-	if len(items) != len(want) {
-		t.Fatalf("其他有 %d 項，手冊列八項", len(items))
+	if len(items) < len(want) {
+		t.Fatalf("其他只有 %d 項，手冊列八項", len(items))
 	}
 	for i, w := range want {
 		if items[i].Name != w {

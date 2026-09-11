@@ -759,3 +759,62 @@ func TestGlyphsSurviveASaveLoadRound(t *testing.T) {
 		t.Error("沒帶字模的那一局把上一次的洗掉了")
 	}
 }
+
+// TestAISettingsSurviveRoundTrip 釘住「其他」底下 remake 加的那兩項也存得住。
+//
+// **玩家在遊戲中換了 AI 又讀檔，回到旗標挑的那一個，看起來就是
+// 「設定沒存到」**——而畫面上唯一的差別只是電腦諸侯下不同的命令，
+// 玩家分不出是設定掉了還是 AI 本來就這樣。
+func TestAISettingsSurviveRoundTrip(t *testing.T) {
+	g := newGame(t)
+	g.Options.SetAIMode("base")
+	if err := g.Options.SetAIOrders(4); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if err := save.Write(root, 1, g, ""); err != nil {
+		t.Fatal(err)
+	}
+	h, err := save.Read(root, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Options.AIMode != "base" {
+		t.Errorf("AI 版本讀回來是 %q，存的是 base", h.Options.AIMode)
+	}
+	if h.Options.AIOrders() != 4 {
+		t.Errorf("電腦指令數讀回來是 %d，存的是 4", h.Options.AIOrders())
+	}
+}
+
+// TestOldSavesGetTheDefaults 釘住舊存檔（沒有那兩個鍵）讀回來是預設值。
+//
+// `omitempty` 讓沒動過的局面也不寫這兩個鍵，所以「0 道令」與「舊存檔」
+// 在 JSON 裡長得一模一樣。**0 要讀成預設不是讀成 0 道令**——一個
+// 一道令都不下的電腦，在畫面上就只是「這些諸侯都不動」。
+func TestOldSavesGetTheDefaults(t *testing.T) {
+	g := newGame(t)
+	root := t.TempDir()
+	if err := save.Write(root, 1, g, ""); err != nil {
+		t.Fatal(err)
+	}
+	blob, err := os.ReadFile(filepath.Join(root, "SV1", "REMAKE.JSON"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 沒動過就不該寫進去——寫進去的話這個測試也沒有在測舊存檔。
+	if bytes.Contains(blob, []byte("ai_mode")) {
+		t.Error("沒動過 AI 版本卻寫了 ai_mode")
+	}
+	h, err := save.Read(root, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Options.AIMode != "" {
+		t.Errorf("AI 版本讀回來是 %q，應該是空字串", h.Options.AIMode)
+	}
+	if h.Options.AIOrders() != game.AIOrdersDefault {
+		t.Errorf("電腦指令數讀回來是 %d，應該是預設 %d",
+			h.Options.AIOrders(), game.AIOrdersDefault)
+	}
+}

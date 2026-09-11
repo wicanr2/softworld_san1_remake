@@ -179,3 +179,67 @@ func TestZZGarrisonRatioSweep(t *testing.T) {
 			"總兵 %6d、總金 %6d", name, alive, biggest, turnovers, soldiers, gold)
 	}
 }
+
+// 指令數掃一遍：「其他 → 電腦指令」那一格（1–5）到底改變了什麼。
+//
+// **這一格調的是強化 AI 有多強，不是規則**——原版的電腦本來就不受
+// 「每郡每月一道令」管（`docs/mechanics/70-ai` §2.12），所以 1 是
+// 「與玩家同一條線」而不是「照原版」。預設 1 的理由是那條線最好懂：
+// 玩家一個月一道令，電腦也是。
+//
+// ⚠ **這不是在挑一個最好的數字。** 量的是「這一格有沒有作用、往哪個
+// 方向作用」——一個按下去什麼都不會變的設定，與沒做這個功能在畫面上
+// 長得一模一樣（`internal/game/options.go` 的同一句）。
+func TestZZAIOrdersSweep(t *testing.T) {
+	const months = 36
+	for _, n := range []int{1, 2, 3, 5} {
+		sc := loadScenarioForAI(t)
+		g, err := game.New(sc, state.NoFaction, 5, state.EditionBase)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := g.Options.SetAIOrders(n); err != nil {
+			t.Fatal(err)
+		}
+		s := session.New(g, ai.NewEnhanced(0), state.NoFaction)
+		before := map[int]state.FactionID{}
+		for _, p := range g.Prefectures() {
+			before[p.ID] = p.Owner
+		}
+		for m := 0; m < months && !s.Over; m++ {
+			s.EndMonth()
+		}
+		alive, biggest, turnovers, soldiers, gold, rice, land := 0, 0, 0, 0, 0, 0, 0
+		owned := 0
+		for _, p := range g.Prefectures() {
+			if p.ID == 0 {
+				continue
+			}
+			if before[p.ID] != p.Owner {
+				turnovers++
+			}
+			soldiers += g.Soldiers(p.ID)
+			gold += p.Gold
+			rice += p.Rice
+			if p.Owned() {
+				land += int(p.LandValue)
+				owned++
+			}
+		}
+		for _, f := range g.Factions() {
+			if f.Alive {
+				alive++
+			}
+			if k := len(g.Territory(f.ID)); k > biggest {
+				biggest = k
+			}
+		}
+		avgLand := 0
+		if owned > 0 {
+			avgLand = land / owned
+		}
+		t.Logf("每郡每月 %d 道令：存活 %2d、最大 %2d 郡、易主 %2d 郡、"+
+			"總兵 %6d、總金 %6d、總米 %7d、平均地力 %2d",
+			n, alive, biggest, turnovers, soldiers, gold, rice, avgLand)
+	}
+}

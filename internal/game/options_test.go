@@ -81,3 +81,50 @@ func TestDelayRange(t *testing.T) {
 		t.Errorf("設成 0 之後讀到 %d，0 是「等待按鍵」不是「沒設定」", o.Delay())
 	}
 }
+
+// TestAIOrdersDefaultsToOne 釘住「電腦指令」的預設是一道。
+//
+// 預設 1 的理由是那條線最好懂：玩家一個月一道令，電腦也是。
+// **這一格調的是強化 AI 有多強不是規則**——原版的電腦本來就不受
+// 「每郡每月一道令」管（`docs/mechanics/70-ai` §2.12）。
+func TestAIOrdersDefaultsToOne(t *testing.T) {
+	var o Options
+	if o.AIOrders() != AIOrdersDefault {
+		t.Errorf("預設是 %d，應該是 %d", o.AIOrders(), AIOrdersDefault)
+	}
+	if AIOrdersDefault != 1 {
+		t.Errorf("預設值改成 %d 了；使用者要的是一道", AIOrdersDefault)
+	}
+	for _, v := range []int{AIOrdersDefault, 3, AIOrdersMax} {
+		if err := o.SetAIOrders(v); err != nil {
+			t.Errorf("設 %d 應該收：%v", v, err)
+		} else if o.AIOrders() != v {
+			t.Errorf("設 %d 讀回 %d", v, o.AIOrders())
+		}
+	}
+	// **越界要擋下來**，不要夾成一個看起來正常的數字：玩家多按一位
+	// 卻換來「電腦一次下五道令」是查不出來的意外。
+	for _, v := range []int{0, -1, AIOrdersMax + 1, 99} {
+		if err := o.SetAIOrders(v); err == nil {
+			t.Errorf("設 %d 竟然收下了", v)
+		}
+	}
+	if o.AIOrders() != AIOrdersMax {
+		t.Errorf("被擋下來的那幾次改到了值（現在是 %d）", o.AIOrders())
+	}
+}
+
+// TestAIModeStartsEmpty 釘住 AI 版本預設是「開局挑的那一個」。
+//
+// 零值不能是 `base`——那會讓「沒動過設定」與「選了原版 AI」變成同一件事，
+// 而兩者在加強版的規則上是不同的結局（`ai.CheckEdition`）。
+func TestAIModeStartsEmpty(t *testing.T) {
+	var o Options
+	if o.AIMode != "" {
+		t.Errorf("預設的 AI 版本是 %q，應該是空字串（＝開局挑的那一個）", o.AIMode)
+	}
+	o.SetAIMode("enhanced")
+	if o.AIMode != "enhanced" {
+		t.Errorf("設完是 %q", o.AIMode)
+	}
+}

@@ -712,3 +712,199 @@ func TestHeadhuntFollowsTheSeason(t *testing.T) {
 		}
 	}
 }
+
+// TestNextModeOnlyOffersCompatibleOnes 釘住遊戲中切換 AI 只在**跑得動
+// 這一版規則**的版本裡繞。
+//
+// 還原型的 AI 配另一版的規則會安靜地算錯（`CheckEdition`）。選單那一格
+// 每按一下就換一個，如果清單裡混進一個不相容的，玩家按到它只會看到
+// 一行錯誤訊息——那與「這個功能壞了」在畫面上沒有差別。
+func TestNextModeOnlyOffersCompatibleOnes(t *testing.T) {
+	for _, ed := range []state.Edition{state.EditionBase, state.EditionPlus} {
+		list := ModesFor(ed)
+		if len(list) == 0 {
+			t.Fatalf("%s 一個 AI 都沒有", ed)
+		}
+		for _, m := range list {
+			if err := CheckEdition(m, ed); err != nil {
+				t.Errorf("%s 的清單裡有 %s，但它跑不動：%v", ed, m, err)
+			}
+		}
+		// 繞一圈要回到起點，而且中途每一個都合法。
+		start := list[0]
+		cur := start
+		for i := 0; i < len(list); i++ {
+			cur = NextMode(cur, ed)
+			if err := CheckEdition(cur, ed); err != nil {
+				t.Errorf("%s 繞到 %s，但它跑不動：%v", ed, cur, err)
+			}
+		}
+		if cur != start {
+			t.Errorf("%s 繞 %d 次回到 %s，起點是 %s", ed, len(list), cur, start)
+		}
+		// 認不得的（含空字串，＝「還沒挑過」）要給得出第一個。
+		if got := NextMode("", ed); got != list[0] {
+			t.Errorf("%s 從空字串繞到 %s，應該是 %s", ed, got, list[0])
+		}
+	}
+	// 強化 AI 兩版都收得下——它不宣稱在還原誰。
+	for _, ed := range []state.Edition{state.EditionBase, state.EditionPlus} {
+		var found bool
+		for _, m := range ModesFor(ed) {
+			if m == ModeEnhanced {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s 的清單裡沒有 %s", ed, ModeEnhanced)
+		}
+	}
+}
+
+// TestEnhancedNeverGivesAwayAPrefecture 釘住「指定太守」不會把郡送人。
+//
+// ⚠ **這不是在驗原版錯了。** 原版的候選名單本來就限制在同一個郡
+//（`buildRoster` 模式 2：所在郡相同 ＋ 身分 0–3），只是不比對勢力
+//（`docs/re/07` §6，七個模式一個都沒有），而主事者換人郡就跟著改所屬
+//（`0xd74d`，`L0`）——那一整套是自洽的：郡的所屬每回合由駐軍重算，
+// 混編是表得出來的盤面。
+//
+// 驗的是**強化 AI 自己多加的那一道**：它不想讓郡易主，所以只挑自己人。
+// 少了這一道，混編的郡裡魅力最高的剛好是隔壁的人時，這個郡會當場易主
+// ——盤面上看起來只是「這個郡突然變色了」。
+func TestEnhancedNeverGivesAwayAPrefecture(t *testing.T) {
+	g := newGame(t, state.NoFaction)
+	e := NewEnhanced(0)
+	before := map[int]state.FactionID{}
+	for _, p := range g.Prefectures() {
+		before[p.ID] = p.Owner
+	}
+	appointed := 0
+	for _, f := range g.Factions() {
+		if !f.Alive {
+			continue
+		}
+		for _, o := range e.Plan(g, f.ID) {
+			a, ok := o.(game.AppointGovernorOrder)
+			if !ok {
+				continue
+			}
+			appointed++
+			x := g.General(a.Target)
+			if x == nil {
+				t.Errorf("郡 %d 指了一個不存在的人 %d", a.At, a.Target)
+				continue
+			}
+			if x.Faction != f.ID {
+				t.Errorf("勢力 %d 在郡 %d 指了勢力 %d 的 %s 當太守"+
+					"——這個郡會當場易主（強化 AI 應該只挑自己人）",
+					f.ID, a.At, x.Faction, x.Name)
+			}
+			if err := o.Apply(g, f.ID); err != nil {
+				t.Errorf("郡 %d 的指定太守套不上去：%v", a.At, err)
+				continue
+			}
+			if got := g.Prefecture(a.At).Owner; got != before[a.At] {
+				t.Errorf("郡 %d 指完太守之後從勢力 %d 變成 %d",
+					a.At, before[a.At], got)
+			}
+		}
+	}
+	t.Logf("開局那一輪指了 %d 次太守", appointed)
+}
+
+// TestEnhancedRaisesTheHarvestLevers 釘住強化 AI 真的在動秋收公式裡的量。
+//
+// 秋收（`game.HarvestGold`／`HarvestRice`，`L0`）只看四個可以操作的量：
+// 土地價值、民眾忠誠、洪水率、太守魅力。先前的順序把開墾排在最後一條，
+// 而徵兵幾乎永遠有空額可補，於是開墾從來輪不到——跑三十六個月下來
+// 平均地力只剩 7。**判準是這四個量裡至少有一個被推上去**，不是
+// 「AI 有沒有下命令」：一個只會徵兵的 AI 也一直在下命令。
+func TestEnhancedRaisesTheHarvestLevers(t *testing.T) {
+	g := newGame(t, state.NoFaction)
+	e := NewEnhanced(0)
+	kinds := map[string]int{}
+	for _, f := range g.Factions() {
+		if !f.Alive {
+			continue
+		}
+		for _, o := range e.Plan(g, f.ID) {
+			switch o.(type) {
+			case game.ReclaimOrder:
+				kinds["開墾"]++
+			case game.FloodControlOrder:
+				kinds["防洪"]++
+			case game.ReliefOrder:
+				kinds["賑民"]++
+			case game.AppointGovernorOrder:
+				kinds["指定太守"]++
+			}
+		}
+	}
+	total := 0
+	for _, n := range kinds {
+		total += n
+	}
+	if total == 0 {
+		t.Error("開局那一輪一道內政都沒有——收入那一段沒有接上")
+	}
+	t.Logf("開局那一輪的內政：%v（共 %d 道）", kinds, total)
+}
+
+// TestZZEnhancedCommandMix 跑三十六個月，量強化 AI 的命令分佈。
+//
+// **判準是「收入那一段走得到」**，用的是命中次數不是「有沒有實作」
+//（`CLAUDE.md` §7 第 21 條的同一個判準：一支從來沒被命中的路徑，
+// 與沒寫在畫面上長得一樣）。
+//
+// ⚠ 「指定太守」開局那一輪是 0 次——**那不是沒接上**：劇本出貨的太守
+// 本來就已經是郡裡魅力最高的那一位（24 個有主的郡：14 個君主親臨、
+// 10 個現任就是最高）。要等到有人搬進來、戰死或被登用進來才換得到，
+// 所以這一條只有跑過時間才量得到。
+func TestZZEnhancedCommandMix(t *testing.T) {
+	g := newGame(t, state.NoFaction)
+	e := NewEnhanced(0)
+	kinds := map[string]int{}
+	for m := 0; m < 36; m++ {
+		for _, f := range g.Factions() {
+			if !f.Alive {
+				continue
+			}
+			got, _, err := e.Act(g, f.ID)
+			if err != nil {
+				t.Fatalf("第 %d 月勢力 %d 的命令套不上去：%v", m, f.ID, err)
+			}
+			for _, o := range got {
+				switch o.(type) {
+				case game.AppointGovernorOrder:
+					kinds["指定太守"]++
+				case game.ReclaimOrder:
+					kinds["開墾"]++
+				case game.FloodControlOrder:
+					kinds["防洪"]++
+				case game.ReliefOrder:
+					kinds["賑民"]++
+				case game.ConscriptOrder:
+					kinds["徵兵"]++
+				case game.AttackOrder:
+					kinds["出兵"]++
+				case game.TrainOrder:
+					kinds["練兵"]++
+				case game.RecruitOrder:
+					kinds["登用"]++
+				case game.SellRiceOrder:
+					kinds["賣米"]++
+				default:
+					kinds["其他"]++
+				}
+			}
+		}
+		g.EndMonth()
+	}
+	t.Logf("三十六個月的命令分佈：%v", kinds)
+	for _, k := range []string{"開墾", "指定太守"} {
+		if kinds[k] == 0 {
+			t.Errorf("三十六個月一次「%s」都沒有——收入那一段走不到", k)
+		}
+	}
+}
