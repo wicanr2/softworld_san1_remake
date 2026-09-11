@@ -116,16 +116,18 @@ func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 	}
 }
 
-// drawPage 用整頁內容蓋掉地圖區——列表型的指令（將軍列表、領土列表）
-// 要的空間比訊息列多。
+// drawPage 用整頁內容蓋掉地圖區與右側資料欄——列表型的指令（將軍列表、
+// 領土列表）要的空間比訊息列多。
+//
+// **框延伸到畫面右緣**：領土列表中文就要 60 格、英文 67 格，停在地圖區
+//（44 格）會把最後幾欄截掉。原版素材畫面的分頁也是蓋掉右側面板
+//（`docs/spec/014` §3.3），兩個畫面同一個做法。
+//
+// 清底色要用 `FillRect`：畫空白字元沒有墨水，等於沒清，地圖會從底下透出來。
 func drawPage(c *Canvas, title string, lines []string) {
-	w := panelCol - mapCol
+	w := c.Cols - mapCol
+	c.FillRect((mapCol+1)*CellW, CellH, (mapCol+w-1)*CellW, (Rows-1)*CellH, ColBG)
 	c.DrawBox(mapCol, 0, w, Rows, ColFrame)
-	for y := 1; y < Rows-1; y++ {
-		for x := mapCol + 1; x < panelCol-1; x++ {
-			c.DrawText(x, y, " ", ColBG)
-		}
-	}
 	c.DrawText(mapCol+2, 0, title, ColSel)
 	for i, line := range lines {
 		if 1+i >= Rows-1 {
@@ -284,21 +286,39 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 }
 
 // drawCommandPanel 畫右下的指令欄。原版是兩欄五列。
+// commandPanelRows 是文字版指令欄一欄最多幾項（第 15–22 列；第 23 列
+// 留給「Esc 返回」）；commandColW 是兩欄時一欄的寬。
+const (
+	commandPanelRows = 8
+	commandColW      = 13
+)
+
 func drawCommandPanel(c *Canvas, title string, cmds []Command) {
 	c.DrawBox(panelCol, 13, panelW, Rows-13, ColFrame)
 	c.DrawText(panelCol+2, 13, title, ColSel)
-	per := 5
-	if len(cmds) <= 5 {
-		per = len(cmds)
+	// **八項以內排一欄**（第 15–22 列，名字可以用到右緣），超過才兩欄。
+	// 先前六項就排兩欄、每欄 13 格：英文的「Select Prefecture」會跟右欄的
+	// 「6.」疊在一起，「Lord's Treasures」在右緣被截——前者連右緣的截字
+	// 計數都量不到。兩欄時左欄的名字截在欄內，截掉的照樣記進 `Clipped`。
+	per := len(cmds)
+	if per > commandPanelRows {
+		per = (len(cmds) + 1) / 2
 	}
 	for i, cmd := range cmds {
-		col := panelCol + 2 + (i/per)*13
+		col := panelCol + 2 + (i/per)*commandColW
 		row := 15 + i%per
 		if row >= Rows-1 {
 			break
 		}
 		c.DrawText(col, row, fmt.Sprintf("%c.", cmd.Key), ColDim)
-		c.DrawText(col+3, row, cmd.Name, ColFG)
+		name := cmd.Name
+		if per < len(cmds) && i < per {
+			if w := commandColW - 3; cells.Width(name) > w {
+				c.Clipped += cells.Width(name) - cells.Width(cells.Truncate(name, w))
+				name = cells.Truncate(name, w)
+			}
+		}
+		c.DrawText(col+3, row, name, ColFG)
 	}
 	if len(cmds) < len(Commands()) {
 		c.DrawText(panelCol+2, Rows-2, t("msg.back"), ColDim)

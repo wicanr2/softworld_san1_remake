@@ -226,7 +226,7 @@ func (s *Screen) pickLord() {
 			name = who.Name
 		}
 		s.items = append(s.items, i18n.Sf("title.lordLine",
-			len(s.lords)+1, name, len(g.Territory(f.ID))))
+			len(s.lords)+1, i18n.PersonName(name), len(g.Territory(f.ID))))
 		s.lords = append(s.lords, int(f.ID))
 	}
 	// **空的新君主欄也要列出來**：原版的「選角色」那一層就有它們

@@ -145,8 +145,11 @@ func (d Date) Format(c Calendar) string {
 //
 // ⚠ **西曆那條路沒有樣本**：原版切成西曆時直排寫不寫季節沒量過。
 // 這裡照寫——季節是月份算出來的，與曆法無關。
+//
+// 接法走譯文（`date.withSeason`）：中日文直接接（「元月春」），英文要
+// 分隔——直接接會變成「month 1Spring」。
 func (d Date) FormatWithSeason(c Calendar) string {
-	return d.Format(c) + d.Season().Name()
+	return tf("date.withSeason", d.Format(c), d.Season().Name())
 }
 
 // numeral 是年月在畫面上的寫法。

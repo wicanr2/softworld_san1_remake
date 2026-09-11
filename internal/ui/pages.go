@@ -220,6 +220,9 @@ func StratagemName(s battle.Stratagem) string {
 // **戰役是遊戲裡最花時間的一件事**——三十天、數十支部隊、單挑與計謀。
 // 只給一行結果等於把過程丟掉；原版有「查看電腦戰役」這個開關
 // （`docs/re/04` §3），就是因為過程本身是內容。
+//
+// ⚠ 這一頁的寬度三個語系都還沒量過：逐日的紀錄帶人名與計謀名，英文可能
+// 超過分頁的 68 格而被截（`docs/spec/014` §6）。要量得先跑出一場戰役。
 func BattleReport(g *game.State, r *game.BattleResult) (string, []string) {
 	if r == nil {
 		return t("page.report"), []string{t("msg.none")}

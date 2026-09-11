@@ -37,6 +37,13 @@ type Canvas struct {
 	// **缺字在畫面上是空白，而空白看起來像排版問題。** 累計起來才問得到
 	// 「這一畫面有沒有字沒畫出來」，不然只能靠眼睛看。
 	Missing map[rune]int
+
+	// Clipped 累計 `DrawText` 在畫布右緣丟掉的字數。
+	//
+	// **溢出在畫面上是少了幾個字，而少了幾個字看起來像譯文本來就這樣。**
+	// 貼著右緣的那一欄（文字版的資料欄與指令欄）一溢出就是在這裡被丟掉，
+	// 累計起來才問得到「這一畫面有沒有字被截」。
+	Clipped int
 }
 
 // NewCanvas 開一張 cols × rows 格的畫布。
@@ -93,6 +100,7 @@ func (c *Canvas) DrawText(col, row int, s string, fg color.RGBA) int {
 			continue
 		}
 		if x+w > c.Cols {
+			c.Clipped += cells.Width(s) - (x - col)
 			break
 		}
 		c.drawRune(x, row, r, fg)
@@ -189,6 +197,47 @@ func (c *Canvas) drawRuneScaledPx(px, py int, r rune, fg color.RGBA, sx, sy int)
 			}
 		}
 	}
+}
+
+// DrawTextRotatedPx 把一行字順時針轉 90° 畫：字頂朝右、由上往下讀，
+// 與英文書脊同一個方向。回傳畫掉的高度。
+//
+// 給窄直條上的橫書文字用：原版左側直條直排七個全形字，英文逐字母一列
+// 直排讀不下去，按字折行又會把「Zhongping」切斷——轉過來排才塞得進
+// 同一條直條，而且讀得通。
+func (c *Canvas) DrawTextRotatedPx(x, y int, s string, fg color.RGBA) int {
+	y0 := y
+	b := c.Img.Bounds()
+	for _, r := range s {
+		w := cells.RuneWidth(r)
+		if w == 0 {
+			continue
+		}
+		g, ok := c.face.Glyph(r)
+		if !ok {
+			c.Missing[r]++
+			y += w * CellW
+			continue
+		}
+		off := CellH - g.H
+		if off < 0 {
+			off = 0
+		}
+		for gy := 0; gy < g.H; gy++ {
+			for gx := 0; gx < g.W; gx++ {
+				if !g.At(gx, gy) {
+					continue
+				}
+				// 順時針 90°：字模的 (gx, gy) → 畫布的 (x + 列高−1−列, y + 行)。
+				xx, yy := x+CellH-1-(gy+off), y+gx
+				if xx >= b.Min.X && xx < b.Max.X && yy >= b.Min.Y && yy < b.Max.Y {
+					c.Img.SetRGBA(xx, yy, fg)
+				}
+			}
+		}
+		y += w * CellW
+	}
+	return y - y0
 }
 
 // DrawBox 畫一個用單線框起來的方框（格座標，含邊框）。

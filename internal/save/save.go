@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -403,13 +404,17 @@ func List(root string) []Info {
 }
 
 // Describe 是一行給選單看的說明。
+//
+// **不帶槽號**：清單的編號由呼叫端決定（開局選單與挑選清單都照位置
+// 編號），這裡再帶一次就會疊成「`1. 1. 新君主…`」，讀檔清單跳過空槽
+// 時還會變成「`1. 3. …`」這種兩個號碼對不上的組合。
 func (i Info) Describe() string {
 	if !i.Exists {
-		return fmt.Sprintf("%d. （空）", i.Slot)
+		return i18n.S("save.empty")
 	}
 	name := strings.TrimSpace(i.Name)
 	if name == "" {
-		name = "無名"
+		name = i18n.S("save.noName")
 	}
-	return fmt.Sprintf("%d. %s　%d 年 %d 月", i.Slot, name, i.Year, i.Month)
+	return i18n.Sf("save.when", name, i.Year, i.Month)
 }

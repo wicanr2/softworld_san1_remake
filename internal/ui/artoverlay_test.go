@@ -438,3 +438,208 @@ func TestArtBattleTallOptionsGoAboveThePanel(t *testing.T) {
 		}
 	}
 }
+
+// TestArtStatusFitsEveryLanguage 釘住郡的資料面板在三個語系下每一格都
+// 塞得進原版的槽位（`docs/spec/014` §6）。
+//
+// 槽位是原版版面決定的：左欄標籤 ＋ 靠右的數值共 12 格、右欄 10 格、
+// 州名 6 格。英文的「Land Value 100」十四格就壓到右欄——不會報錯，
+// 只會兩個數字疊在一起。判準是劇本 001 開局**每一個有主的郡**都畫一次。
+func TestArtStatusFitsEveryLanguage(t *testing.T) {
+	tf := i18n.Sf
+	_, g := artSessionFixture(t)
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	rightCols := artLordCols
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		for _, pv := range g.Prefectures() {
+			if !pv.Owned() {
+				continue
+			}
+			p := g.Prefecture(pv.ID)
+			for _, f := range artStatusFields(g, p) {
+				if w := cells.Width(f.label) + 1 + cells.Width(f.value); w > (f.r-f.x)/CellW {
+					t.Errorf("%s 郡 %d 的「%s %s」%d 格，槽位只有 %d 格",
+						l, p.ID, f.label, f.value, w, (f.r-f.x)/CellW)
+				}
+			}
+			if lord := g.Lord(p.Owner); lord != nil {
+				if s := tf("stat.lord", PersonName(lord.Name)); cells.Width(s) > rightCols {
+					t.Errorf("%s 郡 %d 的君主欄 %q 超過 %d 格", l, p.ID, s, rightCols)
+				}
+				if s := tf("stat.fame", 100); cells.Width(s) > rightCols {
+					t.Errorf("%s 的人望欄 %q 超過 %d 格", l, s, rightCols)
+				}
+			}
+			name := PlaceName(p.Name)
+			prov := PlaceName(state.ProvinceName(int(p.Province)))
+			if artAllWide(name) {
+				// 中文與日文：郡名雙倍字停在州名前（488）、州名 6 格。
+				if w := cells.Width(name) * 2; w > (artProvX-artNameX)/CellW {
+					t.Errorf("%s 郡 %d 的郡名 %q 雙倍字 %d 格，槽位只有 %d 格",
+						l, p.ID, name, w, (artProvX-artNameX)/CellW)
+				}
+				if s := artProvince(int(p.Province)); cells.Width(s) > artProvCols {
+					t.Errorf("%s 郡 %d 的州名 %q 超過 %d 格", l, p.ID, s, artProvCols)
+				}
+			} else {
+				if cells.Width(name) > artNameCols {
+					t.Errorf("%s 郡 %d 的郡名 %q 超過 %d 格", l, p.ID, name, artNameCols)
+				}
+				if s := artProvinceIn(int(p.Province), artProvWideCols); cells.Width(s) > artProvWideCols ||
+					strings.HasSuffix(s, "zh") {
+					t.Errorf("%s 郡 %d 的州名 %q 放不下 %d 格（被截了）", l, p.ID, s, artProvWideCols)
+				}
+				if prov == state.ProvinceName(int(p.Province)) {
+					t.Errorf("%s 郡 %d 的州名 %q 沒有轉寫", l, p.ID, prov)
+				}
+			}
+		}
+	}
+}
+
+// TestDrawTextRotated 釘住轉 90° 的畫字：一個半形字佔 16 像素寬、8 像素高，
+// 由上往下排。
+func TestDrawTextRotated(t *testing.T) {
+	c := NewCanvasPx(64, 64, testFace(t))
+	h := c.DrawTextRotatedPx(8, 4, "HH", artInkName)
+	if h != 2*CellW {
+		t.Errorf("兩個半形字轉過來高 %d，想要 %d", h, 2*CellW)
+	}
+	x0, y0, x1, y1 := 99, 99, -1, -1
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 64; x++ {
+			if c.Img.RGBAAt(x, y) == artInkName {
+				x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
+			}
+		}
+	}
+	if x1 < 0 {
+		t.Fatal("什麼都沒畫")
+	}
+	if x0 < 8 || x1 >= 8+CellH {
+		t.Errorf("墨水的 x 在 %d–%d，應該在列高那一條 8–%d 裡", x0, x1, 8+CellH-1)
+	}
+	if y0 < 4 || y1 >= 4+2*CellW {
+		t.Errorf("墨水的 y 在 %d–%d，應該在 4–%d 裡", y0, y1, 4+2*CellW-1)
+	}
+}
+
+// TestArtDateStaysInTheStrip 釘住左側直條上的年月，三個語系、兩種曆法
+// 都留在直條裡（內側的底是 y 356，再下去是下方花邊）。
+//
+// 英文先前是一個字母一列直排：「Zhongping 6, month 1, Spring」二十八個
+// 字元要 448 像素高，直條只有三百像素——下半截畫到花邊上。判準是幾何：
+// 直排每字 16 像素、轉 90° 排每個半形字 8 像素，加上起點不能過底。
+func TestArtDateStaysInTheStrip(t *testing.T) {
+	_, g := artSessionFixture(t)
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	const stripBottom = 356
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		for _, cal := range []game.Calendar{game.ChineseEra, game.Western} {
+			// 最長的月份與年份：十二月、四位數的年。
+			date := game.Date{Year: 1999, Month: 12}.FormatWithSeason(cal)
+			if cal == game.ChineseEra {
+				date = g.Date.FormatWithSeason(cal)
+			}
+			h := len([]rune(date)) * CellH
+			if artHasLatin(date) {
+				h = cells.Width(date) * CellW
+			}
+			if bottom := artDateRow*CellH + h; bottom > stripBottom {
+				t.Errorf("%s 的年月 %q 畫到 y %d，直條的底是 %d", l, date, bottom, stripBottom)
+			}
+		}
+	}
+}
+
+// TestBattleSidePanelsFitEveryLanguage 釘住戰場左右兩塊面板的五行字
+// 三個語系都在 21 格以內（`docs/spec/014` §7）。數值取上限：兵與金五位數。
+func TestBattleSidePanelsFitEveryLanguage(t *testing.T) {
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	w := (assets.BattlePanelW - 8) / CellW
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		lines := []string{
+			i18n.Sf("bat.armyOf", i18n.PersonName("諸葛亮")),
+			i18n.Sf("bat.forcesLine", 10, 10),
+			i18n.Sf("bat.menLine", 99999),
+			i18n.Sf("bat.goldLine", 30000),
+		}
+		for s := battle.Side(0); s < 4; s++ {
+			lines = append(lines, SideName(s))
+		}
+		for _, s := range lines {
+			if cells.Width(s) > w {
+				t.Errorf("%s 的戰場面板有一行 %d 格，面板只有 %d 格：%q", l, cells.Width(s), w, s)
+			}
+		}
+	}
+}
+
+// TestTextPageCoversAndClears 釘住文字版的分頁：框延伸到畫面右緣、
+// 三個語系的領土列表都不必截，而且框裡除了字以外都是底色。
+//
+// 先前清底色是畫空白字元——空白沒有墨水，等於沒清，地圖從底下透出來；
+// 框也只到地圖區的 44 格，領土列表中文就要 60 格，最後幾欄被截掉。
+func TestTextPageCoversAndClears(t *testing.T) {
+	_, g := artSessionFixture(t)
+	face := testFace(t)
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		title, lines := TerritoryList(g, g.Player)
+		for _, line := range lines {
+			if w := cells.Width(line); w > Cols-mapCol-4 {
+				t.Errorf("%s 的領土列表有一列 %d 格，文字版的分頁只有 %d 格", l, w, Cols-mapCol-4)
+			}
+		}
+		c := NewCanvas(Cols, Rows, face)
+		DrawSession(c, g, nil, View{PageTitle: title, Page: lines[:1]})
+		// 第三列以下（只有第一列有字）整片都要是底色。
+		for y := 3 * CellH; y < (Rows-1)*CellH; y++ {
+			for x := (mapCol + 1) * CellW; x < (Cols-1)*CellW; x++ {
+				if px := c.Img.RGBAAt(x, y); px != ColBG {
+					t.Fatalf("%s 分頁框裡 (%d,%d) 不是底色——底下的東西透出來了", l, x, y)
+				}
+			}
+		}
+	}
+}
+
+// TestTextScreenClipsNothing 釘住文字版（沒有原版素材時的畫面）在三個
+// 語系、每一種狀態下都沒有字在畫布右緣被截掉（`Canvas.Clipped`）。
+//
+// 右側的資料欄與指令欄貼著右緣，溢出的字會被 `DrawText` 安靜地丟掉——
+// 畫面上只是少了幾個字，看起來像譯文本來就這樣。
+func TestTextScreenClipsNothing(t *testing.T) {
+	_, g := artSessionFixture(t)
+	face := testFace(t)
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		views := map[string]View{"主提示": {}}
+		for k := byte('1'); k <= '9'; k++ {
+			title, items := SubMenu(k)
+			views["子選單 "+string(k)] = View{Menu: title, Items: items}
+		}
+		for _, p := range g.Prefectures() {
+			if p.Owned() {
+				views["郡 "+p.Name] = View{Sel: p.ID}
+			}
+		}
+		for name, v := range views {
+			c := NewCanvas(Cols, Rows, face)
+			DrawSession(c, g, nil, v)
+			if c.Clipped > 0 {
+				t.Errorf("%s 的文字版在「%s」截掉了 %d 格", l, name, c.Clipped)
+			}
+		}
+	}
+}

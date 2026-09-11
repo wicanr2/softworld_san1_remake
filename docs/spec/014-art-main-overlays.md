@@ -97,7 +97,12 @@
 |---|---|
 | 繁中 | 無（九類都在下面板，與原版相同）|
 | 日文 | 無 |
-| 英文 | 1 查看、3 兵士、7 君主、9 其他 → 上面板；8 謀略（`2.Befriend Afar, Attack Near` 28 格）→ 內容區 |
+| 英文 | 1 查看、3 兵士、7 君主、8 謀略、9 其他 → 上面板 |
+
+英文有兩個計略名縮短過才塞得進（文字版的指令欄一欄 23 格也要）：
+「Drive Tiger, Devour Wolf」→「Set Tiger on Wolf」、「Befriend Afar, Attack Near」
+→「Ally Afar, Attack Near」；「Message Delay」→「Msg Delay」（文字版的「其他」
+十項要排兩欄，一欄 10 格）。
 
 其餘時候放提示或最後一則訊息，
 **最多四行**（原版的主提示用兩行，事件訊息常常更長，四行是面板放得下的量）。
@@ -130,6 +135,16 @@ remake 在「其他」加了兩項（`docs/design/02` §5），前兩行與原�
 0.電腦指令 請選擇:
 ```
 
+### 3.5 英文的年月轉 90° 排
+
+原版在左側直條上直排七個全形字。英文逐字母一列直排讀不下去（「Zhongping
+6, month 1, Spring」要 448 像素高，直條只有三百），按字折行又會把「Zhongping」
+切斷（直條內側只有 5 格寬）。所以**有拉丁字母就整行順時針轉 90°**
+（`Canvas.DrawTextRotatedPx`），像書脊一樣由上往下讀。日文的西曆
+「189年1月春」沒有拉丁字母，照原版直排。
+
+順帶：季節字的接法走譯文（`date.withSeason`）——英文先前是「month 1Spring」。
+
 ## 4. remake 差異（登記在案）
 
 | 項目 | 原版 | remake |
@@ -155,13 +170,29 @@ remake 在「其他」加了兩項（`docs/design/02` §5），前兩行與原�
 - `TestPagesFitTheOverlayInEveryLanguage`：分頁三個語系都在內容區的 68 格內。
 - `cells.TestColumnsNeverTruncate`：表格的欄名不截、欄與欄不黏。
 
-## 6. 還沒做的
+## 6. 溢出的量法與還沒量的
 
-- **郡的資料面板的欄名是寫死的中文**（`drawArtStatus`）：英日文下也顯示
-  「土地價值」「人望」。那一格的槽位是原版版面決定的（標籤 ＋ 靠右的數值
-  共 12 格），英文要用短欄名才塞得進，還沒做。
-- **左側直條的年月在英文下一個字母一列**（`Zhongping 6 month…`）：
-  原版直排七個全形字，英文要換一種寫法。
+每一塊都有一支測試量三個語系（繁中、英文、日文）：
+
+| 畫面 | 量什麼 | 測試 |
+|---|---|---|
+| 下面板的子選單 | 排得進四行 × 24 格，否則改畫上面板 | `TestSubMenusShowInFullInEveryLanguage` |
+| 上面板的指令表 | 墨水不出面板 | `TestCommandMenuLayout` |
+| 上面板的郡的資料 | 標籤 ＋ 數值塞得進原版槽位（12／10 格）、郡名與州名不截 | `TestArtStatusFitsEveryLanguage` |
+| 左側直條的年月 | 不過直條的底（英文轉 90° 排，§3.5）| `TestArtDateStaysInTheStrip` |
+| 分頁 | 68 格內 | `TestPagesFitTheOverlayInEveryLanguage` |
+| 開局選單 | 一項 40 格內（六個劇本、96 個君主欄）| `menu.TestTitleListsFitEveryLanguage` |
+| 戰場的選項與左右面板 | 一行 21 格內 | `TestBattleOptionsFitThePanelInEveryLanguage`、`TestBattleSidePanelsFitEveryLanguage` |
+| 文字版的每一種狀態 | 右緣沒有字被截、兩欄不疊（`Canvas.Clipped`）| `TestTextScreenClipsNothing`、`TestTextPageCoversAndClears` |
+
+郡的資料面板的英文排法（§2 的原版槽位放不下拼音）：郡名改一倍字、用到
+君主欄前（14 格），州名移到第二列郡編號的左邊（8 格）；州名放不下時拿掉
+「州」字再轉（「Liangzhou」→「Liang」），不截字。州名用到的十三個字先前
+不在拼音表裡（表只收人名與郡名），英文的面板上「豫州」一直是中文。
+「弁州」「充州」照資料轉成 Bianzhou、Chongzhou，不照史書改。
+
+**還沒量的**：戰報那一頁（`BattleReport`）——逐日紀錄帶人名與計謀名，
+英文可能超過 68 格；要量得先跑出一場戰役。
 
 ## 7. 主戰場（`ui.DrawArtBattle`）
 

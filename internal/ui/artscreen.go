@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"image"
 	"image/color"
 	"image/draw"
@@ -226,9 +227,19 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 
 	// 年月直排在左側直條上，與原版一樣——**最後一格是季節**
 	// （原版寫「建安二年八月秋」，七個字）。
-	for i, r := range []rune(g.Date.FormatWithSeason(v.Calendar)) {
-		c.DrawText(artDateCol, artDateRow+i, string(r),
-			color.RGBA{0x00, 0x00, 0x00, 0xFF})
+	//
+	//
+	// 英文逐字母一列直排讀不下去、按字折行又會把「Zhongping」切斷
+	//（直條內側只有 5 格寬），所以**有拉丁字母就整行轉 90° 排**，
+	// 像書脊一樣由上往下讀（`docs/spec/014` §3.5）。
+	date := g.Date.FormatWithSeason(v.Calendar)
+	ink := color.RGBA{0x00, 0x00, 0x00, 0xFF}
+	if artHasLatin(date) {
+		c.DrawTextRotatedPx(artDateCol*CellW, artDateRow*CellH, date, ink)
+	} else {
+		for i, r := range []rune(date) {
+			c.DrawText(artDateCol, artDateRow+i, string(r), ink)
+		}
 	}
 
 	// **下面板先畫**：清單寬到要蓋整個內容區時，覆蓋頁要蓋在它上面，
@@ -480,30 +491,38 @@ func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hin
 
 // drawArtStatus 畫上面板的郡的資料（原版的「0.狀態」，`docs/spec/005` §2.1）。
 //
-// ⚠ 欄名還沒接譯文：這一塊的字是照原版畫面寫死的中文，英日文下也顯示
-// 「土地價值」「人望」（`docs/spec/014` §6）。標籤 ＋ 靠右的數值共 12 格，
-// 英文要用短欄名才塞得進。
+// 位置與字色照原版量；**槽位也是原版的**：左欄標籤 ＋ 靠右的數值共 12 格
+// （424–520）、右欄 10 格（536–616）。中文的欄名照原版，英日文用一組
+// 面板專用的短欄名（`stat.*`）才塞得進（`TestArtStatusFitsEveryLanguage`）。
 func drawArtStatus(c *Canvas, g *game.State, p *game.Prefecture, sel int) {
 	// 第一列：郡名是 32×32 的雙倍字，州名與編號在它右邊。
-	x := artNameX
-	for _, r := range p.Name {
-		x += c.DrawRuneScaledPx(x, artNameY, r, artInkName, 2, 2)
+	//
+	// 譯名（拼音）雙倍字放不下，改成一倍字、可以用到君主那一欄前面
+	//（14 格，`Yingchuan` 九格），州名移到第二列、郡編號的左邊（8 格）。
+	if name := PlaceName(p.Name); artAllWide(name) {
+		artBigName(c, artNameX, artNameY, artProvX-artNameX, name, artInkName)
+		c.DrawTextPx(artProvX, artProvY, artProvince(int(p.Province)), artInkProv)
+	} else {
+		c.DrawTextPx(artNameX, artNameY, cells.Truncate(name, artNameCols), artInkName)
+		c.DrawTextPx(artNameX, artIDY, artProvinceIn(int(p.Province), artProvWideCols), artInkProv)
 	}
-	c.DrawTextPx(artProvX, artProvY,
-		state.ProvinceName(int(p.Province)), artInkProv)
-	x = artProvX
+	x := artProvX
 	for _, r := range fmt.Sprintf("%2d", p.ID) {
 		x += c.DrawRuneScaledPx(x, artIDY, r, artInkProv, 2, 1)
 	}
 
+	// 君主與人望那兩列右邊沒有數值欄，可以用到面板內緣（624）——
+	// 英文的「Gongsun Zan」十一格，停在 616 就會被截掉最後一個字母。
+	rightCols := artLordCols
 	if lord := g.Lord(p.Owner); lord != nil {
-		c.DrawTextPx(artLordX, artLordY, "君主"+lord.Name, artInkLord)
+		c.DrawTextPx(artLordX, artLordY,
+			cells.Truncate(tf("stat.lord", PersonName(lord.Name)), rightCols), artInkLord)
 		if f := g.Faction(p.Owner); f != nil {
 			c.DrawTextPx(artLordX, artFameY,
-				fmt.Sprintf("人望：%3d", f.Prestige), artInkFame)
+				cells.Truncate(tf("stat.fame", f.Prestige), rightCols), artInkFame)
 		}
 	} else {
-		c.DrawTextPx(artLordX, artLordY, "無　主", artInkLord)
+		c.DrawTextPx(artLordX, artLordY, t("stat.noLord"), artInkLord)
 	}
 	c.DrawTextPx(artAutoX, artAutoY, game.AutonomyName(p.Autonomy), artInkAuto)
 
@@ -511,40 +530,112 @@ func drawArtStatus(c *Canvas, g *game.State, p *game.Prefecture, sel int) {
 	//
 	// **原版的數值是靠右不是靠標籤排的**：位數變了整欄還是對齊，
 	// 用空白填出來的版面只有在位數剛好時才一樣。
-	num := func(v int) string { return fmt.Sprintf("%d", v) }
 	right := func(rx, ry int, s string, fg color.RGBA) {
-		c.DrawTextPx(rx-len([]rune(s))*CellW, ry, s, fg)
+		c.DrawTextPx(rx-cells.Width(s)*CellW, ry, s, fg)
 	}
-	for _, f := range []struct {
-		y     int
-		label string
-		value string
-		fg    color.RGBA
-	}{
-		{116, "土地價值", num(int(p.LandValue)), artInkField},
-		{132, "洪水率", num(int(p.FloodRate)), artInkField},
-		{148, "物價", num(int(p.PriceLevel)), artInkField},
-		{164, "民眾忠誠", num(int(p.PublicLoyalty)), artInkField},
-		{180, "人口", num(int(p.Population)), artInkField},
-		{212, "金", num(int(p.Gold)), artInkGold},
-		{228, "米", num(int(p.Rice)), artInkGold},
-		{260, "在野武將", num(g.FreeGenerals(p.ID)), artInkAuto},
-	} {
-		c.DrawTextPx(artFieldX, f.y, f.label, f.fg)
-		right(artValueR, f.y, f.value, f.fg)
+	for _, f := range artStatusFields(g, p) {
+		c.DrawTextPx(f.x, f.y, f.label, f.fg)
+		right(f.r, f.y, f.value, f.fg)
 	}
-	// 右欄：主事者姓名（32×32 的雙倍字）、現役將、兵士。
+	// 右欄：主事者姓名（32×32 的雙倍字）。
 	if who := g.Governor(sel); who != nil {
-		gx := artRightX
-		for _, r := range who.Name {
-			gx += c.DrawRuneScaledPx(gx, 212, r, artInkGov, 2, 2)
+		artBigName(c, artRightX, 212, artRightR-artRightX, PersonName(who.Name), artInkGov)
+	}
+}
+
+// artStatusField 是面板上的一格：標籤從 x 起，數值靠右對齊到 r。
+type artStatusField struct {
+	x, y, r      int
+	label, value string
+	fg           color.RGBA
+}
+
+// artStatusFields 列出面板上的十格。抽出來是為了**量得到**：
+// `TestArtStatusFitsEveryLanguage` 拿同一份清單檢查每一格塞不塞得下。
+func artStatusFields(g *game.State, p *game.Prefecture) []artStatusField {
+	num := func(v int) string { return fmt.Sprintf("%d", v) }
+	L := func(y int, key, value string, fg color.RGBA) artStatusField {
+		return artStatusField{artFieldX, y, artValueR, t(key), value, fg}
+	}
+	R := func(y int, key, value string, fg color.RGBA) artStatusField {
+		return artStatusField{artRightX, y, artRightR, t(key), value, fg}
+	}
+	return []artStatusField{
+		L(116, "stat.land", num(int(p.LandValue)), artInkField),
+		L(132, "stat.flood", num(int(p.FloodRate)), artInkField),
+		L(148, "stat.price", num(int(p.PriceLevel)), artInkField),
+		L(164, "stat.loyalty", num(int(p.PublicLoyalty)), artInkField),
+		L(180, "stat.population", num(int(p.Population)), artInkField),
+		L(212, "stat.gold", num(int(p.Gold)), artInkGold),
+		L(228, "stat.rice", num(int(p.Rice)), artInkGold),
+		L(260, "stat.free", num(g.FreeGenerals(p.ID)), artInkAuto),
+		R(244, "stat.officers", num(len(g.Garrison(p.ID))), artInkField),
+		R(260, "stat.soldiers", num(g.Soldiers(p.ID)), artInkField),
+	}
+}
+
+// artBigName 畫面板上的大字名字（郡名、主事者）。
+//
+// 中文照原版畫 32×32 雙倍字。譯名是拼音、不是全形字——雙倍寬一個字母
+// 16 像素，「Nanhai」就壓到右邊的州名上了——所以改畫一倍字、垂直置中、
+// 截在槽位內。
+func artBigName(c *Canvas, x, y, slot int, s string, ink color.RGBA) {
+	if artAllWide(s) {
+		for _, r := range s {
+			x += c.DrawRuneScaledPx(x, y, r, ink, 2, 2)
+		}
+		return
+	}
+	c.DrawTextPx(x, y+CellH/2, cells.Truncate(s, slot/CellW), ink)
+}
+
+// artHasLatin 回報字串裡有沒有拉丁字母（英文的年號、拼音）。
+// 只有數字不算：日文的西曆「189年1月春」照原版直排。
+func artHasLatin(s string) bool {
+	for _, r := range s {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
+			return true
 		}
 	}
-	c.DrawTextPx(artRightX, 244, "現役將", artInkField)
-	right(artRightR, 244, num(len(g.Garrison(p.ID))), artInkField)
-	c.DrawTextPx(artRightX, 260, "兵士", artInkField)
-	right(artRightR, 260, num(g.Soldiers(p.ID)), artInkField)
+	return false
 }
+
+func artAllWide(s string) bool {
+	for _, r := range s {
+		if cells.RuneWidth(r) != 2 {
+			return false
+		}
+	}
+	return s != ""
+}
+
+// artProvince 是州名（原版資料的字）。槽位只有 6 格（488–536）：
+// 譯名放不下時拿掉「州」字再轉——「Jiaozhou」變「Jiao」。
+//
+// 截字比拿掉「州」更糟：「Jiaozh」看不出是哪一州，「Jiao」看得出。
+func artProvince(i int) string { return artProvinceIn(i, artProvCols) }
+
+// artProvinceIn 是塞進 cols 格的州名：放不下就拿掉「州」字再轉。
+func artProvinceIn(i, cols int) string {
+	zh := state.ProvinceName(i)
+	s := PlaceName(zh)
+	if cells.Width(s) > cols {
+		s = PlaceName(strings.TrimSuffix(zh, "州"))
+	}
+	return cells.Truncate(s, cols)
+}
+
+// artProvCols 是州名的槽寬（488 到君主那一欄的 536）；artLordCols 是
+// 君主與人望那兩列的寬（536 到面板內緣 624）。
+const (
+	artProvCols = (artLordX - artProvX) / CellW
+	artLordCols = (artCmdEdge - artLordX) / CellW
+
+	// 譯名的排法：郡名一倍字用到君主欄前（424–536），州名在第二列、
+	// 郡編號的左邊（424–488）。
+	artNameCols     = (artLordX - artNameX) / CellW
+	artProvWideCols = (artProvX - artNameX) / CellW
+)
 
 
 // TitleScreen 是主選單畫面（原版開機後的那一張）。
@@ -745,10 +836,14 @@ func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte,
 //
 // 原版那幾層跑在開機鏈的第二層（`DATA0.GRP`），主程式的碼段 dump
 // 涵蓋不到，所以**版面是 remake 自己排的**：置中的框、一行一項。
+// TitleListCols 是開局選單一項最多幾格；再長的會被截掉
+//（`internal/menu` 的 `TestTitleListsFitEveryLanguage` 盯著）。
+const TitleListCols = 40
+
 func DrawTitleList(c *Canvas, ts *TitleScreen, title string, items []string, sel int) {
 	DrawTitle(c, ts, -1)
 	// 蓋在六個按鈕那一片上，標題牌留著看得見。
-	const col, row, cols = 18, 9, 44
+	const col, row, cols = 18, 9, TitleListCols + 4
 	// 放得下幾項就顯示幾項，其餘捲動——**選君主可以有十六個**，
 	// 難度上限也有二十，寫死幾行遲早會有一項被切掉而沒人發現。
 	//

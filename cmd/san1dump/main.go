@@ -439,7 +439,7 @@ func runSaves(dir string, load, saveTo int, sc *state.Scenario, aiMode string, f
 		fmt.Printf("存入第 %d 個進度：%d 年 %d 月\n", saveTo, s.G.Date.Year, s.G.Date.Month)
 	}
 	for _, info := range session.Saves(dir) {
-		fmt.Println("  " + info.Describe())
+		fmt.Printf("  %d. %s\n", info.Slot, info.Describe())
 	}
 	fmt.Println()
 	return nil

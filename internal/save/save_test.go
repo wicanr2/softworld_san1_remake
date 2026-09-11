@@ -818,3 +818,23 @@ func TestOldSavesGetTheDefaults(t *testing.T) {
 			h.Options.AIOrders(), game.AIOrdersDefault)
 	}
 }
+
+// TestDescribeHasNoSlotNumber 釘住存檔的描述不帶槽號。
+//
+// 清單的編號由呼叫端照位置編（開局選單、「其他 → 儲存」的挑選清單）。
+// 描述自己再帶一次就疊成「`1. 1. 新君主…`」，讀檔清單跳過空槽時還會
+// 變成「`1. 3. …`」——兩個號碼對不上，玩家不知道該按哪一個。
+func TestDescribeHasNoSlotNumber(t *testing.T) {
+	for _, i := range []save.Info{
+		{Slot: 3, Exists: true, Name: "新君主", Year: 189, Month: 3},
+		{Slot: 5},
+	} {
+		d := i.Describe()
+		if d == "" {
+			t.Errorf("槽 %d 的描述是空的", i.Slot)
+		}
+		if len(d) > 0 && d[0] >= '0' && d[0] <= '9' {
+			t.Errorf("槽 %d 的描述 %q 以數字開頭——槽號由呼叫端編", i.Slot, d)
+		}
+	}
+}

@@ -7,7 +7,10 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/cells"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
+	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
 
 // newScreen 開一個接得到原版劇本的主選單；沒有素材就 skip。
@@ -311,5 +314,44 @@ func TestCustomLordCarriesTheShippedGlyphs(t *testing.T) {
 	s2.Confirm(0)
 	if ss2 := s2.Confirm(4); ss2 == nil || ss2.G.Glyphs() != nil {
 		t.Error("一般君主的局也帶了字模")
+	}
+}
+
+// TestTitleListsFitEveryLanguage 釘住開局選單的年代與君主兩層，三個語系、
+// 六個劇本都在一項 40 格以內（`ui.TitleListCols`）。
+//
+// 再長的會被 `ui.DrawTitleList` 截掉而不報錯——選君主那一層截掉的正好是
+// 最後的「幾郡」，那是挑君主時最要緊的數字。
+func TestTitleListsFitEveryLanguage(t *testing.T) {
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		widest, lords := "", 0
+		for k := 0; k < 6; k++ {
+			s := newScreen(t)
+			s.Confirm(0) // 開始新遊戲 → 年代
+			check := func(stage string) {
+				if stage == "君主" {
+					if s.Stage() != Lord {
+						t.Fatalf("%s 劇本 %d 沒走到選君主那一層（stage %d）", l, k+1, s.Stage())
+					}
+					lords += len(s.Items())
+				}
+				for _, it := range append([]string{s.Title()}, s.Items()...) {
+					if cells.Width(it) > cells.Width(widest) {
+						widest = it
+					}
+					if w := cells.Width(it); w > ui.TitleListCols {
+						t.Errorf("%s 劇本 %d 的%s有一項 %d 格，選單只有 %d 格：%q",
+							l, k+1, stage, w, ui.TitleListCols, it)
+					}
+				}
+			}
+			check("年代")
+			s.Confirm(k)
+			check("君主")
+		}
+		t.Logf("%s：六個劇本共 %d 個君主欄，最寬一項 %d 格 %q", l, lords, cells.Width(widest), widest)
 	}
 }
