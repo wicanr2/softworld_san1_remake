@@ -248,7 +248,9 @@ DATA1／2／3 的 `.IDX` 末值精準等於 `.GRP` 長度，round-trip 通過。
 - `worklist.json`：**待辦與完成度的權威**（`rulebook/61`）。每一條掛一個跑得
   起來的 `verify`，回答「這一條的 status 還成立嗎」——`done` 驗證據還在、
   `open` 驗未完成的訊號還在。**不要在 markdown 打勾**；跑
-  `tools/worklist.py verify`。
+  `tools/worklist.py verify`。GitHub issue 是它的**鏡像**（`tools/worklist.py
+  issues --apply` 同步，未完成的開、done 的關）——要改內容改 worklist.json，
+  在 GitHub 上直接改的下次同步會被蓋掉。
 - `VERIFICATION-MATRIX.md`：完成度的唯一數字來源；§8 由
   `tools/worklist.py render` 產生，其餘各節是敘述層（方法、坑、取捨）。
   README 只連過去。

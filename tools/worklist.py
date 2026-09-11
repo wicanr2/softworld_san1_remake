@@ -9,6 +9,15 @@
     tools/worklist.py stats               # 不跑，只統計
     tools/worklist.py render              # 產生 VERIFICATION-MATRIX.md 的資料段
     tools/worklist.py selftest            # 正反對照：證明 verify 真的在看
+    tools/worklist.py issues              # 列出要怎麼同步到 GitHub issue（不動 GitHub）
+    tools/worklist.py issues --apply      # 真的同步：開、改、關
+
+## issues：GitHub issue 是鏡像，權威是 worklist.json
+
+未完成（`open`／`blocked`）的每一條對應一個 issue；條目改成 `done` 之後重跑，
+那個 issue 會被關掉。對應靠 body 裡的 `<!-- worklist:ID -->` 標記，重跑只會
+更新不會重複開。**在 GitHub 上直接改的內容，下次同步會被蓋掉**——要改就改
+worklist.json（`rulebook/61`：待辦是資料，每條掛 verify；issue 沒有 verify）。
 
 ## verify 回答的是「這一條的 status 還成立嗎」
 
@@ -574,6 +583,168 @@ def cmd_selftest(args):
     return 0
 
 
+# ---- GitHub issue 同步 ----------------------------------------------------
+
+ISSUE_LABEL = "worklist"
+MARKER = "<!-- worklist:{} -->"
+
+
+def gh(args, input_text=None):
+    """跑 gh，回 (returncode, stdout, stderr)。"""
+    p = subprocess.run(["gh"] + args, capture_output=True, text=True, input=input_text, cwd=ROOT)
+    return p.returncode, p.stdout, p.stderr
+
+
+def repo_slug():
+    """從 origin 的 URL 取 owner/name。"""
+    url = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True,
+                         text=True, cwd=ROOT).stdout.strip()
+    m = re.search(r"github\.com[:/](.+?)(?:\.git)?$", url)
+    if not m:
+        raise SystemExit(f"origin 不是 GitHub：{url!r}")
+    return m.group(1)
+
+
+def issue_labels(item):
+    """一條要掛的標籤：worklist、里程碑、組、卡住。"""
+    out = {ISSUE_LABEL}
+    if item.get("milestone"):
+        out.add(item["milestone"])
+    if item.get("group"):
+        out.add("組:" + item["group"])
+    if item.get("status") == "blocked":
+        out.add("blocked")
+    return out
+
+
+def issue_title(item):
+    return f"[{item.get('group', '其他')}] {item['title']}"
+
+
+def verify_text(v, slug):
+    kind = v.get("kind", "manual")
+    if kind == "test":
+        return f"`test`：`go test {v['pkg']} -run '{v.get('run', '')}'`" + \
+               ("（要掛原版素材）" if v.get("needs") else "")
+    if kind == "cmd":
+        return f"`cmd`：`{v['cmd']}`，預期 `{v.get('expect', '')}`"
+    if kind in ("present", "absent"):
+        where = "、".join(f"[`{p}`](https://github.com/{slug}/blob/master/{p})" for p in v["paths"])
+        if kind == "present":
+            return (f"`present`：{where} 裡找得到 `{v['pattern']}`——那是「還沒做完」的自承，"
+                    "它不見了就表示這一條可能做完了")
+        return (f"`absent`：{where} 裡找不到 `{v['pattern']}`——它出現了就表示這一條做完了")
+    if kind == "json_len":
+        return f"`json_len`：`{v['path']}` 的項數 ≤ {v['max']}"
+    return "`manual`：沒有機器訊號，要人判" + (f"——{v['why']}" if v.get("why") else "")
+
+
+def issue_body(item, slug):
+    st = {"open": "未完成", "blocked": "卡住", "done": "完成"}.get(item["status"], item["status"])
+    head = (f"**worklist**：`{item['id']}`　**組**：{item.get('group', '—')}　"
+            f"**里程碑**：{item.get('milestone') or '—'}　**狀態**：{st}　"
+            f"**等級**：{item.get('level') or '—'}　**版本**：{item.get('edition') or '—'}")
+    parts = [head, "", item.get("note", "").strip() or "（沒有說明）"]
+    if item.get("acceptance"):
+        parts += ["", "### 驗收", "", item["acceptance"]]
+    parts += ["", "### 核實訊號", "", verify_text(item.get("verify") or {}, slug)]
+    if item.get("docs"):
+        parts += ["", "### 文件", ""] + [f"- `{d}`" for d in item["docs"]]
+    parts += ["", "---",
+              "這個 issue 由 `tools/worklist.py issues` 從 "
+              f"[`worklist.json`](https://github.com/{slug}/blob/master/worklist.json) 產生。"
+              "**權威是 worklist.json**：要改內容或狀態請改 worklist 再重跑同步——"
+              "在這裡直接改的內容，下次同步會被蓋掉。",
+              "", MARKER.format(item["id"])]
+    return "\n".join(parts)
+
+
+def cmd_issues(args):
+    """把未完成的條目同步成 GitHub issue；done 的關掉。預設只列計畫。"""
+    data = load()
+    slug = repo_slug()
+    rc, out, err = gh(["issue", "list", "-R", slug, "--label", ISSUE_LABEL, "--state", "all",
+                       "--limit", "1000", "--json", "number,title,state,body,labels"])
+    if rc != 0:
+        # 第一次跑時標籤還不存在，gh 會報錯——當成沒有既有的 issue。
+        if "not found" not in err and "could not find" not in err.lower():
+            print(err, file=sys.stderr)
+            return 2
+        out = "[]"
+    existing = {}
+    for iss in json.loads(out or "[]"):
+        m = re.search(r"<!-- worklist:([^ ]+) -->", iss.get("body") or "")
+        if m:
+            existing[m.group(1)] = iss
+
+    plan = []  # (動作, item, issue)
+    for item in data["items"]:
+        iss = existing.get(item["id"])
+        want_open = item["status"] in ("open", "blocked")
+        if want_open:
+            if iss is None:
+                plan.append(("開", item, None))
+                continue
+            title, body = issue_title(item), issue_body(item, slug)
+            have_labels = {l["name"] for l in iss.get("labels", [])}
+            if iss["state"] != "OPEN":
+                plan.append(("重開", item, iss))
+            elif iss["title"] != title or (iss.get("body") or "").strip() != body.strip() or \
+                    not issue_labels(item) <= have_labels:
+                plan.append(("改", item, iss))
+        elif iss is not None and iss["state"] == "OPEN":
+            plan.append(("關", item, iss))
+
+    for act, item, iss in plan:
+        num = f"#{iss['number']}" if iss else "（新）"
+        print(f"{act} {num:>6} {item['id']}：{item['title']}")
+    print(f"\n共 {len(plan)} 個動作（{sum(1 for p in plan if p[0] == '開')} 開、"
+          f"{sum(1 for p in plan if p[0] in ('改', '重開'))} 改、"
+          f"{sum(1 for p in plan if p[0] == '關')} 關）。")
+    if not args.apply:
+        if plan:
+            print("這是計畫；加 --apply 才會動 GitHub。")
+        return 0
+
+    # 標籤先備齊：gh issue create 碰到不存在的標籤會整筆失敗。
+    need = set()
+    for _, item, _ in plan:
+        need |= issue_labels(item)
+    rc, out, _ = gh(["label", "list", "-R", slug, "--limit", "500", "--json", "name"])
+    have = {l["name"] for l in json.loads(out or "[]")} if rc == 0 else set()
+    for name in sorted(need - have):
+        color = {"worklist": "5319e7", "blocked": "b60205"}.get(name, "c5def5")
+        gh(["label", "create", name, "-R", slug, "--color", color,
+            "--description", "由 tools/worklist.py issues 管理"])
+
+    failed = 0
+    for act, item, iss in plan:
+        title, body = issue_title(item), issue_body(item, slug)
+        if act == "開":
+            cmd = ["issue", "create", "-R", slug, "--title", title, "--body-file", "-"]
+            for l in sorted(issue_labels(item)):
+                cmd += ["--label", l]
+            rc, out, err = gh(cmd, body)
+        elif act in ("改", "重開"):
+            if act == "重開":
+                gh(["issue", "reopen", str(iss["number"]), "-R", slug])
+            cmd = ["issue", "edit", str(iss["number"]), "-R", slug, "--title", title,
+                   "--body-file", "-"]
+            for l in sorted(issue_labels(item)):
+                cmd += ["--add-label", l]
+            rc, out, err = gh(cmd, body)
+        else:  # 關
+            v = item.get("verify") or {}
+            rc, out, err = gh(["issue", "close", str(iss["number"]), "-R", slug, "--comment",
+                               f"worklist 標為 done。核實訊號：{verify_text(v, slug)}"])
+        if rc != 0:
+            failed += 1
+            print(f"✗ {act} {item['id']}：{err.strip()}", file=sys.stderr)
+        else:
+            print(f"✓ {act} {item['id']} {out.strip()}")
+    return 1 if failed else 0
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -599,6 +770,10 @@ def main():
 
     t = sub.add_parser("selftest", help="正反對照，證明 verify 真的在看")
     t.set_defaults(func=cmd_selftest)
+
+    g = sub.add_parser("issues", help="同步未完成的條目到 GitHub issue（預設只列計畫）")
+    g.add_argument("--apply", action="store_true", help="真的開、改、關 issue")
+    g.set_defaults(func=cmd_issues)
 
     args = ap.parse_args()
     return args.func(args)
