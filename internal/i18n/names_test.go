@@ -12,6 +12,7 @@ import "testing"
 func TestPinyinCoversEveryCharacter(t *testing.T) {
 	// 346 位人物 ＋ 42 個郡用到的 426 個相異字，加上十四個州名多用到的 13 個
 	//（州名先前沒算進來，英文的郡資料面板上「豫州」就一直是中文）。
+	// 并、兗是原版「弁州」「充州」的本字——譯文換回本字再轉（`placeFix`）。
 	const chars = "丁上下丕中之乾于京亮仁任伉伊休侯信修倉傅傕備儀儒優允兆先全公典冷凌凱刑剛劉勳化北" +
 		"匡卓南原叡史司同向吳呂周和嘉嚴圃圖堅堪士夏天太夷奉姜威孔孟孫安宋宓定宜宮寧審寵封" +
 		"尚就岑岱峻崔嶷川巴巽布師平幹度庶廉廖廬延建式弘張彤彧彪彭彰徐循德志忠性恢恪惇慈憲" +
@@ -23,7 +24,7 @@ func TestPinyinCoversEveryCharacter(t *testing.T) {
 		"覽觀觸許評詡詩誕諶諸謖謙譙譚豐豹貴費賈賢超越趙軫輔辛辟農通逢進逵遂道達遜遵選遼邈" +
 		"邪邳郃郝郡郭都鄂鄧鄴配酒醜金銀鍾鐵長閻闓關闞阜陳陵陶陸陽雄雍雙雲零雷霍霸靈靖鞏韋" +
 		"韓順顏顗顧飛馬騭騰高髦鬱魏魯魴鮑鴛麋麴黃黨齊齡龍龐龔" +
-		"交充冀州幽弁揚涼益荊豫隸青"
+		"交兗冀州幽并揚涼益荊豫隸青"
 
 	n := 0
 	for _, r := range chars {
@@ -133,5 +134,33 @@ func TestUnknownNameStaysWhole(t *testing.T) {
 	}
 	if got := PlaceName("甲郡"); got != "甲郡" {
 		t.Errorf("翻不出來的地名變成 %q，應該整個保留原文", got)
+	}
+}
+
+// TestProvinceTyposAreFixedOnlyInTranslations 釘住原版的兩個州名錯字：
+// 中文照原版資料（「弁州」「充州」），譯文換回本字（并州、兗州）。
+func TestProvinceTyposAreFixedOnlyInTranslations(t *testing.T) {
+	saved := Current
+	defer func() { Current = saved }()
+	for _, c := range []struct {
+		l          Locale
+		bian, chong string
+	}{
+		{ZhHant, "弁州", "充州"},
+		{En, "Bingzhou", "Yanzhou"},
+		{Ja, "并州", "兗州"},
+	} {
+		Current = c.l
+		if got := PlaceName("弁州"); got != c.bian {
+			t.Errorf("%s：弁州 → %q，想要 %q", c.l, got, c.bian)
+		}
+		if got := PlaceName("充州"); got != c.chong {
+			t.Errorf("%s：充州 → %q，想要 %q", c.l, got, c.chong)
+		}
+	}
+	// 面板放不下時會拿掉「州」字再轉，單字也要換回本字。
+	Current = En
+	if got := PlaceName("弁"); got != "Bing" {
+		t.Errorf("英文的「弁」→ %q，想要 Bing", got)
 	}
 }

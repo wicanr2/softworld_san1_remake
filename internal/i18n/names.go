@@ -45,11 +45,10 @@ var shinjitai = map[rune]rune{
 // `劉禪` 的 `禪` 讀 Shan、`鍾繇` 的 `繇` 讀 Yao、`張郃` 的 `郃` 讀 He、
 // `琅邪` 的 `邪` 讀 Ya、`劉辟` 的 `辟` 讀 Bi。
 var pinyin = map[rune]string{
-	// 十四個州名用到、人名與郡名沒用到的十三個字。**「弁州」「充州」照
-	// 資料轉**（Bianzhou、Chongzhou），不照史書改成并州、兗州——地名
-	// 以遊戲資料為準（`docs/spec/003` §州名、`CLAUDE.md` §2.2）。
-	'交': "Jiao", '充': "Chong", '冀': "Ji", '州': "Zhou", '幽': "You",
-	'弁': "Bian", '揚': "Yang", '涼': "Liang", '益': "Yi", '荊': "Jing",
+	// 十四個州名用到、人名與郡名沒用到的十三個字。并、兗兩個字是原版
+	// 「弁州」「充州」的**本字**，譯文換回本字再轉（`placeFix`）。
+	'交': "Jiao", '兗': "Yan", '冀': "Ji", '州': "Zhou", '幽': "You",
+	'并': "Bing", '揚': "Yang", '涼': "Liang", '益': "Yi", '荊': "Jing",
 	'豫': "Yu", '隸': "Li", '青': "Qing",
 	'丁': "Ding", '上': "Shang", '下': "Xia", '丕': "Pi", '中': "Zhong",
 	'之': "Zhi", '乾': "Qian", '于': "Yu", '京': "Jing", '亮': "Liang",
@@ -153,8 +152,24 @@ func PersonName(zh string) string {
 	return zh
 }
 
+// placeFix 是原版地名的錯字在**譯文**裡換回的本字。
+//
+// 原版寫「弁州」「充州」，是并州、兗州寫錯的字（`docs/spec/003` §州名）。
+// **中文照原版資料不動**——那是原文；英日文是譯文，照原意寫成
+// Bingzhou／Yanzhou、并州／兗州（使用者裁定 2026-09-11）。
+// 這兩個字在這個遊戲的資料裡只出現在這兩個州名，逐字換不會誤傷人名。
+var placeFix = map[rune]rune{'弁': '并', '充': '兗'}
+
 // PlaceName 把一個地名換成目前語系的寫法。地名不分姓名，整串連寫。
 func PlaceName(zh string) string {
+	if Current != ZhHant {
+		zh = strings.Map(func(r rune) rune {
+			if f, ok := placeFix[r]; ok {
+				return f
+			}
+			return r
+		}, zh)
+	}
 	switch Current {
 	case Ja:
 		return toShinjitai(zh)
