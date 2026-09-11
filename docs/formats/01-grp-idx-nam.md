@@ -132,9 +132,10 @@ DATA1 第 0 項 `VZHONG.COD` 的開頭是 `b8 a1 a4 a4 ad a5 bb a4`——落在 
    `SANTBM2`／`SANTBS`、`LOADS`（240×20）、`TITFONT`（464×164）、
    `CMARKL`／`CMARKR`（320×290）。
 3. **另外 31 個（`ENDO0`–`ENDO4`、`UPR00`–`UPR21`、`REC10L/R`、
-   `REC11L/R`）全部在 `DATA2` 裡**，而且解得開：`ENDO0`–`ENDO3` 是
-   四張 160×336 並排成 640×336 的朝堂圖（結局畫面），`ENDO4.MSK` 是
-   640×151 的單平面遮罩（`docs/formats/07` §`.MSK`）。
+   `REC11L/R`）全部在 `DATA2` 裡**，而且解得開——它們是**製作群**
+   那一組（`docs/spec/012`）：`UPR00`–`UPR21` 是字幕（一張長圖切成
+   24 列一條）、`REC1?L/R` 是山景、`ENDO0`–`ENDO3` 是朝堂圖、
+   `ENDO4.MSK` 是 `REC10` 的天空遮罩。
 
 也就是說這份目錄是「開場與結局那一組美術」的清單：12 個搬進了 `DATA1`，
 其餘 31 個在 `DATA2`。主程式（`DATA5.GRP`）的映像裡**一次都沒出現**

@@ -906,26 +906,27 @@
     },
     {
       "id": "msk-masks",
-      "title": "`.MSK` 蓋在哪一張圖上還沒解（格式已解）",
+      "title": "`.MSK` 解出來了：`REC10` 的天空遮罩",
       "group": "資料格式",
       "milestone": "M2",
-      "status": "open",
-      "level": "L0",
+      "status": "done",
+      "level": "L1",
       "edition": "base",
       "docs": [
         "docs/formats/07",
-        "docs/formats/01"
+        "docs/spec/012"
       ],
-      "note": "**格式解出來了**：表頭與 `.IMG` 相同（先高後寬），但只有一個平面——一個位元一個像素（`assets.DecodeMask`）。整套素材裡只有一張：`DATA2` 的 `ENDO4.MSK`，640×151，內容是山巒的輪廓。\n\n⚠ 它與 `ENDO0`–`ENDO3`（結局的朝堂圖）放在一起，**但那張圖裡沒有山**——蓋在哪一張上沒解。用它的是 `DATA0.GRP`／`DATA4.GRP` 那兩支 overlay，主程式的映像裡一次都沒出現 `ENDO`／`.MSK` 這些字串。\n\n主戰場年月那一行的網點**與遮罩無關**，已經解成 `(x+y)%2` 的兩色棋盤（`docs/spec/011` §2）——這一條原本被當成它的 blocker，現在解開了。",
-      "acceptance": "`ENDO4.MSK` 蓋在哪一張圖上、怎麼合成有答案",
+      "note": "格式：表頭與 `.IMG` 相同（先高後寬），但**只有一個平面**（`assets.DecodeMask`）。整套素材裡只有一張 `ENDO4.MSK`，640×151。\n\n**它是 `REC10`（山城風景）的天空遮罩**：位移 y=54 時逐點吻合 **99.39%**，而同一個判準對另一張山景 `REC11` 只有 51.31%（正對照）。用途是讓製作群的字幕從山後面升起來（`docs/spec/012`）。\n\n⚠ **怎麼合成是推測**：那一段跑在 `DATA0.GRP`／`DATA4.GRP` 兩支 還沒反組譯的 overlay。remake 的合成方式記在 `docs/spec/012` R2。",
+      "acceptance": "遮罩對得上哪一張圖、位移多少，有可重跑的數字",
       "verify": {
-        "kind": "present",
-        "paths": [
-          "docs/formats/07-images.md"
-        ],
-        "pattern": "蓋在哪一張圖上還沒解"
+        "kind": "test",
+        "pkg": "./internal/assets",
+        "run": "TestCreditsAssetsMatchTheOriginal|TestDecodeMaskIsOnePlane",
+        "needs": [
+          "org_game"
+        ]
       },
-      "layer": "feature"
+      "layer": "evidence"
     },
     {
       "id": "master-record-66-bytes",
@@ -1492,25 +1493,22 @@
     },
     {
       "id": "ending-screen",
-      "title": "結局畫面 remake 還沒畫",
+      "title": "製作群畫面（原本記成「結局畫面」）",
       "group": "畫面",
-      "layer": "feature",
+      "layer": "verification",
       "milestone": "M6",
-      "status": "open",
-      "level": "L0",
+      "status": "done",
+      "level": "L1",
       "edition": "base",
       "docs": [
-        "docs/formats/07",
-        "docs/formats/01"
+        "docs/spec/012"
       ],
-      "note": "素材找到了（`CONTEXT.md` R56）：`DATA2` 的 `ENDO0`–`ENDO3` 四張 160×336 並排成 640×336 的朝堂圖，加一張 640×151 的遮罩 `ENDO4.MSK`。`REC10L/R`、`REC11L/R` 各 320×336，`UPR00`–`UPR21` 大小不一。\n\n⚠ **怎麼用沒解**：主程式的映像裡一次都沒出現這些名字，用它們的是 `DATA0.GRP`／`DATA4.GRP` 那兩支 overlay——那兩支是 MZ 執行檔，還沒反組譯。\n\nremake 現在統一之後只在提示列說一句話（`msg.over`）。",
-      "acceptance": "統一之後畫得出結局畫面，或確認那組素材不屬於統一結局",
+      "note": "那一組不是結局畫面，是**製作群**（`CONTEXT.md` R57）：`UPR00`–`UPR21` 的字幕解出來就是名單。remake 在統一之後播——朝堂圖定格 → 字幕從山後面升起來。\n\n⚠ **原版什麼時候播、怎麼動都沒解**（`docs/spec/012` R3／R4）：那一段跑在 `DATA0.GRP`／`DATA4.GRP` 兩支還沒反組譯的 overlay。接在統一之後是 remake 的推測。",
+      "acceptance": "統一之後播得出製作群，且字幕只在天空那一側可見",
       "verify": {
-        "kind": "absent",
-        "paths": [
-          "internal/ui"
-        ],
-        "pattern": "ENDO"
+        "kind": "test",
+        "pkg": "./internal/ui",
+        "run": "TestDrawCreditsRespectsTheMask|TestCreditsLength"
       }
     },
     {

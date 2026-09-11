@@ -140,7 +140,8 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 	}
 	c := ui.NewCanvas(ui.Cols, ui.Rows, face)
 	if screen == "art" || screen == "title" || screen == "artfield" ||
-		screen == "artbattle" || screen == "poem" || screen == "titleart" {
+		screen == "artbattle" || screen == "poem" || screen == "titleart" ||
+		screen == "credits" || screen == "hall" {
 		c = ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
 	}
 	switch screen {
@@ -218,6 +219,26 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		}
 		ui.DrawArtBattle(c, ab, b, ui.BattleView{Acting: hi,
 			Prompt: promptFor(hi)}, info)
+	case "credits", "hall":
+		// 製作群：字幕從山後面升起來（`docs/spec/012`）。
+		// `-months` 借來當捲動量，一格一個像素。
+		c2, err := openContainer(root, "DATA2")
+		if err != nil {
+			return fmt.Errorf("製作群要讀 DATA2：%w", err)
+		}
+		cr, err := assets.LoadCredits(c2)
+		if err != nil {
+			return err
+		}
+		if screen == "hall" {
+			ui.DrawCreditHall(c, cr)
+			break
+		}
+		scroll := months
+		if scroll <= 0 {
+			scroll = ui.CreditsLength(cr) / 2
+		}
+		ui.DrawCredits(c, cr, scroll)
 	case "poem":
 		c1, err := openContainer(root, "DATA1")
 		if err != nil {

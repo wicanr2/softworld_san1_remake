@@ -64,6 +64,11 @@ type app struct {
 	// wipe 非 nil 表示正在跑一段畫面轉場（`docs/spec/010`）。
 	wipe *ui.Wipe
 
+	// credits 非 nil 表示正在播製作群（`docs/spec/012`）；
+	// creditsDone 記住這一局播過了，不要每一幀重播。
+	credits     *creditsPlay
+	creditsDone bool
+
 	// art 是接上原版素材的主畫面；沒有原版的 DATA3 就是 nil，
 	// 那時退回 remake 自己的文字版面。
 	art *ui.ArtScreen
@@ -105,6 +110,13 @@ func (a *app) Update() error {
 	// 期間不收輸入。24 步 ×一幀 ≈ 0.4 秒。
 	if a.wipe != nil {
 		a.stepWipe()
+		return nil
+	}
+	// 統一之後播製作群。**要在其他輸入之前**：那一段自己收按鍵。
+	if a.s != nil && a.s.Over {
+		a.startCredits()
+	}
+	if a.updateCredits() {
 		return nil
 	}
 	if a.titlePic != nil {
@@ -738,6 +750,10 @@ func (a *app) paint() {
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
 		// 同一張圖無頭環境也產得出來（cmd/san1dump -png）。
 		switch {
+		case a.credits != nil && a.credits.hall:
+			ui.DrawCreditHall(a.canvas, a.credits.art)
+		case a.credits != nil:
+			ui.DrawCredits(a.canvas, a.credits.art, a.credits.scroll)
 		case a.titlePic != nil:
 			ui.DrawImage(a.canvas, a.titlePic)
 		case a.poem != nil:
