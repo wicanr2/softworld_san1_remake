@@ -213,13 +213,33 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		}
 	}
 
-	// 指令面板：原版的三行三列 ＋ 提示。
+	// 指令面板：原版的三行三列 ＋ 提示。**選了用計、交戰、方向或紮營
+	// 之後，那三行換成該選的選項**——先前只畫選單標題，六種計謀、交戰
+	// 方式都看不到，玩家只能照手冊背編號（`docs/spec/014` §7）。
 	ordX := assets.BattlePanelX[2] + 4
 	ord := assets.EGAPalette[assets.BattleOrderInk]
-	for k, s := range BattleCommandLines() {
-		c.DrawTextPx(ordX, assets.BattlePanelY+4+k*CellH, s, ord)
+	w := (assets.BattlePanelW - 8) / CellW
+	opts := BattleCommandLines()
+	if len(v.Items) > 0 {
+		opts = v.Items
 	}
-	row := 3
+	if len(opts) <= battleOptRows {
+		for k, s := range opts {
+			c.DrawTextPx(ordX, assets.BattlePanelY+4+k*CellH, cells.Truncate(s, w), ord)
+		}
+	} else {
+		// 譯文排不進三行（英文九個指令要五行以上）：在面板**正上方**畫
+		// 一個同寬的選單框往上長，戰場的其餘部分照樣看得到——選指令的
+		// 時候玩家要看得到戰場，所以不能像主畫面那樣整片蓋掉。
+		x0, x1 := assets.BattlePanelX[2], assets.BattlePanelX[2]+assets.BattlePanelW
+		y1 := assets.BattlePanelY - 2
+		y0 := y1 - len(opts)*CellH - 8
+		c.FillRect(x0, y0, x1, y1, artInkPageBG)
+		for k, s := range opts {
+			c.DrawTextPx(ordX, y0+4+k*CellH, cells.Truncate(s, w), ord)
+		}
+	}
+	row := battleOptRows
 	if v.Menu != "" {
 		c.DrawTextPx(ordX, assets.BattlePanelY+4+row*CellH,
 			cells.Truncate(v.Menu, (assets.BattlePanelW-8)/CellW), ord)
@@ -230,7 +250,24 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 			cells.Truncate(v.Prompt, (assets.BattlePanelW-8)/CellW),
 			assets.EGAPalette[15])
 	}
+	// 查看部隊那一頁蓋在戰場區上（面板上面那一整塊）。
+	if len(v.Page) > 0 {
+		drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
+			v.PageTitle, v.Page, t("hint.page"))
+	}
 }
+
+// 戰場畫面的選項列數與分頁的範圍（`docs/spec/014` §7）。
+const (
+	// battleOptRows 是指令面板上給選項的列數：三列選項 ＋ 標題 ＋ 提示，
+	// 正好是 96 像素高的面板放得下的五列。
+	battleOptRows = 3
+
+	// 分頁蓋在三個面板上方那一整塊：左右對齊面板的外緣（64–624），
+	// 上緣留 4 像素，下緣停在面板上面。
+	battlePageX0, battlePageY0 = 64, 4
+	battlePageX1, battlePageY1 = 624, assets.BattlePanelY - 4
+)
 
 // face 取一張肖像；沒有就回 nil。
 func (ab *ArtBattle) face(n int) *assets.Image {

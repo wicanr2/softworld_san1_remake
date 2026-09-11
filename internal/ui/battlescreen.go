@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 )
@@ -204,56 +205,62 @@ func BattleCommandLines() []string {
 		battle.CmdDeath, battle.CmdArchery, battle.CmdPlot,
 		battle.CmdInspect, battle.CmdRetreat, battle.CmdRest,
 	}
+	items := make([]string, 0, len(cmds))
+	for _, c := range cmds {
+		items = append(items, fmt.Sprintf("%d.%s", int(c), CommandName(c)))
+	}
+	return packBattle(items)
+}
+
+// BattleOptionCols 是戰場指令面板一行幾格（176 像素的面板扣掉兩邊各 4）。
+const BattleOptionCols = (assets.BattlePanelW - 8) / CellW
+
+// packBattle 把選項排成原版的樣子：**一行最多三項**、塞不下 21 格就換行。
+//
+// 中文三項一行正好 20 格，排出來就是原版的三行三列；英日文的名字長，
+// 一行只放得下一兩項，行數會超過面板的三行——那時原版素材的戰場畫面
+// 改在面板正上方畫一個選單框（`docs/spec/014` §7）。**不截字**：
+// 截掉的選項（「3.Tr」）比換個地方畫更糟。
+func packBattle(items []string) []string {
 	var out []string
-	for i := 0; i < len(cmds); i += 3 {
-		line := ""
-		for _, c := range cmds[i:min3(i+3, len(cmds))] {
-			line += fmt.Sprintf("%d.%s ", int(c), CommandName(c))
+	cur, n := "", 0
+	for _, it := range items {
+		if cur != "" && (n >= 3 || cells.Width(cur)+1+cells.Width(it) > BattleOptionCols) {
+			out = append(out, cur)
+			cur, n = "", 0
 		}
-		out = append(out, line)
+		if cur != "" {
+			cur += " "
+		}
+		cur += it
+		n++
+	}
+	if cur != "" {
+		out = append(out, cur)
 	}
 	return out
 }
 
 // BattleEngageLines 是單位層的指令（原版 `0x46fa0`）：
-//
-//	1.行軍 2.單挑 3.攻擊
-//	7.查看 0.休息
+// 對戰模式下只剩移動、對戰、快戰，查看與休息另起一行。
 func BattleEngageLines() []string {
-	engage := []battle.Command{battle.CmdMove, battle.CmdEngage, battle.CmdQuick}
-	rest := []battle.Command{battle.CmdInspect, battle.CmdRest}
-	out := ""
-	for _, c := range engage {
-		out += fmt.Sprintf("%d.%s ", int(c), CommandName(c))
-	}
-	tail := ""
-	for _, c := range rest {
-		tail += fmt.Sprintf("%d.%s ", int(c), CommandName(c))
-	}
-	return []string{out, tail}
+	fmtCmd := func(c battle.Command) string { return fmt.Sprintf("%d.%s", int(c), CommandName(c)) }
+	return append(
+		packBattle([]string{fmtCmd(battle.CmdMove), fmtCmd(battle.CmdEngage), fmtCmd(battle.CmdQuick)}),
+		packBattle([]string{fmtCmd(battle.CmdInspect), fmtCmd(battle.CmdRest)})...)
 }
 
 // BattleStratagemLines 是六種計謀，排成兩行。編號與原版相同。
 func BattleStratagemLines() []string {
 	all := []battle.Stratagem{battle.Fire, battle.Flood, battle.Trap,
 		battle.Lure, battle.Burn, battle.Siege}
-	var out []string
-	for i := 0; i < len(all); i += 3 {
-		line := ""
-		for _, s := range all[i:min3(i+3, len(all))] {
-			line += fmt.Sprintf("%d.%s ", int(s), StratagemName(s))
-		}
-		out = append(out, line)
+	items := make([]string, 0, len(all))
+	for _, s := range all {
+		items = append(items, fmt.Sprintf("%d.%s", int(s), StratagemName(s)))
 	}
-	return out
+	return packBattle(items)
 }
 
-func min3(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 
 // BattleUnitPage 是「查看」一支部隊的內容。
 func BattleUnitPage(u *battle.Unit) (string, []string) {
@@ -265,11 +272,11 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 		tf("bat.unitStats",
 			u.AvgTraining(), u.AvgArms(), TroopKindName(u.Troop()), u.Arrows),
 		"",
-		cells.Pad(t("fld.name"), 8) + cells.Pad(t("fld.war"), 4) +
-			cells.Pad(t("fld.intel"), 4) + cells.Pad(t("fld.stamina"), 4) +
-			cells.Pad(t("fld.soldiers"), 7) + cells.Pad(t("fld.training"), 4) +
-			t("fld.arms"),
 	}
+	// 欄寬依內容決定（`cells.Columns`）：名字後面接「陣亡」「被俘」時，
+	// 寫死的八格會把狀態截掉——那正是這一頁最要緊的一個字。
+	rows := [][]string{{t("fld.name"), t("fld.war"), t("fld.intel"),
+		t("fld.stamina"), t("fld.soldiers"), t("fld.training"), t("fld.arms")}}
 	for i := range u.Leaders {
 		l := &u.Leaders[i]
 		state := ""
@@ -279,15 +286,12 @@ func BattleUnitPage(u *battle.Unit) (string, []string) {
 		case l.Captured:
 			state = t("bat.captured")
 		}
-		out = append(out, cells.Pad(PersonName(l.Name)+state, 8)+
-			cells.Pad(fmt.Sprintf("%d", l.War), 4)+
-			cells.Pad(fmt.Sprintf("%d", l.Intel), 4)+
-			cells.Pad(fmt.Sprintf("%d", l.Stamina), 4)+
-			cells.Pad(fmt.Sprintf("%d", l.Soldiers), 7)+
-			cells.Pad(fmt.Sprintf("%d", l.Training), 4)+
-			fmt.Sprintf("%d", l.Arms))
+		rows = append(rows, []string{PersonName(l.Name) + state,
+			fmt.Sprintf("%d", l.War), fmt.Sprintf("%d", l.Intel),
+			fmt.Sprintf("%d", l.Stamina), fmt.Sprintf("%d", l.Soldiers),
+			fmt.Sprintf("%d", l.Training), fmt.Sprintf("%d", l.Arms)})
 	}
-	return t("bat.inspect"), out
+	return t("bat.inspect"), append(out, cells.Columns(rows)...)
 }
 
 // TerrainPage 是「郡地理誌」：某個郡的主戰場地形（說明書 p.19，

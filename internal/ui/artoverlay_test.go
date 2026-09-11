@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
@@ -302,5 +303,138 @@ func TestPagesFitTheOverlayInEveryLanguage(t *testing.T) {
 			check("檢視將軍", title, lines)
 		}
 		t.Logf("%s 各種分頁最寬的一列：%v（內容區 %d 格）", l, worst, cols)
+	}
+}
+
+// TestArtBattleDrawsOptionsAndPages 釘住戰場上的選項與查看部隊那一頁
+// 都畫得出來（`docs/spec/014` §7）。
+//
+// 先前指令面板只畫三行指令與選單標題：選了「用計」之後六種計謀看不到，
+// 「查看」的那一頁也看不到——打開與沒打開差 0 個位元組，與主畫面同一個洞。
+func TestArtBattleDrawsOptionsAndPages(t *testing.T) {
+	c1, c3 := artContainers(t)
+	ab, err := NewArtBattle(c1, c3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fld := battle.Generate(battle.Params{Prefecture: 25})
+	b := battle.New(battle.Setup{Field: fld, Seed: 1})
+	face := testFace(t)
+	draw := func(v BattleView) *Canvas {
+		c := NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
+		DrawArtBattle(c, ab, b, v, ArtBattleInfo{Portrait: [2]int{-1, -1}})
+		return c
+	}
+	base := draw(BattleView{Menu: i18n.S("page.command"), Items: BattleCommandLines()})
+	px, py := assets.BattlePanelX[2], assets.BattlePanelY
+	for _, c := range []struct {
+		name           string
+		v              BattleView
+		x0, y0, x1, y1 int
+	}{
+		{"用計的六種計謀", BattleView{Menu: CommandName(battle.CmdPlot), Items: BattleStratagemLines()},
+			px, py, px + assets.BattlePanelW, py + assets.BattlePanelH},
+		{"交戰方式", BattleView{Menu: CommandName(battle.CmdEngage), Items: BattleEngageLines()},
+			px, py, px + assets.BattlePanelW, py + assets.BattlePanelH},
+		{"查看部隊", BattleView{Menu: i18n.S("page.command"), Items: BattleCommandLines(),
+			PageTitle: "查看", Page: []string{"甲", "乙"}},
+			battlePageX0, battlePageY0, battlePageX1, battlePageY1},
+	} {
+		got := draw(c.v)
+		n, outside := 0, 0
+		for i := 0; i < len(base.Img.Pix); i += 4 {
+			if string(base.Img.Pix[i:i+4]) == string(got.Img.Pix[i:i+4]) {
+				continue
+			}
+			n++
+			x, y := (i/4)%assets.ScreenW, (i/4)/assets.ScreenW
+			if x < c.x0 || x >= c.x1 || y < c.y0 || y >= c.y1 {
+				outside++
+			}
+		}
+		if n == 0 {
+			t.Errorf("%s：畫出來與只有指令面板一模一樣——玩家看不到它", c.name)
+		} else if outside > 0 {
+			t.Errorf("%s：%d 個像素變了，其中 %d 個落在該畫的那一塊外面", c.name, n, outside)
+		}
+	}
+}
+
+// TestBattleOptionsFitThePanelInEveryLanguage 釘住戰場上的每一組選項，
+// 三個語系都**一行不超過 21 格**，而且中文與原版一樣是三行以內。
+//
+// 放不下的部分會被截掉而不報錯：玩家看到「3.Tr」卻不知道那是陷阱。
+// 行數超過三行（英日文）由原版素材的戰場畫面改畫在面板正上方，
+// 那一條由 `TestArtBattleDrawsOptionsAndPages` 看得到。
+func TestBattleOptionsFitThePanelInEveryLanguage(t *testing.T) {
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	w := (assets.BattlePanelW - 8) / CellW
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		for name, lines := range map[string][]string{
+			"指令":   BattleCommandLines(),
+			"交戰方式": BattleEngageLines(),
+			"計謀":   BattleStratagemLines(),
+			"紮營":   {i18n.S("bat.arrowKeys"), i18n.S("bat.place"), i18n.S("bat.autoAll")},
+		} {
+			if len(lines) > battleOptRows && l == i18n.ZhHant {
+				t.Errorf("中文的%s有 %d 行，原版是三行以內：%q", name, len(lines), lines)
+			}
+			if len(lines) > battleOptRows {
+				t.Logf("%s 的%s排成 %d 行，改畫在面板上方", l, name, len(lines))
+			}
+			for _, s := range lines {
+				if cells.Width(strings.TrimRight(s, " ")) > w {
+					t.Errorf("%s 的%s有一行 %d 格，面板只有 %d 格：%q",
+						l, name, cells.Width(strings.TrimRight(s, " ")), w, s)
+				}
+			}
+		}
+	}
+}
+
+// TestArtBattleTallOptionsGoAboveThePanel 釘住英文的戰場指令（六行）畫在
+// 指令面板正上方的選單框裡，而且不越過那一欄。
+func TestArtBattleTallOptionsGoAboveThePanel(t *testing.T) {
+	c1, c3 := artContainers(t)
+	ab, err := NewArtBattle(c1, c3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	i18n.Current = i18n.En
+	fld := battle.Generate(battle.Params{Prefecture: 25})
+	b := battle.New(battle.Setup{Field: fld, Seed: 1})
+	c := NewCanvasPx(assets.ScreenW, assets.ScreenH, testFace(t))
+	lines := BattleCommandLines()
+	DrawArtBattle(c, ab, b, BattleView{Menu: i18n.S("page.command"), Items: lines},
+		ArtBattleInfo{Portrait: [2]int{-1, -1}})
+	x0, x1 := assets.BattlePanelX[2], assets.BattlePanelX[2]+assets.BattlePanelW
+	y1 := assets.BattlePanelY - 2
+	y0 := y1 - len(lines)*CellH - 8
+	bg, ink := 0, 0
+	ord := assets.EGAPalette[assets.BattleOrderInk]
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			switch c.Img.RGBAAt(x, y) {
+			case artInkPageBG:
+				bg++
+			case ord:
+				ink++
+			}
+		}
+	}
+	if bg == 0 || ink == 0 {
+		t.Fatalf("面板上方的選單框沒畫出來（底色 %d 點、字 %d 點）", bg, ink)
+	}
+	// 框的左右兩邊外面不能有選單的底色。
+	for y := y0; y < y1; y++ {
+		for _, x := range []int{x0 - 1, x1} {
+			if c.Img.RGBAAt(x, y) == artInkPageBG {
+				t.Fatalf("選單框越過那一欄了：(%d,%d)", x, y)
+			}
+		}
 	}
 }

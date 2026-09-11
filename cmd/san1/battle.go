@@ -211,7 +211,7 @@ func (a *app) battleCommand(k byte, done func(error), say func(string, ...any)) 
 		f.engage = true
 		f.waiting = waitEngage
 		f.view.Menu, f.view.Items = ui.CommandName(battle.CmdEngage), ui.BattleEngageLines()
-		say(tf("bat.engageHint", strings.Join(ui.BattleEngageLines(), "")))
+		say(tf("bat.engageHint", strings.Join(ui.BattleEngageLines(), " ")))
 	case battle.CmdPlot:
 		f.waiting = waitPlot
 		f.view.Menu, f.view.Items = ui.CommandName(battle.CmdPlot), ui.BattleStratagemLines()

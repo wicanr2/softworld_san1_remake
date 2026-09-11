@@ -1081,7 +1081,7 @@
     },
     {
       "id": "art-main-overlays",
-      "title": "原版素材主畫面看得到指令表、子選單、挑選清單與分頁",
+      "title": "原版素材畫面看得到指令表、子選單、挑選清單、分頁與戰場選項",
       "group": "畫面",
       "layer": "feature",
       "milestone": "M6",
@@ -1091,11 +1091,11 @@
       "docs": [
         "docs/spec/014"
       ],
-      "note": "預設畫面（`-art`）先前**只畫提示**：打開子選單、挑選清單、數字輸入或分頁，畫出來與沒打開差 0 個位元組——玩家看不到任何選項，只能靠記憶操作。文字版一直都有畫，所以別的測試看不出來。\n\n照原版補（`TestZZSubMenuScreens` 在 dosgolem 裡把九個子選單各存一張、逐列量墨水）：主提示時上面板是**十項指令表**（兩欄五列、雙倍字、偶數黃奇數洋紅），按 `0` 或方向鍵換郡才換成郡的資料；子選單畫在**下面板**四行，中文與原版字串逐行相同；分頁蓋整個內容區、藍底。",
+      "note": "預設畫面（`-art`）先前**只畫提示**：打開子選單、挑選清單、數字輸入或分頁，畫出來與沒打開差 0 個位元組——玩家看不到任何選項，只能靠記憶操作。文字版一直都有畫，所以別的測試看不出來。\n\n照原版補（`TestZZSubMenuScreens` 在 dosgolem 裡把九個子選單各存一張、逐列量墨水）：主提示時上面板是**十項指令表**（兩欄五列、雙倍字、偶數黃奇數洋紅），按 `0` 或方向鍵換郡才換成郡的資料；子選單畫在**下面板**四行，中文與原版字串逐行相同；分頁蓋整個內容區、藍底。\n\n主戰場同一個洞：選了用計之後六種計謀看不到、查看部隊那一頁看不到。選項改成取代面板上的三行（中文仍是原版的三行三列），英日文放不下就在面板正上方畫選單框。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/ui",
-        "run": "TestArtSessionDrawsWhatThePlayerNeeds|TestSubMenuLinesMatchTheOriginal|TestSubMenusShowInFullInEveryLanguage|TestCommandMenuLayout|TestPagesFitTheOverlayInEveryLanguage",
+        "run": "TestArtSessionDrawsWhatThePlayerNeeds|TestSubMenuLinesMatchTheOriginal|TestSubMenusShowInFullInEveryLanguage|TestCommandMenuLayout|TestPagesFitTheOverlayInEveryLanguage|TestArtBattleDrawsOptionsAndPages|TestBattleOptionsFitThePanelInEveryLanguage|TestArtBattleTallOptionsGoAboveThePanel",
         "needs": [
           "org_game"
         ]

@@ -451,26 +451,30 @@ func drawArtLower(c *Canvas, log []string, v View, subLower bool) {
 	}
 }
 
-// drawArtOverlay 把一整頁蓋在內容區上（`docs/spec/014` §3.3）：藍底、
-// 標題黃、內容白，最後一行是關閉的提示。
+// drawArtOverlay 把一整頁蓋在內容區上（`docs/spec/014` §3.3）。
 func drawArtOverlay(c *Canvas, title string, body []string, hint string) {
-	c.FillRect(artPageX0, artPageY0, artPageX1, artPageY1, artInkPageBG)
-	cols := (artPageX1-artPageX0)/CellW - 2
-	rows := (artPageY1 - artPageY0) / CellH
-	x := artPageX0 + CellW
-	c.DrawTextPx(x, artPageY0, cells.Truncate(title, cols), artInkName)
+	drawOverlay(c, artPageX0, artPageY0, artPageX1, artPageY1, title, body, hint)
+}
+
+// drawOverlay 把一整頁蓋在一塊矩形上：藍底（原版將軍資料頁的底色）、
+// 標題黃、內容白，最後一行是關閉的提示。放不下的最後一行改寫「還有更多」。
+func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hint string) {
+	c.FillRect(x0, y0, x1, y1, artInkPageBG)
+	cols := (x1-x0)/CellW - 2
+	rows := (y1 - y0) / CellH
+	x := x0 + CellW
+	c.DrawTextPx(x, y0, cells.Truncate(title, cols), artInkName)
 	last := rows - 1 // 最後一行留給提示
 	for i, line := range body {
 		row := 1 + i
 		if row >= last-1 && i < len(body)-1 {
-			c.DrawTextPx(x, artPageY0+row*CellH,
-				cells.Truncate(t("msg.more"), cols), artInkPageDim)
+			c.DrawTextPx(x, y0+row*CellH, cells.Truncate(t("msg.more"), cols), artInkPageDim)
 			break
 		}
-		c.DrawTextPx(x, artPageY0+row*CellH, cells.Truncate(line, cols), artInkList)
+		c.DrawTextPx(x, y0+row*CellH, cells.Truncate(line, cols), artInkList)
 	}
 	if hint != "" {
-		c.DrawTextPx(x, artPageY0+last*CellH, cells.Truncate(hint, cols), artInkPageDim)
+		c.DrawTextPx(x, y0+last*CellH, cells.Truncate(hint, cols), artInkPageDim)
 	}
 }
 
