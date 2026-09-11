@@ -197,7 +197,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	if p == nil {
 		return
 	}
-	upper, subLower := artUpperOf(v)
+	upper, subLower := artUpperOf(c, v)
 
 	im := a.Compose(g, sel)
 	// 右側兩塊面板：先拼外框與底色，再把肖像與它的框疊上去。
@@ -271,9 +271,9 @@ const (
 )
 
 // artUpperOf 決定上面板放什麼；第二個回傳值是「類別子選單畫在下面板」。
-func artUpperOf(v View) (artUpper, bool) {
+func artUpperOf(c *Canvas, v View) (artUpper, bool) {
 	if v.Menu != "" {
-		if k := subMenuKey(v.Menu); k != 0 && subMenuFitsLower(k, v.Items) {
+		if k := subMenuKey(v.Menu); k != 0 && subMenuLayout(c, k, v.Items).ok {
 			// 子選單打開時上面板**維持指令表**（原版 `sub-9` 與 `sub-0`
 			// 的上面板逐段相同）。
 			return artUpperCommands, true
@@ -288,20 +288,52 @@ func artUpperOf(v View) (artUpper, bool) {
 	return artUpperCommands, false
 }
 
-// subMenuFitsLower 回報這一類的子選單排得進下面板（四行 × 24 格）。
-// 中文九類全部排得進，與原版一樣；放不下的是譯文。
-func subMenuFitsLower(k byte, items []Command) bool {
-	w := (artRightR - artMsgX) / CellW
-	lines := SubMenuLines(k, items, w)
-	if len(lines) > artLowerRows {
-		return false
-	}
-	for _, l := range lines {
-		if cells.Width(l) > w {
+// lowerLayout 是子選單在下面板上的排法：用不用小字、排成哪幾行。
+type lowerLayout struct {
+	lines []string
+	small bool
+	ok    bool
+}
+
+// subMenuLayout 決定這一類的子選單怎麼放進下面板（`docs/spec/014` §3.2）：
+//
+//  1. 原尺寸：四行 × 24 格。中文九類全部排得進，與原版一樣。
+//  2. 小字（6×10）：六行 × 32 格。**英文排不進原尺寸時用這個**，
+//     留在原版的位置——使用者裁定「文字允許縮小」（2026-09-11）。
+//     小字級只有 ASCII，所以只有整串都是 ASCII 才走這一條。
+//  3. 都不行（日文的長名字）：回 ok＝false，改畫在上面板一行一項。
+func subMenuLayout(c *Canvas, k byte, items []Command) lowerLayout {
+	fits := func(lines []string, cols, rows int) bool {
+		if len(lines) > rows {
 			return false
 		}
+		for _, l := range lines {
+			if cells.Width(l) > cols {
+				return false
+			}
+		}
+		return true
 	}
-	return true
+	cols := (artRightR - artMsgX) / CellW
+	if lines := SubMenuLines(k, items, cols, artLowerRows); fits(lines, cols, artLowerRows) {
+		return lowerLayout{lines, false, true}
+	}
+	scols, srows := artLowerSmall()
+	lines := SubMenuLines(k, items, scols, srows)
+	if fits(lines, scols, srows) && c.FitsSmall(strings.Join(lines, "")) {
+		return lowerLayout{lines, true, true}
+	}
+	return lowerLayout{}
+}
+
+// artLowerSmall 是下面板用小字級時放得下幾格、幾行（192 × 64 像素）。
+func artLowerSmall() (cols, rows int) {
+	return (artRightR - artMsgX) / SmallW, artLowerRows * CellH / SmallH
+}
+
+// subMenuFitsLower 回報這一類的子選單排得進下面板（原尺寸或小字）。
+func subMenuFitsLower(c *Canvas, k byte, items []Command) bool {
+	return subMenuLayout(c, k, items).ok
 }
 
 // subMenuKey 是這個標題屬於哪一類的子選單；不是類別子選單回 0。
@@ -436,7 +468,14 @@ func drawArtLower(c *Canvas, log []string, v View, subLower bool) {
 	k := subMenuKey(v.Menu)
 	switch {
 	case v.Menu != "" && k != 0 && subLower:
-		lines = SubMenuLines(k, v.Items, w)
+		if lay := subMenuLayout(c, k, v.Items); lay.small {
+			for i, line := range lay.lines {
+				c.DrawSmallTextPx(artMsgX, artMsgY+i*SmallH, line, artInkMsg)
+			}
+			return
+		} else {
+			lines = lay.lines
+		}
 	case v.Menu != "" && k != 0:
 		// 子選單改畫在上面板了，下面板只留原版那一行提示字。
 		lines = []string{t(subMenuPrompt[k])}

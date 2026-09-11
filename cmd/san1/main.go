@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -923,6 +924,7 @@ func main() {
 	if err != nil {
 		die(err)
 	}
+	small := loadSmallFace(*fontPath)
 
 	c, err := openContainer(*root, "DATA2")
 	if err != nil {
@@ -1024,6 +1026,7 @@ func main() {
 		saveDir: *saveDir,
 		art:     art,
 	}
+	a.canvas.SetSmallFace(small)
 	a.artBattle = artBattle
 	a.c2 = c
 	a.edition = ed
@@ -1135,4 +1138,23 @@ func cloneCanvas(src *image.RGBA) *image.RGBA {
 	dst := image.NewRGBA(src.Bounds())
 	copy(dst.Pix, src.Pix)
 	return dst
+}
+
+// loadSmallFace 讀小字級（與大字型同一個目錄的 `ascii6x10.hex.gz`）。
+// **讀不到不是錯誤**：沒有小字級只是英文在原版版面放不下的地方照原尺寸
+// 退回別的排法（`docs/spec/014` §3.2），不該擋著開遊戲。
+func loadSmallFace(bigFont string) *font.Face {
+	p := filepath.Join(filepath.Dir(bigFont), "ascii6x10.hex.gz")
+	fh, err := os.Open(p)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "san1: 沒有小字級，照原尺寸排：", err)
+		return nil
+	}
+	defer fh.Close()
+	f, err := font.ParseHexGz(fh, ui.SmallH)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "san1: 小字級讀不進來，照原尺寸排：", err)
+		return nil
+	}
+	return f
 }

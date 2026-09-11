@@ -144,6 +144,8 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		screen == "credits" || screen == "hall" {
 		c = ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
 	}
+	// 小字級與 cmd/san1 同一份（英文在原版版面放不下的地方用）。
+	c.SetSmallFace(loadSmallFace(fontPath))
 	switch screen {
 	case "artfield", "artbattle":
 		c1, err := openContainer(root, "DATA1")
@@ -529,4 +531,19 @@ func realBattle(sc *state.Scenario, at int) (*battle.Battle, [2]*game.General) {
 		return p.Battle(), chiefs
 	}
 	return nil, chiefs
+}
+
+// loadSmallFace 讀小字級（與大字型同一個目錄的 `ascii6x10.hex.gz`）；
+// 讀不到回 nil，那時英文照原尺寸退回別的排法（`docs/spec/014` §3.2）。
+func loadSmallFace(bigFont string) *font.Face {
+	fh, err := os.Open(filepath.Join(filepath.Dir(bigFont), "ascii6x10.hex.gz"))
+	if err != nil {
+		return nil
+	}
+	defer fh.Close()
+	f, err := font.ParseHexGz(fh, ui.SmallH)
+	if err != nil {
+		return nil
+	}
+	return f
 }

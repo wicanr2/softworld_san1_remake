@@ -1,7 +1,7 @@
 X11 misc-fixed（font-misc-misc）— 6x10 ASCII 點陣字
 
 本專案的 fonts/ascii6x10.hex.gz 由 X11 的 misc-fixed 6x10 字模轉出
-（tools/pcf2hex.py，來源 /usr/share/fonts/X11/misc/6x10.pcf.gz）。
+（來源 /usr/share/fonts/X11/misc/6x10.pcf.gz；轉換的腳本沒有留在儲存庫裡）。
 
 上游授權（xorg font-misc-misc 的 COPYING，逐字引用）：
 

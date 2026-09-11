@@ -242,11 +242,14 @@ const BattleOptionCols = (assets.BattlePanelW - 8) / CellW
 // 一行只放得下一兩項，行數會超過面板的三行——那時原版素材的戰場畫面
 // 改在面板正上方畫一個選單框（`docs/spec/014` §7）。**不截字**：
 // 截掉的選項（「3.Tr」）比換個地方畫更糟。
-func packBattle(items []string) []string {
+func packBattle(items []string) []string { return packBattleCols(items, BattleOptionCols) }
+
+// packBattleCols 是 `packBattle` 指定寬度的版本（小字級一行 28 字）。
+func packBattleCols(items []string, cols int) []string {
 	var out []string
 	cur, n := "", 0
 	for _, it := range items {
-		if cur != "" && (n >= 3 || cells.Width(cur)+1+cells.Width(it) > BattleOptionCols) {
+		if cur != "" && (n >= 3 || cells.Width(cur)+1+cells.Width(it) > cols) {
 			out = append(out, cur)
 			cur, n = "", 0
 		}

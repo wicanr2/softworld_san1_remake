@@ -42,7 +42,11 @@ stage() {
   cp "$ROOT/LICENSE" "$d/"
   cp "$ROOT/README.md" "$d/"
   mkdir -p "$d/fonts"
-  cp "$ROOT/fonts/unifont.hex.gz" "$d/fonts/"
+  # 兩套字型與**它們各自的授權**一起帶：unifont 是 GPL v2 ＋ 字型例外，
+  # 授權文字要跟著字型走（先前只帶了字型本身）。ascii6x10 是英文在原版
+  # 版面放不下時的小字級（docs/spec/014 §3.2）。
+  cp "$ROOT/fonts/unifont.hex.gz" "$ROOT/fonts/ascii6x10.hex.gz" \
+     "$ROOT/fonts/LICENSE-unifont.txt" "$ROOT/fonts/LICENSE-x11-misc-fixed.txt" "$d/fonts/"
   cat > "$d/如何開始.txt" <<'TXT'
 三國演義 remake
 

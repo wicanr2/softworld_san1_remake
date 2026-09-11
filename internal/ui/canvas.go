@@ -38,6 +38,10 @@ type Canvas struct {
 	// 「這一畫面有沒有字沒畫出來」，不然只能靠眼睛看。
 	Missing map[rune]int
 
+	// small 是小字級（`fonts/ascii6x10.hex.gz`，6×10）；nil 表示沒有，
+	// 那時 `FitsSmall` 一律回 false、呼叫端照原尺寸畫。
+	small *font.Face
+
 	// Clipped 累計 `DrawText` 在畫布右緣丟掉的字數。
 	//
 	// **溢出在畫面上是少了幾個字，而少了幾個字看起來像譯文本來就這樣。**
@@ -64,6 +68,57 @@ func NewCanvasPx(w, h int, face *font.Face) *Canvas {
 		face:    face,
 		Missing: map[rune]int{},
 	}
+}
+
+// 小字級的尺寸：X11 misc-fixed 6×10，一字 6 像素寬、10 像素高
+//（HEX 裡存成 8 寬，右邊兩行是空的）。
+const (
+	SmallW = 6
+	SmallH = 10
+)
+
+// SetSmallFace 接上小字級。
+//
+// **小字級只用在「量得出原尺寸放不下」的地方**（`fonts/README.md`）：
+// 判準是寬度不是語系。英文的子選單在原版的下面板裡原尺寸排不下，
+// 用小字就排得下，而且留在原版的位置（`docs/spec/014` §3.2）。
+func (c *Canvas) SetSmallFace(f *font.Face) { c.small = f }
+
+// FitsSmall 回報這串字能不能全部用小字級畫（每個字都有字模）。
+// 小字級只有 ASCII，中日文一律回 false。
+func (c *Canvas) FitsSmall(s string) bool {
+	if c.small == nil {
+		return false
+	}
+	return len(c.small.Covers(s)) == 0
+}
+
+// DrawSmallTextPx 用小字級從像素座標畫一行字，回傳畫掉的寬度。
+// 字型沒有的字什麼都不畫、記進 Missing——呼叫端應該先問 `FitsSmall`。
+func (c *Canvas) DrawSmallTextPx(x, y int, s string, fg color.RGBA) int {
+	x0 := x
+	b := c.Img.Bounds()
+	for _, r := range s {
+		g, ok := c.small.Glyph(r)
+		if !ok {
+			c.Missing[r]++
+			x += SmallW
+			continue
+		}
+		for gy := 0; gy < g.H; gy++ {
+			for gx := 0; gx < g.W; gx++ {
+				if !g.At(gx, gy) {
+					continue
+				}
+				xx, yy := x+gx, y+gy
+				if xx >= b.Min.X && xx < b.Max.X && yy >= b.Min.Y && yy < b.Max.Y {
+					c.Img.SetRGBA(xx, yy, fg)
+				}
+			}
+		}
+		x += SmallW
+	}
+	return x - x0
 }
 
 // Fill 把整張畫布塗成單色。

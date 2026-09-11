@@ -34,6 +34,29 @@ func testFace(t *testing.T) *font.Face {
 	return f
 }
 
+// testSmallFace 讀小字級（6×10）。
+func testSmallFace(t *testing.T) *font.Face {
+	t.Helper()
+	fh, err := os.Open("../../fonts/ascii6x10.hex.gz")
+	if err != nil {
+		t.Skipf("沒有小字級：%v", err)
+	}
+	defer fh.Close()
+	f, err := font.ParseHexGz(fh, SmallH)
+	if err != nil {
+		t.Fatalf("小字級載入失敗：%v", err)
+	}
+	return f
+}
+
+// testCanvasPx 開一張接上兩套字型的畫布，與 `cmd/san1` 一樣。
+func testCanvasPx(t *testing.T, w, h int) *Canvas {
+	t.Helper()
+	c := NewCanvasPx(w, h, testFace(t))
+	c.SetSmallFace(testSmallFace(t))
+	return c
+}
+
 func TestDrawTextInk(t *testing.T) {
 	f := testFace(t)
 	c := NewCanvas(20, 3, f)

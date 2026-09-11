@@ -89,20 +89,22 @@
 
 ### 3.2 下面板
 
-類別子選單照 §2.2（`ui.SubMenuLines`）。**譯文排不進下面板的四行 × 24 格
-時**，子選單改畫在上面板一行一項，下面板只留提示字；上面板也放不下（一項
-超過 24 格）就蓋整個內容區。三個語系量出來的去處（`TestSubMenusShowInFullInEveryLanguage`）：
+類別子選單照 §2.2（`ui.SubMenuLines`），**一律畫在原版的下面板**：
 
-| 語系 | 排不進下面板的類別 |
+1. 原尺寸：四行 × 24 格。中文九類全部排得進，與原版一樣；日文也是。
+2. **小字（6×10，`fonts/ascii6x10.hex.gz`）：六行 × 32 格。**英文排不進原尺寸
+   時用這個——使用者裁定「文字允許縮小」（2026-09-11），**不縮短名稱、
+   不改畫到別的面板**。小字級只有 ASCII，所以只有整串都是 ASCII 才走這一條。
+3. 都不行才改畫在上面板一行一項（目前三個語系都走不到這一條）。
+
+| 語系 | 用小字的類別（`TestSubMenusShowInFullInEveryLanguage`）|
 |---|---|
-| 繁中 | 無（九類都在下面板，與原版相同）|
+| 繁中 | 無 |
 | 日文 | 無 |
-| 英文 | 1 查看、3 兵士、7 君主、8 謀略、9 其他 → 上面板 |
+| 英文 | 1 查看、3 兵士、7 君主、8 謀略、9 其他 |
 
-英文有兩個計略名縮短過才塞得進（文字版的指令欄一欄 23 格也要）：
-「Drive Tiger, Devour Wolf」→「Set Tiger on Wolf」、「Befriend Afar, Attack Near」
-→「Ally Afar, Attack Near」；「Message Delay」→「Msg Delay」（文字版的「其他」
-十項要排兩欄，一欄 10 格）。
+小字的判準照 `fonts/README.md`：**量得出放不下才用**，不是「是英文就用」。
+同一個判準也用在文字版的指令欄（名字放不下那一格才換小字）與戰場（§7）。
 
 其餘時候放提示或最後一則訊息，
 **最多四行**（原版的主提示用兩行，事件訊息常常更長，四行是面板放得下的量）。
@@ -155,7 +157,7 @@ remake 在「其他」加了兩項（`docs/design/02` §5），前兩行與原�
 | 輸入游標 | 紅色圓點（12）| 沒畫 |
 | 英日文的指令名 | —（原版只有中文）| 放不下雙倍字就畫一倍字 |
 | 「其他」第九、十項 | 沒有 | §3.4 |
-| 譯文排不進下面板的子選單 | —（原版只有中文）| 上面板一行一項，或蓋內容區（§3.2）|
+| 英文排不進原尺寸的地方 | —（原版只有中文）| 改用 6×10 小字、留在原版的位置（§3.2、§7）|
 | 方向鍵換郡時顯示郡的資料 | —（原版沒有方向鍵換郡）| 打開 `View.Status` |
 
 ## 5. 驗證
@@ -176,13 +178,13 @@ remake 在「其他」加了兩項（`docs/design/02` §5），前兩行與原�
 
 | 畫面 | 量什麼 | 測試 |
 |---|---|---|
-| 下面板的子選單 | 排得進四行 × 24 格，否則改畫上面板 | `TestSubMenusShowInFullInEveryLanguage` |
+| 下面板的子選單 | 原尺寸四行 × 24 格，英文可用小字六行 × 32 格 | `TestSubMenusShowInFullInEveryLanguage` |
 | 上面板的指令表 | 墨水不出面板 | `TestCommandMenuLayout` |
 | 上面板的郡的資料 | 標籤 ＋ 數值塞得進原版槽位（12／10 格）、郡名與州名不截 | `TestArtStatusFitsEveryLanguage` |
 | 左側直條的年月 | 不過直條的底（英文轉 90° 排，§3.5）| `TestArtDateStaysInTheStrip` |
 | 分頁 | 68 格內 | `TestPagesFitTheOverlayInEveryLanguage` |
 | 開局選單 | 一項 40 格內（六個劇本、96 個君主欄）| `menu.TestTitleListsFitEveryLanguage` |
-| 戰場的選項與左右面板 | 一行 21 格內 | `TestBattleOptionsFitThePanelInEveryLanguage`、`TestBattleSidePanelsFitEveryLanguage` |
+| 戰場的選項與左右面板 | 指令面板 21 格、軍力面板文字區 11 格（左邊是肖像框）；英文可用小字 | `TestBattleOptionsFitThePanelInEveryLanguage`、`TestBattleSidePanelsFitEveryLanguage`、`TestArtBattleEnglishStaysInThePanel` |
 | 文字版的每一種狀態 | 右緣沒有字被截、兩欄不疊（`Canvas.Clipped`）| `TestTextScreenClipsNothing`、`TestTextPageCoversAndClears` |
 
 郡的資料面板的英文排法（§2 的原版槽位放不下拼音）：郡名改一倍字、用到
@@ -202,7 +204,8 @@ remake 在「其他」加了兩項（`docs/design/02` §5），前兩行與原�
 |---|---|
 | 選項 | 選了用計／交戰／方向／紮營之後，面板上那三行換成該選的選項；標題與提示照舊在第四、五行 |
 | 排法 | `packBattle`：一行最多三項、不超過 21 格。中文三項一行正好 20 格，排出來就是原版的三行三列（`AA.EXE` `0x46c02`）|
-| 放不下 | 行數超過三行（英文九個指令六行、英日文的計謀四行）就在面板**正上方**畫一個同寬的選單框往上長——選指令時玩家要看得到戰場，所以不整片蓋掉 |
+| 放不下 | 英文（九個指令原尺寸六行）**整塊改小字留在面板裡**：選項、標題、提示一行 28 字、面板放得下 8 行。小字級沒有的字（日文的計謀四行）才在面板**正上方**畫一個同寬的選單框往上長——選指令時玩家要看得到戰場，所以不整片蓋掉 |
+| 軍力面板 | 文字區是 92 像素（11 格，左邊 80 像素是肖像框）。先前照整塊面板截在 21 格，英文的「Main Attackers」畫進隔壁面板。英文放不下就整塊改小字、長的一行折兩行 |
 | 查看部隊 | 蓋在三個面板上方那一整塊（x 64–624、y 4–264），藍底；表格改用 `cells.Columns`（名字後面接「陣亡」「被俘」時，寫死的八格會把狀態截掉）|
 
 驗證：`TestArtBattleDrawsOptionsAndPages`、`TestBattleOptionsFitThePanelInEveryLanguage`、

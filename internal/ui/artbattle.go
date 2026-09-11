@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
@@ -206,10 +207,15 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 			tf("bat.menLine", men),
 			tf("bat.goldLine", b.Gold[side]),
 		}
-		for k, s := range lines {
-			c.DrawTextPx(x, assets.BattlePanelY+4+k*CellH,
-				cells.Truncate(s, (assets.BattlePanelW-8)/CellW),
-				assets.EGAPalette[assets.BattlePanelInk])
+		ink := assets.EGAPalette[assets.BattlePanelInk]
+		if rows, small := sidePanelLayout(c, lines); small {
+			for k, s := range rows {
+				c.DrawSmallTextPx(x, assets.BattlePanelY+4+k*SmallH, s, ink)
+			}
+		} else {
+			for k, s := range rows {
+				c.DrawTextPx(x, assets.BattlePanelY+4+k*CellH, s, ink)
+			}
 		}
 	}
 
@@ -223,11 +229,30 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	if len(v.Items) > 0 {
 		opts = v.Items
 	}
-	if len(opts) <= battleOptRows {
+	small := battleSmallLayout(c, opts, v.Menu, v.Prompt)
+	switch {
+	case len(opts) <= battleOptRows:
 		for k, s := range opts {
 			c.DrawTextPx(ordX, assets.BattlePanelY+4+k*CellH, cells.Truncate(s, w), ord)
 		}
-	} else {
+	case small != nil:
+		// 英文九個指令原尺寸要五行以上：**整塊改用小字**留在面板裡
+		//（使用者裁定「文字允許縮小」，`docs/spec/014` §7）——選項、
+		// 標題、提示都用小字，一行 28 字、面板放得下 8 行。
+		cols := (assets.BattlePanelW - 8) / SmallW
+		for k, s := range small {
+			ink := ord
+			if k == len(small)-1 && v.Prompt != "" {
+				ink = assets.EGAPalette[15]
+			}
+			c.DrawSmallTextPx(ordX, assets.BattlePanelY+4+k*SmallH, cells.Truncate(s, cols), ink)
+		}
+		if len(v.Page) > 0 {
+			drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
+				v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+		}
+		return
+	default:
 		// 譯文排不進三行（英文九個指令要五行以上）：在面板**正上方**畫
 		// 一個同寬的選單框往上長，戰場的其餘部分照樣看得到——選指令的
 		// 時候玩家要看得到戰場，所以不能像主畫面那樣整片蓋掉。
@@ -255,6 +280,84 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
 			v.PageTitle, v.Page, t("hint.page"), v.PageTop)
 	}
+}
+
+// sideTextW 是軍力面板上文字區的寬：面板 176 扣掉肖像框 80 與兩邊的
+// 間隙，92 像素。先前照整塊面板截在 21 格，英文的「Main Attackers」
+// 就畫進隔壁那一塊面板——中文剛好都短，才沒露出來。
+const sideTextW = assets.BattlePanelW - assets.BattleFrameW - 4
+
+// sidePanelLayout 決定軍力面板的五行怎麼畫：原尺寸放得下（11 格）就照畫；
+// 放不下而且都是 ASCII 就整塊改小字，長的一行折成兩行（一行 15 字、
+// 面板放得下 8 行）；都不行才截。回傳要畫的行與用不用小字。
+func sidePanelLayout(c *Canvas, lines []string) ([]string, bool) {
+	cols := sideTextW / CellW
+	fit := true
+	for _, l := range lines {
+		if cells.Width(l) > cols {
+			fit = false
+		}
+	}
+	if fit {
+		return lines, false
+	}
+	scols, srows := sideTextW/SmallW, (assets.BattlePanelH-8)/SmallH
+	var rows []string
+	for _, l := range lines {
+		rows = append(rows, cells.Wrap(l, scols)...)
+	}
+	if len(rows) <= srows && c.FitsSmall(strings.Join(rows, "")) {
+		return rows, true
+	}
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		out[i] = cells.Truncate(l, cols)
+	}
+	return out, false
+}
+
+// battleSmallLayout 回傳用小字排的整塊指令面板（選項、標題、提示），
+// 放不下或有小字級沒有的字（中日文）就回 nil。
+//
+// 選項是先照原尺寸排好的行（`BattleCommandLines` 等），這裡拆回一項
+// 一項再照小字的寬度重排：每一項都以「編號.」開頭，名字裡不會有這個樣子。
+func battleSmallLayout(c *Canvas, opts []string, menu, prompt string) []string {
+	cols := (assets.BattlePanelW - 8) / SmallW
+	rows := (assets.BattlePanelH - 8) / SmallH
+	var items []string
+	for _, line := range opts {
+		items = append(items, splitBattleItems(line)...)
+	}
+	lines := packBattleCols(items, cols)
+	if menu != "" {
+		lines = append(lines, menu)
+	}
+	if prompt != "" {
+		lines = append(lines, prompt)
+	}
+	if len(lines) > rows {
+		return nil
+	}
+	for _, l := range lines {
+		if !c.FitsSmall(l) {
+			return nil
+		}
+	}
+	return lines
+}
+
+// splitBattleItems 把一行選項拆回一項一項（在「空白＋數字＋.」前面切）。
+func splitBattleItems(line string) []string {
+	var out []string
+	start := 0
+	rs := []rune(line)
+	for i := 1; i+2 < len(rs); i++ {
+		if rs[i] == ' ' && rs[i+1] >= '0' && rs[i+1] <= '9' && rs[i+2] == '.' {
+			out = append(out, strings.TrimSpace(string(rs[start:i])))
+			start = i + 1
+		}
+	}
+	return append(out, strings.TrimSpace(string(rs[start:])))
 }
 
 // 戰場畫面的選項列數與分頁的範圍（`docs/spec/014` §7）。

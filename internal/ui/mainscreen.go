@@ -385,12 +385,21 @@ func drawCommandPanel(c *Canvas, title string, cmds []Command) {
 			break
 		}
 		c.DrawText(col, row, fmt.Sprintf("%c.", cmd.Key), ColDim)
-		name := cmd.Name
+		// 名字的槽：一欄時到畫布右緣，兩欄時左欄停在右欄前。
+		slot := c.Cols - (col + 3)
 		if per < len(cmds) && i < per {
-			if w := commandColW - 3; cells.Width(name) > w {
-				c.Clipped += cells.Width(name) - cells.Width(cells.Truncate(name, w))
-				name = cells.Truncate(name, w)
+			slot = commandColW - 3
+		}
+		name := cmd.Name
+		if cells.Width(name) > slot {
+			// **放不下先用小字**（`fonts/README.md`：量得出放不下才用），
+			// 小字也放不下或不是 ASCII 才截，截掉的記進 `Clipped`。
+			if px := slot * CellW; c.FitsSmall(name) && len([]rune(name))*SmallW <= px {
+				c.DrawSmallTextPx((col+3)*CellW, row*CellH+(CellH-SmallH)/2, name, ColFG)
+				continue
 			}
+			c.Clipped += cells.Width(name) - cells.Width(cells.Truncate(name, slot))
+			name = cells.Truncate(name, slot)
 		}
 		c.DrawText(col+3, row, name, ColFG)
 	}
@@ -477,7 +486,7 @@ var subMenuPerLine = map[byte]int{'2': 1}
 // **中文照這個規則排出來與原版字串逐行相同**（`TestSubMenuLinesMatchTheOriginal`），
 // 所以英日文用同一個規則就是「原版會怎麼排」。項目多到四行放不下提示字
 // 時，提示字擠到最後一行後面（「其他」有十項，`docs/spec/014` §3.4）。
-func SubMenuLines(key byte, items []Command, cols int) []string {
+func SubMenuLines(key byte, items []Command, cols, rows int) []string {
 	var lines []string
 	cur, n := "", 0
 	per := subMenuPerLine[key]
@@ -497,7 +506,7 @@ func SubMenuLines(key byte, items []Command, cols int) []string {
 		lines = append(lines, cur)
 	}
 	prompt := t(subMenuPrompt[key])
-	if k := len(lines); k >= artLowerRows && k > 0 &&
+	if k := len(lines); k >= rows && k > 0 &&
 		cells.Width(lines[k-1])+1+cells.Width(prompt) <= cols {
 		lines[k-1] += " " + prompt
 	} else {
