@@ -492,7 +492,7 @@ func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hin
 // drawArtStatus 畫上面板的郡的資料（原版的「0.狀態」，`docs/spec/005` §2.1）。
 //
 // 位置與字色照原版量；**槽位也是原版的**：左欄標籤 ＋ 靠右的數值共 12 格
-// （424–520）、右欄 10 格（536–616）。中文的欄名照原版，英日文用一組
+//（424–520）、右欄 10 格（536–616）。中文的欄名照原版，英日文用一組
 // 面板專用的短欄名（`stat.*`）才塞得進（`TestArtStatusFitsEveryLanguage`）。
 func drawArtStatus(c *Canvas, g *game.State, p *game.Prefecture, sel int) {
 	// 第一列：郡名是 32×32 的雙倍字，州名與編號在它右邊。
