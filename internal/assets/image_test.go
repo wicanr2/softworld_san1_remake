@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -163,4 +164,91 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// `.MSK` 是單平面的一位元遮罩，表頭與 `.IMG` 相同。
+//
+// **判準是長度**：一個平面是 `stride × h`，四個平面是它的四倍。
+// 兩者混用不會解出亂碼，會在長度那一關就被擋下來。
+func TestDecodeMaskIsOnePlane(t *testing.T) {
+	// 自造一張 16×2：第一列全亮、第二列左半亮。
+	b := []byte{2, 0, 16, 0, 0xFF, 0xFF, 0xFF, 0x00}
+	im, err := DecodeMask(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if im.W != 16 || im.H != 2 {
+		t.Fatalf("尺寸 %d×%d，想要 16×2", im.W, im.H)
+	}
+	for x := 0; x < 16; x++ {
+		if im.Pix[x] != 1 {
+			t.Errorf("第 0 列第 %d 格 ＝ %d，想要 1", x, im.Pix[x])
+		}
+		want := byte(0)
+		if x < 8 {
+			want = 1
+		}
+		if im.Pix[16+x] != want {
+			t.Errorf("第 1 列第 %d 格 ＝ %d，想要 %d", x, im.Pix[16+x], want)
+		}
+	}
+	// 拿四平面的長度去解遮罩要報錯，不能安靜地解一部分。
+	four := append(append([]byte(nil), b...), make([]byte, 12)...)
+	if _, err := DecodeMask(four); err == nil {
+		t.Error("四個平面的長度沒被擋下來")
+	}
+	if _, err := DecodeImage(b); err == nil {
+		t.Error("單平面的長度被 DecodeImage 收下了")
+	}
+	for _, bad := range [][]byte{{}, {2, 0}, {0, 0, 0, 0, 0}} {
+		if _, err := DecodeMask(bad); err == nil {
+			t.Errorf("%v 沒被擋下來", bad)
+		}
+	}
+}
+
+// 原版唯一的那一張遮罩。
+func TestEndingMaskDecodes(t *testing.T) {
+	c := container(t, "DATA2")
+	i, ok := c.ByName("ENDO4.MSK")
+	if !ok {
+		t.Fatal("DATA2 裡沒有 ENDO4.MSK——`docs/formats/01` §4.1 說它找不到，" +
+			"那一句已經更正過了（`CONTEXT.md` R56）")
+	}
+	im, err := DecodeMask(c.Data(i))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if im.W != 640 || im.H != 151 {
+		t.Errorf("ENDO4.MSK 是 %d×%d，量到的是 640×151", im.W, im.H)
+	}
+	var on int
+	for _, v := range im.Pix {
+		if v != 0 {
+			on++
+		}
+	}
+	// 兩種值都要有，否則是一整片——那就不是遮罩。
+	if on == 0 || on == len(im.Pix) {
+		t.Errorf("遮罩只有一種值（亮 %d／%d）", on, len(im.Pix))
+	}
+}
+
+// 結局畫面是四張 160×336 並排成 640×336。
+func TestEndingPicturesTile(t *testing.T) {
+	c := container(t, "DATA2")
+	for i := 0; i < 4; i++ {
+		name := fmt.Sprintf("ENDO%d.IMG", i)
+		k, ok := c.ByName(name)
+		if !ok {
+			t.Fatalf("DATA2 裡沒有 %s", name)
+		}
+		im, err := DecodeImage(c.Data(k))
+		if err != nil {
+			t.Fatalf("%s：%v", name, err)
+		}
+		if im.W != 160 || im.H != 336 {
+			t.Errorf("%s 是 %d×%d，想要 160×336", name, im.W, im.H)
+		}
+	}
 }

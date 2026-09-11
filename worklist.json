@@ -906,23 +906,24 @@
     },
     {
       "id": "msk-masks",
-      "title": "`.MSK` 怎麼與圖搭配還沒解",
+      "title": "`.MSK` 蓋在哪一張圖上還沒解（格式已解）",
       "group": "資料格式",
       "milestone": "M2",
       "status": "open",
-      "level": null,
+      "level": "L0",
       "edition": "base",
       "docs": [
+        "docs/formats/07",
         "docs/formats/01"
       ],
-      "note": "`8x8AND*` 那四張已經解了（紮寨蓋的是 `AND0`，78 格裡 73 格逐像素相同，`TestCampMaskMatchesTheOriginal`）；剩下的是 `.MSK`——只有 `ENDO4.MSK`，而那一組不在容器裡。訊號綁 `docs/formats/07` 的「還沒解」清單。\n\n主戰場下方年月那一行的網點**與遮罩無關**，已經解成 `(x+y)%2` 的兩色棋盤（`docs/spec/011` §2）——這一條原本被當成它的 blocker，現在解開了。",
-      "acceptance": "`.MSK` 的用途有答案（或確認它不屬於這一款）",
+      "note": "**格式解出來了**：表頭與 `.IMG` 相同（先高後寬），但只有一個平面——一個位元一個像素（`assets.DecodeMask`）。整套素材裡只有一張：`DATA2` 的 `ENDO4.MSK`，640×151，內容是山巒的輪廓。\n\n⚠ 它與 `ENDO0`–`ENDO3`（結局的朝堂圖）放在一起，**但那張圖裡沒有山**——蓋在哪一張上沒解。用它的是 `DATA0.GRP`／`DATA4.GRP` 那兩支 overlay，主程式的映像裡一次都沒出現 `ENDO`／`.MSK` 這些字串。\n\n主戰場年月那一行的網點**與遮罩無關**，已經解成 `(x+y)%2` 的兩色棋盤（`docs/spec/011` §2）——這一條原本被當成它的 blocker，現在解開了。",
+      "acceptance": "`ENDO4.MSK` 蓋在哪一張圖上、怎麼合成有答案",
       "verify": {
         "kind": "present",
         "paths": [
           "docs/formats/07-images.md"
         ],
-        "pattern": "`\\.MSK` 與 `8x8AND\\*`（遮罩）怎麼與圖搭配"
+        "pattern": "蓋在哪一張圖上還沒解"
       },
       "layer": "feature"
     },
@@ -1487,6 +1488,29 @@
         "kind": "cmd",
         "cmd": "grep -q 'func exportSpeech' cmd/san1assets/main.go",
         "expect": "pass"
+      }
+    },
+    {
+      "id": "ending-screen",
+      "title": "結局畫面 remake 還沒畫",
+      "group": "畫面",
+      "layer": "feature",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L0",
+      "edition": "base",
+      "docs": [
+        "docs/formats/07",
+        "docs/formats/01"
+      ],
+      "note": "素材找到了（`CONTEXT.md` R56）：`DATA2` 的 `ENDO0`–`ENDO3` 四張 160×336 並排成 640×336 的朝堂圖，加一張 640×151 的遮罩 `ENDO4.MSK`。`REC10L/R`、`REC11L/R` 各 320×336，`UPR00`–`UPR21` 大小不一。\n\n⚠ **怎麼用沒解**：主程式的映像裡一次都沒出現這些名字，用它們的是 `DATA0.GRP`／`DATA4.GRP` 那兩支 overlay——那兩支是 MZ 執行檔，還沒反組譯。\n\nremake 現在統一之後只在提示列說一句話（`msg.over`）。",
+      "acceptance": "統一之後畫得出結局畫面，或確認那組素材不屬於統一結局",
+      "verify": {
+        "kind": "absent",
+        "paths": [
+          "internal/ui"
+        ],
+        "pattern": "ENDO"
       }
     }
   ],

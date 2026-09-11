@@ -47,6 +47,11 @@ if [[ -z "${SAN1_ORIG+x}" && -d "$ROOT/org_game" ]]; then
 fi
 
 MOUNTS=()
+# ⚠ **換素材目錄時 go test 的快取不會失效。** 容器內的 `SAN1_ORIG`
+# 永遠是 `/orig`，所以 `SAN1_ORIG=…/org_game` 與
+# `SAN1_ORIG=…/org_game/三國演義` 在 `go test` 眼裡是同一組輸入——
+# 第二次跑會印 `(cached)` 並重播上一次的結果，**包括上一次的 skip**。
+# 換路徑之後要驗，加 `-count=1`。
 if [[ -n "${SAN1_ORIG:-}" ]]; then
   MOUNTS+=(-v "$(cd "$SAN1_ORIG" && pwd):/orig:ro")
   PASS+=(-e "SAN1_ORIG=/orig")

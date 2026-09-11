@@ -57,6 +57,41 @@ type Image struct {
 // ImageHeader 是表頭的長度。
 const ImageHeader = 4
 
+// DecodeMask 解一張 `.MSK`：表頭與 `.IMG` 相同（高、寬各一個 uint16），
+// 但**只有一個平面**——一個位元一個像素，回傳的 `Pix` 只有 0 與 1。
+//
+// 判準是長度：`stride × h`（一個平面）而不是 `stride × h × 4`。
+// 拿 `DecodeImage` 去解會在長度那一關就擋下來，**不會安靜地解錯**。
+//
+// 唯一的一張是 `ENDO4.MSK`（`DATA2`，640×151，山巒的輪廓）。
+// 它怎麼與圖搭配還沒解（`docs/formats/07`）。
+func DecodeMask(b []byte) (*Image, error) {
+	if len(b) < ImageHeader {
+		return nil, fmt.Errorf("assets: 遮罩只有 %d 個位元組", len(b))
+	}
+	h := int(b[0]) | int(b[1])<<8
+	w := int(b[2]) | int(b[3])<<8
+	if w <= 0 || h <= 0 || w > 4096 || h > 4096 {
+		return nil, fmt.Errorf("assets: 遮罩的尺寸是 %d×%d", w, h)
+	}
+	stride := (w + 7) / 8
+	body := b[ImageHeader:]
+	if want := stride * h; len(body) != want {
+		return nil, fmt.Errorf("assets: %d×%d 的遮罩要 %d 個位元組，有 %d",
+			w, h, want, len(body))
+	}
+	im := &Image{W: w, H: h, Pix: make([]byte, w*h)}
+	for y := 0; y < h; y++ {
+		row := y * stride
+		for x := 0; x < w; x++ {
+			if body[row+x/8]&(0x80>>(uint(x)%8)) != 0 {
+				im.Pix[y*w+x] = 1
+			}
+		}
+	}
+	return im, nil
+}
+
 // DecodeImage 解一張 `.IMG` 或 `.FAC`。
 func DecodeImage(b []byte) (*Image, error) {
 	if len(b) < ImageHeader {
