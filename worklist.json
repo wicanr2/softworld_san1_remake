@@ -1579,6 +1579,53 @@
         ],
         "pattern": "Players \\[\\]state[.]FactionID"
       }
+    },
+    {
+      "id": "ai-modes-move-the-board",
+      "title": "強化 AI 真的在推動局面（與 base 的差異量出來了）",
+      "group": "規則層",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/70-ai",
+        "docs/design/02"
+      ],
+      "note": "全電腦跑劇本 001 三十六個月，兩種 AI 各一次：\n\n| | `base`（還原）| `enhanced`（強化）|\n|---|---|---|\n| 存活勢力 | 14 | **6** |\n| 最大勢力 | 4 郡 | **28 郡** |\n| 空白郡 | 14 | 2 |\n| 易主 | 4 郡 | **31 郡** |\n| 總兵 | 166,250 | 84,495 |\n| 總金 | 7,320 | 17,547 |\n\n⚠ 這**不是「誰比較強」的裁決**——兩者的驗收標準本來就不同。量的是「局面有沒有被推動」，那是「有沒有作用」的最低標準。\n\n⚠ 先前沒有任何測試在驗這件事：`internal/ai` 的三支 enhanced 測試（合法、決定性、一郡一令）在一個**什麼都不做**的 AI 上也全部成立。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/session",
+        "run": "TestZZAIModesMoveTheBoard",
+        "needs": [
+          "org_game"
+        ]
+      }
+    },
+    {
+      "id": "battle-ai-options",
+      "title": "戰場上部隊每天怎麼選動作還沒對上",
+      "group": "規則層",
+      "layer": "feature",
+      "milestone": "M5",
+      "status": "open",
+      "level": "L2",
+      "edition": "base",
+      "docs": [
+        "docs/re/05",
+        "docs/mechanics/40",
+        "docs/design/02"
+      ],
+      "note": "**結構解出來了**（`docs/re/05` §12）：入口 `0x29014`，九個選項依序試，動作碼寫在 `es:[0x31a8]`，日層級對照乾淨（決策定出 2 的那幾天各跑一次交戰結算）。\n\n**各個選項分別是什麼動作還沒對上**：九支裡只確認了三支的角色——`0x29e2e` 兜底、`0x29784` 與 `0x29ade` 選對戰；其餘六支在觀測的盤面上沒定過案（敵人不在旁邊時十三次全走到最後一個選項）。\n\n所以 **remake 的戰場 AI 門檻與順序是 remake 自己決定的**（死戰、叫陣、退兵、用計的時機，`docs/design/02`）。要往下走得先把敵人擺到旁邊，讓前面那幾支定案。",
+      "acceptance": "九個選項各自對應哪一個動作有答案，且 remake 的戰場 AI 對得上原版",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "docs/mechanics/40-military.md"
+        ],
+        "pattern": "各個選項分別是什麼動作還沒對上"
+      }
     }
   ],
   "layers": {
