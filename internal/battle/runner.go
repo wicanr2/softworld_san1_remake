@@ -142,6 +142,6 @@ func (b *Battle) Inspect(u *Unit, target Hex) (*Unit, error) {
 		return nil, fmt.Errorf("battle: 查看敵軍須 %d 金", TuneInspectCost)
 	}
 	b.Gold[u.Side] -= TuneInspectCost
-	b.note("%s 查看 %s（耗 %d 金）", u.Name(), t.Name(), TuneInspectCost)
+	b.note("blog.inspect", u.Name(), t.Name(), TuneInspectCost)
 	return t, nil
 }

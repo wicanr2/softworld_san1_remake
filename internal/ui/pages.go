@@ -163,32 +163,13 @@ func TroopKindName(k battle.TroopKind) string {
 }
 
 // WeatherName 是天候的名稱。
-func WeatherName(w battle.Weather) string {
-	keys := []string{"weather.clear", "weather.windy", "weather.rainy"}
-	if int(w) < len(keys) {
-		return t(keys[w])
-	}
-	return "?"
-}
+func WeatherName(w battle.Weather) string { return w.Label() }
 
 // SideName 是四支軍隊的名稱（說明書 p.28）。
-func SideName(s battle.Side) string {
-	keys := []string{"side.mainAtt", "side.aidAtt", "side.mainDef", "side.aidDef"}
-	if int(s) < len(keys) {
-		return t(keys[s])
-	}
-	return "?"
-}
+func SideName(s battle.Side) string { return s.Label() }
 
 // FormationName 是五種戰鬥隊伍的名稱。
-func FormationName(f battle.Formation) string {
-	keys := []string{"form.vanguard", "form.left", "form.right",
-		"form.centre", "form.rear"}
-	if int(f) < len(keys) {
-		return t(keys[f])
-	}
-	return "?"
-}
+func FormationName(f battle.Formation) string { return f.Label() }
 
 // CommandName 是主戰場一個指令的名稱。編號與原版相同。
 func CommandName(c battle.Command) string {
@@ -206,14 +187,7 @@ func CommandName(c battle.Command) string {
 }
 
 // StratagemName 是六種計謀的名稱。編號與原版相同（`docs/design/03` §6）。
-func StratagemName(s battle.Stratagem) string {
-	keys := []string{"", "strat.fire", "strat.flood", "strat.trap",
-		"strat.lure", "strat.burn", "strat.siege"}
-	if int(s) < len(keys) && keys[s] != "" {
-		return t(keys[s])
-	}
-	return "?"
-}
+func StratagemName(s battle.Stratagem) string { return s.Label() }
 
 // BattleReport 是一場戰役的逐日戰報。
 //
@@ -221,8 +195,8 @@ func StratagemName(s battle.Stratagem) string {
 // 只給一行結果等於把過程丟掉；原版有「查看電腦戰役」這個開關
 // （`docs/re/04` §3），就是因為過程本身是內容。
 //
-// ⚠ 這一頁的寬度三個語系都還沒量過：逐日的紀錄帶人名與計謀名，英文可能
-// 超過分頁的 68 格而被截（`docs/spec/014` §6）。要量得先跑出一場戰役。
+// 逐日紀錄的長句會超過分頁寬度（「誘敵成功」那一句帶三個部隊名，中文就
+// 要一百多格）——分頁會折行不截字（`PageLines`，`docs/spec/014` §8）。
 func BattleReport(g *game.State, r *game.BattleResult) (string, []string) {
 	if r == nil {
 		return t("page.report"), []string{t("msg.none")}

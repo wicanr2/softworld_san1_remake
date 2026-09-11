@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 )
 
 // 主戰場的一場戰役（說明書 p.28–35）。
@@ -151,7 +153,7 @@ func New(s Setup) *Battle {
 		}
 		b.Units = append(b.Units, b.formUp(side, pool, base)...)
 	}
-	b.note("戰役開始（%s）", b.Weather)
+	b.note("blog.start", b.Weather.Label())
 	return b
 }
 
@@ -256,9 +258,16 @@ func (b *Battle) UnitAt(h Hex) *Unit {
 	return nil
 }
 
-func (b *Battle) note(format string, a ...any) {
-	b.Log = append(b.Log, fmt.Sprintf("第 %d 日　", b.Day)+fmt.Sprintf(format, a...))
+// note 記一則逐日戰報。key 是譯文鍵（`blog.*`），參數照那一句的順序給；
+// 人名要先過 `pn`，天氣、計謀、地形與軍別給 `Label()`。
+//
+// **戰報是當下的語系寫成的**：切換語系之後，已經寫下的那幾行不會跟著換。
+func (b *Battle) note(key string, a ...any) {
+	b.Log = append(b.Log, i18n.Sf("blog.day", b.Day)+i18n.Sf(key, a...))
 }
+
+// pn 是戰報裡的人名（英文轉拼音、日文換新字體）。
+func pn(name string) string { return i18n.PersonName(name) }
 
 // sideAlive 回報某個軍力還有沒有部隊在場上。
 func (b *Battle) sideAlive(s Side) bool {
@@ -337,7 +346,7 @@ func (b *Battle) Move(u *Unit, d Dir) error {
 	u.At = to
 	if to == b.Field.CityAt {
 		b.CityHeld = u.Side
-		b.note("%s 進佔城池", u.Name())
+		b.note("blog.takeCity", u.Name())
 	}
 	return nil
 }
@@ -567,13 +576,13 @@ func (b *Battle) thin(u *Unit, ratio float64) {
 		n := MeleeSurvivors(x.Soldiers, ratio)
 		if n == 0 {
 			x.Captured = true
-			b.note("%s 兵盡被擒", x.Name)
+			b.note("blog.captured", pn(x.Name))
 		}
 		x.Soldiers = n
 	}
 	if u.Soldiers() == 0 && !u.Wiped {
 		u.Wiped = true
-		b.note("%s 全滅", u.Name())
+		b.note("blog.wiped", u.Name())
 	}
 }
 
@@ -628,14 +637,14 @@ func (b *Battle) casualty(u *Unit, loss int) {
 	}
 	if u.Soldiers() == 0 {
 		u.Wiped = true
-		b.note("%s 全滅", u.Name())
+		b.note("blog.wiped", u.Name())
 	}
 	// 兵打光就被俘（原版 0x30716）。
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
 		if x.Soldiers <= 0 && !x.Dead && !x.Captured {
 			x.Captured = true
-			b.note("%s 兵盡被擒", x.Name)
+			b.note("blog.captured", pn(x.Name))
 		}
 	}
 }
@@ -675,15 +684,15 @@ func (b *Battle) melee(a *Unit, d Dir, toTheDeath bool) error {
 		// 也就是倍率 100。
 		la, lb := b.exchange(a, t, MeleeStrike)
 		if !t.Alive() {
-			b.note("%s 擊潰 %s（斬 %d）", a.Name(), t.Name(), la)
+			b.note("blog.rout", a.Name(), t.Name(), la)
 			break
 		}
 		if !a.Alive() {
-			b.note("%s 反擊得手（斬 %d）", t.Name(), lb)
+			b.note("blog.counter", t.Name(), lb)
 			break
 		}
 		if !toTheDeath {
-			b.note("%s 攻 %s：斬 %d，被斬 %d", a.Name(), t.Name(), la, lb)
+			b.note("blog.clash", a.Name(), t.Name(), la, lb)
 			break
 		}
 	}
@@ -748,10 +757,10 @@ func (b *Battle) Archery(a *Unit, target Hex) error {
 	}
 	if t.Soldiers() == 0 && !t.Wiped {
 		t.Wiped = true
-		b.note("%s 全滅", t.Name())
+		b.note("blog.wiped", t.Name())
 	}
 	a.Arrows = 0
-	b.note("%s 射了 %d 次箭，%s 折損 %d", a.Name(), n, t.Name(), total)
+	b.note("blog.arrows", a.Name(), n, t.Name(), total)
 	a.Move = 0
 	return nil
 }
@@ -804,7 +813,7 @@ func (b *Battle) Retreat(u *Unit) error {
 		b.Rice[u.Side] -= b.Rice[u.Side] * share / total
 	}
 	u.Retreated = true
-	b.note("%s 撤退（隨身錢糧盡失）", u.Name())
+	b.note("blog.retreat", u.Name())
 	b.checkOver()
 	return nil
 }
@@ -863,7 +872,7 @@ func (b *Battle) EndDay() {
 				x.Soldiers /= b.roll(DesertionSpread) + DesertionFloor
 			}
 		}
-		b.note("%s 沒米了，士兵大批逃亡", s)
+		b.note("blog.starve", s.Label())
 	}
 	if b.Day%RiceUpkeepEvery == 0 {
 		for _, s := range SideDeployOrder() {
@@ -903,27 +912,27 @@ func (b *Battle) checkOver() {
 	// 攻方勝」，後者覆蓋前者，所以兩邊統帥都不在時判攻方勝。
 	case !defChief && !b.Rules.DefenderCommanderLossIgnored:
 		b.Over, b.AttackerWon = true, true
-		b.note("守方統帥不在陣中，攻方獲勝")
+		b.note("blog.noDefChief")
 	case !atkChief:
 		b.Over, b.AttackerWon = true, false
-		b.note("攻方統帥不在陣中，守方衛郡成功")
+		b.note("blog.noAttChief")
 	// 底下兩個只有在守方統帥那一條被關掉時才走得到（加強版難度 11–20），
 	// 對應的是加強版獨有的「總兵數為 0 者敗」（`0x229ba`）：打光守方的
 	// 統帥不再算贏，打光守方的兵還是算。原版走不到這裡——兵打光了統帥
 	// 也就不在了，上面那一條先成立。
 	case !defenders:
 		b.Over, b.AttackerWon = true, true
-		b.note("守方總兵數為零，攻方獲勝")
+		b.note("blog.defZero")
 	case !attackers:
 		b.Over, b.AttackerWon = true, false
-		b.note("攻方總兵數為零，守方衛郡成功")
+		b.note("blog.attZero")
 	case b.Day >= BattleDays:
 		b.Over = true
 		b.AttackerWon = b.CityHolder().Attacking()
 		if b.AttackerWon {
-			b.note("卅天期滿，攻方據有城池，攻方獲勝")
+			b.note("blog.timeAtt")
 		} else {
-			b.note("卅天期滿，城池未失，守方衛郡成功")
+			b.note("blog.timeDef")
 		}
 	}
 }

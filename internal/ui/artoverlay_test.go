@@ -6,12 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+	"github.com/wicanr2/softworld_san1_remake/internal/session"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -641,5 +644,158 @@ func TestTextScreenClipsNothing(t *testing.T) {
 				t.Errorf("%s 的文字版在「%s」截掉了 %d 格", l, name, c.Clipped)
 			}
 		}
+	}
+}
+
+// TestBattleReportsFitEveryLanguage 釘住戰報頁三個語系都在分頁的 68 格內。
+//
+// 逐日紀錄帶人名與計謀名，英文最容易撞邊。判準是**真的打出來的戰役**：
+// 強化 AI 全電腦跑三十六個月，每一場都排一次——挑幾場樣本會漏掉最長的
+// 那一行。
+func TestBattleReportsFitEveryLanguage(t *testing.T) {
+	_, g := artSessionFixture(t)
+	s := session.New(g, ai.NewEnhanced(0), state.NoFaction)
+	for m := 0; m < 36 && !s.Over; m++ {
+		s.EndMonth()
+	}
+	reports := s.Battles()
+	if len(reports) == 0 {
+		t.Fatal("三十六個月一場戰役都沒打——量不到戰報")
+	}
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	cols := (artPageX1-artPageX0)/CellW - 2
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		widest := ""
+		for _, r := range reports {
+			title, lines := BattleReport(g, r)
+			for _, line := range append([]string{title}, lines...) {
+				if cells.Width(line) > cells.Width(widest) {
+					widest = line
+				}
+				if w := cells.Width(line); w > cols {
+					t.Errorf("%s 的戰報有一列 %d 格，分頁只有 %d 格：%q", l, w, cols, line)
+				}
+			}
+		}
+		t.Logf("%s：%d 場戰報，最寬一列 %d 格 %q", l, len(reports), cells.Width(widest), widest)
+	}
+}
+
+// TestTacticalReportsAreTranslatedAndFit 釘住戰術層的逐日戰報有譯文，
+// 而且三個語系的長句折完都在分頁的 68 格內、一個字都沒少（`docs/spec/014` §8）。
+//
+// 先前三十三則紀錄全部寫死中文、部隊名用中文的 `String()` 拼，英日文玩家
+// 看到的戰報內文是中文。判準是**真的打出來的戰役**：照
+// `battle.TestAutoUsesTheWholeRepertoire` 的配方掃一批（地形、天候、
+// 兵力比都換），單挑、計謀、弓箭、退兵、全滅都會出現——挑一兩場樣本
+// 會漏掉最長的那一行。將領用真的武將名字，拼音表才轉得到。
+func TestTacticalReportsAreTranslatedAndFit(t *testing.T) {
+	att := []string{"關羽", "張飛", "趙雲", "馬超", "黃忠", "諸葛亮", "魏延", "姜維"}
+	def := []string{"曹操", "夏侯惇", "許褚", "典韋", "張遼", "司馬懿"}
+	leaders := func(names []string, war, intel uint8, soldiers, base int) []battle.Leader {
+		out := make([]battle.Leader, len(names))
+		for i, n := range names {
+			out[i] = battle.Leader{Name: n, War: war - uint8(i), Intel: intel, Stamina: 100,
+				Charm: 50, Soldiers: soldiers, Training: 50, Arms: 50,
+				Troop: battle.TroopLand, Index: base + i}
+		}
+		return out
+	}
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	cols := (artPageX1-artPageX0)/CellW - 2
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		lines, widest := 0, ""
+		for id := 1; id <= 42; id += 5 {
+			for _, w := range []battle.Weather{battle.Clear, battle.Windy, battle.Rainy} {
+				for _, c := range []struct {
+					ratio float64
+					war   uint8
+				}{{0.8, 90}, {1.4, 90}, {0.1, 99}} {
+					p := battle.Params{Prefecture: id,
+						Neighbours: []int{(id % 42) + 1, ((id + 7) % 42) + 1}, Forts: id % 6}
+					b := battle.New(battle.Setup{
+						Field: battle.Generate(p), Weather: w, Seed: uint32(id*31 + int(w)),
+						Attackers: leaders(att, c.war, 85, int(3000*c.ratio), 0),
+						Defenders: leaders(def, 60, 60, 2500, 100),
+						FromGate:  p.Neighbours[0], AttackerGold: 3000, AttackerRice: 8000,
+						DefenderGold: 2000, DefenderRice: 6000,
+					})
+					b.Auto()
+					for _, line := range b.Log {
+						lines++
+						if cells.Width(line) > cells.Width(widest) {
+							widest = line
+						}
+						// 長句折行（`PageLines`）：折完每一行都要在分頁寬度內，
+						// 而且**一個字都沒少**——先前截掉的正好是句尾的傷亡數字。
+						rows := PageLines([]string{line}, cols)
+						joined := ""
+						for _, r := range rows {
+							if w := cells.Width(r); w > cols {
+								t.Errorf("%s 的戰報折完還有一行 %d 格：%q", l, w, r)
+							}
+							joined += strings.ReplaceAll(r, " ", "")
+						}
+						if joined != strings.ReplaceAll(line, " ", "") {
+							t.Errorf("%s 的戰報折行掉了字：\n  原句 %q\n  折完 %q", l, line, rows)
+						}
+						if l == i18n.En {
+							for _, r := range line {
+								if unicode.Is(unicode.Han, r) {
+									t.Fatalf("英文戰報裡有漢字 %q：%q", string(r), line)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		if lines == 0 {
+			t.Fatalf("%s 打了一批戰役卻一行戰報都沒有", l)
+		}
+		t.Logf("%s：%d 行戰報，最寬 %d 格 %q", l, lines, cells.Width(widest), widest)
+	}
+}
+
+// TestPageScrollsToTheEnd 釘住一頁放不下的分頁捲得到最後一行。
+//
+// 先前沒有捲動：一場三十天的戰報動輒數十行，分頁只放得下十九行，
+// 其餘的只顯示「還有更多」，玩家讀不到。
+func TestPageScrollsToTheEnd(t *testing.T) {
+	var body []string
+	for i := 1; i <= 60; i++ {
+		body = append(body, fmt.Sprintf("第 %d 行", i))
+	}
+	for _, art := range []bool{true, false} {
+		var v View
+		v.SetPage("戰報", body)
+		_, rows := PageSize(art)
+		v.ScrollPage(1000, art)
+		if want := len(body) - rows; v.PageTop != want {
+			t.Errorf("art=%v 捲到底停在第 %d 行，想要 %d", art, v.PageTop, want)
+		}
+		v.ScrollPage(-1000, art)
+		if v.PageTop != 0 {
+			t.Errorf("art=%v 捲回頂停在第 %d 行", art, v.PageTop)
+		}
+		// 換一頁要捲回最上面。
+		v.ScrollPage(5, art)
+		v.SetPage("別頁", body)
+		if v.PageTop != 0 {
+			t.Errorf("art=%v 換頁之後停在第 %d 行，應該回到最上面", art, v.PageTop)
+		}
+	}
+	// 捲得動時標題帶位置、提示換成怎麼捲；捲到底時畫得出最後一行。
+	cols, rows := PageSize(true)
+	lines, head, hint, top := pageWindow("戰報", body, 1000, cols, rows)
+	if !strings.Contains(head, "／60") || hint != i18n.S("hint.pageScroll") {
+		t.Errorf("標題 %q、提示 %q：捲得動時要帶位置與捲動的說明", head, hint)
+	}
+	if lines[top+rows-1] != "第 60 行" {
+		t.Errorf("捲到底時最後一行是 %q", lines[top+rows-1])
 	}
 }

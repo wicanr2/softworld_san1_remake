@@ -69,6 +69,27 @@ type BattleView struct {
 	// Page 覆蓋整個戰場區（查看部隊、戰報）。
 	PageTitle string
 	Page      []string
+	// PageTop 是分頁捲到第幾行（見 `View.PageTop`）。
+	PageTop int
+}
+
+// SetPage 打開一頁，捲回最上面。
+func (v *BattleView) SetPage(title string, lines []string) {
+	v.PageTitle, v.Page, v.PageTop = title, lines, 0
+}
+
+// ScrollPage 捲動分頁；art 為真表示原版素材的戰場畫面。
+func (v *BattleView) ScrollPage(delta int, art bool) {
+	cols, rows := BattlePageSize(art)
+	v.PageTop = clampTop(len(PageLines(v.Page, cols)), v.PageTop+delta, rows)
+}
+
+// BattlePageSize 是戰場上分頁一頁放得下幾格寬、幾行。
+func BattlePageSize(art bool) (cols, rows int) {
+	if art {
+		return (battlePageX1-battlePageX0)/CellW - 2, (battlePageY1-battlePageY0)/CellH - 2
+	}
+	return PageSize(false)
 }
 
 // Hexer 讓畫面不必直接依賴座標型別的零值語意。
@@ -83,7 +104,7 @@ func DrawBattle(c *Canvas, b *battle.Battle, v BattleView) {
 	drawField(c, b, v)
 	drawBattleSide(c, b, v)
 	if len(v.Page) > 0 {
-		drawPage(c, v.PageTitle, v.Page)
+		drawPage(c, v.PageTitle, v.Page, v.PageTop)
 	}
 	if v.Prompt != "" {
 		c.DrawText(fieldCol, Rows-1, cells.Truncate(v.Prompt, Cols-fieldCol-1), ColSel)

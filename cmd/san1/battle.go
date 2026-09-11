@@ -117,7 +117,7 @@ func (a *app) endBattle() {
 	a.fight = nil
 	a.s.Drain()
 	if r != nil {
-		a.view.PageTitle, a.view.Page = ui.BattleReport(a.s.G, r)
+		a.view.SetPage(ui.BattleReport(a.s.G, r))
 	}
 	a.view.Prompt = t("bat.finished")
 }
@@ -222,7 +222,7 @@ func (a *app) battleCommand(k byte, done func(error), say func(string, ...any)) 
 			say("%s", game.ErrorText(err))
 			return
 		}
-		f.view.PageTitle, f.view.Page = ui.BattleUnitPage(u)
+		f.view.SetPage(ui.BattleUnitPage(u))
 		say(t("bat.close"))
 	case battle.CmdRetreat:
 		done(b.Retreat(f.acting))
@@ -256,7 +256,7 @@ func (a *app) battleEngage(k byte, done func(error), say func(string, ...any)) {
 			say("%s", game.ErrorText(err))
 			return
 		}
-		f.view.PageTitle, f.view.Page = ui.BattleUnitPage(u)
+		f.view.SetPage(ui.BattleUnitPage(u))
 		say(t("bat.close"))
 	default:
 		say(t("bat.engageBad"))

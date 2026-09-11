@@ -75,21 +75,21 @@ func (b *Battle) AutoResolveAI() {
 			}
 		}
 	}
-	win := func(attacker bool, msg string) {
+	win := func(attacker bool, key string) {
 		casualties()
 		b.Over, b.AttackerWon = true, attacker
-		b.note("%s", msg)
+		b.note(key)
 	}
 	for b.Day = 1; ; b.Day++ {
 		if b.Day%3 == 0 {
 			riceA = int(float64(riceA) - att*0.01)
 			if riceA <= 0 {
-				win(false, "攻方糧盡，守軍獲勝")
+				win(false, "blog.aiAttRice")
 				return
 			}
 			riceD = int(float64(riceD) - def*0.01)
 			if riceD <= 0 {
-				win(true, "守方糧盡，攻軍獲勝")
+				win(true, "blog.aiDefRice")
 				return
 			}
 		}
@@ -106,15 +106,15 @@ func (b *Battle) AutoResolveAI() {
 			def, att = nd, na
 		}
 		if def <= 0 {
-			win(true, "守方潰散，攻軍獲勝")
+			win(true, "blog.aiDefRout")
 			return
 		}
 		if att <= 0 {
-			win(false, "攻方潰散，守軍獲勝")
+			win(false, "blog.aiAttRout")
 			return
 		}
 		if b.Day >= BattleDays {
-			win(false, "卅天期滿，守軍獲勝")
+			win(false, "blog.aiTime")
 			return
 		}
 	}

@@ -74,6 +74,10 @@ type View struct {
 	// 零值是中曆，與原版的預設相同。
 	Calendar game.Calendar
 
+	// PageTop 是分頁捲到第幾行（折行之後的行數，0 起算）。換頁用
+	// `SetPage` 會歸零；捲動用 `ScrollPage`，上下界由畫面決定。
+	PageTop int
+
 	// Status 為真時，原版素材畫面的上面板畫**郡的資料**；否則畫十項
 	// 指令表（`docs/spec/014` §3.1）。原版等玩家下令時上面板是指令表，
 	// 按「0.狀態」才換成郡的資料——這一格就是那個開關。文字版的畫面
@@ -101,7 +105,7 @@ func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 		drawCommandPanel(c, v.Menu, v.Items)
 	}
 	if len(v.Page) > 0 {
-		drawPage(c, v.PageTitle, v.Page)
+		drawPage(c, v.PageTitle, v.Page, v.PageTop)
 	} else {
 		drawLog(c, log)
 	}
@@ -124,18 +128,88 @@ func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 //（`docs/spec/014` §3.3），兩個畫面同一個做法。
 //
 // 清底色要用 `FillRect`：畫空白字元沒有墨水，等於沒清，地圖會從底下透出來。
-func drawPage(c *Canvas, title string, lines []string) {
+func drawPage(c *Canvas, title string, lines []string, top int) {
 	w := c.Cols - mapCol
 	c.FillRect((mapCol+1)*CellW, CellH, (mapCol+w-1)*CellW, (Rows-1)*CellH, ColBG)
 	c.DrawBox(mapCol, 0, w, Rows, ColFrame)
-	c.DrawText(mapCol+2, 0, title, ColSel)
-	for i, line := range lines {
-		if 1+i >= Rows-1 {
-			c.DrawText(mapCol+2, Rows-1, t("msg.more"), ColDim)
-			break
-		}
-		c.DrawText(mapCol+2, 1+i, cells.Truncate(line, w-4), ColFG)
+	cols, rows := PageSize(false)
+	body, head, hint, top := pageWindow(title, lines, top, cols, rows)
+	c.DrawText(mapCol+2, 0, cells.Truncate(head, cols), ColSel)
+	for i := 0; i < rows && top+i < len(body); i++ {
+		c.DrawText(mapCol+2, 1+i, body[top+i], ColFG)
 	}
+	if hint != "" {
+		c.DrawText(mapCol+2, Rows-1, cells.Truncate(hint, cols), ColDim)
+	}
+}
+
+// SetPage 打開一頁，捲回最上面。
+func (v *View) SetPage(title string, lines []string) {
+	v.PageTitle, v.Page, v.PageTop = title, lines, 0
+}
+
+// ScrollPage 捲動分頁；art 為真表示原版素材畫面（分頁大小不同）。
+func (v *View) ScrollPage(delta int, art bool) {
+	cols, rows := PageSize(art)
+	v.PageTop = clampTop(len(PageLines(v.Page, cols)), v.PageTop+delta, rows)
+}
+
+// PageSize 是分頁一頁放得下幾格寬、幾行（扣掉標題與提示那兩行）。
+// art 為真是原版素材畫面的內容區（`docs/spec/014` §3.3），否則是文字版。
+func PageSize(art bool) (cols, rows int) {
+	if art {
+		return (artPageX1-artPageX0)/CellW - 2, (artPageY1-artPageY0)/CellH - 2
+	}
+	return Cols - mapCol - 4, Rows - 2
+}
+
+// PageLines 把分頁的內容折成 cols 格一行：長的一行折下去、續行縮兩格。
+//
+// **不截字。** 分頁先前把超出的部分截掉，而戰報的長句（「誘敵成功」那一
+// 句帶三個部隊名，中文就要七十幾格）截掉的正好是句尾的傷亡數字。表格
+// 不會走到這裡——它們的欄寬依內容決定，本來就放得下。
+func PageLines(lines []string, cols int) []string {
+	out := make([]string, 0, len(lines))
+	for _, l := range lines {
+		if cells.Width(l) <= cols {
+			out = append(out, l)
+			continue
+		}
+		parts := cells.Wrap(l, cols)
+		out = append(out, parts[0])
+		rest := strings.TrimLeft(l[len(parts[0]):], " ")
+		for _, p := range cells.Wrap(rest, cols-2) {
+			out = append(out, "  "+p)
+		}
+	}
+	return out
+}
+
+// pageWindow 決定這一頁畫哪幾行：折好的內容、標題（捲得動時帶位置）、
+// 提示（捲得動時換成怎麼捲），以及夾好的起點。
+func pageWindow(title string, lines []string, top, cols, rows int) ([]string, string, string, int) {
+	body := PageLines(lines, cols)
+	top = clampTop(len(body), top, rows)
+	head, hint := title, ""
+	if len(body) > rows {
+		last := top + rows
+		if last > len(body) {
+			last = len(body)
+		}
+		head = tf("page.pos", title, top+1, last, len(body))
+		hint = t("hint.pageScroll")
+	}
+	return body, head, hint, top
+}
+
+func clampTop(total, top, rows int) int {
+	if top > total-rows {
+		top = total - rows
+	}
+	if top < 0 {
+		top = 0
+	}
+	return top
 }
 
 // drawLog 畫地圖區下緣的訊息。**失敗的命令也要看得見**——

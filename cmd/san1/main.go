@@ -167,6 +167,15 @@ func (a *app) Update() error {
 		}
 		return nil
 	}
+	// 分頁打開時 ↑↓ 捲一行、PgUp／PgDn 翻一頁——先前沒有捲動，
+	// 一頁放不下的戰報與將軍列表，其餘的部分玩家讀不到。
+	if len(a.view.Page) > 0 {
+		if d := pageScrollKey(ui.PageSize(a.art != nil)); d != 0 {
+			a.view.ScrollPage(d, a.art != nil)
+			a.dirty = true
+			return nil
+		}
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 		inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
 		a.s.EndMonth()
@@ -208,6 +217,21 @@ func (a *app) Update() error {
 }
 
 // cycle 在玩家自己的郡之間移動選取。
+// pageScrollKey 是分頁的捲動量：↑↓ 一行、PgUp／PgDn 一頁；沒按回 0。
+func pageScrollKey(_, rows int) int {
+	switch {
+	case inpututil.IsKeyJustPressed(ebiten.KeyUp):
+		return -1
+	case inpututil.IsKeyJustPressed(ebiten.KeyDown):
+		return 1
+	case inpututil.IsKeyJustPressed(ebiten.KeyPageUp):
+		return -rows
+	case inpututil.IsKeyJustPressed(ebiten.KeyPageDown):
+		return rows
+	}
+	return 0
+}
+
 func (a *app) cycle(d int) {
 	own := a.s.PlayerTerritory()
 	if len(own) == 0 {
@@ -367,7 +391,7 @@ func (a *app) begin(cat, item byte) {
 	case cat == '9' && item == '6':
 		// 原版的 `查看電腦戰役%s` 是開關；順便把最近幾場列出來。
 		a.view.Prompt = g.Options.ToggleAIWar()
-		a.view.PageTitle, a.view.Page = ui.BattleList(g, s.Battles())
+		a.view.SetPage(ui.BattleList(g, s.Battles()))
 		closeMenu()
 	case cat == '9' && item == '1':
 		// 「＊結束」在原版是回到主選單。這裡先提醒存檔——
@@ -409,7 +433,7 @@ func (a *app) begin(cat, item byte) {
 		a.askOwn(t("ask.pref"), func(id int) { a.view.Sel = id })
 	case cat == '1' && item == '3':
 		a.askGeneral(t("ask.inspect"), func(gi int) {
-			a.view.PageTitle, a.view.Page = ui.GeneralPage(g, gi)
+			a.view.SetPage(ui.GeneralPage(g, gi))
 		})
 		closeMenu()
 	case cat == '1' && item == '5':
@@ -418,16 +442,16 @@ func (a *app) begin(cat, item byte) {
 			name = p.Name
 		}
 		f := g.Field(sel)
-		a.view.PageTitle, a.view.Page = ui.TerrainPage(name, f, f.Gates)
+		a.view.SetPage(ui.TerrainPage(name, f, f.Gates))
 		closeMenu()
 	case cat == '1' && item == '2':
-		a.view.PageTitle, a.view.Page = ui.GeneralList(g, sel)
+		a.view.SetPage(ui.GeneralList(g, sel))
 		closeMenu()
 	case cat == '1' && item == '4':
-		a.view.PageTitle, a.view.Page = ui.TerritoryList(g, s.Player)
+		a.view.SetPage(ui.TerritoryList(g, s.Player))
 		closeMenu()
 	case cat == '1' && item == '6':
-		a.view.PageTitle, a.view.Page = ui.TreasuryList(g, s.Player)
+		a.view.SetPage(ui.TreasuryList(g, s.Player))
 		closeMenu()
 
 	// ---- 2. 軍事 ----
@@ -819,6 +843,13 @@ func (a *app) updateBattle() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		a.fight.view.Page, a.fight.view.PageTitle = nil, ""
 		return nil
+	}
+	// 分頁（查看部隊）打開時方向鍵捲動，不移游標。
+	if len(a.fight.view.Page) > 0 {
+		if d := pageScrollKey(ui.BattlePageSize(a.artBattle != nil)); d != 0 {
+			a.fight.view.ScrollPage(d, a.artBattle != nil)
+			return nil
+		}
 	}
 	for key, d := range map[ebiten.Key]battle.Dir{
 		ebiten.KeyUp:    battle.DirUp,

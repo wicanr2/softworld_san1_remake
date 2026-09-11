@@ -37,7 +37,7 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 		if lost > 0 {
 			b.casualty(t, lost)
 		}
-		b.note("%s 拒絕 %s 的挑戰，逃散 %d 人", ct.Name, ca.Name, lost)
+		b.note("blog.refuse", pn(ct.Name), pn(ca.Name), lost)
 		return nil
 	}
 	// 依戰力分高下，與兵力無關。**體能就是血條**，降到 0 即落敗。
@@ -61,7 +61,7 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 		}
 		ca.Stamina -= uint8(blow)
 	}
-	b.note("%s 與 %s 大戰百合，不分勝負", ca.Name, ct.Name)
+	b.note("blog.draw", pn(ca.Name), pn(ct.Name))
 	return nil
 }
 
@@ -191,10 +191,10 @@ func DuelKills(roll int) bool { return roll == 0 }
 func (b *Battle) defeatInDuel(u *Unit, loser, winner *Leader) {
 	if !DuelKills(b.roll(DuelDeathRoll)) {
 		loser.Captured = true
-		b.note("%s 單挑不敵 %s，被擒", loser.Name, winner.Name)
+		b.note("blog.duelCaptured", pn(loser.Name), pn(winner.Name))
 	} else {
 		loser.Dead = true
-		b.note("%s 單挑不敵 %s，死於刀下", loser.Name, winner.Name)
+		b.note("blog.duelKilled", pn(loser.Name), pn(winner.Name))
 	}
 	// 「如果雙方領隊之一被擒或死亡，這場對戰便告一段落」。
 	if u.Soldiers() == 0 {
@@ -452,7 +452,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		vi = int(victim.Intel)
 	}
 	if !StratagemSucceeds(ci, vi, int(b.rng.next()%uint32(s.Spread()))) {
-		b.note("%s 對 %s 用%s，被識破了", u.Name(), t.Name(), s)
+		b.note("blog.seen", u.Name(), t.Name(), s.Label())
 		b.checkOver()
 		return nil
 	}
@@ -461,13 +461,11 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	case Fire:
 		pct := FireLoss(terrain, ci, b.roll(StratagemRollSpread))
 		loss := b.scorch(t, pct)
-		b.note("%s 對 %s 火攻，折損 %d（%s，%d%%）",
-			u.Name(), t.Name(), loss, terrain, pct)
+		b.note("blog.fire", u.Name(), t.Name(), loss, terrain.Label(), pct)
 	case Flood:
 		pct := FloodLoss(terrain, ci, b.roll(StratagemRollSpread))
 		loss := b.scorch(t, pct)
-		b.note("%s 對 %s 水淹，折損 %d（%s，%d%%）",
-			u.Name(), t.Name(), loss, terrain, pct)
+		b.note("blog.flood", u.Name(), t.Name(), loss, terrain.Label(), pct)
 	case Lure:
 		// **誘敵是把敵人引過來打你。** 原版 `0x2b6aa` 播完動畫之後叫共同
 		// 的交戰結算，而且推參數時把攻守對調（`0x2b877` 先推目標再推
@@ -477,18 +475,16 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		// 划不划算看的是「目標的攻擊力 vs 施法者的防禦力」——引一支弱的
 		// 部隊來撞自己的硬點才是這一招的用法。
 		lost, back := b.exchange(t, u, LureStrike)
-		b.note("%s 誘敵成功，%s 中計來攻：%s 折損 %d，%s 折損 %d",
-			u.Name(), t.Name(), u.Name(), back, t.Name(), lost)
+		b.note("blog.lure", u.Name(), t.Name(), u.Name(), back, t.Name(), lost)
 	case Trap:
 		t.Trapped = TrapDays(ci, b.roll(TrapSpread), b.roll(TrapSpread))
-		b.note("%s 設陷阱困住 %s，%d 日內無法活動",
-			u.Name(), t.Name(), t.Trapped)
+		b.note("blog.trap", u.Name(), t.Name(), t.Trapped)
 	case Burn:
 		side := t.Side
 		keep := BurnKeep(ci, b.roll(BurnGeniusSpread), b.roll(BurnSpread))
 		b.Gold[side] = b.Gold[side] * keep / 100
 		b.Rice[side] = b.Rice[side] * keep / 100
-		b.note("%s 燒了 %s 的補給，只剩 %d%%", u.Name(), side, keep)
+		b.note("blog.burn", u.Name(), side.Label(), keep)
 	case Siege:
 		// 原版 `0x2bd49`–`0x2bdfb`：掃目標的六個鄰格，格內有部隊、
 		// **與目標不同陣營**、而且目標的將領人數還大於 0，就各對目標
@@ -525,7 +521,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 			total += lost
 			n++
 		}
-		b.note("%s 圍攻 %s：%d 支部隊參戰，折損 %d", u.Name(), t.Name(), n, total)
+		b.note("blog.siege", u.Name(), t.Name(), n, total)
 	}
 	b.checkOver()
 	return nil
@@ -581,7 +577,7 @@ func (b *Battle) scorch(u *Unit, pct int) int {
 		x.Soldiers = 0
 		if b.roll(100) > StratagemDeathRoll {
 			x.Dead = true
-			b.note("%s 被燒死", x.Name)
+			b.note("blog.burned", pn(x.Name))
 			continue
 		}
 		x.Captured = true

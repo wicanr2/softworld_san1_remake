@@ -1,6 +1,6 @@
 package battle
 
-import "fmt"
+import "github.com/wicanr2/softworld_san1_remake/internal/i18n"
 
 // 軍力與戰鬥隊伍（說明書 p.26–28）。
 
@@ -252,11 +252,14 @@ func ArrowCount(leaders []Leader) int {
 }
 
 // Name 是這支部隊給人看的名字。
+//
+// 走譯文：戰場上的提示與逐日戰報都用它，先前拿中文的 `String()` 拼，
+// 英日文的戰場上部隊名全是中文。
 func (u *Unit) Name() string {
 	if c := u.Chief(); c != nil {
-		return fmt.Sprintf("%s%s（%s）", u.Side, u.Formation, c.Name)
+		return i18n.Sf("unit.name", u.Side.unitLabel(), u.Formation.Label(), i18n.PersonName(c.Name))
 	}
-	return fmt.Sprintf("%s%s", u.Side, u.Formation)
+	return i18n.Sf("unit.nameBare", u.Side.unitLabel(), u.Formation.Label())
 }
 
 // MovePoints 是這支部隊一天的移動力上限（原版 `0x27114`–`0x271dc`，`L0`）。

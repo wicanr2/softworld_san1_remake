@@ -251,13 +251,13 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	case artUpperList:
 		if !drawArtList(c, v.Menu, v.Items) {
 			// 標籤寬過上面板（存檔槽的描述、英文的計略名）就改蓋整個內容區。
-			drawArtOverlay(c, v.Menu, commandLines(v.Items), t("hint.pick"))
+			drawArtOverlay(c, v.Menu, commandLines(v.Items), t("hint.pick"), 0)
 		}
 	default:
 		drawArtCommands(c)
 	}
 	if len(v.Page) > 0 {
-		drawArtOverlay(c, v.PageTitle, v.Page, t("hint.page"))
+		drawArtOverlay(c, v.PageTitle, v.Page, t("hint.page"), v.PageTop)
 	}
 }
 
@@ -463,29 +463,28 @@ func drawArtLower(c *Canvas, log []string, v View, subLower bool) {
 }
 
 // drawArtOverlay 把一整頁蓋在內容區上（`docs/spec/014` §3.3）。
-func drawArtOverlay(c *Canvas, title string, body []string, hint string) {
-	drawOverlay(c, artPageX0, artPageY0, artPageX1, artPageY1, title, body, hint)
+func drawArtOverlay(c *Canvas, title string, body []string, hint string, top int) {
+	drawOverlay(c, artPageX0, artPageY0, artPageX1, artPageY1, title, body, hint, top)
 }
 
 // drawOverlay 把一整頁蓋在一塊矩形上：藍底（原版將軍資料頁的底色）、
-// 標題黃、內容白，最後一行是關閉的提示。放不下的最後一行改寫「還有更多」。
-func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hint string) {
+// 標題黃、內容白，最後一行是提示。長的一行折下去（`PageLines`），
+// 一頁放不下時從 top 那一行開始畫，標題帶位置、提示換成怎麼捲。
+func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hint string, top int) {
 	c.FillRect(x0, y0, x1, y1, artInkPageBG)
 	cols := (x1-x0)/CellW - 2
-	rows := (y1 - y0) / CellH
+	rows := (y1-y0)/CellH - 2 // 標題與提示各佔一行
 	x := x0 + CellW
-	c.DrawTextPx(x, y0, cells.Truncate(title, cols), artInkName)
-	last := rows - 1 // 最後一行留給提示
-	for i, line := range body {
-		row := 1 + i
-		if row >= last-1 && i < len(body)-1 {
-			c.DrawTextPx(x, y0+row*CellH, cells.Truncate(t("msg.more"), cols), artInkPageDim)
-			break
-		}
-		c.DrawTextPx(x, y0+row*CellH, cells.Truncate(line, cols), artInkList)
+	lines, head, scroll, top := pageWindow(title, body, top, cols, rows)
+	if scroll != "" {
+		hint = scroll
+	}
+	c.DrawTextPx(x, y0, cells.Truncate(head, cols), artInkName)
+	for i := 0; i < rows && top+i < len(lines); i++ {
+		c.DrawTextPx(x, y0+(1+i)*CellH, lines[top+i], artInkList)
 	}
 	if hint != "" {
-		c.DrawTextPx(x, y0+last*CellH, cells.Truncate(hint, cols), artInkPageDim)
+		c.DrawTextPx(x, y0+(rows+1)*CellH, cells.Truncate(hint, cols), artInkPageDim)
 	}
 }
 
