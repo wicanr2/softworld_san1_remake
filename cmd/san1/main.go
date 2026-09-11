@@ -855,6 +855,11 @@ func main() {
 	difficulty := flag.Int("difficulty", 5, "難度；上限看版本，原版 1..10、加強版 1..20")
 	scale := flag.Int("scale", 2, "視窗放大倍率（整數倍，不做非整數縮放）")
 	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
+	// 探測音訊裝置的子行程（`audioprobe.go`）。要在 `flag.Parse` 之前攔下來，
+	// 而且不能碰任何 Ebiten 的東西——那會把 oto 唯一的名額用掉。
+	if len(os.Args) == 2 && os.Args[1] == probeAudioArg {
+		os.Exit(probeAudioChild())
+	}
 	music := flag.Bool("music", true, "播配樂（從原版的 DATA1 邊播邊合成）")
 	sound := flag.Bool("sound", true, "播 PC 喇叭的音效與語音（原版的 S000.SND／R???.OKR）")
 	voiceDiv := flag.Int("voice-divisor", 0, "語音的分頻值（越大越慢；0 ＝ 預設，見 docs/spec/008 R8）")
@@ -985,6 +990,14 @@ func main() {
 	a.artBattle = artBattle
 	a.c2 = c
 	a.edition = ed
+	// **先確認音訊裝置開得起來**（`audioprobe.go`）：Ebiten 把驅動開不起來
+	// 當成致命錯誤，沒有音效卡的機器會連遊戲都開不了。
+	if *music || *sound {
+		if ok, why := audioAvailable(); !ok {
+			fmt.Fprintln(os.Stderr, "san1: 沒有可用的音訊裝置，配樂與音效都關掉：", why)
+			*music, *sound = false, false
+		}
+	}
 	if *music {
 		a.jb = newJukebox(*root)
 		a.jb.Play(0)

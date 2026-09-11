@@ -169,3 +169,24 @@ Windows 與 macOS 的包目前只有型別檢查（`file` 認得出 PE／Mach-O�
 ⚠ **無顯示環境連 `san1 -h` 都會 panic**（`glfw: The GLFW library is
 not initialized`）。那是 Ebiten 的 package init 行為，不是 remake 的
 問題；容器裡要 `xvfb-run`。
+
+### 沒有音效卡也要開得起來
+
+冒煙測試的容器裡沒有音效裝置，所以它同時驗了這一條。**Ebiten 把音訊
+驅動開不起來當成致命錯誤**：`audio.Context` 一旦建立，驅動的錯誤就從
+遊戲迴圈的 hook 回傳（ebiten v2.9.9 `audio/audio.go` 的
+`AppendHookOnBeforeUpdate`），`RunGame` 直接結束——ALSA 找不到
+`default` 那一刻遊戲就關了。
+
+冒煙測試帶 `-music=false`，只關得掉配樂；PC 喇叭（`-sound`，預設開）
+照樣會建音訊環境，所以這條路一打開就會踩到。
+
+修法是**開之前先探測**（`cmd/san1/audioprobe.go`）：主程式用
+`san1 -probe-audio` 起一個子行程開一次 oto，開得起來才建 Ebiten 的
+音訊環境；開不起來就把配樂與音效都關掉、在 stderr 說一聲，照常開遊戲。
+**不能在同一個行程裡先試**：oto 一個行程只准開一個環境，而「開過了」
+的旗標在嘗試之前就立起來（oto v3.4.0 `context.go` 的 `contextCreated`），
+試一次就把 Ebiten 要用的那個名額用掉了。
+
+⚠ 探測通過之後裝置才壞掉（例如遊戲中拔掉耳機、音訊服務重啟）的那一條
+沒有處理，還是會走到 Ebiten 那個致命錯誤。
