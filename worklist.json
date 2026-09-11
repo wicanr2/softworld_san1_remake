@@ -880,27 +880,29 @@
     },
     {
       "id": "okr-format",
-      "title": "`.OKR` 未解（共 465 項 ＝ DATA2 418 ＋ DATA3 47，壓縮過）",
+      "title": "`.OKR` 是 PC 喇叭的語音（共 465 項 ＝ DATA2 418 ＋ DATA3 47）",
       "group": "資料格式",
       "milestone": "M2",
-      "status": "open",
-      "level": "L2",
+      "status": "done",
+      "level": "L1",
       "edition": "both",
       "docs": [
-        "docs/re/04",
-        "docs/mechanics/90"
+        "docs/re/09",
+        "docs/spec/008"
       ],
-      "note": "原版主戰場的地形版面在 `.OKR` 裡；remake 現在的版面是**自己生成的**（`battle.Generate`，`docs/design/03` 記為 remake 差異）。解出來也只作參考，美術素材不重製；能拿到的是版面尺寸與地形分佈這類規則性資訊。",
-      "acceptance": "`.OKR` 解得出版面，或確認它只是美術素材",
+      "note": "整支播放器解出來了：`.OKR` 是**一位元 PCM**，最高位先送，沒有表頭、沒有壓縮。長串的 `FF` 與 `00` 是靜音與飽和段。\n\n⚠ 這一條原本記著「壓縮過、格式未解」而且推論「原版主戰場的地形版面在 `.OKR` 裡」——**兩句都錯**。戰場地圖在州郡記錄的第 55–174 個位元組（`docs/spec/003`）；`internal/battle` 的註解已經跟著改掉。推翻紀錄在 `CONTEXT.md` R54。",
+      "acceptance": "播出去的位元組與素材逐位元組相同",
       "verify": {
-        "kind": "present",
-        "paths": [
-          "internal/battle/generate.go",
-          "internal/battle/field.go"
-        ],
-        "pattern": "\\.OKR.*未解|格式未解"
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestSpeechClipsAreTheAssetBytes",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
       },
-      "layer": "feature"
+      "layer": "evidence"
     },
     {
       "id": "msk-masks",
@@ -1382,20 +1384,112 @@
       "id": "anim-transition",
       "title": "計謀得手的四種拉幕轉場",
       "group": "畫面",
-      "layer": "feature",
+      "layer": "verification",
       "milestone": "M6",
-      "status": "open",
-      "level": "L2",
+      "status": "done",
+      "level": "L1",
       "edition": "base",
       "docs": [
         "docs/re/10",
         "docs/spec/010"
       ],
-      "note": "迴圈界限與「每步一聲音效」是 `L0`；**搬運常式 `es:[0x3efc]` 的語意還沒讀出來**，所以畫不出來。`RND(4)` 那一次抽樣 remake 已經照擲。升 `READY` 的條件在 `docs/spec/010` §3。",
-      "acceptance": "四個分支各有一串逐步 PNG，且 remake 逐點重現其中一種",
+      "note": "四個分支逐步量畫面（`TestZZTransitionFrames`）：**效果是「新畫面整塊滑進來」**——第 n 步把新畫面靠對邊的那一塊貼到這一邊，最後一步兩邊重合、歸位。\n\n判準是**與前一步差異的範圍**：量到的是整個已蓋區（分支 0 第 5 步 `y80–99`），「逐條露出」的話那只會是新增的 `y96–99`——兩個模型在縮圖上看起來一樣。\n\nremake 是 `internal/ui.Wipe` ＋ `game.PendingWipe`，每一步一聲音效。⚠ **搬運常式 `es:[0x3efc]` 沒有反組譯**，結論是從行為量的；「失敗會不會也轉場」也還沒有樣本（`docs/spec/010` §7）。",
+      "acceptance": "四個分支的步數與逐步範圍與原版量到的相同，且走完之後整塊就是新畫面",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/ui",
+        "run": "TestWipeStepCountsMatchTheOriginal|TestWipeTouchedAreaGrowsFromTheEdge|TestWipeSlidesTheNewPictureIn"
+      }
+    },
+    {
+      "id": "anim-menu-ornament",
+      "title": "主選單小飾框那六格動畫的圖從哪來",
+      "group": "畫面",
+      "layer": "feature",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/10",
+        "docs/spec/005"
+      ],
+      "note": "量到了：**六格**，一輪約 1,400 萬道指令（`TestZZMenuOrnamentFrames`）。先前只知道「連拍兩張會不同」。\n\n還沒解的是**畫格從哪個素材來**——`MENU3.IMG` 是靜態外框，六格的圖不在裡面。在那之前 remake 不畫，那一塊也不參加逐點比對（`internal/assets` 的 `menuAnim`）。\n\n順序也還沒定：取樣間隔（200 萬）與一格的長度（約 230 萬）太接近，量到的序列有別名，要更密的取樣。",
+      "acceptance": "六格的圖找得到來源，且播放順序與週期用更密的取樣定下來",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/assets/dosboxx_test.go"
+        ],
+        "pattern": "不參加逐點比對",
+        "include_tests": true
+      }
+    },
+    {
+      "id": "parity-transition-frames",
+      "title": "四種拉幕逐步量到的畫面",
+      "group": "對拍",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/10",
+        "docs/spec/010"
+      ],
+      "note": "直接呼叫 `0x32e40`（`oracle.Call`）＋ 把 `RND(4)` stub 成指定值，四條路一次跑完，每一步存畫面。**三個量一起看才指得出模型**：與前一步的差異範圍、那一塊的顏色直方圖、與最後一步的差異點數。\n\n只問「像不像起點／終點」會得到「兩邊都不像」——那句話排除得掉一個模型，卻指不出下一個（`CONTEXT.md` R55）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZTransitionFrames",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
+      "id": "parity-menu-ornament",
+      "title": "主選單小飾框是六格動畫",
+      "group": "對拍",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/10"
+      ],
+      "note": "停在主選單不送鍵、每 200 萬道指令抓一次那 12×17 的一格，抓 200 次：**六種畫格**，一輪約 1,400 萬道指令。先前只知道「連拍兩張會不同」。畫格的來源還沒解（`anim-menu-ornament`）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZMenuOrnamentFrames",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
+      "id": "assets-speech-export",
+      "title": "音效與語音轉得出 WAV／OGG",
+      "group": "素材",
+      "layer": "evidence",
+      "milestone": "M7",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/008"
+      ],
+      "note": "`cmd/san1assets -what speech` 把 `S000.SND` 與 465 段 `.OKR` 解成 WAV（466 段、總長 240.7 秒），`tools/assets.sh` 再轉 OGG。\n\n⚠ **轉檔照素材整份轉，不跳第一個位元組**：原版播不出素材的第一個位元組（`docs/re/09` §5.1），那是它的臭蟲，轉檔沒有理由跟著掉。\n\n⚠ 取樣率是**模型不是量測**（`docs/spec/008` R8）。",
       "verify": {
         "kind": "cmd",
-        "cmd": "grep -q '^狀態：`READY`' docs/spec/010-screen-transitions.md",
+        "cmd": "grep -q 'func exportSpeech' cmd/san1assets/main.go",
         "expect": "pass"
       }
     }

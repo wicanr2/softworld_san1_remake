@@ -5,7 +5,7 @@ import "testing"
 // 地形生成器的性質。
 //
 // ⚠ 生成出來的版面是 **remake 自己畫的**，不是原版的郡地理誌
-//（`.OKR` 尚未解出，見 `docs/design/03-battle.md`）。所以這裡問的不是
+//（見 `docs/design/03-battle.md`）。所以這裡問的不是
 // 「跟原版一不一樣」，而是「同一個郡永遠一樣」「打得起來」。
 
 func params(id int) Params {

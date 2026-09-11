@@ -1,5 +1,5 @@
 // san1assets 把原版的資料轉成通用格式：圖 → PNG、資料表 → JSON、
-// 配樂 → MIDI。
+// 配樂 → MIDI ＋ WAV、音效與語音 → WAV。
 //
 // ⚠ **本儲存庫不含任何原版檔案。** 這個工具讀的是玩家自己那一份，
 // 寫出來的東西也是玩家自己那一份的內容——**不隨本專案散布**。
@@ -22,13 +22,14 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/music"
+	"github.com/wicanr2/softworld_san1_remake/internal/speaker"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
 func main() {
 	root := flag.String("root", "", "原版遊戲目錄（必填，玩家自備）")
 	out := flag.String("out", "workplace/assets", "輸出目錄")
-	what := flag.String("what", "all", "轉什麼：img／json／music／all")
+	what := flag.String("what", "all", "轉什麼：img／json／music／speech／all")
 	flag.Parse()
 	if *root == "" {
 		fmt.Fprintln(os.Stderr, "san1assets: 要用 -root 指到原版目錄（本儲存庫不含原版檔案）")
@@ -96,6 +97,13 @@ func run(root, out, what string) error {
 			return err
 		}
 		fmt.Printf("配樂：%d 首 → %s/music/\n", n, out)
+	}
+	if what == "speech" || what == "all" {
+		n, err := exportSpeech(containers, out, &mf)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("音效與語音：%d 段 → %s/speech/\n", n, out)
 	}
 
 	sort.Slice(mf.Files, func(i, j int) bool { return mf.Files[i].Path < mf.Files[j].Path })
@@ -396,4 +404,108 @@ func exportMusic(c *assets.Container, out string, mf *manifest) (int, error) {
 		return len(tracks), err
 	}
 	return len(tracks), nil
+}
+
+// speechJSON 是音效與語音的目錄。
+type speechJSON struct {
+	Note   string      `json:"note"`
+	Rate   int         `json:"rate"`
+	Clips  []speechRow `json:"clips"`
+}
+
+type speechRow struct {
+	Name      string  `json:"name"`
+	Audio     string  `json:"audio"`
+	Container string  `json:"container"`
+	Kind      string  `json:"kind"`
+	Bytes     int     `json:"bytes"`
+	Samples   int     `json:"samples"`
+	Seconds   float64 `json:"seconds"`
+}
+
+// speechRate 是轉出來的取樣率。原版的取樣率**跟 CPU 速度成正比**
+//（`docs/spec/008` R8），所以這裡固定一個；音高與原版在某一台機器上
+// 一致，不與「所有機器」一致。
+const speechRate = 22050
+
+// exportSpeech 把 PC 喇叭的音效與語音轉成 WAV。
+//
+// 波形是**一位元 PCM**（`docs/spec/008`）：一個位元一個取樣、最高位先送、
+// 沒有表頭。`speaker.Render` 重取樣並過一階低通——不過濾的話一位元訊號
+// 在現代取樣率上是刺耳的方波。
+//
+// ⚠ **這裡照素材整份轉，不跳第一個位元組。** 原版播不出素材的第一個
+// 位元組（`docs/re/09` §5.1 的 `cs:[0x28]`／`cs:[0x36]`），那是它的臭蟲，
+// 轉檔沒有理由跟著掉一個位元組。
+func exportSpeech(cs map[string]*assets.Container, out string, mf *manifest) (int, error) {
+	dir := filepath.Join(out, "speech")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return 0, err
+	}
+	cat := speechJSON{
+		Rate: speechRate,
+		Note: "PC 喇叭的一位元取樣（docs/spec/008）。槽 0 是音效（S000.SND）、" +
+			"槽 1–3 是語音（R???.OKR，一句話由三段接起來）。" +
+			"原版的取樣率由機器速度決定，這裡固定成 " +
+			fmt.Sprint(speechRate) + " Hz。",
+	}
+	n := 0
+	for _, cname := range []string{"DATA1", "DATA2", "DATA3"} {
+		c := cs[cname]
+		if c == nil {
+			continue
+		}
+		for i := 0; i < c.Len(); i++ {
+			name := c.Entry(i).Name
+			u := strings.ToUpper(name)
+			kind, div := "", 0
+			switch {
+			case strings.HasSuffix(u, ".SND"):
+				kind, div = "音效", speaker.SFXDivisor
+			case strings.HasSuffix(u, ".OKR"):
+				kind, div = "語音", speaker.VoiceDivisor
+			default:
+				continue
+			}
+			raw := c.Data(i)
+			pcm := speaker.Render(speaker.NewClip(raw), speaker.Rate(div), speechRate)
+			if len(pcm) == 0 {
+				continue
+			}
+			base := strings.TrimSuffix(u, filepath.Ext(u))
+			rel := filepath.Join("speech", base+".wav")
+			f, err := os.Create(filepath.Join(out, rel))
+			if err != nil {
+				return n, err
+			}
+			if err := music.WriteWAV(f, pcm, speechRate); err != nil {
+				f.Close()
+				return n, err
+			}
+			if err := f.Close(); err != nil {
+				return n, err
+			}
+			cat.Clips = append(cat.Clips, speechRow{
+				Name: name, Audio: base + ".wav", Container: cname, Kind: kind,
+				Bytes: len(raw), Samples: len(raw) * 8,
+				Seconds: float64(len(raw)*8) / speaker.Rate(div),
+			})
+			mf.Files = append(mf.Files, fileRecord{
+				Path: rel, From: name, Container: cname,
+				Bytes: len(raw), SHA256: sum(raw),
+				Note: kind + "：一位元 PCM 重取樣到 " + fmt.Sprint(speechRate) + " Hz",
+			})
+			n++
+		}
+	}
+	b, err := json.MarshalIndent(cat, "", "  ")
+	if err != nil {
+		return n, err
+	}
+	rel := filepath.Join("speech", "index.json")
+	if err := os.WriteFile(filepath.Join(out, rel), append(b, '\n'), 0o644); err != nil {
+		return n, err
+	}
+	mf.Files = append(mf.Files, fileRecord{Path: rel, From: "（目錄）", Container: "—"})
+	return n, nil
 }

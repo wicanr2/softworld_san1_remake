@@ -30,6 +30,28 @@ type voicebox struct {
 
 	// voice 是放 `R%03d.OKR` 的兩個容器，照原版的順序找。
 	voice []*assets.Container
+
+	// sfxDiv／voiceDiv 是分頻值，決定播出來的取樣率（`docs/spec/008` R8）。
+	//
+	// 原版的音高**本來就因機器而異**（軟體延遲迴圈），所以這裡給得出
+	// 一個數字就好，給得出「正確的那一個」是做不到的事。
+	// 加強版把它開成選項（`docs/reference/02-web-00-overview`），
+	// 原版沒有——**那一項還沒量到加強版怎麼存，所以不造旗標**
+	//（`CLAUDE.md` §3.4），先用命令列調。
+	sfxDiv, voiceDiv int
+}
+
+// SetDivisors 換分頻值。0 或負數表示沿用預設。
+func (v *voicebox) SetDivisors(sfx, voice int) {
+	if v == nil {
+		return
+	}
+	if sfx > 0 {
+		v.sfxDiv = sfx
+	}
+	if voice > 0 {
+		v.voiceDiv = voice
+	}
 }
 
 // newVoicebox 讀原版的音效與語音。讀不到就回 nil——沒有聲音不該擋著
@@ -43,7 +65,10 @@ func newVoicebox(root string) *voicebox {
 			}
 		}
 	}
-	v := &voicebox{bank: bank, mx: speaker.NewMixer(bank, audioRate)}
+	v := &voicebox{
+		bank: bank, mx: speaker.NewMixer(bank, audioRate),
+		sfxDiv: speaker.SFXDivisor, voiceDiv: speaker.VoiceDivisor,
+	}
 	// 語音分在 DATA2（`R000`–`R427`）與 DATA3（`R428`–`R499`）兩個容器。
 	for _, name := range []string{"DATA2", "DATA3"} {
 		if c, err := openContainer(root, name); err == nil {
@@ -74,7 +99,7 @@ func (v *voicebox) Click() {
 	if v == nil {
 		return
 	}
-	v.mx.Play(speaker.SFXSlot, speaker.SFXDivisor)
+	v.mx.Play(speaker.SFXSlot, v.sfxDiv)
 }
 
 // Say 播一句話：三個索引依序載進槽 1–3 再接起來播
@@ -100,7 +125,7 @@ func (v *voicebox) Say(idx ...int) {
 		slots = append(slots, slot)
 	}
 	if len(slots) > 0 {
-		v.mx.Say(speaker.VoiceDivisor, slots...)
+		v.mx.Say(v.voiceDiv, slots...)
 	}
 }
 

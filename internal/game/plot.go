@@ -178,9 +178,9 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 		}
 	}
 	// **計謀得手會多擲一次 `RND(4)`**（`0x32e4f`）。那一支（`0x32e40`）
-	// 是**畫面轉場**：四選一，每個分支跑一種抹除／拉幕效果。畫面上的
-	// 東西 remake 不必照做，但**那一次抽樣要照擲**——不擲的話整條亂數
-	// 序列從這裡開始錯開。
+	// 是**畫面轉場**：四選一，四個方向的拉幕（`docs/spec/010`）。
+	// 抽出來的數字就是方向，畫面那一端交給 `ui.Wipe`；**抽樣一定要擲**
+	// ——不擲的話整條亂數序列從這裡開始錯開。
 	//
 	// 量法：把 `RND(n)` 的入口攔起來記呼叫端（攔 `rand()` 只會拿到
 	// `RND` 內部那一道，36 次全部一樣）。計略那一段的四個擲點是
@@ -189,7 +189,7 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 	//
 	// ⚠ **只驗過「得手」這一條**：那個月兩次計謀都成功，所以「失敗時
 	// 會不會也轉場」沒有樣本。失敗那條路徑先不擲。
-	g.Roll(4, from, target, int(p))
+	g.PendingWipe = g.Roll(4, from, target, int(p))
 	return true, nil
 }
 

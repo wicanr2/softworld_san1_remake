@@ -345,6 +345,16 @@ type State struct {
 	randDraws int
 	randOn    bool
 
+	// PendingWipe 是「下一次畫面要拉幕，方向是這個」（0–3，−1 ＝ 沒有）。
+	//
+	// 原版在計謀得手之後擲 `RND(4)` 選一種拉幕（`0x32e40`，
+	// `docs/spec/010`）。**那一次抽樣本來就要擲**，擲出來的數字順手
+	// 留在這裡給畫面那一端用——UI 取走之後要 `TakeWipe` 清掉，
+	// 不然同一次轉場會被播兩遍。
+	//
+	// 它不進存檔：原版也不存（`docs/re/08` 的進度檔沒有這一格）。
+	PendingWipe int
+
 	// phaseTrace 非 nil 時，換月的每一段各抽了幾次會記進去（對拍用）。
 	phaseTrace map[string]int
 	phaseSeed  map[string]uint32
@@ -356,6 +366,20 @@ func (g *State) DrainReports() []*BattleResult {
 	out := g.Reports
 	g.Reports = nil
 	return out
+}
+
+// NoWipe 是「沒有要轉場」。**不是 0**：0 是一個真的方向（由上往下），
+// 拿它當哨兵的話每一次載入都會多播一次轉場（`CLAUDE.md` §7 第 11 條：
+// 原版哨兵值不等於 Go 零值，要在唯一入口正規化）。
+const NoWipe = -1
+
+// TakeWipe 取走待播的轉場方向並清掉。沒有就回 NoWipe。
+//
+// **取走就清**：同一次計謀得手只轉一次場，不清的話畫面會一直重播。
+func (g *State) TakeWipe() int {
+	v := g.PendingWipe
+	g.PendingWipe = NoWipe
+	return v
 }
 
 // New 從一個劇本開一局。
@@ -393,7 +417,7 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 	}
 
 	g := &State{Slot: sc.Slot, Date: start, Player: player,
-		Edition: ed, Difficulty: difficulty}
+		Edition: ed, Difficulty: difficulty, PendingWipe: NoWipe}
 	g.rawMas, g.rawSta, g.rawGen = sc.Tables()
 
 	for _, p := range sc.Prefectures() {

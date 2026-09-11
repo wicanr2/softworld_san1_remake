@@ -15,6 +15,7 @@
 package main
 
 import (
+	"image"
 	"flag"
 	"fmt"
 	"os"
@@ -60,6 +61,9 @@ type app struct {
 	// sfx 是 PC 喇叭的音效與語音（`docs/spec/008`）；放不出聲音就是 nil。
 	sfx *voicebox
 
+	// wipe 非 nil 表示正在跑一段畫面轉場（`docs/spec/010`）。
+	wipe *ui.Wipe
+
 	// art 是接上原版素材的主畫面；沒有原版的 DATA3 就是 nil，
 	// 那時退回 remake 自己的文字版面。
 	art *ui.ArtScreen
@@ -96,6 +100,12 @@ const uiReliefGold = 100
 func (a *app) Update() error {
 	if a.quit {
 		return ebiten.Termination
+	}
+	// 轉場進行中就只走轉場：原版那一段是**阻塞**的（`docs/re/09` §5），
+	// 期間不收輸入。24 步 ×一幀 ≈ 0.4 秒。
+	if a.wipe != nil {
+		a.stepWipe()
+		return nil
 	}
 	if a.titlePic != nil {
 		if anyKeyPressed() {
@@ -700,7 +710,31 @@ func commandName(k byte) string {
 }
 
 func (a *app) Draw(dst *ebiten.Image) {
+	// **轉場要在 Draw 這一層起頭，不能在 Update。** 規則層設好
+	// `PendingWipe` 的那一幀，畫布上還是**上一幀畫的舊畫面**；等到下一次
+	// Update 才去拿，畫布早就被重畫成新的，兩張圖一樣，轉場等於沒跑。
+	if a.wipe == nil {
+		a.startWipe()
+	}
+	if a.wipe != nil {
+		a.screen.WritePixels(a.canvas.Img.Pix)
+		dst.DrawImage(a.screen, nil)
+		return
+	}
 	if a.dirty {
+		a.paint()
+		a.screen.WritePixels(a.canvas.Img.Pix)
+		a.dirty = false
+	}
+	dst.DrawImage(a.screen, nil)
+}
+
+// paint 把目前的狀態畫到畫布上。
+//
+// 從 Draw 抽出來是為了**轉場**：拉幕要先有「新畫面」才有東西可以露出來
+//（`docs/spec/010`），而那張圖就是「照現在的狀態畫一次」。
+func (a *app) paint() {
+	{
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
 		// 同一張圖無頭環境也產得出來（cmd/san1dump -png）。
 		switch {
@@ -725,10 +759,7 @@ func (a *app) Draw(dst *ebiten.Image) {
 				ui.DrawSession(a.canvas, a.s.G, a.s.Log, a.view)
 			}
 		}
-		a.screen.WritePixels(a.canvas.Img.Pix)
-		a.dirty = false
 	}
-	dst.DrawImage(a.screen, nil)
 }
 
 // updateBattle 是戰場上的輸入。
@@ -784,6 +815,7 @@ func main() {
 	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
 	music := flag.Bool("music", true, "播配樂（從原版的 DATA1 邊播邊合成）")
 	sound := flag.Bool("sound", true, "播 PC 喇叭的音效與語音（原版的 S000.SND／R???.OKR）")
+	voiceDiv := flag.Int("voice-divisor", 0, "語音的分頻值（越大越慢；0 ＝ 預設，見 docs/spec/008 R8）")
 	useArt := flag.Bool("art", true, "主畫面用原版素材（從玩家自己的 DATA3 讀）")
 	showTitle := flag.Bool("title", true, "先進開場詞與主選單；false ＝ 直接開局")
 	flag.Parse()
@@ -918,6 +950,7 @@ func main() {
 	}
 	if *sound {
 		a.sfx = newVoicebox(*root)
+		a.sfx.SetDivisors(0, *voiceDiv)
 		// 開場就把選項接上：載進來的存檔可能本來就關著音效。
 		a.sfx.SetGates(g.Options.SoundOff, g.Options.VoiceOff)
 	}
@@ -957,4 +990,58 @@ func main() {
 func die(err error) {
 	fmt.Fprintln(os.Stderr, "san1:", err)
 	os.Exit(1)
+}
+
+// 畫面轉場（`docs/spec/010`）。
+//
+// 原版在計謀得手之後擲 `RND(4)` 選一個方向，把訊息面板那一塊逐條換掉，
+// **每一步送一聲 PC 喇叭的音效**——音效在這一款不是事件音，是動畫的
+// 節拍聲（`docs/spec/008` §4）。
+
+// startWipe 看規則層有沒有留下待播的轉場，有就起一段。
+//
+// 拉幕要「舊畫面」與「新畫面」兩張：舊的是現在畫布上的，新的是
+// **照現在的狀態再畫一次**。所以這裡畫一次、複製走、再把畫布還原。
+func (a *app) startWipe() {
+	if a.wipe != nil || a.s == nil || a.s.G == nil {
+		return
+	}
+	k := a.s.G.TakeWipe()
+	if k == game.NoWipe {
+		return
+	}
+	// 沒有原版素材時退回文字版面，那個版面的訊息面板不在同一個位置
+	// ——**寧可不轉場，也不要在錯的地方拉幕**。同理，只有主畫面那一層
+	// 有那塊面板：標題、開場詞、戰場都不是。
+	if a.art == nil || a.titlePic != nil || a.poem != nil ||
+		a.menuScreen != nil || a.fight != nil {
+		return
+	}
+	from := cloneCanvas(a.canvas.Img)
+	a.paint()
+	to := cloneCanvas(a.canvas.Img)
+	copy(a.canvas.Img.Pix, from.Pix)
+	a.wipe = &ui.Wipe{Kind: ui.WipeKind(k), Rect: ui.WipeRect, From: from, To: to}
+	a.dirty = true
+}
+
+// stepWipe 走一步。走完就收掉，並讓下一幀重畫一次（收尾要是完整的新畫面）。
+func (a *app) stepWipe() {
+	if a.wipe == nil {
+		return
+	}
+	if !a.wipe.Advance(a.canvas.Img) {
+		a.wipe = nil
+		a.dirty = true
+		return
+	}
+	// **每一步一聲音效**——音效在這一款是動畫的節拍聲（`docs/spec/008` §4）。
+	a.sfx.Click()
+}
+
+// cloneCanvas 複製一張畫布。
+func cloneCanvas(src *image.RGBA) *image.RGBA {
+	dst := image.NewRGBA(src.Bounds())
+	copy(dst.Pix, src.Pix)
+	return dst
 }
