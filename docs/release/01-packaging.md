@@ -56,13 +56,14 @@ san1 -root /path/to/三國演義
 
 ## 4. 實際建出來的
 
-`144f93c` 這一版四個包都建過、解開驗過型別，Linux 那個包跑過冒煙測試：
+`d6bb458` 這一版四個包都建過、解開驗過型別與內容（只有引擎、字型、
+LICENSE、README、`如何開始.txt`），Linux 那個包跑過冒煙測試：
 
 | 包 | 大小 | 執行檔 |
 |---|---|---|
-| `windows-amd64.zip` | 4.8 MB | PE32+ x86-64 |
-| `linux-amd64.tar.gz` | 4.9 MB | ELF 64-bit x86-64（動態連結）|
-| `darwin-amd64.tar.gz` | 8.4 MB | Mach-O x86_64 |
+| `windows-amd64.zip` | 4.9 MB | PE32+ x86-64 |
+| `linux-amd64.tar.gz` | 5.0 MB | ELF 64-bit x86-64（動態連結）|
+| `darwin-amd64.tar.gz` | 8.5 MB | Mach-O x86_64 |
 | `darwin-arm64.tar.gz` | 7.9 MB | Mach-O arm64 |
 
 ## 5. 校驗碼
