@@ -138,3 +138,125 @@ func TestNoSavesSaysSo(t *testing.T) {
 		t.Errorf("沒有進度時 stage %d、%d 項", s.Stage(), len(s.Items()))
 	}
 }
+
+// 新君主欄要列在「選角色」那一層的最後面，而且走得完整條流程。
+func TestPicksACustomLord(t *testing.T) {
+	s := newScreen(t)
+	s.Confirm(0) // 開始新遊戲
+	s.Confirm(0) // 第一個劇本
+	if s.Stage() != Lord {
+		t.Fatalf("沒到選角色那一層（stage %d）", s.Stage())
+	}
+	if len(s.customs) != 2 {
+		t.Fatalf("新君主欄列了 %d 個，劇本 001 有 2 個", len(s.customs))
+	}
+	// 它們在最後面，而且項數對得上。
+	if len(s.Items()) != len(s.lords) {
+		t.Fatalf("%d 項對上 %d 個可選的", len(s.Items()), len(s.lords))
+	}
+	first := len(s.lords) - len(s.customs)
+	if !s.isCustom(s.lords[first]) || s.isCustom(s.lords[first-1]) {
+		t.Fatal("新君主欄不在清單的最後面")
+	}
+	// **先存起來**：`pickDifficulty` 會把 `lords` 換成只剩選中的那一個。
+	want := s.lords[first]
+
+	s.Confirm(first)
+	if s.Stage() != CustomLord {
+		t.Fatalf("沒進新君主的設定（stage %d）：%v", s.Stage(), s.Items())
+	}
+	if len(s.Items()) != customRows {
+		t.Fatalf("設定那一層有 %d 項，想要 %d", len(s.Items()), customRows)
+	}
+	if s.custom.spare != state.CustomLordPoints {
+		t.Errorf("一開始有 %d 點，想要 %d", s.custom.spare, state.CustomLordPoints)
+	}
+
+	// 左右鍵加減點數。**加到沒點數就不能再加**——不然 100 點是裝飾。
+	s.pick = 0
+	for i := 0; i < state.CustomLordPoints+5; i++ {
+		s.Adjust(1)
+	}
+	if s.custom.spare != 0 {
+		t.Errorf("加滿之後還剩 %d 點", s.custom.spare)
+	}
+	if s.custom.lord.Stamina != state.CustomLordPoints {
+		t.Errorf("體能加了 %d 點，想要 %d", s.custom.lord.Stamina,
+			state.CustomLordPoints)
+	}
+	// 退回去也要退點。
+	s.Adjust(-1)
+	if s.custom.spare != 1 || s.custom.lord.Stamina != state.CustomLordPoints-1 {
+		t.Errorf("退一點之後剩 %d 點、體能 +%d", s.custom.spare, s.custom.lord.Stamina)
+	}
+	// **減不能減到負的**：範本的底不退點。
+	for i := 0; i < 200; i++ {
+		s.Adjust(-1)
+	}
+	if s.custom.lord.Stamina != 0 {
+		t.Errorf("一直減之後體能 +%d，想要 0", s.custom.lord.Stamina)
+	}
+	if s.custom.spare != state.CustomLordPoints {
+		t.Errorf("全退之後剩 %d 點", s.custom.spare)
+	}
+
+	// 領地那一項換得動，而且一定是空白郡。
+	s.pick = 4
+	before := s.custom.lord.Prefecture
+	s.Adjust(1)
+	if s.custom.lord.Prefecture == before {
+		t.Error("換不動領地")
+	}
+	for _, p := range s.custom.blanks {
+		if p.Owned() {
+			t.Fatalf("郡 %d 有主卻列在可選的領地裡", p.ID)
+		}
+	}
+
+	// 其他層按左右鍵不該有事。
+	s.pick = 0
+	s.Adjust(1)
+	if s.Adjust(0) {
+		t.Error("d=0 也被當成調整")
+	}
+
+	// 「完成」→ 難度 → 開局。
+	s.pick = customRows - 1
+	s.Confirm(customRows - 1)
+	if s.Stage() != Difficulty {
+		t.Fatalf("完成之後沒進難度（stage %d）：%v", s.Stage(), s.Items())
+	}
+	ss := s.Confirm(4)
+	if ss == nil {
+		t.Fatal("沒有開出一局")
+	}
+	if int(ss.Player) != want {
+		t.Errorf("玩家是勢力 %d，選的是 %d", ss.Player, want)
+	}
+	// 新君主真的在盤面上：一個郡、身分是君主。
+	g := ss.G
+	if n := len(g.Territory(ss.Player)); n != 1 {
+		t.Errorf("新君主有 %d 個郡，想要 1", n)
+	}
+	lord := g.Lord(ss.Player)
+	if lord == nil {
+		t.Fatal("盤面上沒有新君主")
+	}
+	if int(lord.Age) != state.CustomLordAge {
+		t.Errorf("年齡 %d，範本是 %d", lord.Age, state.CustomLordAge)
+	}
+}
+
+// 沒選新君主的時候不該把 custom 的狀態帶進去。
+func TestOrdinaryLordDoesNotCarryCustomState(t *testing.T) {
+	s := newScreen(t)
+	s.Confirm(0)
+	s.Confirm(0)
+	s.Confirm(0) // 第一位真的君主
+	if s.Stage() != Difficulty {
+		t.Fatalf("stage %d", s.Stage())
+	}
+	if s.custom != nil {
+		t.Error("選一般君主也建了 custom 狀態")
+	}
+}

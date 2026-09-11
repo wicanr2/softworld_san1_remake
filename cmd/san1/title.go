@@ -43,6 +43,17 @@ func (a *app) updateTitle() error {
 		m.Move(1)
 		a.dirty = true
 		return nil
+	case inpututil.IsKeyJustPressed(ebiten.KeyLeft):
+		// 左右鍵只有新君主那一層在用（加減點數、換領地）。
+		if m.Adjust(-1) {
+			a.dirty = true
+		}
+		return nil
+	case inpututil.IsKeyJustPressed(ebiten.KeyRight):
+		if m.Adjust(1) {
+			a.dirty = true
+		}
+		return nil
 	case inpututil.IsKeyJustPressed(ebiten.KeyEnter),
 		inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter):
 		a.titleConfirm(m.Sel())

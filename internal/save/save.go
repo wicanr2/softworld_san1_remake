@@ -243,7 +243,8 @@ func readProgress(dir string, slot int) *state.Progress {
 
 // glyphsFor 讀某個槽上一次寫出去的字模；沒有就回一組空的。
 //
-// remake 還沒做自創君主，所以這裡多半是空的——**空的照樣要寫**，
+// **自創君主的字模還沒接**（`docs/spec/013` R4）：remake 做得出自創君主
+// 了，但名字的字模還沒寫進來，所以這裡多半是空的——**空的照樣要寫**，
 // 否則存檔目錄與原版的項目對不齊，將來要比對就少一份。
 func glyphsFor(dir string, slot int) *state.Glyphs {
 	b, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("BASEPRE.SV%d", slot)))

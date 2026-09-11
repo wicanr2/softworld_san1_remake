@@ -33,6 +33,7 @@ const (
 	Menu Stage = iota // 六個項目
 	Scenario
 	Lord
+	CustomLord // 新君主的設定（`docs/spec/013`）
 	Difficulty
 	Load
 	Music
@@ -60,6 +61,11 @@ type Screen struct {
 	slot  state.Slot
 	lords []int
 	saves []save.Info
+
+	// customs 是這個劇本還空著的新君主欄（諸侯槽號）。
+	customs []int
+	// custom 非 nil 表示玩家選了其中一個，正在設定那一位。
+	custom *customState
 
 	// track 是最近一次在「音樂欣賞」選的曲子；−1 表示沒有。
 	track int
@@ -123,6 +129,7 @@ func (s *Screen) Back() {
 		return
 	}
 	s.stage, s.items, s.pick, s.title = Menu, nil, 0, ""
+	s.custom = nil
 }
 
 // Confirm 選下去。回傳非 nil 表示這一局開好了（或讀好了）。
@@ -136,8 +143,14 @@ func (s *Screen) Confirm(i int) *session.Session {
 		s.pickLord()
 	case Lord:
 		if i < len(s.lords) {
-			s.pickDifficulty(s.lords[i])
+			if s.isCustom(s.lords[i]) {
+				s.pickCustomLord(s.lords[i])
+			} else {
+				s.pickDifficulty(s.lords[i])
+			}
 		}
+	case CustomLord:
+		s.confirmCustom(i)
 	case Difficulty:
 		if len(s.lords) > 0 {
 			return s.start(s.slot, s.lords[0], i+1)
@@ -203,7 +216,7 @@ func (s *Screen) pickLord() {
 	}
 	s.stage, s.pick = Lord, 0
 	s.title = i18n.S("title.pickLord")
-	s.items, s.lords = nil, nil
+	s.items, s.lords, s.customs = nil, nil, nil
 	for _, f := range g.Factions() {
 		if !f.Alive {
 			continue
@@ -215,6 +228,14 @@ func (s *Screen) pickLord() {
 		s.items = append(s.items, i18n.Sf("title.lordLine",
 			len(s.lords)+1, name, len(g.Territory(f.ID))))
 		s.lords = append(s.lords, int(f.ID))
+	}
+	// **空的新君主欄也要列出來**：原版的「選角色」那一層就有它們
+	//（劇本 001 是十六個槽裡的兩個，手冊 p.7 寫「16（含 2 個新君主欄）」）。
+	// 不列的話玩家永遠選不到自創君主。
+	for _, f := range sc.CustomLordSlots() {
+		s.items = append(s.items, i18n.Sf("title.newLordLine", len(s.lords)+1))
+		s.lords = append(s.lords, f)
+		s.customs = append(s.customs, f)
 	}
 }
 
@@ -269,6 +290,14 @@ func (s *Screen) start(slot state.Slot, faction, difficulty int) *session.Sessio
 	if err != nil {
 		s.note(i18n.S("title.pickScenario"), err.Error())
 		return nil
+	}
+	// 選了新君主欄就先把那一位寫進劇本，再開局。
+	if s.custom != nil && s.custom.faction == faction {
+		sc, err = sc.WithCustomLord(faction, s.custom.lord)
+		if err != nil {
+			s.note(i18n.S("title.newLord"), err.Error())
+			return nil
+		}
 	}
 	g, err := game.New(sc, state.FactionID(faction), difficulty, s.edition)
 	if err != nil {

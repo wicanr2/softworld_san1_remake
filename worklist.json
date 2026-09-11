@@ -1513,25 +1513,70 @@
     },
     {
       "id": "new-game-flow",
-      "title": "開新局比原版少兩層：玩家人數與自創君主",
+      "title": "開新局：自創君主做好了，多人還沒",
       "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/013"
+      ],
+      "note": "**自創君主做好了**（`docs/spec/013`）：選角色那一層列出新君主欄，四項能力用 100 點分配、領地在空白郡之間換，寫進劇本之後開局。\n\n資料是原版的：劇本 001 的槽 14／15 君主欄指向填充筆且沒有領地，與手冊「16（含 2 個新君主欄）」對得上；初始值取 `AA.EXE` `0x3e44c` 的四筆範本（年齡 20、90／60／80／90、肖像各異）。\n\n⚠ 三件沒做：**年齡與姓名照範本不給改**（原版怎麼收沒解）、**點數怎麼花是 `L3`**（手冊只說 100 點）、**多人還沒做**（見 `multiplayer`）。字模見 `custom-lord-glyphs`。",
+      "acceptance": "選得到新君主欄，設定完開得了局，且新君主在盤面上有一個郡",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/menu",
+        "run": "TestPicksACustomLord|TestOrdinaryLordDoesNotCarryCustomState",
+        "needs": [
+          "org_game"
+        ]
+      }
+    },
+    {
+      "id": "custom-lord-glyphs",
+      "title": "自創君主的名字字模還沒寫進 `BASEPRE`",
+      "group": "素材",
       "layer": "feature",
       "milestone": "M6",
+      "status": "open",
+      "level": "L0",
+      "edition": "base",
+      "docs": [
+        "docs/spec/013",
+        "docs/re/08"
+      ],
+      "note": "原版把自創君主的名字當**造字**（Big5 `A141`–`A14C`），字模存在 `BASEPRE.SVn`（12 個 16×16）。remake 現在存出去的是空字模，原版讀回來那三個字會是空白。\n\n名字固定是「新君主」，而**出貨的 `BASEPRE` 內容正好就是它**（`docs/re/08` §3：六個進度位元組完全相同）——接法是開局時把 `DATA2` 裡那一份帶進來。之後要讓玩家打字改名，字模就從 remake 的字庫取。",
+      "acceptance": "開了自創君主的局存檔之後，原版讀回來名字看得到",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/save/save.go"
+        ],
+        "pattern": "自創君主的字模還沒接"
+      }
+    },
+    {
+      "id": "multiplayer",
+      "title": "多人（玩家人數那一層）還沒做",
+      "group": "畫面",
+      "layer": "feature",
+      "milestone": "M7",
       "status": "open",
       "level": "L2",
       "edition": "base",
       "docs": [
-        "docs/reference/01-manual-20-mechanics",
-        "docs/re/04"
+        "docs/reference/01-manual-20-mechanics"
       ],
-      "note": "原版是「時期 → 玩家人數 → 角色 → 難度 →（選新君主就做七項設定）→ 密碼」（手冊 p.7／p.14）。remake 的 `internal/menu` 只有「劇本 → 君主 → 難度」，**少了玩家人數與自創君主兩層**。\n\n自創君主的七項在原版字串裡看得到（`0x47941`：`1.年齡` `2.體能` `3.謀略` `4.戰力` `5.魅力` `6.領地`／`新君主出現!!`），手冊說**四項能力共用 100 點**、領地只有一郡且必須是空白郡。存檔那一層 remake 已經做了（`BASEPRE.SV?` 的十二個字模往返）。\n\n⚠ **卡在同一個地方**：那一段跑在開機鏈第二層（`DATA0.GRP`），主程式的碼段 dump 涵蓋不到——與 `ending-screen`、`msk-masks` 是同一支 overlay。",
-      "acceptance": "開新局走得完原版那五層，且自創君主的七項設定與點數規則有 spec",
+      "note": "原版開新局是「時期 → **玩家人數** → 角色 → 難度」（手冊 p.7）。remake 只有單人：`session.Session` 的 `Player` 是一個勢力，月流程也只讓那一個下令。\n\n多人要動的是 session 的回合結構（每個玩家依序下令），不是選單那一層。⚠ **對拍全是單人**，改動要小心別動到單人那條路。",
+      "acceptance": "選得到玩家人數，且多位玩家在同一個月裡依序下令",
       "verify": {
         "kind": "absent",
         "paths": [
-          "internal/menu"
+          "internal/session"
         ],
-        "pattern": "CustomLord"
+        "pattern": "Players \\[\\]state[.]FactionID"
       }
     }
   ],
