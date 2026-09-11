@@ -57,6 +57,9 @@ type app struct {
 	// jb 是配樂；沒有原版的 DATA1 就是 nil。
 	jb *jukebox
 
+	// sfx 是 PC 喇叭的音效與語音（`docs/spec/008`）；放不出聲音就是 nil。
+	sfx *voicebox
+
 	// art 是接上原版素材的主畫面；沒有原版的 DATA3 就是 nil，
 	// 那時退回 remake 自己的文字版面。
 	art *ui.ArtScreen
@@ -323,9 +326,14 @@ func (a *app) begin(cat, item byte) {
 		})
 	case cat == '9' && item == '4':
 		a.view.Prompt = g.Options.ToggleSound()
+		// 關音效連語音都不出聲——原版的 `speak()` 自己就擋在這一道
+		//（`docs/spec/008` §3）。
+		a.sfx.SetGates(g.Options.SoundOff, g.Options.VoiceOff)
+		a.sfx.Click()
 		closeMenu()
 	case cat == '9' && item == '8':
 		a.view.Prompt = g.Options.ToggleVoice()
+		a.sfx.SetGates(g.Options.SoundOff, g.Options.VoiceOff)
 		closeMenu()
 	case cat == '9' && item == '7':
 		a.view.Prompt = g.Options.ToggleCalendar()
@@ -775,6 +783,7 @@ func main() {
 	scale := flag.Int("scale", 2, "視窗放大倍率（整數倍，不做非整數縮放）")
 	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
 	music := flag.Bool("music", true, "播配樂（從原版的 DATA1 邊播邊合成）")
+	sound := flag.Bool("sound", true, "播 PC 喇叭的音效與語音（原版的 S000.SND／R???.OKR）")
 	useArt := flag.Bool("art", true, "主畫面用原版素材（從玩家自己的 DATA3 讀）")
 	showTitle := flag.Bool("title", true, "先進開場詞與主選單；false ＝ 直接開局")
 	flag.Parse()
@@ -906,6 +915,11 @@ func main() {
 	if *music {
 		a.jb = newJukebox(*root)
 		a.jb.Play(0)
+	}
+	if *sound {
+		a.sfx = newVoicebox(*root)
+		// 開場就把選項接上：載進來的存檔可能本來就關著音效。
+		a.sfx.SetGates(g.Options.SoundOff, g.Options.VoiceOff)
 	}
 	// 開場詞 → 主選單 → 遊戲。**指定了劇本以外的東西就直接進遊戲**：
 	// `-load`／`-orig-load` 是「我要那一局」，中間再問一次沒有道理，

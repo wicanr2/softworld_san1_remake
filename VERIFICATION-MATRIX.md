@@ -257,12 +257,10 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 電腦對電腦的戰役還沒被走到 | 未完成 | L1 | base | present：internal/parity/battleover_oracle_test.go 的「電腦對電腦**那條路上會 skip」 | 照 `0x20471` 的分岔實作了（`battle.AutoResolveAI`，含傷亡寫回與四條單測），但那條路沒有實跑背書：原版的電腦對電腦戰役**不進戰術層**，日循環只有玩家在場才跑，所以對拍那一支在那條路上會 skip。**「AI 沒動」可能是正確的原版行為**（`CLAUDE.md` §7 第 14 條），要先確認前提滿足。 訊號在對拍測試裡（`include_tests`）：這是**驗證缺口**不是功能缺口——`battle.AutoResolveAI` 早就接上了，缺的是實跑背書，而「那條路上會 skip」這句話只會出現在對拍測試裡，因為那裡才是證據的所在地。（`docs/re/05`、`docs/mechanics/40`） |
 | 主戰場基準畫面的取法文件記錯了 | 未完成 | L1 | base | 指令重數 | 成因查出來了：`TestZZBattleKeySweep` 帶 `SAN1_BATTLEKEY` 時 `cands` 只剩一個候選，所以迴圈只跑一輪、只產 `sweep-01.png`——而 `docs/spec/005` 記的取法說它產一整批，`battlefield_test.go` 的註解也說 `orig-battle.png` 由它產。實際上 `orig-battle.png` 是人工從其中一張改名來的。**`orig-battle.png` 已經換成 408 的那張**（場地區的比對在 y<350，換之後三支測試照樣全綠）；還沒解決的是 `sweep-04.png`（紮寨那一步，`TestCampMaskMatchesTheOriginal` 用）——它要另一組按鍵，那組還沒重跑。（`docs/spec/005`、`docs/spec/006`） |
 | 逐步對拍的參照畫面是舊尺寸，要重錄 | 未完成 | L1 | base | 指令重數 | 畫面高度 2026-09-10 從 350 改成 408（R48），`workplace/rec7/frames` 那一批是 640×350 錄的。測試現在會明講並 skip，不會安靜地給一個偏低的百分比。重錄跑 `tools/dosboxx-record.sh`。 對拍那一支（`TestZZDosgolemMatchesDosbox`）因此會 skip；**skip 不是綠**，所以這一條留在未完成清單裡直到重錄完成。（`docs/playtest/03`、`docs/spec/006`） |
-| 四季事件、蝗害、君主繼承、絕嗣 | 未完成 | L1 | base | `TestEventsMatchTheOriginal`、`TestLocustMatchesTheOriginal`、`TestSuccessionMatchesTheOriginal`、`TestNoHeirEndsTheGame` | 2026-09-10 換 base 後 `TestEventsMatchTheOriginal` 紅。與月度同源（R49）。 四種天災的機率與幅度、秋收、進貢、繼承的人望折損（3 次逐次相同）、絕嗣結束正反兩面各推過一個月。（`docs/re/06`、`docs/mechanics/50`） |
-| 一個月的狀態轉移差 0 個位元組 | 未完成 | L1 | base | `TestZZMonthParity` | 2026-09-10 換 base 後差 339 個位元組。**規則層沒壞**——起點漂移（R49）。 43 個郡、350 位人物、16 個勢力逐格相同；十張分派表的抽亂數次數全部 ±0。（`docs/playtest/02`） |
-| 玩家自己下的每一道命令 | 未完成 | L1 | base | `TestPlayerCommandsMatchTheOriginal`、`TestPlayerCommandsAsCaoCao` | 2026-09-10 換 base 後 `TestPlayerCommandsAsCaoCao` 紅（13 pass / 2 fail / 1 skip）。與月度同源：起點漂移（R49）。 兩個盤面各十五道全部相同（建安二年／南海、劇本 1 曹操／郡 11）。（`docs/playtest/04`） |
-| 戰略層五種謀略在實跑裡走過 | 未完成 | L1 | base | `TestStratagemsRunLive`、`TestTigerWolfRunsLive`、`TestSabotageRunsLive`、`TestAIPlotMatchesTheOriginal` | 2026-09-10 換 base 後 `TestSabotageRunsLive` 紅。與月度同源（R49）。 偽書使疑 15 次逐次相同；驅虎吞狼／遠交近攻／聯合出兵三支的結局是呼叫戰鬥子系統。**電腦只用偽書使疑**（R22）。（`docs/re/07`、`docs/mechanics/30`） |
+| 玩家自己下的每一道命令 | 未完成 | L1 | base | `TestPlayerCommandsMatchTheOriginal`、`TestPlayerCommandsAsCaoCao` | 2026-09-11：十四個指令裡**十三個通過**，只剩「休息」。盤面層面的差異已經解決——先前「原版沒動過卻不同」的郡 3／29／36 是兵士欄被當成導出值造成的（見 `state.troops`），改成存值之後「整份盤面兩邊差 0」。  剩下的「休息」是**取樣窗口**問題，不是規則：休息自己不動盤面，而原版一下完就轉移控制權，電腦那個郡的十八張表在同一段裡跑完。寫入監看指名了寫入者——`0x0bdf2`（內政）、`0x0c193`（購置武器）、`0x0c4ab`／`0x0c4b3`／`0x0c4f9`（調整兵力），全是分派表的常式。  ⚠ 試過把停點收緊到下一個郡的回合入口（`0x1746e`），**不能這樣做**：那一格會跑兩趟量測，而旗標是子測試層級、hook 又跨子測試累積，第二趟會立刻停下——量出來的「差 0」是空的。要改得先處理旗標的生命週期。  另一個選項是承認跨郡的一致性是 `TestZZMonthParity` 的工作（它現在差 0），讓這一支只比玩家自己的郡。（`docs/playtest/04`） |
 | 兵士與在職將是快照不是推導值（已知差異） | 未完成 | L1 | base | present：internal/parity/loadsave_oracle_test.go 的「在存檔裡是快照」 | 原版存檔的 offset 16／22 是寫檔當下的值，載入時原封不動；remake 一律從人物表推導。走完一個月兩邊會一致（月度對拍 0 個位元組），差別只在**剛載入那一刻**。要完全對齊得把它們改成「由改動它們的常式寫」，那是一次不小的重構。 訊號在對拍測試裡（`include_tests`）：同上，缺的是對齊不是實作。（`docs/formats/05`） |
 | 統一年份的分布還沒對拍 | 未完成 | L2 | base | **要人判** | 全電腦對戰約五十年分出勝負，但那是 remake 自己跑的；原版跑同樣的劇本會在哪一年統一沒有比過。（`docs/mechanics/80`） |
+| 防拷密碼盤問畫面（月內迴圈那支動畫） | 完成 | L1 | base | `TestZZMonthAnimationFrames` | `lcall 03EB:0000` 之前被記成「畫面或音樂，remake 用不到」。逐格存圖之後看出來是**防拷密碼的盤問**：兩圈各 160 步，每步一次 `speak(0, 10)`，結束提示 `請輸入密碼(-%s-)`。remake 不實作防拷，但 `RND(12)` 要照抽。（`docs/re/10`） |
 | 分派表：選出行動者與名單順序 | 完成 | L1 | base | `TestActorPickMatchesTheOriginal`、`TestChiefRosterOrder`、`TestGovernorSortListShape` | 40 次；排序鍵是 `謀略 ＋ 戰力 ＋ 加權表[身分]`。交換排序不穩定，所以名單順序有意義。（`docs/re/03`） |
 | 分派表：內政 | 完成 | L1 | base | `TestAffairsMatchTheOriginal` | 58 次逐次相同、六個 AI 等級全部走到。玩家與電腦走不同常式。（`docs/mechanics/70-ai`） |
 | 分派表：購置武器與訓練兵士 | 完成 | L1 | base | `TestArmsPurchaseMatchesTheOriginal`、`TestTrainingMatchesTheOriginal` | 購置武器 505 次逐次相同；訓練兵士 260 次、六個等級。武裝度是百分比。（`docs/mechanics/70-ai`） |
@@ -279,7 +277,9 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 開機裝置選單與防拷密碼 | 完成 | L0 | base | `TestBootPromptsMatchOriginal`、`TestBootAcceptsOnlyOneAndTwo`、`TestPasswordAnswerDoesNotMatter`、`TestZZPassword` | 四題裝置選擇；防拷密碼**任何四位數都過得去**，兩個答案各走十六個月、十八份盤面逐位元組相同。（`docs/re/02`） |
 | 容器項目邊界與原版算的一致 | 完成 | L1 | base | `TestContainerOffsetsMatchOriginal`、`TestContainerHeaderReadsAreComplete` | 攔原版對 `DATA1.GRP` 的 seek，比它算出來的起點——逐項相符。（`docs/formats/01`） |
 | 兩版差異只繞著難度 | 完成 | L0 | both | `TestWhoTouchesTheEditionTable`、`TestWhoReadsTheEditionWords` | 上限 10 → 20、係數表 11 → 21 格（`DS:0x5430`）；字串 400 條只差一條；戰役勝負判定多兩條。（`docs/spec/004`、`docs/mechanics/90`） |
+| 四季事件、蝗害、君主繼承、絕嗣 | 完成 | L1 | base | `TestEventsMatchTheOriginal`、`TestLocustMatchesTheOriginal`、`TestSuccessionMatchesTheOriginal`、`TestNoHeirEndsTheGame` | 十二個月的四季事件逐項對上（2026-09-11）：四季常式各跑 1 次、老死判定 17 次、蝗害改地力 1 次，**0 次對不上**。  ⚠ 先前紅是**迴圈寫死十二輪**：四季常式一年各只跑一次（月 1／4／7／10），而 `bootToGame` 停在月中——第一輪按鍵是把當下那個月走完、不是推進一個月，十二輪因此只推了約十個月，從 9 月出發剛好差在秋季（量到春 1 夏 1 冬 1 **秋 0**）。改成「跑到四季都輪過為止」（實測 14 輪），不必跟著起點漂移改數字。  訊息也拆成兩層：秋季沒走到 → `Fatal`「結果不算數」；秋季走到了但蝗害為 0 → `Error` 並指出擺盤兩道閘門都最有利。原本一句話涵蓋兩種病因。（`docs/re/06`、`docs/mechanics/50`） |
 | 建築關寨的三道門與格子編碼 | 完成 | L0 | base | `TestFortMatchesTheOriginal`、`TestZZFortPromptsAsCaoCao` | `DS:0x7134[地形碼] != 0`（山丘、平原、樹林）、`(格 & 0xF0) >= 0xA0` 擋通道格、Y/N 確認；寫入是 `(格 & 0xF6) \| 6`。（`docs/mechanics/10`） |
+| 一個月的狀態轉移差 0 個位元組 | 完成 | L1 | base | `TestZZMonthParity` | **差 0 個位元組**（2026-09-11）：43 個郡、350 位人物、16 個勢力逐格相同，逐表與逐郡的抽亂數次數全部 ±0。  2026-09-10 換 base 後起點漂移（R49），在新起點上重新校準。走勢：339 →（換對拍起點與固定種子）145 → 97 → 76 → 92 → 88 → 80 → 50 → 17 → 5 → 3 → **0**。位元組數不是單調的——修對一條規則會讓下游浮出更多不一致，過程中看的是「第一個岔開在第幾格」與逐表的抽樣次數。  走到 0 解出的規則記在 `docs/mechanics/70-ai` §2.5b／§2.6／§2.13.1、`docs/spec/007`，推翻紀錄在 `CONTEXT.md` R50／R51。（`docs/playtest/02`） |
 | 開新遊戲的盤面 | 完成 | L1 | base | `TestZZNewGameBoardIsCaoCao`、`TestPlantedBoardReadsBack`、`TestLoadedPrefectureOwnersMatchTheSave` | **開新遊戲是一等驗收路徑**，從存檔載入看不到缺口（`CLAUDE.md` §7 第 12 條）。（`docs/re/02`） |
 | 加強版跑得起來 | 完成 | L1 | plus | `TestZZBootPlus` | `ASV.EXE` 載進 dosgolem、開 253 個檔、畫出標題。卡點是 `DATA0.GRP` 的 `e_cblp = 0xAA90` 只有低九位有意義。（`docs/mechanics/90`） |
 | 原版的亂數是 MSC 的 LCG | 完成 | L0 | both | `TestRandIsTheMSCLCG` | 核對 400 次逐次相同。**公式通用、進入點與狀態變數位址不通用**。（`docs/playtest/02`） |
@@ -287,9 +287,12 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 存檔寫出：原版讀得回 remake 存的那一格 | 完成 | L1 | base | `TestRemakeSaveLoadsInOriginal` | remake 走完一個月存進第 1 格，六個項目換進**原版目錄複製品**的 `DATA2.GRP`，原版讀回來 **19,220 個位元組完全相同**，載入流程六個檢查點都是 0。（`docs/formats/05`） |
 | 出兵：整編、攜帶錢糧、確認 | 完成 | L1 | base | `TestZZPlayerSortieDriven`、`TestSortieMustersMatchTheOriginal` | 郡 11 打郡 4，走完軍事 → 發動戰役 → 選郡 → 整編 → 攜帶錢糧 → 確認，原版動的 3 個位元組逐格相同。（`docs/playtest/04`） |
 | PC 喇叭語音 | 完成 | L1 | base | `TestSpeechDrivesTheSpeaker` | `docs/re/09` |
+| 戰略層五種謀略在實跑裡走過 | 完成 | L1 | base | `TestStratagemsRunLive`、`TestTigerWolfRunsLive`、`TestSabotageRunsLive`、`TestAIPlotMatchesTheOriginal` | 策反人民的五刀（`0x2d6e0`）**逐條對上**（2026-09-11）：民忠 −`RND(魅/10)`、洪水 +`RND(魅/5)` 夾 100、地力 −`RND(魅/12)`、米 −`米×100/(RND(魅)+300)`、金 −`金×100/(RND(魅)+500)`。實測魅力 43：擲值 3／5／1／11／17 → 90→87、10→15、90→89、20000→13570、9000→7260，五條全中。  ⚠ 先前紅是**測試量錯時間點**，不是規則缺口：`before` 在常式入口讀、`after` 卻等送完所有鍵才讀，中間整段玩家流程都還在跑，於是量到「民眾忠誠 90 → 100」這種 `0x2d70c`（是減）根本不會做的事。改成入口與 `0x2d7ef`（五刀寫完的第一道指令）各讀一次就通了，並且把五道 `RND` 的實際擲值也記下來，不必再窮舉。（`docs/re/07`、`docs/mechanics/30`） |
 | 三張表在記憶體裡連續且位置找得到 | 完成 | L0 | base | `TestScenarioTablesLiveInMemory` | 拿劇本檔的位元組去搜，找到且三張連續（0x399B0）。（`docs/spec/003`） |
 | 部隊層 AI 的決策鏈 | 完成 | L2 | base | `TestUnitAIDecisionChain`、`TestUnitAIRangedAndPlotOptions`、`TestWhoMovesTheUnits` | 決策鏈與遠攻／計謀選項的分支（R43：不在對戰子地圖那一側）。（`docs/re/05`） |
 | 戰場徵兵 | 完成 | L1 | base | `TestWarRecruitMatchesTheOriginal` | 與戰略層的徵兵是兩條路。（`docs/mechanics/40`） |
+| 喇叭的位元序列逐段對回素材（含跳過首位元組） | 完成 | L1 | base | `TestSpeechBitStreamMatchesTheClip` | 量到的 165 個間隔換算回位元跑：從素材第 0 個位元組起只對上 36.4%，**殘留位元組 ＋ 第 1 個位元組起對上 165／165（100%）**。成因是 `L0`——兩個公開入口都把首位元組寫進 `cs:[0x28]`（IRQ0 的暫存器保存區），而播放迴圈讀的是 `cs:[0x36]`。remake 的取捨在 `docs/spec/008` R6。（`docs/re/09`、`docs/spec/008`） |
+| 播出去的位元組就是容器裡的素材 | 完成 | L1 | base | `TestSpeechClipsAreTheAssetBytes` | 攔載入器（`0x5a76`）與播放入口（`0x5deb`），把遠指標指到的位元組倒出來與 `DATA1／S000.SND` 比，**雜湊相同**。槽 0 是音效、槽 1–3 是語音，原版自己的訊息字串（`Real#0>1000`／`Real#1-3>4200`）就是這樣分的。（`docs/re/09`、`docs/spec/008`） |
 
 ### 發行
 
@@ -303,19 +306,15 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
 | 兩版抽檔分開放 `workplace/orig/{base,plus}/` | 未完成 | — | both | 指令重數 | `CLAUDE.md` §3.4 要求兩版都當一等公民抽檔、記雜湊、分開放。目前是直接唯讀掛 `org_game/`，那個目錄沒建。（`CLAUDE.md §3.4`） |
+| 哪一則訊息配哪三段語音 | 未完成 | L3 | base | present：docs/spec/008-speaker-audio.md 的「哪一則訊息配哪三個索引還沒解」 | 訊息常式（`0x3273e`）有 111 個呼叫端，每則放三段 `R%03d.OKR`。索引怎麼來**沒解**——目前的對拍一次都沒走到訊息常式（走到的 320 次全是防拷畫面的動畫）。  補法：先找一條會吐帶語音訊息的按鍵路徑，再攔 `0x5a76` 記每次載入的檔名。（`docs/re/09`、`docs/spec/008`） |
 | 兩支 EXE 都有 `.i64`（M0 出口條件） | 完成 | L0 | plus | 指令重數 | 2026-09-10 補上加強版那支：`tools/ida.sh analyze ASV.EXE` → `workplace/ida/ASV.EXE.i64`（2.25 MB），拿 `probe.py` 驗過——SHA-256 `ad18a251…88be5` 與素材相符、274 個函式、3 個段。**exit code 不算證據**（`tools/ida.sh` 開頭那條），判準是探針的 JSON。  順帶量到一件事：加強版靜態只看得到解壓 stub。`ASV.EXE` 的 MZ 檔頭是**重定位 0 項、檔頭 512 B、最小配置 192,656 B**——自解壓的形狀；原版 `AA.EXE` 是 5,342 項／21,504 B／12,240 B。兩支都掃不到可辨識的壓縮簽章。**這解釋了為什麼兩版差異只能用執行期對讀解**（`docs/re/01` §3、`docs/spec/004`）。  worklist 原本把整條記成「`tools/ida.sh` 包裝器，對兩支 EXE 產 `.i64`」而沒打勾——包裝器與原版那支早就在了，這是 M0 的出口條件之一，所以「M0 完成」與這一條沒打勾長期並存。（`docs/re/01`） |
+| remake 的 PC 喇叭播放器（音效與語音） | 完成 | L1 | base | `TestBankEnforcesTheOriginalLimits`、`TestMixerGates`、`TestRenderResamplesAndSmooths`、`TestClipReadsBitsHighFirst` | `internal/speaker`：一位元 PCM 解碼、四個槽與原版的長度上限、兩個開關（關音效連語音都不出聲）、一句話三段、非同步播。接進 `cmd/san1` 的 `voicebox`。  ⚠ **取樣率是模型不是量測**（`docs/spec/008` R8，`L3`）：原版走軟體延遲迴圈，音高本來就因機器而異。（`docs/spec/008`） |
 
 ### dosgolem
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
-| 開機配方還是指令數觸發，不是行為觸發 | 未完成 | — | base | present：internal/parity/turn_oracle_test.go 的「o.Run(d+_d+_d+)」 | **2026-09-10：這一條的預言成真了。** 它原本寫著「指令數會隨執行器改動而變，所以現在的配方當不了回歸測試」——換 base 到 dosgolem `main` 之後，`bootToGame` 最後一步的 1.2 億道指令預算讓原版多跑了 29 格月迴圈，順序表整份不同，**四支對拍因此變紅**（月度、玩家命令、四季事件、策反）。
-
-原版在主畫面**不是靜止的**：沒有玩家輸入時它會自動跑完電腦的郡，一路跑到玩家的郡才停。所以「停在哪」由預算決定。新的停點（游標 28）其實**比舊的正確**——舊的游標 0 是預算用完的半路狀態。
-
-⚠ 已試過但**行不通**的修法：把停點改成「跑到游標歸零」。游標 0 一個月只出現一次，錯過就要等下個月，而原版停在玩家的郡不動——跑滿 2.4 億道指令游標還是 28。判準要換的是**視窗怎麼取**，不是只換停點。
-
-R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。`bootToGame` 現在會印停在第幾格（`monthCursor`），讓漂移看得見。（`docs/re/02`、`docs/playtest/03`） |
+| 開機配方還是指令數觸發，不是行為觸發 | 未完成 | — | base | present：internal/parity/turn_oracle_test.go 的「o.Run(d+_d+_d+)」 | **2026-09-10：這一條的預言成真了。** 它原本寫著「指令數會隨執行器改動而變，所以現在的配方當不了回歸測試」——換 base 到 dosgolem `main` 之後，`bootToGame` 最後一步的 1.2 億道指令預算讓原版多跑了 29 格月迴圈，順序表整份不同，**四支對拍因此變紅**（月度、玩家命令、四季事件、策反）。\n\n原版在主畫面**不是靜止的**：沒有玩家輸入時它會自動跑完電腦的郡，一路跑到玩家的郡才停。所以「停在哪」由預算決定。新的停點（游標 28）其實**比舊的正確**——舊的游標 0 是預算用完的半路狀態。\n\n⚠ 已試過但**行不通**的修法：把停點改成「跑到游標歸零」。游標 0 一個月只出現一次，錯過就要等下個月，而原版停在玩家的郡不動——跑滿 2.4 億道指令游標還是 28。判準要換的是**視窗怎麼取**，不是只換停點。\n\nR46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘幾步還沒換。`bootToGame` 現在會印停在第幾格（`monthCursor`），讓漂移看得見。（`docs/re/02`、`docs/playtest/03`） |
 | probe 看不到 `B0000`（Hercules） | 未完成 | — | both | absent：../dosgolem-san/internal/machine 的「Hercules、HERCULES、monochrome graphic」 | 目前只看 `A0000` 與 `B8000`，選 Hercules 時會得到**假零**——畫面明明有東西而 probe 說沒有。 ⚠ pattern 原本寫 `herc`（不分大小寫），而那會誤中 `OtherChannels` 裡的「herC」——**太寬會反過來誤判已完成**。改成完整字。（`docs/re/00`） |
 | 文件裡的 dosgolem 分支名要跟得上實際分支 | 完成 | — | — | 指令重數 | 2026-09-10 抓到第一次：`CLAUDE.md` 兩處與 `CONTEXT.md` 一處都記著 `san1-msc-oracle`，而實際分支早就是 `san1-draw-speed-and-speech`。  **同一天下午這條 verify 就開口第二次**——換 base 到 `origin/main` 之後分支變成 `san1-oracle-parity`，文件又落後了。加上去幾小時就抓到一次，這正是它存在的理由。  改法分兩層：`CLAUDE.md`（規則）**完全不寫分支名**，只留「開獨立分支、用前先問 `git branch --show-current`」；`CONTEXT.md` §1（現況）記實際的那一條。verify 因此綁 `CONTEXT.md` 不綁 `CLAUDE.md`——規則檔裡放易變的東西，本來就是過期斷言的來源。（`CLAUDE.md §4.1`） |
 
@@ -326,11 +325,13 @@ R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘�
 | 諸侯記錄 72 個位元組裡還有 62 個沒解 | 未完成 | L2 | both | **要人判** | 已解 10 個：offset 2 君主、4 AI 等級、6 軍師、8 人望、14–18 五格寶庫。**offset 10–13、19–71 不是外交狀態**——五支謀略讀寫的都是州郡與人物的欄位。（`docs/spec/003`） |
 | `.MSK` 怎麼與圖搭配還沒解 | 未完成 | — | base | present：docs/formats/07-images.md 的「`.MSK` 與 `8x8AND*`（遮罩）怎麼與圖搭配」 | `8x8AND*` 那四張已經解了（紮寨蓋的是 `AND0`，78 格裡 73 格逐像素相同，`TestCampMaskMatchesTheOriginal`）；剩下的是 `.MSK`——只有 `ENDO4.MSK`，而那一組不在容器裡。訊號綁 `docs/formats/07` 的「還沒解」清單。（`docs/formats/01`） |
 | `.OKR` 未解（共 465 項 ＝ DATA2 418 ＋ DATA3 47，壓縮過） | 未完成 | L2 | both | present：internal/battle/generate.go 的「.OKR.*未解、格式未解」 | 原版主戰場的地形版面在 `.OKR` 裡；remake 現在的版面是**自己生成的**（`battle.Generate`，`docs/design/03` 記為 remake 差異）。解出來也只作參考，美術素材不重製；能拿到的是版面尺寸與地形分佈這類規則性資訊。（`docs/re/04`、`docs/mechanics/90`） |
+| 配樂的追認規格 | 完成 | L1 | both | `TestParseAllSongs`、`TestStreamSilenceKeepsTime`、`TestBadDataIsRejected` | `internal/music` 先寫完才補規格。規格只描述已經驗過的行為，沒驗的（滑音、每拍 tick 數、換曲時機、`MUSV` 在哪用）列在 §5。（`docs/spec/009`、`docs/formats/06`） |
 
 ### 畫面
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
+| 計謀得手的四種拉幕轉場 | 未完成 | L2 | base | 指令重數 | 迴圈界限與「每步一聲音效」是 `L0`；**搬運常式 `es:[0x3efc]` 的語意還沒讀出來**，所以畫不出來。`RND(4)` 那一次抽樣 remake 已經照擲。升 `READY` 的條件在 `docs/spec/010` §3。（`docs/re/10`、`docs/spec/010`） |
 | 主戰場下方花邊上的日期沒畫 | 未完成 | L1 | base | present：internal/ui/artbattle.go 的「remake 還沒畫下方花邊上的年月」 | 畫面改回 408 之後看得到了：原版在 `MAINMAP8` 的花邊上寫一行年月。**量到的（拿原版基準與 remake 逐點 diff，2026-09-10）**： ・十格，每格 24×24，`x = 128 + 40i`（i ＝ 0..9），字的上緣 `y = 378`。 ・落點（單一樣本「建安二年九月秋」）：年號格 0–1、年數格 2–3（靠右，所以個位數的「二」在格 3）、**格 4 一直是空的**、「年」格 5、月份格 6–7（靠右）、「月」格 8、季節格 9。 ・字色**不是實心的**：灰（色號 7）538 點與綠（色號 2）502 點**交錯**——綠不在灰的右下（+1,+1 只有 4 點），(+1,0) 有 388、(0,+1) 有 329，是逐像素相鄰。所以那是網點或遮罩，不是「主色＋陰影」。**成因未解**，可能與還沒解的 `8x8AND*`／`.MSK` 遮罩是同一件事。  ⚠ **兩件事還不能實作**：(1) 版面規則只有**一個樣本**，年數或月份佔兩格時怎麼排沒驗過；(2) 網點的機制沒解，照「灰色實心字」畫會得到一個看起來對而機制錯的東西（`CLAUDE.md` §7 第 16 條：統計特徵不是語意）。（`docs/spec/005`、`docs/spec/006`） |
 | 長沙的填色對不上 | 未完成 | L1 | base | present：internal/ui/artfill_test.go 的「長沙」 | 原版畫圖樣 0（純淺紅），而州郡記錄的所屬寫的是 2。35 個有主的郡裡其餘 34 個全中。 訊號在 `internal/ui/artfill_test.go`（`include_tests`）：那一格是**已知例外**，容忍它的理由就寫在測試的註解裡。（`docs/formats/07`） |
 
@@ -345,13 +346,10 @@ R46 已經把主選單那一步換成行為路標（攔 `36C9:02B0`），其餘�
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
 | 年號怎麼數還沒查證 | 未完成 | L2 | base | **要人判** | 年號表在手冊給的六個時期上全部對上，但**原版開局後怎麼數**沒查證——推過一年之後它顯示「中平七年」還是「初平元年」。（`docs/mechanics/10`） |
-| 出兵的錢糧與部隊在月底結算之後才從郡搬走 | 未完成 | L1 | base | present：docs/re/05-battle-layer.md 的「還沒解的**：哪些軍團會在這個時機被處理」 | 月度對拍在新起點上差 145，第一個岔開在順序表第 0 格——而岔開的不是亂數序列是**盤面**：原版在「月底結算 → 新月第一個郡」之間把那個郡的金扣了 8000、米扣了 3045、兵扣了 2000，remake 完全沒動。
-
-誰動的用攔寫入問出來（`TestZZWhoTakesGoldFromPrefecture6`）：金 `0x282df`、米 `0x282f8`、兵士 `0x28553`，三個都在戰役的碼段；那一段是部隊記錄的迴圈（`es:0x3502`、一個軍團五支、記錄 42 bytes），函式入口 `0x281ee` 參數 ×22 索引軍團記錄 `es:0x175e`。
-
-**原版是「郡回合決定出兵 → 月底結算之後才把錢糧與部隊搬進軍團」**，而 remake 的 `EndMonth` 沒有這一步。
-
-⚠ 還沒解：哪些軍團在這個時機被處理、條件是什麼、`0x281ee` 的呼叫端在月流程的哪一格。**在那之前不要動 `internal/`**——目前只是 `L1` 觀測，不是 `READY` spec（`CLAUDE.md` §5）。（`docs/re/05`） |
+| 指定太守會把郡的所屬改成新太守的勢力 | 完成 | L0 | base | 指令重數 | `0xd74d`：`州郡 offset 30 ← 新主事者的勢力`。名單不比對勢力，所以混編的郡指了別家的人當太守就當場易主，**同一個回合裡剩下的表全部換一個諸侯記錄**（原版每一支都是現讀 offset 30）。  ⚠ 這一行 2026-09-09 就寫在 `70-ai` §2.6 的虛擬碼裡，只是 remake 沒實作；2026-09-10 追月度對拍時繞了四輪才回頭看自己的文件（`CLAUDE.md` §7 第 1 條）。**文件寫了不等於程式做了**——這就是每條要掛 verify 的理由。（`docs/mechanics/70-ai`） |
+| 計謀得手會多擲一次 RND(4)（畫面轉場） | 完成 | L0 | base | 指令重數 | `0x32e4f` 的 `RND(4)`：`0x32e40` 是畫面轉場常式，四選一。表現層的抽樣 remake 也要照擲，否則亂數序列從那裡錯開（計略 36／34 → 36／36）。  ⚠ 失敗那條路徑沒有樣本，先不擲。（`docs/mechanics/70-ai`） |
+| 把 es:[0x58c] 當成跨表共用、會被就地重排的清單 | 完成 | L1 | base | 指令重數 | 十八張表共用同一份守將清單（`es:0x58c`／長度 `es:0xc`），表自己不建清單、只就地重排或截短它。整輪的順序演變逐格對過四把鍵（含兩組平手），寫在 `docs/mechanics/70-ai` §2.5b。  **量到會咬人的一格已經修好**：郡 13 的指定太守。指定軍師排在它前面而且會對調兩個人的身分，146 與 65 魅力都是 90——原版用行動者排完留下的順序拿到 146。remake 是 `faithful.order`。  ⚠ 其餘幾段的重排（指定太守、四支賞賜、調整兵力）**目前沒有量到造成差異**，所以沒有模擬。要再動之前先量到一格真的因此不同（`CONTEXT.md` R51 教訓二）。（`docs/mechanics/70-ai`） |
+| 電腦諸侯的移防：整份名單、金米夾值、第二次編隊接第一次 | 完成 | L0 | base | present：docs/spec/007-ai-relocation.md 的「^狀態：`READY`」 | `docs/spec/007`（`READY`）。三條 `L0`：  1. `0x1938a` 的迴圈把**整份出征名單**的人物 offset 19 都寫成目標郡（remake 原本只搬 `force[0]`）。 2. 來源郡的金米減完夾 0，目標郡加完在 16 位元變負時設成 30000。 3. 沒有「主事者要有人接手」這道閘門——整郡搬空是允許的，歸屬由 `0x1e394` 從人物表重算。玩家的「調動軍隊」（`0x18ce1`）是另一支碼，**不合併**。  同一輪修掉的還有編隊：`0xb2b4` 收尾把清單截短並寫回 `es:0xc`，`0xb706` 洗的是那一份截短的。remake 原本兩次都重新拿整份守軍，郡 6 因此多抽一次亂數（原版 7／remake 8），而它是視窗裡的第一格。（`docs/spec/007`、`docs/mechanics/70-ai`、`docs/re/05`） |
 
 <!-- worklist:end -->
 

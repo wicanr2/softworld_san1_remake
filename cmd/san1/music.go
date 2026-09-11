@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
 
@@ -22,6 +23,14 @@ import (
 
 // audioRate 是輸出的取樣率。OPL2 自己是 49,716 Hz，`music.Stream` 內插過來。
 const audioRate = 48000
+
+// audioContext 是全程唯一的音訊環境。
+//
+// **Ebiten 一個行程只能開一個**，開第二個會 panic。配樂與 PC 喇叭是
+// 兩條獨立的來源，各自要一個播放器，但共用這一個環境。
+var audioContext = sync.OnceValue(func() *audio.Context {
+	return audio.NewContext(audioRate)
+})
 
 // jukebox 管一首正在播的曲子。
 type jukebox struct {
@@ -51,7 +60,7 @@ func newJukebox(root string) *jukebox {
 		fmt.Fprintln(os.Stderr, "san1: 配樂解不開：", err)
 		return nil
 	}
-	return &jukebox{ctx: audio.NewContext(audioRate), tracks: tracks, cur: -1}
+	return &jukebox{ctx: audioContext(), tracks: tracks, cur: -1}
 }
 
 // Play 換一首。編號超出範圍就取模，所以呼叫端不必自己算。

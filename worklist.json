@@ -1,7 +1,7 @@
 {
   "schema": "san1-worklist/1",
   "note": "完成度與未完成項的單一真相（`rulebook/61`）。**verify 回答的是「這一條的 status 還成立嗎」，不是「這一項好不好」**——`done` 項驗證據還在，`open`／`blocked` 項驗未完成的訊號還在；任一邊翻面就是清單長出了過期斷言。跑法與四種結果的意思見 tools/worklist.py。VERIFICATION-MATRIX.md 的資料段由 `tools/worklist.py render` 產生，不要手改。",
-  "updated": "2026-09-10",
+  "updated": "2026-09-11",
   "items": [
     {
       "id": "parity-rand-lcg",
@@ -1236,6 +1236,166 @@
       "verify": {
         "kind": "cmd",
         "cmd": "grep -q 'f.order = roster(g, p)' internal/ai/ai.go",
+        "expect": "pass"
+      }
+    },
+    {
+      "id": "speaker-clip-bytes",
+      "title": "播出去的位元組就是容器裡的素材",
+      "group": "對拍",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/09",
+        "docs/spec/008"
+      ],
+      "note": "攔載入器（`0x5a76`）與播放入口（`0x5deb`），把遠指標指到的位元組倒出來與 `DATA1／S000.SND` 比，**雜湊相同**。槽 0 是音效、槽 1–3 是語音，原版自己的訊息字串（`Real#0>1000`／`Real#1-3>4200`）就是這樣分的。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestSpeechClipsAreTheAssetBytes",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
+      "id": "speaker-bit-stream",
+      "title": "喇叭的位元序列逐段對回素材（含跳過首位元組）",
+      "group": "對拍",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/09",
+        "docs/spec/008"
+      ],
+      "note": "量到的 165 個間隔換算回位元跑：從素材第 0 個位元組起只對上 36.4%，**殘留位元組 ＋ 第 1 個位元組起對上 165／165（100%）**。成因是 `L0`——兩個公開入口都把首位元組寫進 `cs:[0x28]`（IRQ0 的暫存器保存區），而播放迴圈讀的是 `cs:[0x36]`。remake 的取捨在 `docs/spec/008` R6。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestSpeechBitStreamMatchesTheClip",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
+      "id": "speaker-playback",
+      "title": "remake 的 PC 喇叭播放器（音效與語音）",
+      "group": "素材",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/008"
+      ],
+      "note": "`internal/speaker`：一位元 PCM 解碼、四個槽與原版的長度上限、兩個開關（關音效連語音都不出聲）、一句話三段、非同步播。接進 `cmd/san1` 的 `voicebox`。\n\n⚠ **取樣率是模型不是量測**（`docs/spec/008` R8，`L3`）：原版走軟體延遲迴圈，音高本來就因機器而異。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/speaker",
+        "run": "TestBankEnforcesTheOriginalLimits|TestMixerGates|TestRenderResamplesAndSmooths|TestClipReadsBitsHighFirst"
+      }
+    },
+    {
+      "id": "speech-message-map",
+      "title": "哪一則訊息配哪三段語音",
+      "group": "素材",
+      "layer": "feature",
+      "milestone": "M7",
+      "status": "open",
+      "level": "L3",
+      "edition": "base",
+      "docs": [
+        "docs/re/09",
+        "docs/spec/008"
+      ],
+      "note": "訊息常式（`0x3273e`）有 111 個呼叫端，每則放三段 `R%03d.OKR`。索引怎麼來**沒解**——目前的對拍一次都沒走到訊息常式（走到的 320 次全是防拷畫面的動畫）。\n\n補法：先找一條會吐帶語音訊息的按鍵路徑，再攔 `0x5a76` 記每次載入的檔名。",
+      "acceptance": "至少一則訊息的三個索引與畫面上的文字對得起來",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "docs/spec/008-speaker-audio.md"
+        ],
+        "pattern": "哪一則訊息配哪三個索引還沒解"
+      }
+    },
+    {
+      "id": "music-spec",
+      "title": "配樂的追認規格",
+      "group": "資料格式",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "both",
+      "docs": [
+        "docs/spec/009",
+        "docs/formats/06"
+      ],
+      "note": "`internal/music` 先寫完才補規格。規格只描述已經驗過的行為，沒驗的（滑音、每拍 tick 數、換曲時機、`MUSV` 在哪用）列在 §5。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/music",
+        "run": "TestParseAllSongs|TestStreamSilenceKeepsTime|TestBadDataIsRejected",
+        "needs": [
+          "org_game"
+        ]
+      }
+    },
+    {
+      "id": "anim-copy-protection",
+      "title": "防拷密碼盤問畫面（月內迴圈那支動畫）",
+      "group": "對拍",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/10"
+      ],
+      "note": "`lcall 03EB:0000` 之前被記成「畫面或音樂，remake 用不到」。逐格存圖之後看出來是**防拷密碼的盤問**：兩圈各 160 步，每步一次 `speak(0, 10)`，結束提示 `請輸入密碼(-%s-)`。remake 不實作防拷，但 `RND(12)` 要照抽。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZMonthAnimationFrames",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
+      "id": "anim-transition",
+      "title": "計謀得手的四種拉幕轉場",
+      "group": "畫面",
+      "layer": "feature",
+      "milestone": "M6",
+      "status": "open",
+      "level": "L2",
+      "edition": "base",
+      "docs": [
+        "docs/re/10",
+        "docs/spec/010"
+      ],
+      "note": "迴圈界限與「每步一聲音效」是 `L0`；**搬運常式 `es:[0x3efc]` 的語意還沒讀出來**，所以畫不出來。`RND(4)` 那一次抽樣 remake 已經照擲。升 `READY` 的條件在 `docs/spec/010` §3。",
+      "acceptance": "四個分支各有一串逐步 PNG，且 remake 逐點重現其中一種",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "grep -q '^狀態：`READY`' docs/spec/010-screen-transitions.md",
         "expect": "pass"
       }
     }

@@ -42,9 +42,9 @@ const (
 	proMusic   = 0xB8 // u16 → es:0x31ba，音樂狀態
 	proSound   = 0xBA // u16 → es:0x31aa，音效狀態
 	proSkipWar = 0xBC // u16 → es:0x2174，查看電腦戰役
-	proVoice   = 0xBE // u16 → es:0x17c2，語音狀態
+	proVoice   = 0xBE // u16 → es:0x3148，語音狀態
 	proDelay   = 0xC0 // u16 → es:0x2f72，延遲時間
-	proCal     = 0xC2 // u16 → es:0x3148，年號用中曆還是西曆
+	proCal     = 0xC2 // u16 → es:0x17c2，年號用中曆還是西曆
 	proSeal    = 0xC4 // u16 → es:0x2f6c，玉璽持有勢力（0xFFFF ＝ 未現世）
 )
 
