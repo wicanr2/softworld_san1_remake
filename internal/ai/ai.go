@@ -136,7 +136,7 @@ func New(m Mode) (Brain, error) {
 	case ModePlus:
 		return &faithful{mode: ModePlus, name: "三國演義1加強版"}, nil
 	case ModeEnhanced:
-		return &enhanced{}, nil
+		return NewEnhanced(0), nil
 	}
 	return nil, fmt.Errorf("ai: 不認識的版本 %q（有 %v）", m, Modes())
 }

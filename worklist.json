@@ -1605,26 +1605,71 @@
     },
     {
       "id": "battle-ai-options",
-      "title": "戰場上部隊每天怎麼選動作還沒對上",
+      "title": "戰場上部隊每天怎麼選動作（九支解出七支）",
       "group": "規則層",
       "layer": "feature",
       "milestone": "M5",
       "status": "open",
-      "level": "L2",
+      "level": "L1",
       "edition": "base",
       "docs": [
         "docs/re/05",
         "docs/mechanics/40",
         "docs/design/02"
       ],
-      "note": "**結構解出來了**（`docs/re/05` §12）：入口 `0x29014`，九個選項依序試，動作碼寫在 `es:[0x31a8]`，日層級對照乾淨（決策定出 2 的那幾天各跑一次交戰結算）。\n\n**各個選項分別是什麼動作還沒對上**：九支裡只確認了三支的角色——`0x29e2e` 兜底、`0x29784` 與 `0x29ade` 選對戰；其餘六支在觀測的盤面上沒定過案（敵人不在旁邊時十三次全走到最後一個選項）。\n\n所以 **remake 的戰場 AI 門檻與順序是 remake 自己決定的**（死戰、叫陣、退兵、用計的時機，`docs/design/02`）。要往下走得先把敵人擺到旁邊，讓前面那幾支定案。",
-      "acceptance": "九個選項各自對應哪一個動作有答案，且 remake 的戰場 AI 對得上原版",
+      "note": "**九支裡解出七支**（`docs/re/05` §12，`TestZZUnitAIOptionRoles`）：把每一支跑期間叫到的後果常式記下來——交戰結算、計謀判定、天候門、弓箭、畫部隊標記各自是什麼早就解了，所以「這一支叫了誰」直接說出它在做什麼。\n\n| 選項 | 角色 |\n|---|---|\n| 1 `29E78` | 前置：清動作碼 ＋ 浮點評估 |\n| 2 `29138` | 前置（無條件跑，沒定過案）|\n| 3 `29344` | **移動** |\n| 4 `2985C` | **弓箭** |\n| 5 `29784` | **用計** |\n| 6 `29C56` | 靜態看呼叫交戰結算；**沒試到** |\n| 7 `29B82` | 呼叫 `0x2DEB0`；**沒試到** |\n| 8 `29ADE` | **對戰** |\n| 9 `29E2E` | **兜底（休息）** |\n\n動作碼 `2` ＝ 這一天要打。機率是 `L0`：弓箭 `RND(2)==0`、用計 `RND(3)!=0`、選項 6 `RND(4)==0`、選項 7 `RND(16)==0`。\n\n⚠ **剩下兩支要換盤面**：選項 5（用計）定案之後就跳過 6 與 7，得找一個用不出計的局面（沒錢或智力不足）。\n\n⚠ 先前記著「`0x29784` 與 `0x29ade` 會選出對戰」——前者叫的是**計謀判定**不是交戰結算。",
+      "acceptance": "九個選項各自對應哪一個動作有答案",
       "verify": {
-        "kind": "present",
-        "paths": [
-          "docs/mechanics/40-military.md"
-        ],
-        "pattern": "各個選項分別是什麼動作還沒對上"
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZUnitAIOptionRoles",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
+      "id": "enhanced-garrison",
+      "title": "強化 AI 會留兵防守了",
+      "group": "規則層",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/design/02"
+      ],
+      "note": "先前的強化 AI **只會擴張不會守**：三十六個月打下 38 個郡，而總兵只剩 76,067（`base` 是 166,250）——沒有足夠的兵力防守，再多的土地與金子都是白搭。\n\n三處改動：\n① **守不住就先補兵**（`garrisonNeed`：鄰郡最強敵人的守備戰力 × 60%），排在出兵前面；\n② **出兵要留得住家**：從最強的開始編隊，但留下的戰力不能低於門檻（先前是「除了一位全部帶走」）；\n③ **每郡每月下多道令**——電腦本來就不受那條限制（`docs/mechanics/70-ai` §2.12），先前自我設限成「要嘛打仗要嘛補兵」。\n\n結果：總兵 76,067 → **149,155**（`base` 的 90%），而最大勢力仍有 12 郡（`base` 只有 4 郡）。門檻 60% 是掃出來的，曲線在 `docs/design/02`。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/session",
+        "run": "TestZZGarrisonRatioSweep|TestZZAIModesMoveTheBoard",
+        "needs": [
+          "org_game"
+        ]
+      }
+    },
+    {
+      "id": "battle-ai-asymmetry",
+      "title": "戰場 AI 的攻守不對稱",
+      "group": "規則層",
+      "layer": "evidence",
+      "milestone": "M5",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/design/02",
+        "docs/mechanics/40"
+      ],
+      "note": "打滿三十天而城池未被奪就算守方衛郡成功（手冊 p.35），所以兩邊的最佳策略本來就不同。先前 remake 攻守走同一套，而且**守方會追出去**——那會把守軍一個一個引離城池。\n\n| | 順序 |\n|---|---|\n| 攻方 | 近戰 → 推進 → 射箭 → 休息 |\n| 守方 | 射箭 → 近戰（只在佔上風時）→ 守城 → 休息 |\n\n⚠ **射箭不能排在推進前面**：射得到的距離是 2，正好是「再走一步就貼上」的距離，排前面的話攻方停在兩格外把箭射完。量到過——單挑一次都沒出現。\n\n效果（各 126 場）：等量兵力時攻方勝率 55% → **26%**，而 1.5 倍兵力仍贏 86%。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/battle",
+        "run": "TestDefenceIsWorthSomething|TestAutoUsesTheWholeRepertoire|TestAutoAcrossManyBattles"
       }
     }
   ],

@@ -1,6 +1,7 @@
 package session_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -126,4 +127,55 @@ func loadScenarioForAI(t *testing.T) *state.Scenario {
 		t.Fatal(err)
 	}
 	return sc
+}
+
+// 守備門檻掃一遍：這個數字決定「擴張」與「守得住」的平衡。
+//
+// **這不是在調參數讓某個結果過關**（`rulebook/42`），是在量一條曲線：
+// 門檻越高兵留得越多、打得越少，而兩端都是壞的——門檻 0 是先前那一版
+//（打下 28 個郡、總兵只剩 base 的一半），門檻太高則一動也不動。
+func TestZZGarrisonRatioSweep(t *testing.T) {
+	const months = 36
+	// ⚠ **0 是「用預設」不是「不設防」**（`ai.NewEnhanced` 的約定）。
+	// 要量不設防那一端就給 1。
+	for _, ratio := range []int{1, 40, 60, 80, 100, 140} {
+		sc := loadScenarioForAI(t)
+		g, err := game.New(sc, state.NoFaction, 5, state.EditionBase)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := session.New(g, ai.NewEnhanced(ratio), state.NoFaction)
+		before := map[int]state.FactionID{}
+		for _, p := range g.Prefectures() {
+			before[p.ID] = p.Owner
+		}
+		for m := 0; m < months && !s.Over; m++ {
+			s.EndMonth()
+		}
+		alive, biggest, turnovers, soldiers, gold := 0, 0, 0, 0, 0
+		for _, p := range g.Prefectures() {
+			if p.ID == 0 {
+				continue
+			}
+			if before[p.ID] != p.Owner {
+				turnovers++
+			}
+			soldiers += g.Soldiers(p.ID)
+			gold += p.Gold
+		}
+		for _, f := range g.Factions() {
+			if f.Alive {
+				alive++
+			}
+			if n := len(g.Territory(f.ID)); n > biggest {
+				biggest = n
+			}
+		}
+		name := fmt.Sprintf("%d%%", ratio)
+		if ratio == 1 {
+			name = "幾乎不設防"
+		}
+		t.Logf("守備門檻 %-5s：存活 %2d、最大 %2d 郡、易主 %2d 郡、"+
+			"總兵 %6d、總金 %6d", name, alive, biggest, turnovers, soldiers, gold)
+	}
 }

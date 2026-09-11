@@ -43,6 +43,14 @@ const (
 	// 叫陣一定被拒，整條單挑就永遠打不起來。
 	TuneDuelWarEdge = 3
 
+	// TuneAttackerDesperateDay 是攻方「不計代價」的時間點，
+	// 單位是三十天的百分之幾。
+	//
+	// **這條的依據是規則不是手感**：打滿三十天而城池未被奪就算守方
+	// 衛郡成功（說明書 p.35），所以攻方到了後段保存實力沒有意義——
+	// 平手等於輸。六成左右開始賭是 remake 選的（`docs/design/02`）。
+	TuneAttackerDesperateDay = 60
+
 	// TuneStratagemRange 退役了：計謀的射程是 1，而且那是**規則**不是
 	// 自動作戰的取捨——原版下計謀先問方向，目標一定是六個鄰格之一
 	//（`0x28d7a`）。常數留著讓 `docs/design/02` 的替換表讀得下去。

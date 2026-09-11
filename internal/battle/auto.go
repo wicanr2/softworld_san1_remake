@@ -11,8 +11,20 @@ import "sort"
 
 // AutoTurn 讓一支部隊自己走一步。
 //
-// 優先序：中陷阱就不動 → 打得到就打 → 射得到就射 → 用得起計就用 →
-// 往目標移動 → 移動力用完就休息。
+// 前段兩邊相同：中陷阱就不動 → 退兵 → 用計。之後攻守分家
+//（`autoAttacker`／`autoDefender`）。
+//
+// **攻守不對稱**，那是規則逼出來的：打滿三十天而城池未被奪就算守方
+// 衛郡成功（說明書 p.35）。所以
+//
+//   - **攻方非打不可**：拖到期滿就輸，打不贏也得換兵。
+//   - **守方可以拖**：不划算的近戰不打，改用不挨反擊的手段
+//     （弓箭、計謀）消耗，並守在城池旁邊。
+//
+// 原版的決策鏈順序是「移動 → 弓箭 →（動作碼已定就跳過）→ 用計 →
+// … → 對戰 → 休息」（`docs/re/05` §12，`L1`），**移動排在最前面**。
+// remake 這一套不照抄——它是創作不是還原（`docs/design/02`）——
+// 但「推進不能被射箭卡住」這一點是同一個道理。
 func (b *Battle) AutoTurn(u *Unit) {
 	if b.Over || !u.Alive() || u.Trapped > 0 {
 		return
@@ -41,7 +53,70 @@ func (b *Battle) AutoTurn(u *Unit) {
 			return
 		}
 	}
-	// 貼身的敵人：直接開打。
+	if u.Side.Attacking() {
+		b.autoAttacker(u)
+		return
+	}
+	b.autoDefender(u)
+}
+
+// autoAttacker 是攻方的一步。
+//
+// **拖到第三十天就輸**（說明書 p.35），所以推進優先：貼身就打，
+// 打不到就往城池走，走不動才射箭。
+//
+// ⚠ **射箭不能排在推進前面。** 射得到的距離是 2，而那正是「再走一步
+// 就貼上」的距離——排前面的話攻方會停在兩格外把箭射完，等到接觸時
+// 日子已經過了一半。量到過：單挑一次都沒出現，因為根本沒走到貼身。
+func (b *Battle) autoAttacker(u *Unit) {
+	if b.meleeTurn(u, true) {
+		return
+	}
+	goal := b.Field.CityAt
+	if b.CityHeld.Attacking() {
+		// 城池已經拿下，剩下的是清殘敵。
+		if t := b.nearestEnemy(u); t != nil {
+			goal = t.At
+		}
+	}
+	if b.advance(u, goal) {
+		return
+	}
+	if b.shoot(u) {
+		return
+	}
+	if u.Move > 0 {
+		_ = b.Rest(u)
+	}
+}
+
+// autoDefender 是守方的一步。
+//
+// **守滿三十天、城池未失就贏**（p.35），所以保存實力：不挨反擊的手段
+// 先用（計謀在 `AutoTurn` 已經試過，這裡是弓箭），近戰只在佔上風時打，
+// 其餘時間守在城池旁邊——**不追出去**。
+//
+// 先前守方走的是「最近的敵人」，那會把守軍一個一個引離城池，
+// 而城池空著的時候攻方直接走進去。
+func (b *Battle) autoDefender(u *Unit) {
+	if b.shoot(u) {
+		return
+	}
+	if b.meleeTurn(u, false) {
+		return
+	}
+	if b.advance(u, b.Field.CityAt) {
+		return
+	}
+	if u.Move > 0 {
+		_ = b.Rest(u)
+	}
+}
+
+// meleeTurn 處理貼身的敵人。desperate 為真表示「不划算也要打」。
+//
+// 回傳「這一步用掉了」。
+func (b *Battle) meleeTurn(u *Unit, desperate bool) bool {
 	for _, d := range Dirs() {
 		t := b.UnitAt(u.At.Step(d))
 		if t == nil || t.Side.Attacking() == u.Side.Attacking() {
@@ -60,36 +135,50 @@ func (b *Battle) AutoTurn(u *Unit) {
 				int(ca.War), int(ct.War), u.Soldiers(), t.Soldiers(),
 				b.roll(DuelWarSpread), b.roll(DuelOddsSpread))
 			_ = b.Duel(u, d, accept)
-			return
+			return true
 		}
 		// 「死戰：一決生死的激戰，雙方將互戰至分出勝負為止」（p.32）。
 		// 佔上風才敢賭這一把；沒把握就打快戰，留著兵再看。
 		if b.power(u) > b.defence(t)*TuneDeathBattleEdge/100 {
 			_ = b.DeathBattle(u, d)
-			return
+			return true
+		}
+		if !desperate {
+			// 守方不必拿兵去換：時間站在它那邊。
+			return false
+		}
+		// 日子過了 `TuneAttackerDesperateDay` 之後連死戰都要賭：
+		// 那時保存實力已經沒有意義。
+		if b.Day*100 >= BattleDays*TuneAttackerDesperateDay {
+			_ = b.DeathBattle(u, d)
+			return true
 		}
 		_ = b.QuickBattle(u, d)
-		return
+		return true
 	}
-	// 射箭。
+	return false
+}
+
+// shoot 射一箭。**不挨反擊**，次數有限（武裝度加權平均 ÷ 20），
+// 用不完就浪費了。
+func (b *Battle) shoot(u *Unit) bool {
+	if u.Arrows <= 0 {
+		return false
+	}
 	for _, t := range b.enemies(u) {
-		if Distance(u.At, t.At) == 2 && u.Arrows > 0 {
-			if err := b.Archery(u, t.At); err == nil {
-				return
-			}
+		if Distance(u.At, t.At) != 2 {
+			continue
+		}
+		if err := b.Archery(u, t.At); err == nil {
+			return true
 		}
 	}
-	// 往目標走：攻方走向城池，守方走向最近的敵人。
-	goal := b.Field.CityAt
-	if !u.Side.Attacking() {
-		if t := b.nearestEnemy(u); t != nil {
-			goal = t.At
-		}
-	} else if b.CityHeld.Attacking() {
-		if t := b.nearestEnemy(u); t != nil {
-			goal = t.At
-		}
-	}
+	return false
+}
+
+// advance 往目標走，回傳「有沒有真的動過」。
+func (b *Battle) advance(u *Unit, goal Hex) bool {
+	moved := false
 	for u.Move > 0 {
 		d, ok := b.stepToward(u, goal)
 		if !ok {
@@ -98,13 +187,12 @@ func (b *Battle) AutoTurn(u *Unit) {
 		if err := b.Move(u, d); err != nil {
 			break
 		}
+		moved = true
 		if u.At == goal {
 			break
 		}
 	}
-	if u.Move > 0 {
-		_ = b.Rest(u)
-	}
+	return moved
 }
 
 // sideStrength 是某一立場還在場上的總兵力。
