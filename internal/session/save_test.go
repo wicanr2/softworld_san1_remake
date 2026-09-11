@@ -2,8 +2,10 @@ package session
 
 import (
 	"testing"
+	"unicode"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -160,5 +162,49 @@ func TestSetBrainLeavesATrace(t *testing.T) {
 	s.SetBrain(s.Brain)
 	if len(s.Log) != n {
 		t.Error("換成同一個 AI 也寫了一則訊息")
+	}
+}
+
+// TestEnglishLogHasNoChinese 釘住英文下的訊息紀錄沒有漢字。
+//
+// 訊息紀錄會出現在下面板上（原版素材畫面顯示最後一則），先前 session
+// 自己寫的字（「已存入第 1 個進度」「電腦 AI 換成…」）寫死中文，
+// AI 的名字也是。判準是**整局跑過**：開局、推兩年（事件、戰役、電腦
+// 下令都會進紀錄）、存讀檔、換 AI。
+func TestEnglishLogHasNoChinese(t *testing.T) {
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	i18n.Current = i18n.En
+
+	s := newSession(t, ai.ModeEnhanced, state.NoFaction)
+	for i := 0; i < 24; i++ {
+		s.EndMonth()
+	}
+	dir := t.TempDir()
+	if err := s.Save(dir, 1, ""); err != nil {
+		t.Fatal(err)
+	}
+	back, err := Load(dir, 1, ai.ModeEnhanced)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := ai.New(ai.ModeBase)
+	back.SetBrain(b)
+	bad := 0
+	for _, log := range [][]string{s.Log, back.Log} {
+		for _, line := range log {
+			for _, r := range line {
+				if unicode.Is(unicode.Han, r) {
+					if bad < 10 {
+						t.Errorf("英文的訊息紀錄有漢字 %q：%q", string(r), line)
+					}
+					bad++
+					break
+				}
+			}
+		}
+	}
+	if bad > 0 {
+		t.Errorf("共 %d 行有漢字", bad)
 	}
 }

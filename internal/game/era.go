@@ -106,9 +106,9 @@ const (
 // Name 是切換提示裡的那兩個字（原版的 `中曆`／`西曆`）。
 func (c Calendar) Name() string {
 	if c == Western {
-		return "西曆"
+		return t("cal.western")
 	}
-	return "中曆"
+	return t("cal.chinese")
 }
 
 // Format 把一個年月寫成畫面上的樣子。

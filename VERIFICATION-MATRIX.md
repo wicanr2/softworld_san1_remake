@@ -349,8 +349,9 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
-| 戰術層的逐日戰報與部隊名有譯文 | 完成 | — | both | `TestTacticalReportsAreTranslatedAndFit` | 戰術層的 33 則逐日紀錄全部寫死中文、部隊名用中文的 `String()` 拼，英日文玩家的戰報內文與戰場提示都是中文。改走譯文（`blog.*`、`unit.name`，天氣／軍別／隊形／計謀／地形給 `Label()`），`ui` 的名稱函式回頭呼叫它們。判準是英文戰報裡**沒有任何漢字**，打一批真的戰役（1,484 行）量。（`docs/spec/014`） |
+| 戰報、部隊名與訊息紀錄有譯文 | 完成 | — | both | `TestTacticalReportsAreTranslatedAndFit` | 戰術層的 33 則逐日紀錄全部寫死中文、部隊名用中文的 `String()` 拼，英日文玩家的戰報內文與戰場提示都是中文。改走譯文（`blog.*`、`unit.name`，天氣／軍別／隊形／計謀／地形給 `Label()`），`ui` 的名稱函式回頭呼叫它們。判準是英文戰報裡**沒有任何漢字**，打一批真的戰役（1,484 行）量。  session 寫進訊息紀錄的 17 句（「已存入第 1 個進度」「電腦 AI 換成…」，下面板顯示的就是最後一則）、AI 的名字、曆法名（`cal.*` 鍵早就有，只是沒人用）一起接上。判準是英文下整局跑過（推兩年、存讀檔、換 AI），訊息紀錄的每一行都沒有漢字（`TestEnglishLogHasNoChinese`）。（`docs/spec/014`） |
 | 槽位溢出：每一塊畫面都量過了 | 完成 | — | — | `TestSubMenusShowInFullInEveryLanguage`、`TestArtStatusFitsEveryLanguage`、`TestArtDateStaysInTheStrip`、`TestPagesFitTheOverlayInEveryLanguage`、`TestTextScreenClipsNothing`、`TestTacticalReportsAreTranslatedAndFit`、`TestBattleOptionsFitThePanelInEveryLanguage` | **每一塊都有一支測試量三個語系**（`docs/spec/014` §6 有對照表）：下面板的子選單、上面板的指令表與郡的資料、左側直條的年月、分頁、開局選單、戰場的選項與左右面板、文字版的每一種狀態（`Canvas.Clipped` 量右緣被截的字）。  量出來並修掉的：英文五類子選單排不進下面板（改畫上面板）；表格寫死的欄寬會截斷（`GovernorGold`、`Floo`、中文將軍列表的忠誠欄標成「民眾」→ `cells.Columns`）；郡的資料面板欄名寫死中文、拼音郡名壓到州名、州名的字不在拼音表；英文的年月一個字母一列畫到花邊上（→ 轉 90° 排）；季節接成「month 1Spring」；戰場用計的選項英文六行（→ 面板上方選單框）；文字版的分頁只到地圖區、清底色沒清；文字版指令欄兩欄疊字；存檔描述疊兩個編號。英文有三個名字縮短過（`Set Tiger on Wolf`、`Ally Afar, Attack Near`、`Msg Delay`）。  戰報頁也量了：真的打一批戰術層戰役（每個語系 1,484 行），長句連中文都超過分頁（125 格），改成折行不截字、加上捲動（`docs/spec/014` §8）。（`CLAUDE.md §3.3`、`docs/spec/014`） |
+| 英文下的訊息紀錄沒有漢字 | 完成 | — | both | `TestEnglishLogHasNoChinese` | session 自己寫的 17 句、AI 名字、曆法名先前寫死中文；整局跑過（推兩年、存讀檔、換 AI）量每一行。（`docs/spec/014`） |
 
 ### 規則層
 

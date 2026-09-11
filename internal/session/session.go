@@ -9,6 +9,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -38,7 +39,7 @@ type Session struct {
 // New 開一局。
 func New(g *game.State, brain ai.Brain, player state.FactionID) *Session {
 	s := &Session{G: g, Brain: brain, Player: player, MaxLog: 200}
-	s.note("%d 年 %d 月　開局", g.Date.Year, g.Date.Month)
+	s.say("sess.start", g.Date.Year, g.Date.Month)
 	s.noteBrain()
 	return s
 }
@@ -52,10 +53,10 @@ func (s *Session) noteBrain() {
 	// ⚠ **這一行不能省。** 一個只做一部分行為的電腦諸侯，在畫面上
 	// 看起來就只是「這個諸侯比較保守」——差別看不出來。
 	if done, total := b.Coverage(); total > 0 {
-		s.note("⚠ %s 還原到 %d/%d 種行為，其餘的電腦諸侯不會做",
+		s.say("sess.partial",
 			b.Name(), done, total)
 	} else {
-		s.note("⚠ %s 不是還原，是 remake 自己的 AI", b.Name())
+		s.say("sess.notFaithful", b.Name())
 	}
 }
 
@@ -72,9 +73,16 @@ func (s *Session) SetBrain(b ai.Brain) {
 		return
 	}
 	s.Brain = b
-	s.note("電腦 AI 換成 %s", b.Name())
+	s.say("sess.aiSwitched", b.Name())
 	s.noteBrain()
 }
+
+// say 記一則走譯文的訊息（`sess.*`）；note 收的是已經成句的字串
+//（事件、命令描述、戰報摘要都是別的套件譯好的）。
+//
+// **訊息紀錄會出現在下面板上**（原版素材畫面顯示最後一則），先前這些
+// 字寫死中文，英日文玩家看到「已存入第 1 個進度」。
+func (s *Session) say(key string, a ...any) { s.note("%s", i18n.Sf(key, a...)) }
 
 func (s *Session) note(format string, a ...any) {
 	s.Log = append(s.Log, fmt.Sprintf(format, a...))
@@ -90,7 +98,7 @@ func (s *Session) note(format string, a ...any) {
 // Do 讓玩家下一個命令。失敗時把理由記進 Log 並回傳錯誤。
 func (s *Session) Do(o game.Order) error {
 	if err := o.Apply(s.G, s.Player); err != nil {
-		s.note("✗ %s：%v", o.Describe(s.G), err)
+		s.say("sess.failed", o.Describe(s.G), err)
 		s.drainBattles()
 		return err
 	}
@@ -186,7 +194,7 @@ func (s *Session) runPrefectureTurns() {
 		_, n, err := planner.ActPrefecture(s.G, id, at, level)
 		s.drainBattles()
 		if err != nil {
-			s.note("⚠ %s 的命令被擋下：%v", prefectureName(s.G, at), err)
+			s.say("sess.blocked", prefectureName(s.G, at), err)
 		}
 		if n > 0 && id != s.Player {
 			done[id] += n
@@ -199,11 +207,11 @@ func (s *Session) runPrefectureTurns() {
 		if n == 0 {
 			continue
 		}
-		name := fmt.Sprintf("勢力 %d", f.ID)
+		name := i18n.Sf("fld.factionN", f.ID)
 		if lord := s.G.Lord(f.ID); lord != nil {
-			name = lord.Name
+			name = i18n.PersonName(lord.Name)
 		}
-		s.note("%s 下了 %d 個命令", name, n)
+		s.say("sess.orders", name, n)
 	}
 }
 
@@ -222,10 +230,10 @@ func (s *Session) EndMonth() {
 	s.shuffleMonth()
 	s.drainBattles()
 	if wasAlive && !s.PlayerAlive() {
-		s.note("✗ 你的勢力已被消滅")
+		s.say("sess.destroyed")
 		s.Over = true
 	}
-	s.note("──── %d 年 %d 月 ────", s.G.Date.Year, s.G.Date.Month)
+	s.say("sess.month", s.G.Date.Year, s.G.Date.Month)
 	for _, e := range events {
 		s.note("%s", e.Text)
 	}
@@ -234,11 +242,11 @@ func (s *Session) EndMonth() {
 	// ——**玉璽不在條件裡**。
 	if f, done := s.G.Winner(); done {
 		lord := s.G.Lord(f)
-		name := fmt.Sprintf("勢力 %d", f)
+		name := i18n.Sf("fld.factionN", f)
 		if lord != nil {
-			name = lord.Name
+			name = i18n.PersonName(lord.Name)
 		}
-		s.note("★ %s 一 統 天 下", name)
+		s.say("sess.unified", name)
 		s.Over = true
 	}
 }
@@ -267,7 +275,7 @@ func (s *Session) PlayerAlive() bool {
 
 func prefectureName(g *game.State, at int) string {
 	if p := g.Prefecture(at); p != nil {
-		return p.Name
+		return i18n.PlaceName(p.Name)
 	}
-	return fmt.Sprintf("郡 %d", at)
+	return i18n.Sf("sess.prefN", at)
 }

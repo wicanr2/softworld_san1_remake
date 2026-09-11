@@ -25,6 +25,7 @@ import (
 	"strconv"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -1746,11 +1747,11 @@ func NextMode(m Mode, ed state.Edition) Mode {
 func ModeName(m Mode) string {
 	switch m {
 	case ModeBase:
-		return "三國演義（原版）"
+		return i18n.S("ai.mode.base")
 	case ModePlus:
-		return "三國演義1加強版"
+		return i18n.S("ai.mode.plus")
 	case ModeEnhanced:
-		return "remake 強化 AI"
+		return i18n.S("ai.mode.enhanced")
 	}
 	return string(m)
 }

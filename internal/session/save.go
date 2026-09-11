@@ -6,6 +6,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/save"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -24,14 +25,14 @@ func (s *Session) Save(dir string, slot int, name string) error {
 		if lord := s.G.Lord(s.Player); lord != nil {
 			name = lord.Name
 		} else {
-			name = "觀戰"
+			name = i18n.S("sess.spectator")
 		}
 	}
 	if err := save.Write(dir, slot, s.G, name); err != nil {
-		s.note("✗ 存檔失敗：%v", err)
+		s.say("sess.saveFailed", err)
 		return err
 	}
-	s.note("已存入第 %d 個進度（%s）", slot, name)
+	s.say("sess.saved", slot, name)
 	return nil
 }
 
@@ -54,7 +55,7 @@ func Load(dir string, slot int, mode ai.Mode) (*Session, error) {
 		return nil, err
 	}
 	s := New(g, brain, g.Player)
-	s.note("讀入第 %d 個進度", slot)
+	s.say("sess.loaded", slot)
 	return s, nil
 }
 
@@ -89,7 +90,7 @@ func LoadOriginal(c *assets.Container, slot int, ed state.Edition, mode ai.Mode)
 		return nil, err
 	}
 	s := New(g, brain, g.Player)
-	s.note("讀入原版的第 %d 個進度", slot)
+	s.say("sess.loadedOrig", slot)
 	return s, nil
 }
 

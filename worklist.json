@@ -1127,7 +1127,7 @@
     },
     {
       "id": "battle-log-i18n",
-      "title": "戰術層的逐日戰報與部隊名有譯文",
+      "title": "戰報、部隊名與訊息紀錄有譯文",
       "group": "多語系",
       "layer": "feature",
       "milestone": "M7",
@@ -1137,11 +1137,33 @@
       "docs": [
         "docs/spec/014"
       ],
-      "note": "戰術層的 33 則逐日紀錄全部寫死中文、部隊名用中文的 `String()` 拼，英日文玩家的戰報內文與戰場提示都是中文。改走譯文（`blog.*`、`unit.name`，天氣／軍別／隊形／計謀／地形給 `Label()`），`ui` 的名稱函式回頭呼叫它們。判準是英文戰報裡**沒有任何漢字**，打一批真的戰役（1,484 行）量。",
+      "note": "戰術層的 33 則逐日紀錄全部寫死中文、部隊名用中文的 `String()` 拼，英日文玩家的戰報內文與戰場提示都是中文。改走譯文（`blog.*`、`unit.name`，天氣／軍別／隊形／計謀／地形給 `Label()`），`ui` 的名稱函式回頭呼叫它們。判準是英文戰報裡**沒有任何漢字**，打一批真的戰役（1,484 行）量。\n\nsession 寫進訊息紀錄的 17 句（「已存入第 1 個進度」「電腦 AI 換成…」，下面板顯示的就是最後一則）、AI 的名字、曆法名（`cal.*` 鍵早就有，只是沒人用）一起接上。判準是英文下整局跑過（推兩年、存讀檔、換 AI），訊息紀錄的每一行都沒有漢字（`TestEnglishLogHasNoChinese`）。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/ui",
         "run": "TestTacticalReportsAreTranslatedAndFit",
+        "needs": [
+          "org_game"
+        ]
+      }
+    },
+    {
+      "id": "session-log-i18n",
+      "title": "英文下的訊息紀錄沒有漢字",
+      "group": "多語系",
+      "layer": "feature",
+      "milestone": "M7",
+      "status": "done",
+      "level": null,
+      "edition": "both",
+      "docs": [
+        "docs/spec/014"
+      ],
+      "note": "session 自己寫的 17 句、AI 名字、曆法名先前寫死中文；整局跑過（推兩年、存讀檔、換 AI）量每一行。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/session",
+        "run": "TestEnglishLogHasNoChinese",
         "needs": [
           "org_game"
         ]
