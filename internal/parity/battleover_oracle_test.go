@@ -9,6 +9,8 @@ import (
 
 	"github.com/wicanr2/dosgolem/oracle"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -36,8 +38,8 @@ import (
 // `battle.AutoResolveAI`（不進戰術層、只用兩個數），有玩家才走
 // `p.B.Auto()` 打滿三十天。
 //
-// 所以這支測試在**電腦對電腦**那條路上會 skip：判準寫好了、正對照
-// （戰役有沒有開場）也擋著，但那條路不進日循環。
+// 這支測試因此只驗玩家戰術層的兩個結束判定不會誤入電腦戰役；真正的
+// 電腦對電腦日迴圈與逐將領傷亡由 TestAIvsAIBattleMatchesOriginal 驗。
 //
 // **玩家親征那條路已經補上了**：`TestBattleFinishesWithPlayer` 把玩家
 // 驅動進主戰場、打到分出勝負，統帥條件 `0x24f8c` 跑了 105 次、
@@ -272,6 +274,191 @@ func TestBattleOutcomeMatchesTheOriginal(t *testing.T) {
 		t.Fatal("一場戰役都沒開場：電腦沒出兵，或者留守目標沒被改小")
 	}
 	if chiefRuns == 0 && dayRuns == 0 {
-		t.Skip("戰役開場了但日循環沒跑——電腦對電腦不進戰術層（見註解）")
+		t.Log("符合原版分岔：電腦對電腦不進玩家戰術層的兩個結束判定")
+	}
+}
+
+// TestAIvsAIBattleMatchesOriginal 從原版第一場電腦對電腦戰役的每日結算
+// 入口擷取完整四軍力，再由 remake 的 AutoResolveAI 以同一盤面跑完。
+// 比較單位是勝方、結算日數與每一位參戰將領的兵力，不用合計掩蓋分配錯誤。
+func TestAIvsAIBattleMatchesOriginal(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+
+	base := bootToGame(t, o, seedMas)
+	staBase := base + uint32(state.MasterTableSize)
+	genBase := staBase + uint32(state.PrefectureTableSize)
+
+	// 六種電腦性格輪流配置；留守目標改成 1，讓自然月份內確實會出兵。
+	alive := 0
+	for i := 0; i < state.MasterTableSize/72; i++ {
+		if o.Word(addr(base+uint32(i*72))) == 0xFFFF {
+			continue
+		}
+		o.SetWord(addr(base+uint32(i*72+4)), uint16(3+alive%3))
+		alive++
+	}
+	var sg sortieGlobals
+	sgOK := false
+	o.OnCall(addr(0xb2b4), func(oo *oracle.Oracle) {
+		if !sgOK {
+			sg, sgOK = resolveSortieGlobals(oo), true
+		}
+		oo.SetWord(addr(sg.want), 1)
+	})
+
+	type warMemory struct {
+		won, day, force, unit uint32
+	}
+	var w warMemory
+	wOK := false
+	resolve := func(oo *oracle.Oracle) {
+		ds := uint32(oo.DSReg()) * 16
+		far := func(slot uint16, off uint32) uint32 {
+			return uint32(oo.Word(addr(ds+uint32(slot))))*16 + off
+		}
+		w = warMemory{
+			won:   far(0xa89e, 0x20dc),
+			day:   far(0xa8a2, 0x2100),
+			force: far(0xa8b6, 0x175e),
+			unit:  far(0xa896, 0x3502),
+		}
+		wOK = true
+	}
+
+	const fixedSeed = uint32(0x13579BDF)
+	var model *battle.Battle
+	wantSoldiers := map[int]int{}
+	dailyCalls := 0
+	compared := false
+
+	// 原版軍力編號 0/1 是守方、2/3 是攻方；remake 的 Side 列舉先排攻方。
+	toSide := [...]battle.Side{
+		battle.MainDefender, battle.AidDefender,
+		battle.MainAttacker, battle.AidAttacker,
+	}
+
+	o.OnCall(addr(0x1f538), func(oo *oracle.Oracle) {
+		dailyCalls++
+		if model != nil {
+			return
+		}
+		if !wOK {
+			resolve(oo)
+		}
+
+		// 在第一天任何 RND(11) 之前固定原版狀態；remake 同樣以此數起跑。
+		ds := oo.DSReg()
+		oo.SetWord(oracle.Addr{Seg: ds, Off: 0xa3ae}, uint16(fixedSeed&0xffff))
+		oo.SetWord(oracle.Addr{Seg: ds, Off: 0xa3b0}, uint16(fixedSeed>>16))
+
+		var units []*battle.Unit
+		for army := 0; army < 4; army++ {
+			n := int(oo.Word(addr(w.force + uint32(army*22+10))))
+			for team := 0; team < n; team++ {
+				rec := w.unit + uint32((army*10+team)*42)
+				var leaders []battle.Leader
+				for pos := 0; pos < 10; pos++ {
+					idx := int(int16(oo.Word(addr(rec + uint32(pos*2)))))
+					if idx < 0 {
+						continue
+					}
+					g := genBase + uint32(idx*30)
+					leaders = append(leaders, battle.Leader{
+						Index: idx, Intel: oo.Byte(addr(g + 9)), War: oo.Byte(addr(g + 10)),
+						Soldiers: int(oo.Word(addr(g + 22))),
+					})
+				}
+				u := &battle.Unit{Side: toSide[army], Formation: battle.Formation(team), Leaders: leaders}
+				if got, want := u.Soldiers(), int(oo.Word(addr(rec+30))); got != want {
+					t.Errorf("原版軍力 %d 隊伍 %d 的逐將領兵力和 %d，部隊欄是 %d", army, team, got, want)
+				}
+				if got, want := u.Ability(), int(oo.Word(addr(rec+32))); got != want {
+					t.Errorf("原版軍力 %d 隊伍 %d 的重算綜合能力 %d，部隊欄是 %d", army, team, got, want)
+				}
+				units = append(units, u)
+			}
+		}
+
+		model = battle.New(battle.Setup{
+			Field: battle.Generate(battle.Params{Prefecture: 1, LandValue: 100}),
+			Seed:  fixedSeed,
+		})
+		model.Units = units
+		model.Rice[battle.MainDefender] = int(oo.Word(addr(w.force + 0*22 + 8)))
+		model.Rice[battle.MainAttacker] = int(oo.Word(addr(w.force + 2*22 + 8)))
+		// Battle 的一般亂數是 xorshift32，原版是 MSC LCG；相同 seed 數字
+		// 不代表相同骰序。這裡明示供應已由 rand oracle 驗過的原版序列，
+		// 只比較同一規則在同一受控亂數輸入下的狀態轉移。
+		seed := fixedSeed
+		model.AutoResolveAIWithRoll(func(n int) int {
+			var out int
+			seed, out = game.MSCRand(seed)
+			return out % n
+		})
+		for _, u := range model.Units {
+			for _, l := range u.Leaders {
+				wantSoldiers[l.Index] = l.Soldiers
+			}
+		}
+	})
+
+	// `0x1fb26` 緊接在傷亡寫回 `0x1f6fe` 之後；此刻尚未開始戰後安置。
+	o.OnCall(addr(0x1fb26), func(oo *oracle.Oracle) {
+		if compared || model == nil || !wOK {
+			return
+		}
+		compared = true
+		winner := int(int16(oo.Word(addr(w.won))))
+		if got, want := winner == 2, model.AttackerWon; got != want {
+			t.Errorf("勝方不同：原版勝方軍力=%d，remake 攻方勝=%v", winner, want)
+		}
+		if dailyCalls != model.Day {
+			t.Errorf("結算日數不同：原版呼叫每日結算 %d 次，remake 在第 %d 天結束", dailyCalls, model.Day)
+		}
+		if dailyCalls <= 20 || model.Day <= 20 {
+			t.Errorf("第 21 天以前不可能進傷亡段：原版=%d remake=%d",
+				dailyCalls, model.Day)
+		}
+		for idx, want := range wantSoldiers {
+			got := int(oo.Word(addr(genBase + uint32(idx*30+22))))
+			if got != want {
+				t.Errorf("人物 %d 戰後兵力：原版 %d，remake %d", idx, got, want)
+			}
+		}
+		t.Logf("固定 seed=%#08x；第 %d 天結束，勝方軍力=%d，逐將領比較 %d 筆",
+			fixedSeed, dailyCalls, winner, len(wantSoldiers))
+	})
+
+	const settle = 120_000_000
+	for month := 1; month <= 3 && !compared; month++ {
+		for p := 1; p <= state.PrefectureCount; p++ {
+			o.SetWord(addr(staBase+uint32(p*176+18)), 20000)
+			o.SetWord(addr(staBase+uint32(p*176+20)), 30000)
+		}
+		for _, k := range []string{"4\r", "4\r", "Y"} {
+			o.Drain()
+			o.PressScan(k)
+			if err := o.Run(settle); err != nil {
+				t.Fatalf("第 %d 個月送 %q 時停止：%v", month, k, err)
+			}
+			if compared {
+				break
+			}
+		}
+	}
+	if !compared {
+		t.Fatal("三個月內沒有完成任何一場電腦對電腦戰役")
 	}
 }

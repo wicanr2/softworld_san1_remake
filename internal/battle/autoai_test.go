@@ -18,12 +18,33 @@ func TestAutoResolveAIStrongerAttackerWins(t *testing.T) {
 	if !b.AttackerWon {
 		t.Errorf("八千打五百，攻方應該贏；紀錄：%v", b.Log)
 	}
+	if b.Day <= 20 {
+		t.Errorf("第 %d 天就因削兵結束；原版第 21 天以前不可能進傷亡段", b.Day)
+	}
 	if n := b.Units[1].Soldiers(); n != 0 {
 		t.Errorf("守方潰散之後還剩 %d 人，應該是 0", n)
 	}
 	// 贏的那一方也折損——存活比例是「結束時的戰力 ÷ 開場戰力」。
 	if n := b.Units[0].Soldiers(); n >= 8000 {
 		t.Errorf("攻方一個人都沒折損（%d），原版贏的那一方也要乘存活比例", n)
+	}
+}
+
+// TestAutoResolveAIUsesTheLateCampaignGate 以明示骰序釘住比較方向：
+// RND(11)=0 時，第 20 天仍不能削兵，第 21 天才可以。
+func TestAutoResolveAIUsesTheLateCampaignGate(t *testing.T) {
+	b := arena(flat(Plain))
+	b.Rice = [sideCount]int{MainAttacker: 30000, MainDefender: 30000}
+	place(b, MainAttacker, Vanguard, FromOffset(2, 2), lead("攻", 90, 90, 8000))
+	place(b, MainDefender, Vanguard, FromOffset(5, 5), lead("守", 30, 30, 500))
+	b.AutoResolveAIWithRoll(func(int) int { return 0 })
+
+	if !b.Over || !b.AttackerWon {
+		t.Fatalf("第 21 天進傷亡段後攻方應勝；Over=%v 攻方勝=%v 紀錄=%v",
+			b.Over, b.AttackerWon, b.Log)
+	}
+	if b.Day != 21 {
+		t.Errorf("固定 RND(11)=0 時在第 %d 天結束，應為第 21 天", b.Day)
 	}
 }
 

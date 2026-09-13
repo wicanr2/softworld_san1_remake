@@ -18,7 +18,7 @@ package battle
 //
 //	每天：
 //	  天數 % 3 == 0：兩邊各按自己的戰力吃糧（戰力 × 0.01），糧盡的一方敗
-//	  天數 <= RND(11) + 20：兩邊同時互相削減戰力
+//	  天數 > RND(11) + 20：兩邊同時互相削減戰力
 //	      新守方 ＝ max(0, 守方 − 攻方 × 攻方品質)
 //	      新攻方 ＝ max(0, 攻方 − 守方 × 守方品質)
 //	  守方戰力歸零 → 攻方勝；攻方戰力歸零 → 守方勝
@@ -32,7 +32,18 @@ package battle
 // **四個軍力都乘**，贏的那一方也會折損；同一方的所有部隊共用一個比例。
 // 原版接著把每個人的所在郡清成 0 再重新安置，remake 這一邊的安置在
 // `game.settle`，所以這裡不動所在郡。
-func (b *Battle) AutoResolveAI() {
+func (b *Battle) AutoResolveAI() { b.autoResolveAI(b.roll) }
+
+// AutoResolveAIWithRoll 讓可重播的 oracle 明示提供每次 RND(n) 的結果。
+// 正式遊戲使用 AutoResolveAI；這個入口只隔離亂數器差異，不另做一套規則。
+func (b *Battle) AutoResolveAIWithRoll(roll func(int) int) {
+	if roll == nil {
+		roll = b.roll
+	}
+	b.autoResolveAI(roll)
+}
+
+func (b *Battle) autoResolveAI(roll func(int) int) {
 	if b.Over {
 		return
 	}
@@ -93,9 +104,9 @@ func (b *Battle) AutoResolveAI() {
 				return
 			}
 		}
-		// 每天重擲一次「這一仗還撐不撐得住」的門檻（`0x1f5d8`）：
-		// 打過 20–30 天之間的一個亂數之後就不再互相削減了。
-		if b.Day <= b.roll(11)+20 {
+		// 每天重擲一次「今天是否開始互相削兵」的門檻（`0x1f5d8`）：
+		// 門檻落在第 20–30 天，只有當日已超過門檻才進傷亡段。
+		if b.Day > roll(11)+20 {
 			nd, na := def-att*qa, att-def*qd
 			if nd < 0 {
 				nd = 0

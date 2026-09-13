@@ -10,6 +10,10 @@ remake 把它切成兩層：`internal/game` 是戰略層（誰打誰、贏了誰
 被擒的將領怎麼處置），`internal/battle` 是戰術層（主戰場上的三十天）。
 兩層的接縫在 `internal/game/tactical.go`。
 
+四個參戰郡都沒有玩家時另走原版的電腦對電腦快速結算，不建立玩家可操作的
+戰術回合；其每日門檻、糧草、勝負及傷亡契約見 `docs/spec/017`。這條路的
+`AutoResolveAI` 與下文「玩家不看戰術畫面」所用的 `Auto()` 不是同一功能。
+
 ## 1. 戰略層
 
 `internal/game/battle.go`。照手冊的規則：
