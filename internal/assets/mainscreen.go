@@ -247,7 +247,7 @@ func (im *Image) FloodFill(x, y int, to byte) int {
 // 那是畫布設成 350 造成的，不是原版的行為（`docs/spec/006`）。
 //
 // 不足 100% 的四張都是「圖上面還寫了東西」：按鈕與直牌上有字，
-// 小飾框裡那 8×12 格是一段動畫（同一台原版連拍兩張就會不同）。
+// 小飾框裡那 8×16 格是 `CURA0`～`CURA5` 的動畫（`docs/spec/005` §6.1）。
 var menuScreenPieces = []struct {
 	Name string
 	X, Y int
@@ -292,6 +292,68 @@ func MenuScreen(data3 *Container) (*Image, error) {
 		dst.Blit(im, p.X, p.Y)
 	}
 	return dst, nil
+}
+
+const (
+	// MenuOrnamentX／Y 是 `CURA*` 在主選單右下小飾框裡的位置。
+	MenuOrnamentX = 592
+	MenuOrnamentY = 328
+	// MenuOrnamentFrameCount 是原版 `CURA0`～`CURA5` 的六格循環。
+	MenuOrnamentFrameCount = 6
+)
+
+// MenuScreenFrames 依原版遮罩合成主選單小飾框的六個畫格。
+//
+//	目的像素 = (MENU3 背景 AND CURAnM) OR CURAn
+//
+// `CURA*` 與 `CURA*M` 都是 DATA1 的 8×16 四平面 IMG；遮罩只能含 0／15。
+// 播放順序與週期的動態證據見 `docs/spec/005` §6.1。
+func MenuScreenFrames(data1, data3 *Container) ([MenuOrnamentFrameCount]*Image, error) {
+	var out [MenuOrnamentFrameCount]*Image
+	base, err := MenuScreen(data3)
+	if err != nil {
+		return out, err
+	}
+	for frame := range out {
+		load := func(name string) (*Image, error) {
+			i, ok := data1.ByName(name)
+			if !ok {
+				return nil, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
+			}
+			im, err := DecodeImage(data1.Data(i))
+			if err != nil {
+				return nil, fmt.Errorf("assets: 解 %s：%w", name, err)
+			}
+			if im.W != 8 || im.H != 16 {
+				return nil, fmt.Errorf("assets: %s 是 %d×%d，應為 8×16", name, im.W, im.H)
+			}
+			return im, nil
+		}
+		name := fmt.Sprintf("CURA%d.IMG", frame)
+		maskName := fmt.Sprintf("CURA%dM.IMG", frame)
+		sprite, err := load(name)
+		if err != nil {
+			return out, err
+		}
+		mask, err := load(maskName)
+		if err != nil {
+			return out, err
+		}
+		im := base.Clone()
+		for y := 0; y < sprite.H; y++ {
+			for x := 0; x < sprite.W; x++ {
+				m := mask.At(x, y)
+				if m != 0 && m != 15 {
+					return out, fmt.Errorf("assets: %s 在 (%d,%d) 的遮罩色號是 %d，應為 0 或 15",
+						maskName, x, y, m)
+				}
+				old := im.At(MenuOrnamentX+x, MenuOrnamentY+y)
+				im.Set(MenuOrnamentX+x, MenuOrnamentY+y, (old&m)|sprite.At(x, y))
+			}
+		}
+		out[frame] = im
+	}
+	return out, nil
 }
 
 // MenuButtons 是六個按鈕的左上角，順序與原版的編號相同

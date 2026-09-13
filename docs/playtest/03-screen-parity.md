@@ -249,8 +249,8 @@ Y              確認
 
 remake 這一側的閘門是 `internal/ui` 的 `TestMenuItemLayoutMatchesTheOriginal`
 （每個字落在原版的哪一格）、`TestMenuLabelIsDoubleWidth`、
-`TestTitleScreenMatchesTheOriginal`（扣掉字與動畫那一格之後 **245,170 點
-逐點相同**）。
+`TestTitleScreenMatchesTheOriginal`（扣掉自建字模後逐點比較，包含
+`CURA5` 小飾框畫格）。
 
 ### remake 差異
 
@@ -258,6 +258,5 @@ remake 這一側的閘門是 `internal/ui` 的 `TestMenuItemLayoutMatchesTheOrig
 |---|---|
 | 字模不同 | remake 自建字庫，不內嵌任何原版字模（`CLAUDE.md` §3.3）|
 | 選到的那一項畫白色 | 原版沒有選取記號（六項同一個黃，靠按數字鍵選）；remake 支援上下鍵移動，沒有記號看不出停在哪一項 |
-| 小飾框裡不畫動畫 | 那段動畫是什麼還沒解出來 |
 | 疊清單時直牌仍寫「主選擇單」 | 原版會換成那一層的名字（實測按下「載入舊進度」之後變成「載入進度」）；remake 的清單標題是多語系的，直排放不下英日 |
 | 最上面兩個角落 | 原版 (0,0) 與 (639,0) 是黑的（兩個實作一致），remake 那兩點畫底色 |

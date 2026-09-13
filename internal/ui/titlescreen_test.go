@@ -116,8 +116,8 @@ func TestMenuLabelIsDoubleWidth(t *testing.T) {
 
 // TestTitleScreenMatchesTheOriginal 把整張主選單對回原版。
 //
-// 對不上的只准是**字的形狀**（remake 自建字庫，`CLAUDE.md` §3.3）與
-// 右下角那格動畫；框、牌子、底色都要逐點相同。
+// 對不上的只准是**字的形狀**（remake 自建字庫，`CLAUDE.md` §3.3）；
+// 框、牌子、底色與右下角動畫畫格都要逐點相同。
 func TestTitleScreenMatchesTheOriginal(t *testing.T) {
 	fh, err := os.Open("../../workplace/shots/open/open-06.png")
 	if err != nil {
@@ -128,13 +128,14 @@ func TestTitleScreenMatchesTheOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, c3 := artContainers(t)
-	ts, err := NewTitleScreen(c3)
+	c1, c3 := artContainers(t)
+	ts, err := NewTitleScreen(c3, c1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := NewCanvasPx(assets.ScreenW, assets.ScreenH, testFace(t))
-	DrawTitle(c, ts, -1)
+	// 這張原版收據停在 CURA5；其他五格由 ornament oracle 逐格驗。
+	DrawTitleFrame(c, ts, -1, 5)
 	inText := func(x, y int) bool {
 		for _, w := range originalMenuInk {
 			if x >= w.x0 && x <= w.x1 && y >= w.y0 && y <= w.y1 {
@@ -143,10 +144,6 @@ func TestTitleScreenMatchesTheOriginal(t *testing.T) {
 		}
 		w := originalLabelInk
 		if x >= w.x0 && x <= w.x1 && y >= w.y0 && y <= w.y1 {
-			return true
-		}
-		// 右下角小飾框裡那一格是動畫，同一台原版連拍兩張就不同。
-		if x >= 590 && x <= 601 && y >= 328 && y <= 344 {
 			return true
 		}
 		// 最上面兩個角落原版是黑的（dosgolem 與 DOSBox-X 一致，
@@ -170,8 +167,8 @@ func TestTitleScreenMatchesTheOriginal(t *testing.T) {
 		}
 	}
 	if bad != 0 {
-		t.Errorf("扣掉字與那格動畫之後還有 %d／%d 點對不上", bad, n)
+		t.Errorf("扣掉字之後還有 %d／%d 點對不上", bad, n)
 	} else {
-		t.Logf("扣掉字與那格動畫之後 %d 點逐點相同", n)
+		t.Logf("扣掉字之後 %d 點逐點相同（含 CURA5 小飾框）", n)
 	}
 }

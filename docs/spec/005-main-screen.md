@@ -179,7 +179,41 @@ remake 從那一點做四方向區域填色，會停在地圖的黑色邊界上�
 **成因還沒解**（`L1`；remake 照抄行為）。
 
 `MENU3` 是右下角的小飾框，裡面那一格（`x 592..599, y 329..343`）
-原版放了一段動畫，同一台原版連拍兩張就會不同；那段動畫是什麼還沒解出來。
+使用 `DATA1` 的 `CURA0.IMG`～`CURA5.IMG` 與同名 `M` 遮罩播放動畫。
+
+### 6.1 小飾框動畫（`CONFORMED`）
+
+來源不是 `MENU3` 的垂直切片、程式畫橢圓或色盤循環。六個完整畫格的活動
+像素分別唯一命中 `CURA0`～`CURA5`；連遮罩一起合成時，對應原版畫面的
+40×41 小飾框逐像素完全相同：
+
+```text
+目的像素 = (MENU3 背景像素 AND CURAnM 像素) OR CURAn 像素
+位置     = (592, 328)，尺寸 8×16
+順序     = CURA0 → CURA1 → CURA2 → CURA3 → CURA4 → CURA5 → CURA0
+```
+
+`TestZZMenuOrnamentFrames` 以行為路標停在主選單掃描碼迴圈，再以每 10,000
+道指令取樣 1,000 次：每格完整停留 25–26 個樣本，一輪的 `CURA0` 起點間隔
+為 155 個樣本，即約 1,550,000 道指令。少量樣本落在先畫遮罩、再畫圖像的
+中間態，不得冒充第七格。
+
+原版指令數不是可攜的 wall-clock。remake 以每 8 次 Ebitengine 更新換一格
+（60 TPS 時約 7.5 格／秒）保存清楚可見的同序循環；這個節拍只屬畫面呈現，
+不冒稱不同 DOS 主機上的逐毫秒 parity。無 `DATA1` 時仍保留靜態 `MENU3`
+退路，不因玩家缺素材而拒絕開機。
+
+驗證收據（2026-09-14）：
+
+- `TestZZMenuOrnamentFrames`：PASS；1,000 次高密度取樣、六格來源與相鄰
+  順序逐點驗證，一輪固定約 1,550,000 道原版指令。
+- `TestTitleScreenMatchesTheOriginal`：PASS；扣掉自建字模後 245,374 點
+  逐點相同，包含 `CURA5` 小飾框。
+- `TestDosgolemMenuMatchesDosboxX`：PASS；小飾框外 261,036 點逐點相同；
+  dosgolem 命中 `CURA5`，DOSBox-X 收據落在遮罩／圖像搬運中間態。
+- 掛入唯讀原版素材執行 `go test ./...`：PASS。
+
+### 6.2 六個選項
 
 六個選項照原版：
 
@@ -200,11 +234,12 @@ remake 從那一點做四方向區域填色，會停在地圖的黑色邊界上�
 y=242、行距 24。
 
 基準畫面是 `TestZZOriginalOpeningScreens` 的第 6 步，另外拿 DOSBox-X
-跑一次原版交叉驗證（`tools/dosboxx.sh`，兩個實作扣掉動畫那一格之後
-逐點相同）。比對在 `TestMenuScreenMatchesTheOriginal`、
+跑一次原版交叉驗證（`tools/dosboxx.sh`）：dosgolem 小飾框逐點命中
+`CURA5`，DOSBox-X 截到搬運中間態；兩者其餘畫面逐點相同。完整六相位由
+高密度 dosgolem oracle 驗證。比對在 `TestMenuScreenMatchesTheOriginal`、
 `TestDosgolemMenuMatchesDosboxX` 與 `internal/ui` 的三支主選單測試。
 
-### 6.1 六個選項接上行為
+### 6.3 六個選項接上行為
 
 `cmd/san1` 開機是**三英圖 → 開場詞 → 主選單 → 遊戲**（`-title=false`
 可以跳過，給截圖與腳本用；`-load`／`-orig-load` 也直接進遊戲）。

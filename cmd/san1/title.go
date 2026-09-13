@@ -7,6 +7,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/menu"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
@@ -14,13 +15,14 @@ import (
 // startTitle 停到主選單。
 func (a *app) startTitle(ts *ui.TitleScreen, m *menu.Screen) {
 	a.titleArt, a.menuScreen = ts, m
+	a.titleAnimTick, a.titleAnimFrame = 0, 0
 	a.dirty = true
 }
 
 // drawTitle 畫主選單那一層。
 func (a *app) drawTitle() {
 	if a.menuScreen.Stage() == menu.Menu {
-		ui.DrawTitle(a.canvas, a.titleArt, a.menuScreen.Sel())
+		ui.DrawTitleFrame(a.canvas, a.titleArt, a.menuScreen.Sel(), a.titleAnimFrame)
 		return
 	}
 	ui.DrawTitleList(a.canvas, a.titleArt, a.menuScreen.Title(),
@@ -30,6 +32,13 @@ func (a *app) drawTitle() {
 // updateTitle 收主選單的按鍵。
 func (a *app) updateTitle() error {
 	m := a.menuScreen
+	if m.Stage() == menu.Menu {
+		a.titleAnimTick++
+		if a.titleAnimTick%ui.TitleOrnamentTicksPerFrame == 0 {
+			a.titleAnimFrame = (a.titleAnimFrame + 1) % assets.MenuOrnamentFrameCount
+			a.dirty = true
+		}
+	}
 	switch {
 	case inpututil.IsKeyJustPressed(ebiten.KeyEscape):
 		m.Back()

@@ -78,6 +78,8 @@ type app struct {
 	// titleArt 是那一張的底圖。
 	menuScreen *menu.Screen
 	titleArt   *ui.TitleScreen
+	// titleAnimTick／Frame 驅動主選單 `CURA0`～`CURA5` 的六格循環。
+	titleAnimTick, titleAnimFrame int
 
 	// c2 是 `DATA2`：主選單要重讀劇本，得留著。
 	c2 *assets.Container
@@ -801,7 +803,7 @@ func (a *app) Draw(dst *ebiten.Image) {
 // paint 把目前的狀態畫到畫布上。
 //
 // 從 Draw 抽出來是為了**轉場**：拉幕要先有「新畫面」才有東西可以露出來
-//（`docs/spec/010`），而那張圖就是「照現在的狀態畫一次」。
+// （`docs/spec/010`），而那張圖就是「照現在的狀態畫一次」。
 func (a *app) paint() {
 	{
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
@@ -987,13 +989,13 @@ func main() {
 	var titlePic *assets.Image
 	if *useArt {
 		if c3, err := openContainer(*root, "DATA3"); err == nil {
-			if titleScreen, err = ui.NewTitleScreen(c3); err != nil {
+			// `DATA1` 給的是小飾框動畫、州郡填色圖樣與主戰場素材。
+			// 讀不到時主選單仍以靜態 MENU3 啟動，其餘各自退回文字版面。
+			c1, _ := openContainer(*root, "DATA1")
+			if titleScreen, err = ui.NewTitleScreen(c3, c1); err != nil {
 				fmt.Fprintln(os.Stderr, "san1：主選單的素材讀不進來：", err)
 				titleScreen = nil
 			}
-			// `DATA1` 給的是州郡的填色圖樣與主戰場的素材；讀不到就
-			// 各自退回 remake 自己的版面，主畫面照樣接得上。
-			c1, _ := openContainer(*root, "DATA1")
 			if art, err = ui.NewArtScreen(c3, c1); err != nil {
 				fmt.Fprintln(os.Stderr, "san1：原版素材讀不進來，改用文字版面：", err)
 				art = nil

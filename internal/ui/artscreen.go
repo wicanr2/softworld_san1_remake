@@ -2,10 +2,10 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 	"image"
 	"image/color"
 	"image/draw"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 
@@ -89,6 +89,7 @@ func (a *ArtScreen) Portrait(n int) *assets.Image {
 	}
 	return im
 }
+
 // 原版畫面上的位置（像素），量自 `workplace/shots/orig-main.png`
 // （`docs/spec/005` §6.2）。**版面是按像素排的不是按格**，
 // 而且幾列之間留了空行，所以每一列的 y 都是逐列量的不是等距算的。
@@ -147,7 +148,6 @@ var (
 	artInkGov   = color.RGBA{0x55, 0xFF, 0x55, 0xFF} // 10
 	artInkMsg   = color.RGBA{0xFF, 0xFF, 0x55, 0xFF} // 14
 )
-
 
 // artFactionColour 是**沒有原版素材時**的退路：一組看得出區別的色號。
 //
@@ -530,7 +530,7 @@ func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hin
 // drawArtStatus 畫上面板的郡的資料（原版的「0.狀態」，`docs/spec/005` §2.1）。
 //
 // 位置與字色照原版量；**槽位也是原版的**：左欄標籤 ＋ 靠右的數值共 12 格
-//（424–520）、右欄 10 格（536–616）。中文的欄名照原版，英日文用一組
+// （424–520）、右欄 10 格（536–616）。中文的欄名照原版，英日文用一組
 // 面板專用的短欄名（`stat.*`）才塞得進（`TestArtStatusFitsEveryLanguage`）。
 func drawArtStatus(c *Canvas, g *game.State, p *game.Prefecture, sel int) {
 	// 第一列：郡名是 32×32 的雙倍字，州名與編號在它右邊。
@@ -675,22 +675,33 @@ const (
 	artProvWideCols = (artProvX - artNameX) / CellW
 )
 
-
 // TitleScreen 是主選單畫面（原版開機後的那一張）。
 //
 // 圖是原版的（`assets.MenuScreen`），字是 remake 自己的字庫。
 // 六個項目的文字照原版的選單抄（`docs/re/02` §3 的開機畫面）。
 type TitleScreen struct {
-	bg *assets.Image
+	bg     *assets.Image
+	frames [assets.MenuOrnamentFrameCount]*assets.Image
 }
 
-// NewTitleScreen 從 `DATA3` 拼出主選單畫面。
-func NewTitleScreen(data3 *assets.Container) (*TitleScreen, error) {
+// TitleOrnamentTicksPerFrame 是 remake 的可攜節拍；60 TPS 時每格約 0.13 秒。
+// 原版只量得到每格 25–26 萬道指令，不能跨 DOS 主機換成唯一 wall-clock。
+const TitleOrnamentTicksPerFrame = 8
+
+// NewTitleScreen 從 `DATA3` 拼出主選單畫面；有傳 `DATA1` 時再接上
+// `CURA0`～`CURA5` 的小飾框動畫。variadic 保留無 DATA1 的靜態退路。
+func NewTitleScreen(data3 *assets.Container, data1 ...*assets.Container) (*TitleScreen, error) {
 	bg, err := assets.MenuScreen(data3)
 	if err != nil {
 		return nil, err
 	}
-	return &TitleScreen{bg: bg}, nil
+	ts := &TitleScreen{bg: bg}
+	if len(data1) > 0 && data1[0] != nil {
+		if ts.frames, err = assets.MenuScreenFrames(data1[0], data3); err != nil {
+			return nil, err
+		}
+	}
+	return ts, nil
 }
 
 // TitleItems 是六個選項的原文。
@@ -707,8 +718,17 @@ func TitleItems() [6]string {
 // **反白是 remake 自己加的**：remake 支援上下鍵移動，沒有記號就看不出
 // 停在哪一項，所以選到的那一項改畫白色。
 func DrawTitle(c *Canvas, ts *TitleScreen, sel int) {
+	DrawTitleFrame(c, ts, sel, 0)
+}
+
+// DrawTitleFrame 畫指定的 `CURA0`～`CURA5` 小飾框畫格。
+func DrawTitleFrame(c *Canvas, ts *TitleScreen, sel, frame int) {
+	bg := ts.bg
+	if frame >= 0 && frame < len(ts.frames) && ts.frames[frame] != nil {
+		bg = ts.frames[frame]
+	}
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		ts.bg.RGBA(), image.Point{}, draw.Src)
+		bg.RGBA(), image.Point{}, draw.Src)
 	label := color.RGBA{0x55, 0xFF, 0xFF, 0xFF}
 	ink := color.RGBA{0xFF, 0xFF, 0x55, 0xFF}
 	hot := color.RGBA{0xFF, 0xFF, 0xFF, 0xFF}
@@ -875,7 +895,7 @@ func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte,
 // 原版那幾層跑在開機鏈的第二層（`DATA0.GRP`），主程式的碼段 dump
 // 涵蓋不到，所以**版面是 remake 自己排的**：置中的框、一行一項。
 // TitleListCols 是開局選單一項最多幾格；再長的會被截掉
-//（`internal/menu` 的 `TestTitleListsFitEveryLanguage` 盯著）。
+// （`internal/menu` 的 `TestTitleListsFitEveryLanguage` 盯著）。
 const TitleListCols = 40
 
 func DrawTitleList(c *Canvas, ts *TitleScreen, title string, items []string, sel int) {

@@ -266,7 +266,11 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		if err != nil {
 			return fmt.Errorf("主選單要讀 DATA3：%w", err)
 		}
-		ts, err := ui.NewTitleScreen(c3)
+		c1, err := openContainer(root, "DATA1")
+		if err != nil {
+			return fmt.Errorf("主選單動畫要讀 DATA1：%w", err)
+		}
+		ts, err := ui.NewTitleScreen(c3, c1)
 		if err != nil {
 			return err
 		}
