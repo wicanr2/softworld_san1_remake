@@ -12,6 +12,23 @@ import (
 // `TestZZOriginalMainScreen` 產（要設 `SAN1_SHOTS`）。沒有就 skip。
 const shotPath = "../../workplace/shots/orig-main.png"
 
+func TestFillPatternsUseOriginalRuntimeFactionOrder(t *testing.T) {
+	fills, err := FillPatterns(container(t, "DATA1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// `EGAFILL.PAL` 檔案前三塊是 12、9、10；原版載入後供勢力
+	// 0、1、2 使用的順序則是 10、9、12。長沙正是唯一暴露 0↔2
+	// 轉置的基準州郡。
+	for faction, want := range []byte{10, 9, 12, 14} {
+		for i, got := range fills[faction] {
+			if got != want {
+				t.Fatalf("勢力 %d 的圖樣[%d]=%d，要純色 %d", faction, i, got, want)
+			}
+		}
+	}
+}
+
 func loadShot(t *testing.T) image.Image {
 	t.Helper()
 	f, err := os.Open(shotPath)

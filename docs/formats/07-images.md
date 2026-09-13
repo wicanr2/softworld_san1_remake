@@ -148,17 +148,44 @@ tools/go.sh run ./cmd/san1assets -root /path/to/三國演義 -out workplace/asse
 | 6 | 2／15 | | 14 | 15／13 |
 | 7 | 2／6 | | 15 | 1／11 |
 
+⚠ **檔案區塊序號不是原版執行期的勢力槽號。** 原版載入後只有槽 0、2
+互換，其餘同號：
+
+```
+勢力槽       0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+檔案區塊     2  1  0  3  4  5  6  7  8  9  10 11 12 13 14 15
+```
+
+所以勢力 2 的長沙雖然以「執行期槽 2」繪製，取到的其實是檔案區塊 0
+（純色 12，淺紅）；直接拿檔案區塊 2（純色 10，淺綠）才會錯。先前所謂
+「原版畫圖樣 0、所屬卻是 2」混用了檔案與執行期兩套索引，並不是長沙
+特例。
+
 **網點對齊的是畫面座標不是區塊**：填色時取 `pat[(y mod 8)×8 + x mod 8]`，
 所以相鄰的兩塊接得起來。拿單一顏色去畫，十六個勢力裡有十二個會錯。
 
 驗證：原版剛載完第一個進度的主畫面（`orig-loaded.png`），把 remake
-從同一個進度算出來的填色**逐格**比——35 個有主的郡裡 34 個全中
-（`internal/ui` 的 `TestPrefectureFillsMatchTheOriginal`）。
+從同一個進度算出的填色逐格比，35 個有主州郡全部相符；42 郡依原順序
+合成的 32,987 個填色像素也是 **0 個不同**
+（`TestPrefectureFillsMatchTheOriginal`、
+`TestPrefectureFillsInOrderMatchTheOriginal`）。原版 oracle 另將 16 個
+執行期四平面圖樣逐一解碼回檔案區塊，釘住上述完整映射
+（`TestZZTraceMainMapFillCalls`）。
 
-**還沒解的一個**：長沙（勢力 2 的本據）原版畫的是圖樣 0（純淺紅），
-而它的所屬寫的是 2（圖樣 2 是純淺綠），803 格逐格都不同。
-排除過玩家顏色、本據顏色、「只有一個郡的勢力」、太守與君主所屬不一致
-四種解釋。
+證據層級：**已證實**。輸入 `AA.EXE` SHA-256
+`474780e5be697b3b4899da5e0dbadd2f327e0bbe7e56306ac3b732a15fc124ca`；
+`DATA1.GRP`／`.IDX`／`.NAM` 依序為
+`958f44fe45e38624401af55f033ffb037bd3211a037eadbce90f827637d977a5`、
+`9b89f9bdab4109a6ae35203bd0f787c9f7fdb977a81e5c317d75642de8110b8d`、
+`8baf9d9a0b6fbe10ec035da221e1a14c3121abd6686b6d3ebc44a1883bab10b9`。
+工具為 dosgolem 與 IDA Pro 9.4（`ida-pro-9.4-idapython:locked-v1`，image
+digest `sha256:6f6d59af49d0008c4109a5295b5f374bdc007e2d1ab28cb9de08779584de2780`）。
+IDA 的 raw DB 直接以 **runtime linear**
+位址映射：逐郡入口 `0x32FE6` 在 `0x33004` 讀
+`master-table-size + 30` 的所屬，`0110:2139`（linear `0x03239`）遍歷
+預編碼水平線段，`0110:1DFC`（linear `0x02F0C`）以
+`0x098E + slot×32 + (y mod 8)×4` 選取四個 EGA plane。長沙傳入
+`(郡 31, 槽 2)`，803 個線段像素沒有被後畫州郡覆蓋。
 
 ## `8x8PAT*`／`8x8AND*`：底紋與遮罩
 

@@ -350,12 +350,19 @@ func (p *FillPattern) At(x, y int) byte {
 	return p[(y%FillPatternSize)*FillPatternSize+x%FillPatternSize]
 }
 
-// FillPatterns 解 `EGAFILL.PAL`：十六個勢力各一塊 8×8 的填色圖樣。
+// fillPatternFileIndexByFaction 把勢力槽轉成 `EGAFILL.PAL` 的檔案區塊。
+// 原版載入後的執行期表只有槽 0、2 對調，其餘同號；這份映射由
+// `internal/parity.TestZZTraceMainMapFillCalls` 對原版 16 槽逐一解開四個
+// EGA plane 後釘住，不能把檔案區塊序號直接當勢力槽。
+var fillPatternFileIndexByFaction = [...]int{
+	2, 1, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+}
+
+// FillPatterns 解 `EGAFILL.PAL`，並排成原版執行期使用的十六個勢力槽。
 //
 // 檔案 1024 byte ＝ 16 × 64，一格一個位元組、值就是 EGA 的顏色索引。
-// 前四個是純色（12、9、10、14），其餘十二個是兩色的 2×2 網點
-// （例如第五個是 13／14 交錯）——所以**填色不是「一個勢力一個顏色」**，
-// 拿單一顏色去畫，十六個勢力裡有十二個會錯。
+// 檔案前四塊是純色（12、9、10、14），但原版勢力槽順序是
+// （10、9、12、14）；其餘十二個同號，且多為兩色網點。
 func FillPatterns(data1 *Container) ([16]FillPattern, error) {
 	var out [16]FillPattern
 	i, ok := data1.ByName("EGAFILL.PAL")
@@ -367,8 +374,8 @@ func FillPatterns(data1 *Container) ([16]FillPattern, error) {
 		return out, fmt.Errorf("assets: EGAFILL.PAL 是 %d bytes，應該是 %d",
 			len(d), len(out)*len(out[0]))
 	}
-	for k := range out {
-		copy(out[k][:], d[k*len(out[k]):])
+	for faction, fileIndex := range fillPatternFileIndexByFaction {
+		copy(out[faction][:], d[fileIndex*len(out[faction]):])
 	}
 	return out, nil
 }

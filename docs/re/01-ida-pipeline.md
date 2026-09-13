@@ -78,3 +78,26 @@ IDA
 要拿到規則層的欄位版面，得先讓原版走到載入 `DATA2`。
 **這一步是前置條件不是可繞過的**——照手冊猜欄位版面會得到自洽、
 通過型別檢查、而且不會報錯的錯誤結構（`CLAUDE.md` §7 第 18 條）。
+
+### 主畫面填色的同次執行窄切片（2026-09-13）
+
+歷史 `OVL.BIN` 只到 linear `0x13EE0`，涵蓋不到這次 MAINMAP 呼叫端；不可
+拿它補猜函式。dosgolem 在同一次載入第一個進度時，從 MAINMAP caller
+`0x14477` 起倒出執行期碼，再用 IDA Pro 9.4 raw DB 直接映射 runtime
+linear 位址。輸入 `AA.EXE` SHA-256 是
+`474780e5be697b3b4899da5e0dbadd2f327e0bbe7e56306ac3b732a15fc124ca`；
+IDA image 是 `ida-pro-9.4-idapython:locked-v1`（digest
+`sha256:6f6d59af49d0008c4109a5295b5f374bdc007e2d1ab28cb9de08779584de2780`）。
+
+| raw dump | SHA-256 | 已證實入口 |
+|---|---|---|
+| `main-screen-code-00b000.bin` | `c586dbb2ff3df7eee5283258c0b928e59476f17835c6d6249c510d193da959a8` | MAINMAP callers `0x14477`–`0x14560` |
+| `main-map-fill-032f00.bin` | `9bfd8de8302218b897bf510b8d1e0a833ba10689f2e860c282789eae88b551a8` | 全圖 `0x32FB8`、逐郡 `0x32FE6` |
+| `main-map-fill-inner-003000.bin` | `097b3a3f6093352fd8bda65c1368bfb040a52ca6d20d359c964f416150a3008f` | 線段串列 `0x03239` |
+| `main-map-fill-primitive-002e00.bin` | `df4a4f5eb7940883188c02bebeb425d91352a45d37a1d27098d9e064ef32a7e0` | 四平面線段原語 `0x02F0C` |
+
+結論等級為**已證實**：逐郡函式讀州郡 offset 30；長沙傳入執行期槽 2；
+16 槽解碼後只見 `EGAFILL.PAL` 檔案區塊 0／2 互換，其餘同號。原始定位、
+bytes、位址空間與自動重跑斷言保留在
+`internal/parity/changsha_oracle_test.go`；語意名稱只供導覽，不取代上述
+原始位址與輸入雜湊。
