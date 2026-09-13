@@ -27,6 +27,14 @@ func TestEraMatchesTheSixScenarios(t *testing.T) {
 	}
 }
 
+// TestFirstScenarioChangesEraAfterOneYear 釘住 Issue #13 用原版 oracle
+// 查證的第一個跨年：中平六年之後是初平元年，不是中平七年。
+func TestFirstScenarioChangesEraAfterOneYear(t *testing.T) {
+	if got := (Date{Year: 190, Month: 1}).Format(ChineseEra); got != "初平元年元月" {
+		t.Fatalf("189 年開局跨年後寫成 %q，原版是「初平元年元月」", got)
+	}
+}
+
 // TestScenarioStartsMatchTheEraTable 釘住六個劇本的起始年與年號表一致。
 func TestScenarioStartsMatchTheEraTable(t *testing.T) {
 	for slot, d := range ScenarioStart {
