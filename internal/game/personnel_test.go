@@ -101,6 +101,8 @@ func TestRecruitBondGate(t *testing.T) {
 	// **牽絆對象效力於招募方**：難度 0，一定成功。
 	g.Prefecture(at).Commanded = false
 	rival.Faction = 0
+	activeBefore := g.ActiveGenerals(at)
+	troopsBefore := g.Troops(at)
 	if err := g.Recruit(at, target.Index, 0); err != nil {
 		t.Fatalf("牽絆對象在自己麾下，登用卻失敗：%v", err)
 	}
@@ -109,6 +111,12 @@ func TestRecruitBondGate(t *testing.T) {
 	}
 	if target.Loyalty == 0 || target.Loyalty > 100 {
 		t.Errorf("新進的忠誠是 %d，應該落在 1..100", target.Loyalty)
+	}
+	if got := g.StoredActiveGenerals(at); got != activeBefore+1 {
+		t.Errorf("登用後現役將快照是 %d，應該是 %d", got, activeBefore+1)
+	}
+	if got := g.Troops(at); got != troopsBefore+target.Soldiers/100 {
+		t.Errorf("登用後兵士快照是 %d，應該是 %d", got, troopsBefore+target.Soldiers/100)
 	}
 }
 

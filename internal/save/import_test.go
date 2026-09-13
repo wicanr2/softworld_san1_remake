@@ -156,4 +156,12 @@ func TestOriginalCustomLord(t *testing.T) {
 	if lord.Name != "，、。" {
 		t.Errorf("君主的姓名是 %q，想要三個造字碼位 A141–A143", lord.Name)
 	}
+	// 第 1 格的 BASEPRO 游標指到玩家郡 41。原版接回月內迴圈時先重整
+	// 守將清單再顯示主命令，所以檔案裡的 0／0 到畫面時已成為 5／1。
+	if got := g.Troops(41); got != 5 {
+		t.Errorf("玩家郡 41 的兵士快照是 %d，原版載入後是 5", got)
+	}
+	if got := g.StoredActiveGenerals(41); got != 1 {
+		t.Errorf("玩家郡 41 的現役將快照是 %d，原版載入後是 1", got)
+	}
 }

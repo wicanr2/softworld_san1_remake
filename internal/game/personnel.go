@@ -221,6 +221,10 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 	if p.Gold < fee {
 		return ErrNoGold
 	}
+	// 原版 `0xce8c` 在檢查 50 人上限前，先把剛建立的守將名單人數寫回
+	// 州郡 offset 22（`0xcec9`）。這裡只刷新人數；兵士要等成功後由
+	// `0xd0a4` 加上新人的兵，不能順手整郡重算。
+	p.activeGenerals = g.ActiveGenerals(prefectureID)
 	if g.ActiveGenerals(prefectureID) >= MaxGeneralsPerPrefecture {
 		return ErrTooManyGens
 	}
@@ -249,6 +253,10 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 	t.Status = state.StatusOfficer
 	t.Rank = state.RankJuniorGeneral
 	t.Loyalty = uint8(clampTo(loyalty, 100))
+	// 成功分支直接維護兩個快照：現役將 +1（`0xd087`），兵士加上
+	// 新人的兵力 ÷ 100（`0xd0a4`）。
+	p.activeGenerals++
+	p.troops += t.Soldiers / 100
 	return nil
 }
 

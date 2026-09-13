@@ -64,35 +64,14 @@ func TestOriginalSaveLoadsIdentically(t *testing.T) {
 	}
 	t.Logf("原版載入第 1 個進度：三張表 %d 個位元組（諸侯 %d／州郡 %d／人物 %d）",
 		total, nMas, nSta, nGen)
-	// **兵士（offset 16）與在職將（offset 22）在存檔裡是快照。**
-	// 原版載入時原封不動搬進記憶體，不從人物表重算——量到進度 1 有
-	// 六個郡的存值與重算結果不同（郡 8 存 149(百)/8 人，重算 133/7）。
-	// remake 一律推導這兩欄（`Soldiers`／`ActiveGenerals`：存一份副本
-	// 就會有兩個真相），走完一個月之後兩邊反而一致（月度對拍 0 個
-	// 位元組）。差別只在「剛載入、還沒動過」的這一刻。
-	//
-	// 這裡把兩欄挑出來單獨報，其餘欄位照樣逐位元組比。
-	cache := 0
-	for q := 0; q < 43; q++ {
-		at := nMas + q*176
-		if orig[at+16] != mine[at+16] || orig[at+17] != mine[at+17] ||
-			orig[at+22] != mine[at+22] {
-			cache++
-			copy(mine[at+16:at+18], orig[at+16:at+18])
-			mine[at+22] = orig[at+22]
-		}
-	}
-	if cache > 0 {
-		t.Logf("兵士與在職將這兩個快照欄位有 %d 個郡與重算的結果不同"+
-			"（已知差異，見上面的註解）", cache)
-	}
-
+	// 兵士（offset 16）與在職將（offset 22）都是原版常式維護的快照。
+	// 這裡不再遮掉它們：驗收是三張表 19,220 bytes 原樣全中。
 	if n := differs8(orig, mine); n != 0 {
 		t.Errorf("原版讀進去的盤面與 remake 讀進去的差 %d 個位元組%s\n%s",
 			n, where(orig, mine, nMas, nSta),
 			byPrefecture(orig, mine, nMas, nSta))
-		// 差的欄位是哪些**值**：這幾欄（兵士、在職將、在野將、所屬、
-		// 主事者）remake 是重算的，原版存的是當時的快照。
+		// 差的欄位是哪些**值**：保留檔案原值，分辨 remake 解錯與原版
+		// 載入時自己改動欄位。
 		// 檔案裡的原始位元組也印一份：這樣分得出「remake 解錯」與
 		// 「原版載入時自己改了它」。
 		var fileSta []byte

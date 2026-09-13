@@ -933,7 +933,7 @@ func TestZZMonthParity(t *testing.T) {
 		g.TurnTick()
 		at := turnSeq[i]
 		// 回合入口先重整這個郡的守將清單（`0x1949e`），兵士欄跟著刷新。
-		g.RefreshTroops(at)
+				g.RefreshGarrison(at)
 		q := g.Prefecture(at)
 		// 照 `0x17471`：先用**重算之前**的所屬決定跳不跳過，再重算
 		// 全部 43 個郡（`0x1e394`），分派器看的是重算之後的那一位。

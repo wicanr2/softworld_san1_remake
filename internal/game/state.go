@@ -106,6 +106,12 @@ type Prefecture struct {
 	// 要問「現在實際有多少兵」用 `State.Soldiers`；要寫回原版的表用這一格。
 	troops int
 
+	// activeGenerals 是州郡 offset 22（現役武將數）的存值。它與 troops
+	// 由同一支「重整守將清單」常式刷新；人物離開之後到下一次重整之前，
+	// 這一格可以故意比人物表舊。規則需要即時人數時用 ActiveGenerals，
+	// 寫回原版表與顯示原版欄位時用 StoredActiveGenerals。
+	activeGenerals int
+
 	Gold int
 	Rice int
 
@@ -458,12 +464,13 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 			Gold:       int(p.Gold), Rice: int(p.Rice),
 			PublicLoyalty: p.PublicLoyalty, LandValue: p.LandValue,
 			FloodRate: p.FloodRate, PriceLevel: p.PriceLevel,
-			Forts:       int(p.Forts),
-			Autonomy:    Autonomy(p.Autonomy),
-			governor:    governorSlot(p.Governor),
-			troops:      int(p.Soldiers),
-			Neighbours:  append([]int(nil), p.Neighbours...),
-			BattleField: append([]byte(nil), p.BattleField...),
+			Forts:          int(p.Forts),
+			Autonomy:       Autonomy(p.Autonomy),
+			governor:       governorSlot(p.Governor),
+			troops:         int(p.Soldiers),
+			activeGenerals: int(p.ActiveGenerals),
+			Neighbours:     append([]int(nil), p.Neighbours...),
+			BattleField:    append([]byte(nil), p.BattleField...),
 		})
 	}
 	for _, s := range sc.Generals() {
@@ -789,15 +796,16 @@ func (g *State) FreeGenerals(prefectureID int) int {
 	return n
 }
 
-// RefreshTroops 是原版的「重整守將清單」對州郡 offset 16 做的那一步
-// （`0x1949e` → `0x1964e`：名單逐人加總兵力，除以 100 寫回去）。
+// RefreshGarrison 是原版的「重整守將清單」（`0x1949e`）：同一份名單
+// 同時寫回州郡 offset 16 的兵士與 offset 22 的現役武將數。
 //
 // **只在原版會重整的時候叫它**：郡回合入口、移防之後的來源與目標郡、
 // 戰役收尾。每次寫盤面都順手重算會讓那一欄變成導出值，而原版的它會
 // 陳舊——差別在「兵搬進來之後、那個郡還沒輪到」的窗口裡看得見。
-func (g *State) RefreshTroops(prefectureID int) {
+func (g *State) RefreshGarrison(prefectureID int) {
 	if p := g.Prefecture(prefectureID); p != nil {
 		p.troops = g.Soldiers(prefectureID) / 100
+		p.activeGenerals = g.ActiveGenerals(prefectureID)
 	}
 }
 
@@ -805,6 +813,15 @@ func (g *State) RefreshTroops(prefectureID int) {
 func (g *State) Troops(prefectureID int) int {
 	if p := g.Prefecture(prefectureID); p != nil {
 		return p.troops
+	}
+	return 0
+}
+
+// StoredActiveGenerals 是州郡 offset 22 的存值；只有原版會寫這一格的
+// 常式才能刷新它，不能在 Tables 裡從人物表偷偷重算。
+func (g *State) StoredActiveGenerals(prefectureID int) int {
+	if p := g.Prefecture(prefectureID); p != nil {
+		return p.activeGenerals
 	}
 	return 0
 }

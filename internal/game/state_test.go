@@ -67,6 +67,39 @@ func TestNewFromScenario1(t *testing.T) {
 	}
 }
 
+// TestGarrisonSnapshotsRefreshTogether 釘住州郡 offset 16／22 是同一個
+// 原版重整邊界維護的快照，不會因人物物件被改動就偷偷跟著序列化。
+func TestGarrisonSnapshotsRefreshTogether(t *testing.T) {
+	g := newGame(t)
+	const at = 8
+	wantActive := g.ActiveGenerals(at)
+	wantTroops := g.Soldiers(at) / 100
+	if got := g.StoredActiveGenerals(at); got != wantActive {
+		t.Fatalf("起點的現役將快照是 %d，即時計數是 %d", got, wantActive)
+	}
+	if got := g.Troops(at); got != wantTroops {
+		t.Fatalf("起點的兵士快照是 %d，即時計數是 %d", got, wantTroops)
+	}
+
+	x := g.Garrison(at)[0]
+	x.Faction = state.NoFaction
+	x.Status = state.StatusAvailable
+	if got := g.StoredActiveGenerals(at); got != wantActive {
+		t.Errorf("人物改動後現役將快照自行變成 %d，應維持 %d", got, wantActive)
+	}
+	if got := g.Troops(at); got != wantTroops {
+		t.Errorf("人物改動後兵士快照自行變成 %d，應維持 %d", got, wantTroops)
+	}
+
+	g.RefreshGarrison(at)
+	if got := g.StoredActiveGenerals(at); got != wantActive-1 {
+		t.Errorf("重整後現役將快照是 %d，應該是 %d", got, wantActive-1)
+	}
+	if got := g.Troops(at); got != g.Soldiers(at)/100 {
+		t.Errorf("重整後兵士快照是 %d，即時計數是 %d", got, g.Soldiers(at)/100)
+	}
+}
+
 // TestPlayerFactionMustExist 釘住「玩家勢力不在的時候要報錯」。
 //
 // **默默改成 0 的話，玩家會在控制別人而畫面上完全看不出來。**

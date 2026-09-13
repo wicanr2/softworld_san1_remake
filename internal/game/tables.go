@@ -130,7 +130,8 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 		put16(rec[staSoldiers:], g.Troops(p.ID))
 		put16(rec[staGold:], p.Gold)
 		put16(rec[staRice:], p.Rice)
-		rec[staActive] = clampByte(g.ActiveGenerals(p.ID))
+		// 現役將與兵士一樣是重整守將清單維護的快照，不在寫檔時重算。
+		rec[staActive] = clampByte(g.StoredActiveGenerals(p.ID))
 		rec[staFree] = clampByte(g.FreeGenerals(p.ID))
 		put16(rec[staAutonomy:], int(p.Autonomy))
 		rec[staForts] = clampByte(p.Forts)

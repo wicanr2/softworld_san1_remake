@@ -113,5 +113,17 @@ func ReadOriginal(c *assets.Container, slot int, ed state.Edition) (*game.State,
 	// 檔案存 5，原版載入之後是 4（`TestOriginalSaveLoadsIdentically`）。
 	// 所屬是從人物表推出來的，存檔裡那一格是寫檔當下的快照。
 	g.RecomputeOwners()
+	// 讀檔後原版立刻從 BASEPRO 的游標接回月內迴圈。若游標正停在玩家郡，
+	// `0x17471` 會先呼叫 `0x1949e` 重整守將清單，然後才停進主命令；所以
+	// 畫面出現時該郡的兵士與現役將已刷新。只在這個可證實的玩家停點套用：
+	// 若游標指向電腦郡，原版還會跑完整分派器，不能只偷刷兩個欄位冒充。
+	if p.Cursor >= 0 && p.Cursor < len(p.Order) {
+		at := p.Order[p.Cursor]
+		if at > 0 && at < len(p.Pending) && p.Pending[at] {
+			if q := g.Prefecture(at); q != nil && q.Owner == g.Player {
+				g.RefreshGarrison(at)
+			}
+		}
+	}
 	return g, nil
 }

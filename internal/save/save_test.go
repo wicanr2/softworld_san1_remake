@@ -370,7 +370,7 @@ func TestOriginalTableKeepsHundreds(t *testing.T) {
 	// 「存的是實際值 ÷ 100」，不是刷新時機——先全部重整一次，兩件事才
 	// 不會混在同一個斷言裡。
 	for id := 1; id <= state.PrefectureCount; id++ {
-		g.RefreshTroops(id)
+		g.RefreshGarrison(id)
 	}
 	root := t.TempDir()
 	if err := save.Write(root, 1, g, ""); err != nil {
