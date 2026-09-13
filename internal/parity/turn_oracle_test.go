@@ -64,109 +64,27 @@ func dumpScreen(t *testing.T, o *oracle.Oracle, name string) {
 	}
 }
 
-// bootToMain 把原版開到遊戲主畫面，回傳三張表的基底與長度。
-//
-// 走的是「載入舊進度」那條（`docs/re/02` §3.3）：開新遊戲會問防拷密碼，
-// 而密碼表在說明書掃描裡判讀不出來。
-func bootToMain(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
-	t.Helper()
-	o.TypeBoth("122")
-	send := map[int]string{4: "\r", 17: "2", 23: "1"}
-	var base uint32
-	for i := 0; i < 27; i++ {
-		if err := o.Run(50_000_000); err != nil {
-			t.Fatalf("停止：%v", err)
-		}
-		if k, ok := send[i]; ok {
-			o.TypeBoth(k)
-		}
-		if base == 0 {
-			if h := o.Search(mas[:48]); len(h) == 1 {
-				base = h[0]
-			}
-		}
-	}
-	if base == 0 {
-		// 走「載入舊進度」時盤面的內容與劇本檔不同，搜不到——那不代表
-		// 沒載入。位址是量出來的固定值，退回去用它。
-		base = 0x399b0
-	}
-
-	// **這個階段的提示讀掃描碼**，而且字元佇列的殘留要先清掉
-	//（`docs/re/02` §3）。送完等畫面動，動了才走下一步。
-	// 難度可以換：`SAN1_DIFFICULTY`，預設 5。**換難度是個實驗手段**——
-	// 有些數值看起來像常數，其實是難度選出來的。
-	diff := "5"
-	if v := os.Getenv("SAN1_DIFFICULTY"); v != "" {
-		diff = v
-	}
-	for i, keys := range []string{"1\r", "\r", diff + "\r", "\r", "\r"} {
-		if err := o.Run(150_000_000); err != nil {
-			t.Fatalf("沉澱時停止：%v", err)
-		}
-		before := screenOf(o)
-		o.Drain()
-		o.PressScan(keys)
-		moved := false
-		for k := 0; k < 12; k++ {
-			if err := o.Run(50_000_000); err != nil {
-				t.Fatalf("停止：%v", err)
-			}
-			if pixelDiff(before, screenOf(o), nil) > 200 {
-				moved = true
-				break
-			}
-		}
-		if !moved {
-			dumpScreen(t, o, fmt.Sprintf("卡在第%d步", i+1))
-			t.Fatalf("載入序列第 %d 步（送 %q）畫面沒動", i+1, keys)
-		}
-	}
-	return base
-}
-
-// bootToGame 一路開到**過了防拷密碼**的主畫面。
-//
-// `bootToMain` 只走到主畫面，那時密碼關還沒跳出來——第一道帶 ＊ 的
-// 指令用掉之後才會（`docs/re/02` §3.3）。所以要真的讓月份走下去，
-// 得先把那一關過掉。
-//
-// 代價是**開頭那一個月已經走過去了**：觸發密碼關的那道「內政 → 休息」
-// 就是玩家那一個月的指令。回傳時遊戲停在下一個月的主畫面。
+// bootToGame 從第一個主命令執行「內政 → 休息」，停在下一次主命令真正
+// 等掃描碼的地方。每一步只看原版輸入 callsite；Budget 只是失敗上限。
 func bootToGame(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 	t.Helper()
-	base := bootToMain(t, o, mas)
-	const settle = 40_000_000
-	for _, k := range []string{"4\r", "4\r", "Y"} {
-		o.Drain()
-		o.PressScan(k)
-		if err := o.Run(settle * 3); err != nil {
-			t.Fatalf("觸發密碼關時停止：%v", err)
-		}
-	}
-	// 密碼那個提示**不吃掃描碼**（實測畫面差 240，與什麼都不送同級），
-	// 所以兩條路一起餵。
+	base, s := bootToMainState(t, o, mas)
+	beforeAffairs := s.affairsAsk
 	o.Drain()
-	o.TypeBoth(passwordAnswer + "\r")
-	if err := o.Run(settle); err != nil {
-		t.Fatalf("作答時停止：%v", err)
-	}
-	o.TypeBoth("Y\r")
-	// ⚠ **這一步的停點是「預算用完」，不是判準**（`CONTEXT.md` R49）。
-	//
-	// 原版在主畫面不是靜止的：沒有玩家輸入時它會**自動跑完電腦的郡**，
-	// 一路跑到玩家的郡才停下來等。所以「停在哪」由預算決定——2026-09-10
-	// 換 base 到 dosgolem `main` 之後，同樣的 1.2 億道指令讓原版多跑了
-	// 29 格，順序表（每月洗牌的結果）因此整份不同，月度對拍從差 0 個
-	// 位元組變成差 339。
-	//
-	// **新的停點比較正確**：那是原版真的在等輸入的地方，舊的是半路
-	// （游標 0 ＝ 一格都還沒跑，而原版本來會自己跑完電腦那些）。
-	// 換掉這一段要連同「對拍視窗怎麼取」一起重想
-	//（worklist `boot-recipe-behavior-triggered`），不是單獨改預算。
-	if err := o.Run(settle * 3); err != nil {
-		t.Fatalf("確認時停止：%v", err)
-	}
+	o.PressScan("4\r")
+	waitBoot(t, o, "內政子命令輸入", 100_000_000,
+		func() bool { return s.affairsAsk > beforeAffairs })
+	waitBootScan(t, o, "內政子命令", 5_000_000)
+	beforeRest := s.restYN
+	o.Drain()
+	o.PressScan("4\r")
+	waitBoot(t, o, "休息確認輸入", 100_000_000, func() bool { return s.restYN > beforeRest })
+	beforeMain := s.mainAsk
+	o.Drain()
+	o.PressScan("Y")
+	waitBoot(t, o, "下一次遊戲主命令輸入", 500_000_000,
+		func() bool { return s.mainAsk > beforeMain })
+	waitBootScan(t, o, "下一次遊戲主命令", 5_000_000)
 	t.Logf("bootToGame 停在游標 %d", monthCursor(o))
 	return base
 }
@@ -179,8 +97,8 @@ func bootToGame(t *testing.T, o *oracle.Oracle, mas []byte) uint32 {
 // 為什麼要這一步：`bootToGame` 停在**玩家的郡**（原版自動跑完電腦那些，
 // 輪到玩家才停等輸入）。從那裡取對拍視窗，視窗只剩「玩家後面那幾格」
 // ——2026-09-10 換 base 之後是 14 格，而月初出發有 37 格以上
-//（`CONTEXT.md` R49）。視窗小不只是樣本少：起點落在月中，開月那一整段
-//（物價、洗牌、四季、進貢）根本比不到，而那是 440 → 0 那條路上佔比最大的
+// （`CONTEXT.md` R49）。視窗小不只是樣本少：起點落在月中，開月那一整段
+// （物價、洗牌、四季、進貢）根本比不到，而那是 440 → 0 那條路上佔比最大的
 // 一段。
 //
 // 停的地方**由原版自己的路標決定，不是指令預算**：

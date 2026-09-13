@@ -15,9 +15,8 @@ import (
 
 // 防拷密碼關。
 //
-// **它不在開新遊戲那條路上。** 走載入舊進度進得了主畫面，第一道帶 ＊
-// 的指令（使用後轉移控制權）用掉之後才跳出來：畫面換成兩張人物圖 ＋
-// 一個地支 ＋ 四個 `?`，提示 `請輸入密碼(-寅-)`。
+// 走載入舊進度、選完存檔槽後立即跳出來：畫面換成兩張人物圖 ＋
+// 一個地支 ＋ 四個 `?`，提示輸入畫面所示密碼。
 //
 // 密碼表印在說明書 p.44–45，採防影印彩色網點，掃描中判讀不出來；
 // `AA.EXE` 裡也沒有以 packed BCD 或 16 位元小端連續存放的 1728 組表
@@ -43,17 +42,10 @@ func TestZZPassword(t *testing.T) {
 	}
 	defer o.Close()
 
-	bootToMain(t, o, mas)
-	atMain := o.Save()
+	_ = mas // 與其他原版測試共用相同的存檔載入前置檢查。
+	_, atSlot := bootToPasswordState(t, o)
 
 	const settle = 40_000_000
-	for _, k := range []string{"4\r", "4\r", "Y"} {
-		o.Drain()
-		o.PressScan(k)
-		if err := o.Run(settle * 3); err != nil {
-			t.Fatalf("觸發密碼關時停止：%v", err)
-		}
-	}
 	dumpScreen(t, o, "30-密碼關")
 	atPwd := o.Save()
 	pwdScr := screenOf(o)
@@ -80,7 +72,7 @@ func TestZZPassword(t *testing.T) {
 
 	// 候選：從主畫面到密碼畫面之間變動的位址裡，值是四位數的。
 	o.Restore(atPwd)
-	changed := o.SearchChanged(atMain)
+	changed := o.SearchChanged(atSlot)
 	seen := map[int]bool{}
 	var cand []int
 	inVideo := 0
@@ -206,15 +198,9 @@ func TestPasswordAnswerDoesNotMatter(t *testing.T) {
 	}
 	defer o.Close()
 
-	bootToMain(t, o, mas)
+	_ = mas // 與其他原版測試共用相同的存檔載入前置檢查。
+	bootToPassword(t, o)
 	const settle = 40_000_000
-	for _, k := range []string{"4\r", "4\r", "Y"} {
-		o.Drain()
-		o.PressScan(k)
-		if err := o.Run(settle * 3); err != nil {
-			t.Fatalf("觸發密碼關時停止：%v", err)
-		}
-	}
 	dumpScreen(t, o, "40-密碼關")
 	atPwd := o.Save()
 

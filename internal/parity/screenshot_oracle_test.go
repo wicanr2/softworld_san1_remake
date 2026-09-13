@@ -5,6 +5,7 @@ package parity
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/wicanr2/dosgolem/oracle"
@@ -59,10 +60,19 @@ func TestZZOriginalLoadedScreen(t *testing.T) {
 
 	bootToMain(t, o, seedMas)
 	dumpScreen(t, o, "orig-loaded")
-	// 再跑一段之後存第二張：畫面上會閃的東西（例如某些州郡的填色）
+	// 等原版自己畫出下一個閃爍相位再存第二張；Budget 只作失敗上限。
 	// 兩張會不一樣，而**單看一張分不出「閃爍」與「對應表錯了」**。
-	if err := o.Run(20_000_000); err != nil {
-		t.Fatalf("停止：%v", err)
+	first := screenOf(o)
+	var nextSample uint64
+	changed := oracle.NewCond("主畫面出現下一個閃爍相位", func(o *oracle.Oracle) bool {
+		if o.Steps() < nextSample {
+			return false
+		}
+		nextSample = o.Steps() + 100_000
+		return pixelDiff(first, screenOf(o), nil) > 0
+	})
+	if err := o.RunUntil(changed, oracle.Budget(100_000_000)); err != nil {
+		t.Fatalf("等待主畫面閃爍：%v", err)
 	}
 	dumpScreen(t, o, "orig-loaded2")
 	t.Log("原版剛載完第一個進度的主畫面已存兩張（要設 SAN1_SHOTS）")
@@ -70,9 +80,8 @@ func TestZZOriginalLoadedScreen(t *testing.T) {
 
 // TestZZOriginalOpeningScreens 把開機到主選單之間的每一步都存成 PNG。
 //
-// 開場的圖（`SANT*`／`TITL*`／`CMARK*`）在哪一步出現是**量出來的**，
-// 不是算得出來的：`docs/re/02` §3 的指令數會隨執行器改動而變。
-// 所以逐步存圖，用眼睛找。
+// 每張圖以前一張圖完成、原版呼叫下一次載圖為擷取點；最後停在主選單
+// 真正等掃描碼的位置。指令 Budget 只作失敗上限。
 func TestZZOriginalOpeningScreens(t *testing.T) {
 	root := origRoot(t)
 	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
@@ -81,15 +90,21 @@ func TestZZOriginalOpeningScreens(t *testing.T) {
 	}
 	defer o.Close()
 
-	o.TypeBoth("122")
-	for i := 0; i < 10; i++ {
-		if err := o.Run(50_000_000); err != nil {
-			t.Fatalf("第 %d 步停止：%v", i, err)
+	frame := 0
+	o.OnCall(addr(imgLoadFn), func(o *oracle.Oracle) {
+		name := strings.ToUpper(cstr(o, uint32(o.Arg(1))*16+uint32(o.Arg(0))))
+		if !strings.HasPrefix(name, "SANT") && !strings.HasPrefix(name, "TITL") &&
+			!strings.HasPrefix(name, "CMARK") && name != "MENU3.IMG" {
+			return
 		}
-		dumpScreen(t, o, fmt.Sprintf("open-%02d", i))
-		if i == 4 {
-			o.TypeBoth("\r")
-		}
+		safe := strings.NewReplacer(".", "-", "/", "-", "\\", "-").Replace(name)
+		dumpScreen(t, o, fmt.Sprintf("open-%02d-before-%s", frame, safe))
+		frame++
+	})
+	bootToMenu(t, o)
+	dumpScreen(t, o, fmt.Sprintf("open-%02d-main-menu", frame))
+	if frame == 0 {
+		t.Fatal("開場到主選單之間沒有觀測到任何已知載圖行為")
 	}
 	t.Log("開場逐步畫面已存（要設 SAN1_SHOTS）")
 }

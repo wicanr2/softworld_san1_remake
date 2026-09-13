@@ -282,10 +282,14 @@ func (o TransportOrder) Describe(g *State) string {
 type RedistributeOrder struct {
 	At    int
 	Units []int
+	Auto  bool
 }
 
 func (o RedistributeOrder) Prefecture() int { return o.At }
 func (o RedistributeOrder) Apply(g *State, by state.FactionID) error {
+	if o.Auto {
+		return g.redistribute(o.At, o.Units, by, 1)
+	}
 	return g.Redistribute(o.At, o.Units, by)
 }
 func (o RedistributeOrder) Describe(g *State) string {

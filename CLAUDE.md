@@ -245,12 +245,11 @@ DATA1／2／3 的 `.IDX` 末值精準等於 `.GRP` 長度，round-trip 通過。
   **只有 `READY` 能授權寫進 `internal/` 的行為**。假說不進 production code、不進 golden test。
 - `docs/mechanics/`：這個遊戲怎麼運作（§6）。
 - `docs/playtest/`：原版與 remake 同狀態比較，含存檔雜湊、序列、dosgolem 對拍矩陣。
-- `worklist.json`：**待辦與完成度的權威**（`rulebook/61`）。每一條掛一個跑得
-  起來的 `verify`，回答「這一條的 status 還成立嗎」——`done` 驗證據還在、
-  `open` 驗未完成的訊號還在。**不要在 markdown 打勾**；跑
-  `tools/worklist.py verify`。GitHub issue 是它的**鏡像**（`tools/worklist.py
-  issues --apply` 同步，未完成的開、done 的關）——要改內容改 worklist.json，
-  在 GitHub 上直接改的下次同步會被蓋掉。
+- GitHub repository 的 open Issues：**待辦與狀態的唯一權威**。每輪讀取
+  Issue 最新標題、內文、留言與狀態；只有達成 Issue 驗收並留下可重生證據
+  才能關閉。`worklist.json` 與 `VERIFICATION-MATRIX.md` 只作歷史線索，衝突時
+  以 Issue、目前程式與新驗證為準。禁止執行 `tools/worklist.py issues --apply`，
+  避免舊快照覆蓋 GitHub 上的新事實。
 - `VERIFICATION-MATRIX.md`：完成度的唯一數字來源；§8 由
   `tools/worklist.py render` 產生，其餘各節是敘述層（方法、坑、取捨）。
   README 只連過去。

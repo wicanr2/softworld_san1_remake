@@ -90,7 +90,7 @@
 
 | **英文用小字留在原版的位置** | 使用者裁定（2026-09-11）：英文「文字允許縮小」，不縮短名稱、不改畫到別的面板。原尺寸放不下的地方改用 `fonts/ascii6x10.hex.gz`（6×10，X11 misc-fixed，先前在儲存庫裡但沒有程式載入）：下面板的五類子選單、文字版指令欄的長名字、戰場指令面板（九個指令原尺寸六行）、軍力面板。量的時候發現**軍力面板的文字區只有 92 像素**（左邊是肖像框）而程式照整塊面板截在 21 格，英文畫進了隔壁面板。發行包先前只帶 unifont 字型本身、沒帶它的 GPL 授權檔，一併補上 | 2026-09-11 |
 
-| **worklist 鏡像到 GitHub issue** | `tools/worklist.py issues --apply`：未完成的 17 條開成 issue #1–#17（標籤：worklist、里程碑、組、blocked），條目改成 done 之後重跑就關掉；靠 body 裡的 `<!-- worklist:ID -->` 對應，重跑不會重複開。**權威仍是 worklist.json**，在 GitHub 上直接改的下次同步會被蓋掉（`CLAUDE.md` §5）| 2026-09-11 |
+| **worklist 曾鏡像到 GitHub issue（歷史，已取代）** | 2026-09-11 曾以 `tools/worklist.py issues --apply` 建立 issue #1–#17。**2026-09-13 起由使用者明確改定 GitHub open Issues 為唯一待辦權威**；不得再跑同步命令，`worklist.json` 只作歷史線索，避免反向覆蓋 Issue 新事實（`CLAUDE.md` §5）| 2026-09-13 |
 
 完成度的數字在 `VERIFICATION-MATRIX.md`（唯一來源）；文件放什麼在 `docs/INDEX.md`。
 
@@ -1531,6 +1531,16 @@ worklist 的 `boot-recipe-behavior-triggered` 三個月前就寫著「指令數�
 校準。`bootToGame` 的停點加印游標（`monthCursor`），讓「停在哪」在 log 裡
 看得見而不是只能事後推。
 
+**2026-09-13 勘誤與完成證據**：Issue #5 的行為探針證明舊 `bootToMain`
+在真正主命令輸入之後仍盲跑並消耗後續輸入，且把載入期間已出現的密碼畫面
+誤歸因到第一道帶 ＊ 的命令。新 helper 依 `KeyWaits`、兩張開場畫面指紋、
+標題 BIOS caller `0AD0:0104`、載圖、後段輸入 caller 及 runtime
+`1058:0E57` 前進；`bootToGame` 在「內政 → 休息 → Y」之後停在下一次
+主命令，正式月游標 17。較早但仍不完整的游標 22 起點曾讓固定 seed
+`0x13579BDF` 的 38 郡視窗差 4 bytes，進一步證明原版 AI 對單一部隊仍
+執行 `0xc2c4` 百分比重算；補回該路徑後，現行游標 17 的同一 seed、
+38 郡整組驗收差 **0 bytes**。完整契約在 `docs/spec/015`。
+
 ### R50（2026-09-10）：「出兵的錢糧與部隊在月底結算之後才從郡搬走」
 
 **原斷言**：月度對拍第一個岔開的郡（6）在「月底結算 → 新月第一個郡」之間
@@ -1783,13 +1793,13 @@ i 每步變大，最後一步兩邊重合、歸位。
 
 ---
 
-## 8. Worklist
+## 8. 歷史 Worklist
 
-### `[HARD]` 待辦的權威是 `worklist.json`，不是這一節的勾
+### `[HARD]` 待辦的權威是 GitHub open Issues
 
-未完成項與完成度都在 **`worklist.json`**，每一條掛一個跑得起來的 `verify`
-（`rulebook/61`）。**不要在這裡打勾**——勾是人手打的，打完就凍在那裡，
-它記的是「某人某天認為做完了」不是「現在還成立」。
+本節與 `worklist.json` 保存 2026-09-13 以前的歷史分類與驗證線索；它們不是
+目前待辦，也不得推翻 GitHub Issue 的最新內容、留言與狀態。以下命令只供
+歷史資料診斷；**禁止執行 `tools/worklist.py issues --apply`**。
 
 ```sh
 tools/worklist.py lint                           # 秒級：verify 綁得住不住

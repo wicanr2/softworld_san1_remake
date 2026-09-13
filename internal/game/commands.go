@@ -269,11 +269,18 @@ func (g *State) Train(prefectureID int, by state.FactionID) error {
 // 多一道勢力比對的代價不是「比較安全」而是**整批命令中斷**：
 // `ApplyAll` 一道失敗就不跑後面的，於是少算一整個勢力的行動。
 func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID) error {
+	return g.redistribute(prefectureID, indices, by, 2)
+}
+
+// redistribute 的 minUnits 把玩家介面的「至少兩支」與原版 AI 表分開。
+// 原版 AI 即使清單只有一支仍會跑百分比重算；玩家命令維持至少兩支。
+func (g *State) redistribute(prefectureID int, indices []int, by state.FactionID,
+	minUnits int) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
 	}
-	if len(indices) < 2 {
+	if len(indices) < minUnits {
 		return fmt.Errorf("game: 調整兵力至少要兩支部隊")
 	}
 	var units []*General

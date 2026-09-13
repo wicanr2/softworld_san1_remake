@@ -674,7 +674,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// 刷新之後又被徵兵加了兵，而原版的兵士欄含進去了
 		// （郡 11 原版 405／只在入口刷新是 398）。
 		g.RefreshTroops(p)
-		if who := garrisonIndices(g, p); len(who) >= 2 {
+		if who := garrisonIndices(g, p); len(who) >= 1 {
 			if f.trace != nil && p == watch {
 				list := []string{}
 				for _, i := range who {
@@ -685,7 +685,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 				}
 				f.trace[fmt.Sprintf("攤平前｜郡 %d %v", p, list)]++
 			}
-			emit(game.RedistributeOrder{At: p, Units: who})
+			emit(game.RedistributeOrder{At: p, Units: who, Auto: true})
 		}
 		mark("調整兵力")
 		// 米糧買賣（表 `0x55d4`）：**不走回合預算也不打折**，
@@ -1743,7 +1743,7 @@ func NextMode(m Mode, ed state.Edition) Mode {
 // 之前就顯示下一個是誰。
 //
 // 這裡是這三個名字的唯一來源，`New()` 與 `enhanced.Name()` 都回頭讀它
-//（教訓 6：一條規則只留一份實作）。
+// （教訓 6：一條規則只留一份實作）。
 func ModeName(m Mode) string {
 	switch m {
 	case ModeBase:

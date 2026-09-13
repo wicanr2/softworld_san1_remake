@@ -186,6 +186,29 @@ func TestConscriptLowersTraining(t *testing.T) {
 	}
 }
 
+// TestAIRedistributesOneUnit 釘住原版 AI 的單支部隊百分比重算。
+// 玩家介面仍要求至少兩支；只有 Auto 路徑可讓一支清單通過。
+func TestAIRedistributesOneUnit(t *testing.T) {
+	g := newGame(t)
+	lord := g.Lord(0)
+	if lord == nil {
+		t.Fatal("找不到劉備")
+	}
+	lord.Soldiers = 771
+	lord.Training = 97
+	lord.Arms = 99
+	if err := g.Redistribute(8, []int{lord.Index}, 0); err == nil {
+		t.Fatal("玩家用單支部隊調整兵力沒有被拒絕")
+	}
+	if err := (RedistributeOrder{At: 8, Units: []int{lord.Index}, Auto: true}).Apply(g, 0); err != nil {
+		t.Fatalf("AI 單支部隊重算失敗：%v", err)
+	}
+	if lord.Training != 96 || lord.Arms != 98 {
+		t.Errorf("AI 單支部隊重算後訓練／武裝=%d/%d，預期 96/98",
+			lord.Training, lord.Arms)
+	}
+}
+
 // TestConscriptRejectsForeignGeneral 釘住「只能命令自己人、而且要在當地」。
 func TestConscriptRejectsForeignGeneral(t *testing.T) {
 	g := newGame(t)
