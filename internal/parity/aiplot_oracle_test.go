@@ -13,10 +13,10 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
-// 逼戰術層 AI 選出弓箭，看是哪一個選項、動作碼是幾號（`docs/re/05` §12）。
+// 逼戰術層 AI 選出弓箭與計謀，看是哪一個選項（`docs/re/05` §12）。
 //
 // 九個選項裡目前有名字的是移動（`0x29344`）、會選出對戰的兩支
-// （`0x29784`／`0x29ade`，動作碼 2）與兜底的 `0x29e2e`。其餘五支在
+// （`0x29784`／`0x29ade`，目標軍力 2）與兜底的 `0x29e2e`。其餘五支在
 // 「玩家貼著守軍」那個盤面上一次都沒定過案——**要換盤面才逼得出來**。
 //
 // 弓箭最好擺：部隊記錄 offset 20 是弓箭次數，把電腦那支補滿，
@@ -61,11 +61,11 @@ func TestUnitAIRangedAndPlotOptions(t *testing.T) {
 	type decision struct {
 		army, team int
 		trace      []step
-		act        int
+		targetArmy int
 	}
 	var decisions []decision
 	cur := -1
-	act := func() int {
+	targetArmy := func() int {
 		if dgroup == 0 {
 			return -1
 		}
@@ -81,7 +81,7 @@ func TestUnitAIRangedAndPlotOptions(t *testing.T) {
 	}
 	o.OnCall(addr(0x29014), func(o *oracle.Oracle) {
 		decisions = append(decisions, decision{
-			army: int(o.Arg(0)), team: int(o.Arg(1)), act: -1})
+			army: int(o.Arg(0)), team: int(o.Arg(1)), targetArmy: -1})
 		cur = len(decisions) - 1
 	})
 	for _, a := range options {
@@ -94,12 +94,12 @@ func TestUnitAIRangedAndPlotOptions(t *testing.T) {
 	}
 	o.OnCall(addr(0x29132), func(o *oracle.Oracle) {
 		if cur >= 0 {
-			decisions[cur].act = act()
+			decisions[cur].targetArmy = targetArmy()
 			cur = -1
 		}
 	})
 
-	// **「動作碼 2 ＝ 對戰」要複驗。** 誘敵與圍攻也會跑交戰結算，
+	// **目標軍力 2 只表示選中了攻方主軍力。** 誘敵與圍攻也會跑交戰結算，
 	// 而金的寫入端有一個在計謀模組（`0x2a22` 段）——所以光看交戰結算
 	// 分不出電腦是在對戰還是在用計。六支效果常式與成功判定一起攔。
 	plots := map[string]int{}
@@ -233,7 +233,7 @@ func TestUnitAIRangedAndPlotOptions(t *testing.T) {
 		if byOpt[decider] == nil {
 			byOpt[decider] = map[int]int{}
 		}
-		byOpt[decider][dec.act]++
+		byOpt[decider][dec.targetArmy]++
 	}
 	var keys []string
 	for k := range byOpt {
@@ -242,7 +242,7 @@ func TestUnitAIRangedAndPlotOptions(t *testing.T) {
 	sort.Strings(keys)
 	t.Logf("擺好盤面之後五天 %d 次決策：", len(decisions)-seen)
 	for _, k := range keys {
-		t.Logf("  %s → 動作碼分布 %v（0xFFFF ＝ 65535）", k, byOpt[k])
+		t.Logf("  %s → 目標軍力分布 %v（0xFFFF ＝ 65535）", k, byOpt[k])
 	}
 	o.StopWatchingWrites()
 	gIP := map[string]int{}

@@ -116,7 +116,7 @@ func TestUnitAIDecisionChain(t *testing.T) {
 		cur = -1
 	})
 
-	// 交戰結算逐次記下來：`es:[0x31a8]` ＝ 2 的那幾次是不是真的在打，
+	// 交戰結算逐次記下來：`es:[0x31a8]` ＝ 2 代表目標是攻方主軍力，
 	// 判準要是這一支有沒有跑，不是兵少了一兩個。
 	type bout struct{ aArmy, aTeam, dArmy, dTeam, mode int }
 	var bouts []bout
@@ -189,7 +189,7 @@ func TestUnitAIDecisionChain(t *testing.T) {
 	}
 
 	// **與其猜哪個 word 是動作，掃整個決策區。** `es:[0x31c0]` 量到永遠是
-	// 0，所以它是參數不是動作碼；決策鏈寫過的其他格子才是線索。
+	// 0，所以它是決策完成旗標，不是動作碼。
 	decSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa92e})
 	wr := o.WatchWritesAt(uint32(decSeg)<<4+0x3180, uint32(decSeg)<<4+0x31d0)
 
