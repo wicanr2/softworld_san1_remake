@@ -256,10 +256,24 @@ y ≤ 340。把兩個軸讀反的話 8×10 會算出 y=488 超出畫面。
 **判準要看形狀不要看比例**——把差異畫成圖案一眼看得出是網點，
 只看相符率會猜成天氣。
 
-基準畫面的取法：
+基準畫面有兩種不同取法，不能混為同一批。四個內建診斷候選會從同一快照
+各跑一次，分別產生 `sweep-01.png`～`sweep-04.png`；**不可設定**
+`SAN1_BATTLEKEY`，否則候選只剩一個，檔名永遠是 `sweep-01.png`：
 
 ```sh
-SAN1_SHOTS=/src/workplace/shots/bf SAN1_BATTLEKEY='2|
+env -u SAN1_BATTLEKEY -u SAN1_BATTLESHOT \
+  SAN1_SHOTS=/src/workplace/shots/bf \
+  tools/go.sh test ./internal/parity -tags oracle \
+  -run '^TestZZBattleKeySweep$' -count=1 -v
+```
+
+`sweep-04.png` 是候選 4 走到戰場迴圈、正在紮寨的畫面，供
+`TestCampMaskMatchesTheOriginal` 使用。`orig-battle.png` 則是候選 4 後面
+再接八個 `0`、把五支部隊紮完寨後的另一個最終畫面；設定
+`SAN1_BATTLESHOT=orig-battle` 讓測試直接以正確名稱另存，不再人工改名：
+
+```sh
+SAN1_SHOTS=/src/workplace/shots/bf SAN1_BATTLESHOT=orig-battle SAN1_BATTLEKEY='2|
 |2|
 |4|1|
 |2|5|
@@ -273,8 +287,13 @@ SAN1_SHOTS=/src/workplace/shots/bf SAN1_BATTLEKEY='2|
 |1|
 |Y|5000|
 |9000|
-|Y|0|0|0|0|0|0|0|0' tools/go.sh test ./internal/parity -tags oracle -run TestZZBattleKeySweep
+|Y|0|0|0|0|0|0|0|0' tools/go.sh test ./internal/parity -tags oracle \
+  -run '^TestZZBattleKeySweep$' -count=1 -v
 ```
+
+兩張正式全畫面基準 `orig-battle.png`、`sweep-04.png` 與四張 `sweep-*`
+診斷畫面都必須是 640×408。`crop.png`（480×360）與 `flags.png`
+（912×392）是分析用衍生拼圖，不是原版全畫面基準，不適用這項尺寸契約。
 
 ### 部隊的標記是旗幟
 

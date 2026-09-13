@@ -134,3 +134,8 @@ DOSBox-X 的 `-crop 640x350+0+0`、dosgolem 存的每一張 PNG。
 `ffmpeg` 相同的 Xvfb 畫布區域，且每張 PNG 寫出後立即驗尺寸。2026-09-13
 重錄的 `workplace/rec7/frames` 共 56 張，獨立掃描結果全數為 640×408；
 完整收據見 `docs/playtest/03-screen-parity.md`。
+
+同日亦以不設定 `SAN1_BATTLEKEY` 的四候選模式重生主戰場診斷畫面；
+`workplace/shots/bf/sweep-01.png`～`sweep-04.png` 與正式基準
+`orig-battle.png` 全數為 640×408。引用正式基準的資產與 UI 測試會先檢查
+完整尺寸，舊的 640×350 圖不再能安靜通過只讀取上半部的比較。

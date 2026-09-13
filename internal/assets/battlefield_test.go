@@ -10,8 +10,19 @@ import (
 
 // bfShotPath 是**紮完寨之後**的原版主戰場，由 `internal/parity` 的
 // `TestZZBattleKeySweep` 產：`SAN1_BATTLEKEY` 在候選 4 後面接八個 `0`
-// （五支部隊各紮一次），`SAN1_SHOTS` 指到輸出目錄。
+// （五支部隊各紮一次），`SAN1_BATTLESHOT=orig-battle`，`SAN1_SHOTS`
+// 指到輸出目錄。設定自訂 `SAN1_BATTLEKEY` 卻沒有指定別名時，只會產
+// `sweep-01.png`。
 const bfShotPath = "../../workplace/shots/bf/orig-battle.png"
+
+func requireBattleShotSize(t *testing.T, shot image.Image, path string) {
+	t.Helper()
+	b := shot.Bounds()
+	if b.Dx() != ScreenW || b.Dy() != ScreenH {
+		t.Fatalf("主戰場基準 %s 是 %d×%d，應為 %d×%d",
+			path, b.Dx(), b.Dy(), ScreenW, ScreenH)
+	}
+}
 
 // TestBattleTilesDecode 釘住 `EICON.GRP` 的版面：36 筆 × 772 B，每張 48×32。
 func TestBattleTilesDecode(t *testing.T) {
@@ -49,6 +60,7 @@ func TestBattleFieldMatchesTheOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	requireBattleShotSize(t, shot, bfShotPath)
 	tiles, err := BattleTiles(container(t, "DATA1"))
 	if err != nil {
 		t.Fatal(err)
@@ -124,8 +136,6 @@ func prefectureField(t *testing.T, pref int) []byte {
 	return append([]byte(nil), rec[55:175]...)
 }
 
-var _ = image.Rect
-
 // TestUnitFlagsSitOnCells 釘住部隊旗幟的位置：格子左上角加 (8, 0)。
 //
 // 四面旗在基準畫面上各有一處逐像素 100% 相符，換算回格子都落在
@@ -140,6 +150,7 @@ func TestUnitFlagsSitOnCells(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	requireBattleShotSize(t, shot, bfShotPath)
 	c := container(t, "DATA1")
 	for _, tc := range []struct {
 		name     string
@@ -233,6 +244,7 @@ func TestFlagComplement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	requireBattleShotSize(t, shot, bfShotPath)
 	flag, err := UnitFlag(container(t, "DATA1"), "WFLAGA00.IMG")
 	if err != nil {
 		t.Fatal(err)
@@ -269,6 +281,7 @@ func TestCampMaskMatchesTheOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	requireBattleShotSize(t, shot, shotPath)
 	c := container(t, "DATA1")
 	tiles, err := BattleTiles(c)
 	if err != nil {

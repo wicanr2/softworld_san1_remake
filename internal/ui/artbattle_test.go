@@ -14,7 +14,7 @@ import (
 )
 
 // artShotPath 是原版紮完寨之後的主戰場，由 `internal/parity` 的
-// `TestZZBattleKeySweep` 產。
+// `TestZZBattleKeySweep` 配合 `SAN1_BATTLESHOT=orig-battle` 產。
 const artShotPath = "../../workplace/shots/bf/orig-battle.png"
 
 // artContainer 開一個容器；沒有原版素材就 skip。
@@ -58,6 +58,10 @@ func TestArtBattleFurnitureMatchesTheOriginal(t *testing.T) {
 	f.Close()
 	if err != nil {
 		t.Fatal(err)
+	}
+	if b := shot.Bounds(); b.Dx() != assets.ScreenW || b.Dy() != assets.ScreenH {
+		t.Fatalf("主戰場基準 %s 是 %d×%d，應為 %d×%d",
+			artShotPath, b.Dx(), b.Dy(), assets.ScreenW, assets.ScreenH)
 	}
 	c1, c3 := artContainers(t)
 	// 場地要用**基準畫面那個郡**的地形（廬陵，25）：邊框畫在圖塊底下，

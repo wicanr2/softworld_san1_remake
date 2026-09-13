@@ -426,6 +426,15 @@ func TestZZBattleKeySweep(t *testing.T) {
 	if v := os.Getenv("SAN1_BATTLEKEY"); v != "" {
 		cands = []string{v}
 	}
+	alias := os.Getenv("SAN1_BATTLESHOT")
+	if alias != "" {
+		if len(cands) != 1 {
+			t.Fatal("SAN1_BATTLESHOT 只能與 SAN1_BATTLEKEY 一起使用，避免四個候選互相覆寫")
+		}
+		if filepath.Base(alias) != alias || alias == "." || alias == ".." {
+			t.Fatalf("SAN1_BATTLESHOT 只能是單一檔名，不可含路徑：%q", alias)
+		}
+	}
 	const settle = 30_000_000
 	for ci, cand := range cands {
 		o.Restore(snap)
@@ -473,7 +482,11 @@ func TestZZBattleKeySweep(t *testing.T) {
 			ci+1, cand, route, who, fields, keys)
 		got, keys = got[:0], keys[:0]
 		_ = got
-		dumpScreen(t, o, fmt.Sprintf("sweep-%02d", ci+1))
+		if alias != "" {
+			dumpScreen(t, o, alias)
+		} else {
+			dumpScreen(t, o, fmt.Sprintf("sweep-%02d", ci+1))
+		}
 	}
 }
 
