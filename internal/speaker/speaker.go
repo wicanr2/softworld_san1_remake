@@ -50,8 +50,9 @@ const (
 
 	// SFXDivisor 是音效那一段實測到的分頻值（`L1`，`speak(0, 10)`）。
 	SFXDivisor = 13
-	// VoiceDivisor 是語音的暫用值。**還沒量到**——訊息常式傳的速度
-	// 參數要先讓原版吐一則帶語音的訊息才看得到（`docs/spec/008` §6 R6）。
+	// VoiceDivisor 是語音的全域暫用值。兩則宣戰訊息已量到 148／137，
+	// 證明速度會隨訊息而異；其餘訊息與 runtime 目錄還沒接上
+	//（`docs/spec/008` §5、§7 R8）。
 	VoiceDivisor = 130
 )
 

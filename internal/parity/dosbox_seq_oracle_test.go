@@ -10,6 +10,7 @@ import (
 	imgpng "image/png"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -139,9 +140,33 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 	// 順便驗語音：這一串按鍵會走到宣戰對白（`docs/re/09` 的訊息常式
 	// `0x3273e`），那正是原版會講話的地方。**兩個開關要直接寫記憶體**
 	// ——「其他」的子選單走另一條輸入路徑，送數字進去畫面不動。
-	var speaks, says int
-	o.OnCall(addr(speechSpeakFn), func(*oracle.Oracle) { speaks++ })
+	var speaks, says, currentStep int
+	type voiceLoad struct {
+		step, say, slot int
+		name            string
+	}
+	var voiceLoads []voiceLoad
+	o.OnCall(addr(speechSpeakFn), func(o *oracle.Oracle) {
+		speaks++
+		slot := int(int16(o.Arg(0)))
+		if slot == 1 {
+			dumpScreen(t, o, fmt.Sprintf("speech-map-step-%03d-say-%d-complete", currentStep, says))
+			t.Logf("語音播放：第 %d 步、訊息 %d、槽 %d、分頻 %d",
+				currentStep, says, slot, int(int16(o.Arg(1))))
+		}
+	})
 	o.OnCall(addr(speechSayFn), func(*oracle.Oracle) { says++ })
+	o.OnCall(addr(speechLoadFn), func(o *oracle.Oracle) {
+		slot := int(int16(o.Arg(2)))
+		if slot < 1 || slot > 3 {
+			return
+		}
+		name := cstr(o, oracle.Addr{Seg: o.Arg(1), Off: o.Arg(0)}.Linear())
+		voiceLoads = append(voiceLoads, voiceLoad{
+			step: currentStep, say: says, slot: slot, name: name,
+		})
+		dumpScreen(t, o, fmt.Sprintf("speech-map-step-%03d-say-%d-slot-%d", currentStep, says, slot))
+	})
 
 	// send 照錄製時的節奏一個一個送鍵，中間讓原版跑一段。
 	send := func(t *testing.T, k string, scan bool) {
@@ -162,6 +187,7 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 
 	var worst, worstAt, stableN, reported int
 	for n, s := range steps {
+		currentStep = n + 1
 		k := strings.ReplaceAll(s.keys, "Return", "\r")
 		o.Drain()
 		switch {
@@ -238,9 +264,10 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 		// 畫面高度在 2026-09-10 從 350 改成 408（`docs/spec/006`），
 		// 之前錄的每一批都要重錄。
 		if b := want.Bounds(); b.Dx() != scrW || b.Dy() != scrH {
-			t.Skipf("參照畫面 %s 是 %d×%d，取樣是 %d×%d——"+
-				"這批是舊尺寸錄的，重跑 tools/dosboxx-record.sh",
+			t.Logf("參照畫面 %s 是 %d×%d，取樣是 %d×%d——"+
+				"這批是舊尺寸錄的，不作逐點比較但繼續重播按鍵",
 				filepath.Base(s.file), b.Dx(), b.Dy(), scrW, scrH)
+			continue
 		}
 		got := o.IndexedEGASize(scrW, scrH)
 		if len(got) < scrW*scrH {
@@ -279,6 +306,23 @@ func TestZZDosgolemMatchesDosbox(t *testing.T) {
 	}
 	t.Logf("語音：訊息常式進去 %d 次、speak %d 次、喇叭切換 %d 次",
 		says, speaks, len(o.Speaker()))
+	for _, load := range voiceLoads {
+		t.Logf("語音對應：第 %d 步、訊息 %d、槽 %d ← %s",
+			load.step, load.say, load.slot, load.name)
+	}
+	if filepath.Base(filepath.Dir(dir)) == "rec10" {
+		want := []voiceLoad{
+			{step: 24, say: 1, slot: 1, name: "R032.OKR"},
+			{step: 24, say: 1, slot: 2, name: "R456.OKR"},
+			{step: 24, say: 1, slot: 3, name: "R499.OKR"},
+			{step: 27, say: 2, slot: 1, name: "R000.OKR"},
+			{step: 27, say: 2, slot: 2, name: "R457.OKR"},
+			{step: 27, say: 2, slot: 3, name: "R499.OKR"},
+		}
+		if !slices.Equal(voiceLoads, want) {
+			t.Fatalf("rec10 語音載入 = %#v，想要 %#v", voiceLoads, want)
+		}
+	}
 	if stableN == 0 {
 		t.Logf("沒有任何一步是靜止的——參照畫面是舊版錄的（一步只存一張），" +
 			"重跑 tools/dosboxx-record.sh 才有靜止判斷")
