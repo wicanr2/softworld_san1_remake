@@ -25,7 +25,9 @@ GAME="${SAN1_DOSBOX_GAME:-$ROOT/org_game/三國演義}"
 FPS="${SAN1_REC_FPS:-4}"
 
 mkdir -p "$OUT/frames"
-cp "$KEYS" "$OUT/keys.txt"
+if [ "$(realpath "$KEYS")" != "$(realpath "$OUT/keys.txt")" ]; then
+    cp "$KEYS" "$OUT/keys.txt"
+fi
 
 cat > "$OUT/.run.sh" <<'EOF'
 set -euo pipefail
@@ -79,13 +81,23 @@ snap() {  # 在關鍵時刻存 640×408 的原尺寸圖，給逐格比對用
   # 那一步不能拿來當對拍的判準——動畫在兩個實作上不會停在同一格，
   # 而那不是誰做錯了。
   N=$((N+1))
-  import -window "$WIN" /tmp/f.png 2>/dev/null || return 0
-  convert /tmp/f.png +repage \
+  # 文字模式與圖形模式的 DOSBox-X 視窗尺寸不同；固定擷取與 ffmpeg
+  # 相同的 Xvfb 左上角 640×408 畫布，不能直接擷取視窗。
+  import -window root /tmp/f.png 2>/dev/null
+  convert /tmp/f.png -crop 640x408+0+0 +repage \
     "$(printf '/out/frames/%03d-%s.png' $N "$1")"
   sleep 1
-  import -window "$WIN" /tmp/f2.png 2>/dev/null || return 0
-  convert /tmp/f2.png +repage \
+  import -window root /tmp/f2.png 2>/dev/null
+  convert /tmp/f2.png -crop 640x408+0+0 +repage \
     "$(printf '/out/frames/%03d-%s.b.png' $N "$1")"
+  for shot in \
+    "$(printf '/out/frames/%03d-%s.png' $N "$1")" \
+    "$(printf '/out/frames/%03d-%s.b.png' $N "$1")"; do
+    [ "$(identify -format '%wx%h' "$shot")" = 640x408 ] || {
+      echo "快照尺寸錯誤：$shot" >&2
+      return 1
+    }
+  done
 }
 
 while IFS= read -r line; do
@@ -117,7 +129,7 @@ timeout "${SAN1_REC_TIMEOUT:-1200}" docker run --rm --network none \
   -u "$(id -u):$(id -g)" \
   -e "FPS=$FPS" \
   -v "$GAME:/orig:ro" -v "$OUT:/out" \
-  "$IMAGE" bash /out/.run.sh 2>&1 | grep -v XGetInputFocus || true
+  "$IMAGE" bash /out/.run.sh 2>&1 | sed '/XGetInputFocus/d'
 
 rm -f "$OUT/.run.sh"
 ls -l "$OUT" | head

@@ -1,6 +1,6 @@
 # 006：畫面尺寸
 
-狀態：`READY`
+狀態：`CONFORMED`
 
 原版的顯示畫面是 **640×408**，不是 640×350。
 
@@ -128,3 +128,9 @@ DOSBox-X 的 `-crop 640x350+0+0`、dosgolem 存的每一張 PNG。
 | `parity.TestTitleArtLayoutMatchesTheOriginal` | 四塊並排、第 0 列起，256,000 格逐格相同 |
 | `assets.TestDosgolemMenuMatchesDosboxX` | dosgolem 與 DOSBox-X 的主選單在 640×408 上逐點相同 |
 | `parity.TestZZScreenHeightProbe` | 逐列墨水統計，記著 400–407 與 408 起的分界 |
+| `parity.TestZZDosgolemMatchesDosbox` | `rec7` 的 28 步參照全數改為 640×408，測試不再因舊尺寸跳過 |
+
+`tools/dosboxx-record.sh` 也把 640×408 當成產出契約：快照固定擷取與
+`ffmpeg` 相同的 Xvfb 畫布區域，且每張 PNG 寫出後立即驗尺寸。2026-09-13
+重錄的 `workplace/rec7/frames` 共 56 張，獨立掃描結果全數為 640×408；
+完整收據見 `docs/playtest/03-screen-parity.md`。
