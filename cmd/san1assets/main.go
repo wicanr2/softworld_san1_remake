@@ -51,12 +51,14 @@ type manifest struct {
 }
 
 type fileRecord struct {
-	Path      string `json:"path"`
-	From      string `json:"from"`
-	Container string `json:"container"`
-	Bytes     int    `json:"source_bytes"`
-	SHA256    string `json:"source_sha256"`
-	Note      string `json:"note,omitempty"`
+	Path         string `json:"path"`
+	From         string `json:"from"`
+	Container    string `json:"container"`
+	Bytes        int    `json:"source_bytes"`
+	SHA256       string `json:"source_sha256"`
+	OutputBytes  int    `json:"output_bytes"`
+	OutputSHA256 string `json:"output_sha256"`
+	Note         string `json:"note,omitempty"`
 }
 
 func run(root, out, what string) error {
@@ -105,6 +107,9 @@ func run(root, out, what string) error {
 		}
 		fmt.Printf("音效與語音：%d 段 → %s/speech/\n", n, out)
 	}
+	if err := populateOutputMetadata(out, &mf); err != nil {
+		return err
+	}
 
 	sort.Slice(mf.Files, func(i, j int) bool { return mf.Files[i].Path < mf.Files[j].Path })
 	b, err := json.MarshalIndent(mf, "", "  ")
@@ -117,6 +122,46 @@ func run(root, out, what string) error {
 	fmt.Printf("\n清單：%s/manifest.json（%d 個檔案）\n", out, len(mf.Files))
 	fmt.Println("⚠ 這些是你自己那一份原版的內容，只給你自己用，不要散布。")
 	return nil
+}
+
+// populateOutputMetadata 把每個實際輸出的大小與 SHA-256 寫回 manifest，並以
+// 失敗即關閉的方式確認輸出目錄裡沒有漏記的檔案。source_sha256 回答「原始素材
+// 是哪一份」，output_sha256 回答「這次轉出的檔案是哪一份」；兩者不可混用。
+func populateOutputMetadata(out string, mf *manifest) error {
+	seen := make(map[string]bool, len(mf.Files))
+	for i := range mf.Files {
+		rel := filepath.Clean(mf.Files[i].Path)
+		if rel == "." || filepath.IsAbs(rel) || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("manifest 路徑越界：%q", mf.Files[i].Path)
+		}
+		if seen[rel] {
+			return fmt.Errorf("manifest 路徑重複：%s", rel)
+		}
+		seen[rel] = true
+		blob, err := os.ReadFile(filepath.Join(out, rel))
+		if err != nil {
+			return fmt.Errorf("manifest 記錄的輸出不存在 %s：%w", rel, err)
+		}
+		mf.Files[i].Path = rel
+		mf.Files[i].OutputBytes = len(blob)
+		mf.Files[i].OutputSHA256 = sum(blob)
+	}
+	return filepath.WalkDir(out, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || entry.Name() == "manifest.json" {
+			return nil
+		}
+		rel, err := filepath.Rel(out, path)
+		if err != nil {
+			return err
+		}
+		if !seen[rel] {
+			return fmt.Errorf("輸出未登錄 manifest：%s", rel)
+		}
+		return nil
+	})
 }
 
 func open(root, name string) (*assets.Container, error) {
@@ -403,14 +448,15 @@ func exportMusic(c *assets.Container, out string, mf *manifest) (int, error) {
 	if err := os.WriteFile(filepath.Join(out, rel), append(b, '\n'), 0o644); err != nil {
 		return len(tracks), err
 	}
+	mf.Files = append(mf.Files, fileRecord{Path: rel, From: "（目錄）", Container: "—"})
 	return len(tracks), nil
 }
 
 // speechJSON 是音效與語音的目錄。
 type speechJSON struct {
-	Note   string      `json:"note"`
-	Rate   int         `json:"rate"`
-	Clips  []speechRow `json:"clips"`
+	Note  string      `json:"note"`
+	Rate  int         `json:"rate"`
+	Clips []speechRow `json:"clips"`
 }
 
 type speechRow struct {
@@ -424,7 +470,7 @@ type speechRow struct {
 }
 
 // speechRate 是轉出來的取樣率。原版的取樣率**跟 CPU 速度成正比**
-//（`docs/spec/008` R8），所以這裡固定一個；音高與原版在某一台機器上
+// （`docs/spec/008` R8），所以這裡固定一個；音高與原版在某一台機器上
 // 一致，不與「所有機器」一致。
 const speechRate = 22050
 
