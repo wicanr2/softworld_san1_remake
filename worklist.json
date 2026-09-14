@@ -761,11 +761,11 @@
       "level": null,
       "edition": null,
       "docs": [],
-      "note": "推上去了（`e9fab0f`，2026-09-10）。⚠ **這個訊號是弱的**：`origin/master` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。這一條會隨著新 commit 來回翻面（有東西沒推就報過期），那是它的用途。CONTEXT §8 原本記的「領先 187 筆」是舊資訊。",
-      "acceptance": "`git rev-list --count origin/master..master` ＝ 0",
+      "note": "推上去了（`e9fab0f`，2026-09-10）。⚠ **這個訊號是弱的**：`origin/main` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。這一條會隨著新 commit 來回翻面（有東西沒推就報過期），那是它的用途。CONTEXT §8 原本記的「領先 187 筆」是舊資訊；2026-09-14 預設分支由 `master` 改名為 `main`。",
+      "acceptance": "`git rev-list --count origin/main..main` ＝ 0",
       "verify": {
         "kind": "cmd",
-        "cmd": "git rev-list --count origin/master..master 2>/dev/null || echo ?",
+        "cmd": "git rev-list --count origin/main..main 2>/dev/null || echo ?",
         "expect": "0"
       },
       "layer": "external"

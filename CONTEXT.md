@@ -10,6 +10,7 @@
 |---|---|---|
 | 素材取得 | 兩版 js-dos bundle 下載完成、SHA-256 驗過 | 2026-09-06 |
 | 專案骨架 | 建立；`CLAUDE.md`／`LICENSE`／`.gitignore` 就位 | 2026-09-06 |
+| GitHub 預設分支 | 唯一遠端分支已由 `master` 原位改名為 `main`；本機追蹤 `origin/main` | 2026-09-14 |
 | dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 **`san1-oracle-parity`**，base 是 `origin/main`（`d351681`）。先前的 `san1-draw-speed-and-speech` **已經合併進 main**（`a4cb2b6`）。**分支名會換，用前先問 `git branch --show-current`** | 2026-09-10 |
 | 說明書 | 46 頁解到 `workplace/manual/`，整理中 | 2026-09-06 |
 | dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |

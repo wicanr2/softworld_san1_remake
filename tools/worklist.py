@@ -629,7 +629,7 @@ def verify_text(v, slug):
     if kind == "cmd":
         return f"`cmd`：`{v['cmd']}`，預期 `{v.get('expect', '')}`"
     if kind in ("present", "absent"):
-        where = "、".join(f"[`{p}`](https://github.com/{slug}/blob/master/{p})" for p in v["paths"])
+        where = "、".join(f"[`{p}`](https://github.com/{slug}/blob/main/{p})" for p in v["paths"])
         if kind == "present":
             return (f"`present`：{where} 裡找得到 `{v['pattern']}`——那是「還沒做完」的自承，"
                     "它不見了就表示這一條可能做完了")
@@ -652,7 +652,7 @@ def issue_body(item, slug):
         parts += ["", "### 文件", ""] + [f"- `{d}`" for d in item["docs"]]
     parts += ["", "---",
               "這個 issue 由 `tools/worklist.py issues` 從 "
-              f"[`worklist.json`](https://github.com/{slug}/blob/master/worklist.json) 產生。"
+              f"[`worklist.json`](https://github.com/{slug}/blob/main/worklist.json) 產生。"
               "**權威是 worklist.json**：要改內容或狀態請改 worklist 再重跑同步——"
               "在這裡直接改的內容，下次同步會被蓋掉。",
               "", MARKER.format(item["id"])]

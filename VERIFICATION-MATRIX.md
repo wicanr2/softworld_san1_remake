@@ -300,7 +300,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
-| 推送到 origin | 完成 | — | — | 指令重數 | 推上去了（`e9fab0f`，2026-09-10）。⚠ **這個訊號是弱的**：`origin/master` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。這一條會隨著新 commit 來回翻面（有東西沒推就報過期），那是它的用途。CONTEXT §8 原本記的「領先 187 筆」是舊資訊。 |
+| 推送到 origin | 完成 | — | — | 指令重數 | 推上去了（`e9fab0f`，2026-09-10）。⚠ **這個訊號是弱的**：`origin/main` 是 remote-tracking ref，讀它不用網路，所以它反映的是**上一次 fetch／push 當下**的狀態，不是遠端此刻的狀態。這一條會隨著新 commit 來回翻面（有東西沒推就報過期），那是它的用途。CONTEXT §8 原本記的「領先 187 筆」是舊資訊；2026-09-14 預設分支由 `master` 改名為 `main`。 |
 | 三平台簽章 | 卡住 | — | — | **要人判** | 管線寫好了，沒有憑證時會跳過並明說「這不是簽過」。**簽章不在 M8 的出口條件裡**。（`tools/release.sh`、`docs/release/01`） |
 
 ### 素材
@@ -375,4 +375,3 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | AI 版本與電腦指令數可以在遊戲裡調 | 完成 | — | both | `TestLoadKeepsTheAIChosenInGame`、`TestSetBrainLeavesATrace` | 「其他」加了第九項「電腦AI」與第十項「電腦指令」（原版只有八項，`docs/re/04` §3）。**加在後面**，原版那八項留在原來的編號上。  三個坑： ① **第十項的按鍵是 `0` 不是 `:`**——鍵盤只送得進 `0`–`9`，`byte('1'+i)` 到第十項會算出 `:`，那一項會永遠按不動而畫面上完全正常（`ui.MenuKey`）； ② 切 AI 只在**跑得動這一版規則**的版本裡繞（`ai.ModesFor`／`NextMode`）——還原型的 AI 配另一版的規則會安靜地算錯； ③ 兩項都進存檔（`optMeta` 的 `ai_mode`／`ai_orders`，都 `omitempty`），**讀檔時存檔裡有就聽存檔的**，否則玩家換過 AI 再讀檔會看起來像設定沒存到。（`docs/design/02`） |
 
 <!-- worklist:end -->
-
