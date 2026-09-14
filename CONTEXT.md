@@ -2,6 +2,13 @@
 
 新 session 或對話被壓縮後，先讀這一份。規則在 `CLAUDE.md`，這裡是**現況**。
 
+## 目前交付決策（2026-09-14）
+
+- 使用者已確認本階段維持**單人交付**；排除原版同機輪流操作的 hot-seat 多人模式。
+- 本決策不修改 `session.Session` 的單一玩家模型，也不擴充現有存檔 schema；單人正常玩家路徑、存讀檔與對拍閘門維持現行真相。
+- 決策依據：原版開機可接受兩位玩家，並在 `BASEMAS` 寫入兩個玩家控制旗標；但目前尚未證實每月控制權交接、退出／讀檔後控制權及完整多人存檔語意。現行 remake 仍以 `State.Player`／`save meta.Player` 為單一真相來源。
+- 因此 GitHub Issue [#16](https://github.com/wicanr2/softworld_san1_remake/issues/16) 不納入本次交付，關閉原因應為 `not planned`，不是 `completed`。日後若要支援多人，須另開明確範圍並重新經過 RE → DRAFT → READY → implementation → same-state verification 閘門。
+
 ---
 
 ## 1. 現在做到哪裡
