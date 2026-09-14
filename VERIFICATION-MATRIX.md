@@ -326,7 +326,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 
 | 項目 | 狀態 | 等級 | 版本 | 核實訊號 | 說明 |
 |---|---|---|---|---|---|
-| 諸侯記錄 72 個位元組裡還有 62 個沒解 | 未完成 | L2 | both | **要人判** | 已解 10 個：offset 2 君主、4 AI 等級、6 軍師、8 人望、14–18 五格寶庫。**offset 10–13、19–71 不是外交狀態**——五支謀略讀寫的都是州郡與人物的欄位。（`docs/spec/003`） |
+| 諸侯記錄 72 個位元組裡還有 57 個沒解 | 未完成 | L2 | both | **要人判** | 已建立 15 bytes 的語意：offset 0 控制者、2 君主、4 AI 等級、6 軍師、8 人望、14–18 玉璽／四種寶物。**offset 10–13、19–71 仍是 unknown，不是 padding，也不能宣稱沒有讀寫**；完整覆蓋矩陣在 `docs/spec/003` §4.1。是否繼續完整考古仍需人決定。 |
 | `.MSK` 解出來了：`REC10` 的天空遮罩 | 完成 | L1 | base | `TestCreditsAssetsMatchTheOriginal`、`TestDecodeMaskIsOnePlane` | 格式：表頭與 `.IMG` 相同（先高後寬），但**只有一個平面**（`assets.DecodeMask`）。整套素材裡只有一張 `ENDO4.MSK`，640×151。  **它是 `REC10`（山城風景）的天空遮罩**：位移 y=54 時逐點吻合 **99.39%**，而同一個判準對另一張山景 `REC11` 只有 51.31%（正對照）。用途是讓製作群的字幕從山後面升起來（`docs/spec/012`）。  ⚠ **怎麼合成是推測**：那一段跑在 `DATA0.GRP`／`DATA4.GRP` 兩支 還沒反組譯的 overlay。remake 的合成方式記在 `docs/spec/012` R2。（`docs/formats/07`、`docs/spec/012`） |
 | 配樂的追認規格 | 完成 | L1 | both | `TestParseAllSongs`、`TestStreamSilenceKeepsTime`、`TestBadDataIsRejected` | `internal/music` 先寫完才補規格。規格只描述已經驗過的行為，沒驗的（滑音、每拍 tick 數、換曲時機、`MUSV` 在哪用）列在 §5。（`docs/spec/009`、`docs/formats/06`） |
 | `.OKR` 是 PC 喇叭的語音（共 465 項 ＝ DATA2 418 ＋ DATA3 47） | 完成 | L1 | both | `TestSpeechClipsAreTheAssetBytes` | 整支播放器解出來了：`.OKR` 是**一位元 PCM**，最高位先送，沒有表頭、沒有壓縮。長串的 `FF` 與 `00` 是靜音與飽和段。  ⚠ 這一條原本記著「壓縮過、格式未解」而且推論「原版主戰場的地形版面在 `.OKR` 裡」——**兩句都錯**。戰場地圖在州郡記錄的第 55–174 個位元組（`docs/spec/003`）；`internal/battle` 的註解已經跟著改掉。推翻紀錄在 `CONTEXT.md` R54。（`docs/re/09`、`docs/spec/008`） |
