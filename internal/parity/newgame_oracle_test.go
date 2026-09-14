@@ -28,71 +28,127 @@ import (
 //	…
 func bootToNewGame(t *testing.T, o *oracle.Oracle, lord int, mas []byte) uint32 {
 	t.Helper()
-	o.TypeBoth("122")
-	// 4 跳標題、17 開始新遊戲、23 中平六年——與 `loadScenarioInOriginal`
-	// 同一組數字，差別只在主選單送 1 不是 2。
-	send := map[int]string{4: "\r", 17: "1", 23: "1"}
-	var base uint32
-	for i := 0; i < bootSteps/chunk; i++ {
-		if err := o.Run(chunk); err != nil {
-			t.Fatalf("開機停止：%v", err)
-		}
-		if k, ok := send[i]; ok {
-			o.TypeBoth(k)
-		}
-		if base == 0 {
-			if h := o.Search(mas[:48]); len(h) == 1 {
-				base = h[0]
-			}
-		}
+	// 以行為停點驅動，不再依賴已作廢的 50M 指令分段配方。
+	// `bootToMenu` 已完成裝置題、開場與標題，並停在主選單掃描碼迴圈。
+	s := bootToMenu(t, o)
+
+	type numAsk struct {
+		lo, hi int
 	}
-	if base == 0 {
-		t.Fatal("三張表還沒進記憶體——開機序列沒走到載盤面")
+	var ascCallers []uint32
+	var keyCalls int
+	var nums []numAsk
+	o.OnCall(addr(bootASCInputFn), func(o *oracle.Oracle) {
+		c := o.Caller()
+		ascCallers = append(ascCallers, uint32(c.Seg)*16+uint32(c.Off))
+	})
+	o.OnCall(addr(bootKeyInputFn), func(*oracle.Oracle) { keyCalls++ })
+	o.OnCall(addr(bootNumInputFn), func(o *oracle.Oracle) {
+		nums = append(nums, numAsk{int(o.Arg(0)), int(o.Arg(1))})
+	})
+
+	// 主選單選「開始新遊戲」後，年代選擇的低階輸入 caller 是
+	// runtime 1058:17D7；保留原始定位，不把它改名成產品語意。
+	const eraCaller = 0x1058*16 + 0x17d7
+	// 年代確認後先走 runtime 33D8:1FAB 的字元輸入，再進入君主欄位。
+	const playerCountCaller = 0x33d8*16 + 0x1fab
+	waitCaller := func(name string, want uint32) {
+		before := len(ascCallers)
+		waitBoot(t, o, name, 500_000_000, func() bool {
+			for _, c := range ascCallers[before:] {
+				if c == want {
+					return true
+				}
+			}
+			return false
+		})
+	}
+	waitNum := func(name string, lo, hi int) {
+		before := len(nums)
+		cond := oracle.NewCond(name, func(*oracle.Oracle) bool {
+			for _, n := range nums[before:] {
+				if n.lo == lo && n.hi == hi {
+					return true
+				}
+			}
+			return false
+		})
+		if err := o.RunUntil(cond, oracle.Budget(1_000_000_000)); err != nil {
+			t.Fatalf("等待%s失敗（nums=%v、asc=%v）：%v", name, nums, ascCallers, err)
+		}
+		// 玩家數、君主與難度都走 runtime `1058:0E57` 的掃描碼等待。
+		waitBootScan(t, o, name+"掃描碼", 5_000_000)
 	}
 
-	diff := "5"
-	// 之後的提示讀掃描碼；防拷密碼那一關不吃掃描碼（`docs/re/02` §3）。
-	for i, s := range []struct {
-		keys  string
-		chars bool
-		what  string
-	}{
-		{"1\r", false, "有幾人玩"},
-		{fmt.Sprintf("%d\r", lord), false, "第 1 位"},
-		{diff + "\r", false, "難度"},
-		{passwordAnswer + "\r", true, "防拷密碼"},
-		{"Y", false, "請您一定要確定"},
-	} {
-		before := screenOf(o)
+	o.Drain()
+	o.PressScan("1")
+	waitCaller("新局年代選擇輸入", eraCaller)
+	// callback 只證明年代輸入常式被呼叫；先等它回到 runtime 掃描碼
+	// 迴圈，才送下一個字元，避免鍵在畫面切換前被消費。
+	waitBootScan(t, o, "新局年代畫面", 500_000_000)
+	o.Drain()
+	o.TypeBoth("1")
+	waitCaller("新局玩家數輸入", playerCountCaller)
+	waitBootScan(t, o, "新局玩家數畫面", 500_000_000)
+	o.Drain()
+	o.TypeBoth("1\r")
+
+	// 玩家數已在上面的字元 caller 停點送出 1；這個數字欄位是選君主。
+	waitNum("新局君主輸入", 1, 6)
+	o.Drain()
+	o.PressScan(fmt.Sprintf("%d\r", lord))
+	// 密碼提示同樣有既有 observer 的行為路標（03EB:02C2、0..9999）。
+	// 在等待難度欄位的掃描碼沉澱前先記基準，避免密碼 callback 恰好
+	// 出現在那段沉澱期間時被漏算。
+	beforePassword := s.passwordAsk
+	beforeMain := s.mainAsk
+	waitNum("新局難度輸入", 1, 10)
+	o.Drain()
+	// 不把後續主命令的 0..9 callback 誤當成密碼欄位；那個 callback
+	// 可能在掃描碼等待期間先出現。
+	o.TypeBoth("5\r")
+	// 開局後的第一個月是否抽中防拷盤問由原版自己的 RND(12) 決定；
+	// 不把「有盤問」硬編成必要條件，否則另一個合法亂數狀態會被誤判
+	// 成開機失敗。兩個 callback 都是原始輸入路標，先等其中一個。
+	waitBoot(t, o, "新局防拷或主命令輸入", 500_000_000,
+		func() bool {
+			return s.passwordAsk > beforePassword || s.mainAsk > beforeMain
+		})
+	if s.passwordAsk > beforePassword {
 		o.Drain()
-		if s.chars {
-			o.TypeBoth(s.keys)
-		} else {
-			o.PressScan(s.keys)
-		}
-		moved := false
-		for k := 0; k < 12; k++ {
-			if err := o.Run(50_000_000); err != nil {
-				t.Fatalf("送 %s 時停止：%v", s.what, err)
-			}
-			if pixelDiff(before, screenOf(o), nil) > 200 {
-				moved = true
-				break
-			}
-		}
-		if !moved {
-			dumpScreen(t, o, fmt.Sprintf("newgame-%d", i+1))
-			t.Fatalf("開局第 %d 步（%s，送 %q）畫面沒動", i+1, s.what, s.keys)
-		}
+		// 密碼欄位在 `03EB:02C2` 走字元路徑；只餵字元佇列，避免掃描碼
+		// 副本污染後面的 Y/N 確認。
+		o.Type(passwordAnswer + "\r")
+		beforeYN := s.passwordYN
+		waitBoot(t, o, "新局密碼確認", 500_000_000,
+			func() bool { return s.passwordYN > beforeYN })
+		o.Drain()
+		o.PressScan("Y")
 	}
 
-	// 就任對白：每個現役將一句。**一句一句送，別在中間 Drain**——
-	// 對白有顯示時間，送早的鍵還在佇列裡等它來取。
-	for i := 0; i < 12; i++ {
+	// 就任對白的句數由盤面決定，這裡只用輸入 callsite 作「下一句可送」
+	// 的行為停點；主命令 caller 出現即停止。最多 32 句是失敗即關閉的
+	// 安全上限，不是成功條件。
+	for i := 0; i < 32 && s.mainAsk == beforeMain; i++ {
+		beforeKey := keyCalls
+		o.Drain()
 		o.PressScan("\r")
-		if err := o.Run(30_000_000); err != nil {
-			t.Fatalf("就任對白第 %d 句停止：%v", i+1, err)
-		}
+		waitBoot(t, o, fmt.Sprintf("新局就任對白第 %d 句", i+1),
+			100_000_000, func() bool {
+				return s.mainAsk > beforeMain || keyCalls > beforeKey
+			})
+	}
+	if s.mainAsk == beforeMain {
+		t.Fatalf("新局就任對白超過 32 句仍未到主命令輸入")
+	}
+	waitBootScan(t, o, "新局主命令", 5_000_000)
+
+	// base 版的執行期資料表基底由 `docs/re/02` §3.3 固定為 0x399B0。
+	// 開局選君主會更新諸侯表的動態欄位，因此不能再拿劇本前 48 bytes
+	// 做 exact Search；固定基底後仍由下游 DecodeTables 驗證三張表形狀。
+	const base = uint32(0x399b0)
+	if len(mas) < 48 || len(o.Bytes(addr(base), len(mas))) != len(mas) {
+		t.Fatalf("新局三張表基底 %#x 無法讀取完整諸侯表", base)
 	}
 	return base
 }

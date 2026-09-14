@@ -52,12 +52,17 @@ type playerCase struct {
 	//（`docs/re/05` §1 開頭就呼叫四次軍團編成），拿它當「做完了」會在
 	// 玩家還沒分配將軍之前就停下來，取到的盤面什麼都還沒動。
 	allKeys bool
+	// trackRoster 為真時，命令中的「第幾位將軍」選擇會以原版當下
+	// 建出的名單回填 pick；沒有選將領的命令（例如休息）則保留
+	// 開局玩家郡的第一位，避免月度電腦回合改寫共用名單後誤指到
+	// 其他郡的將領。
+	trackRoster bool
 	// todo 非空表示這道命令的按鍵序列還沒解完，先跳過並說明卡在哪。
 	// **跳過不是綠**（`CLAUDE.md` §7 第 18 條），所以理由要寫清楚。
 	todo string
 	// trace 為真時每送一段鍵存一張畫面，用來找序列在哪一步走偏。
 	trace bool
-	apply  func(g *game.State, at, to, gi int, me state.FactionID) error
+	apply func(g *game.State, at, to, gi int, me state.FactionID) error
 	// applyWith 給需要看原版盤面才做得出來的命令用（有它就不看 apply）。
 	// **不是拿答案回填**：只用來取原版自己挑的那一格，規則仍由 remake 算。
 	applyWith func(g *game.State, at, to, gi int, me state.FactionID,
@@ -103,6 +108,11 @@ const generalLoyaltyOff = 16
 // 魅力在人物記錄的位移（`internal/state`：`Charm: rec[11]`）。
 // 賑民的上限與賞賜的效果都是從主事者的魅力算的。
 const generalCharmOff = 11
+
+// 訓練度在人物記錄的位移（`internal/state`：`Training: rec[24]`）。
+// 玩家命令對拍會把第一位將領擺成「有兵但尚未訓練」，避免從滿訓練度
+// 的舊存檔送出命令時原版合法地什麼都不改，卻被測試誤判成按鍵沒走完。
+const generalTrainingOff = 24
 
 func runApply(tc playerCase, g *game.State, at, to, gi int,
 	me state.FactionID, before, after []byte) error {
@@ -236,6 +246,15 @@ func runPlayerCommands(t *testing.T,
 	}
 
 	snap := o.Save()
+	// OnCall 只能追加，不能移除。月迴圈路標必須只註冊一次，讓每個
+	// subtest 以目前的指標接收事件；若在迴圈內追加，舊 callback 會永久
+	// 留在 Oracle，後續測試的生命週期就無法明確驗證。
+	var activeMonthBegun *bool
+	o.OnCall(addr(monthLoopTick), func(*oracle.Oracle) {
+		if activeMonthBegun != nil {
+			*activeMonthBegun = true
+		}
+	})
 	for _, tc := range playerCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.todo != "" {
@@ -277,7 +296,8 @@ func runPlayerCommands(t *testing.T,
 			// `docs/mechanics/60-economy` §1.2）。那兩格是下個月的，
 			// 不是這道命令的。
 			monthBegun := false
-			o.OnCall(addr(monthLoopTick), func(*oracle.Oracle) { monthBegun = true })
+			activeMonthBegun = &monthBegun
+			defer func() { activeMonthBegun = nil }()
 			moved := oracle.NewCond("命令結束（換郡或進月迴圈）",
 				func(o *oracle.Oracle) bool {
 					if tc.allKeys {
@@ -328,7 +348,9 @@ func runPlayerCommands(t *testing.T,
 					o.PressScan(string(r))
 				}
 				err := o.RunUntil(moved, oracle.Budget(playerSettle))
-				roster()
+				if tc.trackRoster {
+					roster()
+				}
 				if tc.trace {
 					dumpScreen(t, o, fmt.Sprintf("trace-%s-%02d", tc.name, i+1))
 				}
@@ -456,8 +478,8 @@ func runPlayerCommands(t *testing.T,
 				skip[nMas+at*state.PrefectureRecordSize+29] = true
 			}
 			for _, r := range []struct {
-				name     string
-				off, n   int
+				name   string
+				off, n int
 			}{
 				{fmt.Sprintf("州郡表第 %d 筆", at),
 					nMas + at*state.PrefectureRecordSize, state.PrefectureRecordSize},
@@ -590,15 +612,17 @@ func playerCases() []playerCase {
 			},
 		},
 		{
-			name: "土地開墾",
-			keys: []string{"4\r", "1\r", "1\r"},
+			name:        "土地開墾",
+			trackRoster: true,
+			keys:        []string{"4\r", "1\r", "1\r"},
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.Reclaim(at, gi, me)
 			},
 		},
 		{
-			name: "洪水防冶",
-			keys: []string{"4\r", "2\r", "1\r"},
+			name:        "洪水防冶",
+			trackRoster: true,
+			keys:        []string{"4\r", "2\r", "1\r"},
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.FloodControl(at, gi, me)
 			},
@@ -607,7 +631,8 @@ func playerCases() []playerCase {
 			// 挑完將領直接進地圖游標畫面（`DS:0x70cc`「數字鍵選方向」），
 			// **`0` 就是蓋下去**，中間沒有 Y/N（`fort_oracle_test.go`）。
 			// 蓋完再一個 `Y` 收掉確認。
-			name: "建築關寨",
+			name:        "建築關寨",
+			trackRoster: true,
 			// `0` 選定那一格之後**還有一道 Y/N 確認**（`0x1aef1`，非 Y 就
 			// 退回游標），最後的 `N` 收掉外層的「主公是否繼續呢(Y/N)」
 			//（`0x1aa60`，蓋完第一座才會問）。
@@ -640,20 +665,29 @@ func playerCases() []playerCase {
 		{
 			name: "訓練兵士",
 			keys: []string{"3\r", "1\r"},
+			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
+				// 槽號 331 的舊存檔曾是 569 兵／100 訓練；把 fixture
+				// 擺成 100 兵／0 訓練，確保原版與 remake 都有可觀察的
+				// 合法訓練效果，並不改動 Train 的規則。
+				o.SetWord(addr(genRec(gi)+22), 100)
+				o.SetByte(addr(genRec(gi)+generalTrainingOff), 0)
+			},
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.Train(at, me)
 			},
 		},
 		{
-			name: "徵兵",
-			keys: []string{"3\r", "2\r", "1\r", "10\r"},
+			name:        "徵兵",
+			trackRoster: true,
+			keys:        []string{"3\r", "2\r", "1\r", "10\r"},
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.Conscript(at, gi, 10, me)
 			},
 		},
 		{
-			name: "購買武器",
-			keys: []string{"3\r", "3\r", "1\r", "10\r"},
+			name:        "購買武器",
+			trackRoster: true,
+			keys:        []string{"3\r", "3\r", "1\r", "10\r"},
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.BuyArms(at, gi, 10, me)
 			},
@@ -751,8 +785,9 @@ func playerCases() []playerCase {
 			// （`花費 = min(增幅 × 100 ÷ 效果, 100)`，`0xd3ed`，對拍過 605 次）
 			// 花費也該是 0；實測原版**照樣扣了 100 金**。兩個起點各跑一次
 			// 才分得出是「玩家那條一律收滿」還是「忠誠滿另有規則」。
-			name: "賞賜金帛（忠誠滿）",
-			keys: []string{"6\r", "3\r", "1\r", "100\r"},
+			name:        "賞賜金帛（忠誠滿）",
+			trackRoster: true,
+			keys:        []string{"6\r", "3\r", "1\r", "100\r"},
 			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
 				o.SetByte(addr(genRec(gi)+generalLoyaltyOff), 100)
 			},
@@ -765,8 +800,9 @@ func playerCases() []playerCase {
 			// `RND(加成 ÷ 2) ＋ 太守魅力 ÷ 3 ＋ 加成`。魅力 43 那次
 			// remake 算出 14（＝ 43 ÷ 3，加成 0），原版給 27——差的 13
 			// 是玩家那條的加成加上骰子。換成魅力 60 再量一次就框得出加成。
-			name: "賞賜金帛（魅力 60，忠誠 50）",
-			keys: []string{"6\r", "3\r", "1\r", "100\r"},
+			name:        "賞賜金帛（魅力 60，忠誠 50）",
+			trackRoster: true,
+			keys:        []string{"6\r", "3\r", "1\r", "100\r"},
 			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
 				o.SetByte(addr(genRec(gi)+generalCharmOff), 60)
 				o.SetByte(addr(genRec(gi)+generalLoyaltyOff), 50)
@@ -776,8 +812,9 @@ func playerCases() []playerCase {
 			},
 		},
 		{
-			name: "賞賜金帛（忠誠 50）",
-			keys: []string{"6\r", "3\r", "1\r", "100\r"},
+			name:        "賞賜金帛（忠誠 50）",
+			trackRoster: true,
+			keys:        []string{"6\r", "3\r", "1\r", "100\r"},
 			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
 				o.SetByte(addr(genRec(gi)+generalLoyaltyOff), 50)
 			},
