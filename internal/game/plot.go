@@ -41,23 +41,6 @@ func (p Plot) String() string {
 	return "?"
 }
 
-const (
-	// ⚠ **下面四項已經被原版的公式取代**（`PlotScore`，`L0`、`0x2dd66`）：
-	// 原版比的是雙方「軍師與君主裡謀略較高的那位」，人望與使者魅力
-	// 只扣分不加分，而且沒有擲骰。留著是為了讓 `docs/design/02`
-	// 的對照表讀得下去。
-	TuneChiefWeight     = 40 // 我方軍師智力
-	TuneEnvoyWeight     = 25 // 派遣使者魅力
-	TunePrestigeWeight  = 15 // 我方君主人望（這裡用君主魅力代表）
-	TuneEnemyChiefBonus = 20 // 對方軍師智力（扣分）
-
-	// ⚠ TuneForgeryLoyalty／TuneInciteLoss 已經被量到的公式取代
-	// （`Forgery`、`Sabotage`，`L0`）。留著只為讓 `docs/design/02`
-	// 的對照表讀得下去。
-	TuneForgeryLoyalty = 15
-	TuneInciteLoss     = 20
-)
-
 var ErrNoChief = fmt.Errorf("還沒拜封軍師，不能用計")
 
 // PlotCost 是計謀的花費：**平時的五種計謀不花錢**（`L0`、`[base]`）。

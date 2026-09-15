@@ -53,8 +53,8 @@ const (
 	baseDeathRatioCap = 0.23
 	// baseMoveCap 是休息一天回填之後移動力的上限（`0x29e5f`）。
 	baseMoveCap = 15
-	// baseRestGain 是休息一天回填的移動力（`0x29e53`）。
-	baseRestGain = 2
+	// baseRestGain 是休息一天回填的移動力（`0x29e53`，與玩家的 `RestMove` 同值）。
+	baseRestGain = RestMove
 	// baseEscapeRoom 是逃進鄰郡的將領上限（`0x23ebf`）。
 	baseEscapeRoom = 50
 )

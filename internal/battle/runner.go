@@ -131,9 +131,9 @@ func Commands() []Command {
 		CmdPlot, CmdInspect, CmdRetreat, CmdRest}
 }
 
-// TuneInspectCost 是「查看」敵軍要花的金。**這個有出處**：
-// 原版的訊息是 `查看敵軍須10金!`（`AA.EXE` `0x46ccf`）。
-const TuneInspectCost = 10
+// InspectCost 是「查看」敵軍要花的金（`L0`：原版的訊息是
+// `查看敵軍須10金!`，`AA.EXE` `0x46ccf`）。
+const InspectCost = 10
 
 // Inspect 是「查看」：看一支敵軍的細節，要花 10 金。
 //
@@ -149,10 +149,10 @@ func (b *Battle) Inspect(u *Unit, target Hex) (*Unit, error) {
 	if t.Side.Attacking() == u.Side.Attacking() {
 		return t, nil
 	}
-	if b.Gold[u.Side] < TuneInspectCost {
-		return nil, fmt.Errorf("battle: 查看敵軍須 %d 金", TuneInspectCost)
+	if b.Gold[u.Side] < InspectCost {
+		return nil, fmt.Errorf("battle: 查看敵軍須 %d 金", InspectCost)
 	}
-	b.Gold[u.Side] -= TuneInspectCost
-	b.note("blog.inspect", u.Name(), t.Name(), TuneInspectCost)
+	b.Gold[u.Side] -= InspectCost
+	b.note("blog.inspect", u.Name(), t.Name(), InspectCost)
 	return t, nil
 }

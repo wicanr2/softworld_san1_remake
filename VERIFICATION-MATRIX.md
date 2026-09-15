@@ -41,11 +41,11 @@
 | 點陣圖 `.IMG`／`.FAC` | 解出 | `L1` | `[base]` | `docs/formats/07` |
 | `EGAFILL.PAL`／`HERCFILL.PAL` | 解出：1024 B ＝ 16 × 64，一個勢力一塊 8×8 的填色圖樣（四塊純色、十二塊 2×2 網點）| `L1` | `[base]` | `docs/formats/07` |
 | `8x8AND*` 遮罩 | 解出：四張 8×8 的 AND 遮罩（1/4、1/2、1/8、1/2）；紮寨那一步蓋的是 `AND0`，78 格裡 73 格逐像素相同 | `L1` | `[base]` | `docs/formats/07` |
-| `.MSK` | **未解**（只有 `ENDO4.MSK`，而那一組不在容器裡）| — | — | `docs/formats/01` §4.1 |
+| `.MSK` | 解出：`ENDO4.MSK` 是 640×151 的單平面遮罩，配製作群畫面的 `REC10`（`TestDecodeMaskIsOnePlane`、`TestDrawCreditsRespectsTheMask`）| `L1` | `[base]` | `docs/formats/07`、`docs/spec/012` §2 |
 | `TITL0`–`3` 怎麼組成標題 | 開場的三英圖：四塊 160×400 並排（x ＝ 160i）**取整整 400 列**，畫面 408 列、底下 8 列是貼圖前清成的黑，與原版逐格相同（先前記著「取第 0–349 列」，那是畫布設成 350 造成的，R48）| `L1` | `[base]` | `docs/spec/005`、`docs/spec/006` |
 | `SANTL`／`SANTR`（開場詞的底圖）| 解出：各 320×295，畫在 (0,49)／(320,49)，與原版逐格相同 | `L1` | `[base]` | `docs/spec/005` |
 | `EICON.GRP`（戰場地形圖塊）| 解出：36 筆 `.IMG` 首尾相接，每筆 772 B、48×32，**編號就是地形碼** | `L1` | `[base]` | `docs/spec/005` §8 |
-| `.OKR`（**共 465 項** ＝ `DATA2` 418 ＋ `DATA3` 47）| **未解**（已知是 1bpp 點陣資料）| `L2` | `[both]` | `docs/re/04` §13、`docs/mechanics/90` §4 |
+| `.OKR`（**共 465 項** ＝ `DATA2` 418 ＋ `DATA3` 47）| 解出：PC 喇叭的語音片段，播放器整支解出，一句話由三段接起來（`TestSpeechClipsAreTheAssetBytes`）；哪一段是哪一句只證實兩則 | `L1` | `[both]` | `docs/re/09`、`docs/spec/008` |
 | 戰場地圖（州郡 offset 55–174）| 解出 | `L0` | `[base]` | `docs/spec/003` §3.3、`docs/re/05` §2 |
 | `NAME001`–`006.SHA`（加強版）| **不是遊戲檔**：bundle 裡混進來的第三方命名軟體存檔，`ASV.EXE`／`SV.COM` 都沒有引用 | `L0` | `[plus]` | `docs/mechanics/90` §4.1 |
 | `PARTNSAV.FIL` | **不是遊戲檔**：`MIRROR 6.M`／`saved partitions` 簽章 ＝ MS-DOS 6.x 的分割表備份，`AA.EXE` 沒有引用 | `L0` | `[base]` | `docs/formats/01` §6 |
@@ -90,7 +90,7 @@
 | 開場詞 | 接上 | `SANTL`(0,49)／`SANTR`(320,49) 兩張各 **94400 格全中**（基準是還沒寫字的那一格）；詞的欄距 42、列距 24、淺青配黑影，都量自前後兩格相減 |
 | 開場的三英圖 | 接上 | `TITL0`–`3` 四塊並排成 640×400，畫面 408 列（底下 8 列是黑），**261,120 格全中**（`assets.TitleArt`）|
 | 版權畫面 | 解出、未接 | `CMARKL`／`CMARKR` 是智冠的商標畫面；`AA.EXE` 的開場十格裡沒出現，應該歸 `COPYRIG.EXE` |
-| 州郡的填色 | 接上 | `EGAFILL.PAL` ＝ 16 個勢力各一塊 8×8 圖樣；拿原版剛載完第一個進度的畫面逐格比，35 個有主的郡裡 **34 個全中**（長沙那一個未解）|
+| 州郡的填色 | 接上 | `EGAFILL.PAL` ＝ 16 個勢力各一塊 8×8 圖樣，執行期勢力槽對檔案區塊是 0／2 互換其餘同號；拿原版剛載完第一個進度的畫面逐格比，35 個有主的郡 **全中**、42 郡依序合成 0 像素差（`TestPrefectureFillsMatchTheOriginal`，Issue #12）|
 
 **字型不接原版**：remake 自建字庫，不內嵌任何原版字模（`CLAUDE.md` §3.3）。
 

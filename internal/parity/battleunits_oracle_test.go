@@ -278,7 +278,7 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 			// 我們送的 `0`，電腦那幾支是它自己選的，量到的四支守軍
 			// 每天也是 +2。休息夾在 15（`0x27c2d`），開新的一天再把
 			// 不足上限的補到上限（`0x24ee1`）。
-			want := prev[i].move + battle.TuneRestMove
+			want := prev[i].move + battle.RestMove
 			if want > battle.MoveMax {
 				want = battle.MoveMax
 			}

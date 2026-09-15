@@ -8,15 +8,9 @@ package battle
 // 三十天的判定、休息 +2 移動力——那些都直接寫在用到的地方並標頁碼。
 
 const (
-	// 移動力（說明書 p.29–30 只說「來源是訓練度和兵種」「全副武裝稍減」）。
-
-	// TuneRestMove 是休息增加的移動力。**這個有出處**：
-	// 手冊 p.29、p.30 兩處都寫「每休息一次可增加移動力 2」。
-	TuneRestMove = 2
-
-	// 弓箭與計謀的殺傷都已經從原版讀出來（`0x2aa3b`、`strikeMultiplier`），
-	// 當初的 `TuneArrowDamage`／`TuneStratagemRange` 刪了，替換紀錄在
-	// `docs/design/02`。
+	// 休息的 +2 與上限 15、查看的 10 金都有出處，不在這裡：`RestMove`／
+	// `MoveMax`（`battle.go`）、`InspectCost`（`runner.go`）。弓箭與計謀的
+	// 殺傷也都從原版讀出來了，替換紀錄在 `docs/design/02`。
 
 	// 下面四個是 **`enhanced` 自動作戰**（`auto.go`）的取捨，不是規則。
 	// 原版自己的九支判斷式在 `autobase.go`（`base`／`plus` 走那一套，

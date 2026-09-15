@@ -58,8 +58,8 @@ func TestRunnerLetsThePlayerAct(t *testing.T) {
 	if err := b.Rest(u); err != nil {
 		t.Fatalf("休息失敗：%v", err)
 	}
-	if u.Move != before+TuneRestMove {
-		t.Errorf("休息之後移動力 %d，應該是 %d", u.Move, before+TuneRestMove)
+	if u.Move != before+RestMove {
+		t.Errorf("休息之後移動力 %d，應該是 %d", u.Move, before+RestMove)
 	}
 	r.Done()
 	if r.Next() == u {

@@ -101,8 +101,8 @@ func TestRestAddsTwoMovePoints(t *testing.T) {
 	if u.Leaders[0].Stamina <= 80 {
 		t.Error("休息應該恢復體力")
 	}
-	if TuneRestMove != 2 {
-		t.Errorf("TuneRestMove 是 %d，手冊寫的是 2", TuneRestMove)
+	if RestMove != 2 {
+		t.Errorf("RestMove 是 %d，手冊寫的是 2", RestMove)
 	}
 }
 

@@ -24,9 +24,6 @@ const (
 	// （`0x168fc`），手冊 p.36 說的「將領體能下降」在碼裡找不到，
 	// 但把它拿掉會讓瘟疫與「人口減少」完全同義。
 	TunePlagueStamina = 5
-	// TuneHarvestRicePerLand 是秋收的米產出：
-	// 每一點土地價值換多少米／金，再乘人口規模。
-	TuneHarvestRicePerLand = 2
 
 	// PopulationCap 是每個郡的人口上限（原版 `0x16f0a` 夾在 10000，
 	// 存的值 ×100，`L0`）。
@@ -34,9 +31,6 @@ const (
 	// PopulationOwnerlessChance 是無主郡成長的機率（`0x16ebd`，`L0`）：
 	// `RND(100) < 30` 才長。有主的郡每次都長。
 	PopulationOwnerlessChance = 30
-	// ⚠ TuneAgingStamina 已經被量到的公式取代（`AgingDrop`，`L0`）。
-	// 留著只為讓 `docs/design/02` 的對照表讀得下去。
-	TuneAgingStamina = 1
 	// 進貢的上限（`RND(5) + 8`，`L0`）。
 	TributeCapSpread = 5
 	TributeCapFloor  = 8

@@ -447,7 +447,7 @@ func (b *Battle) Rest(u *Unit) error {
 		return err
 	}
 	b.msg()
-	u.Move += TuneRestMove
+	u.Move += RestMove
 	if u.Move > MoveMax {
 		u.Move = MoveMax
 	}

@@ -1,8 +1,9 @@
 # remake 自己定的數值
 
-`internal/game/tuning.go`、`events.go`、`battle.go`、`plot.go` 與
+`internal/game/events.go`、`battle.go`、`options.go` 與
 `internal/battle/tuning.go` 裡所有 `Tune` 開頭的常數。
-**這些不是原版的數字。**
+**這些不是原版的數字。** 有出處的數字不叫 Tune（§2）；被原版公式取代的
+已經刪掉，只留在 §3 末的替換表裡。
 
 說明書給了方向（「謀略越高，土地價值增加越多」）卻沒給係數；
 原版的公式還沒反組譯到。集中列出來，是為了讓「哪些是還原的、
@@ -118,9 +119,10 @@
 ### 已經被原版取代的（不再是 remake 自選）
 
 這幾個當初是在「說明書只給方向、沒給數字」的前提下填的，現在有從原版
-的碼讀出來的公式了（`L0`）。**常數已經從 `tuning.go` 刪掉**（2026-09-15，
-Issue #4 之後那一輪的 `Tune*` 盤點：15 個沒有任何使用處），當初的值記在
-這張表的第一欄，替換的歷史靠這一份保存。
+的碼讀出來的公式了（`L0`）。**常數全部刪掉了**（2026-09-15 那一輪刪
+`tuning.go` 的 15 個，2026-09-16 Issue #31 刪掉 `events.go`／`plot.go`
+裡只為這張表留著的 8 個），當初的值記在這張表的第一欄，替換的歷史靠
+這一份保存。
 
 | 原本的常數（當初的值）| 現在用的 | 出處 |
 |---|---|---|
@@ -135,14 +137,17 @@ Issue #4 之後那一輪的 `Tune*` 盤點：15 個沒有任何使用處），�
 | `TuneSearchIntel`（1）| `SearchTierFor`：尋訪比「謀略 > RND(Spread) + Floor」，三個常數隨 AI 等級變 | `0xcd20` 起六支 |
 | `TuneHeadhuntBase`（60）| `HeadhuntOffer`：招募方開的條件對上目標的抵抗 | `0x1dc0a` |
 | 買米的換算 | `RicePerGold`：一金買到 `(100 − 物價) ÷ 10` 單位 | `0xc634` |
-| `TuneRestMove` 的上限 | `Rest`：+2 之後**夾在 15**（手冊只給了那個 2）| `0x27c00`／`0x27c2d` |
+| `TuneRestMove`（2）| `RestMove`＋`MoveMax`：+2 之後**夾在 15**——那個 2 碼裡也有（玩家 `0x27c27`、電腦 `0x29e53`），所以不再叫 Tune | `0x27c00`／`0x27c2d` |
+| `TuneInspectCost`（10）| `InspectCost`：查看敵軍 10 金，訊息 `查看敵軍須10金!` | `0x46ccf` |
 | `TuneArrowDamage`（6）| `ArrowTerrainValue`／`ArrowSurvivors`：一箭的殺傷有自己的地形表，形狀與交戰相同但**沒有那道 −1** | `0x2aa3b`／`DS:0x81c0` |
 | `TuneHit*`（整組）| `battle.exchange`：交戰結算看的是**部隊的**綜合能力與 `DS:0x8162`／`DS:0x8182`，不是逐將領的戰力值 | `0x2a224` |
 | `TuneHarvestRicePerLand` | `HarvestRice`：`(魅力 + 地力×3 + (100 − 洪水率) + 忠誠×2) × 人口 ÷ 200`——**洪水率只進米這一半** | `0x16afa` |
 | `TuneStratagemRange`（3）| 計謀的射程是 **1**，而且那是規則不是取捨——原版下計謀先問方向，目標一定是六個鄰格之一 | `0x28d7a`／`DS:0x7c6a`／`DS:0x7c82` |
 | 戰場糧草的消耗與逃亡 | 三天扣一次、四個軍團都扣，量是兵士（百）；缺糧時每位將領的兵 `÷= RND(2) + 2` | `0x25040`／`0x25576` |
-| `TuneChiefWeight` 等四項 | `PlotScore`：雙方各取「軍師與君主裡謀略較高的那位」，人望與使者魅力只扣分，沒有擲骰 | `0x2dd66` |
-| `TuneInciteLoss` | `Sabotage`：民忠、洪水率、土地價值、米、金五刀，量都跟著使者魅力 | `0x2d6e0` |
+| `TuneChiefWeight`／`TuneEnvoyWeight`／`TunePrestigeWeight`／`TuneEnemyChiefBonus`（40／25／15／20）| `PlotScore`：雙方各取「軍師與君主裡謀略較高的那位」，人望與使者魅力只扣分，沒有擲骰 | `0x2dd66` |
+| `TuneInciteLoss`（20）| `Sabotage`：民忠、洪水率、土地價值、米、金五刀，量都跟著使者魅力 | `0x2d6e0` |
+| `TuneForgeryLoyalty`（15）| `Forgery`：偽書使疑降忠誠的量照原版 | `docs/mechanics/30` |
+| `TuneAgingStamina`（1）| `AlreadyPastPrime`／`AgingDrop`：過壽命才扣體能，`體能 + (壽命−年齡)×25 − RND(50)` | `0x15d5d` |
 
 **「智力低會不會變負」是這一批最容易做錯的地方**：呼叫端算的
 `(智−50)/12` 對低智力是負的，而常式先擋掉非正的量、改成擲 0 或 1。
@@ -157,13 +162,16 @@ Issue #4 之後那一輪的 `Tune*` 盤點：15 個沒有任何使用處），�
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneHarvestRicePerLand` / `TuneHarvestGoldPerLand` / `TuneHarvestLandDrop` | 2／1／2 | 「稅金入庫、米糧進倉」|
-| `TuneWinterGrowth` | 95（千分比，**一年一次**）| 「人口增加」|
-| `TuneAgingStamina` | `AlreadyPastPrime`／`AgingDrop`：過壽命才扣體能，`體能 + (壽命−年齡)×25 − RND(50)` | `0x15d5d` | 「年齡增長，體能隨之逐漸減退」|
+| `TunePlagueStamina` | 5 | 「將領體能下降」（p.36）——碼裡的瘟疫只動人口（`0x168fc`），這一項是 remake 留著的手冊語意 |
 
-`agingMonth`（元月）與 `growthMonth`（十月）**不在這張表裡**——
-那兩個是從原版量出來的，不是 remake 挑的（`docs/mechanics/50-events` §1）。
-| `TuneTributePerPrefecture` | 3 | 「領地越多，貢品越多」|
+秋收、人口成長、進貢、老化都已經是原版的公式（`docs/mechanics/50`、`60`），
+`agingMonth`（元月）與 `growthMonth`（十月）也是量出來的，不是 remake 挑的。
+
+### 介面
+
+| 常數 | 值 | 為什麼 |
+|---|---|---|
+| `TuneDefaultDelay` | 30 | 訊息停留時間的預設值（原版收 0–100，0 等待按鍵）；預設是多少手冊沒寫，數字是 remake 選的 |
 
 ### 戰役
 
