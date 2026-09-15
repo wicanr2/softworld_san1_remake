@@ -206,7 +206,7 @@ dd 87 30 54     fld qword [bx+0x5430]
 
 ## 6. remake 這一邊
 
-`state.Edition` 兩個值：`base`、`plus`。它決定五件事，五件都有 `L0` 出處：
+`state.Edition` 兩個值：`base`、`plus`。它決定六件事，六件都有 `L0` 出處：
 
 - `Edition.MaxDifficulty()`：10 或 20。開局收難度、存檔驗難度都用它。
 - `ai.SortieOdds(edition, difficulty)`：兩張係數表（§3）。
@@ -224,6 +224,9 @@ dd 87 30 54     fld qword [bx+0x5430]
   `PlusRewardPercent`）、出兵走 `sortiePlus`。AI 版本與規則版本同源
   （`ai.CheckEdition`），所以這四張跟著 `ai.Mode` 而不是另開旗標。
 
+- `game.endTurn`：加強版在郡回合結束時再重整一次守將清單
+  （`docs/mechanics/90` §6.6，對拍 `TestPlayerCommandsPlus`，2026-09-16）。
+
 統帥條件本身**不是版本差異**，是兩版共通的原版規則，所以無條件實作
 （`battle.Battle.Commander`／`CommanderAlive`）。
 
@@ -231,6 +234,6 @@ dd 87 30 54     fld qword [bx+0x5430]
 沒設 `Rules` 的呼叫端拿到原版規則，不是「所有規則都關掉」。反過來寫的
 零值會是加強版難度 11–20 的行為，而那在測試裡只看得出「戰役沒結束」。
 
-**沒有第六件事。** 旗標只切已經量到的差異；量不到的不預先造欄位
+**沒有第七件事。** 旗標只切已經量到的差異；量不到的不預先造欄位
 （`CLAUDE.md` §3.4）。加強版 README 的另外兩條（密碼只輸入一次、
 語音速度可調）是外殼不是規則，remake 兩版都不做防拷密碼。

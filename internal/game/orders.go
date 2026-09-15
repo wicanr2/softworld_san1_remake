@@ -126,7 +126,7 @@ func (g *State) reclaim(prefectureID, generalIndex int, by state.FactionID,
 		p.Gold -= min(p.Gold, g.price(by, CostReclaim))
 	}
 	p.LandValue = uint8(clampTo(int(p.LandValue)+add, 100))
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -162,7 +162,7 @@ func (g *State) floodControl(prefectureID, generalIndex int, by state.FactionID,
 	}
 	p.Gold -= fee
 	p.FloodRate = uint8(clampTo(int(p.FloodRate)-drop, 100))
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -211,7 +211,7 @@ func (g *State) Conscript(prefectureID, generalIndex, n int, by state.FactionID)
 	p.Gold -= cost
 	p.Population -= n
 	x.Soldiers = total
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -239,7 +239,7 @@ func (g *State) BuyArms(prefectureID, generalIndex, units int, by state.FactionI
 	}
 	p.Gold -= cost
 	x.Arms = uint8(ArmsAfterPurchase(int(x.Arms), x.Soldiers, units))
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 

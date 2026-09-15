@@ -921,6 +921,26 @@ func (g *State) FreeGenerals(prefectureID int) int {
 	return n
 }
 
+// endTurn 是一個郡這個月的回合結束：下令旗標立起來（玩家那一條
+// 「每郡每月一道令」看它，說明書 p.17）。**加強版在回合結束時再重整
+// 一次守將清單**（`0x162dc`–`0x162e0`：電腦與玩家的回合走完都
+// `call 0x17fc8`；原版 `0x1746e` 只在入口做，`L0`），兵士與現役將兩欄
+// 因此在回合結束那一刻就是新值——玩家命令的對拍在訓練兵士那一道
+// 抓到（`TestPlayerCommandsPlus`）。
+func (g *State) endTurn(p *Prefecture) {
+	p.Commanded = true
+	if g.Edition == state.EditionPlus {
+		g.RefreshGarrison(p.ID)
+	}
+}
+
+// EndTurnAt 是 endTurn 的對外版本，給逐郡驅動的對拍用。
+func (g *State) EndTurnAt(prefectureID int) {
+	if p := g.Prefecture(prefectureID); p != nil {
+		g.endTurn(p)
+	}
+}
+
 // RefreshGarrison 是原版的「重整守將清單」（`0x1949e`）：同一份名單
 // 同時寫回州郡 offset 16 的兵士與 offset 22 的現役武將數。
 //

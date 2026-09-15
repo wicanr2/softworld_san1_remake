@@ -126,6 +126,90 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 	runPlayerCommands(t, bootToGame)
 }
 
+// playerRig 是一版的路標：哪一支執行檔、種子在哪、工作段怎麼拿、
+// 月迴圈那一抽在哪。兩版的按鍵序列相同（選單字串逐條相同，
+// `docs/mechanics/90` §6.1），差的只有這幾個位址。
+type playerRig struct {
+	exe     string
+	root    func(*testing.T) string
+	edition state.Edition
+	// boot 把原版開到玩家的主命令，回三張表的基底。
+	boot func(*testing.T, *oracle.Oracle) uint32
+	// seedLo／seedHi 是亂數種子在 DS 的位移。
+	seedLo, seedHi uint32
+	// workSeg 回工作段的段值（目前的郡、守將清單都在裡面）。
+	workSeg func(*oracle.Oracle) uint16
+	// curPrefOff 是「目前的郡」在工作段的位移。
+	curPrefOff uint16
+	// rosterSegs 回守將清單與筆數各在哪一段；rosterListOff／rosterCntOff
+	// 是它們在那一段的位移。
+	rosterSegs                  func(*oracle.Oracle) (lst, cnt uint16)
+	rosterListOff, rosterCntOff uint16
+	// monthTick 是月迴圈每一格那一抽的位址——它被呼叫就表示玩家的
+	// 回合結束、月結算開始了。
+	monthTick uint32
+	// newGame 從原版記憶體裡的三張表建 remake 的局面。
+	newGame func(sc *state.Scenario, me state.FactionID) (*game.State, error)
+}
+
+// baseRig 是原版的路標（`docs/re/03`）。
+func baseRig(boot func(*testing.T, *oracle.Oracle, []byte) uint32) playerRig {
+	return playerRig{
+		exe: "AA.EXE", root: origRoot, edition: state.EditionBase,
+		boot: func(t *testing.T, o *oracle.Oracle) uint32 {
+			c := openContainer(t, filepath.Join(origRoot(t), "DATA2"))
+			sc0, err := state.LoadScenario(c, state.Slot("001"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			seedMas, _, _ := sc0.Tables()
+			return boot(t, o, seedMas)
+		},
+		seedLo: 0xa3ae, seedHi: 0xa3b0,
+		workSeg:    func(o *oracle.Oracle) uint16 { return o.ES() },
+		curPrefOff: curPrefOff,
+		rosterSegs: func(o *oracle.Oracle) (uint16, uint16) {
+			ds := uint32(o.DSReg()) * 16
+			return o.Word(addr(ds + rosterListSegAt)), o.Word(addr(ds + rosterCntSegAt))
+		},
+		rosterListOff: rosterListOff, rosterCntOff: rosterCntOff,
+		monthTick: monthLoopTick,
+		newGame: func(sc *state.Scenario, me state.FactionID) (*game.State, error) {
+			return game.New(sc, me, 5, state.EditionBase)
+		},
+	}
+}
+
+// plusRig 是加強版的路標（`docs/spec/015` §8.1／§8.4）。工作段從
+// `DS:[0xa8f8]` 取，目前的郡在 `+0x3106`、守將清單在 `+0x5a0`／筆數
+// `+0xc`（原版 `+0x30fc`／`+0x58c`／`+0xc`）。remake 用 `game.Continue`
+// 接手——加強版的 AI 等級改寫是 `+N`，`game.New` 再做一次會疊上去。
+func plusRig() playerRig {
+	return playerRig{
+		exe: "ASV.EXE", root: plusRoot, edition: state.EditionPlus,
+		boot: func(t *testing.T, o *oracle.Oracle) uint32 {
+			base, _ := bootToNewGamePlus(t, o, caoCaoPick, 5)
+			return base
+		},
+		seedLo: 0xa566, seedHi: 0xa568,
+		workSeg: func(o *oracle.Oracle) uint16 {
+			ds := uint32(o.DSReg()) * 16
+			return o.Word(addr(ds + plusWorkSegPtr))
+		},
+		curPrefOff: 0x3106,
+		rosterSegs: func(o *oracle.Oracle) (uint16, uint16) {
+			ds := uint32(o.DSReg()) * 16
+			ws := o.Word(addr(ds + plusWorkSegPtr))
+			return ws, ws
+		},
+		rosterListOff: 0x5a0, rosterCntOff: 0xc,
+		monthTick: 0x147f0, // `push 0xc / call RND`（原版 `0x15790` 的對應）
+		newGame: func(sc *state.Scenario, me state.FactionID) (*game.State, error) {
+			return game.Continue(sc, me, 5, state.EditionPlus, game.Date{Year: 189, Month: 1})
+		},
+	}
+}
+
 // runPlayerCommands 是本體；`boot` 決定從哪個局面出發。
 //
 // 兩種局面各驗一次：`bootToGame` 走「載入舊進度」（建安二年、南海、
@@ -134,20 +218,17 @@ func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
 // 沒有人治理，兩邊都會拒絕。
 func runPlayerCommands(t *testing.T,
 	boot func(*testing.T, *oracle.Oracle, []byte) uint32) {
-	root := origRoot(t)
-	c := openContainer(t, filepath.Join(root, "DATA2"))
-	sc0, err := state.LoadScenario(c, state.Slot("001"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	seedMas, _, _ := sc0.Tables()
+	runPlayerCommandsRig(t, baseRig(boot))
+}
 
-	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+func runPlayerCommandsRig(t *testing.T, rig playerRig) {
+	root := rig.root(t)
+	o, err := oracle.Load(filepath.Join(root, rig.exe), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer o.Close()
-	base := boot(t, o, seedMas)
+	base := rig.boot(t, o)
 
 	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize,
 		state.GeneralTableSize
@@ -156,15 +237,15 @@ func runPlayerCommands(t *testing.T,
 
 	ds := uint32(o.DSReg()) * 16
 	seedOf := func() uint32 {
-		return uint32(o.Word(addr(ds+0xa3ae))) |
-			uint32(o.Word(addr(ds+0xa3b0)))<<16
+		return uint32(o.Word(addr(ds+rig.seedLo))) |
+			uint32(o.Word(addr(ds+rig.seedHi)))<<16
 	}
-	work := o.ES()
-	at := int(o.Word(oracle.Addr{Seg: work, Off: curPrefOff}))
+	work := rig.workSeg(o)
+	at := int(o.Word(oracle.Addr{Seg: work, Off: rig.curPrefOff}))
 	t.Logf("工作段 %04X，目前的郡 %d，亂數狀態 0x%08x", work, at, seedOf())
 	if at < 1 || at > 42 {
-		t.Fatalf("`es:0x30fc` 讀出來是 %d，不是 1..42 的郡編號——"+
-			"工作段取錯了，後面全部不成立", at)
+		t.Fatalf("工作段 +%#x 讀出來是 %d，不是 1..42 的郡編號——"+
+			"工作段取錯了，後面全部不成立", rig.curPrefOff, at)
 	}
 
 	raw := board()
@@ -213,7 +294,7 @@ func runPlayerCommands(t *testing.T,
 	if err != nil {
 		t.Fatal(err)
 	}
-	gNow, err := game.New(scNow, me, 5, state.EditionBase)
+	gNow, err := rig.newGame(scNow, me)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +331,7 @@ func runPlayerCommands(t *testing.T,
 	// subtest 以目前的指標接收事件；若在迴圈內追加，舊 callback 會永久
 	// 留在 Oracle，後續測試的生命週期就無法明確驗證。
 	var activeMonthBegun *bool
-	o.OnCall(addr(monthLoopTick), func(*oracle.Oracle) {
+	o.OnCall(addr(rig.monthTick), func(*oracle.Oracle) {
 		if activeMonthBegun != nil {
 			*activeMonthBegun = true
 		}
@@ -304,23 +385,22 @@ func runPlayerCommands(t *testing.T,
 						return false
 					}
 					return monthBegun ||
-						int(o.Word(oracle.Addr{Seg: work, Off: curPrefOff})) != at
+						int(o.Word(oracle.Addr{Seg: work, Off: rig.curPrefOff})) != at
 				})
 			var be *oracle.BudgetError
 			done := false
 			// pick 是原版名單的第一位——送 `1` 選到的那個人。
 			pick := gi
 			roster := func() {
-				cnt := o.Word(addr(ds + rosterCntSegAt))
-				lst := o.Word(addr(ds + rosterListSegAt))
+				lst, cnt := rig.rosterSegs(o)
 				if cnt == 0 || lst == 0 {
 					return
 				}
-				n := o.Word(oracle.Addr{Seg: cnt, Off: rosterCntOff})
+				n := o.Word(oracle.Addr{Seg: cnt, Off: rig.rosterCntOff})
 				if n == 0 || n > 350 {
 					return
 				}
-				first := int(o.Word(oracle.Addr{Seg: lst, Off: rosterListOff}))
+				first := int(o.Word(oracle.Addr{Seg: lst, Off: rig.rosterListOff}))
 				if first >= 0 && first < nGen/state.GeneralRecordSize {
 					pick = first
 				}
@@ -395,7 +475,7 @@ func runPlayerCommands(t *testing.T,
 				if err != nil {
 					t.Fatalf("盤面解不開：%v", err)
 				}
-				g, err := game.New(sc, me, 5, state.EditionBase)
+				g, err := rig.newGame(sc, me)
 				if err != nil {
 					t.Fatalf("remake 開不了局：%v", err)
 				}
@@ -415,7 +495,7 @@ func runPlayerCommands(t *testing.T,
 			if err != nil {
 				t.Fatalf("盤面解不開：%v", err)
 			}
-			g, err := game.New(sc, me, 5, state.EditionBase)
+			g, err := rig.newGame(sc, me)
 			if err != nil {
 				t.Fatalf("remake 開不了局：%v", err)
 			}
@@ -663,6 +743,9 @@ func playerCases() []playerCase {
 			},
 		},
 		{
+			// 加強版在回合結束時重整守將清單（`game.endTurn`）：這一道把
+			// 第一位的兵擺成 100，州郡的兵士欄（offset 16）在加強版會跟著
+			// 變成新的總和，原版不會——兩版各自對過。
 			name: "訓練兵士",
 			keys: []string{"3\r", "1\r"},
 			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
@@ -835,4 +918,11 @@ func fortSpotOf(before, after []byte, at int) int {
 		}
 	}
 	return -1
+}
+
+// TestPlayerCommandsPlus 拿加強版（劇本一、曹操、難度 5，開新局）把同一組
+// 玩家命令再走一次（Issue #27）。按鍵序列與原版同一套；差的只有
+// `plusRig` 那幾個位址。
+func TestPlayerCommandsPlus(t *testing.T) {
+	runPlayerCommandsRig(t, plusRig())
 }

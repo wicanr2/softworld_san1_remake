@@ -83,7 +83,7 @@ func (g *State) Move(from, to, generalIndex, gold, rice int, by state.FactionID)
 		x.Status = state.StatusOfficer
 	}
 	relocateSupplies(g, src, dst, []int{x.Index}, to, gold, rice)
-	src.Commanded = true
+	g.endTurn(src)
 	return nil
 }
 
@@ -130,7 +130,7 @@ func (g *State) Relocate(from, to int, force []int, gold, rice int, by state.Fac
 	// §「移動本身」），兵士與現役將兩欄跟著刷新。
 	g.RefreshGarrison(from)
 	g.RefreshGarrison(to)
-	src.Commanded = true
+	g.endTurn(src)
 	return nil
 }
 
@@ -206,7 +206,7 @@ func (g *State) Transport(from, to, gold, rice int, by state.FactionID) error {
 	src.Rice -= rice
 	dst.Gold = transportReceive(dst.Gold, TransportArrives(gold, charm))
 	dst.Rice = transportReceive(dst.Rice, TransportArrives(rice, charm))
-	src.Commanded = true
+	g.endTurn(src)
 	return nil
 }
 
@@ -266,7 +266,7 @@ func (g *State) Train(prefectureID int, by state.FactionID) error {
 		add := (int(x.Intel)/3 + int(x.War)/2) / div
 		x.Training = uint8(clampTo(int(x.Training)+add, 100))
 	}
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -333,7 +333,7 @@ func (g *State) redistribute(prefectureID int, indices []int, by state.FactionID
 		x.Training = uint8(train)
 		x.Arms = uint8(arms)
 	}
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -390,7 +390,7 @@ func (g *State) BuildFortAt(prefectureID, generalIndex, spot int,
 	p.BattleField[spot] = p.BattleField[spot]&0xF6 | fortTerrain
 	p.Gold -= cost
 	p.Forts++
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -448,7 +448,7 @@ func (g *State) Rest(prefectureID int, by state.FactionID) error {
 	if err != nil {
 		return err
 	}
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -486,7 +486,7 @@ func (g *State) BuyRice(prefectureID, units int, by state.FactionID) error {
 	}
 	p.Gold -= cost
 	p.Rice = clampTo(p.Rice+cost*rate, MaxRice)
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -535,7 +535,7 @@ func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 	gold := units / rate
 	p.Rice -= gold * rate // 換不到一金的零頭留在倉裡
 	p.Gold = clampTo(p.Gold+gold, MaxGold)
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -597,7 +597,7 @@ func (g *State) TradeRiceTo(prefectureID, target int, by state.FactionID) error 
 	if p.Rice < 0 {
 		p.Rice = 0
 	}
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -637,7 +637,7 @@ func (g *State) Relief(prefectureID, gold int, by state.FactionID) error {
 		p.Rice -= gold
 		add := ReliefGainPlayer(p.Population, gold, charm)
 		p.PublicLoyalty = uint8(clampTo(int(p.PublicLoyalty)+add, 100))
-		p.Commanded = true
+		g.endTurn(p)
 		return nil
 	}
 	fee := g.price(by, gold)
@@ -654,7 +654,7 @@ func (g *State) Relief(prefectureID, gold int, by state.FactionID) error {
 	p.Gold -= g.price(by, ReliefSecondCharge(full-int(p.PublicLoyalty),
 		ReliefRateOf(int(p.PriceLevel), level), ReliefPerStep(p.Population)))
 	p.PublicLoyalty = uint8(full)
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 

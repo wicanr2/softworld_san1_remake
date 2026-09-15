@@ -166,7 +166,7 @@ func (g *State) search(prefectureID, generalIndex int, by state.FactionID,
 		}
 		p.Gold -= fee
 	}
-	p.Commanded = true
+	g.endTurn(p)
 
 	// **門檻照原版**（`SearchTierFor`，`L1`、`0xcc86`）：
 	// 尋訪者的謀略要**大於** `RND(Spread) + Floor`。三個常數隨 AI 等級變，
@@ -229,7 +229,7 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 		return ErrTooManyGens
 	}
 	p.Gold -= fee
-	p.Commanded = true
+	g.endTurn(p)
 
 	bonus := RecruitBonus(level)
 	charm := 50
@@ -407,7 +407,7 @@ func (g *State) Dismiss(prefectureID, targetIndex int, by state.FactionID) error
 	if f := g.Faction(by); f != nil && f.Chief == t.Index {
 		f.Chief = -1
 	}
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -447,7 +447,7 @@ func (g *State) AppointChief(prefectureID, targetIndex int, by state.FactionID) 
 		return ErrNotYours
 	}
 	g.installChief(f, t)
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -644,7 +644,7 @@ func (g *State) giftTreasure(prefectureID, targetIndex int, t Treasure,
 		x.Loyalty = uint8(clampTo(int(x.Loyalty)+
 			TreasureLoyaltyGain(t, ability, roll), 100))
 	}
-	p.Commanded = true
+	g.endTurn(p)
 	return nil
 }
 
@@ -689,7 +689,7 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 		return fmt.Errorf("%s：%w", tf("msg.unmoved", t.Name), ErrDeclined)
 	}
 	p.Gold -= CostHeadhunt
-	p.Commanded = true
+	g.endTurn(p)
 
 	// **成敗照原版**（`0x1dc0a`，`L0`）：招募方開的條件對上目標的抵抗，
 	// 而回傳的不是布林是「成功之後的忠誠」——算出來 <= 0 就當失敗。

@@ -155,7 +155,7 @@ func (g *State) musterAttack(from, to int, attackers []int, by state.FactionID) 
 			def = append(def, x)
 		}
 	}
-	src.Commanded = true
+	g.endTurn(src)
 	return att, def, nil
 }
 

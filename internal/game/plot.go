@@ -136,7 +136,7 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 	}
 	// 聯合出兵是我方兩郡合攻，沒有出使的對象、也沒有使者。
 	if p == PlotJointAttack {
-		src.Commanded = true
+		g.endTurn(src)
 		return g.jointAttack(plan, by)
 	}
 	dst := g.Prefecture(target)
@@ -150,7 +150,7 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 	if envoy == nil || envoy.Faction != by || envoy.Location != from {
 		return false, ErrUnknownUnit
 	}
-	src.Commanded = true
+	g.endTurn(src)
 
 	// **成敗照原版的分數對決**（`PlotScore`，`0x2dd66`）：兩邊各取
 	// 「軍師與君主裡謀略較高的那位」，我方再依人望與使者魅力扣分。
