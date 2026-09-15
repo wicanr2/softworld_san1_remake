@@ -40,11 +40,19 @@ func (r *Runner) Next() *Unit {
 	for !r.B.Over {
 		for len(r.queue) > 0 {
 			u := r.queue[0]
-			if !u.Alive() || u.Trapped > 0 {
+			if !u.Alive() {
 				r.queue = r.queue[1:]
 				continue
 			}
 			if r.human(u.Side) {
+				// 玩家的部隊：輪到之前一樣重算綜合能力；中了陷阱就
+				// 只倒數（原版也不讓玩家下令，`0x24e71`）。
+				u.RefreshQuality()
+				if u.Trapped > 0 {
+					r.B.SkipTrappedTurn(u)
+					r.queue = r.queue[1:]
+					continue
+				}
 				return u
 			}
 			r.B.AutoTurn(u)
@@ -66,8 +74,11 @@ func (r *Runner) Next() *Unit {
 //
 // **要玩家自己說「我下完了」**：一支部隊一天可以做好幾件事
 // （走幾步再攻擊），沒有這一步就分不出「還沒動」與「不想動」。
+//
+// 收尾照原版的回合常式：判投敵、回填移動力（`EndTurn`）。
 func (r *Runner) Done() {
 	if len(r.queue) > 0 {
+		r.B.EndTurn(r.queue[0])
 		r.queue = r.queue[1:]
 	}
 }

@@ -1,6 +1,9 @@
 package battle
 
-import "fmt"
+import (
+	"fmt"
+	"math/big"
+)
 
 // 單挑與六種計謀（說明書 p.30–34）。
 
@@ -11,7 +14,10 @@ import "fmt"
 // 或死於刀下。」
 //
 // accept 為假表示對方拒絕挑戰。要照原版判斷用 DuelAccepted。
-func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
+func (b *Battle) Duel(a *Unit, d Dir, accept bool) error { return b.duel(a, d, accept, true) }
+
+// duel 是 Duel 的本體；spend 為真把移動力歸零（玩家的對戰 `0x29009`）。
+func (b *Battle) duel(a *Unit, d Dir, accept bool, spend bool) error {
 	if err := b.canAct(a); err != nil {
 		return err
 	}
@@ -26,7 +32,9 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 	if ca == nil || ct == nil {
 		return fmt.Errorf("battle: 有一方沒有領隊")
 	}
-	a.Move = 0
+	if spend {
+		a.Move = 0
+	}
 	if !accept {
 		// 「若拒絕挑戰，麾下士兵將有部份逃跑」——**跑的是拒絕那一方的**
 		// （`0x30de6`，三條分支的 `si` 都指向被挑戰者）。
@@ -197,9 +205,7 @@ func (b *Battle) defeatInDuel(u *Unit, loser, winner *Leader) {
 		b.note("blog.duelKilled", pn(loser.Name), pn(winner.Name))
 	}
 	// 「如果雙方領隊之一被擒或死亡，這場對戰便告一段落」。
-	if u.Soldiers() == 0 {
-		u.Wiped = true
-	}
+	b.wipeCheck(u)
 	b.checkOver()
 }
 
@@ -327,36 +333,66 @@ const (
 	StratagemMaxLoss = 90
 	// StratagemRollSpread 是加在地形基數上的亂數寬度（`0x2aff8`）。
 	StratagemRollSpread = 10
-	// StratagemGeniusIntel 起跳的領隊讓殺傷乘上 StratagemGeniusBonus％
+	// StratagemGeniusIntel 起跳的領隊讓殺傷乘上 StratagemGeniusFactor
 	// （`0x2b047`：`謀略 >= 0x62`，`DS:0xa9b6` ＝ 1.6）。
 	StratagemGeniusIntel = 98
-	StratagemGeniusBonus = 160
 )
 
 // terrainSlot 是原版查地形殺傷表用的索引：`地形碼 & 0x0D`。
 func terrainSlot(t Terrain) int { return int(terrainCode[t]) & 0x0D }
 
-// FireLoss／FloodLoss 是火攻與水淹的殺傷百分比。
+// FireRatio／FloodRatio 是火攻與水淹的殺傷比率（`0x2aff4`–`0x2b081`，`L0`）：
 //
-//	比率 ＝ min(90, (基數 + RND(10)) × (領隊謀略 ≥ 98 ? 1.6 : 1))
+//	比率 ＝ (基數 + RND(10)) × 0.01          ; double
+//	領隊謀略 ≥ 98 → 比率 × 1.6               ; DS:0xa9b6
+//	比率 ≥ 0.9 → 0.9                         ; DS:0xa9be
+//
+// **是 double 不是百分比整數**：謀略 98 起跳那一乘會留下小數
+// （28% × 1.6 ＝ 44.8%），截成整數會讓一千五的部隊多留 12 個人。
+// 乘法照 x87 的寬度算再存成 double（`fmull` ＋ `fstpl`）。
+func FireRatio(t Terrain, casterIntel, roll int) float64 {
+	return stratagemRatio(fireBase[terrainSlot(t)], casterIntel, roll)
+}
+
+func FloodRatio(t Terrain, casterIntel, roll int) float64 {
+	return stratagemRatio(floodBase[terrainSlot(t)], casterIntel, roll)
+}
+
+func stratagemRatio(base, casterIntel, roll int) float64 {
+	r := x87mul(float64(base+roll), StratagemPercent)
+	if casterIntel >= StratagemGeniusIntel {
+		r = x87mul(r, StratagemGeniusFactor)
+	}
+	if r >= StratagemMaxRatio {
+		r = StratagemMaxRatio
+	}
+	return r
+}
+
+// x87mul 是兩個 double 在 x87 上相乘再存回 double：先在 64 位元尾數
+// 算，再捨到 53 位元。
+func x87mul(a, b float64) float64 {
+	f := new(big.Float).SetPrec(64).SetFloat64(a)
+	f.Mul(f, new(big.Float).SetPrec(64).SetFloat64(b))
+	v, _ := f.Float64()
+	return v
+}
+
+// FireLoss／FloodLoss 是同一個比率化成百分比，給戰報印。
 func FireLoss(t Terrain, casterIntel, roll int) int {
-	return stratagemLoss(fireBase[terrainSlot(t)], casterIntel, roll)
+	return int(FireRatio(t, casterIntel, roll) * 100)
 }
 
 func FloodLoss(t Terrain, casterIntel, roll int) int {
-	return stratagemLoss(floodBase[terrainSlot(t)], casterIntel, roll)
+	return int(FloodRatio(t, casterIntel, roll) * 100)
 }
 
-func stratagemLoss(base, casterIntel, roll int) int {
-	pct := base + roll
-	if casterIntel >= StratagemGeniusIntel {
-		pct = pct * StratagemGeniusBonus / 100
-	}
-	if pct > StratagemMaxLoss {
-		pct = StratagemMaxLoss
-	}
-	return pct
-}
+// 火攻與水淹比率的三個 double 常數（`DS:0xa9ae`、`DS:0xa9b6`、`DS:0xa9be`）。
+const (
+	StratagemPercent      = 0.01
+	StratagemGeniusFactor = 1.6
+	StratagemMaxRatio     = 0.9
+)
 
 // UseStratagem 施行一個計謀。
 //
@@ -438,11 +474,13 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		}
 	}
 
+	// 費用成敗都扣（`0x2ada2`，判定與效果之後才扣，結果一樣）。
+	// **移動力不歸零**：玩家與電腦的計謀常式都不碰 offset 36
+	// （`0x28acc`／`0x29784`）；玩家那一邊是回合就此結束，回填時
+	// 休息攢的 2 留得住。
 	b.Gold[u.Side] -= s.Cost()
-	u.Move = 0
 
-	// 成功判定（`0x2ac4d`）。**錢與行動力先扣**——原版也是先付再賭，
-	// 失敗一樣花掉。
+	// 成功判定（`0x2ac4d`）。
 	caster, victim := u.Smartest(), t.Smartest()
 	ci, vi := 0, 0
 	if caster != nil {
@@ -451,7 +489,13 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	if victim != nil {
 		vi = int(victim.Intel)
 	}
-	if !StratagemSucceeds(ci, vi, int(b.rng.next()%uint32(s.Spread()))) {
+	//
+	// 骰序（`docs/re/05` §12.2，`L0`）：判定那一擲 `RND(表)` 在 `0x2abfa`；
+	// 不成就印一句「被看穿」（`0x2ad72` → `RND(8)`）。成了進各計謀的常式，
+	// 每一支先印自己那一句對白，火攻、水淹、燒糧接著播特效（`RND(4)`），
+	// 再擲效果的骰。
+	if !StratagemSucceeds(ci, vi, b.roll(s.Spread())) {
+		b.msg()
 		b.note("blog.seen", u.Name(), t.Name(), s.Label())
 		b.checkOver()
 		return nil
@@ -459,13 +503,17 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 
 	switch s {
 	case Fire:
-		pct := FireLoss(terrain, ci, b.roll(StratagemRollSpread))
-		loss := b.scorch(t, pct)
-		b.note("blog.fire", u.Name(), t.Name(), loss, terrain.Label(), pct)
+		b.msg()
+		b.fx()
+		r := FireRatio(terrain, ci, b.roll(StratagemRollSpread))
+		loss := b.scorch(u.Side, t, r)
+		b.note("blog.fire", u.Name(), t.Name(), loss, terrain.Label(), int(r*100))
 	case Flood:
-		pct := FloodLoss(terrain, ci, b.roll(StratagemRollSpread))
-		loss := b.scorch(t, pct)
-		b.note("blog.flood", u.Name(), t.Name(), loss, terrain.Label(), pct)
+		b.msg()
+		b.fx()
+		r := FloodRatio(terrain, ci, b.roll(StratagemRollSpread))
+		loss := b.scorch(u.Side, t, r)
+		b.note("blog.flood", u.Name(), t.Name(), loss, terrain.Label(), int(r*100))
 	case Lure:
 		// **誘敵是把敵人引過來打你。** 原版 `0x2b6aa` 播完動畫之後叫共同
 		// 的交戰結算，而且推參數時把攻守對調（`0x2b877` 先推目標再推
@@ -474,14 +522,31 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		//
 		// 划不划算看的是「目標的攻擊力 vs 施法者的防禦力」——引一支弱的
 		// 部隊來撞自己的硬點才是這一招的用法。
+		b.msg()
 		lost, back := b.exchange(t, u, LureStrike)
 		b.note("blog.lure", u.Name(), t.Name(), u.Name(), back, t.Name(), lost)
 	case Trap:
-		t.Trapped = TrapDays(ci, b.roll(TrapSpread), b.roll(TrapSpread))
+		// 第二擲只有領隊謀略 ≥ 98 才有（`0x2b683`–`0x2b68f`）。
+		b.msg()
+		bonus := 0
+		days := b.roll(TrapSpread)
+		if ci >= StratagemGeniusIntel {
+			bonus = b.roll(TrapSpread)
+		}
+		t.Trapped = TrapDays(ci, days, bonus)
 		b.note("blog.trap", u.Name(), t.Name(), t.Trapped)
 	case Burn:
+		// 兩條路各擲一次，不是兩擲都擲（`0x2ba6b`–`0x2ba9b`）。
+		b.msg()
+		b.fx()
 		side := t.Side
-		keep := BurnKeep(ci, b.roll(BurnGeniusSpread), b.roll(BurnSpread))
+		genius, plain := 0, 0
+		if ci >= StratagemGeniusIntel {
+			genius = b.roll(BurnGeniusSpread)
+		} else {
+			plain = b.roll(BurnSpread)
+		}
+		keep := BurnKeep(ci, genius, plain)
 		b.Gold[side] = b.Gold[side] * keep / 100
 		b.Rice[side] = b.Rice[side] * keep / 100
 		b.note("blog.burn", u.Name(), side.Label(), keep)
@@ -508,6 +573,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		if w := u.Smartest(); w != nil && int(w.Intel) >= StratagemGeniusIntel {
 			mode++
 		}
+		b.msg()
 		total, n := 0, 0
 		for _, d := range Dirs() {
 			x := b.UnitAt(target.Step(d))
@@ -571,29 +637,31 @@ func (b *Battle) UseRoll(fn func(n int) int) { b.rollFn = fn }
 
 // scorch 把火攻或水淹的比率**逐將領**套上去，回傳總損失。
 //
-// 原版是一位一位算的（`0x2b102`）：`新兵 ＝ 兵 × (1 − 比率)`，
-// 算出來不大於零就把那位從部隊裡除名（將領欄寫回 `0xFFFF`），
-// 再擲一次 `RND(100)`——**大於 20 就燒死**（`0x2b138`），
-// 否則只是離隊。
-func (b *Battle) scorch(u *Unit, pct int) int {
+// 原版是一位一位、從第 0 槽往後算的（`0x2b082`–`0x2b152`）：
+// `新兵 ＝ ftol(兵 × (1 − 比率))`，算出來不大於零就把那位從部隊裡除名
+// （將領欄寫回 `0xFFFF`），再擲一次 `RND(100)`——**大於 20 就燒死**
+// （`0x2b138`），否則交給施法方處置（`0x2b090` → `capture`）。
+func (b *Battle) scorch(by Side, u *Unit, ratio float64) int {
 	before := u.Soldiers()
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured || x.Soldiers <= 0 {
+		if !x.InUnit() {
 			continue
 		}
-		x.Soldiers = x.Soldiers * (100 - pct) / 100
+		x.Soldiers = ArrowSurvivors(x.Soldiers, ratio)
 		if x.Soldiers > 0 {
 			continue
 		}
-		x.Soldiers = 0
 		if b.roll(100) > StratagemDeathRoll {
 			x.Dead = true
 			b.note("blog.burned", pn(x.Name))
 			continue
 		}
 		x.Captured = true
+		b.note("blog.captured", pn(x.Name))
+		b.capture(by, u, x)
 	}
+	b.wipeCheck(u)
 	return before - u.Soldiers()
 }
 

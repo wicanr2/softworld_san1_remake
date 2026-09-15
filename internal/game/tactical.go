@@ -13,40 +13,27 @@ import (
 //（傷亡、被擒、誰佔了城池）搬回局面上。
 
 // toLeader 把一位人物換成戰場上的將領。
-func toLeader(x *General) battle.Leader {
-	return battle.Leader{
+//
+// 被擒之後電腦捕獲方當場處置要看的三格（`battle.Leader` 的
+// `Lord`／`Loyalty`／`BondAlly`）也在這裡填：牽絆對象是不是同一勢力的人
+// 在出征那一刻算好——原版是被擒那一刻查（`0x25ebe`–`0x25ed6`），差別只在
+// 同一場裡牽絆對象自己先改投了的情況。
+func (g *State) toLeader(x *General) battle.Leader {
+	l := battle.Leader{
 		Index: x.Index, Name: x.Name,
 		War: x.War, Intel: x.Intel, Stamina: x.Stamina, Charm: x.Charm,
 		Soldiers: x.Soldiers, Training: x.Training, Arms: x.Arms,
 		Troop: battle.TroopKind(x.Troop),
+		Lord:  x.Status == state.StatusLord,
 	}
-}
-
-// weatherFor 是這一場的天氣。
-//
-// 手冊沒說天氣怎麼決定，只說火攻要刮風、水淹要下雨（p.32–33）。
-// 這裡從年月與郡編號推——**決定性**，所以同一場戰役重跑天氣一樣。
-// 夏天多雨、秋天多風，與四季事件的取向一致。
-func (g *State) weatherFor(at int) battle.Weather {
-	r := g.roll(at, int(g.Date.Season()), 0x77ea)
-	switch g.Date.Season() {
-	case Summer:
-		if r < 45 {
-			return battle.Rainy
-		}
-	case Autumn:
-		if r < 40 {
-			return battle.Windy
-		}
-	default:
-		if r < 20 {
-			return battle.Windy
-		}
-		if r < 35 {
-			return battle.Rainy
+	// 在野的忠誠是 0xFF 哨兵，原版當有號位元組讀成 −1（`cbw`）。
+	l.Loyalty = int(int8(x.Loyalty))
+	if x.Bond != x.Index {
+		if y := g.General(x.Bond); y != nil && y.Faction == x.Faction {
+			l.BondAlly = true
 		}
 	}
-	return battle.Clear
+	return l
 }
 
 // Field 是某個郡的主戰場地形（「郡地理誌」，說明書 p.19）。
@@ -94,6 +81,10 @@ type Pending struct {
 	// aidAtt／aidDef 是助攻軍與助守軍。**它們不是主攻軍的一部分**：
 	// 打贏了進駐的只有主攻軍，援軍的生還者留在自己的郡裡。
 	aidAtt, aidDef []*General
+
+	// factions 是四種軍力各屬哪個勢力（`sideFactions`），收尾時把電腦
+	// 捕獲方當場的處置搬回人物表要用。
+	factions [4]state.FactionID
 
 	result *BattleResult
 
@@ -295,9 +286,10 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 	dst := g.Prefecture(to)
 	r := &BattleResult{From: from, To: to}
 
+	// 天候由戰術層自己擲（開場 `RND(3)`、每天 `RND(10) > 5` 才換，
+	// `battle.New`／`EndDay`，`L0`），這裡不指定。
 	setup := battle.Setup{
 		Field:    g.fieldFor(to),
-		Weather:  g.weatherFor(to),
 		Seed:     uint32(g.Date.Year*13 + g.Date.Month*7 + from*31 + to),
 		FromGate: from,
 		// 版本與難度決定的戰役規則（`docs/spec/004` §5）。
@@ -327,17 +319,32 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 		setup.DefenderGold, setup.DefenderRice = dst.Gold, dst.Rice
 	}
 	for _, x := range att {
-		setup.Attackers = append(setup.Attackers, toLeader(x))
+		setup.Attackers = append(setup.Attackers, g.toLeader(x))
 	}
 	for _, x := range def {
-		setup.Defenders = append(setup.Defenders, toLeader(x))
+		setup.Defenders = append(setup.Defenders, g.toLeader(x))
 	}
 	aidAtt, aidDef := g.garrisonOf(aid.Attacker), g.garrisonOf(aid.Defender)
 	for _, x := range aidAtt {
-		setup.AidAttackers = append(setup.AidAttackers, toLeader(x))
+		setup.AidAttackers = append(setup.AidAttackers, g.toLeader(x))
 	}
 	for _, x := range aidDef {
-		setup.AidDefenders = append(setup.AidDefenders, toLeader(x))
+		setup.AidDefenders = append(setup.AidDefenders, g.toLeader(x))
+	}
+	// 四方各是誰在操縱、人望多少、從哪一郡出兵（`battle.Battle` 的
+	// `Computer`／`Renown`／`Origin`）。主守軍的出兵郡就是戰場，原版
+	// 退兵時不看它（`0x23fd7`），留 0。
+	factions := g.sideFactions(by, dst, aid)
+	for side, id := range factions {
+		setup.Computer[side] = id != state.NoFaction && id != g.Player
+		if f := g.Faction(id); f != nil {
+			setup.Renown[side] = f.Prestige
+		}
+	}
+	for side, at := range [...]int{battle.MainAttacker: from, battle.AidAttacker: aid.Attacker, battle.AidDefender: aid.Defender} {
+		if at > 0 {
+			setup.Origin[side] = battle.Escape{Prefecture: at, Active: g.ActiveGenerals(at)}
+		}
 	}
 
 	// **出征的將領離開原本的郡**：原版在整編收尾走完該軍團的五支部隊，
@@ -364,7 +371,27 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 		setup.Escapes[battle.AidDefender] = setup.Escapes[battle.MainDefender]
 	}
 	return &Pending{B: battle.New(setup), from: from, to: to, by: by,
-		att: att, def: def, aidAtt: aidAtt, aidDef: aidDef, result: r}
+		att: att, def: def, aidAtt: aidAtt, aidDef: aidDef, result: r, factions: factions}
+}
+
+// sideFactions 是四種軍力各屬哪個勢力：主攻是出兵的諸侯，主守是戰場
+// 那一郡的主人，兩支援軍各是援郡的主人。沒出場的是 NoFaction。
+func (g *State) sideFactions(by state.FactionID, dst *Prefecture, aid Aid) [4]state.FactionID {
+	var out [4]state.FactionID
+	for i := range out {
+		out[i] = state.NoFaction
+	}
+	out[battle.MainAttacker] = by
+	if dst != nil {
+		out[battle.MainDefender] = dst.Owner
+	}
+	if p := g.Prefecture(aid.Attacker); p != nil && p.Owned() {
+		out[battle.AidAttacker] = p.Owner
+	}
+	if p := g.Prefecture(aid.Defender); p != nil && p.Owned() {
+		out[battle.AidDefender] = p.Owner
+	}
+	return out
 }
 
 // battleAI 把這一局的 AI 模式換成戰術層的旗標：`enhanced` 走 remake 自己
@@ -444,10 +471,16 @@ func (g *State) settle(p *Pending) *BattleResult {
 	for _, x := range p.aidDef {
 		byIndex[x.Index] = x
 	}
+	factions := p.factions
 	for _, u := range b.Units {
 		for _, l := range u.Leaders {
 			x := byIndex[l.Index]
 			if x == nil {
+				continue
+			}
+			if (l.Captured && l.Fate == battle.Defected) || l.Deserted {
+				// 招降或投敵之後留在原部隊的佔位（`battle.enlist`）：
+				// 人已經在對方的部隊裡，那一份才算數。
 				continue
 			}
 			lost := x.Soldiers - l.Soldiers
@@ -464,8 +497,15 @@ func (g *State) settle(p *Pending) *BattleResult {
 			switch {
 			case l.Dead:
 				g.retireBy(x, "battle")
+			case l.Captured && l.Fate != battle.FateNone:
+				// 電腦捕獲的在戰場上已經處置完（`battle.capture`），
+				// 這裡只把下場搬回人物表。
+				g.applyFate(p, x, l, factions[l.CapturedBy])
 			case l.Captured:
 				r.Captives = append(r.Captives, Captive{General: l.Index, Name: l.Name})
+			case l.Fate == battle.Defected:
+				// 招降或陣前投敵之後在對方部隊裡的那一份：換勢力。
+				g.applyFate(p, x, l, factions[u.Side])
 			}
 		}
 	}
@@ -562,6 +602,36 @@ func (g *State) FinishAttack(p *Pending) *BattleResult {
 		return nil
 	}
 	return g.settle(p)
+}
+
+// applyFate 把電腦捕獲方在戰場上當場做的處置（`battle.capture`，
+// `0x259fe`）搬回人物表。
+//
+//   - 斬首（`0x25f6a`）：退場
+//   - 囚禁（`0x260dc`）：成為戰場那一郡的在野
+//   - 招降（`0x25b94` → `0x25cd2`）：忠誠 ＝ 判定算出來的值、身分部下、
+//     所屬換成捕獲方、所在郡是戰場；原本是軍師的話舊主的軍師欄清空
+//
+// 囚禁與招降的**人物欄位**照 `DisposeCaptive` 的寫法；招降的忠誠是
+// 戰術層算好帶回來的（`Leader.Loyalty`），不是 `DisposeCaptive` 的 50。
+func (g *State) applyFate(p *Pending, x *General, l battle.Leader, captor state.FactionID) {
+	at := p.to
+	switch l.Fate {
+	case battle.Executed:
+		g.retireBy(x, "beheaded")
+	case battle.Jailed:
+		_ = g.DisposeCaptive(at, x.Index, Imprison, captor)
+	case battle.Defected:
+		if x.Status == state.StatusChief {
+			if f := g.Faction(x.Faction); f != nil && f.Chief == x.Index {
+				f.Chief = -1
+			}
+		}
+		_ = g.DisposeCaptive(at, x.Index, Enlist, captor)
+		x.Loyalty = uint8(l.Loyalty)
+		// 招降來的兵是 0，陣前投敵的把兵一起帶過去（`0x25cd2`）。
+		x.Soldiers = l.Soldiers
+	}
 }
 
 // seizeTreasures 是「獲勝軍若於戰後捉到敵軍君主，其寶物將全歸獲勝軍所有」

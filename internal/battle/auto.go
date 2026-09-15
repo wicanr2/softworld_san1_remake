@@ -24,10 +24,20 @@ import "sort"
 // 原版的九支判斷式在 `autobase.go`（`AIBase`／`AIPlus`）；這一套是
 // `AIEnhanced`——它是創作不是還原（`docs/design/02`），四個 `Tune*`
 // 只有這裡在用。
+//
+// 一支部隊的一回合照原版的回合常式（`0x24cf6`）：輪到之前重算綜合
+// 能力（`RefreshQuality`），中了陷阱就只倒數（`SkipTrappedTurn`），
+// 否則行動，行動完判投敵、回填移動力（`EndTurn`）。
 func (b *Battle) AutoTurn(u *Unit) {
-	if b.Over || !u.Alive() || u.Trapped > 0 {
+	if b.Over || !u.Alive() {
 		return
 	}
+	u.RefreshQuality()
+	if u.Trapped > 0 {
+		b.SkipTrappedTurn(u)
+		return
+	}
+	defer b.EndTurn(u)
 	if b.AI != AIEnhanced {
 		b.autoTurnBase(u)
 		return

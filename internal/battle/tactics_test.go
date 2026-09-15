@@ -71,8 +71,10 @@ func TestStratagemNeedsIntelAndGold(t *testing.T) {
 	if b.Gold[MainAttacker] != 0 {
 		t.Errorf("用完火攻剩 %d 金，600 應該扣光", b.Gold[MainAttacker])
 	}
-	if u.Move != 0 {
-		t.Error("用計之後這一回合就結束了")
+	// 計謀不動移動力（`0x28acc`／`0x29784` 都不碰 offset 36）：玩家那一邊
+	// 回合照樣結束，那是命令迴圈的事，不是把點數歸零。
+	if u.Move == 0 {
+		t.Error("用計不該把移動力歸零")
 	}
 }
 

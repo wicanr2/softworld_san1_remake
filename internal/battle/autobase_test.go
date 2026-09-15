@@ -28,6 +28,7 @@ func unit(side Side, f Formation, at Hex, soldiers int, prefix string) *Unit {
 	}
 	u.Leaders = []Leader{l}
 	u.Started = soldiers
+	u.Quality = u.Ability()
 	return u
 }
 

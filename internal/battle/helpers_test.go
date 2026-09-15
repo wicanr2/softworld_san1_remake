@@ -35,6 +35,7 @@ func place(b *Battle, s Side, form Formation, at Hex, ls ...Leader) *Unit {
 	u := &Unit{Side: s, Formation: form, Leaders: ls, At: at}
 	u.Move = u.MovePoints()
 	u.Arrows = ArrowCount(u.Leaders)
+	u.Quality = u.Ability()
 	b.Units = append(b.Units, u)
 	return u
 }

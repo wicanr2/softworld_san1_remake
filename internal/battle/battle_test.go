@@ -320,9 +320,9 @@ func TestArcheryIsLighterThanMelee(t *testing.T) {
 	}
 }
 
-// TestRetreatLosesSuppliesAndNeedsAWayOut 釘住「若被地形和敵軍完全包圍則逃不掉」
+// TestRetreatKeepsSuppliesAndNeedsAWayOut 釘住「若被地形和敵軍完全包圍則逃不掉」
 // 「若退兵成功，原先擁有的錢糧都會損失」（說明書 p.34）。
-func TestRetreatLosesSuppliesAndNeedsAWayOut(t *testing.T) {
+func TestRetreatKeepsSuppliesAndNeedsAWayOut(t *testing.T) {
 	f := flat(Plain)
 	spot := FromOffset(6, 6)
 	b := arena(f)
@@ -341,8 +341,9 @@ func TestRetreatLosesSuppliesAndNeedsAWayOut(t *testing.T) {
 	if u.Alive() {
 		t.Error("退兵之後不該還在場上")
 	}
-	if b.Gold[MainAttacker] != 0 || b.Rice[MainAttacker] != 0 {
-		t.Errorf("退兵後錢糧是 %d/%d，應該盡失", b.Gold[MainAttacker], b.Rice[MainAttacker])
+	// 退兵不動軍力的錢糧（`0x23dd4` 沒碰 offset 6／8）。
+	if b.Gold[MainAttacker] != 900 || b.Rice[MainAttacker] != 800 {
+		t.Errorf("退兵後錢糧是 %d/%d，該原封不動", b.Gold[MainAttacker], b.Rice[MainAttacker])
 	}
 
 	// 六個方向全封死就逃不掉。
@@ -413,8 +414,9 @@ func TestStarvationCausesDesertion(t *testing.T) {
 	}
 }
 
-// TestEndDayResetsMoveAndTicksStatus 釘住每天重置移動力、遞減中陷阱天數。
-func TestEndDayResetsMoveAndTicksStatus(t *testing.T) {
+// TestTurnEndRefillsMoveAndTrapTicksOnTurn 釘住回填移動力與陷阱倒數都在
+// **各部隊自己的回合**（`0x24cf6`），一天結束時什麼都不動。
+func TestTurnEndRefillsMoveAndTrapTicksOnTurn(t *testing.T) {
 	b := arena(flat(Plain))
 	u := place(b, MainAttacker, Centre, FromOffset(3, 3), lead("攻", 50, 50, 1000))
 	place(b, MainDefender, Centre, FromOffset(15, 10), lead("守", 50, 50, 1000))
@@ -422,11 +424,21 @@ func TestEndDayResetsMoveAndTicksStatus(t *testing.T) {
 	u.Move = 0
 	u.Trapped = 2
 	b.EndDay()
+	if u.Move != 0 || u.Trapped != 2 {
+		t.Errorf("一天結束不該動移動力（%d）與陷阱（%d）", u.Move, u.Trapped)
+	}
+	b.SkipTrappedTurn(u)
 	if u.Move != u.MovePoints() {
-		t.Errorf("隔天移動力 %d，應該回到 %d", u.Move, u.MovePoints())
+		t.Errorf("中陷阱的回合過了移動力 %d，應該回到 %d", u.Move, u.MovePoints())
 	}
 	if u.Trapped != 1 {
 		t.Errorf("中陷阱剩 %d 天，應該遞減成 1", u.Trapped)
+	}
+	// 回填是 max(剩下的, 上限)：休息多加的留得住。
+	u.Move = u.MovePoints() + 2
+	b.EndTurn(u)
+	if u.Move != u.MovePoints()+2 {
+		t.Errorf("回填不該砍掉休息多加的 2（%d）", u.Move)
 	}
 }
 

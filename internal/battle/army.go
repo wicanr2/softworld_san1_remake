@@ -1,6 +1,10 @@
 package battle
 
-import "github.com/wicanr2/softworld_san1_remake/internal/i18n"
+import (
+	"math/big"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+)
 
 // 軍力與戰鬥隊伍（說明書 p.26–28）。
 
@@ -101,6 +105,51 @@ type Leader struct {
 	// Captured／Dead 是決勝之後的處置要看的。
 	Captured bool
 	Dead     bool
+
+	// Lord／Loyalty／BondAlly 是被擒之後**電腦捕獲方**當場處置要看的
+	// （`0x259fe`／`0x25e50`，`L0`）：君主一律斬首；招降判定看忠誠、
+	// 人望，以及牽絆對象（人物 offset 14）是不是同一勢力的人。
+	Lord     bool
+	Loyalty  int
+	BondAlly bool
+
+	// Fate 是電腦捕獲方當場做的處置，CapturedBy 是哪一方抓的。玩家
+	// 捕獲的留給戰略層問（`Fate == FateNone`）。
+	Fate       Fate
+	CapturedBy Side
+
+	// Deserted 表示這一位在自己的回合結束時投奔了敵軍（`0x27604`）：
+	// 這一格只是佔位，人（帶著兵）已經在對方的部隊裡，`Fate` 是 Defected。
+	Deserted bool
+}
+
+// InUnit 回報這一位還在不在隊上（沒死、沒被俘、沒投奔）。
+func (l *Leader) InUnit() bool { return !l.Dead && !l.Captured && !l.Deserted }
+
+// Fate 是被擒之後的下場（`0x259fe` 的四條路；電腦捕獲方只會走前兩條
+// 與招降）。
+type Fate uint8
+
+const (
+	FateNone Fate = iota
+	Executed      // 斬首（`0x25f6a`）
+	Jailed        // 囚禁（`0x260dc`）
+	Released      // 釋放（`0x262b8`）——只有玩家會選
+	Defected      // 招降（`0x25b94`）
+)
+
+func (f Fate) String() string {
+	switch f {
+	case Executed:
+		return "斬首"
+	case Jailed:
+		return "囚禁"
+	case Released:
+		return "釋放"
+	case Defected:
+		return "招降"
+	}
+	return "未處置"
 }
 
 // Unit 是一支在戰場上的部隊：一個軍力的一個隊伍。
@@ -126,24 +175,107 @@ type Unit struct {
 	Retreated bool
 	Wiped     bool
 
+	// Unplaced 標記這支是戰役中途才生出來的（招降或投敵的人進了空的槽位，
+	// `enlist`），位置是 remake 先擺的；原版問玩家紮在哪。
+	Unplaced bool
+
 	// Started 是開戰時的兵力。自動作戰用它判斷「敗到該退兵了」——
 	// 絕對人數說明不了，一千人的隊伍剩三百與三萬人的隊伍剩三百
 	// 是完全不同的處境。
 	Started int
+
+	// Cap 是部隊記錄 offset 34：一天的移動力上限，**整場只在編成時算
+	// 一次**（`0x27114`；傷亡不會讓它變）。0 表示沒算過，回填時用
+	// `MovePoints` 現算。
+	Cap int
+
+	// Quality 是部隊記錄 offset 32 的**現值**：整編時是 `Ability`
+	// （謀略與戰力的平均），之後**每一天輪到這支部隊之前重算**
+	// （`0x26fc6`，`RefreshQuality`）——算式換成兵數加權的武裝、訓練
+	// 與戰力。交戰結算與弓箭讀的是這一格，不是重算的平均。
+	Quality int
 }
 
 // Alive 回報這支部隊還在不在場上。
-func (u *Unit) Alive() bool { return !u.Retreated && !u.Wiped && u.Soldiers() > 0 }
+//
+// 判準是**還有將領**（部隊記錄 offset 28），不是還有兵：交戰結算裡
+// 承受方的第一位在出手方打光時會留下來、兵是 0（`0x2a684`），原版的
+// 日循環照樣輪到它。兵打光的將領正常都當場被俘、離隊，所以兩個判準
+// 只在那一種情況下不同。
+func (u *Unit) Alive() bool { return !u.Retreated && !u.Wiped && u.LeaderCount() > 0 }
+
+// LeaderCount 是還在隊上的將領數（部隊記錄 offset 28）。
+func (u *Unit) LeaderCount() int {
+	n := 0
+	for i := range u.Leaders {
+		if u.Leaders[i].InUnit() {
+			n++
+		}
+	}
+	return n
+}
 
 // Soldiers 是這支部隊的總兵力。
 func (u *Unit) Soldiers() int {
 	n := 0
 	for i := range u.Leaders {
-		if !u.Leaders[i].Dead && !u.Leaders[i].Captured {
+		if u.Leaders[i].InUnit() {
 			n += u.Leaders[i].Soldiers
 		}
 	}
 	return n
+}
+
+// 每天輪到部隊之前重算綜合能力用的三個 double（`DS:0xa8e4`、
+// `DS:0xa8d2`、`DS:0xa8ec`、`DS:0xa8f4`，`L0`）。
+const (
+	qualityTrainingWeight = 0.05
+	qualityPercent        = 0.01
+	qualityHalf           = 0.5
+	qualityScale          = 100.0
+)
+
+// RefreshQuality 是原版每天輪到這支部隊之前重算的綜合能力
+// （`0x26fc6`，`L0`；招降來的人讓空部隊重新有人時也叫一次）：
+//
+//	逐將領：v ＝ ftol((武裝 × 5 ÷ 20 ＋ 訓練 × 0.05 ＋ 戰力 × 14 ÷ 20) × 兵 × 0.01 ＋ 0.5)
+//	        S ＋= v；N ＋= 兵
+//	N > 0：offset 32 ＝ ftol(S ÷ N × 100 ＋ 0.5)
+//	N ≤ 0：offset 32 ＝ 0
+//
+// 兩個 `÷ 20` 是整數除法（`idiv`），其餘在 x87 上算。**謀略不在裡面**
+// ——整編那一支（`Ability`）才看謀略，第一天輪到之前用的還是那個值。
+//
+// **S 與 N 都是 16 位元有號數**（`[bp-2]`／`[bp-6]`，`fidivs`）：兩位各
+// 兩萬七的部隊 N ＝ 54000 → −11536 → `N ≤ 0` → 綜合能力 0——那支部隊
+// 打誰都不痛（盤面丙量到，`L1`）。照做，不修。
+func (u *Unit) RefreshQuality() {
+	var sum, total int16
+	for i := range u.Leaders {
+		x := &u.Leaders[i]
+		if !x.InUnit() {
+			continue
+		}
+		f := x87(int64(int(x.Arms) * 5 / 20))
+		f.Add(f, new(big.Float).SetPrec(64).Mul(x87(int64(x.Training)),
+			new(big.Float).SetPrec(64).SetFloat64(qualityTrainingWeight)))
+		f.Add(f, x87(int64(int(x.War)*14/20)))
+		f.Mul(f, x87(int64(int16(x.Soldiers))))
+		f.Mul(f, new(big.Float).SetPrec(64).SetFloat64(qualityPercent))
+		f.Add(f, new(big.Float).SetPrec(64).SetFloat64(qualityHalf))
+		v, _ := f.Int64()
+		sum += int16(v)
+		total += int16(x.Soldiers)
+	}
+	if total <= 0 {
+		u.Quality = 0
+		return
+	}
+	f := new(big.Float).SetPrec(64).Quo(x87(int64(sum)), x87(int64(total)))
+	f.Mul(f, new(big.Float).SetPrec(64).SetFloat64(qualityScale))
+	f.Add(f, new(big.Float).SetPrec(64).SetFloat64(qualityHalf))
+	v, _ := f.Int64()
+	u.Quality = int(v)
 }
 
 // Chief 是這支部隊的領隊：戰力最高的那一位。
@@ -153,7 +285,7 @@ func (u *Unit) Chief() *Leader {
 	var best *Leader
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured {
+		if !x.InUnit() {
 			continue
 		}
 		if best == nil || x.War > best.War {
@@ -168,7 +300,7 @@ func (u *Unit) Smartest() *Leader {
 	var best *Leader
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured {
+		if !x.InUnit() {
 			continue
 		}
 		if best == nil || x.Intel > best.Intel {
@@ -189,7 +321,7 @@ func (u *Unit) weighted(f func(*Leader) int) int {
 	num, den := 0, 0
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured || x.Soldiers == 0 {
+		if !x.InUnit() || x.Soldiers == 0 {
 			continue
 		}
 		num += f(x) * x.Soldiers
@@ -206,7 +338,7 @@ func (u *Unit) Troop() TroopKind {
 	var count [7]int
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured {
+		if !x.InUnit() {
 			continue
 		}
 		if int(x.Troop) < len(count) {
@@ -239,7 +371,7 @@ func ArrowCount(leaders []Leader) int {
 	sum, troops := 0, 0
 	for i := range leaders {
 		x := &leaders[i]
-		if x.Dead || x.Captured || x.Soldiers <= 0 {
+		if !x.InUnit() || x.Soldiers <= 0 {
 			continue
 		}
 		sum += (int(x.Arms)*x.Soldiers + 50) / 100
@@ -290,7 +422,7 @@ func (u *Unit) MovePoints() int {
 	var num, den int16
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured || x.Soldiers <= 0 {
+		if !x.InUnit() || x.Soldiers <= 0 {
 			continue
 		}
 		v := (float64(x.Training)*0.75 + float64(int(x.Arms)/4)) *
@@ -302,6 +434,14 @@ func (u *Unit) MovePoints() int {
 		return MoveFloor
 	}
 	return int(float64(num)/float64(den)*10+0.5) + MoveFloor
+}
+
+// moveCap 是回填用的上限：編成時算好的 Cap，沒有就現算。
+func (u *Unit) moveCap() int {
+	if u.Cap > 0 {
+		return u.Cap
+	}
+	return u.MovePoints()
 }
 
 // MoveFloor 是移動力上限的底（`0x271b8` 的 `inc ax` 兩次，以及
@@ -354,7 +494,7 @@ func (u *Unit) Ability() int {
 	sum, n := 0, 0
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured {
+		if !x.InUnit() {
 			continue
 		}
 		sum += int(x.Intel)*2/5 + int(x.War)*3/5

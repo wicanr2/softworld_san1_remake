@@ -96,6 +96,21 @@ type Battle struct {
 	// 固定住一個還沒量過的假設。
 	Commander [sideCount]int
 
+	// Computer 標記哪幾方是電腦在操縱（諸侯記錄 offset 0 == 2）。原版在
+	// 被擒處置（`0x25a87`）與退兵的去處（`0x23fcf`）都先問這一格：
+	// 電腦當場擲骰決定，玩家出選單問人。
+	Computer [sideCount]bool
+
+	// Renown 是各方勢力的人望（諸侯記錄 offset 8），招降判定要
+	// （`0x25f02`）。
+	Renown [sideCount]int
+
+	// Origin 是各方出兵的郡（軍力記錄 offset 18）與它的現役武將數：
+	// 電腦的助守軍與攻方退兵時，原郡還裝得下（現役 ＋ 將領 ≤ 50）就
+	// 直接回去，不擲骰挑鄰郡（`0x23fd7`–`0x2400f`）。主守軍不看這一格。
+	// Prefecture 為 0 表示沒填。
+	Origin [sideCount]Escape
+
 	rng    *rand
 	rollFn func(int) int
 }
@@ -105,6 +120,10 @@ type Setup struct {
 	Field   *Field
 	Weather Weather
 	Seed    uint32
+
+	// FixedWeather 為真就用 Weather 的值開場；否則照原版在佈陣完擲
+	// `RND(3)` 決定（`0x23b78`，`L0`）。對拍從原版讀天候時用前者。
+	FixedWeather bool
 
 	// Attackers／Defenders 是各方的將領，會被分成五種隊伍。
 	Attackers []Leader
@@ -117,10 +136,13 @@ type Setup struct {
 	// Rules 是版本規則（`RulesFor`）。零值是原版。
 	Rules Rules
 
-	// AI、Difficulty、Escapes 見 Battle 的同名欄位。
+	// AI、Difficulty、Escapes、Computer、Renown、Origin 見 Battle 的同名欄位。
 	AI         AI
 	Difficulty int
 	Escapes    [sideCount][]Escape
+	Computer   [sideCount]bool
+	Renown     [sideCount]int
+	Origin     [sideCount]Escape
 
 	// FromGate 是主攻軍的入口（來犯的鄰郡編號）。
 	FromGate int
@@ -136,7 +158,8 @@ type Setup struct {
 func New(s Setup) *Battle {
 	b := &Battle{Field: s.Field, Day: 1, Weather: s.Weather,
 		CityHeld: MainDefender, rng: newRand(s.Seed), Rules: s.Rules,
-		AI: s.AI, Difficulty: s.Difficulty, Escapes: s.Escapes}
+		AI: s.AI, Difficulty: s.Difficulty, Escapes: s.Escapes,
+		Computer: s.Computer, Renown: s.Renown, Origin: s.Origin}
 	b.Gold[MainAttacker], b.Rice[MainAttacker] = s.AttackerGold, s.AttackerRice
 	b.Gold[MainDefender], b.Rice[MainDefender] = s.DefenderGold, s.DefenderRice
 
@@ -170,8 +193,115 @@ func New(s Setup) *Battle {
 		}
 		b.Units = append(b.Units, b.formUp(side, pool, base)...)
 	}
+	if !s.FixedWeather {
+		b.Weather = weatherFromOriginal(b.roll(WeatherKinds))
+	}
 	b.note("blog.start", b.Weather.Label())
 	return b
+}
+
+// 天候的骰（`L0`）：開場 `RND(3)`（`0x23b78`）；之後每天結束
+// `RND(10) > 5` 才重擲 `RND(3)`（`0x26f57`–`0x26f74`），否則沿用。
+// 擲出來的是原版的編號（0 晴、1 雨、2 風），`weatherFromOriginal`
+// 對回列舉。
+const (
+	WeatherKinds       = 3
+	WeatherChangeRange = 10
+	WeatherChangeAbove = 5
+)
+
+// weatherFromOriginal 把原版的天氣編號換成列舉（`OriginalIndex` 的反向）。
+func weatherFromOriginal(i int) Weather {
+	switch i {
+	case 1:
+		return Rainy
+	case 2:
+		return Windy
+	}
+	return Clear
+}
+
+// EndTurn 是一支部隊行動之後、原版回合常式（`0x24cf6`）收尾的兩件事：
+// 陣前投敵的判定（`defections`），再把移動力回填到上限
+// （`0x24ee1`–`0x24f0d`：`剩下的 ← max(剩下的, 上限)`）。
+//
+// **回填是每一支自己的回合結束時做，不是一天結束時**，所以一支部隊
+// 行動完就滿血，休息多加的 2 也因此留得住（量到上限 12、剩下 14，
+// `TestZZBattleDaySweep`）。上限本身整場只算一次（`0x27114`）。
+//
+// 退了兵的部隊不算：原版退兵時把將領搬回郡裡，部隊記錄的將領數歸零，
+// `0x27604` 進去就回頭。
+func (b *Battle) EndTurn(u *Unit) {
+	if u == nil || u.Retreated {
+		return
+	}
+	if u.LeaderCount() > 0 {
+		b.defections(u)
+	}
+	if cap := u.moveCap(); u.Move < cap {
+		u.Move = cap
+	}
+}
+
+// SkipTrappedTurn 是中了陷阱的部隊輪到時原版做的事（`0x24e71`–`0x24e94`）：
+// 印一句「不能動」、倒數減一，**不判投敵**，直接回填移動力。
+func (b *Battle) SkipTrappedTurn(u *Unit) {
+	if u == nil || u.Trapped <= 0 {
+		return
+	}
+	u.Trapped--
+	if cap := u.moveCap(); u.Move < cap {
+		u.Move = cap
+	}
+}
+
+// 陣前投敵（`0x27604`，`L0`）的常數。
+const (
+	// DefectionSpread：每一位（統帥除外）擲 `RND(5)`，擲到 0 才往下判。
+	DefectionSpread = 5
+)
+
+// defections 是一支部隊回合結束時的投敵判定（`0x27604`，`L0`）。
+// 從第 9 槽往第 0 槽走，統帥（軍力記錄 offset 0）不判：
+//
+//	RND(5) != 0 → 不判
+//	對方主軍勢力的人望 ÷ 2 > 這一位的忠誠 → 往下（在野的忠誠是 0xFF，讀成 −1）
+//	對方主軍的將領數 ≥ 50 → 不判
+//	→ 印一句對白（RND(8)），帶著兵離隊，投進對方主軍最後一支還有位子的
+//	  部隊（`0x25cd2`），忠誠變成 min(100, 100 − 原忠誠)
+//
+// 「對方主軍」是守方兩軍看主攻軍、攻方兩軍看主守軍（`0x27642`）。
+func (b *Battle) defections(u *Unit) {
+	opp := MainDefender
+	if !u.Side.Attacking() {
+		opp = MainAttacker
+	}
+	for i := len(u.Leaders) - 1; i >= 0; i-- {
+		x := &u.Leaders[i]
+		if !x.InUnit() || x.Index == b.Commander[u.Side] {
+			continue
+		}
+		if b.roll(DefectionSpread) != 0 {
+			continue
+		}
+		if b.Renown[opp]/2 <= x.Loyalty {
+			continue
+		}
+		if b.leadersOf(opp) >= SurrenderRoom {
+			continue
+		}
+		b.msg()
+		loyalty := 100 - x.Loyalty
+		if loyalty > 100 {
+			loyalty = 100
+		}
+		x.Deserted = true
+		x.Fate = Defected
+		x.CapturedBy = opp
+		b.enlist(opp, x, loyalty, x.Soldiers)
+		b.note("blog.deserted", pn(x.Name), opp.Label())
+	}
+	b.wipeCheck(u)
 }
 
 // formUp 把一批將領分成五種隊伍並紮營。
@@ -212,8 +342,10 @@ func (b *Battle) formUp(side Side, pool []Leader, base Hex) []*Unit {
 			h = spot.Step(Dirs()[n])
 		}
 		u.At = h
-		u.Move = u.MovePoints()
+		u.Cap = u.MovePoints()
+		u.Move = u.Cap
 		u.Started = u.Soldiers()
+		u.Quality = u.Ability() // 整編寫進 offset 32 的值；每天輪到之前再重算
 		spot = base.Step(Dirs()[i%6])
 	}
 	return units
@@ -307,10 +439,14 @@ func (b *Battle) sideAlive(s Side) bool {
 // 說明書 p.29、p.30 的「每休息一次可增加移動力 2」只給了那個 2，
 // **上限 15 是碼裡才有的**——原版量到連休七天的部隊停在 15
 //（`TestBattleUnitsMatchTheOriginal`）。
+//
+// 玩家的休息印一句對白（`0x27cb0` → `RND(8)`）；電腦的休息（選項 9，
+// `0x29e2e`）不印，那一支在 `baseRest`。
 func (b *Battle) Rest(u *Unit) error {
 	if err := b.canAct(u); err != nil {
 		return err
 	}
+	b.msg()
 	u.Move += TuneRestMove
 	if u.Move > MoveMax {
 		u.Move = MoveMax
@@ -388,7 +524,7 @@ func (b *Battle) strike(u *Unit, attacking bool) int {
 	total := 0
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured || x.Soldiers <= 0 {
+		if !x.InUnit() || x.Soldiers <= 0 {
 			continue
 		}
 		p := LeaderPower(int(x.War), int(x.Arms), x.Troop, t, attacking)
@@ -469,17 +605,52 @@ var (
 //
 // **兩個比例都要在扣兵之前算完**：原版先把雙方的殺傷都算出來
 //（`0x2a457`／`0x2a498`）再逐將領套，先扣一邊會讓先手佔便宜。
+//
+// **骰序**（`docs/re/05` §12.2，`L0`＋`L1`）：進來先印一句對白
+// （`0x2a2b6` → `RND(8)`），算完雙方的殺傷、逐將領扣完兵，最後把兩邊
+// 打光的將領交給對方處置（`0x2a7b7`／`0x2a7e6`）——**先出手方的、再
+// 承受方的**，各照槽位由 0 往 9。處置本身的骰見 `capture`。
 func (b *Battle) exchange(a, d *Unit, mode int) (int, int) {
+	b.msg()
+	// 部隊的兵士數（offset 30）是 **16 位元有號數**（`fimuls`／`fidivrs`）：
+	// 兩位各兩萬七的部隊在這裡是負的，比例那一步 `兵 ≤ 0 → 0.0`，
+	// 只剩逐將領那道 −1（盤面丙量到，`L1`）。
+	sa, sd := s16(a.Soldiers()), s16(d.Soldiers())
 	da := MeleeDamage(MeleeAttackValue(b.Field.At(a.At)),
-		a.Soldiers(), a.Ability(), StrikeMultiplier(mode), MeleeAttackScale)
+		sa, a.Quality, StrikeMultiplier(mode), MeleeAttackScale)
 	dd := MeleeDamage(MeleeDefendValue(b.Field.At(d.At)),
-		d.Soldiers(), d.Ability(), 1, MeleeDefendScale)
-	ra, rd := MeleeRatio(dd, a.Soldiers()), MeleeRatio(da, d.Soldiers())
+		sd, d.Quality, 1, MeleeDefendScale)
+	ra, rd := MeleeRatio(dd, sa), MeleeRatio(da, sd)
 	wasA, wasD := a.Soldiers(), d.Soldiers()
-	b.thin(a, ra)
-	b.thin(d, rd)
+	fellA := b.thin(a, ra, false)
+	// **承受方的第一位在出手方打光時留下**（`0x2a684`–`0x2a68e`，`L0`）：
+	// 出手方的將領數（迴圈裡逐一遞減）歸零之後，承受方第 0 槽那一位
+	// 兵扣到 0 也不除名——兩支不會在同一次結算裡一起消失。
+	fellD := b.thin(d, rd, a.LeaderCount() == 0)
+	for _, i := range fellA {
+		b.capture(d.Side, a, &a.Leaders[i])
+	}
+	for _, i := range fellD {
+		b.capture(a.Side, d, &d.Leaders[i])
+	}
 	return wasD - d.Soldiers(), wasA - a.Soldiers()
 }
+
+// MessageLines 是戰場對白表每一格的句數（`DS:0x9a32`，`docs/re/05`
+// §11）：對白常式 `0x3273e` 每次進去都擲一次 `RND(8)` 挑句子
+// （`0x32d4d`，沒有提早返回的路，`L0`）。remake 的戰報是固定句，
+// 這一擲只為了與原版同序同數。
+const MessageLines = 8
+
+// EffectVariants：特效常式 `0x32dfa` → `0x32e40` 進去先擲 `RND(4)`
+// （`0x32e4f`，`L0`）挑動畫。
+const EffectVariants = 4
+
+// msg 是原版印一句戰場對白（`0x3273e`）時的那一擲。
+func (b *Battle) msg() int { return b.roll(MessageLines) }
+
+// fx 是原版播一段特效（`0x32dfa`）時的那一擲。
+func (b *Battle) fx() int { return b.roll(EffectVariants) }
 
 // arrowTerrain 是弓箭的地形表（`DS:0x81c0`，`L0`）。
 //
@@ -584,23 +755,245 @@ func MeleeSurvivors(soldiers int, ratio float64) int {
 //
 // 原版**從第 9 格往第 0 格走**，所以這裡也倒著走——同分時誰先被結算
 // 會影響被俘的順序。
-func (b *Battle) thin(u *Unit, ratio float64) {
+//
+// 回傳這一次打光、被俘的將領在 `Leaders` 裡的索引，**由小到大**——
+// 原版把它們記在一張照槽位排的表，處置時從第 0 格往後走。
+//
+// keepFirst 為真時第一位還在隊上的將領兵扣到 0 也留下（見 `exchange`）。
+// 留下的那一位兵是 0，下一次結算 `ftol(0 × …) − 1` 還是 ≤ 0，
+// 到時再被俘——所以這裡**不跳過兵已經是 0 的將領**。
+func (b *Battle) thin(u *Unit, ratio float64, keepFirst bool) []int {
+	first := -1
+	for i := range u.Leaders {
+		if u.Leaders[i].InUnit() {
+			first = i
+			break
+		}
+	}
+	var fell []int
 	for i := len(u.Leaders) - 1; i >= 0; i-- {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured || x.Soldiers <= 0 {
+		if !x.InUnit() {
 			continue
 		}
-		n := MeleeSurvivors(x.Soldiers, ratio)
-		if n == 0 {
+		n := MeleeSurvivors(s16(x.Soldiers), ratio)
+		if n == 0 && !(keepFirst && i == first) {
 			x.Captured = true
+			fell = append(fell, i)
 			b.note("blog.captured", pn(x.Name))
 		}
 		x.Soldiers = n
 	}
-	if u.Soldiers() == 0 && !u.Wiped {
+	for i, j := 0, len(fell)-1; i < j; i, j = i+1, j-1 {
+		fell[i], fell[j] = fell[j], fell[i]
+	}
+	b.wipeCheck(u)
+	return fell
+}
+
+// wipeCheck 把沒有將領了的部隊標成全滅（原版：將領人數 0 的部隊從
+// 佔位圖上消失、格子畫回地形，`0x2a732`／`0x2a790`）。
+func (b *Battle) wipeCheck(u *Unit) {
+	if u.LeaderCount() == 0 && !u.Wiped {
 		u.Wiped = true
 		b.note("blog.wiped", u.Name())
 	}
+}
+
+// 被擒處置（`0x259fe`，`L0`；`docs/re/05` §12.2）裡的常數。
+const (
+	// CaptiveExecuteRange／CaptiveExecuteBelow：電腦捕獲方先擲 `RND(10)`，
+	// 小於 2 是斬首、否則囚禁（`0x25a93`–`0x25aa8`）；招降判定過了再改成
+	// 招降，君主一律改回斬首。
+	CaptiveExecuteRange = 10
+	CaptiveExecuteBelow = 2
+	// SurrenderRoom：捕獲方那個軍力的將領數到 50 就不招降（`0x25e82`）。
+	SurrenderRoom = 50
+	// SurrenderBondWeight：牽絆對象在同一勢力，門檻加 1000（`0x25ed6`）
+	// ——等於招不動。
+	SurrenderBondWeight = 1000
+	// SurrenderSpread：門檻除以 `RND(3) + 1`（`0x25edf`）。
+	SurrenderSpread = 3
+)
+
+// capture 是一位將領被 `captor` 這一方擒住之後的處置（`0x259fe`）。
+//
+// **玩家捕獲的這裡不處置**：原版當場出「1.斬首 2.囚禁 3.釋放 4.招降」
+// 問人，remake 把它留到戰後由戰略層問（`Fate` 留 `FateNone`）——
+// registered remake 差異，見 `docs/mechanics/40` §4.5。
+//
+// **電腦捕獲的當場決定**（`0x25a87`–`0x25b78`，`L0`）：
+//
+//	RND(10) < 2 → 斬首，否則囚禁
+//	招降判定（surrenderChance）> 0 → 招降
+//	被擒的是君主 → 斬首
+//	招降常式（0x25b94）再判定一次：不過就印「不從」回頭重來（RND(10) 起）
+//
+// 每一條路各印一句對白（`RND(8)`）；囚禁與招降成功多播一段特效
+// （`RND(4)`）。
+func (b *Battle) capture(captor Side, u *Unit, x *Leader) {
+	x.CapturedBy = captor
+	if !b.Computer[captor] {
+		return
+	}
+	for {
+		fate := Jailed
+		if b.roll(CaptiveExecuteRange) < CaptiveExecuteBelow {
+			fate = Executed
+		}
+		if b.surrenderChance(captor, x) > 0 {
+			fate = Defected
+		}
+		if x.Lord {
+			fate = Executed
+		}
+		switch fate {
+		case Executed:
+			b.msg()
+			x.Fate = Executed
+			b.note("blog.executed", pn(x.Name))
+			return
+		case Jailed:
+			b.msg()
+			b.fx()
+			x.Fate = Jailed
+			b.note("blog.jailed", pn(x.Name))
+			return
+		case Defected:
+			c := b.surrenderChance(captor, x)
+			if c <= 0 {
+				b.msg()
+				continue
+			}
+			b.msg()
+			b.fx()
+			x.Fate = Defected
+			x.Loyalty = c
+			b.enlist(captor, x, c, 0)
+			b.note("blog.defected", pn(x.Name), captor.Label())
+			return
+		}
+	}
+}
+
+// surrenderChance 是招降判定（`0x25e50`，`L0`）：回 0 表示不招降，
+// 否則是招降之後的忠誠。
+//
+//	君主 → 0
+//	捕獲方軍力的將領數 ≥ 50 → 0
+//	門檻 ＝ max(戰力, 謀略)；牽絆對象同勢力再 ＋1000
+//	門檻 ÷= RND(3) + 1
+//	捕獲方的人望 < 門檻 → 0
+//	忠誠 ＝ ftol((100 − 忠誠 ÷ 2) × 人望 × 0.01)，夾 0..100
+//
+// 最後那一步用整數算：`0.01` 的 double 比百分之一略大，整數乘積截尾
+// 的結果與 `÷ 100` 相同。
+func (b *Battle) surrenderChance(captor Side, x *Leader) int {
+	if x.Lord {
+		return 0
+	}
+	if b.leadersOf(captor) >= SurrenderRoom {
+		return 0
+	}
+	best := int(x.War)
+	if int(x.Intel) > best {
+		best = int(x.Intel)
+	}
+	if x.BondAlly {
+		best += SurrenderBondWeight
+	}
+	best /= b.roll(SurrenderSpread) + 1
+	if b.Renown[captor] < best {
+		return 0
+	}
+	c := (100 - x.Loyalty/2) * b.Renown[captor] / 100
+	if c > 100 {
+		c = 100
+	}
+	if c < 0 {
+		c = 0
+	}
+	return c
+}
+
+// leadersOf 是一個軍力還在隊上的將領總數（軍力記錄 offset 12）。
+func (b *Battle) leadersOf(s Side) int {
+	n := 0
+	for _, u := range b.Units {
+		if u.Side == s {
+			n += u.LeaderCount()
+		}
+	}
+	return n
+}
+
+// enlist 把招降來的將領放進捕獲方的部隊（`0x25cd2`，`L0`）：五支部隊
+// 由前往後看，**最後一支**將領數不到 10 的收下他，兵是 0。
+//
+// 原版把空著的部隊收到第一位將領時會重新初始化那支部隊
+// （`0x2731a`／`0x26fc6`／`0x270f8`／`0x27226`）；remake 只把人放進去，
+// 那四支還沒讀（`docs/re/05` §12.2 的未解）。
+//
+// **五個槽位都算**，空的槽位將領數是 0，所以正常都落在後軍——後軍不存在
+// 就生一支。生出來的那一支照原版重新初始化：紮寨（`0x2731a`，玩家的
+// 出提示問位置、這裡先放在同一方部隊旁邊的空格，`Unplaced` 標著給畫面
+// 或對拍改）、綜合能力（`0x26fc6`）、移動力上限（`0x270f8`）、箭（`0x27226`）。
+func (b *Battle) enlist(captor Side, x *Leader, loyalty, soldiers int) {
+	var into *Unit
+	var form Formation
+	for _, f := range DeployOrder() {
+		u := b.unitSlot(captor, f)
+		if u == nil || u.LeaderCount() < MaxLeaders {
+			into, form = u, f
+		}
+	}
+	y := *x
+	y.Captured, y.Dead, y.Deserted = false, false, false
+	y.Fate, y.CapturedBy = Defected, captor
+	y.Loyalty, y.Soldiers = loyalty, soldiers
+	if into == nil {
+		into = &Unit{Side: captor, Formation: form, At: b.spotNear(captor), Unplaced: true}
+		b.Units = append(b.Units, into)
+	}
+	into.Leaders = append(into.Leaders, y)
+	if into.LeaderCount() == 1 {
+		into.Wiped, into.Retreated = false, false
+		into.RefreshQuality()
+		into.Cap = into.MovePoints()
+		into.Move = into.Cap
+		into.Arrows = ArrowCount(into.Leaders)
+		into.Started = into.Soldiers()
+	}
+}
+
+// unitSlot 找某一方的某一隊，不管在不在場上；沒有回 nil。
+func (b *Battle) unitSlot(s Side, f Formation) *Unit {
+	for _, u := range b.Units {
+		if u.Side == s && u.Formation == f {
+			return u
+		}
+	}
+	return nil
+}
+
+// spotNear 找一格給新生的部隊：同一方還在場上的部隊旁邊第一個走得進去
+// 的空格；一支都沒有就用城池或入口。原版是問玩家（`0x2731a`）。
+func (b *Battle) spotNear(s Side) Hex {
+	for _, u := range b.Units {
+		if u.Side != s || !u.Alive() {
+			continue
+		}
+		for _, d := range Dirs() {
+			h := u.At.Step(d)
+			if b.Field.InBounds(h) && b.Field.At(h).Passable() && b.UnitAt(h) == nil {
+				return h
+			}
+		}
+	}
+	if s.Attacking() {
+		return FromOffset(0, FieldH/2)
+	}
+	return b.Field.CityAt
 }
 
 // apply 把一次殺傷落到部隊上，回傳實際的損失。
@@ -630,7 +1023,7 @@ func (b *Battle) casualty(u *Unit, loss int) {
 	left := loss
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Dead || x.Captured || x.Soldiers == 0 {
+		if !x.InUnit() || x.Soldiers == 0 {
 			continue
 		}
 		n := loss * x.Soldiers / total
@@ -652,39 +1045,39 @@ func (b *Battle) casualty(u *Unit, loss int) {
 		x.Soldiers -= n
 		left -= n
 	}
-	if u.Soldiers() == 0 {
-		u.Wiped = true
-		b.note("blog.wiped", u.Name())
-	}
 	// 兵打光就被俘（原版 0x30716）。
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
-		if x.Soldiers <= 0 && !x.Dead && !x.Captured {
+		if x.Soldiers <= 0 && x.InUnit() {
 			x.Captured = true
 			b.note("blog.captured", pn(x.Name))
 		}
 	}
+	b.wipeCheck(u)
 }
 
-// QuickBattle 是「快戰」：雙方直接正面作戰（說明書 p.32）。
+// QuickBattle 是「快戰」：雙方直接正面作戰（說明書 p.32）。玩家的
+// 快戰把移動力歸零（`0x280e1`）。
 func (b *Battle) QuickBattle(a *Unit, d Dir) error {
-	return b.melee(a, d, false)
+	return b.meleeMode(a, d, MeleeStrike, false, true)
 }
 
 // DeathBattle 是「死戰」：一決生死的激戰，**雙方將互戰至分出勝負為止**
 // （說明書 p.32）。
 func (b *Battle) DeathBattle(a *Unit, d Dir) error {
-	return b.melee(a, d, true)
+	return b.meleeMode(a, d, MeleeStrike, true, true)
 }
 
-func (b *Battle) melee(a *Unit, d Dir, toTheDeath bool) error {
-	return b.meleeMode(a, d, MeleeStrike, toTheDeath)
-}
-
-// meleeMode 是 melee 加上交戰結算的模式（倍率格，`StrikeMultiplier`）：
+// meleeMode 是快戰／死戰加上交戰結算的模式（倍率格，`StrikeMultiplier`）：
 // 玩家的對戰傳 8（夾成 1），電腦的快戰傳 難度÷5＋1、死戰傳 難度÷5
 //（`0x29b13`／`0x29d33`）。
-func (b *Battle) meleeMode(a *Unit, d Dir, mode int, toTheDeath bool) error {
+//
+// spend 為真才把移動力歸零：玩家的快戰與死戰、電腦的死戰會（`0x280e1`、
+// `0x28822`、`0x29dc7`），**電腦的快戰不會**（`0x29ade` 不碰 offset 36）
+// ——差別在回合結束回填是 `max(剩下的, 上限)`，休息攢的 2 留不留得住。
+//
+// 死戰打到**一方沒有將領**為止（`0x29d7d`／`0x29da8` 看 offset 28）。
+func (b *Battle) meleeMode(a *Unit, d Dir, mode int, toTheDeath, spend bool) error {
 	if err := b.canAct(a); err != nil {
 		return err
 	}
@@ -695,11 +1088,7 @@ func (b *Battle) meleeMode(a *Unit, d Dir, mode int, toTheDeath bool) error {
 	if t.Side.Attacking() == a.Side.Attacking() {
 		return fmt.Errorf("battle: 那是友軍")
 	}
-	rounds := 1
-	if toTheDeath {
-		rounds = 50 // 打到分出勝負；上限避免無窮迴圈
-	}
-	for i := 0; i < rounds; i++ {
+	for i := 0; ; i++ {
 		// **同時**：原版先把雙方的殺傷都算出來，再各自扣兵
 		// （`0x30618`／`0x306bb`）。先扣一邊再算另一邊的話，
 		// 先手會佔到不該有的便宜。
@@ -707,11 +1096,11 @@ func (b *Battle) meleeMode(a *Unit, d Dir, mode int, toTheDeath bool) error {
 		// 「對戰」傳的模式是 8——落在 0..7 之外，被 `0x2a2c9` 夾成 1，
 		// 也就是倍率 100。
 		la, lb := b.exchange(a, t, mode)
-		if !t.Alive() {
+		if t.LeaderCount() == 0 {
 			b.note("blog.rout", a.Name(), t.Name(), la)
 			break
 		}
-		if !a.Alive() {
+		if a.LeaderCount() == 0 {
 			b.note("blog.counter", t.Name(), lb)
 			break
 		}
@@ -719,8 +1108,13 @@ func (b *Battle) meleeMode(a *Unit, d Dir, mode int, toTheDeath bool) error {
 			b.note("blog.clash", a.Name(), t.Name(), la, lb)
 			break
 		}
+		if i >= 50 { // 兩邊都打不動對方時的保險，原版沒有這一道
+			break
+		}
 	}
-	a.Move = 0
+	if spend {
+		a.Move = 0
+	}
 	// 一擊打光對方最後一支部隊時當場分勝負，不必等這一天結束。
 	b.checkOver()
 	return nil
@@ -769,27 +1163,29 @@ func (b *Battle) archery(a *Unit, target Hex, n int) error {
 	//	殺傷 ＝ ftol(弓箭表[射手那格] × 射手.兵士數 × 射手.綜合能力 × 1e-4)
 	//	比例 ＝ 殺傷 ÷ 目標.兵士數
 	//	逐將領：新兵 ＝ max(0, ftol(兵 × (1 − 比例)))
+	//
+	// 骰序（`0x2a80a`，`L0`）：每一箭先印一句對白（`0x2a88e` → `RND(8)`）、
+	// 播一段特效（`0x2a8c8` → `RND(4)`），再算殺傷；殺傷本身不擲骰。
+	// 兵被射光的將領**不被俘**——這一支沒有交戰結算那段處置。
 	total := 0
 	for i := 0; i < n; i++ {
 		if !t.Alive() {
 			break
 		}
+		b.msg()
+		b.fx()
 		d := MeleeDamage(ArrowTerrainValue(b.Field.At(a.At)),
-			a.Soldiers(), a.Ability(), 1, MeleeDefendScale)
-		r := MeleeRatio(d, t.Soldiers())
+			s16(a.Soldiers()), a.Quality, 1, MeleeDefendScale)
+		r := MeleeRatio(d, s16(t.Soldiers()))
 		was := t.Soldiers()
 		for j := range t.Leaders {
 			x := &t.Leaders[j]
-			if x.Dead || x.Captured || x.Soldiers <= 0 {
+			if !x.InUnit() || x.Soldiers <= 0 {
 				continue
 			}
-			x.Soldiers = ArrowSurvivors(x.Soldiers, r)
+			x.Soldiers = ArrowSurvivors(s16(x.Soldiers), r)
 		}
 		total += was - t.Soldiers()
-	}
-	if t.Soldiers() == 0 && !t.Wiped {
-		t.Wiped = true
-		b.note("blog.wiped", t.Name())
 	}
 	a.Arrows -= n
 	b.note("blog.arrows", a.Name(), n, t.Name(), total)
@@ -829,52 +1225,37 @@ func (b *Battle) Retreat(u *Unit) error {
 	if !free {
 		return fmt.Errorf("battle: 被完全包圍，逃不掉")
 	}
-	// 「若退兵成功，原先擁有的錢糧都會損失」（p.34）——帶走的是**自己那一份**。
-	// 整個軍力的錢糧一次歸零的話，一支殘兵退走會讓還在打的友軍突然用不起計。
-	share := u.Soldiers()
-	total := 0
-	for _, x := range b.Units {
-		if x.Side == u.Side && x.Alive() {
-			total += x.Soldiers()
+	// 骰序（`0x23dd4`，`L0`）：列完逃得去的鄰郡先印一句對白（`0x23fa1` →
+	// `RND(8)`）；電腦的部隊接著挑去處——主守軍以外的軍力，原郡還裝得下
+	// （現役 ＋ 本隊將領 ≤ 50）就直接回原郡，否則 `RND(鄰郡數)` 挑一郡
+	// （`0x2401b`）；玩家出選單問人，不擲。走出去的動畫播一段特效
+	// （`0x24395` → `RND(4)`）。
+	//
+	// 原版是挑完去處才找路，找不到印「逃不掉」回頭重挑；remake 先查
+	// 有沒有路，查不到在擲骰之前就回錯——只有退不成的那一趟骰數不同。
+	b.msg()
+	if b.Computer[u.Side] {
+		home := b.Origin[u.Side]
+		if u.Side == MainDefender || home.Prefecture == 0 || u.LeaderCount()+home.Active > baseEscapeRoom {
+			b.roll(len(b.Escapes[u.Side]))
 		}
 	}
-	if total <= 0 || share >= total {
-		b.Gold[u.Side], b.Rice[u.Side] = 0, 0
-	} else {
-		b.Gold[u.Side] -= b.Gold[u.Side] * share / total
-		b.Rice[u.Side] -= b.Rice[u.Side] * share / total
-	}
+	b.fx()
+	// **軍力的錢糧不動**：退兵常式（`0x23dd4`–`0x24460`）一個字都沒碰
+	// 軍力記錄的 offset 6／8（`L0`；盤面乙量到守方退了一支之後照樣
+	// 用得起 400 金的誘敵）。說明書 p.34 的「原先擁有的錢糧都會損失」
+	// 是整支軍力退光之後戰役結束時的事，在戰略層收尾。
 	u.Retreated = true
 	b.note("blog.retreat", u.Name())
 	b.checkOver()
 	return nil
 }
 
-// EndDay 結束這一天：回填移動力、遞減狀態、判定勝負。
-//
-// **移動力是回填不是重設**（原版 `0x24ee1`–`0x24f0d`，`L0`）：
-//
-//	ax ← 上限（部隊記錄 offset 34）
-//	剩下的（offset 36）比 ax 小才寫回去，大就留著
-//
-// 也就是 `剩下的 ← max(剩下的, 上限)`。休息多加的 2 因此**不會被砍掉**
-// ——量到紮完寨的部隊上限 12、剩下 14，走了七天還是 14
-// （`TestZZBattleDaySweep`）。無條件重設會把那 2 吃掉。
-//
-// 上限本身**整場只算一次**（`0x27114` 在佈陣時跑，日循環裡一次都沒有），
-// 所以傷亡讓兵力變少不會讓部隊變慢。
+// EndDay 結束這一天：糧草、換日、天候、判定勝負。
 func (b *Battle) EndDay() {
-	for _, u := range b.Units {
-		if !u.Alive() {
-			continue
-		}
-		if cap := u.MovePoints(); u.Move < cap {
-			u.Move = cap
-		}
-		if u.Trapped > 0 {
-			u.Trapped--
-		}
-	}
+	// 移動力的回填與陷阱的倒數都在各部隊自己的回合（`EndTurn`／
+	// `SkipTrappedTurn`），這裡只剩糧草、換日與天候。
+	//
 	// 糧草（`0x25040`–`0x250c7`，`L0`）。兩件事分開，順序也分開：
 	//
 	//	每天：四個軍團各查一次，米 ≤ 0 → 逃亡（`0x25073`）
@@ -898,7 +1279,7 @@ func (b *Battle) EndDay() {
 			}
 			for j := range u.Leaders {
 				x := &u.Leaders[j]
-				if x.Dead || x.Captured || x.Soldiers <= 0 {
+				if !x.InUnit() || x.Soldiers <= 0 {
 					continue
 				}
 				x.Soldiers /= b.roll(DesertionSpread) + DesertionFloor
@@ -924,6 +1305,10 @@ func (b *Battle) EndDay() {
 	}
 	b.Day++
 	b.checkOver()
+	// 天候每天重擲一次（`0x26f48`）：`RND(10) > 5` 才換，換成 `RND(3)`。
+	if b.roll(WeatherChangeRange) > WeatherChangeAbove {
+		b.Weather = weatherFromOriginal(b.roll(WeatherKinds))
+	}
 }
 
 // checkOver 判定勝負（說明書 p.35）。

@@ -1,5 +1,7 @@
 package battle
 
+import "fmt"
+
 // 原版的部隊 AI：每支電腦部隊每天走一次的九支判斷式（`0x29014`，
 // `docs/re/05` §12.1，`L0`＋`L1`、`[base]`；對拍 `TestZZUnitAIDayParity`）。
 //
@@ -76,6 +78,9 @@ type baseEval struct {
 type BaseDecision struct {
 	Option int
 	Target *Unit
+
+	// Why 是沒成立的那幾支各卡在哪一道門（除錯用）。
+	Why []string
 }
 
 // autoTurnBase 是原版的一天一決策。
@@ -99,8 +104,13 @@ func (b *Battle) DecideBase(u *Unit) BaseDecision {
 		b.baseRest(u)
 		return BaseDecision{Option: 9}
 	}
-	if b.roll(3) != 0 && b.baseStratagem(u, ev) {
-		return BaseDecision{Option: 5, Target: ev.target}
+	var why []string
+	if b.roll(3) != 0 {
+		if ok, err := b.baseStratagem(u, ev); ok {
+			return BaseDecision{Option: 5, Target: ev.target}
+		} else if err != nil {
+			why = append(why, "策略："+err.Error())
+		}
 	}
 	if b.roll(4) == 0 && b.baseDeathBattle(u, ev) {
 		return BaseDecision{Option: 6, Target: ev.target}
@@ -109,10 +119,10 @@ func (b *Battle) DecideBase(u *Unit) BaseDecision {
 		return BaseDecision{Option: 7, Target: ev.target}
 	}
 	if b.baseQuickBattle(u, ev) {
-		return BaseDecision{Option: 8, Target: ev.target}
+		return BaseDecision{Option: 8, Target: ev.target, Why: why}
 	}
 	b.baseRest(u)
-	return BaseDecision{Option: 9}
+	return BaseDecision{Option: 9, Why: why}
 }
 
 // s16 把部隊的兵士數換成原版讀到的樣子：部隊記錄 offset 30 是 16 位元，
@@ -231,7 +241,7 @@ func (b *Battle) baseRetreat(u *Unit, ev baseEval) bool {
 func (b *Battle) baseCanEscape(u *Unit) bool {
 	n := 0
 	for i := range u.Leaders {
-		if x := &u.Leaders[i]; !x.Dead && !x.Captured {
+		if x := &u.Leaders[i]; x.InUnit() {
 			n++
 		}
 	}
@@ -430,18 +440,21 @@ func (b *Battle) baseArchery(u *Unit) *Unit {
 
 // baseStratagem 是選項 5（`0x29784`）：先擲 RND(6) 挑計，錢不夠或最聰明
 // 那一位的謀略不到門檻就不用；再過天候門與判定（成敗都扣錢）。
-func (b *Battle) baseStratagem(u *Unit, ev baseEval) bool {
+func (b *Battle) baseStratagem(u *Unit, ev baseEval) (bool, error) {
 	// 原版的表照 火攻、水淹、陷阱、誘敵、燒糧、圍攻 排（`DS:0x7f62`／
 	// `DS:0x7f6e`），與 remake 的列舉同序，只差列舉從 1 起。
 	s := Stratagem(b.roll(6) + 1)
 	if b.Gold[u.Side] < s.Cost() {
-		return false
+		return false, fmt.Errorf("%s 要 %d 金，只有 %d", s, s.Cost(), b.Gold[u.Side])
 	}
 	wise := u.Smartest()
 	if wise == nil || int(wise.Intel) < s.MinIntel() {
-		return false
+		return false, fmt.Errorf("%s 要謀略 %d", s, s.MinIntel())
 	}
-	return b.UseStratagem(u, s, ev.target.At) == nil
+	if err := b.UseStratagem(u, s, ev.target.At); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // baseDeathBattle 是選項 6（`0x29c56`）：目標兵力（＋1）不超過我方的
@@ -460,7 +473,7 @@ func (b *Battle) baseDeathBattle(u *Unit, ev baseEval) bool {
 	if !ok {
 		return false
 	}
-	if err := b.meleeMode(u, d, b.Difficulty/5, true); err != nil {
+	if err := b.meleeMode(u, d, b.Difficulty/5, true, true); err != nil {
 		return false
 	}
 	// 本隊還有將領就佔進對方那一格（`0x29dd6`–`0x29e16`；迴圈是打到
@@ -495,7 +508,8 @@ func (b *Battle) baseEngage(u *Unit, ev baseEval) bool {
 		accept = DuelAccepted(int(ca.War), int(ct.War), u.Soldiers(), ev.target.Soldiers(),
 			b.roll(DuelWarSpread), b.roll(DuelOddsSpread))
 	}
-	return b.Duel(u, d, accept) == nil
+	// 電腦的對戰不動移動力（`0x29b82`–`0x29c56` 不碰 offset 36）。
+	return b.duel(u, d, accept, false) == nil
 }
 
 // baseQuickBattle 是選項 8（`0x29ade`）：守著城池且主帥沒被貼身時要
@@ -508,7 +522,7 @@ func (b *Battle) baseQuickBattle(u *Unit, ev baseEval) bool {
 	if !ok {
 		return false
 	}
-	return b.meleeMode(u, d, b.Difficulty/5+1, false) == nil
+	return b.meleeMode(u, d, b.Difficulty/5+1, false, false) == nil
 }
 
 // baseRest 是選項 9（`0x29e2e`）：移動力 ＋2，上限 15。
