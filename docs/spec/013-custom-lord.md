@@ -22,7 +22,7 @@
 （`TestCustomLordSlotsAcrossScenarios`）；三到六的範本槽夾在中間、
 操縱方是 2，「不在 `ActiveFactions` 裡」那條舊判準在那四個劇本一個都
 列不出來（Issue #25）。`ActiveFactions` 同一條：範本配電腦不算在用。
-那一支已經處理過「君主指向填充筆」與「沒有領地」兩種情形。
+
 
 ## 2. 範本（`L0`）
 
