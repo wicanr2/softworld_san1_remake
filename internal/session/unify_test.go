@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
-	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -32,7 +31,9 @@ type unifyResult struct {
 	Winner     int    `json:"winner"`
 	WinnerLord string `json:"winner_lord"`
 	Months     int    `json:"months"`
-	Alive      []int  `json:"alive"`
+	Alive      []int  `json:"alive"`    // 每年元月還有幾個勢力持郡（與原版那一側同一個判準）
+	Employed   []int  `json:"employed"` // 每年元月在職的人物數
+	Fallen     []int  `json:"fallen"`   // 每年元月已故（身分 12）的人物數
 }
 
 // TestUnifyYearDistribution 讓 remake 用原版對拍過的 AI（`ai.ModeBase`）、
@@ -53,24 +54,42 @@ func TestUnifyYearDistribution(t *testing.T) {
 		for i := 0; i < maxYears*12; i++ {
 			s.EndMonth()
 			r.Months++
-			alive, winner := 0, -1
-			var winF *game.Faction
-			for i := range s.G.Factions() {
-				if f := &s.G.Factions()[i]; f.Alive {
-					alive++
-					winner, winF = int(f.ID), f
+			// **判準與原版那一側相同**：數「持有郡的勢力」，不看 `Faction.Alive`
+			// ——那個旗標只在戰敗與君主死亡時更新，郡被搬空之後不會跟著變，
+			// 拿它數會把沒有領地的殭屍算進去（`docs/playtest/05` §4）。
+			owning := 0
+			for _, f := range s.G.Factions() {
+				if len(s.G.Territory(f.ID)) > 0 {
+					owning++
 				}
 			}
 			if s.G.Date.Year != lastYear {
-				r.Alive = append(r.Alive, alive)
+				r.Alive = append(r.Alive, owning)
+				emp, fallen := 0, 0
+				for _, x := range s.G.AllGenerals() {
+					if x.Employed() {
+						emp++
+					}
+					if x.Status == state.StatusFallen {
+						fallen++
+					}
+				}
+				r.Employed, r.Fallen = append(r.Employed, emp), append(r.Fallen, fallen)
 				lastYear = s.G.Date.Year
 			}
-			if alive <= 1 {
-				r.Unified, r.Year, r.Month, r.Winner = true, s.G.Date.Year, s.G.Date.Month, winner
-				if g := s.G.General(winF.Lord); winF != nil && g != nil {
-					r.WinnerLord = g.Name
+			// 統一判定用 remake 自己的 `Winner()`（`0x15852` 的條件：所有有主的
+			// 郡同屬一方）。
+			if w, done := s.G.Winner(); done {
+				r.Unified, r.Year, r.Month, r.Winner = true, s.G.Date.Year, s.G.Date.Month, int(w)
+				if f := s.G.Faction(w); f != nil {
+					if g := s.G.General(f.Lord); g != nil {
+						r.WinnerLord = g.Name
+					}
 				}
 				break
+			}
+			if owning == 0 {
+				break // 全部死光，沒有人統一
 			}
 		}
 		if r.Unified {

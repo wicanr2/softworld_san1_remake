@@ -35,6 +35,8 @@ type unifyRun struct {
 	Seconds    int    `json:"seconds"`     // 實跑秒數
 	Passwords  int    `json:"passwords"`   // 途中答了幾次防拷密碼
 	Alive      []int  `json:"alive"`       // 每年元月還有幾個勢力持有郡
+	Employed   []int  `json:"employed"`    // 每年元月人物表裡勢力欄 != 0xFF 的人數
+	Fallen     []int  `json:"fallen"`      // 每年元月身分 == 12（已故）的人數
 }
 
 // 原版工作段裡的日期（`docs/re/08` §1）與三張表的位置。
@@ -70,6 +72,21 @@ func ownersOf(o *oracle.Oracle) map[int]int {
 		}
 	}
 	return owners
+}
+
+// generalCensus 數人物表裡在職（勢力欄 != 0xFF）與已故（身分 12）的人數。
+func generalCensus(o *oracle.Oracle) (employed, fallen int) {
+	gen := uint32(unifyTablesBase + state.MasterTableSize + state.PrefectureTableSize)
+	for i := 0; i < 350; i++ {
+		rec := o.Bytes(addr(gen+uint32(i*state.GeneralRecordSize)), state.GeneralRecordSize)
+		if rec[18] != 0xFF {
+			employed++
+		}
+		if rec[17] == 12 {
+			fallen++
+		}
+	}
+	return
 }
 
 func lordNameOf(o *oracle.Oracle, faction int) string {
@@ -209,6 +226,8 @@ func TestZZUnifyYearOriginal(t *testing.T) {
 		owners := ownersOf(o)
 		if year != lastYear {
 			run.Alive = append(run.Alive, len(owners))
+			e, f := generalCensus(o)
+			run.Employed, run.Fallen = append(run.Employed, e), append(run.Fallen, f)
 			lastYear = year
 		}
 		if len(owners) == 1 {

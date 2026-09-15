@@ -43,9 +43,9 @@ const (
 
 	// 冬季民亂的三個常數（`0x16f48`／`0x16f6c`，`L0`）：門檻是
 	// `RND(20) + 50`（民眾忠誠）與 `RND(20) + 30`（人望）。
-	UnrestSpread         = 20
-	UnrestLoyaltyFloor   = 50
-	UnrestPrestigeFloor  = 30
+	UnrestSpread        = 20
+	UnrestLoyaltyFloor  = 50
+	UnrestPrestigeFloor = 30
 
 	// TributeDivisorFloor 是「人才量 ÷ (RND(10) + 80)」裡的 80
 	// （`0x1714e` 的 `add $0x50,%cx`，`L0`）。
@@ -645,7 +645,65 @@ func (g *State) autumn() []Event {
 			out = append(out, Event{p.ID, tf("ev.locust", placeName(p.Name))})
 		}
 	}
+	// **人望的年度調整**（`0x16d4f`–`0x16e6a`，`L0`）：蝗害之後、
+	// 不管有沒有鬧蝗都跑（「不發生」的兩條分支直接跳到 `0x16d4f`）。
+	// 這是人望除了戰役 ±2、春季玉璽、繼承折損之外**唯一的變動來源**，
+	// 而且每年都動——它讓人望朝「君主魅力 ＋ 領地平均狀態」對 100 的差距漂，
+	// 漏掉它的話人望永遠卡在開局值，部下忠誠年年照 `(人望 − 60) ÷ 2` 離心。
+	g.adjustPrestige()
 	return out
+}
+
+// PrestigeDriftDivisor 是年度人望調整的除數（`0x16e25`：`sar ax, 5`，
+// 對稱取整，`L0`）。差距最大 ±100，所以一年最多動 ±3。
+const PrestigeDriftDivisor = 32
+
+// PrestigeDrift 是一個勢力這一年人望要動多少（`0x16dee`–`0x16e2c`，`L0`）：
+//
+//	d = 君主魅力 + (Σ(民眾忠誠 ÷ 2 + 土地價值 ÷ 2)) ÷ 領地數 − 100
+//	d = d ÷ 32（向零取整）
+//
+// 民眾忠誠與土地價值各先 ÷ 2 再加（`0x16da6`–`0x16dbc`，`idiv cl`），
+// 不是加完再除；領地數為 0 的勢力不調（`0x16de4`）。
+func PrestigeDrift(lordCharm, loyaltyLandSum, land int) int {
+	if land <= 0 {
+		return 0
+	}
+	d := lordCharm + loyaltyLandSum/land - 100
+	// `cwd / xor / sub / sar / xor / sub` 是 MSC 的「帶號除以 2^n 向零取整」。
+	if d < 0 {
+		return -((-d) / PrestigeDriftDivisor)
+	}
+	return d / PrestigeDriftDivisor
+}
+
+// adjustPrestige 每年秋季逐勢力調整人望（`0x16d4f`–`0x16e6a`，`L0`）。
+//
+// 兩張 16 格的表（領地數、和）與冬季進貢用的是同一對緩衝區
+// （`es:0x24b2`／`es:0x2e36`，`docs/re/06` §9），但係數不同：
+// 這裡是 ÷2、÷2，進貢是 ÷4、÷2。逐郡掃的是 1..42，所屬 `0xFF` 跳過。
+func (g *State) adjustPrestige() {
+	land := make([]int, len(g.factions)+16)
+	sum := make([]int, len(land))
+	for i := range g.prefectures {
+		p := &g.prefectures[i]
+		if !p.Owned() || int(p.Owner) >= len(land) {
+			continue
+		}
+		land[p.Owner]++
+		sum[p.Owner] += int(p.PublicLoyalty)/2 + int(p.LandValue)/2
+	}
+	for i := range g.factions {
+		f := &g.factions[i]
+		if int(f.ID) >= len(land) || land[f.ID] <= 0 {
+			continue
+		}
+		charm := 0
+		if x := g.General(f.Lord); x != nil {
+			charm = int(x.Charm)
+		}
+		f.Prestige = clampTo(f.Prestige+PrestigeDrift(charm, sum[f.ID], land[f.ID]), 100)
+	}
 }
 
 // HarvestGoldCap 是秋收之後金的上限（`0x16aa1`：與 30000.0 比，`L0`）。
@@ -724,7 +782,6 @@ func LocustStrikes(loyalty, landValue, loyaltyRoll, landRoll int) bool {
 	}
 	return landValue > landRoll+LocustLandFloor
 }
-
 
 // GrowPopulation 是一年一次的人口成長（`0x16ec2`–`0x16f16`，`L0`）：
 //
@@ -1033,7 +1090,7 @@ func AgingDrop(stamina, age, lifespan, roll int) int {
 // ⚠ **出事之後做什麼還沒解**：`0x16f98` 顯示 `DS:0x680a` 的訊息，接著對
 // 那個郡做一次間接呼叫（`lcall *es:[0x20ea]`，參數 28）。所以這裡只還原
 // 判定與**抽樣的次數**——少了這三次，整條亂數序列就對不上
-//（`CONTEXT.md` 的亂數路線圖）。
+// （`CONTEXT.md` 的亂數路線圖）。
 func (g *State) winterUnrest() []Event {
 	at := g.Roll(len(g.prefectures), 40) + 1
 	p := g.Prefecture(at)
