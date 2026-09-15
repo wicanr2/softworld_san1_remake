@@ -47,9 +47,6 @@
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneReclaimBase` / `TuneReclaimIntel` | 1／25 | 「負責開墾的將領謀略越高，土地價值增加越多」|
-| `TuneFloodBase` / `TuneFloodIntel` | 1／25 | 「負責治水的將領謀略越高，洪水發生機率下降越多」|
-| `TuneTrainBase` / `TuneTrainIntel` | 2／25 | 「各將的能力影響其麾下的訓練度提升」|
 | `TuneTransportLoss` | 20 | 「太守魅力值越高，途中損耗越少」|
 | 米價換算——**只剩賣米那一邊**（一單位米 ＝ 物價 ÷ 100 金）| — | 「依物價購米入倉」，沒給比率；買米已由原版取代 |
 
@@ -117,33 +114,32 @@
 
 ### 人事
 
-| 常數 | 值 | 手冊怎麼說 |
-|---|---|---|
-| `TuneSearchIntel` | 1 | 「謀略越高，成功的機率越大」|
-| `TuneHeadhuntBase` | 60 | 只給了費用 100 金 |
-| `TuneNewSoldierTraining` | 0 | 「新兵毫無訓練，加入時會把部隊的訓練度拉低」|
+沒有了：尋訪、挖角、新兵稀釋三條都已經換成原版的（見下表）。
 
 ### 已經被原版取代的（不再是 remake 自選）
 
 這幾個當初是在「說明書只給方向、沒給數字」的前提下填的，現在有從原版
-的碼讀出來的公式了（`L0`）。常數留在 `tuning.go` 只為了讓這張表讀得
-下去——**刪掉就看不出替換發生過**。
+的碼讀出來的公式了（`L0`）。**常數已經從 `tuning.go` 刪掉**（2026-09-15，
+Issue #4 之後那一輪的 `Tune*` 盤點：15 個沒有任何使用處），當初的值記在
+這張表的第一欄，替換的歷史靠這一份保存。
 
-| 原本的常數 | 現在用的 | 出處 |
+| 原本的常數（當初的值）| 現在用的 | 出處 |
 |---|---|---|
-| `TuneReclaimBase`／`TuneReclaimIntel` | 玩家 `ReclaimGain`：`max(智−50,0)/12`；電腦 `AIReclaimGain`：`max((智−底)/12, RND(2))`，底隨 AI 等級 | `0x1a6d2`／`0xba9c` 六支 ＋ `0xba02` |
-| `TuneFloodBase`／`TuneFloodIntel` | 玩家 `FloodDrop`：`智/10`；電腦 `AIFloodDrop`：`智/除數`，除數隨 AI 等級 | `0x1a93a`／`0xba9c` 六支 ＋ `0xba4c` |
-| `TuneTrainBase`／`TuneTrainIntel` | `TrainGain`：`(智/3 + 武/2)/除數[等級]`，上限 100 | `0xbd70` |
-| `TuneNewSoldierArms` | `ArmsOf`／`Weapons`：武裝度是百分比，兵力一變就重算 | `0xc168` |
-| `TuneRecruitCharm` | `RecruitPersuasion`／`RecruitDifficulty`：說服力比難度，前面還有牽絆閘門 | `0xce8c` |
+| `TuneReclaimBase`／`TuneReclaimIntel`（1／25）| 玩家 `ReclaimGain`：`max(智−50,0)/12`；電腦 `AIReclaimGain`：`max((智−底)/12, RND(2))`，底隨 AI 等級 | `0x1a6d2`／`0xba9c` 六支 ＋ `0xba02` |
+| `TuneFloodBase`／`TuneFloodIntel`（1／25）| 玩家 `FloodDrop`：`智/10`；電腦 `AIFloodDrop`：`智/除數`，除數隨 AI 等級 | `0x1a93a`／`0xba9c` 六支 ＋ `0xba4c` |
+| `TuneTrainBase`／`TuneTrainIntel`（2／25）| `TrainGain`：`(智/3 + 武/2)/除數[等級]`，上限 100 | `0xbd70` |
+| `TuneNewSoldierArms`／`TuneNewSoldierTraining`（0／0）| `ArmsOf`／`Weapons`：武裝度是百分比，兵力一變就重算 | `0xc168` |
+| `TuneRecruitCharm`（1）| `RecruitPersuasion`／`RecruitDifficulty`：說服力比難度，前面還有牽絆閘門 | `0xce8c` |
 | `TuneRewardLoyalty` | `RewardEffect`／`RewardGain`：增幅 ＝ (RND(加成/2)＋魅力/3＋加成) × 金 ÷ 100 | `0xd302` |
-| `TuneReliefRice`／`TuneReliefLoyalty` | `ReliefGain`：撥的是**金**不是米，增幅上限 ＝ 太守魅力 ÷ 2 | `0xc8f6` |
+| `TuneReliefRice`／`TuneReliefLoyalty`（500／3）| `ReliefGain`：撥的是**金**不是米，增幅上限 ＝ 太守魅力 ÷ 2 | `0xc8f6` |
+| `TuneSearchIntel`（1）| `SearchTierFor`：尋訪比「謀略 > RND(Spread) + Floor」，三個常數隨 AI 等級變 | `0xcd20` 起六支 |
+| `TuneHeadhuntBase`（60）| `HeadhuntOffer`：招募方開的條件對上目標的抵抗 | `0x1dc0a` |
 | 買米的換算 | `RicePerGold`：一金買到 `(100 − 物價) ÷ 10` 單位 | `0xc634` |
 | `TuneRestMove` 的上限 | `Rest`：+2 之後**夾在 15**（手冊只給了那個 2）| `0x27c00`／`0x27c2d` |
-| `TuneArrowDamage` | `ArrowTerrainValue`／`ArrowSurvivors`：一箭的殺傷有自己的地形表，形狀與交戰相同但**沒有那道 −1** | `0x2aa3b`／`DS:0x81c0` |
+| `TuneArrowDamage`（6）| `ArrowTerrainValue`／`ArrowSurvivors`：一箭的殺傷有自己的地形表，形狀與交戰相同但**沒有那道 −1** | `0x2aa3b`／`DS:0x81c0` |
 | `TuneHit*`（整組）| `battle.exchange`：交戰結算看的是**部隊的**綜合能力與 `DS:0x8162`／`DS:0x8182`，不是逐將領的戰力值 | `0x2a224` |
 | `TuneHarvestRicePerLand` | `HarvestRice`：`(魅力 + 地力×3 + (100 − 洪水率) + 忠誠×2) × 人口 ÷ 200`——**洪水率只進米這一半** | `0x16afa` |
-| `TuneStratagemRange` | 計謀的射程是 **1**，而且那是規則不是取捨——原版下計謀先問方向，目標一定是六個鄰格之一 | `0x28d7a`／`DS:0x7c6a`／`DS:0x7c82` |
+| `TuneStratagemRange`（3）| 計謀的射程是 **1**，而且那是規則不是取捨——原版下計謀先問方向，目標一定是六個鄰格之一 | `0x28d7a`／`DS:0x7c6a`／`DS:0x7c82` |
 | 戰場糧草的消耗與逃亡 | 三天扣一次、四個軍團都扣，量是兵士（百）；缺糧時每位將領的兵 `÷= RND(2) + 2` | `0x25040`／`0x25576` |
 | `TuneChiefWeight` 等四項 | `PlotScore`：雙方各取「軍師與君主裡謀略較高的那位」，人望與使者魅力只扣分，沒有擲骰 | `0x2dd66` |
 | `TuneInciteLoss` | `Sabotage`：民忠、洪水率、土地價值、米、金五刀，量都跟著使者魅力 | `0x2d6e0` |
@@ -184,7 +180,7 @@
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` / `TuneStratagemRange` | 140／3／30／3 | 自動作戰什麼時候該死戰、叫陣、退兵、用計——手冊是寫給玩家看的，沒有這一層 |
+| `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` | 140／3／30 | 自動作戰什麼時候該死戰、叫陣、退兵——手冊是寫給玩家看的，沒有這一層。**原版自己的戰術 AI 九支已經讀出來**（`docs/re/05` §12），換成那一套是 Issue #22 |
 | `TuneAttackerDesperateDay` | 60 | **依據是規則不是手感**：打滿三十天而城池未被奪就算守方衛郡成功（p.35），所以攻方到後段保存實力沒有意義，平手等於輸 |
 
 #### 攻守不對稱是規則逼出來的（不是調校）
