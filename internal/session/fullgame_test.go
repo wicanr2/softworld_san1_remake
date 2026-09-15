@@ -25,9 +25,12 @@ func TestGameReachesAConclusion(t *testing.T) {
 	alive := start
 	for i := 0; i < maxYears*12; i++ {
 		s.EndMonth()
+		// **持郡才算存活**：`Faction.Alive` 是絕嗣旗標（君主欄非空），
+		// 沒了領地、君主還在的勢力原版照樣算活著（`docs/mechanics/80` §1.1）；
+		// 這裡要看的是局面收斂，判準與統一判定一樣看郡。
 		alive = 0
 		for _, f := range s.G.Factions() {
-			if f.Alive {
+			if len(s.G.Territory(f.ID)) > 0 {
 				alive++
 			}
 		}

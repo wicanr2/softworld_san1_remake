@@ -35,7 +35,7 @@ const (
 	staOwner      = 30
 	// 戰場地圖：offset 55–174，12 欄 × 10 列（`docs/spec/003` §3.3）。
 	staField, staFieldLen = 55, 120
-	staGovernor   = 32
+	staGovernor           = 32
 
 	genAge      = 7
 	genStamina  = 8

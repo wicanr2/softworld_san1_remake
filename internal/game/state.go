@@ -268,7 +268,11 @@ type Faction struct {
 	// Lord 是君主在 Generals 裡的索引。
 	Lord int
 
-	// Alive 為假表示這個勢力已經沒有領地了。
+	// Alive 為假表示這個勢力**絕嗣**了——君主死而無人繼承（`Lord` ＝ −1）。
+	//
+	// 原版「活著的勢力」就是「君主槽 != 0xFFFF」（春季玉璽的候選清單
+	// `0x15cd4`、玩家出局 `0x15924`），**不是有沒有領地**：領地歸零而君主
+	// 還在的勢力照樣活著，能靠麾下翻身。要問「還持有郡嗎」用 `Territory`。
 	Alive bool
 
 	// AILevel 是原版的電腦諸侯等級，0–5（`BASEMAS` offset 4，`L0`）。

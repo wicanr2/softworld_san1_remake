@@ -273,10 +273,9 @@ func (g *State) takePrefecture(from, to int, att []*General, by state.FactionID)
 	if !alive[best].Status.Governs() {
 		alive[best].Status = state.StatusGovernor
 	}
-	// 舊主沒地了就退場。
-	if f := g.Faction(old); f != nil && len(g.Territory(old)) == 0 {
-		f.Alive = false
-	}
+	// 舊主沒地了**不算退場**：原版「活著的勢力」看的是君主欄
+	// （`0x15cd4`），君主活著卻沒有領地的勢力還能靠麾下的武將翻身
+	// （`docs/mechanics/80` §1.1）。`Alive` 只在絕嗣時變假（`retire`）。
 }
 
 // DisposeCaptive 是決勝之後對被擒敵將的處置（說明書 p.35）。

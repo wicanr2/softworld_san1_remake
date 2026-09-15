@@ -919,7 +919,10 @@ func (g *State) retire(x *General) {
 	wasLord := x.Status == state.StatusLord
 	x.Soldiers = 0
 	x.Faction = state.NoFaction
-	x.Status = state.StatusIdle
+	// **死掉的人身分是 12（已故），君主與部下都一樣**（`0x147f6`／`0x14881`：
+	// 身分 ← 12、勢力 ← 0xFF、領地 ← 0xFF）。先前寫成在野（9）——
+	// 原版 280 年時已故累積 342 人，remake 一直是 3（`docs/playtest/05` §5）。
+	x.Status = state.StatusFallen
 	x.Location = 0
 	x.Loyalty = state.NoValue
 	if f := g.Faction(faction); f != nil && f.Chief == x.Index {
@@ -929,20 +932,23 @@ func (g *State) retire(x *General) {
 		return
 	}
 	if wasLord {
-		// **死掉的君主身分是 12（已故）不是在野**——原版 `0x14a5d`
-		// 直接寫 12，而在野（9）的人還會被登用。
-		x.Status = state.StatusFallen
 		// 君主的繼承不看郡：原版掃**整個勢力**（`0x14a84` 的 350 筆迴圈）
 		// 依魅力挑，所以繼承者常常人在別的郡。
 		if g.SucceedLord(faction) != nil {
 			return
 		}
-		// **沒有繼承人就把君主欄清成哨兵**（原版寫 `0xFFFF`）。
-		// 輸的定義是「絕嗣」不是「沒領地」（`0x15924`，`docs/mechanics/80`
-		// §1.1），這一格不清的話那個判定永遠成立——它會一直指著
-		// 已故的那一位。
+		// **沒有繼承人就把君主欄清成哨兵**（原版 `0x14ba3`：操縱方 ← `0xFFFF`；
+		// 君主欄指著已故的那一位）。輸的定義是「絕嗣」不是「沒領地」
+		// （`0x15924`，`docs/mechanics/80` §1.1），這一格不清的話那個判定
+		// 永遠成立。`Alive` 跟著變假——原版「活著的勢力」就是這一格
+		// （`0x15cd4`：君主槽 != `0xFFFF`），不是有沒有領地。
+		//
+		// 郡**不必另外釋出**：絕嗣代表這個勢力一個武將都不剩，而郡的歸屬
+		// 是從人物表重算的（`RecomputeOwners`，`0x1e394`），下一次重算
+		// 自然全部變無主。原版也沒有另一段釋出的碼（`0x14b67`–`0x14c0e`
+		// 只寫操縱方與玉璽）。
 		if f := g.Faction(faction); f != nil {
-			f.Lord = -1
+			f.Lord, f.Alive = -1, false
 		}
 	} else if succ := g.successorFor(at, x.Index, faction); succ != nil {
 		succ.Status = state.StatusGovernor
@@ -950,9 +956,6 @@ func (g *State) retire(x *General) {
 	}
 	if p := g.Prefecture(at); p != nil {
 		p.Owner = state.NoFaction
-	}
-	if f := g.Faction(faction); f != nil && len(g.Territory(faction)) == 0 {
-		f.Alive = false
 	}
 }
 

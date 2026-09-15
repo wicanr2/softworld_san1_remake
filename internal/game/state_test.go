@@ -389,9 +389,9 @@ func TestDifficultyBoundsFollowEdition(t *testing.T) {
 func TestPrefectureKeepsItsProvince(t *testing.T) {
 	g := newGame(t)
 	for _, tc := range []struct{ id, want int }{
-		{1, 0},  // 遼東 幽州
-		{7, 2},  // 北海 青州
-		{8, 2},  // 齊郡 青州
+		{1, 0},   // 遼東 幽州
+		{7, 2},   // 北海 青州
+		{8, 2},   // 齊郡 青州
 		{41, 13}, // 南海 交州
 	} {
 		p := g.Prefecture(tc.id)

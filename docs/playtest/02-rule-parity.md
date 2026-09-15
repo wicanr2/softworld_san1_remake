@@ -279,6 +279,23 @@ retf                              ; 其餘八個月什麼都不跑
 不動。電腦君主一年裡會被賞賜美女、駿馬，魅力從 10 被拉回二十幾，
 所以負向樣本只能從玩家那個郡來。
 
+## 絕嗣的處置
+
+`TestZZNoHeirReleasesTerritory`（2026-09-15）。挑一個電腦操縱、一個郡、
+兩位以上武將的勢力（載入的進度裡是勢力 1，郡 11，25 位部下），部下全部
+清成在野（勢力 `0xFF`、身分 9、忠誠 `0xFF`、領地 `0xFF`），君主擺成過壽五年、
+體能 1；從八月走到隔年三月。remake 從同一份進度（`save.ReadOriginal`）
+做同樣的改動、走同樣的月份。
+
+| | 原版 | remake |
+|---|---|---|
+| 操縱方（諸侯 offset 0）| `0xFFFF` | `Lord` ＝ −1、`Alive` ＝ false |
+| 君主的身分／勢力 | 12／`0xFF` | 已故／無 |
+| 該勢力持郡 | 0（郡 11 被勢力 5 接手）| 0 |
+
+比的是事實不是位元組：原版沒有另一段釋出郡的碼，郡是重算歸屬時
+自然變無主的（`docs/mechanics/80` §2.5）。
+
 ## 君主繼承
 
 `internal/parity/succession_oracle_test.go`（`TestSuccessionMatchesTheOriginal`）。

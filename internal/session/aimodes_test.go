@@ -71,7 +71,7 @@ func TestZZAIModesMoveTheBoard(t *testing.T) {
 			r.gold += p.Gold
 		}
 		for _, f := range g.Factions() {
-			if f.Alive {
+			if len(g.Territory(f.ID)) > 0 { // 持郡才算存活（`Alive` 是絕嗣旗標）
 				r.alive++
 			}
 			if n := len(g.Territory(f.ID)); n > r.biggest {
@@ -164,7 +164,7 @@ func TestZZGarrisonRatioSweep(t *testing.T) {
 			gold += p.Gold
 		}
 		for _, f := range g.Factions() {
-			if f.Alive {
+			if len(g.Territory(f.ID)) > 0 { // 持郡才算存活（`Alive` 是絕嗣旗標）
 				alive++
 			}
 			if n := len(g.Territory(f.ID)); n > biggest {
@@ -227,7 +227,7 @@ func TestZZAIOrdersSweep(t *testing.T) {
 			}
 		}
 		for _, f := range g.Factions() {
-			if f.Alive {
+			if len(g.Territory(f.ID)) > 0 { // 持郡才算存活（`Alive` 是絕嗣旗標）
 				alive++
 			}
 			if k := len(g.Territory(f.ID)); k > biggest {
