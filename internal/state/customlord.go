@@ -101,8 +101,10 @@ func (c CustomLord) Validate(s *Scenario) error {
 
 // CustomLordSlots 回傳還空著的新君主欄（諸侯槽號），順序由小到大。
 //
-// 判準是「不在 `ActiveFactions` 裡」：那一支已經處理過填充筆與沒有領地
-// 兩種情形。
+// 判準照原版：**君主槽指向範本**（人物 346 起，`0x123b6` 的
+// `cmp es:[bx+2],0x15a`，有號比較）而且還沒被用掉（`ActiveFactions`
+// 沒把它算成在用的）。劇本三到六的範本槽夾在中間（4、5、10、11…）
+// 而且操縱方是 2，單看操縱方會把它們當成在用的勢力。
 func (s *Scenario) CustomLordSlots() []int {
 	live := map[int]bool{}
 	for _, f := range s.ActiveFactions() {
@@ -110,12 +112,24 @@ func (s *Scenario) CustomLordSlots() []int {
 	}
 	var out []int
 	for i := 0; i < masterCount; i++ {
-		if !live[i] {
+		if s.templateLord(i) && !live[i] {
 			out = append(out, i)
 		}
 	}
 	return out
 }
+
+// templateLord 說這個槽的君主欄是不是指向自創君主的範本（人物 346 起）。
+// 原版是有號比較：`0xFFFF`（絕嗣）算 −1，不是範本。
+func (s *Scenario) templateLord(faction int) bool {
+	if faction < 0 || faction >= len(s.masters) {
+		return false
+	}
+	return int(int16(s.masters[faction].LordIndex)) >= CustomLordTemplateFrom
+}
+
+// CustomLordTemplateFrom 是四筆自創君主範本在人物表的第一筆（`docs/re/08` §6）。
+const CustomLordTemplateFrom = 346
 
 // WithCustomLord 回傳一份**加了自創君主**的劇本。原來那一份不動。
 //

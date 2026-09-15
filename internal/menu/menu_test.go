@@ -355,3 +355,22 @@ func TestTitleListsFitEveryLanguage(t *testing.T) {
 		t.Logf("%s：六個劇本共 %d 個君主欄，最寬一項 %d 格 %q", l, lords, cells.Width(widest), widest)
 	}
 }
+
+// 劇本三的新君主欄有四個（槽 4、5、10、11 指向範本），列在最後面。
+// 先前「不在 ActiveFactions 裡」的判準在這個劇本一個都列不出來。
+func TestNewLordSlotsInScenarioThree(t *testing.T) {
+	s := newScreen(t)
+	s.Confirm(0) // 開始新遊戲
+	s.Confirm(2) // 第三個劇本
+	if s.Stage() != Lord {
+		t.Fatalf("沒到選角色那一層（stage %d）", s.Stage())
+	}
+	if len(s.customs) != 4 {
+		t.Fatalf("新君主欄列了 %d 個 %v，劇本 003 有 4 個", len(s.customs), s.customs)
+	}
+	for _, f := range s.lords[:len(s.lords)-4] {
+		if s.isCustom(f) {
+			t.Errorf("槽 %d 是新君主欄卻排在一般君主中間", f)
+		}
+	}
+}

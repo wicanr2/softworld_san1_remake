@@ -23,6 +23,7 @@
 | dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |
 | 反組譯 | IDA 管線成立（`docs/re/01`）；主程式模組已用 objdump 逐段對讀 | 2026-09-06 |
 | **加強版跑得起來了** | `TestZZBootPlus` 把 `ASV.EXE` 載進 dosgolem，開 253 個檔、畫出標題。卡點是 `DATA0.GRP` 檔頭的 `e_cblp = 0xAA90`——那一格只有低九位有意義，dosgolem 沒遮就算出映像比檔案長而拒載（修在 dosgolem 的 `loader.go`）| 2026-09-07 |
+| **劇本三到六選得到自創君主了** | `CustomLordSlots`／`ActiveFactions` 改用原版的判準：君主欄指向範本（346 起）而操縱方是電腦的槽是空的新君主欄。三到六的範本槽夾在中間（4、5、10、11…）且操縱方 2，舊判準「不在 ActiveFactions 裡」在那四個劇本一個都列不出來（`docs/spec/013` §1，#25）| 2026-09-15 |
 | **加強版有自己的行為觸發開機，開新局的盤面兩版都對回 remake 了** | `bootToNewGamePlus`：路標全是 `ASV.EXE` 的（掃描碼「等新鍵」同步點 `0x10bbd`、數字輸入 `0x317e4`、Y/N `0x144ba`、選君主／難度／密碼／主命令的呼叫端、郡回合入口 `0x16256`；`docs/spec/015` §8）。第一個郡回合入口拍的三張表與 `game.New(…, 版本).Tables()` 兩版都只差開月重抽的物價。順帶量到**第三件版本差異**：開新局時難度改寫 AI 等級的算式——原版只在難度 1–2 壓到 2（碰到第一個 ≤ 2 的槽就停），加強版難度 > 2 每槽 `+= (難度 mod 11) ÷ 2`（`docs/mechanics/90` §6.4；`game.AILevelsAtStart`，九組難度對拍逐格相同）；以及兩版共通的開局收尾：填充槽（君主槽 ≥ 346）清成 `0xFFFF`、範本寫成已故（`clearFillerSlots`），`docs/re/08` §7 那條「範本身分 12」因此解了 | 2026-09-15 |
 | 格式解析 | 容器、州郡名、劇本三張表、存檔、配樂、點陣圖、戰場地圖都解出來了（`VERIFICATION-MATRIX` §2）| 2026-09-07 |
 | Go 程式 | `assets`／`state`／`cells`／`font`／`ui` 五個套件 ＋ `cmd/san1`（Ebiten）＋ `cmd/san1dump`（CLI／PNG），測試全綠 | 2026-09-06 |

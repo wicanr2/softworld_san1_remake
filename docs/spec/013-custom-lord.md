@@ -14,7 +14,14 @@
 （填充筆），而且一個郡都沒有——那兩個就是新君主欄。手冊 p.7 寫
 「16（含 2 個新君主欄）」，與資料完全對得上。
 
-判準是 `Scenario.CustomLordSlots()`：**不在 `ActiveFactions` 裡的槽**。
+判準是 `Scenario.CustomLordSlots()`：**君主欄指向範本（人物 346 起，有號
+比較）而操縱方是電腦的槽**——原版開新局的判斷（`0x123b6` 的
+`cmp es:[bx+2],0x15a`，`docs/mechanics/80` §3）就是「君主槽 ≥ 346 而沒被
+玩家選成自創君主」，玩家選了的那一格操縱方會寫 1。劇本一的空欄在
+14／15，二在 15，三是 4／5／10／11，四是 10–13，五是 4／5，六是 4–7
+（`TestCustomLordSlotsAcrossScenarios`）；三到六的範本槽夾在中間、
+操縱方是 2，「不在 `ActiveFactions` 裡」那條舊判準在那四個劇本一個都
+列不出來（Issue #25）。`ActiveFactions` 同一條：範本配電腦不算在用。
 那一支已經處理過「君主指向填充筆」與「沒有領地」兩種情形。
 
 ## 2. 範本（`L0`）
@@ -101,6 +108,7 @@ remake 開自創君主的局時，把**原版出貨的那一份 `BASEPRE`** 帶�
 | 項 | 怎麼驗 |
 |---|---|
 | 劇本 001 有兩個新君主欄 | `internal/state` 的 `TestCustomLordSlotsMatchTheManual` |
+| 六個劇本的新君主欄各對上君主槽 ≥ 346 的那幾格 | `TestCustomLordSlotsAcrossScenarios`、`internal/menu` 的 `TestNewLordSlotsInScenarioThree` |
 | 範本的初始值 | `TestCustomLordStatsStartFromTheTemplate` |
 | 點數、空白郡、姓名的檢查 | `TestCustomLordValidate` |
 | 寫進去讀得回來、原件不動 | `TestWithCustomLordWritesTheTables` |

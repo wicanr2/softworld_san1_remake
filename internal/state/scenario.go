@@ -576,9 +576,18 @@ func (s *Scenario) ActiveFactions() []int {
 	if s.controllersFilled() {
 		var out []int
 		for i := range s.masters {
-			if s.Controller(i) != ControlledByNobody {
-				out = append(out, i)
+			if s.Controller(i) == ControlledByNobody {
+				continue
 			}
+			// 君主欄指向自創君主的範本而操縱方是電腦的槽，是**還空著的
+			// 新君主欄**，不是在用的勢力：自創君主只有玩家選得到（原版
+			// `es:[0x3120＋2f]` 記的是哪一位玩家），所以範本配電腦就是沒人
+			// 用。劇本三到六的範本槽夾在中間、操縱方也是 2，單看操縱方
+			// 分不出來；玩過的存檔裡被選成自創君主的那一位操縱方是 1。
+			if s.templateLord(i) && s.Controller(i) == ControlledByComputer {
+				continue
+			}
+			out = append(out, i)
 		}
 		return out
 	}

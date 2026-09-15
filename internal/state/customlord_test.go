@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -188,5 +189,64 @@ func TestWithCustomLordWritesTheTables(t *testing.T) {
 	// 同一個槽不能再用一次。
 	if _, err := out.WithCustomLord(f, c); err == nil {
 		t.Error("同一個槽用了兩次沒被擋")
+	}
+}
+
+// 六個劇本的新君主欄：判準是「君主欄指向範本（346 起）而且還沒進場」
+// （原版 `0x123b6`），不是「不在 `ActiveFactions` 裡」——劇本三到六的
+// 範本槽夾在中間、操縱方是 2，單看操縱方會把它們當成在用的勢力，
+// 新君主欄一個都列不出來。
+func TestCustomLordSlotsAcrossScenarios(t *testing.T) {
+	root := os.Getenv("SAN1_ORIG")
+	if root == "" {
+		t.Skip("沒設 SAN1_ORIG，跳過（本儲存庫不含原版檔案）")
+	}
+	dir := filepath.Join(root, "三國演義")
+	read := func(ext string) []byte {
+		b, err := os.ReadFile(filepath.Join(dir, "DATA2."+ext))
+		if err != nil {
+			t.Skipf("讀不到 DATA2.%s：%v", ext, err)
+		}
+		return b
+	}
+	c, err := assets.OpenContainer(read("NAM"), read("IDX"), read("GRP"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[Slot][]int{
+		Scenario1: {14, 15}, Scenario2: {15}, Scenario3: {4, 5, 10, 11},
+		Scenario4: {10, 11, 12, 13}, Scenario5: {4, 5}, Scenario6: {4, 5, 6, 7},
+	}
+	for slot, exp := range want {
+		sc, err := LoadScenario(c, slot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := sc.CustomLordSlots()
+		if fmt.Sprint(got) != fmt.Sprint(exp) {
+			t.Errorf("劇本 %s 的新君主欄 %v，要 %v", slot, got, exp)
+		}
+		live := map[int]bool{}
+		for _, f := range sc.ActiveFactions() {
+			live[f] = true
+		}
+		for _, f := range got {
+			if live[f] {
+				t.Errorf("劇本 %s 的槽 %d 同時是新君主欄與在用的勢力", slot, f)
+			}
+			if g, err := sc.Lord(f); err != nil || g.Index < CustomLordTemplateFrom {
+				t.Errorf("劇本 %s 的槽 %d 君主欄沒有指向範本", slot, f)
+			}
+		}
+		// 其餘的槽是劇本裡就沒在用的（操縱方 `0xFFFF`、君主欄 `0xFFFF`）。
+		dead := 0
+		for i := 0; i < masterCount; i++ {
+			if sc.Controller(i) == ControlledByNobody {
+				dead++
+			}
+		}
+		if n := len(sc.ActiveFactions()) + len(got) + dead; n != masterCount {
+			t.Errorf("劇本 %s：在用 %d ＋ 空欄 %d ＋ 沒在用 %d ≠ %d", slot, len(sc.ActiveFactions()), len(got), dead, masterCount)
+		}
 	}
 }
