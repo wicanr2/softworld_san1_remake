@@ -13,12 +13,9 @@ package game
 // ⚠ 這一檔曾經有二十來個常數；被原版的公式取代的那些已經刪掉，
 // 「哪些數字曾經是 remake 自己挑的、被什麼取代」記在 `docs/design/02`
 // 的替換表裡（含當初的值），不靠留著死常數來保存歷史。
-const (
-	// TuneTransportLoss：運送錢糧的基礎損耗百分比；太守魅力越高越少
-	// （說明書 p.20）。實際損耗 ＝ base × (100 − 魅力) ÷ 100。
-	// **還沒對回原版**——輸送那一支的算式在哪還沒讀（Issue #21）。
-	TuneTransportLoss = 20
-)
+// 規則層現在**沒有**任何 `Tune` 常數了：最後一個 `TuneTransportLoss`
+// 也在 2026-09-15 換成原版的 `TransportArrives`（Issue #21）。
+// 要加新的估計值時照舊用 `Tune` 前綴、登記到 `docs/design/02`。
 
 // TreasureEffect 是寶物加給能力的**下界**（`L1`、`[base]`，
 // 分派表 `0x56b4` 底下四支：`0xd962`／`0xdac0`／`0xdc1e`／`0xdd94`）。

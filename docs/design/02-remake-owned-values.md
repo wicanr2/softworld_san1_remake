@@ -47,7 +47,6 @@
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneTransportLoss` | 20 | 「太守魅力值越高，途中損耗越少」|
 | 米價換算——**只剩賣米那一邊**（一單位米 ＝ 物價 ÷ 100 金）| — | 「依物價購米入倉」，沒給比率；買米已由原版取代 |
 
 ### 電腦的強化 AI（`internal/ai/enhanced.go`）
@@ -132,6 +131,7 @@ Issue #4 之後那一輪的 `Tune*` 盤點：15 個沒有任何使用處），�
 | `TuneRecruitCharm`（1）| `RecruitPersuasion`／`RecruitDifficulty`：說服力比難度，前面還有牽絆閘門 | `0xce8c` |
 | `TuneRewardLoyalty` | `RewardEffect`／`RewardGain`：增幅 ＝ (RND(加成/2)＋魅力/3＋加成) × 金 ÷ 100 | `0xd302` |
 | `TuneReliefRice`／`TuneReliefLoyalty`（500／3）| `ReliefGain`：撥的是**金**不是米，增幅上限 ＝ 太守魅力 ÷ 2 | `0xc8f6` |
+| `TuneTransportLoss`（20）| `TransportArrives`：到達 ＝ n × (主事者魅力 + 50) ÷ 150——原版的損耗是 remake 猜的三倍多 | `0x192c7`–`0x1930c` |
 | `TuneSearchIntel`（1）| `SearchTierFor`：尋訪比「謀略 > RND(Spread) + Floor」，三個常數隨 AI 等級變 | `0xcd20` 起六支 |
 | `TuneHeadhuntBase`（60）| `HeadhuntOffer`：招募方開的條件對上目標的抵抗 | `0x1dc0a` |
 | 買米的換算 | `RicePerGold`：一金買到 `(100 − 物價) ÷ 10` 單位 | `0xc634` |

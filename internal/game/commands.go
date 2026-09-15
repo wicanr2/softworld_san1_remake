@@ -202,16 +202,34 @@ func (g *State) Transport(from, to, gold, rice int, by state.FactionID) error {
 	if gov := g.Governor(from); gov != nil {
 		charm = int(gov.Charm)
 	}
-	keep := func(n int) int {
-		loss := n * TuneTransportLoss * (100 - charm) / 10000
-		return n - loss
-	}
 	src.Gold -= gold
 	src.Rice -= rice
-	dst.Gold = clampTo(dst.Gold+keep(gold), MaxGold)
-	dst.Rice = clampTo(dst.Rice+keep(rice), MaxRice)
+	dst.Gold = transportReceive(dst.Gold, TransportArrives(gold, charm))
+	dst.Rice = transportReceive(dst.Rice, TransportArrives(rice, charm))
 	src.Commanded = true
 	return nil
+}
+
+// TransportArrives 是運送 n 金（或米）實際到達多少（`0x192c7`–`0x1930c`，`L0`）：
+//
+//	到達 ＝ n × (來源主事者的魅力 + 50) ÷ 150
+//
+// 原版走浮點（`fild` 魅力+50、`fimul` n、`fmul` 常數 `DS:0xa7aa` ＝ 1/150、
+// `ftol` 截尾）；那個 double 在 1/150 之上 4.3e-19，整數倍不會被截掉，
+// 所以整數除法逐格相同（`TestZZTransportLoss`）。魅力 100 一分不少，
+// 魅力 0 只到三分之一。
+func TransportArrives(n, charm int) int {
+	return n * (charm + 50) / 150
+}
+
+// transportReceive 是目的郡收下之後的庫存（`0x1931a`／`0x19333`，`L0`）：
+// 16 位元帶號相加，**溢位（結果為負）才寫 30000**，沒溢位就照加——
+// 所以運送可以把庫存推過 30000（最高 32767），與秋收、買米的上限不同。
+func transportReceive(have, arrived int) int {
+	if sum := have + arrived; sum <= 32767 {
+		return sum
+	}
+	return MaxGold
 }
 
 // ---- 3. 兵士 ------------------------------------------------------------
