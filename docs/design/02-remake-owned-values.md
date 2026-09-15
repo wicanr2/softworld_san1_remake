@@ -176,16 +176,21 @@ Issue #4 之後那一輪的 `Tune*` 盤點：15 個沒有任何使用處），�
 | `TuneTrainingWeight` / `TuneArmsWeight` / `TuneWarWeight` | 60／40／50 | 「影響戰力的因素：訓練度、武裝度、兵數、地形、兵種及有無用計」|
 | `TuneDefenceBonus` / `TuneFortBonus` | 30／5 | 「城池能夠發揮部隊最大戰力，以及一流防禦工事」「關寨提供少許攻擊優勢，及簡陋的防禦工事」|
 
-#### 戰術層（`internal/battle/tuning.go`）
+#### 戰術層（`internal/battle/tuning.go`）——**只有 `enhanced` 在用**
+
+原版的九支判斷式已經還原（`docs/re/05` §12.1、`docs/mechanics/40` §4.5，
+`internal/battle/autobase.go`），`base`／`plus` 走那一套，下面四個常數
+只剩 remake 自己的 `enhanced` 自動作戰（`auto.go`）在用（Issue #22）。
 
 | 常數 | 值 | 手冊怎麼說 |
 |---|---|---|
-| `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` | 140／3／30 | 自動作戰什麼時候該死戰、叫陣、退兵——手冊是寫給玩家看的，沒有這一層。**原版自己的戰術 AI 九支已經讀出來**（`docs/re/05` §12），換成那一套是 Issue #22 |
-| `TuneAttackerDesperateDay` | 60 | **依據是規則不是手感**：打滿三十天而城池未被奪就算守方衛郡成功（p.35），所以攻方到後段保存實力沒有意義，平手等於輸 |
+| `TuneDeathBattleEdge` / `TuneDuelWarEdge` / `TuneRetreatShare` | 140／3／30 | 自動作戰什麼時候該死戰、叫陣、退兵——手冊是寫給玩家看的，沒有這一層。原版的對應物是 `RND(4)` 門＋兵力比 0.23、`RND(16)` 門＋`RND(100)`、`RND(8)＋3 ≤ 敵我總兵力比` |
+| `TuneAttackerDesperateDay` | 60 | **依據是規則不是手感**：打滿三十天而城池未被奪就算守方衛郡成功（p.35），所以攻方到後段保存實力沒有意義，平手等於輸。原版沒有這一條 |
 
 #### 攻守不對稱是規則逼出來的（不是調校）
 
-自動作戰**兩邊走不同的路徑**（`internal/battle/auto.go`）：
+`enhanced` 的自動作戰**兩邊走不同的路徑**（`internal/battle/auto.go`）；
+原版那一套攻守同一條鏈，差別只在誰守著城池：
 
 | | 順序 | 為什麼 |
 |---|---|---|

@@ -193,6 +193,13 @@ const enterMark = `\r`
 // （`docs/re/03` §1.5），所以放人就等於換旗。
 func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
 	t.Helper()
+	return stageABattleWith(t, o, base, 3000, 2, 1500, 0)
+}
+
+// stageABattleWith 是 stageABattle 加上「玩家每位守將幾兵、敵方放幾位、
+// 敵方每位幾兵、敵方的謀略與戰力（0 ＝ 照劇本）」。
+func stageABattleWith(t *testing.T, o *oracle.Oracle, base uint32, soldiers, enemies, enemySoldiers, enemyStats int) (int, int) {
+	t.Helper()
 	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
 	raw := o.Bytes(addr(base), nMas+nSta+nGen)
 	mas, sta, gen := raw[:nMas], raw[nMas:nMas+nSta], raw[nMas+nSta:]
@@ -250,7 +257,7 @@ func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
 		if int(r[18]) != me || int(r[19]) != at {
 			continue
 		}
-		put16(r, 22, 3000)
+		put16(r, 22, soldiers)
 		r[24], r[25] = 80, 80
 		// **智也要墊高**：計謀的門檻表 `DS:0x7f6e` 最低 60（陷阱、誘敵）、
 		// 最高 80（火攻），領隊的智不夠的話那六支一律被擋在第二道門，
@@ -258,7 +265,7 @@ func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
 		r[9] = 99
 		mine++
 	}
-	put16(sta[at*176:], 16, mine*30)
+	put16(sta[at*176:], 16, mine*soldiers/100)
 	put16(sta[at*176:], 18, 9000)
 	put16(sta[at*176:], 20, 20000)
 
@@ -279,18 +286,21 @@ func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
 
 	// 敵方這一邊：挑兩位在野的人放進目標郡，郡就跟著換旗。
 	placed := 0
-	for i := 0; i < 350 && placed < 2; i++ {
+	for i := 0; i < 350 && placed < enemies; i++ {
 		r := gen[i*30:]
 		if r[18] != 0xFF {
 			continue
 		}
 		r[18], r[19], r[17], r[12] = byte(enemy), byte(to), 3, 3
-		put16(r, 22, 1500)
+		put16(r, 22, enemySoldiers)
+		if enemyStats > 0 {
+			r[9], r[10] = byte(enemyStats), byte(enemyStats)
+		}
 		r[24], r[25] = 50, 50
 		placed++
 	}
 	sta[to*176+30] = byte(enemy)
-	put16(sta[to*176:], 16, placed*15)
+	put16(sta[to*176:], 16, placed*enemySoldiers/100)
 	put16(sta[to*176:], 18, 500)
 	put16(sta[to*176:], 20, 3000)
 	sta[to*176+22] = byte(placed)
@@ -301,8 +311,8 @@ func stageABattle(t *testing.T, o *oracle.Oracle, base uint32) (int, int) {
 	back := o.Bytes(addr(base), nMas+nSta+nGen)
 	bs := back[nMas : nMas+nSta]
 	get16 := func(b []byte, i int) int { return int(b[i]) | int(b[i+1])<<8 }
-	t.Logf("盤面擺好：玩家勢力 %d 在郡 %d（%d 位守將 × 3000 兵），"+
-		"目標郡 %d 換成勢力 %d（%d 位 × 1500 兵）", me, at, mine, to, enemy, placed)
+	t.Logf("盤面擺好：玩家勢力 %d 在郡 %d（%d 位守將 × %d 兵），"+
+		"目標郡 %d 換成勢力 %d（%d 位 × %d 兵）", me, at, mine, soldiers, to, enemy, placed, enemySoldiers)
 	t.Logf("讀回來：郡 %d 金 %d 米 %d 兵士 %d；郡 %d 所屬 %d 兵士 %d 現役將 %d",
 		at, get16(bs, at*176+18), get16(bs, at*176+20), get16(bs, at*176+16),
 		to, bs[to*176+30], get16(bs, to*176+16), bs[to*176+22])

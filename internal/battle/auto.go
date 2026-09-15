@@ -21,12 +21,15 @@ import "sort"
 //   - **守方可以拖**：不划算的近戰不打，改用不挨反擊的手段
 //     （弓箭、計謀）消耗，並守在城池旁邊。
 //
-// 原版的決策鏈順序是「移動 → 弓箭 →（動作碼已定就跳過）→ 用計 →
-// … → 對戰 → 休息」（`docs/re/05` §12，`L1`），**移動排在最前面**。
-// remake 這一套不照抄——它是創作不是還原（`docs/design/02`）——
-// 但「推進不能被射箭卡住」這一點是同一個道理。
+// 原版的九支判斷式在 `autobase.go`（`AIBase`／`AIPlus`）；這一套是
+// `AIEnhanced`——它是創作不是還原（`docs/design/02`），四個 `Tune*`
+// 只有這裡在用。
 func (b *Battle) AutoTurn(u *Unit) {
 	if b.Over || !u.Alive() || u.Trapped > 0 {
+		return
+	}
+	if b.AI != AIEnhanced {
+		b.autoTurnBase(u)
 		return
 	}
 	// 敗得夠慘而且整體居於劣勢就退兵（說明書 p.34）。

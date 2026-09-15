@@ -18,9 +18,9 @@ const (
 	// 當初的 `TuneArrowDamage`／`TuneStratagemRange` 刪了，替換紀錄在
 	// `docs/design/02`。
 
-	// 下面四個是**自動作戰**（`auto.go`）的取捨，不是規則：原版自己的
-	// 戰術 AI 九支已經讀出來了（`docs/re/05` §12），換成那一套是
-	// Issue #22 的事。
+	// 下面四個是 **`enhanced` 自動作戰**（`auto.go`）的取捨，不是規則。
+	// 原版自己的九支判斷式在 `autobase.go`（`base`／`plus` 走那一套，
+	// `docs/re/05` §12.1），這四個常數只有 `enhanced` 在用。
 
 	// TuneDeathBattleEdge 是自動作戰敢打死戰的攻防比門檻（百分比）。
 	// 手冊只說死戰是「一決生死的激戰」，沒說什麼時候該用。

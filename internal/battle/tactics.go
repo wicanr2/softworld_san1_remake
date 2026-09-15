@@ -550,12 +550,24 @@ func (b *Battle) alliesAround(u *Unit, target Hex) int {
 }
 
 // roll 是 `RND(n)`：0..n−1。
+//
+// 原版的 `RND(n)` 在 `n <= 0` 時直接回 0 **而且不抽**（`0x10b0c`）。
 func (b *Battle) roll(n int) int {
 	if n <= 0 {
 		return 0
 	}
+	if b.rollFn != nil {
+		return b.rollFn(n)
+	}
 	return int(b.rng.next() % uint32(n))
 }
+
+// UseRoll 把這場戰役的每一次 `RND(n)` 交給 fn。
+//
+// 給對拍用：原版的骰序是 MSC 的 LCG（`game.MSCRand`），remake 平常用的
+// 是 xorshift32；要與原版逐次相同就得從這裡供應原版的序列（或原版
+// 實際擲出的值）。正式遊戲不用它。
+func (b *Battle) UseRoll(fn func(n int) int) { b.rollFn = fn }
 
 // scorch 把火攻或水淹的比率**逐將領**套上去，回傳總損失。
 //

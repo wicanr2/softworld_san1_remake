@@ -75,6 +75,16 @@ type Battle struct {
 	// Rules 是版本與難度決定的規則（`rules.go`）。零值是原版。
 	Rules Rules
 
+	// AI 是電腦部隊用哪一套判斷式（`autobase.go`）。零值是原版。
+	AI AI
+
+	// Difficulty 是難度：原版的快戰與死戰把它除以 5 當交戰結算的模式
+	// （`0x29b13`／`0x29d33`）。
+	Difficulty int
+
+	// Escapes 是各方退兵時逃得去的鄰郡（`Escape`）。沒填就逃不了。
+	Escapes [sideCount][]Escape
+
 	// Commander 是四種軍力的統帥（人物槽號），−1 表示這一方沒出場。
 	//
 	// 原版把它存在軍力記錄的第 0 個欄位（`es:[0x175e + 22×軍力]`），
@@ -86,7 +96,8 @@ type Battle struct {
 	// 固定住一個還沒量過的假設。
 	Commander [sideCount]int
 
-	rng *rand
+	rng    *rand
+	rollFn func(int) int
 }
 
 // Setup 是開一場戰役要的東西。
@@ -106,6 +117,11 @@ type Setup struct {
 	// Rules 是版本規則（`RulesFor`）。零值是原版。
 	Rules Rules
 
+	// AI、Difficulty、Escapes 見 Battle 的同名欄位。
+	AI         AI
+	Difficulty int
+	Escapes    [sideCount][]Escape
+
 	// FromGate 是主攻軍的入口（來犯的鄰郡編號）。
 	FromGate int
 
@@ -119,7 +135,8 @@ type Setup struct {
 // 紮營順序是中軍 → 先鋒 → 左軍 → 右軍 → 後軍（p.28）。
 func New(s Setup) *Battle {
 	b := &Battle{Field: s.Field, Day: 1, Weather: s.Weather,
-		CityHeld: MainDefender, rng: newRand(s.Seed), Rules: s.Rules}
+		CityHeld: MainDefender, rng: newRand(s.Seed), Rules: s.Rules,
+		AI: s.AI, Difficulty: s.Difficulty, Escapes: s.Escapes}
 	b.Gold[MainAttacker], b.Rice[MainAttacker] = s.AttackerGold, s.AttackerRice
 	b.Gold[MainDefender], b.Rice[MainDefender] = s.DefenderGold, s.DefenderRice
 
@@ -661,6 +678,13 @@ func (b *Battle) DeathBattle(a *Unit, d Dir) error {
 }
 
 func (b *Battle) melee(a *Unit, d Dir, toTheDeath bool) error {
+	return b.meleeMode(a, d, MeleeStrike, toTheDeath)
+}
+
+// meleeMode 是 melee 加上交戰結算的模式（倍率格，`StrikeMultiplier`）：
+// 玩家的對戰傳 8（夾成 1），電腦的快戰傳 難度÷5＋1、死戰傳 難度÷5
+//（`0x29b13`／`0x29d33`）。
+func (b *Battle) meleeMode(a *Unit, d Dir, mode int, toTheDeath bool) error {
 	if err := b.canAct(a); err != nil {
 		return err
 	}
@@ -682,7 +706,7 @@ func (b *Battle) melee(a *Unit, d Dir, toTheDeath bool) error {
 		// 主戰場的交戰走 `0x2a224`（`docs/re/05` §3.6）。量到玩家的
 		// 「對戰」傳的模式是 8——落在 0..7 之外，被 `0x2a2c9` 夾成 1，
 		// 也就是倍率 100。
-		la, lb := b.exchange(a, t, MeleeStrike)
+		la, lb := b.exchange(a, t, mode)
 		if !t.Alive() {
 			b.note("blog.rout", a.Name(), t.Name(), la)
 			break
@@ -705,7 +729,13 @@ func (b *Battle) melee(a *Unit, d Dir, toTheDeath bool) error {
 // Archery 是「弓箭」：射箭削弱敵軍兵力（說明書 p.32）。
 //
 // 「攻擊目標必須**相間一格**，且不能隔著大山、城池或關寨。」
-func (b *Battle) Archery(a *Unit, target Hex) error {
+func (b *Battle) Archery(a *Unit, target Hex) error { return b.archery(a, target, a.Arrows) }
+
+// ArcheryOnce 照原版一次射一箭（`0x2ab90` 一次遞減一）——電腦部隊的
+// 弓箭選項（`autobase.go`）走這裡，整壺射完是玩家指令那一層的 remake 差異。
+func (b *Battle) ArcheryOnce(a *Unit, target Hex) error { return b.archery(a, target, 1) }
+
+func (b *Battle) archery(a *Unit, target Hex, n int) error {
 	if err := b.canAct(a); err != nil {
 		return err
 	}
@@ -724,9 +754,11 @@ func (b *Battle) Archery(a *Unit, target Hex) error {
 	if t.Side.Attacking() == a.Side.Attacking() {
 		return fmt.Errorf("battle: 那是友軍")
 	}
-	n := a.Arrows
-	if n <= 0 {
+	if a.Arrows <= 0 {
 		return fmt.Errorf("battle: 箭射完了")
+	}
+	if n > a.Arrows {
+		n = a.Arrows
 	}
 	// ⚠ **registered remake 差異**：原版一次射一箭，選單上印著剩幾次
 	// （`DS:0x80ae`「弓箭攻擊 次數:%d」）；remake 一次把整壺射完，
@@ -759,7 +791,7 @@ func (b *Battle) Archery(a *Unit, target Hex) error {
 		t.Wiped = true
 		b.note("blog.wiped", t.Name())
 	}
-	a.Arrows = 0
+	a.Arrows -= n
 	b.note("blog.arrows", a.Name(), n, t.Name(), total)
 	a.Move = 0
 	return nil

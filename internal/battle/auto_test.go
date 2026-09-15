@@ -25,8 +25,11 @@ func armies(n int, war, intel uint8, soldiers int, prefix string) []Leader {
 	return out
 }
 
+// setup 給的是 **enhanced** 的自動作戰（這一檔測的是 remake 自己那一套）；
+// 原版那條鏈的測試在 autobase_test.go。
 func setup(seed uint32) Setup {
 	return Setup{
+		AI:           AIEnhanced,
 		Field:        Generate(params(9)),
 		Weather:      Windy,
 		Seed:         seed,

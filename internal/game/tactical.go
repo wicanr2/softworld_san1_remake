@@ -352,8 +352,49 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 			x.Location = 0
 		}
 	}
+	// 電腦部隊用哪一套判斷式（`docs/design/01`）、交戰結算的模式要的難度，
+	// 以及退兵逃得去的鄰郡（原版 `0x23dd4`：戰場所在郡的鄰郡裡無主或
+	// 自己勢力的，扣掉對方助軍出兵的那一郡）。
+	setup.AI = g.battleAI()
+	setup.Difficulty = g.Difficulty
+	if dst != nil {
+		setup.Escapes[battle.MainAttacker] = g.escapesFor(dst, by, aid.Defender)
+		setup.Escapes[battle.AidAttacker] = setup.Escapes[battle.MainAttacker]
+		setup.Escapes[battle.MainDefender] = g.escapesFor(dst, dst.Owner, aid.Attacker)
+		setup.Escapes[battle.AidDefender] = setup.Escapes[battle.MainDefender]
+	}
 	return &Pending{B: battle.New(setup), from: from, to: to, by: by,
 		att: att, def: def, aidAtt: aidAtt, aidDef: aidDef, result: r}
+}
+
+// battleAI 把這一局的 AI 模式換成戰術層的旗標：`enhanced` 走 remake 自己
+// 的自動作戰，其餘（含沒設）走原版的九支判斷式。
+func (g *State) battleAI() battle.AI {
+	switch g.Options.AIMode {
+	case "enhanced":
+		return battle.AIEnhanced
+	case "plus":
+		return battle.AIPlus
+	}
+	return battle.AIBase
+}
+
+// escapesFor 列出 `f` 這一方從 `at` 這個戰場退兵時逃得去的鄰郡
+// （原版 `0x23e34`–`0x23ef2`，`L0`）：無主或 `f` 自己的鄰郡，扣掉對方
+// 助軍出兵的那一郡 `exclude`。每一郡帶著現役武將數，容量判定在戰術層做。
+func (g *State) escapesFor(at *Prefecture, f state.FactionID, exclude int) []battle.Escape {
+	var out []battle.Escape
+	for _, n := range at.Neighbours {
+		q := g.Prefecture(n)
+		if q == nil || n == exclude {
+			continue
+		}
+		if q.Owned() && q.Owner != f {
+			continue
+		}
+		out = append(out, battle.Escape{Prefecture: n, Active: g.ActiveGenerals(n)})
+	}
+	return out
 }
 
 // garrisonOf 是一個郡的全部駐軍（只算所屬勢力的人）。援軍用這個點齊。
