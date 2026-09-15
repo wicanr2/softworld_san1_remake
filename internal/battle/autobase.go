@@ -20,6 +20,17 @@ import "fmt"
 //	8 快戰           槽空
 //	9 休息           槽空
 //
+// 加強版（`AIPlus`）是同一條鏈，門與門檻改了幾處（`0x2644a`，`docs/re/05`
+// §12.5，`L0`＋`L1`、`[plus]`；對拍 `TestZZUnitAIDayParityPlus`）：
+//
+//	3 移動           槽空 ＋ 天數 ≥ 表[隊伍] ＋ RND(表[隊伍])==0
+//	4 弓箭           槽空 ＋ RND(2)==1
+//	5 策略           槽空 ＋ RND(4)!=0
+//	7 對戰           槽空 ＋ RND(8)==0
+//
+// 退兵少一道門、移動的目標另有一套、死戰／對戰／快戰的門檻與模式不同，
+// 各見 `plus*`。
+//
 // remake 的 `enhanced` 模式不走這裡（`auto.go`）。
 
 // AI 是自動作戰用哪一套判斷式。零值是原版（`docs/design/01`：還原版本
@@ -29,7 +40,8 @@ type AI int
 const (
 	// AIBase 是原版的九支（本檔）。
 	AIBase AI = iota
-	// AIPlus 是加強版：同一條鏈，只有行軍目標不同（`docs/re/05` §8.2）。
+	// AIPlus 是加強版：同一條鏈，門、門檻、退兵與行軍目標不同
+	//（`docs/re/05` §12.5）。
 	AIPlus
 	// AIEnhanced 是 remake 自己的策略（`auto.go`）。
 	AIEnhanced
@@ -57,6 +69,40 @@ const (
 	baseRestGain = RestMove
 	// baseEscapeRoom 是逃進鄰郡的將領上限（`0x23ebf`）。
 	baseEscapeRoom = 50
+)
+
+// 加強版判斷式裡的常數（`L0`，`DS:` 的 double 與表）。
+const (
+	// plusChargeRatioCap：守著城池而主帥沒被貼身時，「敵方總兵力 ÷ 我方
+	// 總兵力」不超過它，帥隊以外的部隊就直撲對方帥隊（`DS:0xab22`）。
+	plusChargeRatioCap = 0.2
+	// plusHoldAroundFactor／plusOpenAroundFactor：行軍目標那一格的守軍
+	// 兵力（百）要壓過鄰格敵軍兵力（百）和的幾倍才不出去（`0x26827`
+	// 的 `shl 1`、`0x2688f` 的 `shl 2`）。
+	plusHoldAroundFactor = 2
+	plusOpenAroundFactor = 4
+	// plusQuickRatioCap／plusQuickOpenCap：快戰看的是「(目標兵力＋1) ÷
+	// (我方兵力＋1)」——守著城池時要低於 0.5（`DS:0xab42`），否則不超過
+	// 5.0（`DS:0xab4c`）或 RND(3)==1。
+	plusQuickRatioCap = 0.5
+	plusQuickOpenCap  = 5.0
+	// plusEngageRatioCap／plusEngageOpenCap：對戰同上，0.4（`DS:0xab54`）
+	// 與 2.0（`DS:0xab5c`）。
+	plusEngageRatioCap = 0.4
+	plusEngageOpenCap  = 2.0
+	// plusDeathRatioCap：死戰的門檻 0.4（`DS:0xab54`，原版 0.23）。
+	plusDeathRatioCap = 0.4
+	// plusModeSpan：模式用 難度 mod 11 算（`0x27003`／`0x2725e`）。
+	plusModeSpan = 11
+)
+
+// 加強版移動那一支的兩張表（`DS:0x82da`／`DS:0x82d0`，照隊伍 0–4 排，
+// `L0`）：天數要到表一才准動，再擲 `RND(表二)` 要是 0。帥隊第十天以後
+// 才動而且三次只准一次，後軍第八天起四次一次，前左右軍第一、三、四天
+// 起每天都准（`RND(1)` 照樣擲一次）。
+var (
+	plusMoveDay  = map[Formation]int{Centre: 10, Vanguard: 1, Left: 3, Right: 4, Rear: 8}
+	plusMoveGate = map[Formation]int{Centre: 3, Vanguard: 1, Left: 1, Right: 1, Rear: 4}
 )
 
 // baseEval 是選項 1 算出來、後面幾支共用的評估值。
@@ -88,14 +134,20 @@ func (b *Battle) autoTurnBase(u *Unit) { b.DecideBase(u) }
 
 // DecideBase 走一遍原版的九支，回傳定案的是哪一支。
 func (b *Battle) DecideBase(u *Unit) BaseDecision {
+	plus := b.AI == AIPlus
 	ev := b.baseEvaluate(u)
 	if b.baseRetreat(u, ev) {
 		return BaseDecision{Option: 2}
 	}
-	if b.baseMove(u, ev) {
+	if plus {
+		if b.Day >= plusMoveDay[u.Formation] && b.roll(plusMoveGate[u.Formation]) == 0 && b.plusMove(u, ev) {
+			return BaseDecision{Option: 3}
+		}
+	} else if b.baseMove(u, ev) {
 		return BaseDecision{Option: 3}
 	}
-	if b.roll(2) == 0 {
+	archery := b.roll(2)
+	if (plus && archery == 1) || (!plus && archery == 0) {
 		if t := b.baseArchery(u); t != nil {
 			return BaseDecision{Option: 4, Target: t}
 		}
@@ -105,7 +157,11 @@ func (b *Battle) DecideBase(u *Unit) BaseDecision {
 		return BaseDecision{Option: 9}
 	}
 	var why []string
-	if b.roll(3) != 0 {
+	stratagemGate := 3
+	if plus {
+		stratagemGate = 4
+	}
+	if b.roll(stratagemGate) != 0 {
 		if ok, err := b.baseStratagem(u, ev); ok {
 			return BaseDecision{Option: 5, Target: ev.target}
 		} else if err != nil {
@@ -115,7 +171,11 @@ func (b *Battle) DecideBase(u *Unit) BaseDecision {
 	if b.roll(4) == 0 && b.baseDeathBattle(u, ev) {
 		return BaseDecision{Option: 6, Target: ev.target}
 	}
-	if b.roll(16) == 0 && b.baseEngage(u, ev) {
+	engageGate := 16
+	if plus {
+		engageGate = 8
+	}
+	if b.roll(engageGate) == 0 && b.baseEngage(u, ev) {
 		return BaseDecision{Option: 7, Target: ev.target}
 	}
 	if b.baseQuickBattle(u, ev) {
@@ -134,11 +194,16 @@ func s16(v int) int { return int(int16(v)) }
 
 // armyHundreds 是一個軍力的「兵士（百）」（軍力記錄 offset 14）：
 // 五支部隊的兵士數合計 ÷ 100。
+//
+// **每一支的兵士數先夾成 16 位元有號數再加**（`0x252e4` 寫 offset 30、
+// `0x252e9` `cwtd` 之後 32 位元累加、`0x25336` 除以 100）：兩位各兩萬七
+// 的部隊在這裡是 −11536，整個軍力的「兵士（百）」跟著少——總兵力比
+// 因此偏大（盤面丙量到，`L1`）。照做，不修。
 func (b *Battle) armyHundreds(s Side) int {
 	n := 0
 	for _, x := range b.Units {
 		if x.Side == s && x.Alive() {
-			n += x.Soldiers()
+			n += s16(x.Soldiers())
 		}
 	}
 	return n / 100
@@ -225,11 +290,20 @@ func (b *Battle) baseRetreat(u *Unit, ev baseEval) bool {
 	if !seen {
 		return false
 	}
-	if s16(u.Soldiers()) > most/(4+b.roll(2)) {
-		return false
-	}
-	if float64(b.roll(8)+3) > ev.ratio {
-		return false
+	if b.AI == AIPlus {
+		// 加強版（`0x26594`）：M 照算但不比（`0x266ae`–`0x266fb` 算完就
+		// 擲骰），只剩 `RND(3) + 3 < 總兵力比`（`0x26722` 的 `jae` 是
+		// 不成立那一邊，所以是嚴格小於）。
+		if float64(b.roll(3)+3) >= ev.ratio {
+			return false
+		}
+	} else {
+		if s16(u.Soldiers()) > most/(4+b.roll(2)) {
+			return false
+		}
+		if float64(b.roll(8)+3) > ev.ratio {
+			return false
+		}
 	}
 	if !b.baseCanEscape(u) {
 		return false
@@ -287,13 +361,114 @@ func (b *Battle) baseMove(u *Unit, ev baseEval) bool {
 	return moved
 }
 
-// baseGoal 是行軍目標（`es:0x584`／`es:0x586`）。原版開戰時掃一次地圖，
-// 城池那一格（地形碼 5）就是它，之後不變（`0x23afe`）。
-//
-// 加強版預設是對方主帥的部隊所在格；難度 ≥ 11 而對方主帥不是君主時
-// 才換成城池（`0x26758`，`docs/re/05` §8.2）——那一條的「不是君主」
-// 要看人物的身分，這一層沒有，先一律用城池；量到再補。
+// baseGoal 是原版的行軍目標（`es:0x584`／`es:0x586`）：開戰時掃一次地圖，
+// 城池那一格（地形碼 5）就是它，之後不變（`0x23afe`）。加強版另有一套
+//（`plusMove`）。
 func (b *Battle) baseGoal(u *Unit) Hex { return b.Field.CityAt }
+
+// unitRecord 找某一方某一隊的記錄，**不管還在不在場上**——原版的部隊
+// 記錄在部隊打光之後還留著最後的欄列與槽位，幾支判斷式讀的就是它。
+func (b *Battle) unitRecord(s Side, f Formation) *Unit {
+	for _, x := range b.Units {
+		if x.Side == s && x.Formation == f {
+			return x
+		}
+	}
+	return nil
+}
+
+// plusFoeChief 是對方主軍的帥隊記錄（守方看主攻軍、攻方看主守軍；
+// `0x26760`：`(軍力 ÷ 2) × −840` 從 `unit[2][0]` 往回指）。
+func (b *Battle) plusFoeChief(u *Unit) *Unit {
+	if u.Side.Attacking() {
+		return b.unitRecord(MainDefender, Centre)
+	}
+	return b.unitRecord(MainAttacker, Centre)
+}
+
+// plusFoeChiefIsLord：對方帥隊第 0 槽那一位的身分是不是君主（人物
+// offset 17 ＝ 0，`0x2677a`）。槽空著時原版讀到的是表前面的位元組，
+// 當「不是君主」。
+func (b *Battle) plusFoeChiefIsLord(u *Unit) bool {
+	c := b.plusFoeChief(u)
+	if c == nil || len(c.Leaders) == 0 || !c.Leaders[0].InUnit() {
+		return false
+	}
+	return c.Leaders[0].Lord
+}
+
+// plusMove 是加強版的選項 3（`0x26748`，`L0`；對拍
+// `TestZZUnitAIDayParityPlus`）。行軍目標不再固定是城池：
+//
+//	起點 G：難度 ≥ 11 而對方帥隊那一位不是君主 → 城池；否則**本軍帥隊
+//	        所在格**（`0x26782` 讀的是 `unit[本軍][0]` 的欄列）
+//	守著城池且主帥沒被貼身（`es:0xa6 == 0`）：
+//	  總兵力比 ≤ 0.2 而本隊不是帥隊 → 目標 ＝ 對方帥隊那一格，直接走
+//	  否則 around ＝ G 六個鄰格的敵軍兵力（百）和，順手把最後一支的
+//	  那一格記成目標（`0x26c7f`）；G 上那支的兵力（百）> 2 × around
+//	  就不動，否則往記下的那一格走（沒有敵軍就是 G 本身）
+//	其餘：
+//	  同樣算 around；G 上那支的兵力（百）< 4 × around → 往記下的那一格
+//	  否則 難度 ≤ 10 或對方帥隊那一位是君主 → 對方帥隊那一格；
+//	        不然 → 城池
+//
+// 所以難度 10 以下的部隊平常聚在自己的帥隊旁邊，敵軍貼上帥隊才出去打；
+// 難度 11 起、對方主帥又不是君主時才像原版那樣去搶城。路照原版三段
+//（`basePath`／`baseStep`）。
+func (b *Battle) plusMove(u *Unit, ev baseEval) bool {
+	hard := b.Difficulty >= PlusHardDifficulty
+	var goal Hex
+	if hard && !b.plusFoeChiefIsLord(u) {
+		goal = b.Field.CityAt
+	} else if own := b.unitRecord(u.Side, Centre); own != nil {
+		goal = own.At
+	} else {
+		goal = b.Field.CityAt
+	}
+	foe := b.plusFoeChief(u)
+	foeAt := b.Field.CityAt
+	if foe != nil {
+		foeAt = foe.At
+	}
+	// around：G 六個鄰格的敵軍兵力（百）和；最後一支所在格記下來。
+	pick := goal
+	around := 0
+	for _, d := range Dirs() {
+		n := goal.Step(d)
+		if t := b.UnitAt(n); t != nil && t.Side.Attacking() != u.Side.Attacking() {
+			around += s16(t.Soldiers()) / 100
+			pick = n
+		}
+	}
+	holder := 0
+	if h := b.UnitAt(goal); h != nil {
+		holder = s16(h.Soldiers()) / 100
+	}
+	if ev.holdsCity {
+		if ev.ratio <= plusChargeRatioCap && u.Formation != Centre {
+			goal = foeAt
+		} else if holder > plusHoldAroundFactor*around {
+			return false
+		} else {
+			goal = pick
+		}
+	} else if holder < plusOpenAroundFactor*around {
+		goal = pick
+	} else if !hard || b.plusFoeChiefIsLord(u) {
+		goal = foeAt
+	} else {
+		goal = b.Field.CityAt
+	}
+	path := b.basePath(u, goal)
+	if path == nil {
+		return false
+	}
+	moved := false
+	for b.baseStep(u, path) {
+		moved = true
+	}
+	return moved
+}
 
 const (
 	pathOpen    = 9999 // 還沒走到的格子（`0x270f`）
@@ -460,7 +635,12 @@ func (b *Battle) baseStratagem(u *Unit, ev baseEval) (bool, error) {
 // baseDeathBattle 是選項 6（`0x29c56`）：目標兵力（＋1）不超過我方的
 // 23%；站在城池或關寨上時只打帥隊；模式 ＝ 難度 ÷ 5，打到一方無將。
 func (b *Battle) baseDeathBattle(u *Unit, ev baseEval) bool {
-	if ev.soldierRatio > baseDeathRatioCap {
+	cap, mode := baseDeathRatioCap, b.Difficulty/5
+	if b.AI == AIPlus {
+		// 加強版（`0x2718e`）：門檻 0.4，模式 ＝ (難度 mod 11) ÷ 4。
+		cap, mode = plusDeathRatioCap, (b.Difficulty%plusModeSpan)/4
+	}
+	if ev.soldierRatio > cap {
 		return false
 	}
 	switch b.Field.At(u.At) {
@@ -473,7 +653,7 @@ func (b *Battle) baseDeathBattle(u *Unit, ev baseEval) bool {
 	if !ok {
 		return false
 	}
-	if err := b.meleeMode(u, d, b.Difficulty/5, true, true); err != nil {
+	if err := b.meleeMode(u, d, mode, true, true); err != nil {
 		return false
 	}
 	// 本隊還有將領就佔進對方那一格（`0x29dd6`–`0x29e16`；迴圈是打到
@@ -495,7 +675,17 @@ func (b *Battle) baseEngage(u *Unit, ev baseEval) bool {
 	if b.roll(100)+s16(u.Soldiers())/2 < s16(ev.target.Soldiers()) {
 		return false
 	}
-	if ev.holdsCity && ev.ratio >= baseAttackRatioCap {
+	if b.AI == AIPlus {
+		// 加強版（`0x2709a`）看的是目標兵力比：守著城池時要 < 0.4，
+		// 否則 < 2.0 或 RND(3)==1。
+		if ev.holdsCity {
+			if ev.soldierRatio >= plusEngageRatioCap {
+				return false
+			}
+		} else if ev.soldierRatio >= plusEngageOpenCap && b.roll(3) != 1 {
+			return false
+		}
+	} else if ev.holdsCity && ev.ratio >= baseAttackRatioCap {
 		return false
 	}
 	d, ok := b.dirTo(u, ev.target)
@@ -515,14 +705,26 @@ func (b *Battle) baseEngage(u *Unit, ev baseEval) bool {
 // baseQuickBattle 是選項 8（`0x29ade`）：守著城池且主帥沒被貼身時要
 // 敵我總兵力比 < 0.4；模式 ＝ 難度 ÷ 5 ＋ 1。
 func (b *Battle) baseQuickBattle(u *Unit, ev baseEval) bool {
-	if ev.holdsCity && ev.ratio >= baseAttackRatioCap {
+	mode := b.Difficulty/5 + 1
+	if b.AI == AIPlus {
+		// 加強版（`0x26fca`）看目標兵力比：守著城池時要 < 0.5，否則
+		// ≤ 5.0 或 RND(3)==1；模式 ＝ (難度 mod 11) ÷ 3 ＋ 1。
+		mode = (b.Difficulty%plusModeSpan)/3 + 1
+		if ev.holdsCity {
+			if ev.soldierRatio >= plusQuickRatioCap {
+				return false
+			}
+		} else if ev.soldierRatio > plusQuickOpenCap && b.roll(3) != 1 {
+			return false
+		}
+	} else if ev.holdsCity && ev.ratio >= baseAttackRatioCap {
 		return false
 	}
 	d, ok := b.dirTo(u, ev.target)
 	if !ok {
 		return false
 	}
-	return b.meleeMode(u, d, b.Difficulty/5+1, false, false) == nil
+	return b.meleeMode(u, d, mode, false, false) == nil
 }
 
 // baseRest 是選項 9（`0x29e2e`）：移動力 ＋2，上限 15。

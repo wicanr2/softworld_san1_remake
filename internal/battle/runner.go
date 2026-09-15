@@ -47,7 +47,7 @@ func (r *Runner) Next() *Unit {
 			if r.human(u.Side) {
 				// 玩家的部隊：輪到之前一樣重算綜合能力；中了陷阱就
 				// 只倒數（原版也不讓玩家下令，`0x24e71`）。
-				u.RefreshQuality()
+				r.B.RefreshQuality(u)
 				if u.Trapped > 0 {
 					r.B.SkipTrappedTurn(u)
 					r.queue = r.queue[1:]

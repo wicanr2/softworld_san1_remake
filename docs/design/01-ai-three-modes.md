@@ -79,10 +79,9 @@
 主戰場上電腦部隊的決策同樣照這張表分：`base`／`plus` 走原版的九支判斷式
 （`internal/battle/autobase.go`，`docs/re/05` §12.1，對拍
 `TestZZUnitAIDayParity`），`enhanced` 走 remake 自己的 `auto.go`。
-`battle.Setup.AI` 的零值是原版；`game` 從 `Options.AIMode` 換算
-（`battleAI`）。`plus` 目前與 `base` 同一條鏈——加強版在難度 ≥ 11 換
-行軍目標那一條（`docs/re/05` §8.2）要看對方主帥的身分，這一層還沒有
-那個欄位，先一律用城池。
+`battle.Setup.AI` 的零值是原版；`game` 照這一局的版本挑原版或加強版
+的九支（`battleAI`），`enhanced` 才看 `Options.AIMode`。`plus` 是同一條鏈
+換了門與目標（`docs/re/05` §12.5，對拍 `TestZZUnitAIDayParityPlus`）。
 
 ## 6. 對拍的盤面由自己擺，不靠原版的亂數
 

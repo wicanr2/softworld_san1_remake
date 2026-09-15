@@ -616,9 +616,9 @@ func (b *Battle) exchange(a, d *Unit, mode int) (int, int) {
 	// 兩位各兩萬七的部隊在這裡是負的，比例那一步 `兵 ≤ 0 → 0.0`，
 	// 只剩逐將領那道 −1（盤面丙量到，`L1`）。
 	sa, sd := s16(a.Soldiers()), s16(d.Soldiers())
-	da := MeleeDamage(MeleeAttackValue(b.Field.At(a.At)),
+	da := MeleeDamage(b.meleeAttackValue(b.Field.At(a.At)),
 		sa, a.Quality, StrikeMultiplier(mode), MeleeAttackScale)
-	dd := MeleeDamage(MeleeDefendValue(b.Field.At(d.At)),
+	dd := MeleeDamage(b.meleeDefendValue(b.Field.At(d.At)),
 		sd, d.Quality, 1, MeleeDefendScale)
 	ra, rd := MeleeRatio(dd, sa), MeleeRatio(da, sd)
 	wasA, wasD := a.Soldiers(), d.Soldiers()
@@ -958,7 +958,7 @@ func (b *Battle) enlist(captor Side, x *Leader, loyalty, soldiers int) {
 	into.Leaders = append(into.Leaders, y)
 	if into.LeaderCount() == 1 {
 		into.Wiped, into.Retreated = false, false
-		into.RefreshQuality()
+		b.RefreshQuality(into)
 		into.Cap = into.MovePoints()
 		into.Move = into.Cap
 		into.Arrows = ArrowCount(into.Leaders)
@@ -1161,6 +1161,7 @@ func (b *Battle) archery(a *Unit, target Hex, n int) error {
 	// 一箭的殺傷照原版（`0x2aa3b`–`0x2ab00`，`L0`）：
 	//
 	//	殺傷 ＝ ftol(弓箭表[射手那格] × 射手.兵士數 × 射手.綜合能力 × 1e-4)
+	//	（加強版的尺度是 5e-5，`Rules.ArrowHalfScale`）
 	//	比例 ＝ 殺傷 ÷ 目標.兵士數
 	//	逐將領：新兵 ＝ max(0, ftol(兵 × (1 − 比例)))
 	//
@@ -1175,7 +1176,7 @@ func (b *Battle) archery(a *Unit, target Hex, n int) error {
 		b.msg()
 		b.fx()
 		d := MeleeDamage(ArrowTerrainValue(b.Field.At(a.At)),
-			s16(a.Soldiers()), a.Quality, 1, MeleeDefendScale)
+			s16(a.Soldiers()), a.Quality, 1, b.arrowScale())
 		r := MeleeRatio(d, s16(t.Soldiers()))
 		was := t.Soldiers()
 		for j := range t.Leaders {

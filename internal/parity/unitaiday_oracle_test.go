@@ -34,35 +34,269 @@ import (
 // 這支部隊的狀態與決策。原版讀鍵時會重新播種（`docs/re/03` §1.45），
 // 那幾個點照原版的值接。
 func TestZZUnitAIDayParity(t *testing.T) {
-	// 四張盤面，讓九支都輪得到（選項 1 是評估前置，每次都跑）：
-	//   甲 玩家兩萬兵對五支各一千五 → 移動、弓箭、策略、快戰、休息
-	//   乙 玩家三萬兵對五支各一千   → 退兵（相鄰敵軍四倍以上、總兵力比 ≥ 3）
-	//   丙 玩家六千對五支各兩萬七、敵將謀略戰力 5 → 死戰（目標兵力比
-	//      ≤ 0.23）；敵將能力壓低是讓玩家那支多撐幾天，決策才夠多
-	//   丁 玩家一千三對五支各六千、敵將 5 → 對戰（RND(16)==0 那一擲在
-	//      這張盤面第二天就出現；dosgolem 是決定性的，每次都一樣）
-	//   戊 玩家兩萬兵、智 10 對五支各一千五、敵將智武 99 → 計謀**成功**的
-	//      那幾條路（火攻／水淹／陷阱／誘敵／燒糧／圍攻的效果與骰序，
-	//      Issue #24）；前四張盤面玩家的智是 99，電腦的計謀一次都不會成
-	boards := []struct {
-		name                                             string
-		soldiers, enemies, enemySoldiers, stats, myIntel int
-	}{
-		{"甲", 20000, 5, 1500, 0, 0}, {"乙", 30000, 5, 1000, 0, 0}, {"丙", 6000, 5, 27000, 5, 0},
-		{"丁", 1300, 5, 6000, 5, 0}, {"戊", 20000, 5, 1500, 99, 10},
+	runUnitAIDayBoards(t, baseDayRig())
+}
+
+// TestZZUnitAIDayParityPlus 是加強版的同一支（Issue #28）：`plusDayRig`
+// 出發（開新局選曹操、難度由盤面給），路標全換成 `ASV.EXE` 的，remake
+// 走 `battle.AIPlus`。九支的差異在 `docs/re/05` §12.5。
+func TestZZUnitAIDayParityPlus(t *testing.T) {
+	runUnitAIDayBoards(t, plusDayRig())
+}
+
+// dayBoard 是一張盤面：玩家一支部隊帶多少兵、敵方幾位各多少兵、敵將的
+// 謀略與戰力（0 ＝ 照劇本）、玩家這一邊的智（0 ＝ 不改）、難度。
+type dayBoard struct {
+	name                                             string
+	soldiers, enemies, enemySoldiers, stats, myIntel int
+	difficulty                                       int
+	// weak 把玩家那一位的戰力、武裝、訓練壓到底（綜合能力 0，打不痛任何人）
+	// ——玩家一旦打光對方的將領，原版就停在「請主公裁決」四選一，這條
+	// 鍵序（0／Y）答不了，那一場就到此為止。要看更多天就別讓玩家殺人。
+	weak bool
+	// days 是最多跑幾天（0 ＝ 32）。
+	days int
+	// clearTarget 把目標郡原本駐守的人搬走，守方只剩盤面擺進去的那幾位
+	// （加強版）；apart 把玩家那支擺在守軍帥隊同一直線隔一格的位置而不是
+	// 貼著——弓箭那一支只射「同方向連走兩步」的目標。
+	clearTarget, apart bool
+	// enemyWeak 把守方的訓練與武裝壓到 0（綜合能力只剩戰力那一項）：
+	// 配 weak 的玩家，兩邊都打不死人，死戰才有得看而且不會停在四選一。
+	// enemyLoyal 把守方的忠誠擺成 100——在野出身的人忠誠是 −1，每回合
+	// RND(5)==0 就投奔玩家，守方一支一位的盤面幾天就散了。
+	// enemySoldiersBy 照目標郡裡的人物編號順序逐位改兵數（整編把編號最小的
+	// 編成帥隊，之後先鋒、左、右、後）；沒列到的照 enemySoldiers。帥隊比
+	// 鄰敵弱，其他部隊才會離開帥隊旁邊來打玩家；只有夠大的那一支能死戰。
+	enemyWeak, enemyLoyal bool
+	enemySoldiersBy       []int
+}
+
+// dayRig 是一版的路標：哪些位址攔、工作區的哪幾格讀。兩版的戰場工作區
+// 版面只差幾個純量的位移（`docs/re/05` §8.2），部隊記錄、軍力記錄、
+// 地圖、城池格、天候、佔位圖的相對版面相同。
+type dayRig struct {
+	name    string
+	exe     string
+	root    func(*testing.T) string
+	edition state.Edition
+	ai      battle.AI
+	// boot 把原版帶到能發動戰役的局面，回傳三張表的基底。
+	boot func(t *testing.T, o *oracle.Oracle, bd dayBoard) uint32
+	// boards 是這一版要跑的盤面。
+	boards []dayBoard
+	// seedLo／seedHi 是 MSC `rand()` 種子的兩格（DS 位移）。
+	seedLo, seedHi uint16
+	// rnd 是 `RND(n)` 包裝；rand／srand 是 MSC 的兩支；msg 是對白常式。
+	rnd         uint32
+	rand, srand oracle.Addr
+	msg         uint32
+	// enter 是進主戰場時攔一次記 DGROUP 的位址；cmdRead 是玩家每日命令
+	// 讀到鍵之後的那一條指令（紮寨走完的判準）。
+	enter, cmdRead uint32
+	// chain／chainExit 是決策鏈的入口與出口；options 是九支的入口；
+	// archery 是射箭常式（目標從它的參數讀）。
+	chain, chainExit uint32
+	options          map[uint32]int
+	archery          uint32
+	// workSegPtr 是戰場工作區的段值放在 DS 的哪一格；unitBase 是部隊記錄
+	// 的基底；day／difficulty／occ 是工作區裡天數、難度、佔位圖的位移；
+	// colTable／rowTable 是六方向位移表（DS）。
+	workSegPtr           uint16
+	unitBase             int
+	day, difficulty, occ int
+	colTable, rowTable   uint16
+	// keyGap 是進戰場那串鍵同一段裡兩個鍵之間跑的指令數（0 ＝ 一段一送）。
+	keyGap uint64
+}
+
+// baseDayRig 是原版的路標（`docs/re/05` §12、`docs/re/03` §1.45）。
+func baseDayRig() dayRig {
+	return dayRig{
+		name: "base", exe: "AA.EXE", root: origRoot,
+		edition: state.EditionBase, ai: battle.AIBase,
+		boot: func(t *testing.T, o *oracle.Oracle, _ dayBoard) uint32 {
+			c := openContainer(t, filepath.Join(origRoot(t), "DATA2"))
+			sc0, err := state.LoadScenario(c, state.Slot("001"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			seedMas, _, _ := sc0.Tables()
+			return bootToGame(t, o, seedMas)
+		},
+		// 四張盤面，讓九支都輪得到（選項 1 是評估前置，每次都跑）：
+		//   甲 玩家兩萬兵對五支各一千五 → 移動、弓箭、策略、快戰、休息
+		//   乙 玩家三萬兵對五支各一千   → 退兵（相鄰敵軍四倍以上、總兵力比 ≥ 3）
+		//   丙 玩家六千對五支各兩萬七、敵將謀略戰力 5 → 死戰（目標兵力比
+		//      ≤ 0.23）；敵將能力壓低是讓玩家那支多撐幾天，決策才夠多
+		//   丁 玩家一千三對五支各六千、敵將 5 → 對戰（RND(16)==0 那一擲在
+		//      這張盤面第二天就出現；dosgolem 是決定性的，每次都一樣）
+		//   戊 玩家兩萬兵、智 10 對五支各一千五、敵將智武 99 → 計謀**成功**的
+		//      那幾條路（火攻／水淹／陷阱／誘敵／燒糧／圍攻的效果與骰序，
+		//      Issue #24）；前四張盤面玩家的智是 99，電腦的計謀一次都不會成
+		// 難度是存檔裡的（5），這一版的 boot 不改它。
+		boards: []dayBoard{
+			{name: "甲", soldiers: 20000, enemies: 5, enemySoldiers: 1500, difficulty: 5},
+			{name: "乙", soldiers: 30000, enemies: 5, enemySoldiers: 1000, difficulty: 5},
+			{name: "丙", soldiers: 6000, enemies: 5, enemySoldiers: 27000, stats: 5, difficulty: 5},
+			{name: "丁", soldiers: 1300, enemies: 5, enemySoldiers: 6000, stats: 5, difficulty: 5},
+			{name: "戊", soldiers: 20000, enemies: 5, enemySoldiers: 1500, stats: 99, myIntel: 10, difficulty: 5},
+		},
+		seedLo: 0xa3ae, seedHi: 0xa3b0,
+		rnd: 0x10b0c, rand: oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, srand: oracle.Addr{Seg: 0x5c4, Off: 0x2c9e},
+		msg:   0x3273e,
+		enter: 0x2053c, cmdRead: 0x27a68,
+		chain: 0x29014, chainExit: 0x29132,
+		options: map[uint32]int{
+			0x29e78: 1, 0x29138: 2, 0x29344: 3, 0x2985c: 4, 0x29784: 5,
+			0x29c56: 6, 0x29b82: 7, 0x29ade: 8, 0x29e2e: 9,
+		},
+		archery:    0x2a80a,
+		workSegPtr: battleWorkSeg, unitBase: battleUnitBase,
+		day: 0x2100, difficulty: 0x30fe, occ: 0x2532,
+		colTable: 0x7c6a, rowTable: 0x7c82,
 	}
+}
+
+// plusDayRig 是加強版的路標（`docs/re/05` §12.5、`docs/spec/015` §8.5）。
+// 決策鏈與九支是從 `ASV.EXE` 的碼讀出來的：鏈 `0x2644a`–`0x26590`，
+// 回合常式 `0x226b6`、日迴圈 `0x21542`、主戰場常式 `0x1e574`；工作區的純量往後移了幾格
+//（天數 `0x2102`、難度 `0x310a`、佔位圖 `0x2536`、部隊記錄 `0x350e`）。
+func plusDayRig() dayRig {
+	return dayRig{
+		name: "plus", exe: "ASV.EXE", root: plusRoot,
+		edition: state.EditionPlus, ai: battle.AIPlus,
+		boot: func(t *testing.T, o *oracle.Oracle, bd dayBoard) uint32 {
+			base, _ := bootToNewGamePlus(t, o, caoCaoPick, bd.difficulty)
+			// 整編的固定按鍵（`driveIntoBattle`）是照「攻方一位將」掃出來的
+			//（`docs/re/05` §7）；開新局的曹操身邊有好幾位，只留君主。
+			keepOnlyLord(t, o, base, bd.clearTarget)
+			return base
+		},
+		// 六張盤面（難度 5 是聚在帥隊旁邊那一套）：
+		//   甲 玩家兩萬對五位各一千五（目標郡原有的人留著，守方十位五支）
+		//      → 移動、策略、快戰、休息
+		//   乙 難度 15、玩家三萬對五位各一千、玩家打不痛人（免得第二天就停在
+		//      「請主公裁決」）→ 退兵（RND(3)+3 < 總兵力比）、三十天判定的兩條
+		//      加強版規則、`難度 mod 11` 的模式
+		//   丙 玩家三百對五位（右軍一千一、其餘各一百）、敵將 5、守方只有這
+		//      五位、忠誠 100、兩邊都打不死人 → 帥隊壓不住貼上來的玩家，
+		//      其他部隊過來圍；只有第四天才准動的右軍能死戰（目標兵力比
+		//      0.27 ≤ 0.4，一場 38 回合，每回合殺傷 8），一百人的部隊目標
+		//      兵力比 3.0 要 RND(3)==1 才對戰、快戰打不到人
+		//   丁 同上但帥隊三千、左軍八千、其餘四千 → 對戰（門 RND(8)、
+		//      目標兵力比 < 2 誰都能）；子畫面的骰序是 Issue #30，不重拍到
+		//      第一次對戰為止
+		//   戊 玩家智 10 對五位智武 99 → 計謀成功的那幾條路
+		//   己 玩家擺在帥隊同一直線隔一格 → 弓箭（沒有相鄰敵軍時只剩移動、
+		//      弓箭、休息三支）
+		boards: []dayBoard{
+			{name: "甲", soldiers: 20000, enemies: 5, enemySoldiers: 1500, difficulty: 5},
+			{name: "乙", soldiers: 30000, enemies: 5, enemySoldiers: 1000, difficulty: 15, weak: true, days: 14},
+			{name: "丙", soldiers: 300, enemies: 5, enemySoldiers: 100, stats: 5, difficulty: 5, clearTarget: true,
+				weak: true, enemyWeak: true, enemyLoyal: true, enemySoldiersBy: []int{100, 100, 100, 1100, 100}, days: 12},
+			{name: "丁", soldiers: 2000, enemies: 5, enemySoldiers: 4000, stats: 5, difficulty: 5, clearTarget: true,
+				weak: true, enemyWeak: true, enemyLoyal: true, enemySoldiersBy: []int{3000, 4000, 8000, 4000, 4000}, days: 12},
+			{name: "戊", soldiers: 20000, enemies: 5, enemySoldiers: 1500, stats: 99, myIntel: 10, difficulty: 5, clearTarget: true},
+			{name: "己", soldiers: 20000, enemies: 5, enemySoldiers: 1500, difficulty: 5, clearTarget: true, apart: true, days: 10},
+		},
+		seedLo: 0xa566, seedHi: 0xa568,
+		rnd: plusRndFn, rand: oracle.Addr{Seg: 0x5b9, Off: 0x2cb2}, srand: oracle.Addr{Seg: 0x5b9, Off: 0x2ca0},
+		msg:   0x2f366,
+		enter: 0x1e574, cmdRead: 0x25028,
+		chain: 0x2644a, chainExit: 0x26590,
+		options: map[uint32]int{
+			0x27396: 1, 0x26594: 2, 0x26748: 3, 0x26d64: 4, 0x26ca4: 5,
+			0x2718e: 6, 0x2709a: 7, 0x26fca: 8, 0x27354: 9,
+		},
+		archery:    0x27c74,
+		workSegPtr: 0xaa6c, unitBase: 0x350e,
+		day: 0x2102, difficulty: 0x310a, occ: 0x2536,
+		colTable: 0x7dd8, rowTable: 0x7df0,
+		keyGap: keyGap,
+	}
+}
+
+// keepOnlyLord 把玩家的郡裡君主以外的人、以及目標郡（`stageABattleWith`
+// 會挑的第一個鄰郡）原有的人全部放成在野搬去郡 42，郡的現役數跟著改。
+// 目標郡清空是讓守方只有盤面擺進去的那五位——劇本裡原本駐在那裡的
+// 小部隊一被玩家打光，原版就停在「請主公裁決」，那一場就到此為止。
+func keepOnlyLord(t *testing.T, o *oracle.Oracle, base uint32, clearTarget bool) {
+	t.Helper()
+	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
+	raw := o.Bytes(addr(base), nMas+nSta+nGen)
+	mas, sta, gen := raw[:nMas], raw[nMas:nMas+nSta], raw[nMas+nSta:]
+	sc, err := state.DecodeTables(state.Slot("001"), mas, sta, gen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	me := sc.Players()[0]
+	at := 0
+	for id := 1; id <= 42; id++ {
+		if int(sta[id*176+30]) == me {
+			at = id
+			break
+		}
+	}
+	dropped, lord := 0, -1
+	for i := 0; i < 350; i++ {
+		r := gen[i*30:]
+		if int(r[18]) != me || int(r[19]) != at {
+			continue
+		}
+		if r[17] == 0 {
+			lord = i
+			continue
+		}
+		// **所在郡也要搬走。** 整編的「分配那一位將軍(1-n)」列的是所在郡
+		// 等於出兵郡的人，不看勢力——只把勢力改成在野，整編仍然列出七位
+		//（實測）。搬去一個不相干的郡，在野的人不會把那一郡換旗。
+		r[18], r[19] = 0xFF, 42
+		dropped++
+	}
+	if lord < 0 {
+		t.Fatalf("郡 %d 裡沒有君主", at)
+	}
+	sta[at*176+22] = 1
+	to := 0
+	for k := 45; k <= 54; k++ {
+		if n := int(sta[at*176+k]); n != 0xFF && n != 0 {
+			to = n
+			break
+		}
+	}
+	cleared := 0
+	if !clearTarget {
+		to = 0
+	}
+	for i := 0; i < 350 && to != 0; i++ {
+		r := gen[i*30:]
+		if int(r[19]) != to || r[18] == 0xFF {
+			continue
+		}
+		r[18], r[19] = 0xFF, 42
+		cleared++
+	}
+	if to != 0 {
+		sta[to*176+22] = 0
+	}
+	o.SetBytes(addr(base), raw)
+	t.Logf("郡 %d 只留君主（人物 %d），%d 位放成在野搬去郡 42；目標郡 %d 原有的 %d 位也搬走", at, lord, dropped, to, cleared)
+}
+
+// runUnitAIDayBoards 跑一版的所有盤面，合計原版各選項定案的次數。
+func runUnitAIDayBoards(t *testing.T, rig dayRig) {
 	seen := map[int]int{}
-	for _, bd := range boards {
+	for _, bd := range rig.boards {
 		t.Run(bd.name, func(t *testing.T) {
-			for k, v := range runUnitAIDayParity(t, bd.soldiers, bd.enemies, bd.enemySoldiers, bd.stats, bd.myIntel) {
+			for k, v := range runUnitAIDayParity(t, rig, bd) {
 				seen[k] += v
 			}
 		})
 	}
-	t.Logf("五張盤面合計，原版各選項定案：%v", seen)
+	t.Logf("%s %d 張盤面合計，原版各選項定案：%v", rig.name, len(rig.boards), seen)
 	for opt := 2; opt <= 9; opt++ {
 		if seen[opt] == 0 {
-			t.Errorf("五張盤面裡選項 %d 一次都沒定案——盤面要再調", opt)
+			t.Errorf("%s 的盤面裡選項 %d 一次都沒定案——盤面要再調", rig.name, opt)
 		}
 	}
 }
@@ -91,49 +325,71 @@ func compactDraws(in []string) []string {
 }
 
 // runUnitAIDayParity 跑一張盤面，回傳原版各選項定案的次數。
-func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemyStats, myIntel int) map[int]int {
-	root := origRoot(t)
-	c := openContainer(t, filepath.Join(root, "DATA2"))
-	sc0, err := state.LoadScenario(c, state.Slot("001"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	seedMas, _, _ := sc0.Tables()
-
-	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
+	soldiers, enemies, enemySoldiers, enemyStats, myIntel := bd.soldiers, bd.enemies, bd.enemySoldiers, bd.stats, bd.myIntel
+	root := rig.root(t)
+	o, err := oracle.Load(filepath.Join(root, rig.exe), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer o.Close()
 
-	base := bootToGame(t, o, seedMas)
+	base := rig.boot(t, o, bd)
 	staBase := base + uint32(state.MasterTableSize)
 	genBase := staBase + uint32(state.PrefectureTableSize)
 	// 玩家一支部隊帶兩萬兵撐場、敵方五位（五支部隊）——決策多、而且
 	// 打得完一場（守方五支輪流快戰，三十天內分得出勝負）。
 	at, to := stageABattleWith(t, o, base, soldiers, enemies, enemySoldiers, enemyStats)
-	if myIntel > 0 {
+	if myIntel > 0 || bd.weak {
 		// 把玩家這一邊的智壓低，電腦的計謀才過得了成功判定
 		// （`RND(表) + 目標領隊的智 < 施法者領隊的智`，`docs/re/05` §4.1）。
 		me := int(o.Byte(addr(staBase + uint32(at*176+30))))
 		for i := 0; i < 350; i++ {
 			rec := genBase + uint32(i*30)
-			if int(o.Byte(addr(rec+18))) == me && int(o.Byte(addr(rec+19))) == at {
+			if int(o.Byte(addr(rec+18))) != me || int(o.Byte(addr(rec+19))) != at {
+				continue
+			}
+			if myIntel > 0 {
 				o.SetByte(addr(rec+9), byte(myIntel))
 			}
+			if bd.weak {
+				o.SetByte(addr(rec+10), 1)
+				o.SetByte(addr(rec+24), 0)
+				o.SetByte(addr(rec+25), 0)
+			}
+		}
+	}
+	if bd.enemyWeak || bd.enemyLoyal || len(bd.enemySoldiersBy) > 0 {
+		nth := 0
+		for i := 0; i < 350; i++ {
+			rec := genBase + uint32(i*30)
+			if int(o.Byte(addr(rec+19))) != to || o.Byte(addr(rec+18)) == 0xFF {
+				continue
+			}
+			if bd.enemyWeak {
+				o.SetByte(addr(rec+24), 0)
+				o.SetByte(addr(rec+25), 0)
+			}
+			if bd.enemyLoyal {
+				o.SetByte(addr(rec+16), 100)
+			}
+			if nth < len(bd.enemySoldiersBy) {
+				o.SetWord(addr(rec+22), uint16(bd.enemySoldiersBy[nth]))
+			}
+			nth++
 		}
 	}
 
 	var dgroup uint16
-	o.OnCall(addr(0x2053c), func(o *oracle.Oracle) {
+	o.OnCall(addr(rig.enter), func(o *oracle.Oracle) {
 		if dgroup == 0 {
 			dgroup = o.DSReg()
 		}
 	})
 	cmdReads := 0
-	o.OnCall(addr(0x27a68), func(*oracle.Oracle) { cmdReads++ })
+	o.OnCall(addr(rig.cmdRead), func(*oracle.Oracle) { cmdReads++ })
 
-	work := func() uint16 { return o.Word(oracle.Addr{Seg: dgroup, Off: battleWorkSeg}) }
+	work := func() uint16 { return o.Word(oracle.Addr{Seg: dgroup, Off: rig.workSegPtr}) }
 	w16 := func(off int) int { return int(o.Word(oracle.Addr{Seg: work(), Off: uint16(off)})) }
 
 	// 一次決策的紀錄。
@@ -171,15 +427,12 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 	var cur *decision
 	noresync := envOr("SAN1_NORESYNC", "") != ""
 	curOpt := 0
-	options := map[uint32]int{
-		0x29e78: 1, 0x29138: 2, 0x29344: 3, 0x2985c: 4, 0x29784: 5,
-		0x29c56: 6, 0x29b82: 7, 0x29ade: 8, 0x29e2e: 9,
-	}
+	options := rig.options
 	toSide := [...]battle.Side{battle.MainDefender, battle.AidDefender, battle.MainAttacker, battle.AidAttacker}
 	teamForm := battle.DeployOrder()
 
 	snapshot := func(army, team int) *decision {
-		d := &decision{army: army, team: team, day: w16(0x2100)}
+		d := &decision{army: army, team: team, day: w16(rig.day)}
 		field, err := battle.Load(o.Bytes(oracle.Addr{Seg: work(), Off: 0x163a}, 120), nil)
 		if err != nil {
 			t.Fatalf("戰場地圖讀不出來：%v", err)
@@ -194,7 +447,8 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 		case 2:
 			weather = battle.Windy
 		}
-		b := battle.New(battle.Setup{Field: field, Weather: weather, FixedWeather: true, Difficulty: w16(0x30fe)})
+		b := battle.New(battle.Setup{Field: field, Weather: weather, FixedWeather: true, Difficulty: w16(rig.difficulty),
+			AI: rig.ai, Rules: battle.RulesFor(rig.edition, w16(rig.difficulty))})
 		b.Day = d.day
 		b.Units = nil
 		for a := 0; a < 4; a++ {
@@ -206,7 +460,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 			// 五個隊伍槽全掃，活著的判準是將領數 > 0：軍力記錄的部隊數
 			// （offset 10）在一支被打光之後會少一，但槽號不會往前補。
 			for tm := 0; tm < 5; tm++ {
-				rec := battleUnitBase + (a*battleUnitPer+tm)*battleUnitSize
+				rec := rig.unitBase + (a*battleUnitPer+tm)*battleUnitSize
 				if w16(rec+unitLeaders) <= 0 {
 					continue
 				}
@@ -280,26 +534,26 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 		d.model = b
 		// 診斷：這支部隊六個鄰格的佔位（原版 `es:0x2532`）與那些部隊的兵士數。
 		if d.unit != nil {
-			rec := battleUnitBase + (army*battleUnitPer+team)*battleUnitSize
+			rec := rig.unitBase + (army*battleUnitPer+team)*battleUnitSize
 			c, r := w16(rec+unitCol), w16(rec+unitRow)
 			for dir := 0; dir < 6; dir++ {
 				i := ((c%2)*6 + dir) * 2
-				dc := int(int16(o.Word(oracle.Addr{Seg: dgroup, Off: uint16(0x7c6a + i)})))
-				dr := int(int16(o.Word(oracle.Addr{Seg: dgroup, Off: uint16(0x7c82 + i)})))
+				dc := int(int16(o.Word(oracle.Addr{Seg: dgroup, Off: rig.colTable + uint16(i)})))
+				dr := int(int16(o.Word(oracle.Addr{Seg: dgroup, Off: rig.rowTable + uint16(i)})))
 				nc, nr := c+dc, r+dr
 				if nc < 0 || nc >= 12 || nr < 0 || nr >= 10 {
 					continue
 				}
-				occ := w16(0x2532 + (nr*12+nc)*2)
+				occ := w16(rig.occ + (nr*12+nc)*2)
 				if occ == 0xFFFF {
 					continue
 				}
-				orec := battleUnitBase + ((occ/10)*battleUnitPer+occ%10)*battleUnitSize
+				orec := rig.unitBase + ((occ/10)*battleUnitPer+occ%10)*battleUnitSize
 				d.around = append(d.around, fmt.Sprintf("(%d,%d)=%d/%d 兵 %d 將 %d", nc, nr, occ/10, occ%10, w16(orec+unitSoldiers), w16(orec+unitLeaders)))
 			}
 		}
 		if d.unit == nil {
-			rec := battleUnitBase + (army*battleUnitPer+team)*battleUnitSize
+			rec := rig.unitBase + (army*battleUnitPer+team)*battleUnitSize
 			t.Logf("第 %d 天 軍力 %d 隊伍 %d：軍力記錄部隊數 %d、將領數 %d、兵士 %d、槽 %04x %04x、位置 (%d,%d)",
 				d.day, army, team, w16(0x175e+army*22+10), w16(rec+unitLeaders), w16(rec+unitSoldiers),
 				w16(rec), w16(rec+2), w16(rec+unitCol), w16(rec+unitRow))
@@ -309,7 +563,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 
 	seedNow := func(o *oracle.Oracle) uint32 {
 		ds := o.DSReg()
-		return uint32(o.Word(oracle.Addr{Seg: ds, Off: 0xa3ae})) | uint32(o.Word(oracle.Addr{Seg: ds, Off: 0xa3b0}))<<16
+		return uint32(o.Word(oracle.Addr{Seg: ds, Off: rig.seedLo})) | uint32(o.Word(oracle.Addr{Seg: ds, Off: rig.seedHi}))<<16
 	}
 	// 鏈外的骰（玩家那支的命令、投敵判定、日結算、天候）記在上一條鏈
 	// 上，值一樣從下一次讀到的種子回推。
@@ -321,7 +575,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 		}
 		gapN = 0
 	}
-	o.OnCall(addr(0x29014), func(o *oracle.Oracle) {
+	o.OnCall(addr(rig.chain), func(o *oracle.Oracle) {
 		if dgroup == 0 {
 			return
 		}
@@ -360,7 +614,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 	// `es:0x2172` 加一，鍵到了拿它重新播種（`0x10bb0`／`0x11832`／`0x11c2c`）。
 	// 玩家每按一個鍵，種子就跳到那個計數值——記成 `srand=值@位址`，
 	// 不重拍模式在同一個位置把 remake 的種子也跳過去。
-	o.OnCall(oracle.Addr{Seg: 0x5c4, Off: 0x2c9e}, func(o *oracle.Oracle) {
+	o.OnCall(rig.srand, func(o *oracle.Oracle) {
 		if dgroup == 0 {
 			return
 		}
@@ -376,7 +630,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 	})
 	// 對白常式（`0x3273e`）的呼叫端：記成 `msg@位址`，看每一道 `RND(8)`
 	// 是誰印的。
-	o.OnCall(addr(0x3273e), func(o *oracle.Oracle) {
+	o.OnCall(addr(rig.msg), func(o *oracle.Oracle) {
 		if dgroup == 0 {
 			return
 		}
@@ -391,7 +645,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 	// 直接叫 `rand()`（`0x5c4:0x2cb0`）而不經 `RND(n)` 的呼叫端：記成
 	// `rand@位址`。有這種呼叫，從種子回推的骰值就會錯位。
 	viaWrapper := false
-	o.OnCall(oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, func(o *oracle.Oracle) {
+	o.OnCall(rig.rand, func(o *oracle.Oracle) {
 		if viaWrapper {
 			viaWrapper = false
 			return
@@ -407,7 +661,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 			last.gap = append(last.gap, at)
 		}
 	})
-	o.OnCall(addr(0x10b0c), func(o *oracle.Oracle) {
+	o.OnCall(addr(rig.rnd), func(o *oracle.Oracle) {
 		if n := int(int16(o.Arg(0))); n > 0 {
 			viaWrapper = true
 		}
@@ -427,34 +681,40 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 		}
 	})
 	// 弓箭的目標不進 `es:0x31a8`，從射箭常式的參數讀。
-	o.OnCall(addr(0x2a80a), func(o *oracle.Oracle) {
+	o.OnCall(addr(rig.archery), func(o *oracle.Oracle) {
 		if cur != nil && curOpt == 4 {
 			cur.tArmy, cur.tTeam = int(int16(o.Arg(2))), int(int16(o.Arg(3)))
 		}
 	})
-	o.OnCall(addr(0x29132), func(o *oracle.Oracle) {
+	o.OnCall(addr(rig.chainExit), func(o *oracle.Oracle) {
 		if cur == nil {
 			return
 		}
 		flushRoll(o)
-		seg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa92e})
-		if o.Word(oracle.Addr{Seg: seg, Off: 0x31c0}) != 0 {
+		// 定案槽、目標軍力、目標隊伍（原版 `es:0x31c0`／`0x31a8`／`0x1604`，
+		// 加強版 `0x31cc`／`0x31b4`／`0x1604`）都在工作區。
+		done, tArmy, tTeam := 0x31c0, 0x31a8, 0x1604
+		if rig.edition == state.EditionPlus {
+			done, tArmy = 0x31cc, 0x31b4
+		}
+		if w16(done) != 0 {
 			cur.option = 0 // 沒有任何一支定案（不該發生：選項 9 無條件）
 		} else {
 			cur.option = curOpt
 		}
 		if cur.option >= 5 && cur.option <= 8 {
-			cur.tArmy = int(int16(o.Word(oracle.Addr{Seg: seg, Off: 0x31a8})))
-			cur.tTeam = int(int16(o.Word(oracle.Addr{Seg: seg, Off: 0x1604})))
+			cur.tArmy = int(int16(w16(tArmy)))
+			cur.tTeam = int(int16(w16(tTeam)))
 		}
-		rec := battleUnitBase + (cur.army*battleUnitPer+cur.team)*battleUnitSize
+		rec := rig.unitBase + (cur.army*battleUnitPer+cur.team)*battleUnitSize
 		cur.col, cur.row = w16(rec+unitCol), w16(rec+unitRow)
 		decisions = append(decisions, cur)
 		cur = nil
 	})
 
-	driveIntoBattle(t, o, at, to)
+	driveIntoBattleGap(t, o, at, to, rig.keyGap)
 	if dgroup == 0 {
+		dumpScreen(t, o, "unitaiday-"+rig.name+"-noentry")
 		t.Fatal("沒有進到主戰場")
 	}
 	for step := 1; step <= 12 && cmdReads == 0; step++ {
@@ -467,13 +727,16 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 	// 玩家那支是在第一天的電腦部隊都動完之後才被搬到守軍旁邊的
 	// （紮寨那幾步已經讓守方走完第一天）；不重拍模式要在同一個時點
 	// 把 remake 的那支也搬過去。
-	meRec, _ := placeNextToDefender(t, o, dgroup)
+	meRec, _ := placeNearDefenderRig(t, o, dgroup, rig, bd.apart)
 	placedAt := battle.NoHex
 	if meRec >= 0 {
 		placedAt = battle.FromOffset(w16(meRec+unitCol), w16(meRec+unitRow))
 	}
 
 	days := 32
+	if bd.days > 0 {
+		days = bd.days
+	}
 	if v := envOr("SAN1_DAYS", ""); v != "" {
 		fmt.Sscan(v, &days)
 	}
@@ -504,7 +767,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 		} else {
 			quiet = 0
 		}
-		if w16(0x2100) > days {
+		if w16(rig.day) > days {
 			break
 		}
 	}
@@ -693,7 +956,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 			stateBad++
 			continue
 		}
-		u.RefreshQuality()
+		model.RefreshQuality(u)
 		if got, want := unitState(u), unitState(d.entry); got != want {
 			t.Errorf("✗ %s：進鏈時部隊狀態不同——remake %s；原版 %s", tag, got, want)
 			stateBad++
@@ -718,7 +981,7 @@ func runUnitAIDayParity(t *testing.T, soldiers, enemies, enemySoldiers, enemySta
 				}
 				placeNew(next.model)
 				for _, p := range playerUnits() {
-					p.RefreshQuality()
+					model.RefreshQuality(p)
 					if p.Trapped > 0 {
 						model.SkipTrappedTurn(p)
 						continue

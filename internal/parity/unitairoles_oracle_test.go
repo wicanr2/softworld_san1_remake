@@ -435,18 +435,30 @@ func TestZZUnitAITargetedRoles(t *testing.T) {
 // 不是移動。
 func placeNextToDefender(t *testing.T, o *oracle.Oracle, dgroup uint16) (int, int) {
 	t.Helper()
-	work := o.Word(oracle.Addr{Seg: dgroup, Off: battleWorkSeg})
-	occSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9ca})
-	colSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9c8})
-	rowSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9c6})
+	return placeNextToDefenderRig(t, o, dgroup, baseDayRig())
+}
+
+// placeNextToDefenderRig 是本體，路標由 rig 給（加強版的佔位圖、部隊記錄
+// 與方向表在別的位移）。佔位圖與部隊記錄在工作區，方向表在 DGROUP。
+func placeNextToDefenderRig(t *testing.T, o *oracle.Oracle, dgroup uint16, rig dayRig) (int, int) {
+	t.Helper()
+	return placeNearDefenderRig(t, o, dgroup, rig, false)
+}
+
+// placeNearDefenderRig：apart 為真時擺到守軍**同一方向連走兩步**的落點
+// （中間那格空著、地形不是大山／城池／關寨），弓箭那一支才有目標。
+func placeNearDefenderRig(t *testing.T, o *oracle.Oracle, dgroup uint16, rig dayRig, apart bool) (int, int) {
+	t.Helper()
+	work := o.Word(oracle.Addr{Seg: dgroup, Off: rig.workSegPtr})
+	occSeg, colSeg, rowSeg := work, dgroup, dgroup
 	w16 := func(off int) int {
 		return int(o.Word(oracle.Addr{Seg: work, Off: uint16(off)}))
 	}
 	occ := func(c, r int) oracle.Addr {
-		return oracle.Addr{Seg: occSeg, Off: uint16(0x2532 + (r*12+c)*2)}
+		return oracle.Addr{Seg: occSeg, Off: uint16(rig.occ + (r*12+c)*2)}
 	}
 	recOf := func(army, team int) int {
-		return battleUnitBase + (army*battleUnitPer+team)*battleUnitSize
+		return rig.unitBase + (army*battleUnitPer+team)*battleUnitSize
 	}
 	me, foe := -1, -1
 	for army := 0; army < battleArmies; army++ {
@@ -468,16 +480,31 @@ func placeNextToDefender(t *testing.T, o *oracle.Oracle, dgroup uint16) (int, in
 		return me, foe
 	}
 	fc, fr := w16(foe+unitCol), w16(foe+unitRow)
+	step := func(c, r, dir int) (int, int) {
+		i := uint16(((c%2)*6 + dir) * 2)
+		dc := int(int16(o.Word(oracle.Addr{Seg: colSeg, Off: rig.colTable + i})))
+		dr := int(int16(o.Word(oracle.Addr{Seg: rowSeg, Off: rig.rowTable + i})))
+		return c + dc, r + dr
+	}
+	inside := func(c, r int) bool { return c >= 0 && c < 12 && r >= 0 && r < 10 }
 	for dir := 0; dir < 6; dir++ {
-		i := uint16(((fc%2)*6 + dir) * 2)
-		dc := int(int16(o.Word(oracle.Addr{Seg: colSeg, Off: 0x7c6a + i})))
-		dr := int(int16(o.Word(oracle.Addr{Seg: rowSeg, Off: 0x7c82 + i})))
-		c, r := fc+dc, fr+dr
-		if c < 0 || c >= 12 || r < 0 || r >= 10 {
+		c, r := step(fc, fr, dir)
+		if !inside(c, r) || o.Word(occ(c, r)) != 0xFFFF {
 			continue
 		}
-		if o.Word(occ(c, r)) != 0xFFFF {
-			continue
+		if apart {
+			// 中間那格的地形碼查弓箭表（`DS:0x80d4`／`0x8242`）要是 1：
+			// 山丘、淺水、深水、平原、樹林、沙漠。
+			ter := o.Byte(oracle.Addr{Seg: work, Off: uint16(0x163a + r*12 + c)}) & 0xf
+			switch ter {
+			case 2, 3, 4, 7, 8, 9:
+			default:
+				continue
+			}
+			c, r = step(c, r, dir)
+			if !inside(c, r) || o.Word(occ(c, r)) != 0xFFFF {
+				continue
+			}
 		}
 		o.SetWord(occ(w16(me+unitCol), w16(me+unitRow)), 0xFFFF)
 		o.SetWord(oracle.Addr{Seg: work, Off: uint16(me + unitCol)}, uint16(c))

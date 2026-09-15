@@ -31,8 +31,8 @@ const (
 	battleWorkSeg  = 0xa872 // ds:0xa872 ＝ 戰場工作區的段
 	battleUnitBase = 0x3502 // 部隊記錄的基底（工作區內）
 	battleUnitSize = 42
-	battleArmies   = 4 // 主守、助守、主攻、助攻
-	battleTeams    = 5 // 一個軍團五個隊伍
+	battleArmies   = 4  // 主守、助守、主攻、助攻
+	battleTeams    = 5  // 一個軍團五個隊伍
 	battleUnitPer  = 10 // 陣列跨距
 
 	unitCol      = 22 // 欄
@@ -421,8 +421,8 @@ func TestBattleUnitsMatchTheOriginal(t *testing.T) {
 		gotA := after(i, b.aArmy, b.aTeam)
 		gotD := after(i, b.dArmy, b.dTeam)
 		for _, x := range []struct {
-			who        string
-			got, want  int
+			who       string
+			got, want int
 		}{
 			{fmt.Sprintf("甲 %d-%d", b.aArmy, b.aTeam), gotA, wantA},
 			{fmt.Sprintf("乙 %d-%d", b.dArmy, b.dTeam), gotD, wantD},
@@ -523,6 +523,14 @@ type unitSlot struct {
 // **每一個提示都要 Enter，選單也一樣**。
 func driveIntoBattle(t *testing.T, o *oracle.Oracle, at, to int) {
 	t.Helper()
+	driveIntoBattleGap(t, o, at, to, 0)
+}
+
+// driveIntoBattleGap 是本體；gap > 0 時同一段裡的每個鍵之間跑這麼多條
+// 指令再送下一個。加強版要這樣——連著灌的「2⏎」只收到 2，Enter 被
+// 重繪吃掉（與 `playercmd` 量到的同一件事）；原版照舊一段一送。
+func driveIntoBattleGap(t *testing.T, o *oracle.Oracle, at, to int, gap uint64) {
+	t.Helper()
 	const settle = 40_000_000
 	spell := func(n int) string {
 		out := ""
@@ -542,9 +550,26 @@ func driveIntoBattle(t *testing.T, o *oracle.Oracle, at, to int) {
 		menu+"|"+menu+"|"+spell(at)+"|"+spell(to)+"|"+org)
 	for i, seg := range strings.Split(keys, "|") {
 		o.Drain()
-		o.PressScan(strings.ReplaceAll(seg, enterMark, "\r"))
+		seg = strings.ReplaceAll(seg, enterMark, "\r")
+		if gap <= 0 {
+			o.PressScan(seg)
+		} else {
+			for j, r := range seg {
+				if j > 0 {
+					if err := o.Run(gap); err != nil {
+						t.Fatalf("送第 %d 段的第 %d 個鍵時停止：%v", i+1, j+1, err)
+					}
+				}
+				o.PressScan(string(r))
+			}
+		}
 		if err := o.Run(settle); err != nil {
 			t.Fatalf("送第 %d 段（%q）時停止：%v", i+1, seg, err)
+		}
+		// SAN1_TRACE 非空就每一段存一張畫面（配 SAN1_SHOTS），看序列在
+		// 哪一步走偏。
+		if envOr("SAN1_TRACE", "") != "" {
+			dumpScreen(t, o, fmt.Sprintf("drive-%02d", i+1))
 		}
 	}
 	if err := o.Run(settle); err != nil {

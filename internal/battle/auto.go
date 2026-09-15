@@ -32,7 +32,7 @@ func (b *Battle) AutoTurn(u *Unit) {
 	if b.Over || !u.Alive() {
 		return
 	}
-	u.RefreshQuality()
+	b.RefreshQuality(u)
 	if u.Trapped > 0 {
 		b.SkipTrappedTurn(u)
 		return

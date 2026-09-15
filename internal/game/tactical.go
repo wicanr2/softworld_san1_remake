@@ -395,12 +395,14 @@ func (g *State) sideFactions(by state.FactionID, dst *Prefecture, aid Aid) [4]st
 }
 
 // battleAI 把這一局的 AI 模式換成戰術層的旗標：`enhanced` 走 remake 自己
-// 的自動作戰，其餘（含沒設）走原版的九支判斷式。
+// 的自動作戰，其餘（含沒設）走原版的九支判斷式——**哪一版的九支由
+// 這一局的版本決定**，不由模式字串決定（`ai.CheckEdition` 已經擋掉
+// 「原版 AI 跑在加強版規則上」那種混搭，這裡不再分家）。
 func (g *State) battleAI() battle.AI {
-	switch g.Options.AIMode {
-	case "enhanced":
+	if g.Options.AIMode == "enhanced" {
 		return battle.AIEnhanced
-	case "plus":
+	}
+	if g.Edition == state.EditionPlus {
 		return battle.AIPlus
 	}
 	return battle.AIBase

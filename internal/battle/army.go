@@ -249,7 +249,11 @@ const (
 // **S 與 N 都是 16 位元有號數**（`[bp-2]`／`[bp-6]`，`fidivs`）：兩位各
 // 兩萬七的部隊 N ＝ 54000 → −11536 → `N ≤ 0` → 綜合能力 0——那支部隊
 // 打誰都不痛（盤面丙量到，`L1`）。照做，不修。
-func (u *Unit) RefreshQuality() {
+func (u *Unit) RefreshQuality() { u.refreshQuality(false) }
+
+// refreshQuality 是本體；warFirst 是加強版的相加順序（`0x24703`：
+// 武裝那一項先加戰力那一項，再加訓練 × 0.05；`Rules.QualityAddsWarFirst`）。
+func (u *Unit) refreshQuality(warFirst bool) {
 	var sum, total int16
 	for i := range u.Leaders {
 		x := &u.Leaders[i]
@@ -257,9 +261,15 @@ func (u *Unit) RefreshQuality() {
 			continue
 		}
 		f := x87(int64(int(x.Arms) * 5 / 20))
-		f.Add(f, new(big.Float).SetPrec(64).Mul(x87(int64(x.Training)),
-			new(big.Float).SetPrec(64).SetFloat64(qualityTrainingWeight)))
-		f.Add(f, x87(int64(int(x.War)*14/20)))
+		training := new(big.Float).SetPrec(64).Mul(x87(int64(x.Training)),
+			new(big.Float).SetPrec(64).SetFloat64(qualityTrainingWeight))
+		if warFirst {
+			f.Add(f, x87(int64(int(x.War)*14/20)))
+			f.Add(f, training)
+		} else {
+			f.Add(f, training)
+			f.Add(f, x87(int64(int(x.War)*14/20)))
+		}
 		f.Mul(f, x87(int64(int16(x.Soldiers))))
 		f.Mul(f, new(big.Float).SetPrec(64).SetFloat64(qualityPercent))
 		f.Add(f, new(big.Float).SetPrec(64).SetFloat64(qualityHalf))
