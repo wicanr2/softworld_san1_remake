@@ -34,6 +34,10 @@ type unifyResult struct {
 	Alive      []int  `json:"alive"`    // 每年元月還有幾個勢力持郡（與原版那一側同一個判準）
 	Employed   []int  `json:"employed"` // 每年元月在職的人物數
 	Fallen     []int  `json:"fallen"`   // 每年元月已故（身分 12）的人物數
+	// Status 是每年元月身分欄的分布（索引＝身分碼），與原版那一側同一格式。
+	Status [][13]int `json:"status"`
+	// Deaths 是每一種死法的次數（`game.State.DeathLog`）。
+	Deaths map[string]int `json:"deaths"`
 }
 
 // TestUnifyYearDistribution 讓 remake 用原版對拍過的 AI（`ai.ModeBase`）、
@@ -66,6 +70,7 @@ func TestUnifyYearDistribution(t *testing.T) {
 			if s.G.Date.Year != lastYear {
 				r.Alive = append(r.Alive, owning)
 				emp, fallen := 0, 0
+				var st [13]int
 				for _, x := range s.G.AllGenerals() {
 					if x.Employed() {
 						emp++
@@ -73,8 +78,12 @@ func TestUnifyYearDistribution(t *testing.T) {
 					if x.Status == state.StatusFallen {
 						fallen++
 					}
+					if int(x.Status) < len(st) {
+						st[x.Status]++
+					}
 				}
 				r.Employed, r.Fallen = append(r.Employed, emp), append(r.Fallen, fallen)
+				r.Status = append(r.Status, st)
 				lastYear = s.G.Date.Year
 			}
 			// 統一判定用 remake 自己的 `Winner()`（`0x15852` 的條件：所有有主的
@@ -98,6 +107,7 @@ func TestUnifyYearDistribution(t *testing.T) {
 		} else {
 			t.Logf("seed %#x：%d 個月沒統一，還剩 %d 個勢力", seed, r.Months, r.Alive[len(r.Alive)-1])
 		}
+		r.Deaths = s.G.DeathLog
 		results = append(results, r)
 	}
 	if dir := os.Getenv("SAN1_DUMP"); dir != "" {

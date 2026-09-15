@@ -463,7 +463,7 @@ func (g *State) settle(p *Pending) *BattleResult {
 			x.Stamina = l.Stamina
 			switch {
 			case l.Dead:
-				g.retire(x)
+				g.retireBy(x, "battle")
 			case l.Captured:
 				r.Captives = append(r.Captives, Captive{General: l.Index, Name: l.Name})
 			}

@@ -37,6 +37,14 @@ type unifyRun struct {
 	Alive      []int  `json:"alive"`       // 每年元月還有幾個勢力持有郡
 	Employed   []int  `json:"employed"`    // 每年元月人物表裡勢力欄 != 0xFF 的人數
 	Fallen     []int  `json:"fallen"`      // 每年元月身分 == 12（已故）的人數
+	// Status 是每年元月人物表身分欄（offset 17）的分布，索引就是身分碼
+	//（0 君主…3 一般、8／9 在野、11 未登場、12 已故）。
+	Status [][13]int `json:"status"`
+	// Deaths 是身分被寫成 12 的次數，按寫入那道指令的線性位址歸戶
+	//（老死 `0x147f6`／`0x14881` 之外還有誰在殺人，Issue #23）。
+	Deaths map[string]int `json:"deaths"`
+	// DeathsByYear 是每年（元月到元月）身分寫成 12 的次數。
+	DeathsByYear []int `json:"deaths_by_year"`
 }
 
 // 原版工作段裡的日期（`docs/re/08` §1）與三張表的位置。
@@ -74,8 +82,9 @@ func ownersOf(o *oracle.Oracle) map[int]int {
 	return owners
 }
 
-// generalCensus 數人物表裡在職（勢力欄 != 0xFF）與已故（身分 12）的人數。
-func generalCensus(o *oracle.Oracle) (employed, fallen int) {
+// generalCensus 數人物表裡在職（勢力欄 != 0xFF）與已故（身分 12）的人數，
+// 順便回身分欄的分布。
+func generalCensus(o *oracle.Oracle) (employed, fallen int, status [13]int) {
 	gen := uint32(unifyTablesBase + state.MasterTableSize + state.PrefectureTableSize)
 	for i := 0; i < 350; i++ {
 		rec := o.Bytes(addr(gen+uint32(i*state.GeneralRecordSize)), state.GeneralRecordSize)
@@ -84,6 +93,9 @@ func generalCensus(o *oracle.Oracle) (employed, fallen int) {
 		}
 		if rec[17] == 12 {
 			fallen++
+		}
+		if int(rec[17]) < len(status) {
+			status[rec[17]]++
 		}
 	}
 	return
@@ -198,7 +210,19 @@ func TestZZUnifyYearOriginal(t *testing.T) {
 
 	started := time.Now()
 	s := bootToDemo(t, o, difficulty)
-	run := &unifyRun{Seed: seed, Scenario: "001", Difficulty: difficulty}
+	run := &unifyRun{Seed: seed, Scenario: "001", Difficulty: difficulty, Deaths: map[string]int{}}
+
+	// 誰把身分寫成 12：盯人物表（offset 17 那一格），按寫入點歸戶。
+	deathsThisYear := 0
+	gen := uint32(unifyTablesBase + state.MasterTableSize + state.PrefectureTableSize)
+	o.OnWrite(gen, gen+uint32(350*state.GeneralRecordSize), func(o *oracle.Oracle, w oracle.WriteHit) {
+		if w.Val != 12 || w.Old == 12 || int(w.Addr-gen)%state.GeneralRecordSize != 17 {
+			return
+		}
+		// `At` 是 IDA 位址（線性 ＋ 0xEF00，`CLAUDE.md` §7 第 20 條）。
+		run.Deaths[fmt.Sprintf("%#x", w.At-0xEF00)]++
+		deathsThisYear++
+	})
 
 	seeded := false
 	o.OnCall(addr(unifyTurnEntryFn), func(o *oracle.Oracle) {
@@ -226,8 +250,11 @@ func TestZZUnifyYearOriginal(t *testing.T) {
 		owners := ownersOf(o)
 		if year != lastYear {
 			run.Alive = append(run.Alive, len(owners))
-			e, f := generalCensus(o)
+			e, f, st := generalCensus(o)
 			run.Employed, run.Fallen = append(run.Employed, e), append(run.Fallen, f)
+			run.Status = append(run.Status, st)
+			run.DeathsByYear = append(run.DeathsByYear, deathsThisYear)
+			deathsThisYear = 0
 			lastYear = year
 		}
 		if len(owners) == 1 {

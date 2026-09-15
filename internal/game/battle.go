@@ -302,7 +302,7 @@ func (g *State) DisposeCaptive(at, generalIndex int, d Disposal, by state.Factio
 	}
 	switch d {
 	case Behead:
-		g.retire(x)
+		g.retireBy(x, "beheaded")
 	case Imprison:
 		x.Faction = state.NoFaction
 		x.Status = state.StatusAvailable

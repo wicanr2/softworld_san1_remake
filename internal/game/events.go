@@ -179,37 +179,53 @@ func PlagueStrikes(loyalty, landValue, loyaltyRoll, landRoll int) bool {
 func (g *State) spring() []Event {
 	var out []Event
 	if g.Date.Month == agingMonth {
+		// **原版分兩圈走**（`L0`）：第一圈 `0x15d40`–`0x15eb3` 是老死，
+		// 第二圈 `0x15f64`–`0x16042` 才加歲、忠誠漂移、訓練與武裝衰減、
+		// 出頭。**老死比的是加歲之前的年齡**——先加再比的話每個人
+		// 都早一年走下坡（Issue #23）。
 		for i := range g.generals {
 			x := &g.generals[i]
-			if x.Name == "" {
+			// 第一圈只跳過已故（`0x15d55`），未登場的也掃。
+			if x.Name == "" || x.Status == state.StatusFallen {
 				continue
 			}
-			x.Age++
-			// 未登場的人只長年紀，不受體能衰退與老死影響。
-			if x.Status == state.StatusUnborn {
-				continue
-			}
+			// **年齡是有號的**（`0x15d71` 的 `cbw`）：還沒出生的人年齡是負的
+			// （曹叡在 189 年是 −16，位元組 `0xF0`），負的年齡自然過不了
+			// 壽命那一道。當成無號讀的話那些人 240 歲、當年就老死。
+			age := x.SignedAge()
 			// **老死看壽命，不是每年掉一點**（`0x15d5d`，`L0`）：
 			// 沒過壽命的人體能一點都不掉。
-			if AlreadyPastPrime(int(x.Age), int(x.Lifespan),
+			if AlreadyPastPrime(age, int(x.Lifespan),
 				g.roll(int(Spring), x.Index, 43)%LifespanRollSpread) {
-				n := AgingDrop(int(x.Stamina), int(x.Age), int(x.Lifespan),
+				n := AgingDrop(int(x.Stamina), age, int(x.Lifespan),
 					g.roll(int(Spring), x.Index, 44)%DeathStaminaSpread)
 				x.Stamina = uint8(n)
 				if n == 0 {
 					out = append(out, Event{x.Location, tf("ev.death", personName(x.Name))})
 					g.retire(x)
-					continue
 				}
 			}
+		}
+		for i := range g.generals {
+			x := &g.generals[i]
+			if x.Name == "" {
+				continue
+			}
+			// 全部 350 筆都加歲（`0x15f7a`），已故與未登場也加。
+			x.Age++
+			// **只有在職的部下（身分 1–3）才有下面三項**（`0x15f7f`–`0x15fa2`）：
+			// 君主不會對自己不忠，他的訓練度與武裝度也不衰減；在野與未登場
+			// 的人凍在原值。
+			if x.Faction == state.NoFaction ||
+				(x.Status != state.StatusChief && x.Status != state.StatusGovernor &&
+					x.Status != state.StatusOfficer) {
+				continue
+			}
 			// **忠誠每年跟著君主的人望漂移**（`0x15fc2`，`L0`）：
-			// `忠誠 += (人望 − 60) ÷ 2`。**君主自己不算**——
-			// 他不會對自己不忠。
-			if x.Status != state.StatusLord && x.Faction != state.NoFaction {
-				if f := g.Faction(x.Faction); f != nil {
-					x.Loyalty = uint8(LoyaltyDrift(int(x.Loyalty), f.Prestige,
-						g.roll(int(Spring), x.Index, 42)%LoyaltyFloorSpread))
-				}
+			// `忠誠 += (人望 − 60) ÷ 2`。
+			if f := g.Faction(x.Faction); f != nil {
+				x.Loyalty = uint8(LoyaltyDrift(int(x.Loyalty), f.Prestige,
+					g.roll(int(Spring), x.Index, 42)%LoyaltyFloorSpread))
 			}
 			// **訓練度與武裝度每年各自掉**（`0x16006`／`0x16025`，`L0`）：
 			// `−RND(值 ÷ 10)`，與土地價值同一個形狀。
@@ -357,8 +373,11 @@ func (g *State) comeOfAge() []Event {
 			continue
 		}
 		// **出頭年齡是每個人自己的**（人物表 offset 26，`0x1605a`）——
-		// 不是一個全域常數。原版比的是「年齡 > Debut」，不是 >=。
-		if int(x.Age) <= int(x.Debut) {
+		// 不是一個全域常數。原版比的是「年齡 > Debut」，不是 >=，而且
+		// 年齡是**有號**的（`cbw`）：還沒出生的人是負的，要等到真的長到
+		// 出頭年齡才出現。當成無號讀的話 −16 歲的人 240 歲，開局第二年
+		// 全部出頭、隔年全部老死（Issue #23）。
+		if x.SignedAge() <= int(x.Debut) {
 			continue
 		}
 		// **先看牽絆對象**（`0x16064`）：他有勢力、而且他所在的郡還沒
@@ -381,10 +400,19 @@ func (g *State) comeOfAge() []Event {
 		if at < 1 || at > len(g.prefectures) {
 			continue
 		}
-		// 退路是**出身郡**，身分「在野而且露面」、無勢力（`0x15ec4`）。
+		// 退路是**出身郡**、無勢力，身分先寫 **9**（`0x15eda`：在野但不列入
+		// 郡的在野數，要被尋訪到才變成 8），接著看露不露面（`0x15ee6`–
+		// `0x15f5c`）：**年紀到了（≥ RND(5)+32）直接露面；年輕的看才能——
+		// 謀略與戰力取大者，`RND(30)+30` 壓不過它就藏著。** 年輕的名將要被
+		// 尋訪才出現，庸才一出頭就在名單上。
 		x.Location = at
 		x.Faction = state.NoFaction
-		x.Status = state.StatusAvailable
+		x.Status = state.StatusIdle
+		if DebutShowsUp(x.SignedAge(), int(x.Intel), int(x.War),
+			g.roll(int(Spring), x.Index, 45)%DebutShowAgeSpread,
+			g.roll(int(Spring), x.Index, 46)%DebutHideTalentSpread) {
+			x.Status = state.StatusAvailable
+		}
 		p := g.Prefecture(at)
 		name := ""
 		if p != nil {
@@ -451,6 +479,25 @@ func (g *State) sealEvent() []Event {
 // DebutGarrisonCap 是「牽絆對象的郡收不收得下」的門檻
 // （`0x16097`：現役武將數 < 50，`L0`）。與每郡五十位將軍的上限同一個數。
 const DebutGarrisonCap = 50
+
+// 出頭之後露不露面的兩道門（`0x15efe`／`0x15f29`，`L0`、`[base]`）。
+const (
+	// DebutShowAge 是「年紀到了就露面」的門檻：年齡 ≥ RND(5) + 32。
+	DebutShowAge       = 32
+	DebutShowAgeSpread = 5
+	// DebutHideTalent 是年輕人的才能門：max(謀略, 戰力) ≥ RND(30) + 30 就藏著。
+	DebutHideTalent       = 30
+	DebutHideTalentSpread = 30
+)
+
+// DebutShowsUp 回報沒有牽絆對象可投奔的新人出頭時是直接露面（身分 8）
+// 還是藏在郡裡等尋訪（身分 9）。
+func DebutShowsUp(age, intel, war, ageRoll, talentRoll int) bool {
+	if age >= ageRoll+DebutShowAge {
+		return true
+	}
+	return talentRoll+DebutHideTalent > max(intel, war)
+}
 
 // bondDebut 回報未登場者要不要直接投奔牽絆對象，以及去哪個郡、投哪一家。
 //
@@ -913,7 +960,16 @@ func (g *State) winter() []Event {
 // ⚠ **主事者死掉不能讓郡就這樣沒人管。** 有人接手就接手，
 // 沒有人接手就變成空白郡——「因任何事故所形成的空白郡均不屬任何諸侯」
 // （說明書 p.19）。
-func (g *State) retire(x *General) {
+func (g *State) retire(x *General) { g.retireBy(x, "aging") }
+
+// retireBy 是 retire 加上死因，記在 DeathLog（對拍與普查用）。
+func (g *State) retireBy(x *General, cause string) {
+	if x.Status != state.StatusFallen {
+		if g.DeathLog == nil {
+			g.DeathLog = map[string]int{}
+		}
+		g.DeathLog[cause]++
+	}
 	at, faction := x.Location, x.Faction
 	wasGoverning := x.Status.Governs()
 	wasLord := x.Status == state.StatusLord
@@ -929,6 +985,14 @@ func (g *State) retire(x *General) {
 		f.Chief = -1
 	}
 	if !wasGoverning {
+		// 軍師或一般武將是這個郡最後一位現役的話（主事者早就不在，
+		// 軍師在代理），郡跟著變無主。原版沒有這一段——它的歸屬是
+		// 下一次重算（`0x1e394`）才落掉的；remake 在這裡提前做，
+		// 與上面主事者死掉的處理同一個形狀。
+		if p := g.Prefecture(at); p != nil && p.Owner == faction &&
+			g.leavesNobody(at, nil, faction) {
+			p.Owner = state.NoFaction
+		}
 		return
 	}
 	if wasLord {

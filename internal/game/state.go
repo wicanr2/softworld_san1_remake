@@ -225,6 +225,11 @@ type General struct {
 // Employed 回報這位人物有沒有效力對象。
 func (g *General) Employed() bool { return g.Faction != state.NoFaction }
 
+// SignedAge 是原版眼裡的年齡：offset 7 當 `int8`（`0x15d71`／`0x1604f`
+// 的 `cbw`）。未登場的人是負的（曹叡 189 年 −16），每年 +1 長到出頭年齡
+// 才露面。
+func (g *General) SignedAge() int { return int(int8(g.Age)) }
+
 // HasLoyalty 回報忠誠欄有沒有意義（在野者沒有，原版存 0xFF 哨兵）。
 func (g *General) HasLoyalty() bool { return g.Loyalty != state.NoValue }
 
@@ -354,6 +359,10 @@ type State struct {
 
 	// 開局時三張表的原始位元組。存檔要用它保住還沒解出來的欄位（tables.go）。
 	rawMas, rawSta, rawGen []byte
+
+	// DeathLog 數每一種死法（老死／斬首／戰死／單挑…）發生幾次。
+	// **不進存檔**：這是普查與對拍要看的計數，不是局面。
+	DeathLog map[string]int
 
 	// turnOrder 是**下個月**的郡順序，由 `EndMonth` 的開月那一段洗出來
 	// （`0x17364`）。原版把它連同旗標寫進進度檔，所以它是盤面的一部分，

@@ -714,8 +714,9 @@ func TestDebutFollowsTheBond(t *testing.T) {
 	loner.Age = loner.Debut + 1
 	g.Date = Date{Year: 201, Month: 12}
 	g.EndMonth()
-	if loner.Status != state.StatusAvailable || loner.Faction != state.NoFaction {
-		t.Errorf("%s 應該在出身郡當在野，得到身分 %d 勢力 %d",
+	// 退路寫的是身分 9（在野但不列入郡的在野數，`0x15eda`），不是 8。
+	if loner.Status != state.StatusIdle || loner.Faction != state.NoFaction {
+		t.Errorf("%s 應該在出身郡當在野（身分 9），得到身分 %d 勢力 %d",
 			loner.Name, loner.Status, loner.Faction)
 	}
 	if loner.Location != origin {
@@ -866,5 +867,186 @@ func TestSuccessionPrestigeRounds(t *testing.T) {
 			t.Errorf("魅力 %d、人望 %d：得到 %d，應該是 %d",
 				c.charm, c.prestige, got, c.want)
 		}
+	}
+}
+
+// TestUnbornAgesAreSigned 釘住年齡是有號數（Issue #23）：曹叡在劇本 001
+// 的年齡位元組是負的（189 年還沒出生），當成無號讀就是二百多歲——
+// 開局第二年全部出頭、隔年全部老死。原版 `0x15d71`／`0x1604f` 都先 `cbw`。
+func TestUnbornAgesAreSigned(t *testing.T) {
+	g := newGame(t)
+	var young []*General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Status == state.StatusUnborn && x.SignedAge() < 0 {
+			young = append(young, x)
+		}
+	}
+	if len(young) < 10 {
+		t.Fatalf("劇本 001 只有 %d 位年齡是負的未登場人物——年齡的解讀有問題", len(young))
+	}
+	// 跑十年：負年齡的人一個都不該出頭、更不該死。
+	for g.Date.Year < 199 {
+		g.EndMonth()
+	}
+	for _, x := range young {
+		if x.SignedAge() < -10 && x.Status != state.StatusUnborn {
+			t.Errorf("%s（%d 歲）在 %d 年就出頭了，身分 %d", x.Name, x.SignedAge(), g.Date.Year, x.Status)
+		}
+		if x.Status == state.StatusFallen {
+			t.Errorf("%s 還沒出生就老死了", x.Name)
+		}
+	}
+	if n := g.DeathLog["aging"]; n > 15 {
+		t.Errorf("開局十年就老死 %d 人——原版同一段只有個位數", n)
+	}
+}
+
+// TestDebutFallbackIsHidden 釘住出頭時沒有牽絆對象可投奔的人身分寫 9
+// （在野但不列入郡的在野數，`0x15eda`），要被尋訪到才變成 8。
+func TestDebutFallbackIsHidden(t *testing.T) {
+	g := newGame(t)
+	var who *General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Status == state.StatusUnborn && x.Name != "" && x.Origin >= 1 {
+			if _, _, ok := g.bondDebut(x); !ok {
+				who = x
+				break
+			}
+		}
+	}
+	if who == nil {
+		t.Skip("劇本 001 找不到沒有牽絆對象可投奔的未登場人物")
+	}
+	who.Age = who.Debut + 1 // 過了出頭年齡，還年輕
+	who.Intel, who.War = 90, 40 // 才能壓過 RND(30)+30 的最大值 59 → 一定藏著
+	g.comeOfAge()
+	if who.Status != state.StatusIdle {
+		t.Errorf("%s 出頭之後身分是 %d，原版寫 9", who.Name, who.Status)
+	}
+	if who.Location != who.Origin {
+		t.Errorf("%s 出頭在郡 %d，該在出身郡 %d", who.Name, who.Location, who.Origin)
+	}
+	// 年紀到了（≥ 36 就一定過 RND(5)+32）的人直接露面。
+	who.Status, who.Age = state.StatusUnborn, 40
+	g.comeOfAge()
+	if who.Status != state.StatusAvailable {
+		t.Errorf("%s 四十歲出頭身分是 %d，該直接露面（8）", who.Name, who.Status)
+	}
+}
+
+// TestDebutShowsUp 釘住露面的兩道門（`0x15efe`／`0x15f29`）。
+func TestDebutShowsUp(t *testing.T) {
+	for _, c := range []struct {
+		age, intel, war, ageRoll, talentRoll int
+		show                                  bool
+	}{
+		{36, 100, 100, 4, 0, true},  // 36 ≥ 4+32：年紀到了，才能再高也露面
+		{35, 100, 100, 4, 29, false}, // 35 < 36：年輕；59 ≤ 100 藏著
+		{20, 29, 29, 0, 0, true},     // 30 > 29：庸才露面
+		{20, 30, 10, 0, 0, false},    // 30 ≤ 30：剛好壓住
+		{20, 10, 45, 0, 20, true},    // 50 > 45：取謀略與戰力的大者
+		{20, 10, 45, 0, 15, false},   // 45 ≤ 45
+	} {
+		if got := DebutShowsUp(c.age, c.intel, c.war, c.ageRoll, c.talentRoll); got != c.show {
+			t.Errorf("年齡 %d 謀 %d 武 %d 擲 %d/%d：露面 %v，應該是 %v",
+				c.age, c.intel, c.war, c.ageRoll, c.talentRoll, got, c.show)
+		}
+	}
+}
+
+// TestAgingUsesTheAgeBeforeTheBirthday 釘住老死那一圈比的是加歲之前的
+// 年齡（原版第一圈 `0x15d40` 老死、第二圈 `0x15f7a` 才加歲）：年齡剛好
+// 等於壽命的人，這一年體能一點都不掉——先加歲再比的話 RND(3) 擲到 0
+// 就會掉。五十個人一起擺，擲不到 0 的機率是 (2/3)^50。
+func TestAgingUsesTheAgeBeforeTheBirthday(t *testing.T) {
+	g := newGame(t)
+	g.Date.Month = agingMonth
+	var picked []*General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Name == "" || !x.Employed() || x.Lifespan == state.NoValue {
+			continue
+		}
+		x.Age, x.Stamina = x.Lifespan, 100
+		picked = append(picked, x)
+		if len(picked) == 50 {
+			break
+		}
+	}
+	g.spring()
+	for _, x := range picked {
+		if x.Stamina != 100 {
+			t.Errorf("%s 年齡＝壽命 %d，加歲那一年體能掉到 %d", x.Name, x.Lifespan, x.Stamina)
+		}
+		if int(x.Age) != int(x.Lifespan)+1 {
+			t.Errorf("%s 年齡 %d，該是 %d", x.Name, x.Age, x.Lifespan+1)
+		}
+	}
+}
+
+// TestOnlySubordinatesDecayInSpring 釘住忠誠漂移與訓練／武裝衰減只落在
+// 在職的部下身上（`0x15f7f`–`0x15fa2`）：君主、在野、未登場都凍在原值。
+func TestOnlySubordinatesDecayInSpring(t *testing.T) {
+	g := newGame(t)
+	g.Date.Month = agingMonth
+	type frozen struct {
+		x               *General
+		arms, training uint8
+	}
+	var keep []frozen
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Name == "" || x.Status == state.StatusChief ||
+			x.Status == state.StatusGovernor || x.Status == state.StatusOfficer {
+			continue
+		}
+		x.Arms, x.Training = 100, 100 // 值夠大，RND(10) 擲到 0 的機率才小
+		keep = append(keep, frozen{x, x.Arms, x.Training})
+	}
+	g.spring()
+	for _, k := range keep {
+		if k.x.Arms != k.arms || k.x.Training != k.training {
+			t.Errorf("%s（身分 %d）的武裝／訓練 %d/%d → %d/%d，不該動",
+				k.x.Name, k.x.Status, k.arms, k.training, k.x.Arms, k.x.Training)
+		}
+	}
+}
+
+// TestLastChiefDeathReleasesThePrefecture 釘住「軍師代理的郡，軍師老死之後
+// 郡變無主」：主事者早已不在、只剩軍師一位現役時，他死掉不能讓郡
+// 有主卻沒有人管（`TestEveryOwnedPrefectureHasAGovernor` 在 198 年抓到的
+// 就是這一例：弘農只剩李儒）。
+func TestLastChiefDeathReleasesThePrefecture(t *testing.T) {
+	g := newGame(t)
+	lord := g.Lord(1)
+	if lord == nil {
+		t.Fatal("勢力 1 沒有君主")
+	}
+	at := lord.Location
+	// 盤面自己擺：把君主搬去鄰郡，留一位改成軍師，其餘都搬走。
+	var chief *General
+	for _, x := range g.Garrison(at) {
+		if x.Index == lord.Index {
+			continue
+		}
+		if chief == nil {
+			chief = x
+			chief.Status = state.StatusChief
+			continue
+		}
+		x.Location = at%state.PrefectureCount + 1
+	}
+	if chief == nil {
+		t.Fatal("君主的郡裡沒有別人")
+	}
+	lord.Location = at%state.PrefectureCount + 1
+	if got := g.Governor(at); got == nil || got.Index != chief.Index {
+		t.Fatalf("軍師該在代理主事，得到 %v", got)
+	}
+	g.retire(chief)
+	if p := g.Prefecture(at); p.Owned() {
+		t.Errorf("軍師是最後一位現役，他死了郡還有主（勢力 %d）", p.Owner)
 	}
 }
