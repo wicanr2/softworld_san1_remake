@@ -213,6 +213,30 @@ dosgolem 補上阻塞語意（`dosgolem/docs/spec/008`，READY）：佇列空時
 改答 `2`（EGA）之後遊戲繼續往下走。教訓：
 **要先知道程式選了哪個裝置，才知道該去看哪塊記憶體。**
 
+**2026-09-15 補上那一塊（Issue #4）**：dosgolem 的 probe 現在每次多報一行
+`B0000 非零 bytes N / 32768（Hercules 圖形頁 0）`，`-dump-herc` 把它存成圖；
+oracle 有 `Hercules()`／`HerculesNonZero()`／`HerculesGeometry()`
+（dosgolem `docs/spec/189`，分支 `san1-hercules-b0000`，commit `9d779b8`）。
+用它重做那一輪：
+
+```sh
+DOSGOLEM_ORIG=~/cht/softworld_san/org_game tools/go.sh run ./cmd/probe \
+  -exe "/orig/三國演義/AA.EXE" -root "/orig/三國演義" -steps 1500000000 -keys "112" \
+  -dump-herc /src/workplace/san1/herc-112.png
+```
+
+| 裝置答案 | `A0000` | `B8000` 非零 bytes | `B0000` 非零 bytes |
+|---|---|---|---|
+| `112`（Hercules）| 0 | 30,309 | **30,309** |
+| `122`（EGA）| 三英圖（mode 10h）| 0 | 0 |
+
+`B0000` 解出來是**三英圖的抖色單色版，640×408**——原版把 Hercules 的 6845
+寫成 R1＝40、R6＝102、R9＝3（每列 80 bytes、102 × 4 列），與 EGA 同一個幾何
+（`docs/spec/006`），不是 HGC 標準的 720×348；`3B8h` 在 `0Ah`／`8Ah` 之間
+切換是雙頁翻頁，兩頁逐位元組相同（所以 `B8000` 也非零——那不是 CGA）。
+本 repo 的收據是 `TestZZHerculesBootDrawsB0000`（`-tags oracle`），
+含 EGA 那一側 `B0000` ＝ 0 的正對照。
+
 ### 兩層工具缺陷擋在後面
 
 答完選單後遊戲開了第一個檔（`DATA0.GRP`），然後連續撞到兩個 dosgolem 的缺口：

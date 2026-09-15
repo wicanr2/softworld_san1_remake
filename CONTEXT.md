@@ -18,7 +18,7 @@
 | 素材取得 | 兩版 js-dos bundle 下載完成、SHA-256 驗過 | 2026-09-06 |
 | 專案骨架 | 建立；`CLAUDE.md`／`LICENSE`／`.gitignore` 就位 | 2026-09-06 |
 | GitHub 預設分支 | 唯一遠端分支已由 `master` 原位改名為 `main`；本機追蹤 `origin/main` | 2026-09-14 |
-| dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 **`san1-oracle-parity`**，base 是 `origin/main`（`d351681`）。先前的 `san1-draw-speed-and-speech` **已經合併進 main**（`a4cb2b6`）。**分支名會換，用前先問 `git branch --show-current`** | 2026-09-10 |
+| dosgolem 工作副本 | `~/cht/dosgolem-san`，分支 **`san1-hercules-b0000`**（2026-09-15 從 `san1-oracle-parity` 開出，兩者的 base 都是 `origin/main` `d351681`；多的兩個 commit `316027d`／`9d779b8` 是 Hercules `B0000` 擷取，**未推送到 `wicanr2/dosgolem`**，推不推由使用者決定）。先前的 `san1-draw-speed-and-speech` **已經合併進 main**（`a4cb2b6`）。**分支名會換，用前先問 `git branch --show-current`** | 2026-09-15 |
 | 說明書 | 46 頁解到 `workplace/manual/`，整理中 | 2026-09-06 |
 | dosgolem probe | 兩版跑過，服務清單產出（`docs/re/00`）| 2026-09-06 |
 | 反組譯 | IDA 管線成立（`docs/re/01`）；主程式模組已用 objdump 逐段對讀 | 2026-09-06 |
@@ -84,6 +84,8 @@
 | **電腦諸侯的分派表解出十六張（共十八張）** | 六個等級 × 十八張 far pointer 表，無條件依序跑完。已讀的九張判斷式從碼讀出來不是行為推測：選出行動者、內政、訓練、指定太守、指定軍師、賞賜、尋訪、購置武器、登用。花費係數 `[1,1,1,1,0.9,0.75]`、登用的費用與加成、武裝度是百分比，全部有對應的單測（`docs/mechanics/70-ai`）| 2026-09-07 |
 
 | **畫面尺寸訂正成 640×408** | 專案一路假設 640×350，那是推的。四條一手證據都給 408：原版寫進 CRTC 的 `[12] = 97h`（Vertical Display End ＝ 407 → 408 列）、DOSBox-X 自己截出來就是 640×408、主畫面的版面算術（36 ＋ 336 ＋ 36）、主戰場底紋「鋪到 640×408」的迴圈。被截掉的 58 列有東西：主選單第三列按鈕的下半與直牌最後一個字、主畫面與主戰場的下方花邊（`MAINMAP2`／`MAINMAP8`，先前記成「落在畫面外」）、三個面板的下緣。**兩個獨立實作在 350 上「逐點相同」通過很久**——取樣尺寸是共用的外部參數，前提錯了下游一致性看不出來（R48、`docs/spec/006`）| 2026-09-10 |
+
+| **dosgolem 看得到 Hercules 的 `B0000` 了** | probe 多報 `B0000 非零 bytes`、`-dump-herc`；oracle 有 `Hercules()`／`HerculesNonZero()`／`HerculesGeometry()`。原版選 Hercules 時把 6845 寫成 640×408（R1＝40、R6＝102、R9＝3），三英圖的抖色版解得出來；兩頁翻頁內容相同。收據 `TestZZHerculesBootDrawsB0000`（Issue #4）| 2026-09-15 |
 
 | **原版自己打完一局了：284／285 年曹爽統一** | 示範模式（玩家數 0）＋ 種子寫進 `DS:0xa3ae`，每月約 700 萬道指令、一局 8 分鐘（有戰役動畫的局慢十倍）。remake 用原版分派表跑八局：五局 266／267 年因君主老死「統一」、三局僵在 2–3 個勢力——**形狀不同**，原因是兩條缺口：絕嗣勢力的郡沒釋出（殭屍勢力）、人望秋季調整沒實作。各開 Issue（`docs/playtest/05`）| 2026-09-15 |
 
