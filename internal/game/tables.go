@@ -54,6 +54,16 @@ const (
 	genArms     = 25
 )
 
+// masController 是諸侯表裡的操縱方（uint16）：1 玩家、2 電腦、
+// `0xFFFF` 已滅亡（絕嗣、`0x14ba3`）或沒在用。開新局時原版把玩家那格
+// 寫 1、填充槽寫 `0xFFFF`（`0x12409`／`0x12473`），讀檔時
+// `Scenario.ActiveFactions` 拿它當「在不在用」的判準。
+const masController = 0
+
+// masAILevel 是電腦諸侯的等級（uint16，0–5）。**它會變**：開新局時難度
+// 會改寫它（`AILevelsAtStart`），不寫回去的話存讀一輪就退回劇本的值。
+const masAILevel = 4
+
 // masLord 是諸侯表裡君主的人物槽號（uint16）。
 //
 // **它會變。** 君主老死時由麾下接位（`events.go`），不寫回去的話
@@ -100,6 +110,19 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 			lord = f.Lord
 		}
 		put16(mas[int(f.ID)*masRecord+masLord:], lord)
+		ctl := 2
+		switch {
+		case !f.Alive:
+			ctl = 0xFFFF
+		case !f.ByComputer:
+			ctl = 1
+		case binary.LittleEndian.Uint16(mas[int(f.ID)*masRecord+masController:]) == 1:
+			// 原版的進度可以有好幾個玩家；remake 只操作一個，其餘照舊
+			// 留著人控的旗標（`save/import.go`），不要存一次就變電腦。
+			ctl = 1
+		}
+		put16(mas[int(f.ID)*masRecord+masController:], ctl)
+		put16(mas[int(f.ID)*masRecord+masAILevel:], f.AILevel)
 		// 軍師（offset 6）。**不寫的話換軍師存不下來**——`f.Chief` 改了，
 		// 存檔還是舊的那一位，讀回來門檻又變回他的智。
 		chief := state.NoValue16

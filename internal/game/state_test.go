@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -403,5 +404,45 @@ func TestPrefectureKeepsItsProvince(t *testing.T) {
 				tc.id, p.Name, p.Province, state.ProvinceName(int(p.Province)),
 				tc.want, state.ProvinceName(tc.want))
 		}
+	}
+}
+
+// 難度對開局 AI 等級的改寫（`TestZZNewGameAILevelByDifficulty` 對拍過的
+// 兩版算式；原版 `0x12317`、加強版 `0x11941`）。
+func TestAILevelsAtStart(t *testing.T) {
+	in := []int{1, 4, 3, 0, 5, 2, 3, 1, 4, 0, 2, 5, 0, 3, 1, 4}
+	cases := []struct {
+		ed   state.Edition
+		diff int
+		want []int
+	}{
+		// 原版難度 ≤ 2：第一格就是 1（≤ 2），迴圈當場停，只剩「≥ 5 壓 5」。
+		{state.EditionBase, 1, []int{1, 4, 3, 0, 5, 2, 3, 1, 4, 0, 2, 5, 0, 3, 1, 4}},
+		{state.EditionBase, 2, []int{1, 4, 3, 0, 5, 2, 3, 1, 4, 0, 2, 5, 0, 3, 1, 4}},
+		// 原版難度 > 2：不動。
+		{state.EditionBase, 5, []int{1, 4, 3, 0, 5, 2, 3, 1, 4, 0, 2, 5, 0, 3, 1, 4}},
+		{state.EditionBase, 10, []int{1, 4, 3, 0, 5, 2, 3, 1, 4, 0, 2, 5, 0, 3, 1, 4}},
+		// 加強版難度 ≤ 2：十六格都壓到 2。
+		{state.EditionPlus, 2, []int{1, 2, 2, 0, 2, 2, 2, 1, 2, 0, 2, 2, 0, 2, 1, 2}},
+		// 加強版難度 > 2：+ (難度 mod 11) ÷ 2，再壓 5。
+		{state.EditionPlus, 3, []int{2, 5, 4, 1, 5, 3, 4, 2, 5, 1, 3, 5, 1, 4, 2, 5}},
+		{state.EditionPlus, 5, []int{3, 5, 5, 2, 5, 4, 5, 3, 5, 2, 4, 5, 2, 5, 3, 5}},
+		{state.EditionPlus, 10, []int{5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}},
+		{state.EditionPlus, 11, []int{1, 4, 3, 0, 5, 2, 3, 1, 4, 0, 2, 5, 0, 3, 1, 4}},
+		{state.EditionPlus, 20, []int{5, 5, 5, 4, 5, 5, 5, 5, 5, 4, 5, 5, 4, 5, 5, 5}},
+	}
+	for _, c := range cases {
+		got := AILevelsAtStart(in, c.diff, c.ed)
+		for i := range got {
+			if got[i] != c.want[i] {
+				t.Errorf("%s 難度 %d：得到 %v、要 %v", c.ed, c.diff, got, c.want)
+				break
+			}
+		}
+	}
+	// 原版那個「碰到 ≤ 2 就停」：第一格 > 2 時會壓，停在第一個 ≤ 2。
+	got := AILevelsAtStart([]int{4, 3, 2, 5, 3}, 1, state.EditionBase)
+	if want := []int{2, 2, 2, 5, 3}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("原版難度 1：得到 %v、要 %v", got, want)
 	}
 }

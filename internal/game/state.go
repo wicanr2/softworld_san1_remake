@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sort"
 
@@ -433,7 +434,109 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Ed
 	if !ok {
 		return nil, fmt.Errorf("game: 不知道槽位 %q 的起始年月", sc.Slot)
 	}
-	return newAt(sc, player, difficulty, ed, start)
+	g, err := newAt(sc, player, difficulty, ed, start)
+	if err != nil {
+		return nil, err
+	}
+	// 難度改寫電腦諸侯的等級——**只在開新局**（`Restore` 讀回來的進度
+	// 已經是改寫過的）。兩版的算式不同，見 AILevelsAtStart。
+	// 原版是照十六個槽掃的（沒在用的槽也算，它們的等級是 0），所以
+	// 拿劇本的十六格算，再按槽號派回去。
+	levels := make([]int, state.MasterTableSize/state.MasterRecordSize)
+	for f := range levels {
+		levels[f] = sc.AILevel(f)
+	}
+	adjusted := AILevelsAtStart(levels, difficulty, ed)
+	for f, v := range adjusted {
+		// 沒建模的槽（填充槽）也照原版一起改——它們不在 `factions` 裡，
+		// 只能寫在原始位元組上，`Tables()` 會原封帶出去。
+		put16(g.rawMas[f*masRecord+masAILevel:], v)
+	}
+	for i := range g.factions {
+		if id := int(g.factions[i].ID); id >= 0 && id < len(adjusted) {
+			g.factions[i].AILevel = adjusted[id]
+		}
+	}
+	g.clearFillerSlots(player)
+	return g, nil
+}
+
+// fillerLordFrom 是自創君主範本在人物表的第一筆（346，`docs/re/08` §6）；
+// 劇本裡君主槽指到這裡以後的諸侯槽是填充槽。
+const fillerLordFrom = 346
+
+// clearFillerSlots 是開新局的收尾（同一支常式的後半，`L0`、`[both]`：
+// 原版 `0x1241b`–`0x1248b`、加強版 `0x11a35`–）：君主槽指向填充筆而沒被
+// 玩家選成自創君主的諸侯槽，操縱方／君主／軍師全寫 `0xFFFF`，那筆填充
+// 君主寫成已故（身分 12、勢力 `0xFF`、領地 `0xFF`）——出貨進度裡範本
+// 的身分 12 就是這裡寫的。「被選成自創君主」在 remake 就是玩家那一格
+// （`state.Scenario.WithCustomLord` 寫進去的），只有它留著。
+//
+// 原版不看那個槽有沒有領地、操縱方是不是 2——劇本三到六的填充槽夾在
+// 中間（槽 4、5、10、11…），`ActiveFactions` 會把它們當在用的勢力建進
+// `factions`；這裡一併拿掉。位元組直接寫在 `rawMas` 上，`Tables()` 從
+// 它起手會原封帶出去。
+func (g *State) clearFillerSlots(player state.FactionID) {
+	isFiller := func(f int) bool {
+		// 原版是有號比較（`jl`）：君主槽 `0xFFFF` 的槽算 −1，不碰。
+		lord := int(int16(binary.LittleEndian.Uint16(g.rawMas[f*masRecord+masLord:])))
+		return lord >= fillerLordFrom && state.FactionID(f) != player
+	}
+	kept := g.factions[:0]
+	for _, f := range g.factions {
+		if isFiller(int(f.ID)) {
+			continue
+		}
+		kept = append(kept, f)
+	}
+	g.factions = kept
+	for f := 0; f*masRecord+masRecord <= len(g.rawMas); f++ {
+		if !isFiller(f) {
+			continue
+		}
+		lord := int(binary.LittleEndian.Uint16(g.rawMas[f*masRecord+masLord:]))
+		for _, off := range []int{masController, masLord, masChief} {
+			put16(g.rawMas[f*masRecord+off:], state.NoValue16)
+		}
+		if x := g.General(lord); x != nil {
+			x.Status, x.Faction, x.Location = state.StatusFallen, state.NoFaction, int(state.NoValue)
+		}
+	}
+}
+
+// AILevelsAtStart 是開新局時難度對十六個勢力 AI 等級（諸侯 offset 4）的
+// 改寫（`L1`、`[both]`；原版 `0x12317`–`0x123a1`、加強版 `0x11941`–`0x119c3`，
+// 對拍 `TestZZNewGameAILevelByDifficulty`，`docs/mechanics/90` §6.4）。
+//
+//	難度 ≤ 2   兩版都把 > 2 的等級壓到 2——但**原版碰到第一個 ≤ 2 的勢力
+//	           就停**（`0x1236f` 跳出迴圈），後面的不壓；加強版十六個都看。
+//	難度 > 2   原版不動；加強版每個勢力 += (難度 mod 11) ÷ 2。
+//	最後       兩版都把 ≥ 5 的壓到 5。
+//
+// 傳入的順序就是勢力槽號的順序（0..15）；原版那個「碰到就停」的判斷
+// 是照槽號掃的，所以順序不能亂。
+func AILevelsAtStart(levels []int, difficulty int, ed state.Edition) []int {
+	out := append([]int(nil), levels...)
+	if difficulty <= 2 {
+		for i, v := range out {
+			if v > 2 {
+				out[i] = 2
+			} else if ed != state.EditionPlus {
+				break
+			}
+		}
+	} else if ed == state.EditionPlus {
+		inc := (difficulty % 11) / 2
+		for i := range out {
+			out[i] += inc
+		}
+	}
+	for i, v := range out {
+		if v >= 5 {
+			out[i] = 5
+		}
+	}
+	return out
 }
 
 // newAt 是 New 去掉「起始年月要查得到」那一條。

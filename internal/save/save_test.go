@@ -2,6 +2,7 @@ package save_test
 
 import (
 	"bytes"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"testing"
@@ -455,7 +456,11 @@ func TestLordSuccessionSurvives(t *testing.T) {
 }
 
 // TestUntouchedSaveMatchesTheOriginal 釘住「什麼都沒做就存檔」寫出來的
-// 三張表與原版的劇本**逐位元組相同**。
+// 三張表與原版的劇本**逐位元組相同**——只差原版開新局自己也會寫的
+// 三件事（`TestZZNewGameBoardBase` 對拍過，`docs/spec/015` §5）：玩家那
+// 格的操縱方 ← 1；填充槽（君主槽 ≥ 346）的操縱方／君主／軍師 ← `0xFFFF`、
+// 那筆填充君主 ← 已故（身分 12、勢力 `0xFF`、領地 `0xFF`）；AI 等級依
+// 難度改寫（難度 5 在原版不動）。
 //
 // 這是整個存檔格式最強的一次檢查：它同時問了三件事——編碼與解碼對著
 // 同一張版面表、衍生欄位（兵士、現役／在野武將數）算得回原版存的數字、
@@ -475,6 +480,18 @@ func TestUntouchedSaveMatchesTheOriginal(t *testing.T) {
 			t.Fatal(err)
 		}
 		wantMas, wantSta, wantGen := sc.Tables()
+		wantMas, wantGen = append([]byte(nil), wantMas...), append([]byte(nil), wantGen...)
+		binary.LittleEndian.PutUint16(wantMas[int(g.Player)*72:], 1)
+		for f := 0; f < 16; f++ {
+			lord := int(int16(binary.LittleEndian.Uint16(wantMas[f*72+2:]))) // 原版是有號比較
+			if lord < 346 {
+				continue
+			}
+			for _, off := range []int{0, 2, 6} {
+				binary.LittleEndian.PutUint16(wantMas[f*72+off:], 0xFFFF)
+			}
+			wantGen[lord*30+17], wantGen[lord*30+18], wantGen[lord*30+19] = 12, 0xFF, 0xFF
+		}
 		gotMas, gotSta, gotGen, err := g.Tables()
 		if err != nil {
 			t.Fatal(err)
@@ -720,7 +737,7 @@ func TestCommandedSurvivesInProgress(t *testing.T) {
 // 存檔要寫這一局自己帶的字模，讀回來還在。
 //
 // **不接的話自創君主的名字存讀一輪就變空白**——人物表裡只有造字碼位
-//（`docs/spec/013` R4）。
+// （`docs/spec/013` R4）。
 func TestGlyphsSurviveASaveLoadRound(t *testing.T) {
 	dir := t.TempDir()
 	g := newGame(t)

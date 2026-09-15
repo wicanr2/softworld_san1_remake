@@ -28,6 +28,12 @@ import (
 //	…
 func bootToNewGame(t *testing.T, o *oracle.Oracle, lord int, mas []byte) uint32 {
 	t.Helper()
+	return bootToNewGameAt(t, o, lord, 5, mas)
+}
+
+// bootToNewGameAt 是 bootToNewGame 加上難度（1..10）。
+func bootToNewGameAt(t *testing.T, o *oracle.Oracle, lord, difficulty int, mas []byte) uint32 {
+	t.Helper()
 	// 以行為停點驅動，不再依賴已作廢的 50M 指令分段配方。
 	// `bootToMenu` 已完成裝置題、開場與標題，並停在主選單掃描碼迴圈。
 	s := bootToMenu(t, o)
@@ -106,7 +112,7 @@ func bootToNewGame(t *testing.T, o *oracle.Oracle, lord int, mas []byte) uint32 
 	o.Drain()
 	// 不把後續主命令的 0..9 callback 誤當成密碼欄位；那個 callback
 	// 可能在掃描碼等待期間先出現。
-	o.TypeBoth("5\r")
+	o.TypeBoth(fmt.Sprintf("%d\r", difficulty))
 	// 開局後的第一個月是否抽中防拷盤問由原版自己的 RND(12) 決定；
 	// 不把「有盤問」硬編成必要條件，否則另一個合法亂數狀態會被誤判
 	// 成開機失敗。兩個 callback 都是原始輸入路標，先等其中一個。
@@ -208,4 +214,32 @@ func TestZZNewGameBoardIsCaoCao(t *testing.T) {
 	if lord.Name != "曹操" {
 		t.Errorf("選君主送 %d 拿到的是 %s，不是曹操", caoCaoPick, lord.Name)
 	}
+}
+
+// TestZZNewGameBoardBase 是 `TestZZNewGameBoardPlus` 的原版對照：同一個
+// 停點（第一個郡回合入口 `0x1746e`）、同一份遮罩 `newGameRuntimeFields`。
+func TestZZNewGameBoardBase(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	var board []byte
+	o.OnCall(addr(0x1746e), func(o *oracle.Oracle) {
+		if board == nil {
+			board = o.Bytes(addr(0x399b0), state.MasterTableSize+state.PrefectureTableSize+state.GeneralTableSize)
+		}
+	})
+	bootToNewGame(t, o, caoCaoPick, seedMas)
+	if board == nil {
+		t.Fatal("走到主命令了，郡回合入口卻一次都沒攔到")
+	}
+	checkNewGameBoard(t, state.EditionBase, sc0, board)
 }
