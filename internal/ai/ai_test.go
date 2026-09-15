@@ -908,3 +908,102 @@ func TestZZEnhancedCommandMix(t *testing.T) {
 		}
 	}
 }
+
+// TestPlusTurnConstants 釘住加強版電腦諸侯多出來的幾個數（Issue #26，
+// `docs/mechanics/90` §6.5）：行動者開頭的策略值範圍、賞賜金帛的難度門
+// 與百分比表、出兵的留守目標係數。
+func TestPlusTurnConstants(t *testing.T) {
+	// 策略值：((難度−1) mod 10) × 2 + 3——難度 1 與 11 都是 RND(3)、10 與 20 都是 RND(21)。
+	for _, c := range []struct{ d, want int }{{1, 3}, {5, 11}, {10, 21}, {11, 3}, {20, 21}} {
+		if got := PlusPlanRange(c.d); got != c.want {
+			t.Errorf("難度 %d 的策略值範圍 %d，原版是 %d", c.d, got, c.want)
+		}
+	}
+	// 難度門：((難度−1) mod 10 + 1) × 100，賞賜金帛與出兵挑鄰敵共用。
+	for _, c := range []struct{ d, want int }{{1, 100}, {5, 500}, {10, 1000}, {11, 100}, {20, 1000}} {
+		if got := PlusRewardGate(c.d); got != c.want {
+			t.Errorf("難度 %d 的門 %d，原版是 %d", c.d, got, c.want)
+		}
+	}
+	if PlusRewardGateRange != 1010 || PlusSortieRandomRange != 850 {
+		t.Errorf("兩個骰子的範圍 %d／%d，原版是 1010／850", PlusRewardGateRange, PlusSortieRandomRange)
+	}
+	// 賞金的百分比表（DS:0x5502）：1–10 與 11–20 逐格相同。
+	want := []int{35, 40, 45, 50, 55, 60, 65, 75, 92, 100}
+	for i, w := range want {
+		if got := PlusRewardPercent(i + 1); got != w {
+			t.Errorf("難度 %d 的賞金百分比 %d，原版是 %d", i+1, got, w)
+		}
+		if got := PlusRewardPercent(i + 11); got != w {
+			t.Errorf("難度 %d 的賞金百分比 %d，該與難度 %d 相同", i+11, got, i+1)
+		}
+	}
+	if PlusRewardPercent(0) != 100 || PlusRewardPercent(21) != 100 {
+		t.Error("難度越界該回 100")
+	}
+	// 留守目標的係數表（DS:0x5956）與策略值 1／2 的 0.95。
+	for _, c := range []struct {
+		d    int
+		want float64
+	}{{1, 1.0}, {5, 0.8}, {10, 0.6}, {11, 0.9}, {20, 0.5}} {
+		if got := plusSortieKeepCoef[c.d]; got != c.want {
+			t.Errorf("難度 %d 的留守係數 %v，原版是 %v", c.d, got, c.want)
+		}
+	}
+	if PlusSortieKeepFactor != 0.95 {
+		t.Errorf("策略值 1／2 的留守係數 %v，原版是 0.95", PlusSortieKeepFactor)
+	}
+}
+
+// TestPlusSortieFollowsThePlan 釘住加強版出兵的類別由策略值決定，
+// 不擲 `RND(4)`：策略值 2 走無主鄰郡（移防）、1 走自己的鄰郡。
+func TestPlusSortieFollowsThePlan(t *testing.T) {
+	g := newGame(t, 1)
+	g.Edition = state.EditionPlus
+	b, err := New(ModePlus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := b.(*faithful)
+	fa := g.Faction(1)
+	if fa == nil {
+		t.Fatal("找不到勢力 1")
+	}
+	fa.AILevel = 5
+	// 找一個有無主鄰郡、兵力與錢糧都夠的郡；盤面自己擺。
+	var at int
+	for _, p := range g.Territory(1) {
+		free, _, _ := neighbourLists(g, g.Prefecture(p), 1)
+		if len(free) > 0 && len(g.Garrison(p)) >= 3 {
+			at = p
+			break
+		}
+	}
+	if at == 0 {
+		t.Skip("勢力 1 沒有一個郡同時有無主鄰郡與三位守將")
+	}
+	p := g.Prefecture(at)
+	p.Gold, p.Rice = 9999, 99999
+	for _, x := range g.Garrison(at) {
+		x.Soldiers = 3000
+	}
+	free, _, _ := neighbourLists(g, p, 1)
+	f.plan = 2
+	o, ok := f.sortiePlus(g, at, 1)
+	if !ok {
+		t.Fatal("策略值 2、有無主鄰郡，該出兵（移防）")
+	}
+	r, isMove := o.(game.RelocateOrder)
+	if !isMove {
+		t.Fatalf("策略值 2 該是移防，得到 %T", o)
+	}
+	hit := false
+	for _, n := range free {
+		if n == r.To {
+			hit = true
+		}
+	}
+	if !hit {
+		t.Errorf("移防目標 %d 不在無主鄰郡 %v 裡", r.To, free)
+	}
+}

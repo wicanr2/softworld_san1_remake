@@ -167,6 +167,11 @@ type faithful struct {
 
 	mode Mode
 	name string
+	// plan 是**加強版**每個郡回合開頭抽的一個數（`0xe7dd`，`L0`、`[plus]`）：
+	// `RND(((難度 − 1) mod 10) × 2 + 3)`，存在工作段 `es:[0x418a]`。
+	// 1 與 2 是兩種特別的出兵目標選法（`0xb3f4`／`0xb402`），其餘走預設；
+	// 行動者那一支評估鄰郡時也看它（`0xe9e2`）。原版沒有這一抽。
+	plan int
 }
 
 func (f *faithful) Mode() Mode    { return f.mode }
@@ -316,6 +321,11 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		// **行動者不是太守**：表 `0x54d4` 按「智 ＋ 武 ＋ 加權表[身分]」
 		// 排序，取第一位——君主優先，其次軍師、太守、一般武將。
 		// 行動者那一張排完的順序**留給後面的表**（見 `faithful.order`）。
+		if f.mode == ModePlus {
+			// 加強版的行動者那一支開頭先抽本回合的策略值（見 `plan`）。
+			// 這一抽排在整張表之前，漏掉的話後面十七張的骰序全部錯位。
+			f.plan = g.Roll(PlusPlanRange(g.Difficulty), int(id), p, tableActor)
+		}
 		f.order = roster(g, p)
 		act := actor(g, id, p)
 		if act == nil {
@@ -430,17 +440,20 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 					"智 %d 武 %d 魅 %d 鍵 %d", p, i, x.Index, x.Faction,
 					x.Status, x.Intel, x.War, x.Charm, actorKey(x))]++
 			}
-			t := game.AffairsTierFor(aiLevel)
+			t := game.AffairsTierAt(aiLevel, g.Edition)
 			f.trace[fmt.Sprintf("內政｜郡 %d 等級 %d K %d 智最高 %d 智 %d 底 %d 量 %d",
 				p, aiLevel, k, brain.Index, brain.Intel, t.LandFloor,
 				(int(brain.Intel)-t.LandFloor)/12)]++
 		}
-		if g.Roll(k, int(id), p, 0x5534) == 0 {
+		// 加強版的骰子與命中值不同（`game.AffairsTierAt`）：K 與比的數
+		// 都從表取，原版是 `RND(K) == 0`／`== 1`。
+		tier := game.AffairsTierAt(aiLevel, g.Edition)
+		if g.Roll(tier.Chance, int(id), p, 0x5534) == tier.ReclaimHit {
 			// 開墾不會因為錢不夠而失敗（「若財庫已空則徒手開墾」）。
 			// **電腦那一條不收錢**（`0xba02`／`0xbd39` 都沒碰
 			// 州郡 offset 18），所以也沒有「付不付得起」這一關。
 			emit(game.ReclaimOrder{At: p, General: brain.Index, Auto: true})
-		} else if g.Roll(k, int(id), p, 0x5534, 1) == 1 {
+		} else if g.Roll(tier.Chance, int(id), p, 0x5534, 1) == tier.FloodHit {
 			emit(game.FloodControlOrder{At: p, General: brain.Index, Auto: true})
 		}
 		mark("內政")
@@ -538,7 +551,10 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			f.trace[fmt.Sprintf("金帛名單｜郡 %d 預算 %d %v",
 				p, rewardBudget, who)]++
 		}
-		for _, x := range roster(g, p) {
+		// **走行動者那一張建的清單**（`es:0x58c`），不是當下的守軍：
+		// 這一輪登用進來的人不在清單上（清單建一次，表只重排不重建），
+		// 加強版的月度對拍量到郡 29 登用一位之後原版只走 4 位。
+		for _, x := range f.turnList(g, p) {
 			if rewardBudget <= 0 {
 				break
 			}
@@ -554,6 +570,28 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			gold := rewardBudget
 			if gold > game.MaxReward {
 				gold = game.MaxReward
+			}
+			if f.mode == ModePlus {
+				// **加強版每一位先過一道難度門**（`0xd044`–`0xd068`，`L0`、
+				// `[plus]`）：`RND(1010) > ((難度−1) mod 10 + 1) × 100` 就
+				// 跳過這一位（難度 5 約一半的人領得到，難度 10 幾乎全領）；
+				// 賞金再乘一張逐難度的百分比表（`DS:0x5502`，`0xd083`）。
+				gate := g.Roll(PlusRewardGateRange, int(id), p, x.Index, tableReward)
+				if f.trace != nil && p == watch {
+					f.trace[fmt.Sprintf("金帛門｜郡 %d 第 %d 位 門 %d 預算 %d", p, x.Index, gate, rewardBudget)]++
+				}
+				if gate > PlusRewardGate(g.Difficulty) {
+					continue
+				}
+				gold = gold * PlusRewardPercent(g.Difficulty) / 100
+				if gold <= 0 {
+					// 算成 0 也照樣擲那一次 `RND(加成 ÷ 2)`（`0xd0a3` 排在
+					// 預算算完之後），忠誠與花費都是 0，換下一位。
+					if b := game.RewardBonus(aiLevel) / 2; b > 0 {
+						g.Roll(b, int(id), p, x.Index, 0x5654)
+					}
+					continue
+				}
 			}
 			// **賞金要夾在郡的現金之內**：`game.Reward` 錢不夠會回
 			// `ErrNoGold`，而那會中斷同一輪後面全部的命令。
@@ -574,6 +612,9 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			}
 			rewardBudget -= spent
 			purse -= spent
+			if f.trace != nil && p == watch {
+				f.trace[fmt.Sprintf("金帛付｜郡 %d 第 %d 位 金 %d 花 %d 餘 %d", p, x.Index, gold, spent, rewardBudget)]++
+			}
 		}
 		mark("賞賜金帛")
 		// 挖角（表 `0x56d4`）：**君主要在本郡**，機率隨等級 30／60／80 %，
@@ -737,6 +778,34 @@ var sortieOdds = map[state.Edition][]int{
 	},
 }
 
+// 加強版賞賜金帛的難度門與預算表（`0xd028`，`L0`、`[plus]`）。
+const PlusRewardGateRange = 1010
+
+// PlusRewardGate 是每一位要過的門：`RND(1010)` 不超過它才賞。
+func PlusRewardGate(difficulty int) int { return ((difficulty-1)%10+1)*100 }
+
+// plusRewardPercent 是 `DS:0x5502` 那張表（21 格，第 0 格用不到；
+// 11–20 與 1–10 逐格相同）：賞金 ＝ min(預算, 100) × 這個 ÷ 100。
+var plusRewardPercent = [21]int{
+	50, 35, 40, 45, 50, 55, 60, 65, 75, 92, 100,
+	35, 40, 45, 50, 55, 60, 65, 75, 92, 100,
+}
+
+// PlusRewardPercent 取某個難度的賞金百分比；越界回 100。
+func PlusRewardPercent(difficulty int) int {
+	if difficulty < 1 || difficulty >= len(plusRewardPercent) {
+		return 100
+	}
+	return plusRewardPercent[difficulty]
+}
+
+// PlusPlanRange 是加強版每個郡回合開頭那一抽的範圍（`0xe7c8`–`0xe7dd`，
+// `L0`、`[plus]`）：`((難度 − 1) mod 10) × 2 + 3`。難度 1 與 11 都是 RND(3)，
+// 難度 10 與 20 都是 RND(21)。
+func PlusPlanRange(difficulty int) int {
+	return ((difficulty-1)%10)*2 + 3
+}
+
 // SortieOdds 是某個版本、某個難度的出兵係數，以百分比表示。
 //
 // 版本空字串當原版。**越界回 100 不是「安全的預設」而是「不加碼也不
@@ -772,6 +841,9 @@ func SortieOdds(ed state.Edition, difficulty int) int {
 // `0xb706` 的迴圈用 `jg`，位置 0 永遠留著，所以出發時至少有一個人。
 func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 	purse int) (game.Order, bool) {
+	if f.mode == ModePlus {
+		return f.sortiePlus(g, prefecture, id)
+	}
 	if g.AILevel(id) < SortieMinLevel {
 		return nil, false
 	}
@@ -928,6 +1000,176 @@ func neighbourLists(g *game.State, p *game.Prefecture, id state.FactionID) (free
 	return
 }
 
+// 加強版出兵的三個常數（`L0`、`[plus]`）。
+const (
+	// PlusSortieRandomRange 是「隨機挑鄰敵 vs 挑最弱的鄰敵」那一擲的範圍
+	// （`0xb4fc`：`RND(850)`），門與賞賜金帛同一條：`((難度−1) mod 10 + 1) × 100`。
+	PlusSortieRandomRange = 850
+	// PlusSortieKeepFactor 是策略值 1／2 時留守目標的折扣（`DS:0xa81e` ＝ 0.95）。
+	PlusSortieKeepFactor = 0.95
+	// PlusSortieMinSurvivors 是第一次編隊之後至少要留下的人數
+	// （`0xb3e8`：`cmp es:[0xc],1 / jle 作廢`；原版只擋 0）。
+	PlusSortieMinSurvivors = 2
+)
+
+// plusSortieKeepCoef 是策略值不是 1／2 時留守目標的係數（`DS:0x5956`，21 格
+// double，第 0 格用不到）：`留守目標 ＝ int(係數 × 鄰敵最大兵士(百))`。
+var plusSortieKeepCoef = [21]float64{
+	0.5, 1.0, 1.0, 0.9, 0.9, 0.8, 0.8, 0.7, 0.7, 0.6, 0.6,
+	0.9, 0.9, 0.8, 0.8, 0.8, 0.7, 0.7, 0.6, 0.6, 0.5,
+}
+
+// sortiePlus 是加強版的出兵（表 `0x5576` → `0xb5b0`／`0xb5dc`／`0xb608`，
+// 編隊 `0xb1e2`、目標 `0xb396`，`L0`、`[plus]`）。與原版差在：
+//
+//   - 留守目標不看本郡守將的最小兵力；鄰敵超過一個時乘一個係數
+//     （策略值 1／2 是 0.95，其餘查難度表），只有零或一個鄰敵時是
+//     「清單最後一位的兵力 ÷ 100 ＋ 1」（行動者那一支 `0xe9d2`–`0xea4f`）。
+//   - 目標類別不擲 `RND(4)`，看行動者開頭抽的策略值：2 → 無主鄰郡、
+//     1 → 自己的鄰郡、其餘 → 敵郡（`0xb3f4`／`0xb402`）。
+//   - 打敵郡時 `RND(850) <= 門` 就隨機挑一個鄰敵，否則挑**兵士最少**的那個
+//     （行動者那一支算好的 `es:0x1600`）；兵力門檻在這裡就比（第一次編隊
+//     的出征兵力，`es:0x3ca2`），不過就作廢（`0xb4e0`–`0xb57d`）。
+//   - 選定的策略作廢而且沒有鄰敵時，改走「自己的鄰郡」那一支（`0xb419`）。
+//   - 第一次編隊至少要留下兩位。
+func (f *faithful) sortiePlus(g *game.State, prefecture int, id state.FactionID) (game.Order, bool) {
+	if g.AILevel(id) < SortieMinLevel {
+		return nil, false
+	}
+	p := g.Prefecture(prefecture)
+	if p == nil {
+		return nil, false
+	}
+	troops := 0
+	for _, x := range g.Garrison(prefecture) {
+		troops += x.Soldiers
+	}
+	units := troops / 100
+	if units < SortieMinTroops {
+		return nil, false
+	}
+	free, mine, foe := neighbourLists(g, p, id)
+	foeTroops := func(at int) int {
+		n := 0
+		for _, x := range g.Garrison(at) {
+			n += x.Soldiers
+		}
+		return n / 100
+	}
+	// 留守目標與最弱的鄰敵（`0xe920`–`0xe9c6`）。
+	want, best, bestTroops := SortieTargetFloor, -1, 9999
+	for _, at := range foe {
+		v := foeTroops(at)
+		if v > want {
+			want = v
+		}
+		if v < bestTroops {
+			best, bestTroops = at, v
+		}
+	}
+	// 編隊洗的是**重建過**的清單：賞賜金帛時還沒有的新人（這一輪登用的）
+	// 到了出兵已經在裡面（郡 29 量到金帛走 4 位、編隊洗 5 格）——與原版
+	// 那支一樣拿當下的守軍排一次行動者的鍵。
+	cand := roster(g, prefecture)
+	if len(foe) > 1 {
+		k := PlusSortieKeepFactor
+		if f.plan != 1 && f.plan != 2 {
+			k = 1
+			if d := g.Difficulty; d >= 1 && d < len(plusSortieKeepCoef) {
+				k = plusSortieKeepCoef[d]
+			}
+		}
+		want = game.ScaleTroops(k, want)
+	} else if n := len(cand); n > 0 {
+		want = cand[n-1].Soldiers/100 + 1
+	}
+	candIdx := make([]int, 0, len(cand))
+	for _, x := range cand {
+		candIdx = append(candIdx, x.Index)
+	}
+	if f.trace != nil {
+		f.trace[fmt.Sprintf("編隊｜郡 %d 清單 %v 留守目標 %d 策略 %d",
+			prefecture, candIdx, want, f.plan)]++
+	}
+	survivors := muster(g, candIdx, prefecture, id, want, 2, false)
+	sent := 0
+	for _, i := range survivors {
+		if x := g.General(i); x != nil {
+			sent += x.Soldiers
+		}
+	}
+	if f.trace != nil {
+		f.trace[fmt.Sprintf("出兵：郡 %d 兵(百) %d 金 %d 米 %d 守軍 %d 留下 %d",
+			prefecture, units, p.Gold, p.Rice,
+			len(g.Garrison(prefecture)), len(survivors))]++
+	}
+	if units > p.Gold || p.Rice < units*SortieRicePerUnit ||
+		len(survivors) < PlusSortieMinSurvivors {
+		return nil, false
+	}
+	// 三種策略；作廢而且沒有鄰敵就改走自己的鄰郡。
+	pick := func(strategy int) (int, bool, bool) {
+		switch strategy {
+		case 2:
+			if len(free) == 0 {
+				return -1, false, false
+			}
+			return free[g.Roll(len(free), int(id), prefecture, tableSortie, 1)], false, true
+		case 1:
+			if len(mine) == 0 {
+				return -1, false, false
+			}
+			return mine[g.Roll(len(mine), int(id), prefecture, tableSortie, 1)], false, true
+		}
+		if len(foe) == 0 {
+			return -1, false, false
+		}
+		to := best
+		if g.Roll(PlusSortieRandomRange, int(id), prefecture, tableSortie, 3) <=
+			PlusRewardGate(g.Difficulty) {
+			to = foe[g.Roll(len(foe), int(id), prefecture, tableSortie, 1)]
+		}
+		if game.SortieThreshold(SortieOdds(g.Edition, g.Difficulty), sent/100) < foeTroops(to) {
+			return -1, true, false
+		}
+		return to, true, true
+	}
+	to, attack, ok := pick(f.plan)
+	if !ok && len(foe) == 0 {
+		to, attack, ok = pick(1)
+	}
+	if !ok {
+		return nil, false
+	}
+	force := muster(g, survivors, prefecture, id, want, 1000, true)
+	if len(force) == 0 {
+		return nil, false
+	}
+	if room := SortieMaxGenerals - len(g.Garrison(to)); len(force) > room {
+		if room <= 0 {
+			return nil, false
+		}
+		force = force[:room]
+	}
+	going := 0
+	for _, i := range force {
+		if x := g.General(i); x != nil {
+			going += x.Soldiers
+		}
+	}
+	if attack {
+		return game.AttackOrder{At: prefecture, To: to, Force: force}, true
+	}
+	if f.trace != nil {
+		f.trace[fmt.Sprintf("移防｜郡 %d → %d 帶走 %v", prefecture, to, force)]++
+	}
+	return game.RelocateOrder{
+		At: prefecture, To: to, Force: force,
+		Gold: min(game.SortieShare(p.Gold, units, going/100), p.Gold),
+		Rice: min(game.SortieShare(p.Rice, units, going/100), p.Rice),
+	}, true
+}
+
 // SortieTargetFloor 是兵力目標的起始值（`0xeccb` 的 `movw $5`）。
 const SortieTargetFloor = 5
 
@@ -1016,6 +1258,7 @@ func watchPrefecture() int {
 
 // 分派表的位址，當識別碼用。
 const (
+	tableActor     = 0x54d4 // 行動者（加強版在這裡多抽一次策略值）
 	tableArms      = 0x5594 // 購置武器
 	tableConscript = 0x5574 // 徵兵
 	tableRelief    = 0x55f4 // 開倉賑民
@@ -1502,7 +1745,7 @@ func (f *faithful) rewardTarget(g *game.State, id state.FactionID, prefecture in
 	//
 	// **不比對勢力**：名單是 `buildRoster` 模式 2 建的，混編的郡裡別的
 	// 勢力的人也在裡面。
-	list := roster(g, prefecture)
+	list := f.turnList(g, prefecture)
 	// **交換排序**，和行動者那一張同一支（`0xf360`／`0xf440`／`0xf520`，
 	// 鍵是「該寶物要提升的能力 ＋ 加權表[身分]」）。**不能用穩定排序**
 	// ——內層一比到更大的就當場對調，同鍵的其餘元素會被打亂，而收禮的
@@ -1700,6 +1943,23 @@ func (f *faithful) mostCharming(g *game.State, id state.FactionID, prefecture in
 		}
 	}
 	return best
+}
+
+// turnList 是這個郡回合**共用的守將清單**（原版 `es:0x58c`，`0xec86` 在
+// 行動者那一張建一次，之後的表只重排或截短，不重建）。這一輪才登用
+// 進來的人不在上面；離開的人（陣亡、被俘、調走）濾掉。`order` 還沒建
+// （沒走過行動者）就退回當下的守軍。回傳的是副本，呼叫端可以自己排。
+func (f *faithful) turnList(g *game.State, prefecture int) []*game.General {
+	if len(f.order) == 0 {
+		return roster(g, prefecture)
+	}
+	out := make([]*game.General, 0, len(f.order))
+	for _, x := range f.order {
+		if x.Location == prefecture && x.Employed() {
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 // internalAffairsRange 是內政那張分派表的亂數範圍（`L0`、`[base]`）。

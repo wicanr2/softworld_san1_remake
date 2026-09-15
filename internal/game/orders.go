@@ -117,7 +117,7 @@ func (g *State) reclaim(prefectureID, generalIndex int, by state.FactionID,
 		// **`RND(2)` 只有在算出來非正時才擲**（`0xba02`：
 		// `cmpw $0x0,0x6(%bp)`，`jg` 就直接用算出來的量）。
 		// 無條件擲會讓智力高的太守也多消耗一次亂數。
-		t := AffairsTierFor(f.AILevel)
+		t := AffairsTierAt(f.AILevel, g.Edition)
 		if add = AIReclaimGain(intel, t.LandFloor, 0); add <= 0 {
 			add = g.Roll(2, prefectureID, 0xba02)
 		}
@@ -157,7 +157,7 @@ func (g *State) floodControl(prefectureID, generalIndex int, by state.FactionID,
 		x.Location == prefectureID {
 		drop = FloodDrop(int(x.Intel))
 		if f := g.Faction(by); f != nil && f.ByComputer {
-			drop = AIFloodDrop(int(x.Intel), AffairsTierFor(f.AILevel).FloodDiv)
+			drop = AIFloodDrop(int(x.Intel), AffairsTierAt(f.AILevel, g.Edition).FloodDiv)
 		}
 	}
 	p.Gold -= fee

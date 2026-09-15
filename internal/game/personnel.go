@@ -341,8 +341,14 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 	// 少了這個分岔，玩家那邊會多消耗一次亂數，之後每一格都跟著岔開。
 	if g.byComputer(by) {
 		bonus := RewardBonus(g.aiLevelOf(by))
-		effect := RewardEffect(charm, bonus,
-			g.Roll(max(bonus/2, 1), prefectureID, targetIndex, 0x5654))
+		// `RND(加成 ÷ 2)`：等級 0–2 的加成是 0，`RND(0)` 在原版**不抽**
+		// （`0x10b0c`：n <= 0 直接回 0），這裡也不能抽——加強版的月度
+		// 對拍在等級 2 的郡量到每人多一次。
+		roll := 0
+		if bonus/2 > 0 {
+			roll = g.Roll(bonus/2, prefectureID, targetIndex, 0x5654)
+		}
+		effect := RewardEffect(charm, bonus, roll)
 		if t.HasLoyalty() {
 			was := int(t.Loyalty)
 			t.Loyalty = uint8(clampTo(was+RewardGain(effect, gold), 100))

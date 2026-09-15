@@ -237,27 +237,49 @@ const FloodIntelDiv = 10
 // 但等級 1 與 2 的開墾底比等級 0 還高、防洪除數也更大，做起來反而比
 // 等級 0 差。等級 4 的開墾最狠（底 40），等級 5 勤但量普通。
 type AffairsTier struct {
-	Chance    int // RND(K)：擲 0 開墾、1 防洪，其餘不做
-	LandFloor int // 開墾：(謀略 − 這個) ÷ 12
-	FloodDiv  int // 防洪：謀略 ÷ 這個
+	Chance     int // RND(K)：擲到 ReclaimHit 開墾、再擲到 FloodHit 防洪，其餘不做
+	LandFloor  int // 開墾：(謀略 − 這個) ÷ 12
+	FloodDiv   int // 防洪：謀略 ÷ 這個
+	ReclaimHit int // 第一擲等於這個就開墾
+	FloodHit   int // 第二擲等於這個就防洪
 }
 
 var affairsTiers = [6]AffairsTier{
-	{4, 50, 10},
-	{4, 60, 15},
-	{4, 60, 15},
-	{3, 50, 14},
-	{3, 40, 12},
-	{2, 50, 10},
+	{4, 50, 10, 0, 1},
+	{4, 60, 15, 0, 1},
+	{4, 60, 15, 0, 1},
+	{3, 50, 14, 0, 1},
+	{3, 40, 12, 0, 1},
+	{2, 50, 10, 0, 1},
 }
 
-// AffairsTierFor 取某個 AI 等級的那一組；越界夾住。
-func AffairsTierFor(level int) AffairsTier {
+// 加強版的六支（`0xb9b2`／`0xba1e`／`0xba8a`／`0xbaf6`／`0xbb62`／`0xbbce`，
+// `L0`、`[plus]`）：底與除數六格都與原版相同，**只有骰子不同**——
+// 等級 0–4 一律 `RND(4)`、等級 5 `RND(3)`，而且比的是 K−1（開墾）與
+// K−2（防洪），不是 0 與 1。等級 3–5 因此比原版更常閒著
+// （等級 5：開墾 ⅓、防洪 2⁄9，原版 ½、¼）。
+var affairsTiersPlus = [6]AffairsTier{
+	{4, 50, 10, 3, 2},
+	{4, 60, 15, 3, 2},
+	{4, 60, 15, 3, 2},
+	{4, 50, 14, 3, 2},
+	{4, 40, 12, 3, 2},
+	{3, 50, 10, 2, 1},
+}
+
+// AffairsTierFor 取原版某個 AI 等級的那一組；越界夾住。
+func AffairsTierFor(level int) AffairsTier { return AffairsTierAt(level, state.EditionBase) }
+
+// AffairsTierAt 取某一版、某個 AI 等級的那一組；越界夾住。
+func AffairsTierAt(level int, ed state.Edition) AffairsTier {
 	if level < 0 {
 		level = 0
 	}
 	if level >= len(affairsTiers) {
 		level = len(affairsTiers) - 1
+	}
+	if ed == state.EditionPlus {
+		return affairsTiersPlus[level]
 	}
 	return affairsTiers[level]
 }
@@ -825,6 +847,19 @@ func SortieShare(amount, units, force int) int {
 	q.Quo(q, x87(int64(units)))
 	q.Mul(q, x87(int64(force)))
 	n, _ := q.Int64()
+	return int(int16(n))
+}
+
+// ScaleTroops 是「double 係數 × 整數兵力(百)，再截成整數」——加強版
+// 留守目標那一段（`0xe9f7`–`0xea1f`）的形狀。走與 SortieThreshold 同一條
+// x87 路徑。
+func ScaleTroops(k float64, force int) int {
+	if force <= 0 {
+		return 0
+	}
+	r := new(big.Float).SetPrec(64).SetMode(big.ToNearestEven).SetFloat64(k)
+	r.Mul(r, x87(int64(force)))
+	n, _ := r.Int64()
 	return int(int16(n))
 }
 

@@ -409,9 +409,10 @@ func TestReclaimAndFloodMatchTheOriginal(t *testing.T) {
 			t.Errorf("玩家 智 %d：防洪 −%d，應該是 −%d", c.intel, got, c.want)
 		}
 	}
-	// 六個等級的三個常數，逐位元組讀出來的。
+	// 六個等級的三個常數，逐位元組讀出來的；原版擲到 0 開墾、1 防洪。
 	for level, want := range []AffairsTier{
-		{4, 50, 10}, {4, 60, 15}, {4, 60, 15}, {3, 50, 14}, {3, 40, 12}, {2, 50, 10},
+		{4, 50, 10, 0, 1}, {4, 60, 15, 0, 1}, {4, 60, 15, 0, 1},
+		{3, 50, 14, 0, 1}, {3, 40, 12, 0, 1}, {2, 50, 10, 0, 1},
 	} {
 		if got := AffairsTierFor(level); got != want {
 			t.Errorf("等級 %d 的內政常數 %+v，應該是 %+v", level, got, want)
@@ -419,6 +420,16 @@ func TestReclaimAndFloodMatchTheOriginal(t *testing.T) {
 	}
 	if AffairsTierFor(-1) != AffairsTierFor(0) || AffairsTierFor(99) != AffairsTierFor(5) {
 		t.Error("等級越界沒有夾住")
+	}
+	// 加強版：底與除數相同，骰子是 RND(4)（等級 5 是 RND(3)），
+	// 擲到 K−1 開墾、K−2 防洪（Issue #26）。
+	for level, want := range []AffairsTier{
+		{4, 50, 10, 3, 2}, {4, 60, 15, 3, 2}, {4, 60, 15, 3, 2},
+		{4, 50, 14, 3, 2}, {4, 40, 12, 3, 2}, {3, 50, 10, 2, 1},
+	} {
+		if got := AffairsTierAt(level, state.EditionPlus); got != want {
+			t.Errorf("加強版等級 %d 的內政常數 %+v，應該是 %+v", level, got, want)
+		}
 	}
 }
 

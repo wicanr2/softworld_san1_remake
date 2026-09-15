@@ -553,6 +553,15 @@ func AILevelsAtStart(levels []int, difficulty int, ed state.Edition) []int {
 // **讀進度時年月來自進度本身**，起始年月當場就被蓋掉；而原版存的進度
 // 不記得自己是從哪個劇本開始的（`docs/re/08`），拿劇本表去查一定落空。
 // 落空就擋下來的話，玩家自己的原版存檔一份都讀不進來。
+// Continue 從**已經開過局**的三張表接手一局：不重寫電腦諸侯的等級、
+// 不清填充槽（那兩件事 `New` 只在開新局做；加強版的等級改寫是 `+N`，
+// 做兩次就疊上去）。對拍從原版執行期記憶體拍下來的盤面接手用這一支；
+// 讀進度用 `Restore`（它多帶三張表放不下的欄位）。
+func Continue(sc *state.Scenario, player state.FactionID, difficulty int,
+	ed state.Edition, at Date) (*State, error) {
+	return newAt(sc, player, difficulty, ed, at)
+}
+
 func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 	ed state.Edition, start Date) (*State, error) {
 	if ed == "" {
