@@ -296,3 +296,122 @@ func TestPlayerSearchQueuesTheScreens(t *testing.T) {
 		t.Errorf("電腦尋訪排了 %d 格畫面", len(ev))
 	}
 }
+
+// TestAdviseRollsOnceThenSpeaks 釘住軍師勸諫（`docs/spec/005` §9.6）：
+// 每一道命令都擲一次 `RND(5)`；沒有軍師就不開口（那一擲照抽）；謀略 99
+// 的軍師每一道都開口，說話者是他、下格、肖像在左，字色 0–7。
+func TestAdviseRollsOnceThenSpeaks(t *testing.T) {
+	g := newGame(t)
+	at := 0
+	for _, p := range g.Prefectures() {
+		if p.Owned() && p.Owner == 0 {
+			at = p.ID
+			break
+		}
+	}
+	f := g.Faction(0)
+	f.Chief = -1
+	g.SeedRand(1)
+	before := g.RandDraws()
+	if adv := g.Advise(AdviceTrain, at, 0, AdviceTarget{}); adv != nil {
+		t.Errorf("沒有軍師還開口：%+v", adv)
+	}
+	if g.RandDraws() != before+1 {
+		t.Errorf("沒有軍師那一擲該照抽：抽了 %d 次", g.RandDraws()-before)
+	}
+	// 找一位在職的當軍師，謀略拉到 99。
+	var chief *General
+	for _, x := range g.Garrison(at) {
+		if x.Faction == 0 && x.Status != state.StatusLord {
+			chief = x
+			break
+		}
+	}
+	if chief == nil {
+		t.Fatal("郡裡沒有在職的部將")
+	}
+	chief.Intel, chief.Status = 99, state.StatusChief
+	f.Chief = chief.Index
+	for _, kind := range []AdviceKind{AdviceAttack, AdviceMove, AdviceTrain, AdviceConscript, AdviceArms,
+		AdviceBalance, AdviceRest, AdviceReclaim, AdviceFlood, AdviceFort, AdviceBuy, AdviceSell,
+		AdviceRelief, AdviceSearch, AdviceReward, AdviceDismiss} {
+		adv := g.Advise(kind, at, 0, AdviceTarget{})
+		if adv == nil || len(adv.Events) != 1 || adv.Events[0].Bubble == nil {
+			t.Fatalf("勸諫 %d：軍師沒開口或不是一格：%+v", kind, adv)
+		}
+		b := adv.Events[0].Bubble
+		if b.Speaker != chief.Index || !b.Left || b.Y1 != BubbleLowerY1 || b.Text == "" || b.Color < 0 || b.Color > 7 {
+			t.Errorf("勸諫 %d 的格子不對：%+v", kind, b)
+		}
+	}
+	// 登用與挖角看目標；計略再加一則預測。
+	target := g.General(151)
+	target.Location, target.Status, target.Faction = at, state.StatusAvailable, state.NoFaction
+	if adv := g.Advise(AdviceRecruit, at, 0, AdviceTarget{Target: 151}); adv == nil || len(adv.Events) != 1 {
+		t.Errorf("登用的勸諫：%+v", adv)
+	}
+	enemy := 0
+	for _, p := range g.Prefectures() {
+		if p.Owned() && p.Owner != 0 && g.Adjacent(at, p.ID) {
+			enemy = p.ID
+			break
+		}
+	}
+	if enemy == 0 {
+		t.Skip("沒有相鄰的敵郡")
+	}
+	if adv := g.Advise(AdvicePlot, at, 0, AdviceTarget{Target: chief.Index, To: enemy, What: PlotForgery}); adv == nil || len(adv.Events) != 2 {
+		t.Errorf("計略的勸諫該是兩格（一句評語＋一則預測）：%+v", adv)
+	}
+	if adv := g.Advise(AdvicePlot, at, 0, AdviceTarget{To: enemy, What: PlotJointAttack}); adv == nil || len(adv.Events) != 2 {
+		t.Errorf("聯合出兵的勸諫該是兩格：%+v", adv)
+	}
+}
+
+// TestPlayerOrdersQueueTheirDialogue 釘住玩家命令之後排進 pending 的對白
+// （`docs/spec/005` §9.6）：賞賜一格（受賞者、下格右）、指定軍師兩格
+// （君主上格右、新軍師下格左）、電腦的同一道命令一格都沒有。
+func TestPlayerOrdersQueueTheirDialogue(t *testing.T) {
+	g := newGame(t)
+	at := 0
+	for _, p := range g.Prefectures() {
+		if p.Owned() && p.Owner == 0 {
+			at = p.ID
+			break
+		}
+	}
+	g.Prefecture(at).Gold = 500
+	var officer *General
+	for _, x := range g.Garrison(at) {
+		if x.Faction == 0 && x.Status != state.StatusLord {
+			officer = x
+			break
+		}
+	}
+	officer.Loyalty = 50
+	if err := (RewardOrder{At: at, Target: officer.Index, Gold: 10}).Apply(g, 0); err != nil {
+		t.Fatal(err)
+	}
+	ev := g.PendingEvents()
+	if len(ev) != 1 || ev[0].Bubble == nil || ev[0].Bubble.Speaker != officer.Index || ev[0].Bubble.Left || ev[0].Bubble.Y1 != BubbleLowerY1 {
+		t.Fatalf("賞賜之後該是受賞者在下格右邊一格：%+v", ev)
+	}
+	g.Prefecture(at).Commanded = false
+	if err := (AppointChiefOrder{At: at, Target: officer.Index}).Apply(g, 0); err != nil {
+		t.Fatal(err)
+	}
+	ev = g.PendingEvents()
+	if len(ev) != 2 || ev[0].Bubble.Speaker != g.Lord(0).Index || ev[0].Bubble.Left || ev[0].Bubble.Y1 != BubbleUpperY1 ||
+		ev[1].Bubble.Speaker != officer.Index || !ev[1].Bubble.Left || ev[1].Bubble.Y1 != BubbleLowerY1 {
+		t.Fatalf("指定軍師該是君主上格右、新軍師下格左：%+v", ev)
+	}
+	// 電腦那一條沒有畫面。
+	g.Prefecture(at).Commanded, officer.Rewarded = false, false
+	g.Player = 5
+	if err := (RewardOrder{At: at, Target: officer.Index, Gold: 10}).Apply(g, 0); err != nil {
+		t.Fatal(err)
+	}
+	if ev = g.PendingEvents(); len(ev) != 0 {
+		t.Errorf("電腦的賞賜排了 %d 格畫面", len(ev))
+	}
+}

@@ -1135,6 +1135,27 @@
       "layer": "verification"
     },
     {
+      "id": "main-screen-command-dialogue",
+      "title": "主畫面命令的對白：軍師勸諫、人事與計略的回話、宣戰",
+      "group": "畫面",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/12"
+      ],
+      "note": "2026-09-17（Issue #51）：訊息常式在主畫面這一層的 38 個呼叫端逐個讀出框、肖像左右、說話者與片語（`docs/spec/005` §9.6）——全在玩家的命令裡，電腦諸侯本來就不叫它。remake：`game.State.Advise` 擲 `RND(5)+80 < 軍師謀略` 那一擲、回勸諫那一格（19 道命令；買賣看物價、尋訪／登用／挖角／計略看判定、`RND(18)+80` 決定準不準），`cmd/san1` 收完問「主公是否繼續呢(Y/N)」；登用、賞賜、撤職、指定軍師／太守、自治、賜物、挖角、計略的回話由 `Order.Apply` 排進 pending，宣戰兩句在進主戰場之前。沒接：郡地理誌那一句、尋訪的掃描動畫。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/game",
+        "run": "TestAdviseRollsOnceThenSpeaks|TestPlayerOrdersQueueTheirDialogue|TestPlayerSearchQueuesTheScreens",
+        "needs": []
+      },
+      "layer": "verification"
+    },
+    {
       "id": "art-main-overlays",
       "title": "原版素材畫面看得到指令表、子選單、挑選清單、分頁與戰場選項",
       "group": "畫面",

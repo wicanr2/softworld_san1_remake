@@ -16,6 +16,7 @@ import (
 // 一部分，不會因為語系而變。
 
 func t(key string) string            { return i18n.S(key) }
+func t_(key string) string           { return i18n.S(key) } // 給區域變數叫 t 的地方用
 func tf(key string, a ...any) string { return i18n.Sf(key, a...) }
 
 // personName／placeName 把遊戲資料裡的專有名詞換成目前語系的寫法。

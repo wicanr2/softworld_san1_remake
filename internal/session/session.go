@@ -152,6 +152,9 @@ func (s *Session) collect(events []game.Event) {
 	}
 }
 
+// Queue 把一串事件（勸諫、宣戰）排進 Log 與訊息框佇列。
+func (s *Session) Queue(events []game.Event) { s.collect(events) }
+
 // Bubble 是現在該秀的那一格訊息框；沒有就是 nil。
 func (s *Session) Bubble() *game.Bubble {
 	if len(s.Bubbles) == 0 {

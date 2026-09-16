@@ -97,6 +97,14 @@ func TestZZBubbleMatchesTheOriginal(t *testing.T) {
 		{"下格肖像在左（新人）", game.Bubble{X1: 424, Y1: 180, X2: 615, Y2: 275, Left: true},
 			newcomer, [3]uint16{461, uint16(newcomer), 462},
 			i18n.Sf("bub.debut", i18n.PersonName(g.General(newcomer).Name))},
+		// #51 的兩種：登用時主事者在上格、肖像在左（`0x1c088`）；婉拒的
+		// 那一位在下格、肖像在右（`0x1c0cc`）。
+		{"上格肖像在左（登用的主事者）", game.Bubble{X1: 424, Y1: 80, X2: 615, Y2: 175, Left: true},
+			bond, [3]uint16{390, uint16(newcomer), 391},
+			i18n.Sf("bub.recruitAsk", i18n.PersonName(g.General(newcomer).Name))},
+		{"下格肖像在右（婉拒的那一位）", game.Bubble{X1: 424, Y1: 180, X2: 615, Y2: 275, Left: false},
+			newcomer, [3]uint16{392, 499, 499},
+			i18n.S("bub.recruitNo")},
 	}
 	for _, k := range cases {
 		t.Run(k.name, func(t *testing.T) {

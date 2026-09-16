@@ -117,6 +117,37 @@ func (g *State) bubbleEvent(x *General, upper, left bool, text string, salt ...i
 	return Event{Prefecture: at, Bubble: b}
 }
 
+// playerCommand 回報這一道命令是不是玩家自己下的（有畫面的那一條）：
+// 玩家的勢力、而且不是電腦代操。
+func (g *State) playerCommand(by state.FactionID) bool {
+	return by == g.Player && !g.byComputer(by)
+}
+
+// say 把一則對白排進 pending（玩家命令的畫面用；x 為 nil 就不排）。
+func (g *State) say(x *General, upper, left bool, text string, salt ...int) {
+	if x == nil || x.Name == "" {
+		return
+	}
+	g.pending = append(g.pending, g.bubbleEvent(x, upper, left, text, salt...))
+}
+
+// WarDeclaration 是玩家發動戰役前的兩句（`0x202e1`／`0x20322`）：攻方君主
+// 在上格對守方君主說「汝多行不義 吾將伐之」，守方君主在下格回「匹夫
+// 安敢欺吾」。沒有君主的一方（無主郡）那一句不說。
+func (g *State) WarDeclaration(from, to int, by state.FactionID) []Event {
+	var out []Event
+	att := g.Lord(by)
+	var def *General
+	if p := g.Prefecture(to); p != nil && p.Owned() {
+		def = g.Lord(p.Owner)
+	}
+	if att != nil && def != nil {
+		out = append(out, g.bubbleEvent(att, true, false, tf("bub.warDeclare", personName(def.Name)), from, 0x202e1))
+		out = append(out, g.bubbleEvent(def, false, true, tf("bub.warReply", personName(att.Name)), from, 0x20322))
+	}
+	return out
+}
+
 // PendingEvents 交出內層常式（繼承、戰役分贓）累積的泡泡事件，交出就清掉。
 // 呼叫端在自己的事件序列裡把它們接在該接的位置。
 func (g *State) PendingEvents() []Event {

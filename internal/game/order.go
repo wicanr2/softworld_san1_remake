@@ -127,7 +127,22 @@ type RecruitOrder struct{ At, Target int }
 
 func (o RecruitOrder) Prefecture() int { return o.At }
 func (o RecruitOrder) Apply(g *State, by state.FactionID) error {
-	return g.Recruit(o.At, o.Target, by)
+	// 玩家那一條的畫面（`0x1c088`–`0x1c129`）：主事者先在上格問
+	// 「久聞 X 之才 是否願意相助」，判完那一位在下格答應或婉拒。
+	t := g.General(o.Target)
+	player := g.playerCommand(by) && t != nil
+	if player {
+		g.say(g.Governor(o.At), true, true, tf("bub.recruitAsk", personName(t.Name)), o.At, 0x1c088)
+	}
+	err := g.Recruit(o.At, o.Target, by)
+	switch {
+	case !player:
+	case err == nil:
+		g.say(t, false, false, tf("bub.recruitYes", personName(t.Name)), o.At, 0x1c129)
+	case errors.Is(err, ErrDeclined):
+		g.say(t, false, false, t_("bub.recruitNo"), o.At, 0x1c0cc)
+	}
+	return err
 }
 func (o RecruitOrder) Describe(g *State) string {
 	return tf("log.recruit", prefName(g, o.At), byWhom(g, o.Target))
@@ -351,7 +366,7 @@ type SearchOrder struct {
 func (o SearchOrder) Prefecture() int { return o.At }
 func (o SearchOrder) Apply(g *State, by state.FactionID) error {
 	found, err := g.search(o.At, o.General, by, !o.Auto)
-	if err == nil && !o.Auto {
+	if err == nil && !o.Auto && g.playerCommand(by) {
 		// 玩家那一條之後有畫面：找到的人先亮肖像，再由尋訪者報結果。
 		g.pending = append(g.pending, g.searchEvents(g.General(o.General), found)...)
 	}
@@ -365,7 +380,11 @@ type RewardOrder struct{ At, Target, Gold int }
 
 func (o RewardOrder) Prefecture() int { return o.At }
 func (o RewardOrder) Apply(g *State, by state.FactionID) error {
-	return g.Reward(o.At, o.Target, o.Gold, by)
+	err := g.Reward(o.At, o.Target, o.Gold, by)
+	if err == nil && g.playerCommand(by) {
+		g.say(g.General(o.Target), false, false, t_("bub.rewardThanks"), o.At, 0x1c547) // `0x1c547`
+	}
+	return err
 }
 func (o RewardOrder) Describe(g *State) string {
 	return tf("log.reward", byWhom(g, o.Target), o.Gold)
@@ -375,7 +394,11 @@ type DismissOrder struct{ At, Target int }
 
 func (o DismissOrder) Prefecture() int { return o.At }
 func (o DismissOrder) Apply(g *State, by state.FactionID) error {
-	return g.Dismiss(o.At, o.Target, by)
+	err := g.Dismiss(o.At, o.Target, by)
+	if err == nil && g.playerCommand(by) {
+		g.say(g.General(o.Target), true, false, t_("bub.dismissed"), o.At, 0x1c70a) // `0x1c70a`
+	}
+	return err
 }
 func (o DismissOrder) Describe(g *State) string {
 	return tf("log.dismiss", byWhom(g, o.Target))
@@ -394,7 +417,14 @@ func (o AppointChiefOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
 		return g.appointChief(o.At, o.Target, by)
 	}
-	return g.AppointChief(o.At, o.Target, by)
+	err := g.AppointChief(o.At, o.Target, by)
+	if err == nil && g.playerCommand(by) {
+		// `0x1ca9e`／`0x1cad5`：君主在上格下令，新軍師在下格領命。
+		t := g.General(o.Target)
+		g.say(g.Lord(by), true, false, tf("bub.chiefOrder", personName(t.Name)), o.At, 0x1ca9e)
+		g.say(t, false, true, t_("bub.chiefReply"), o.At, 0x1cad5)
+	}
+	return err
 }
 func (o AppointChiefOrder) Describe(g *State) string {
 	return tf("log.chief", byWhom(g, o.Target))
@@ -413,7 +443,14 @@ func (o AppointGovernorOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
 		return g.appointGovernor(o.At, o.Target, by, false)
 	}
-	return g.AppointGovernor(o.At, o.Target, by)
+	err := g.AppointGovernor(o.At, o.Target, by)
+	if err == nil && g.playerCommand(by) {
+		// `0x1ccd7`／`0x1cd24`：君主在上格下令，新太守在下格領命。
+		t := g.General(o.Target)
+		g.say(g.Lord(by), true, false, tf("bub.governorOrder", personName(t.Name)), o.At, 0x1ccd7)
+		g.say(t, false, true, tf("bub.governorReply", personName(t.Name)), o.At, 0x1cd24)
+	}
+	return err
 }
 func (o AppointGovernorOrder) Describe(g *State) string {
 	return tf("log.governor", prefName(g, o.At), byWhom(g, o.Target))
@@ -426,7 +463,15 @@ type AutonomyOrder struct {
 
 func (o AutonomyOrder) Prefecture() int { return o.At }
 func (o AutonomyOrder) Apply(g *State, by state.FactionID) error {
-	return g.SetAutonomy(o.At, o.Mode, by)
+	err := g.SetAutonomy(o.At, o.Mode, by)
+	if err == nil && g.playerCommand(by) {
+		// `0x1cf7d`／`0x1cfc6`：君主在上格把郡交給主事者，主事者在下格領命。
+		if gov := g.Governor(o.At); gov != nil {
+			g.say(g.Lord(by), true, false, tf("bub.autonomyOrder", personName(gov.Name)), o.At, 0x1cf7d)
+			g.say(gov, false, true, tf("bub.autonomyReply", personName(gov.Name)), o.At, 0x1cfc6)
+		}
+	}
+	return err
 }
 func (o AutonomyOrder) Describe(g *State) string {
 	return tf("log.autonomy", prefName(g, o.At), AutonomyName(o.Mode))
@@ -447,7 +492,12 @@ func (o GiftOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
 		return g.giftTreasure(o.At, o.Target, o.What, by, false)
 	}
-	return g.GiftTreasure(o.At, o.Target, o.What, by)
+	err := g.GiftTreasure(o.At, o.Target, o.What, by)
+	if err == nil && g.playerCommand(by) {
+		t := g.General(o.Target)
+		g.say(t, true, false, tf("bub.giftThanks", personName(t.Name)), o.At, 0x1d4c1) // `0x1d4c1`
+	}
+	return err
 }
 func (o GiftOrder) Describe(g *State) string {
 	return tf("log.gift", TreasureName(o.What), byWhom(g, o.Target))
@@ -469,7 +519,22 @@ func (o HeadhuntOrder) Apply(g *State, by state.FactionID) error {
 	if o.Vetted {
 		return g.headhuntVetted(o.At, o.Target, by, o.Bonus)
 	}
-	return g.Headhunt(o.At, o.Target, by)
+	// 玩家那一條的畫面（`0x1dad0`–`0x1dbc9`）：君主先在上格說「尊駕之才
+	// 吾仰慕久矣」，判完那一位在下格投靠或回絕。
+	t := g.General(o.Target)
+	player := g.playerCommand(by) && t != nil
+	if player {
+		g.say(g.Lord(by), true, false, t_("bub.headhuntAsk"), o.At, 0x1dad0)
+	}
+	err := g.Headhunt(o.At, o.Target, by)
+	switch {
+	case !player:
+	case err == nil:
+		g.say(t, false, true, tf("bub.headhuntYes", personName(t.Name)), o.At, 0x1dbc9)
+	case errors.Is(err, ErrDeclined):
+		g.say(t, false, true, t_("bub.headhuntNo"), o.At, 0x1db1f)
+	}
+	return err
 }
 func (o HeadhuntOrder) Describe(g *State) string {
 	return tf("log.headhunt", byWhom(g, o.Target))
@@ -483,7 +548,15 @@ type PlotOrder struct {
 
 func (o PlotOrder) Prefecture() int { return o.At }
 func (o PlotOrder) Apply(g *State, by state.FactionID) error {
-	_, err := g.UsePlot(o.At, o.To, o.What, o.Envoy, by)
+	ok, err := g.UsePlot(o.At, o.To, o.What, o.Envoy, by)
+	if err == nil && g.playerCommand(by) && o.What != PlotJointAttack {
+		// `0x2c962`／`0x2c9ae` 等：使者回來在上格報成敗。
+		key := "bub.plotFailed"
+		if ok {
+			key = "bub.plotWorked"
+		}
+		g.say(g.General(o.Envoy), true, false, t_(key), o.At, 0x2c962)
+	}
 	return err
 }
 func (o PlotOrder) Describe(g *State) string {

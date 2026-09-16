@@ -48,6 +48,11 @@ type app struct {
 	num   *numEntry
 	dirty bool
 
+	// afterBubbles 是訊息框全部收掉之後要接著做的事（軍師勸諫之後問
+	// Y/N、宣戰對白之後開打）；confirm 是等著的 Y/N。
+	afterBubbles func()
+	confirm      *confirmEntry
+
 	// fight 非 nil 表示正在打一場玩家親自指揮的戰役。
 	fight *fight
 
@@ -151,6 +156,26 @@ func (a *app) Update() error {
 		}
 		if anyKeyPressed() {
 			a.s.PopBubble()
+			a.dirty = true
+		}
+		return nil
+	}
+	if next := a.afterBubbles; next != nil {
+		a.afterBubbles = nil
+		next()
+		a.dirty = true
+		return nil
+	}
+	// Y/N（軍師勸諫之後的「主公是否繼續呢」）：Y 做下去，N 或 Esc 取消。
+	if a.confirm != nil {
+		switch {
+		case inpututil.IsKeyJustPressed(ebiten.KeyY):
+			then := a.confirm.then
+			a.confirm, a.view.Prompt = nil, ""
+			then()
+			a.dirty = true
+		case inpututil.IsKeyJustPressed(ebiten.KeyN), inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+			a.confirm, a.view.Prompt = nil, ""
 			a.dirty = true
 		}
 		return nil
@@ -521,8 +546,14 @@ func (a *app) begin(cat, item byte) {
 					a.askNumber(t("ask.rice"),
 						tf("hint.campaign", p.Rice, men, need), p.Rice,
 						func(rice int) {
-							a.startBattle(sel, to, force,
-								game.Supply{Gold: gold, Rice: rice})
+							// 軍師勸諫（`0x18b08`）之後是兩句宣戰（`0x202e1`／`0x20322`），
+							// 對白收完才進主戰場。
+							a.withAdvice(game.AdviceAttack, sel, game.AdviceTarget{To: to}, func() {
+								a.s.Queue(g.WarDeclaration(sel, to, s.Player))
+								a.afterBubbles = func() {
+									a.startBattle(sel, to, force, game.Supply{Gold: gold, Rice: rice})
+								}
+							})
 						})
 				})
 		})
@@ -663,11 +694,93 @@ func (a *app) giftThen(what int) {
 	})
 }
 
-// run 送出一個命令並清掉選單狀態。
+// confirmEntry 是等著的 Y/N；then 是按 Y 要做的事。
+type confirmEntry struct{ then func() }
+
+// askYN 問一句 Y/N。
+func (a *app) askYN(prompt string, then func()) {
+	a.confirm = &confirmEntry{then: then}
+	a.view.Prompt = prompt
+}
+
+// run 送出一個命令並清掉選單狀態。**軍師先勸諫**（`docs/spec/005` §9.6）：
+// 他開口就先秀那一格訊息框，再問「主公是否繼續呢(Y/N)」，N 取消。
 func (a *app) run(o game.Order) {
 	a.pick = nil
 	a.menu, a.view.Menu, a.view.Items = 0, "", nil
 	a.view.Page = nil
+	a.withAdvice(adviceFor(o), o.Prefecture(), adviceTargetOf(o), func() { a.apply(o) })
+}
+
+// withAdvice 在做 then 之前讓軍師勸諫；沒開口就直接做。
+func (a *app) withAdvice(kind game.AdviceKind, at int, target game.AdviceTarget, then func()) {
+	adv := a.s.G.Advise(kind, at, a.s.Player, target)
+	if adv == nil {
+		then()
+		return
+	}
+	a.s.Queue(adv.Events)
+	a.afterBubbles = func() { a.askYN(t("ask.continue"), then) }
+}
+
+// adviceFor 是一道命令對應哪一種勸諫。
+func adviceFor(o game.Order) game.AdviceKind {
+	switch o.(type) {
+	case game.MoveOrder:
+		return game.AdviceMove
+	case game.TrainOrder:
+		return game.AdviceTrain
+	case game.ConscriptOrder:
+		return game.AdviceConscript
+	case game.ArmsOrder:
+		return game.AdviceArms
+	case game.RedistributeOrder:
+		return game.AdviceBalance
+	case game.RestOrder:
+		return game.AdviceRest
+	case game.ReclaimOrder:
+		return game.AdviceReclaim
+	case game.FloodControlOrder:
+		return game.AdviceFlood
+	case game.BuildFortOrder:
+		return game.AdviceFort
+	case game.BuyRiceOrder:
+		return game.AdviceBuy
+	case game.SellRiceOrder:
+		return game.AdviceSell
+	case game.ReliefOrder:
+		return game.AdviceRelief
+	case game.SearchOrder:
+		return game.AdviceSearch
+	case game.RecruitOrder:
+		return game.AdviceRecruit
+	case game.RewardOrder:
+		return game.AdviceReward
+	case game.DismissOrder:
+		return game.AdviceDismiss
+	case game.HeadhuntOrder:
+		return game.AdviceHeadhunt
+	case game.PlotOrder:
+		return game.AdvicePlot
+	}
+	return game.AdviceNone
+}
+
+// adviceTargetOf 是勸諫要看的對象（登用／挖角的目標、計略的目的郡與種類）。
+func adviceTargetOf(o game.Order) game.AdviceTarget {
+	switch v := o.(type) {
+	case game.RecruitOrder:
+		return game.AdviceTarget{Target: v.Target}
+	case game.HeadhuntOrder:
+		return game.AdviceTarget{Target: v.Target}
+	case game.PlotOrder:
+		return game.AdviceTarget{Target: v.Envoy, To: v.To, What: v.What}
+	}
+	return game.AdviceTarget{}
+}
+
+// apply 真的送出一個命令。
+func (a *app) apply(o game.Order) {
 	if err := a.s.Do(o); err != nil {
 		a.view.Prompt = game.ErrorText(err)
 		return
