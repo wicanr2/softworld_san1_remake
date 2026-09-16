@@ -449,6 +449,13 @@ func TestLordSuccessionSurvives(t *testing.T) {
 	}
 	for _, f := range g.Factions() {
 		lord := h.Lord(f.ID)
+		if f.Lord < 0 {
+			// 絕嗣的勢力君主欄是哨兵（`0x14ba3`），讀回來就該是沒有人。
+			if lord != nil {
+				t.Errorf("勢力 %d 已經絕嗣，讀回來卻有君主 %v", f.ID, lord)
+			}
+			continue
+		}
 		if lord == nil || lord.Index != f.Lord {
 			t.Errorf("勢力 %d 的君主讀回來是 %v，應該是槽號 %d", f.ID, lord, f.Lord)
 		}

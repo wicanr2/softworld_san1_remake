@@ -308,28 +308,57 @@ func (b *Battle) defections(u *Unit) {
 //
 // 「如果派出全部兵力，各戰鬥組的將領人數必須平均分配」「每組最多 10 名將領」
 // （說明書 p.27）。
+//
+// **電腦的那一方照原版的整編填**（`0x23789`–`0x23886`，`L0`、`[both]`）：
+// n 位將領，每支 (n−1)÷5 位，前 n − 5×那個數 支多一位，**照清單的順序
+// 依序填進第 1–5 支**——清單的順序是呼叫端定的（主攻軍是洗過牌再留守
+// 的那一份，主守軍是郡的守將清單）。玩家那一方原版是逐位問「分到那一軍」，
+// remake 這裡照戰力排序再輪流分配，中軍先分到最強的。
 func (b *Battle) formUp(side Side, pool []Leader, base Hex) []*Unit {
-	// 依戰力排序再輪流分配：分組是決定性的，而且中軍先分到最強的
-	// （紮營順序以中軍為首，p.28）。手冊只要求「人數平均分配」，
-	// 沒說哪一隊該強，強弱的取捨是 remake 的。
 	sorted := append([]Leader(nil), pool...)
-	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].War > sorted[j].War })
+	var counts []int
+	if b.Computer[side] {
+		n := len(sorted)
+		per, rem := (n-1)/5, n-((n-1)/5)*5
+		for i := 0; i < int(formationCount); i++ {
+			c := per
+			if i < rem {
+				c++
+			}
+			if c > 0 {
+				counts = append(counts, c)
+			}
+		}
+	} else {
+		sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].War > sorted[j].War })
+	}
 
 	groups := int(formationCount)
 	if len(sorted) < groups {
 		groups = len(sorted)
+	}
+	if counts != nil {
+		groups = len(counts)
 	}
 	units := make([]*Unit, 0, groups)
 	order := DeployOrder()
 	for i := 0; i < groups; i++ {
 		units = append(units, &Unit{Side: side, Formation: order[i]})
 	}
-	for i, l := range sorted {
-		u := units[i%groups]
-		if len(u.Leaders) >= MaxLeaders {
-			continue
+	if counts != nil {
+		k := 0
+		for i, c := range counts {
+			units[i].Leaders = append(units[i].Leaders, sorted[k:k+c]...)
+			k += c
 		}
-		u.Leaders = append(u.Leaders, l)
+	} else {
+		for i, l := range sorted {
+			u := units[i%groups]
+			if len(u.Leaders) >= MaxLeaders {
+				continue
+			}
+			u.Leaders = append(u.Leaders, l)
+		}
 	}
 	for _, u := range units {
 		u.Arrows = ArrowCount(u.Leaders)

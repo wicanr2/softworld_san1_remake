@@ -81,6 +81,8 @@ type Pending struct {
 	// aidAtt／aidDef 是助攻軍與助守軍。**它們不是主攻軍的一部分**：
 	// 打贏了進駐的只有主攻軍，援軍的生還者留在自己的郡裡。
 	aidAtt, aidDef []*General
+	// aid 是兩支援軍各從哪一郡來（0 ＝ 沒有）。
+	aid Aid
 
 	// factions 是四種軍力各屬哪個勢力（`sideFactions`），收尾時把電腦
 	// 捕獲方當場的處置搬回人物表要用。
@@ -124,7 +126,14 @@ func (g *State) fight(from, to int, att, def []*General, by state.FactionID) *Ba
 	p := g.prepare(from, to, att, def, by, HalfSupply(), Aid{})
 	if g.noPlayerIn(from, to) {
 		p.autoAI = true
-		p.B.AutoResolveAI()
+		// 每天那一擲 `RND(11)`（`0x1f5d8`）走的是原版同一顆 `rand()`，
+		// 與郡回合、收降、打殘同一條序列——不接上的話，這一場之後
+		// 整個月的骰都會岔開（`TestZZMonthParityPlus`）。
+		day := 0
+		p.B.AutoResolveAIWithRoll(func(n int) int {
+			day++
+			return g.Roll(n, from, to, day, 0x1f5d8)
+		})
 		g.ravageBattlefield(to)
 	} else {
 		p.B.Auto()
@@ -174,70 +183,246 @@ const (
 	RavagePriceCap = 70  // 物價
 )
 
-// placeAfterAIBattle 是電腦對電腦戰役的安置（`0x1fb26`，`L0`）。
+// placeAfterAIBattle 是電腦對電腦戰役的安置（`0x1f9fe`–`0x1fb25` ＋
+// `0x1fb26`，`L0`，`docs/re/05` §7.1）。
 //
-// **所有生還者的所在郡都設成戰場郡**（`0x1fd4f`），接著對敗方的每一位跑
-// 一次收降（`0x1ff7c`）：收得下來就改勢力、身分降成一般武將、忠誠等於
-// 勝方的人望；**收不下來的維持原本的勢力留在那裡**。
+// 原版先把四個軍團每一位的所在郡清成 0，**勝方兩個軍團的生還者一律回到
+// 戰場郡**（`0x1fab8`）。敗方的兩個軍團走另一條：
 //
-// 最後那一句是重點：一場敗仗會在勝方的郡裡留下一批敵方武將，原版的混編
-// 郡就是這樣產生的——也因此原版挑名單時一律不比對勢力（`docs/re/07` §6）。
-// 郡的歸屬由人物表重算，所以留下來的人會參與下一次的歸屬判定。
+//	退路候選表 ＝ 戰場郡的鄰郡裡，所屬 == 敗方主軍的勢力 或 無主 的那些
+//	逐軍團、逐部隊、逐槽（0..9）：
+//	    挑 ＝ RND(候選數)                       ; 0x1fc32；候選數 0 時 RND 不抽
+//	    候選數 <= 0                    → 進名單
+//	    r ＝ RND(200)                            ; 0x1fc5d
+//	    謀略 ＋ 戰力 ÷ 2 >= r          → 進名單   ; 0x1fc8a
+//	    候選[挑] 的現役將 >= 50        → 進名單   ; 0x1fc9d
+//	    否則所在郡 ← 候選[挑]，那一郡的現役將 ＋1  ; 逃掉了，不進名單
+//
+// 名單裡的每一位再落在戰場郡（`0x1fd4f`）跑一次收降（`0x1ff7c`）：收得
+// 下來就改勢力、身分降成一般武將、忠誠等於勝方的人望；收不下來的
+// **離開敗方**——變成戰場郡的在野（身分 10，`0x200f4`）或下野（身分 12，
+// `0x20050`），沒有一條路讓人保留舊勢力（`CONTEXT.md` R63）。
+// 郡的歸屬由人物表重算；**這裡不改郡的所屬**，原版也沒改（`0x1e394` 在
+// 下一個郡回合入口重算）。
+//
+// **兵力歸零的人一樣要安置**：敗方的存活比例是 0 時整個軍團的兵都是
+// 0，他們照樣逃或留下，原版沒有「沒兵就消失」這條。
 //
 // 與玩家那條不同：玩家打輸時攻軍退回原郡（`settle` 的另一半）。
-func (g *State) placeAfterAIBattle(p *Pending, winner, loser state.FactionID) {
+func (g *State) placeAfterAIBattle(p *Pending, attackerWon bool) {
 	dst := g.Prefecture(p.to)
 	if dst == nil {
 		return
 	}
-	var all []*General
-	for _, group := range [][]*General{p.att, p.def, p.aidAtt, p.aidDef} {
-		for _, x := range group {
-			if x != nil && x.Employed() && x.Soldiers > 0 {
-				all = append(all, x)
+	b := p.B
+	winSides := [2]battle.Side{battle.MainAttacker, battle.AidAttacker}
+	loseSides := [2]battle.Side{battle.MainDefender, battle.AidDefender}
+	if !attackerWon {
+		winSides, loseSides = loseSides, winSides
+	}
+	winner, loser := p.factions[winSides[0]], p.factions[loseSides[0]]
+	// 部隊記錄的順序就是原版跑迴圈的順序：軍團 → 部隊 → 槽。
+	generalsOf := func(sides [2]battle.Side) []*General {
+		var out []*General
+		for _, side := range sides {
+			for _, u := range b.Units {
+				if u.Side != side {
+					continue
+				}
+				for i := range u.Leaders {
+					if x := g.General(u.Leaders[i].Index); x != nil {
+						out = append(out, x)
+					}
+				}
 			}
 		}
+		return out
 	}
-	for _, x := range all {
+	// 勝方回戰場郡（`0x1fab8`），然後戰場郡重整一次（`0x1fb07` 的
+	// `0x1949e` 與 `0x1fb18` 的 `0x1d638`）——這一刻敗方的所在郡還是 0
+	//（主守軍整編時已經清掉，戰場郡在開打期間是無主、沒有主事者的），
+	// 所以主事者在這裡換成勝方裡行動者鍵最大的那一位（`refreshGovernor`）。
+	for _, x := range generalsOf(winSides) {
 		x.Location = p.to
 	}
+	g.RefreshGarrison(p.to)
+	g.refreshGovernor(p.to)
+
+	// 退路候選表（`0x1fb42`–`0x1fbbf`）。
+	retreatable := func(n int) bool {
+		q := g.Prefecture(n)
+		return q != nil && (!q.Owned() || q.Owner == loser)
+	}
+	var cands []int
+	for _, n := range dst.Neighbours {
+		if retreatable(n) {
+			cands = append(cands, n)
+		}
+	}
+	var roster []*General
+	for _, x := range generalsOf(loseSides) {
+		pick := g.Roll(len(cands), x.Index, p.to, 0x1fc32)
+		if len(cands) <= 0 {
+			roster = append(roster, x)
+			continue
+		}
+		r := g.Roll(WarFleeSpread, x.Index, p.to, 0x1fc5d)
+		if int(x.Intel)+int(x.War)/2 >= r {
+			roster = append(roster, x)
+			continue
+		}
+		q := g.Prefecture(cands[pick])
+		if g.StoredActiveGenerals(q.ID) >= WarRecruitOfficerCap {
+			roster = append(roster, x)
+			continue
+		}
+		x.Location = q.ID
+		q.activeGenerals++
+	}
+
 	prestige := 0
 	if f := g.Faction(winner); f != nil {
 		prestige = f.Prestige
 	}
-	for _, x := range all {
-		if x.Faction != loser || x.Status == state.StatusLord {
-			continue // 君主不被收編（`0x1ff93`）
+	// 名單逐人（`0x1fd00`–`0x1fe12`）。三條出路由旗標決定：
+	//
+	//	0  收不下來、不是君主、戰場郡的在野將沒滿 → 0x200f4：失去勢力
+	//	   （身分 10、勢力 0xFF、所在郡 ← 戰場郡，郡的在野將 ＋1）
+	//	1  君主，或戰場郡的在野將已滿 50 → 0x20050：身分 12、勢力與所在
+	//	   都 0xFF——君主的話同時記下事件（0x14968 的繼承與 0x26c08 的寶物）
+	//	2  收得下來 → 0x1feba 再判一次 0x1ff7c，過了才改四個欄位；
+	//	   沒過（有牽絆的人第二擲）落到 0x20050(1, 他)，與旗標 1 同一支
+	//
+	// 「收不下來的人留在勝方的郡裡」是對的，但**他已經不是敗方的人**：
+	// 身分 10 是可登用的在野（`state.StatusStranded`），勝方下一回合的
+	// 登用表就會看到他。
+	var fallenLords []*General
+	for _, x := range roster {
+		x.Location = p.to // 0x1fd4f
+		flag := 0
+		if x.Status == state.StatusLord {
+			flag = 1
 		}
-		if len(g.Garrison(p.to)) >= WarRecruitOfficerCap {
-			continue // 郡裡的在職將滿了（`0x1ffb4`）
+		if g.FreeGenerals(p.to) >= WarRecruitOfficerCap && flag == 0 {
+			flag = 1 // 0x1fd73：在野將（offset 23）
 		}
-		bonded := x.Bond != x.Index && x.Bond >= 0
-		if bonded {
-			b := g.General(x.Bond)
-			bonded = b != nil && b.Faction == x.Faction
+		// 0x1ff7c：君主與郡裡在職將滿 50 都回 0，不擲。
+		bonded := false
+		if x.Status != state.StatusLord && g.StoredActiveGenerals(p.to) < WarRecruitOfficerCap {
+			bonded = x.Bond != x.Index && x.Bond >= 0
+			if bonded {
+				mate := g.General(x.Bond)
+				bonded = mate != nil && mate.Faction == x.Faction
+			}
+			roll := 0
+			if bonded {
+				roll = g.Roll(WarRecruitBondSpread, x.Index, p.to, 0x1ff7c)
+			}
+			if prestige > 0 && WarRecruited(prestige,
+				WarRecruitResistance(int(x.Intel), int(x.War), bonded, roll)) {
+				flag = 2
+			}
 		}
-		roll := 0
-		if bonded {
-			roll = g.Roll(WarRecruitBondSpread, x.Index, p.to, 0x1ff7c)
+		switch flag {
+		case 0:
+			if x.Status == state.StatusChief {
+				if f := g.Faction(x.Faction); f != nil {
+					f.Chief = -1
+				}
+			}
+			// 忠誠不動（`0x200f4` 只寫身分、勢力、所在郡）。
+			x.Status = state.StatusStranded
+			x.Faction = state.NoFaction
+			x.Location = p.to
+			continue
+		case 2:
+			// 收編那一支（`0x1feba`）進去**再判一次** `0x1ff7c`——有牽絆的人
+			// 因此再擲一次 `RND(30)`。
+			ok := true
+			if bonded {
+				roll := g.Roll(WarRecruitBondSpread, x.Index, p.to, 0x1feba)
+				ok = WarRecruited(prestige,
+					WarRecruitResistance(int(x.Intel), int(x.War), bonded, roll))
+			}
+			if ok {
+				// 收編改的四個欄位（`0x1feba`）。原本是軍師的話，舊主的軍師
+				// 位子跟著空出來。
+				if x.Status == state.StatusChief {
+					if f := g.Faction(x.Faction); f != nil {
+						f.Chief = -1
+					}
+				}
+				x.Loyalty = uint8(WarRecruitLoyalty(prestige))
+				x.Faction = winner
+				x.Status = state.StatusOfficer
+				x.Location = p.to
+				continue
+			}
 		}
-		if !WarRecruited(prestige,
-			WarRecruitResistance(int(x.Intel), int(x.War), bonded, roll)) {
+		// 0x20050：身分 12、勢力與所在 0xFF。
+		if x.Status == state.StatusLord {
+			fallenLords = append(fallenLords, x)
 			continue
 		}
-		// 收編改的四個欄位（`0x1feba`）。原本是軍師的話，舊主的軍師位子
-		// 跟著空出來。
 		if x.Status == state.StatusChief {
 			if f := g.Faction(x.Faction); f != nil {
 				f.Chief = -1
 			}
 		}
-		x.Loyalty = uint8(WarRecruitLoyalty(prestige))
-		x.Faction = winner
-		x.Status = state.StatusOfficer
-		x.Location = p.to
+		x.Status = state.StatusFallen
+		x.Faction = state.NoFaction
+		x.Location = int(state.NoValue)
+	}
+	// 名單跑完只做重整（`0x1fe16`–`0x1fe94`）：戰場郡一次，再對候選表
+	// 那些鄰郡（敗方的或無主的）各一次。
+	g.RefreshGarrison(p.to)
+	for _, n := range dst.Neighbours {
+		if retreatable(n) {
+			g.RefreshGarrison(n)
+		}
+	}
+	// 君主落到旗標 1 的那條（`0x20050` 記事件，`0x1fead` 的 `0x26c08`
+	// 收尾）：與戰死同一支繼承常式（`0x14968`），然後勝方分走敗方的寶物。
+	for _, x := range fallenLords {
+		lost := x.Faction
+		g.retireBy(x, "battle")
+		g.spoilsFromFallenLord(winner, lost)
 	}
 }
+
+// spoilsFromFallenLord 是電腦對電腦的戰役打掉對方君主之後的分贓
+// （`0x26c08`，`L0`）：
+//
+//	敗方的四件寶物之一（RND(4)）先 ＋2
+//	每一件：拿走 半 ＋ RND(半)，半 ＝ 敗方的件數 ÷ 2
+//	勝方 ← min(100, 勝方 ＋ 拿走)，敗方 −= 拿走
+func (g *State) spoilsFromFallenLord(winner, loser state.FactionID) {
+	w, l := g.Faction(winner), g.Faction(loser)
+	if w == nil || l == nil {
+		return
+	}
+	// 四件是諸侯 offset 15–18（兵書、寶刀、美女、駿馬）；offset 14 的玉璽
+	// 不在這一支裡。
+	const first = int(TreasureBook)
+	k := g.Roll(4, int(winner), int(loser), 0x26c31)
+	l.Treasury[first+k] += 2
+	var take [4]int
+	for i := range take {
+		half := l.Treasury[first+i] / 2
+		take[i] = half + g.Roll(half, int(winner), int(loser), i, 0x26c67)
+	}
+	for i := range take {
+		if take[i] == 0 {
+			continue
+		}
+		w.Treasury[first+i] = clampTo(w.Treasury[first+i]+take[i], TreasuryCap)
+		l.Treasury[first+i] -= take[i]
+	}
+}
+
+// WarFleeSpread 是敗軍逃散那一擲的範圍（`0x1fc59`：`RND(200)`，`L0`）：
+// 謀略 ＋ 戰力 ÷ 2 不到那個數的人才逃得掉。
+const WarFleeSpread = 200
 
 // noPlayerIn 回報這幾個郡是不是一個玩家的都沒有。
 //
@@ -371,7 +556,7 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 		setup.Escapes[battle.AidDefender] = setup.Escapes[battle.MainDefender]
 	}
 	return &Pending{B: battle.New(setup), from: from, to: to, by: by,
-		att: att, def: def, aidAtt: aidAtt, aidDef: aidDef, result: r, factions: factions}
+		att: att, def: def, aidAtt: aidAtt, aidDef: aidDef, aid: aid, result: r, factions: factions}
 }
 
 // sideFactions 是四種軍力各屬哪個勢力：主攻是出兵的諸侯，主守是戰場
@@ -514,15 +699,24 @@ func (g *State) settle(p *Pending) *BattleResult {
 	sort.Slice(r.Captives, func(i, j int) bool {
 		return r.Captives[i].General < r.Captives[j].General
 	})
-	g.seizeTreasures(r, by)
+	g.seizeTreasures(r, by, p.factions[battle.MainDefender])
+
+	if p.autoAI {
+		// 電腦對電腦的安置在 `0x1E908` 裡面做完才回到 `0x20200` 加人望
+		// （`0x1ec37` → `0x204b4`），所以收降看的是**加 2 之前**的人望。
+		// 郡的所屬這裡不動——原版沒有「攻下」這個動作，歸屬由人物表在
+		// 下一個郡回合入口重算（`RecomputeOwners`）；`PrefectureTook` 只是
+		// 戰報上的字。
+		g.placeAfterAIBattle(p, r.AttackerWon)
+		r.PrefectureTook = r.AttackerWon
+	}
 
 	// **人望：勝方 +2、敗方 −2**（`0x204b4`／`0x204e0`，`L0`），夾在 0–100。
 	// 人望決定部下忠誠每年的漲跌（`Faction.Prestige`），所以打贏仗的
-	// 諸侯不只多一個郡，麾下也更死心塌地。
-	var defender state.FactionID = state.NoFaction
-	if dst != nil {
-		defender = dst.Owner
-	}
+	// 諸侯不只多一個郡，麾下也更死心塌地。**守方是開打時記下的那個勢力**
+	// （`0x20200` 入口存進 `-0xc(bp)` 的四格）——戰場郡的所屬這時已經
+	// 被收尾的重整改過了。
+	defender := p.factions[battle.MainDefender]
 	winner, loser := by, defender
 	if !r.AttackerWon {
 		winner, loser = defender, by
@@ -530,13 +724,7 @@ func (g *State) settle(p *Pending) *BattleResult {
 	g.shiftPrestige(winner, PrestigeOnWin)
 	g.shiftPrestige(loser, -PrestigeOnWin)
 
-	// 撤退或全滅的攻方回原郡；沒被擒沒死的守方留在原地。
-	if r.AttackerWon {
-		g.takePrefecture(from, to, att, by)
-		r.PrefectureTook = true
-	}
 	if p.autoAI {
-		g.placeAfterAIBattle(p, winner, loser)
 		// 電腦對電腦（`0x1f82f`／`0x1f8ae`）：**四個軍團的隨軍錢糧全部
 		// 收進守方那一郡**，不管誰贏。攻方打輸時補給等於送給守方——
 		// 與玩家那條「補給跟著自己走」不一樣，這是原版的規則。
@@ -550,6 +738,11 @@ func (g *State) settle(p *Pending) *BattleResult {
 			dst.Rice = clampTo(rice, MaxRice)
 		}
 	} else {
+		// 撤退或全滅的攻方回原郡；沒被擒沒死的守方留在原地。
+		if r.AttackerWon {
+			g.takePrefecture(from, to, att, by)
+			r.PrefectureTook = true
+		}
 		// 隨軍剩下的錢糧回到落腳的郡。
 		back := from
 		if r.AttackerWon {
@@ -562,6 +755,16 @@ func (g *State) settle(p *Pending) *BattleResult {
 		if dst != nil {
 			dst.Gold = clampTo(b.Gold[battle.MainDefender], MaxGold)
 			dst.Rice = clampTo(b.Rice[battle.MainDefender], MaxRice)
+		}
+	}
+	// 加強版打完（不分哪一條路）把四個參戰郡的守將清單各重整一次
+	// （`0x1e503`–`0x1e52c`：`push 郡 / lcall 0x17fc8` 四次，郡不在 1..42
+	// 的那一格在 `0x17fd4` 擋掉）；原版的 `0x20200` 尾巴沒有這四道。
+	if g.Edition == state.EditionPlus {
+		for _, n := range []int{from, to, p.aid.Attacker, p.aid.Defender} {
+			if n >= 1 && n <= 42 {
+				g.RefreshGarrison(n)
+			}
 		}
 	}
 	g.Reports = append(g.Reports, r)
@@ -637,13 +840,11 @@ func (g *State) applyFate(p *Pending, x *General, l battle.Leader, captor state.
 }
 
 // seizeTreasures 是「獲勝軍若於戰後捉到敵軍君主，其寶物將全歸獲勝軍所有」
-// （說明書 p.35）。
-//
-// 要在 takePrefecture 之前叫：郡易主之後就查不出守方原本是誰了。
-func (g *State) seizeTreasures(r *BattleResult, by state.FactionID) {
+// （說明書 p.35）。`defender` 是開打時守方的勢力——郡易主之後就查不出來了。
+func (g *State) seizeTreasures(r *BattleResult, by, defender state.FactionID) {
 	winner := g.Faction(by)
 	if !r.AttackerWon {
-		winner = g.Faction(g.Prefecture(r.To).Owner)
+		winner = g.Faction(defender)
 	}
 	if winner == nil {
 		return

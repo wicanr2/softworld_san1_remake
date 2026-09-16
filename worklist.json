@@ -930,7 +930,7 @@
     },
     {
       "id": "master-record-66-bytes",
-      "title": "諸侯記錄 72 個位元組裡還有 62 個沒解",
+      "title": "諸侯記錄 72 個位元組裡還有 57 個沒解",
       "group": "資料格式",
       "milestone": "M4",
       "status": "open",
@@ -939,8 +939,8 @@
       "docs": [
         "docs/spec/003"
       ],
-      "note": "已解 10 個：offset 2 君主、4 AI 等級、6 軍師、8 人望、14–18 五格寶庫。**offset 10–13、19–71 不是外交狀態**——五支謀略讀寫的都是州郡與人物的欄位。",
-      "acceptance": "覆蓋率從 10/72 往上，或確認其餘是填充",
+      "note": "已建立 15 bytes 的語意：offset 0 控制者、2 君主、4 AI 等級、6 軍師、8 人望、14–18 玉璽／四種寶物。**offset 10–13、19–71 仍是 unknown，不是 padding，也不能宣稱沒有讀寫**；完整覆蓋矩陣在 `docs/spec/003` §4.1。是否繼續完整考古仍需人決定。",
+      "acceptance": "覆蓋率從 15/72 往上，或確認其餘是填充",
       "verify": {
         "kind": "manual",
         "why": "沒有現成的機器訊號：欄位覆蓋率是人數的，`internal/state` 沒有一份「已解欄位」的清單可以數。",
@@ -950,27 +950,32 @@
     },
     {
       "id": "ai-vs-ai-campaign-parity",
-      "title": "電腦對電腦的戰役還沒被走到",
+      "title": "電腦對電腦的戰役在對拍裡走到了",
       "group": "對拍",
       "milestone": "M6",
-      "status": "open",
+      "status": "done",
       "level": "L1",
-      "edition": "base",
+      "edition": "both",
       "docs": [
         "docs/re/05",
-        "docs/mechanics/40"
+        "docs/mechanics/40",
+        "docs/spec/017",
+        "docs/playtest/02"
       ],
-      "note": "照 `0x20471` 的分岔實作了（`battle.AutoResolveAI`，含傷亡寫回與四條單測），但那條路沒有實跑背書：原版的電腦對電腦戰役**不進戰術層**，日循環只有玩家在場才跑，所以對拍那一支在那條路上會 skip。**「AI 沒動」可能是正確的原版行為**（`CLAUDE.md` §7 第 14 條），要先確認前提滿足。 訊號在對拍測試裡（`include_tests`）：這是**驗證缺口**不是功能缺口——`battle.AutoResolveAI` 早就接上了，缺的是實跑背書，而「那條路上會 skip」這句話只會出現在對拍測試裡，因為那裡才是證據的所在地。",
+      "note": "2026-09-16（Issue #29）：加強版的月度對拍整月差 0 位元組，視窗裡有兩場電腦對電腦的戰役（郡 15 → 13、郡 37 → 30）——入口的整編、每日結算、吃糧、傷亡、戰損、安置、主事者補位、戰後的郡回合全部逐格相同；原版那條由 `TestAIvsAIBattleMatchesOriginal` 固定骰序對過。解出的規則在 `docs/re/05` §5.1／§7.1，推翻紀錄 `CONTEXT.md` R63–R66。",
       "acceptance": "對拍裡真的走到一場電腦對電腦的戰役，傷亡與勝負逐格比",
       "verify": {
-        "kind": "present",
-        "paths": [
-          "internal/parity/battleover_oracle_test.go"
-        ],
-        "pattern": "電腦對電腦\\*\\*那條路上會 skip",
-        "include_tests": true
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZMonthParityPlus|TestAIvsAIBattleMatchesOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
       },
-      "layer": "verification"
+      "layer": "verification",
+      "done_on": "2026-09-16"
     },
     {
       "id": "snapshot-fields",

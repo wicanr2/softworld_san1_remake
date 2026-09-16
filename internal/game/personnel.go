@@ -60,9 +60,17 @@ func (g *State) nextRand() int {
 	return out
 }
 
+// roll 給呼叫端自己取餘數的原始值。接上原版的亂數時它回的是整個
+// `rand()`（0..32767），**不能先取 100 再讓呼叫端取 n**——`(r % 100) % 30`
+// 與 `r % 30` 不是同一個數（加強版的月度對拍在賞賜物品的忠誠那一擲抓到），
+// 只有 n 整除 100 時才碰巧相同。沒接上時回的是雜湊，範圍 0..99。
 func (g *State) roll(salt ...int) int {
 	if g.randOn {
-		return g.nextRand() % 100
+		out := g.nextRand()
+		if g.rollTrace != nil {
+			g.rollTrace(0, out, salt)
+		}
+		return out
 	}
 	h := uint32(2166136261)
 	mix := func(v int) {
@@ -112,13 +120,21 @@ func (g *State) Roll(n int, salt ...int) int {
 	if n <= 0 {
 		return 0
 	}
-	if g.randOn {
-		// 原版是 `RND(n)`：`rand()` 對 n 取餘數（`0x10b0c`），
-		// **不是先取 100 再取 n**——那會多一層取模偏差。
-		return g.nextRand() % n
+	if !g.randOn {
+		return g.roll(salt...) % n
 	}
-	return g.roll(salt...) % n
+	// 原版是 `RND(n)`：`rand()` 對 n 取餘數（`0x10b0c`），
+	// **不是先取 100 再取 n**——那會多一層取模偏差。
+	out := g.nextRand() % n
+	if g.rollTrace != nil {
+		g.rollTrace(n, out, salt)
+	}
+	return out
 }
+
+// TraceRolls 讓對拍逐次看見 `Roll`：每一擲的範圍、結果與呼叫端的鹽
+// （最後一個鹽通常是原版的呼叫位址）。傳 nil 關掉。
+func (g *State) TraceRolls(fn func(n, out int, salt []int)) { g.rollTrace = fn }
 
 // ---- 6. 人事 ------------------------------------------------------------
 
@@ -249,9 +265,11 @@ func (g *State) Recruit(prefectureID, targetIndex int, by state.FactionID) error
 	if loyalty <= 0 {
 		return fmt.Errorf("%s：%w", tf("msg.declined", t.Name), ErrDeclined)
 	}
+	// 成功寫的欄位（`0xd058`–`0xd07e`）：忠誠、身分 ← 3、勢力 ← 郡的所屬。
+	// **職位不動**——在野時的職位就是登用後的職位，帶兵上限跟著它，
+	// 徵兵與調整兵力都看得到差別（加強版月度對拍量到三位）。
 	t.Faction = by
 	t.Status = state.StatusOfficer
-	t.Rank = state.RankJuniorGeneral
 	t.Loyalty = uint8(clampTo(loyalty, 100))
 	// 成功分支直接維護兩個快照：現役將 +1（`0xd087`），兵士加上
 	// 新人的兵力 ÷ 100（`0xd0a4`）。

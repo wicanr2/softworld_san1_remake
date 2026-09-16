@@ -46,68 +46,63 @@ func TestAppointGovernorMatchesTheOriginal(t *testing.T) {
 	staBase := base + uint32(state.MasterTableSize)
 	genBase := staBase + uint32(state.PrefectureTableSize)
 
-	type shot struct{ pref, chosen, owner int }
-	var shots []shot
-
+	// 每一次換太守都要**當場**檢查——同一段執行裡後面的郡回合就會把人
+	// 搬走（出兵、移防），等按鍵送完再讀所在郡會看到他已經在別的郡
+	//（郡 6 挑的 81 在同一段裡走到郡 14）。所以在寫主事者那一道指令上
+	// 直接讀盤面。
+	bad, checked := 0, 0
+	lastPref, lastChosen := -1, -1
 	o.OnCall(addr(0x0d705), func(o *oracle.Oracle) {
 		pref := int(o.BX()) / 176
 		if pref < 1 || pref > state.PrefectureCount {
 			return
 		}
-		shots = append(shots, shot{pref: pref, chosen: int(int16(o.AX())), owner: -1})
+		chosen := int(int16(o.AX()))
+		lastPref, lastChosen = pref, chosen
+		if chosen < 0 || chosen >= 350 {
+			t.Errorf("郡 %d：選出來的槽號是 %d", pref, chosen)
+			bad++
+			return
+		}
+		at := genBase + uint32(chosen)*30
+		if got := int(o.Byte(addr(at + 19))); got != pref {
+			t.Errorf("郡 %d：選了槽 %d，但他的所在郡是 %d", pref, chosen, got)
+			bad++
+			return
+		}
+		mine := int(o.Byte(addr(at + 11)))
+		// 同郡任何一位在職者的魅力都不能高過他。
+		for i := 0; i < 350; i++ {
+			p := genBase + uint32(i)*30
+			if int(o.Byte(addr(p+19))) != pref {
+				continue
+			}
+			if r := o.Byte(addr(p + 17)); r > 3 {
+				continue // 在野／未登場不在名單裡
+			}
+			if int(o.Byte(addr(p+11))) > mine {
+				t.Errorf("郡 %d：選了槽 %d（魅力 %d），但槽 %d 的魅力是 %d",
+					pref, chosen, mine, i, o.Byte(addr(p+11)))
+				bad++
+				break
+			}
+		}
+		checked++
 	})
 	o.OnCall(addr(0x0d74d), func(o *oracle.Oracle) {
-		if n := len(shots); n > 0 {
-			shots[n-1].owner = int(int8(o.CX() & 0xFF))
+		if lastChosen < 0 || lastChosen >= 350 {
+			return
+		}
+		owner := int(int8(o.CX() & 0xFF))
+		faction := int(int8(o.Byte(addr(genBase + uint32(lastChosen)*30 + 18))))
+		if owner != faction {
+			t.Errorf("郡 %d：所屬寫成 %d，新太守的勢力卻是 %d", lastPref, owner, faction)
+			bad++
 		}
 	})
 
 	rnd := 0
 	o.OnCall(addr(0x1058*16+0x058c), func(*oracle.Oracle) { rnd++ })
-
-	// 每一次換太守都要**當場**檢查——盤面下一個月就變了。
-	bad, checked := 0, 0
-	check := func() {
-		for _, s := range shots {
-			if s.chosen < 0 || s.chosen >= 350 {
-				t.Errorf("郡 %d：選出來的槽號是 %d", s.pref, s.chosen)
-				bad++
-				continue
-			}
-			at := genBase + uint32(s.chosen)*30
-			if got := int(o.Byte(addr(at + 19))); got != s.pref {
-				t.Errorf("郡 %d：選了槽 %d，但他的所在郡是 %d",
-					s.pref, s.chosen, got)
-				bad++
-				continue
-			}
-			mine := int(o.Byte(addr(at + 11)))
-			faction := int(int8(o.Byte(addr(at + 18))))
-			if s.owner >= 0 && s.owner != faction {
-				t.Errorf("郡 %d：所屬寫成 %d，新太守的勢力卻是 %d",
-					s.pref, s.owner, faction)
-				bad++
-			}
-			// 同郡任何一位在職者的魅力都不能高過他。
-			for i := 0; i < 350; i++ {
-				p := genBase + uint32(i)*30
-				if int(o.Byte(addr(p+19))) != s.pref {
-					continue
-				}
-				if r := o.Byte(addr(p + 17)); r > 3 {
-					continue // 在野／未登場不在名單裡
-				}
-				if int(o.Byte(addr(p+11))) > mine {
-					t.Errorf("郡 %d：選了槽 %d（魅力 %d），但槽 %d 的魅力是 %d",
-						s.pref, s.chosen, mine, i, o.Byte(addr(p+11)))
-					bad++
-					break
-				}
-			}
-			checked++
-		}
-		shots = shots[:0]
-	}
 
 	const settle = 40_000_000
 	for m := 0; m < 2; m++ {
@@ -117,7 +112,6 @@ func TestAppointGovernorMatchesTheOriginal(t *testing.T) {
 			if err := o.Run(settle * 3); err != nil {
 				t.Fatalf("第 %d 個月送 %q 時停止：%v", m+1, k, err)
 			}
-			check()
 		}
 	}
 

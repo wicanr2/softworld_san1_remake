@@ -667,12 +667,23 @@ func RewardGainPlayer(governorCharm, gold int) int {
 	return governorCharm * rewardCoeffNum * gold / (rewardCoeffDen * 100)
 }
 
-// RewardCost 是照實際增幅反算回來的花費。
+// RewardCost 是照實際增幅反算回來的花費（`0xd3dc`–`0xd3f0`，加強版
+// `0xd132`–`0xd149`，`L0`）：
+//
+//	fild 增幅 / fidiv 效果 / fmul 100.0 / ftol，再夾在 100 以內
+//
+// **先除再乘，兩步都在 x87 裡做**：`增幅 ÷ 效果` 先捨入成 64 位元的尾數，
+// 商不是有限小數時會比真值小一點，乘回 100 再截斷就少 1——
+// 寫成整數的 `增幅 × 100 ÷ 效果` 在那些格子上會多付 1 金。
 func RewardCost(effect, gain int) int {
 	if effect <= 0 {
 		return 0
 	}
-	return clampTo(gain*100/effect, MaxReward)
+	q := x87(int64(gain))
+	q.Quo(q, x87(int64(effect)))
+	q.Mul(q, x87(100))
+	n, _ := q.Int64()
+	return clampTo(int(n), MaxReward)
 }
 
 // RicePerGold 是一金在當月的物價買得到幾單位米（`L0`、`[base]`）。

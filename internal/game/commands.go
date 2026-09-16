@@ -247,6 +247,17 @@ func transportReceive(have, arrived int) int {
 // **沒有兵的人訓練度會被歸零**——一支沒有兵的部隊「操演」不出東西，
 // 而它下次拿到兵時是從零開始。這一條說明書沒寫。
 func (g *State) Train(prefectureID int, by state.FactionID) error {
+	return g.TrainUnits(prefectureID, nil, by)
+}
+
+// TrainUnits 是訓練的本體；`indices` 給了就只練名單上的人。
+//
+// 原版那一支（`0xbd48`／加強版 `0xbc48`）走的是**郡回合共用的守將清單**
+// `es:0x5a0`，不是當下的守軍：這一輪剛登用進來的人不在清單上（登用
+// 每試一位才重建一次，成功的那一位之後沒有人再建），所以他這回合
+// 不練。加強版月度對拍量到郡 29：剛登用的 159 原版留在 23，remake
+// 把他練到 31，調整兵力攤平之後五個人差 2。
+func (g *State) TrainUnits(prefectureID int, indices []int, by state.FactionID) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
@@ -255,7 +266,16 @@ func (g *State) Train(prefectureID int, by state.FactionID) error {
 	if g.byComputer(by) {
 		div = AITrainDivisor(g.AILevel(by))
 	}
-	for _, x := range g.Garrison(prefectureID) {
+	list := g.Garrison(prefectureID)
+	if indices != nil {
+		list = list[:0:0]
+		for _, i := range indices {
+			if x := g.General(i); x != nil && x.Location == prefectureID {
+				list = append(list, x)
+			}
+		}
+	}
+	for _, x := range list {
 		if x.Soldiers == 0 {
 			// 沒有兵的部隊訓練度與武裝度都歸零（`0xbd70`／`0xc168`，
 			// 兩支常式是同一個形狀）。
@@ -294,6 +314,14 @@ func (g *State) Redistribute(prefectureID int, indices []int, by state.FactionID
 // 原版 AI 即使清單只有一支仍會跑百分比重算；玩家命令維持至少兩支。
 func (g *State) redistribute(prefectureID int, indices []int, by state.FactionID,
 	minUnits int) error {
+	return g.redistributeWith(prefectureID, indices, by, minUnits, 0)
+}
+
+// redistributeWith 的 capSum 非 0 時當「總上限」用（電腦那一張表：分派器
+// 入口算好的 `es:[0x347e]`，見 `RedistributeOrder.CapSum`）；玩家的命令
+// 照當下的部隊算，總兵力超過總上限就擋（原版玩家那一條會問）。
+func (g *State) redistributeWith(prefectureID int, indices []int, by state.FactionID,
+	minUnits, capSum int) error {
 	p, err := g.canOrder(prefectureID, by)
 	if err != nil {
 		return err
@@ -302,7 +330,7 @@ func (g *State) redistribute(prefectureID int, indices []int, by state.FactionID
 		return fmt.Errorf("game: 調整兵力至少要兩支部隊")
 	}
 	var units []*General
-	total, capSum := 0, 0
+	total, liveCap := 0, 0
 	var wTrain, wArms int
 	for _, i := range indices {
 		x := g.General(i)
@@ -311,15 +339,18 @@ func (g *State) redistribute(prefectureID int, indices []int, by state.FactionID
 		}
 		units = append(units, x)
 		total += x.Soldiers
-		capSum += x.TroopCap()
+		liveCap += x.TroopCap()
 		// **原版是逐人先除以 100 再累加**（`0xc35b` 的
 		// `fmul qword ds:[0xa5c8]` ＝ ×0.01，然後轉整數才加進 32 位元的
 		// 累計）。放到最後才除會得到差一兩點的平均值。
 		wTrain += x.Soldiers * int(x.Training) / 100
 		wArms += x.Soldiers * int(x.Arms) / 100
 	}
-	if total > capSum {
-		return ErrNoRoom
+	if capSum <= 0 {
+		capSum = liveCap
+		if total > capSum {
+			return ErrNoRoom
+		}
 	}
 	train, arms := 0, 0
 	if total > 0 {

@@ -3,7 +3,9 @@
 package parity
 
 import (
+	"encoding/binary"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -170,7 +172,23 @@ func TestZZMonthParityPlus(t *testing.T) {
 			if n > 0 {
 				r = out % n
 			}
-			rndLog = append(rndLog, fmt.Sprintf("%s RND(%d)=%d", curTable, n, r))
+			rndLog = append(rndLog, fmt.Sprintf("%s RND(%d)=%d@%x", curTable, n, r, o.Caller().Linear()))
+			// 電腦對電腦的每日一擲（`0x1d757`）：順手把四個 double 印出來
+			//（攻品質 es:0x78、守品質 es:0xbc、攻戰力 es:0x9ce、守戰力 es:0x1608，
+			// 段位址各自從 DS 的指標讀）。
+			if c := o.Caller().Linear(); c == 0x1d757 || c == 0x1d9e9 {
+				rd := func(ptr, off uint32) float64 {
+					seg := uint32(o.Word(addr(ds+ptr))) * 16
+					var b [8]byte
+					for i := range b {
+						b[i] = o.Byte(addr(seg + off + uint32(i)))
+					}
+					return math.Float64frombits(binary.LittleEndian.Uint64(b[:]))
+				}
+				rndLog = append(rndLog, fmt.Sprintf("[攻品質 %.6f 守品質 %.6f 攻 %.1f 守 %.1f 攻0 %.4f 守0 %.4f]",
+					rd(0xa9d4, 0x78), rd(0xa9d6, 0xbc), rd(0xa9d8, 0x9ce), rd(0xa9da, 0x1608),
+					rd(0xa9d8, 0x570), rd(0xa9da, 0x870)))
+			}
 		}
 		if n <= 0 {
 			return
@@ -202,6 +220,11 @@ func TestZZMonthParityPlus(t *testing.T) {
 			curTable = name
 			if seedLo != 0 {
 				tblSeeds[curDisp] = append(tblSeeds[curDisp], tblMark{name, readSeed(o)})
+			}
+			if curDisp == watch && atSettle != nil && curDisp >= 0 {
+				rec := base + uint32(nMas) + uint32(curDisp)*176
+				rndLog = append(rndLog, fmt.Sprintf("〔%s 兵(百) %d 金 %d 米 %d〕", name,
+					o.Word(addr(rec+16)), o.Word(addr(rec+18)), o.Word(addr(rec+20))))
 			}
 		})
 	}
@@ -441,8 +464,23 @@ func TestZZMonthParityPlus(t *testing.T) {
 		for k, v := range mineTbl {
 			before[k] = v
 		}
+		var mineRolls []string
+		if at == watch {
+			g.TraceRolls(func(n, out int, salt []int) {
+				tag := ""
+				if len(salt) > 0 {
+					tag = fmt.Sprintf("@%x", salt[len(salt)-1])
+				}
+				mineRolls = append(mineRolls, fmt.Sprintf("RND(%d)=%d%s", n, out, tag))
+			})
+		}
 		if _, n, err := pp.ActPrefecture(g, q.Owner, at, g.AILevel(q.Owner)); err != nil {
 			t.Errorf("郡 %d（勢力 %d）的命令有 %d 道成立，然後：%v", at, q.Owner, n, err)
+		}
+		g.FinishTurn(at)
+		if at == watch {
+			g.TraceRolls(nil)
+			t.Logf("郡 %d 的 remake Roll 逐次：%v", at, mineRolls)
 		}
 		mineBy[at] = g.RandDraws() - d0
 		if at == watch {
@@ -544,25 +582,19 @@ func TestZZMonthParityPlus(t *testing.T) {
 		differs8(after, mine), where(after, mine, nMas, nSta))
 	t.Log(byPrefecture(after, mine, nMas, nSta))
 	t.Log(byGeneral(after, mine, nMas, nSta))
-	// **釘住的範圍**：換月之後、第一場電腦戰役之前的每一個郡，入口的亂數
-	// 狀態與本體的抽樣次數兩邊都要相同——十八張表的骰序在這一段逐格對上。
-	// 戰役那一格起（原版在出兵裡就地結算，remake 的 `AutoResolveAI` 走
-	// 自己的種子）兩邊的骰序岔開，後面的位元組差是它的連鎖；整個月的
-	// 位元組對拍等戰役結算對回原版之後再收緊（`docs/playtest/02` §7）。
-	upto := len(turnSeq)
-	if firstBattleAt >= 0 {
-		for i, at := range turnSeq {
-			if at == firstBattleAt {
-				upto = i
-				break
-			}
+	// **釘住的是整個月**（Issue #29）：換月之後的每一個郡，入口的亂數狀態
+	// 與本體的抽樣次數兩邊都要相同——十八張表的骰序逐格對上，含電腦對
+	// 電腦的戰役（原版在出兵裡就地結算：每天 `RND(11)`、打殘 `RND(10)`×4、
+	// 收降有牽絆的人 `RND(30)`，remake 這幾擲從同一顆 `rand()` 接）。
+	firstAt := -1
+	for i, at := range turnSeq {
+		if at == firstBattleAt {
+			firstAt = i
+			break
 		}
 	}
-	t.Logf("第一場電腦戰役：郡 %d（順序表第 %d 格）；釘住的是它之前的 %d 格", firstBattleAt, upto, upto)
-	if upto == 0 {
-		t.Fatal("第一場戰役就在第一格，這一輪沒有東西可釘——換個種子")
-	}
-	for i := 0; i < upto && i < winTo; i++ {
+	t.Logf("第一場電腦戰役：郡 %d（順序表第 %d 格）", firstBattleAt, firstAt)
+	for i := 0; i < len(turnSeq) && i < winTo; i++ {
 		at := turnSeq[i]
 		if at == 0 {
 			continue
@@ -576,7 +608,9 @@ func TestZZMonthParityPlus(t *testing.T) {
 				i, at, randBy[at], mineBy[at])
 		}
 	}
+	// **這是硬閘門**，與原版那支相同（`month_parity_test.go`）：整個月的
+	// 三張表逐位元組相同。
 	if n := differs8(after, mine); n != 0 {
-		t.Logf("整個月的三張表差 %d 個位元組（第一場戰役起的連鎖，還沒釘）", n)
+		t.Errorf("月度對拍差 %d 個位元組（應該是 0）", n)
 	}
 }

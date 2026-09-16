@@ -74,6 +74,10 @@ const masLord = 2
 // 「指定軍師」讀它當換人的門檻（`docs/mechanics/70-ai` §2.7）。
 const masChief = 6
 
+// masPrestige 是人望（uint16，0–100；`0x204b4` 用 `addw`／`cmpw $0x64`）。
+// 戰役收尾的 ±2 寫在這裡，不寫回去存檔就少了一場仗的帳。
+const masPrestige = 8
+
 // masTreasury 是寶庫的第一格（玉璽），後面依序是兵書、寶刀、美女、駿馬
 // （`state.TreasuryOf`，`L0`）。進貢寫的是 `es:0xf` 起算的四格
 // （`0x172f8`），也就是 offset 15–18。
@@ -130,6 +134,7 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 			chief = f.Chief
 		}
 		put16(mas[int(f.ID)*masRecord+masChief:], chief)
+		put16(mas[int(f.ID)*masRecord+masPrestige:], clampTo(f.Prestige, 100))
 		// 寶庫（offset 14–18，玉璽在最前面）。**不寫的話進貢存不下來**
 		// ——每年冬天發下去的東西讀回來就沒了，而賞賜物品那四支是拿
 		// 存量當閘門的（`0xd9b4`：庫存 <= r 就不送）。

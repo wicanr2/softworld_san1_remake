@@ -401,6 +401,8 @@ type State struct {
 	phaseTrace map[string]int
 	phaseSeed  map[string]uint32
 	phaseLast  int
+	// rollTrace 非 nil 時，每一次 `Roll` 都會回報一次（對拍用）。
+	rollTrace func(n, out int, salt []int)
 }
 
 // DrainReports 取走並清空累積的戰報。
@@ -907,47 +909,156 @@ func (g *State) ActiveGenerals(prefectureID int) int {
 
 // FreeGenerals 是某個郡露面的在野武將數。
 //
-// 只數身分為「在野而且在該郡露面」的人——原版的郡欄位就是這樣數的
-// （四十二個郡全對；不加這個條件只對得上二十六個）。
+// 只數身分為「在野而且在該郡露面」（8）與「剛失去勢力」（10）的人——
+// 原版的郡欄位是逐筆加減的計數（尋訪露面 ＋1、登用 −1、戰後失去勢力
+// ＋1 `0x201f5`），這兩種身分都算進去；沒露面的（9）不算，開局的四十二
+// 個郡全對，不加這個條件只對得上二十六個。
 func (g *State) FreeGenerals(prefectureID int) int {
 	n := 0
 	for i := range g.generals {
 		x := &g.generals[i]
-		if !x.Employed() && x.Location == prefectureID &&
-			x.Status == state.StatusAvailable && x.Name != "" {
+		if !x.Employed() && x.Location == prefectureID && x.Name != "" &&
+			(x.Status == state.StatusAvailable || x.Status == state.StatusStranded) {
 			n++
 		}
 	}
 	return n
 }
 
-// endTurn 是一個郡這個月的回合結束：下令旗標立起來（玩家那一條
-// 「每郡每月一道令」看它，說明書 p.17）。**加強版在回合結束時再重整
-// 一次守將清單**（`0x162dc`–`0x162e0`：電腦與玩家的回合走完都
-// `call 0x17fc8`；原版 `0x1746e` 只在入口做，`L0`），兵士與現役將兩欄
-// 因此在回合結束那一刻就是新值——玩家命令的對拍在訓練兵士那一道
-// 抓到（`TestPlayerCommandsPlus`）。
+// endTurn 是一個郡這個月**下過令了**：下令旗標立起來（玩家那一條
+// 「每郡每月一道令」看它，說明書 p.17）。電腦一個回合跑十八張表、
+// 下好幾道令，所以它不是「回合結束」——回合結束是 FinishTurn。
 func (g *State) endTurn(p *Prefecture) {
 	p.Commanded = true
+}
+
+// FinishTurn 是一個郡這個月的回合走完：玩家下完那一道令、電腦的
+// 分派器跑完。**加強版在這裡再重整一次守將清單**（`0x162dc`–`0x162e0`：
+// 電腦與玩家的回合走完都 `call 0x17fc8`；原版 `0x1746e` 只在入口做，
+// `L0`），兵士與現役將兩欄因此在回合結束那一刻就是新值——玩家命令的
+// 對拍在訓練兵士那一道抓到（`TestPlayerCommandsPlus`）。
+//
+// **不能綁在每一道令上**：電腦的十八張表中間重整，出兵那一張整編
+// 帶走的錢糧會拿到調整兵力之後的兵士（加強版月度對拍量到郡 15 差 28 金）。
+func (g *State) FinishTurn(prefectureID int) {
 	if g.Edition == state.EditionPlus {
-		g.RefreshGarrison(p.ID)
+		g.RefreshGarrison(prefectureID)
 	}
 }
 
-// EndTurnAt 是 endTurn 的對外版本，給逐郡驅動的對拍用。
+// EndTurnAt 是「下過令 ＋ 回合走完」，給逐郡驅動的對拍用。
 func (g *State) EndTurnAt(prefectureID int) {
 	if p := g.Prefecture(prefectureID); p != nil {
 		g.endTurn(p)
+		g.FinishTurn(prefectureID)
 	}
 }
 
-// RefreshGarrison 是原版的「重整守將清單」（`0x1949e`）：同一份名單
-// 同時寫回州郡 offset 16 的兵士與 offset 22 的現役武將數。
+// RefreshGarrison 是原版的「重整守將清單」（`0x1949e`，`L0`）。
 //
-// **只在原版會重整的時候叫它**：郡回合入口、移防之後的來源與目標郡、
-// 戰役收尾。每次寫盤面都順手重算會讓那一欄變成導出值，而原版的它會
-// 陳舊——差別在「兵搬進來之後、那個郡還沒輪到」的窗口裡看得見。
+// **只在原版會重整的時候叫它**：郡回合入口、加強版的回合結束、移防之後
+// 的來源與目標郡、戰役收尾。每次寫盤面都順手重算會讓那幾欄變成導出值，
+// 而原版的它們會陳舊——差別在「兵搬進來之後、那個郡還沒輪到」的窗口裡
+// 看得見。
+//
+// 做的事不只兩個計數：
+//
+//	清單 ＝ 郡裡身分 0–3 的每一位（不比對勢力），按「魅力 ＋ 加權表[身分]」
+//	       交換排序（0xf520）
+//	現役將 ← 清單長度                                          ; 0x194e5
+//	清單空 → 所屬 ← 無主、主事者 ← 沒有、兵士 ← 0             ; 0x194fa
+//	所屬 ← 清單第一位的勢力                                     ; 0x1952f
+//	主事者：第一位是君主 → 他；否則存的那一位還在郡裡 → 不動；
+//	        否則 0x1d638 重建清單、挑**行動者鍵最大**的那一位     ; 0x19538–0x1956d
+//	主事者是一般武將 → 升太守                                   ; 0x195a3
+//	清單裡其他的太守 → 降成一般武將                             ; 0x195d8
+//	兵士 ← Σ 兵力 ÷ 100                                         ; 0x195fc
+//
+// 所屬那一格緊接著會被回合入口的 `RecomputeOwners`（`0x1e394`）蓋掉，
+// 但戰役收尾與移防之後的那幾次沒有人蓋，要留到下一個郡回合入口。
 func (g *State) RefreshGarrison(prefectureID int) {
+	p := g.Prefecture(prefectureID)
+	if p == nil {
+		return
+	}
+	roster := g.Garrison(prefectureID)
+	p.activeGenerals = len(roster)
+	if len(roster) == 0 {
+		p.Owner = state.NoFaction
+		p.governor = -1
+		p.troops = 0
+		return
+	}
+	sorted := append([]*General(nil), roster...)
+	key := func(x *General) int {
+		w := 0
+		if int(x.Status) < len(ActorWeight) {
+			w = ActorWeight[x.Status]
+		}
+		return int(x.Charm) + w
+	}
+	for i := range sorted {
+		for j := i + 1; j < len(sorted); j++ {
+			if key(sorted[j]) > key(sorted[i]) {
+				sorted[i], sorted[j] = sorted[j], sorted[i]
+			}
+		}
+	}
+	p.Owner = sorted[0].Faction
+	gov := p.governor
+	switch {
+	case sorted[0].Status == state.StatusLord:
+		gov = sorted[0].Index
+	case g.General(gov) != nil && g.General(gov).Location == prefectureID:
+		// 存的那一位還在，不動。
+	default:
+		// 0x1d638：清單重建（建表常式收尾一律按行動者鍵排，`0xfe3e`／
+		// 加強版 `0xf872`）之後的第一位——智 ＋ 武 ＋ 加權表[身分]最大者。
+		gov = g.ActorRoster(prefectureID)[0].Index
+	}
+	p.governor = gov
+	if x := g.General(gov); x != nil && x.Status == state.StatusOfficer {
+		x.Status = state.StatusGovernor
+	}
+	for _, x := range roster {
+		if x.Index != gov && x.Status == state.StatusGovernor {
+			x.Status = state.StatusOfficer
+		}
+	}
+	p.troops = g.Soldiers(prefectureID) / 100
+}
+
+// refreshGovernor 是 `0x1d638`（加強版 `0x1ba90`，`L0`＋`L1`）：整編把出征
+// 的人清出郡之後、戰役收尾把勝方放回戰場郡之後各叫一次。與 RefreshGarrison
+// 差在**不重挑所屬**：清單空就把郡設成無主；主事者不在了就換清單第一位——
+// 建表常式（`0xfc1e`／`0xf67c`）收尾一律按行動者鍵（智 ＋ 武 ＋ 加權表[身分]）
+// 交換排序，所以第一位是鍵最大的那一位，不是槽號最小的。**身分的加權會
+// 讓剛在別的郡當上太守的人領先**：加強版月度對拍量到郡 37 的 114 先在
+// 指定太守被升成太守，帶兵打下郡 30 之後以 1327 對 11 的 941 接下新郡的
+// 主事者；按槽號挑會給 11。一般武將升太守；然後刷新兩個計數。
+func (g *State) refreshGovernor(prefectureID int) {
+	p := g.Prefecture(prefectureID)
+	if p == nil {
+		return
+	}
+	roster := g.ActorRoster(prefectureID)
+	if len(roster) == 0 {
+		p.Owner = state.NoFaction
+		p.governor = -1
+	} else if x := g.General(p.governor); x == nil || x.Location != prefectureID {
+		p.governor = roster[0].Index
+		if roster[0].Status == state.StatusOfficer {
+			roster[0].Status = state.StatusGovernor
+		}
+	}
+	p.activeGenerals = len(roster)
+	p.troops = g.Soldiers(prefectureID) / 100
+}
+
+// RefreshTroops 只刷新兵士與現役將兩欄（分派器建清單那一段的收尾
+// `0xefe8`–`0xf083`：`0xf072` 寫兵士、`0xf083` 寫現役將），調整兵力那一張
+// 表重建清單時順手做的。不碰所屬與主事者。
+func (g *State) RefreshTroops(prefectureID int) {
 	if p := g.Prefecture(prefectureID); p != nil {
 		p.troops = g.Soldiers(prefectureID) / 100
 		p.activeGenerals = g.ActiveGenerals(prefectureID)
@@ -960,6 +1071,16 @@ func (g *State) Troops(prefectureID int) int {
 		return p.troops
 	}
 	return 0
+}
+
+// StoredGovernor 是州郡 offset 32 存的那一位，**不管他還在不在郡裡**；
+// 沒有（`0xFFFF`）回 nil。指定太守的閘門讀的是這一格（`0xd6b3`：存的
+// 那一位身分是君主就整支不做，不看他人在哪）。
+func (g *State) StoredGovernor(prefectureID int) *General {
+	if p := g.Prefecture(prefectureID); p != nil {
+		return g.General(p.governor)
+	}
+	return nil
 }
 
 // StoredActiveGenerals 是州郡 offset 22 的存值；只有原版會寫這一格的

@@ -298,7 +298,7 @@ func TestLordCaptureSeizesTreasures(t *testing.T) {
 
 	r := &BattleResult{From: 1, To: lord.Location, AttackerWon: true,
 		Captives: []Captive{{General: lord.Index, Name: lord.Name}}}
-	g.seizeTreasures(r, 5)
+	g.seizeTreasures(r, 5, lord.Faction)
 
 	if loser.Treasury[0] != 0 {
 		t.Errorf("敗方還留著 %d 件寶物，應該盡歸勝方", loser.Treasury[0])
@@ -332,7 +332,7 @@ func TestNonLordCaptureKeepsTreasures(t *testing.T) {
 	loser.Treasury[0] = 3
 	r := &BattleResult{From: 1, To: subordinate.Location, AttackerWon: true,
 		Captives: []Captive{{General: subordinate.Index, Name: subordinate.Name}}}
-	g.seizeTreasures(r, 5)
+	g.seizeTreasures(r, 5, subordinate.Faction)
 	if loser.Treasury[0] != 3 {
 		t.Error("捉到的是部將不是君主，寶物不該易手")
 	}
@@ -828,34 +828,52 @@ func TestAutoAIPlacementLeavesLosersInTheBattlefield(t *testing.T) {
 	if f := g.Faction(dst.Owner); f != nil {
 		f.Prestige = 100 // 人望拉滿，收得下來的那一條才走得到
 	}
+	loser, winner := src.Owner, dst.Owner
 	att := g.garrisonOf(from)
 	p := g.prepare(from, to, att, g.garrisonOf(to), src.Owner, HalfSupply(), Aid{})
 	p.autoAI = true
 	p.B.Over, p.B.AttackerWon = true, false // 攻方打輸
 	g.settle(p)
 
-	stayed, joined := 0, 0
+	// 敗方的每一位只有四條路（`0x1fb26`，`docs/re/05` §7.1）：逃到退路候選
+	// 的鄰郡（敗方主軍的勢力或無主）、留在戰場郡被收編、留在戰場郡失去
+	// 勢力（身分 10）、或身分 12 的下野。**沒有「維持原本的勢力留在敵郡」
+	// 這一條。**
+	fled, joined, stranded, fallen := 0, 0, 0, 0
 	for _, x := range att {
-		if x.Soldiers <= 0 || !x.Employed() {
-			continue
-		}
-		if x.Location != to {
-			t.Errorf("%s 打輸之後在郡 %d，原版是留在戰場那一郡 %d",
-				x.Name, x.Location, to)
-		}
-		switch x.Faction {
-		case dst.Owner:
+		switch {
+		case x.Status == state.StatusFallen:
+			fallen++
+			if x.Employed() {
+				t.Errorf("%s 下野了還掛著勢力 %d", x.Name, x.Faction)
+			}
+		case x.Status == state.StatusStranded:
+			stranded++
+			if x.Location != to || x.Employed() {
+				t.Errorf("%s 失去勢力之後在郡 %d、勢力 %d，原版是留在戰場郡 %d、無勢力",
+					x.Name, x.Location, x.Faction, to)
+			}
+		case x.Faction == winner:
 			joined++
+			if x.Location != to {
+				t.Errorf("%s 被收編之後在郡 %d，原版是留在戰場郡 %d", x.Name, x.Location, to)
+			}
 			if x.Status != state.StatusOfficer {
 				t.Errorf("%s 被收編之後身分是 %v，原版一律降成一般武將",
 					x.Name, x.Status)
 			}
-		case src.Owner:
-			stayed++
+		case x.Faction == loser:
+			fled++
+			q := g.Prefecture(x.Location)
+			if q == nil || !g.Adjacent(to, x.Location) || (q.Owned() && q.Owner != loser) {
+				t.Errorf("%s 打輸之後在郡 %d，原版只會逃到戰場郡 %d 旁邊自己的或無主的郡",
+					x.Name, x.Location, to)
+			}
+		default:
+			t.Errorf("%s 打輸之後勢力 %d 身分 %v 所在 %d，不在四條路上",
+				x.Name, x.Faction, x.Status, x.Location)
 		}
 	}
-	if joined+stayed == 0 {
-		t.Skip("攻方沒有生還者")
-	}
-	t.Logf("攻方生還 %d 位：收編 %d、留在敵郡 %d", joined+stayed, joined, stayed)
+	t.Logf("攻方 %d 位：逃走 %d、收編 %d、失去勢力 %d、下野 %d",
+		len(att), fled, joined, stranded, fallen)
 }

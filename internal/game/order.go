@@ -62,11 +62,17 @@ func (o FloodControlOrder) Describe(g *State) string {
 // TrainOrder 是訓練兵士。
 //
 // **沒有 General 欄位**：原版對整個守軍跑一遍，不挑人（`State.Train`）。
-type TrainOrder struct{ At int }
+//
+// Units 給了就只練名單上的人（電腦那一條走共用的守將清單，見
+// `TrainUnits`）；nil 練整郡。
+type TrainOrder struct {
+	At    int
+	Units []int
+}
 
 func (o TrainOrder) Prefecture() int { return o.At }
 func (o TrainOrder) Apply(g *State, by state.FactionID) error {
-	return g.Train(o.At, by)
+	return g.TrainUnits(o.At, o.Units, by)
 }
 func (o TrainOrder) Describe(g *State) string {
 	return tf("log.trainAll", prefName(g, o.At))
@@ -134,10 +140,19 @@ func (o RecruitOrder) Describe(g *State) string {
 type AttackOrder struct {
 	At, To int
 	Force  []int
+
+	// Keep 非 nil 時 Force 不用：出征的名單由戰役入口的整編決定
+	// （原版電腦出兵的路，`ComputerAttack`），這個函式給的是整編那一刻
+	// 的留守目標。
+	Keep KeepFunc
 }
 
 func (o AttackOrder) Prefecture() int { return o.At }
 func (o AttackOrder) Apply(g *State, by state.FactionID) error {
+	if o.Keep != nil {
+		_, err := g.ComputerAttack(o.At, o.To, by, o.Keep)
+		return err
+	}
 	_, err := g.Attack(o.At, o.To, o.Force, by)
 	return err
 }
@@ -283,12 +298,19 @@ type RedistributeOrder struct {
 	At    int
 	Units []int
 	Auto  bool
+
+	// CapSum 是電腦那一張表用的「總上限」：原版在**分派器入口**就把
+	// 當時守將的帶兵上限加總存進 `es:[0x347e]`（`0xf030`），調整兵力
+	// （`0xc2c4`）只重算總兵力，除的還是入口那一份總上限——這一輪登用
+	// 進來的人有兵、沒上限，比例因此大於 1，每個人都填到上限（加強版
+	// 月度對拍量到郡 16：11530 名兵攤成 13500）。0 表示照當下的部隊算。
+	CapSum int
 }
 
 func (o RedistributeOrder) Prefecture() int { return o.At }
 func (o RedistributeOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
-		return g.redistribute(o.At, o.Units, by, 1)
+		return g.redistributeWith(o.At, o.Units, by, 1, o.CapSum)
 	}
 	return g.Redistribute(o.At, o.Units, by)
 }

@@ -104,6 +104,8 @@ func (s *Session) Do(o game.Order) error {
 	}
 	s.note("%s", o.Describe(s.G))
 	s.drainBattles()
+	// 玩家一郡一道令，下完就是這個郡的回合走完（加強版在這裡重整守將清單）。
+	s.G.FinishTurn(o.Prefecture())
 	return nil
 }
 
@@ -193,6 +195,7 @@ func (s *Session) runPrefectureTurns() {
 		}
 		_, n, err := planner.ActPrefecture(s.G, id, at, level)
 		s.drainBattles()
+		s.G.FinishTurn(at)
 		if err != nil {
 			s.say("sess.blocked", prefectureName(s.G, at), err)
 		}

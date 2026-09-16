@@ -126,6 +126,17 @@ func (g *State) reclaim(prefectureID, generalIndex int, by state.FactionID,
 		p.Gold -= min(p.Gold, g.price(by, CostReclaim))
 	}
 	p.LandValue = uint8(clampTo(int(p.LandValue)+add, 100))
+	if g.Edition == state.EditionPlus {
+		if f := g.Faction(by); f != nil && f.ByComputer {
+			// **加強版電腦的開墾一律把地力寫成 100**（`0xb916`，`L0`）：
+			// 加完之後 `cmpb $0x64` 接的是 `jg 設 100`／`jge 結束`，
+			// 小於 100 的那一路**沒有跳走**，直接落進設 100 那一行——
+			// 只有剛好等於 100 才留著。原版（`0xba02`）是正常的 `jle`
+			// 夾上限。月度對拍量到郡 8 從 11、郡 37 從 4 一步跳到 100。
+			// `RND(2)` 那一擲照舊在加之前，骰序不受影響。
+			p.LandValue = 100
+		}
+	}
 	g.endTurn(p)
 	return nil
 }

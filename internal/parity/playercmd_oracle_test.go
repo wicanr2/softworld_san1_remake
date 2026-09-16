@@ -116,10 +116,17 @@ const generalTrainingOff = 24
 
 func runApply(tc playerCase, g *game.State, at, to, gi int,
 	me state.FactionID, before, after []byte) error {
+	var err error
 	if tc.applyWith != nil {
-		return tc.applyWith(g, at, to, gi, me, before, after)
+		err = tc.applyWith(g, at, to, gi, me, before, after)
+	} else {
+		err = tc.apply(g, at, to, gi, me)
 	}
-	return tc.apply(g, at, to, gi, me)
+	if err == nil {
+		// 玩家下完這一道令就是這個郡的回合走完（加強版在這裡重整守將清單）。
+		g.FinishTurn(at)
+	}
+	return err
 }
 
 func TestPlayerCommandsMatchTheOriginal(t *testing.T) {
