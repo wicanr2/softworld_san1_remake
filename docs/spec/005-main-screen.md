@@ -425,7 +425,9 @@ SAN1_SHOTS=/src/workplace/shots/bf SAN1_BATTLESHOT=orig-battle SAN1_BATTLEKEY='2
 框（`FBRC0.IMG`，80×8）在 (64,268) 與 (352,268) 各 100% 相符，
 框內的肖像 64×80 在 (72,276) 與 (360,276)。守方的 `F014.FAC` 直接
 對得上；**攻方的 `F228.FAC` 要左右翻過來才 100%**（各 4736 格，
-下緣被畫面切掉）。
+下緣被畫面切掉）。`TestArtBattlePortraitsMatchTheOriginal` 不寫死是誰：
+在 `DATA1` 全部的 `F%03d.FAC` 裡找那兩塊逐像素相同的（照該側翻不翻），
+再拿找到的編號走 remake 的 `compose` 畫一次比回去（Issue #43）。
 
 **天氣的編號是晴 0、雨 1、風 2**，不是說明書講到的順序。天氣名表在
 `DS:0x7892`，三筆每筆 5 byte，依序是「 晴 」「 雨 」「 風 」；

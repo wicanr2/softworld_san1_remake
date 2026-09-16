@@ -213,3 +213,88 @@ func TestArtBattleFurnitureMatchesTheOriginal(t *testing.T) {
 		same("肖像框", x, assets.BattlePanelY, x+assets.BattleFrameW-1, assets.BattlePanelY+7)
 	}
 }
+
+// TestArtBattlePortraitsMatchTheOriginal 把基準畫面裡兩個面板的肖像對回
+// 原版：原版主戰場的兩個面板各有一張統帥的肖像（`orig-battle.png` 是
+// 陳就對周瑜），攻方那張左右翻、守方那張直放（`assets.BattleFaceMirror`）。
+//
+// 基準畫面是誰打誰不寫死——在 `DATA1` 的所有 `F%03d.FAC` 裡找**逐像素
+// 相同**的那一張（照那一側該不該翻），找得到就代表位置、翻不翻與解碼
+// 都對；再拿找到的編號叫 `compose`，那一塊要與基準畫面逐點相同——
+// 這才是 remake 真正畫肖像的那條路。
+func TestArtBattlePortraitsMatchTheOriginal(t *testing.T) {
+	f, err := os.Open(artShotPath)
+	if err != nil {
+		t.Skipf("沒有主戰場基準畫面 %s", artShotPath)
+	}
+	shot, err := imgpng.Decode(f)
+	f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c1, c3 := artContainers(t)
+	ab, err := NewArtBattle(c1, c3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found [2]int
+	for side := range assets.BattleFaceX {
+		found[side] = -1
+		x0, y0 := assets.BattleFaceX[side], assets.BattleFaceY
+		for n := 0; n < 400; n++ {
+			face := ab.face(n)
+			if face == nil {
+				continue
+			}
+			if assets.BattleFaceMirror[side] {
+				face = face.Mirror()
+			}
+			ok := true
+			for y := 0; y < face.H && ok; y++ {
+				for x := 0; x < face.W; x++ {
+					a := assets.EGAPalette[face.At(x, y)&15]
+					o := color.RGBAModel.Convert(shot.At(x0+x, y0+y)).(color.RGBA)
+					if a != o {
+						ok = false
+						break
+					}
+				}
+			}
+			if ok {
+				if found[side] >= 0 {
+					t.Errorf("第 %d 側的肖像同時對上 F%03d 與 F%03d", side, found[side], n)
+				}
+				found[side] = n
+			}
+		}
+		if found[side] < 0 {
+			t.Errorf("第 %d 側 (%d,%d) 起的那一塊在 DATA1 的肖像裡找不到逐像素相同的（翻 %v）",
+				side, x0, y0, assets.BattleFaceMirror[side])
+		}
+	}
+	t.Logf("基準畫面的肖像：攻方 F%03d、守方 F%03d", found[0], found[1])
+	if found[0] < 0 || found[1] < 0 {
+		return
+	}
+	// 反過來走 remake 的路：拿找到的編號畫，肖像那兩塊要與基準逐點相同。
+	fld := battle.Generate(battle.Params{Prefecture: 25})
+	b := battle.New(battle.Setup{Field: fld, Seed: 1})
+	im := ab.compose(b, BattleView{}, ArtBattleInfo{Portrait: found})
+	for side := range assets.BattleFaceX {
+		face := ab.face(found[side])
+		bad := 0
+		for y := 0; y < face.H; y++ {
+			for x := 0; x < face.W; x++ {
+				px, py := assets.BattleFaceX[side]+x, assets.BattleFaceY+y
+				a := assets.EGAPalette[im.At(px, py)&15]
+				o := color.RGBAModel.Convert(shot.At(px, py)).(color.RGBA)
+				if a != o {
+					bad++
+				}
+			}
+		}
+		if bad > 0 {
+			t.Errorf("第 %d 側畫出來的肖像有 %d 點與基準不同", side, bad)
+		}
+	}
+}
