@@ -442,12 +442,12 @@ func placeNextToDefender(t *testing.T, o *oracle.Oracle, dgroup uint16) (int, in
 // 與方向表在別的位移）。佔位圖與部隊記錄在工作區，方向表在 DGROUP。
 func placeNextToDefenderRig(t *testing.T, o *oracle.Oracle, dgroup uint16, rig dayRig) (int, int) {
 	t.Helper()
-	return placeNearDefenderRig(t, o, dgroup, rig, false)
+	return placeNearDefenderRig(t, o, dgroup, rig, false, false)
 }
 
 // placeNearDefenderRig：apart 為真時擺到守軍**同一方向連走兩步**的落點
 // （中間那格空著、地形不是大山／城池／關寨），弓箭那一支才有目標。
-func placeNearDefenderRig(t *testing.T, o *oracle.Oracle, dgroup uint16, rig dayRig, apart bool) (int, int) {
+func placeNearDefenderRig(t *testing.T, o *oracle.Oracle, dgroup uint16, rig dayRig, apart, solid bool) (int, int) {
 	t.Helper()
 	work := o.Word(oracle.Addr{Seg: dgroup, Off: rig.workSegPtr})
 	occSeg, colSeg, rowSeg := work, dgroup, dgroup
@@ -487,15 +487,26 @@ func placeNearDefenderRig(t *testing.T, o *oracle.Oracle, dgroup uint16, rig day
 		return c + dc, r + dr
 	}
 	inside := func(c, r int) bool { return c >= 0 && c < 12 && r >= 0 && r < 10 }
+	terrain := func(c, r int) byte { return o.Byte(oracle.Addr{Seg: work, Off: uint16(0x163a + r*12 + c)}) & 0xf }
 	for dir := 0; dir < 6; dir++ {
 		c, r := step(fc, fr, dir)
 		if !inside(c, r) || o.Word(occ(c, r)) != 0xFFFF {
 			continue
 		}
+		// solid：**不擺在大山（碼 1）上**。原版的部隊走不進大山、紮寨也紮
+		// 不上去，那是遊戲裡取不到的格；對戰子畫面拿目標所在格的地形碼
+		// 挑版型（`(碼 − 2) × 2`，`docs/re/05` §10），碼 1 會索引到版型表
+		// 前面的記憶體——量到整張子地圖是垃圾、誰都走不動（Issue #30）。
+		// 沒開的盤面照舊擺在帥隊左上那格（郡 25 是 (4,3) 的大山）：四張
+		// 盤面的鏈都是在那裡拍的，換到 (6,2) 會同時貼著左右軍，快戰的
+		// 反擊把守將打光、原版停在「請主公裁決」，鏈就沒了。
+		if ter := terrain(c, r); solid && (ter < 2 || ter > 9) {
+			continue
+		}
 		if apart {
 			// 中間那格的地形碼查弓箭表（`DS:0x80d4`／`0x8242`）要是 1：
 			// 山丘、淺水、深水、平原、樹林、沙漠。
-			ter := o.Byte(oracle.Addr{Seg: work, Off: uint16(0x163a + r*12 + c)}) & 0xf
+			ter := terrain(c, r)
 			switch ter {
 			case 2, 3, 4, 7, 8, 9:
 			default:

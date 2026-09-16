@@ -69,6 +69,12 @@ type dayBoard struct {
 	// 鄰敵弱，其他部隊才會離開帥隊旁邊來打玩家；只有夠大的那一支能死戰。
 	enemyWeak, enemyLoyal bool
 	enemySoldiersBy       []int
+	// allStats 把目標郡**原本駐守的人**的智與武也壓成 stats（stats 本身只
+	// 改擺進去的那幾位）：原版的守將會用計、快戰也打得痛，要看的是對戰
+	// 子畫面時，那兩位會先把玩家那支打光。
+	// solid 把玩家那支擺在走得進去的地形上（見 placeNearDefenderRig）：
+	// 對戰子畫面照那一格的地形碼挑版型，大山會索引到表外。
+	allStats, solid bool
 }
 
 // dayRig 是一版的路標：哪些位址攔、工作區的哪幾格讀。兩版的戰場工作區
@@ -128,8 +134,13 @@ func baseDayRig() dayRig {
 		//   乙 玩家三萬兵對五支各一千   → 退兵（相鄰敵軍四倍以上、總兵力比 ≥ 3）
 		//   丙 玩家六千對五支各兩萬七、敵將謀略戰力 5 → 死戰（目標兵力比
 		//      ≤ 0.23）；敵將能力壓低是讓玩家那支多撐幾天，決策才夠多
-		//   丁 玩家一千三對五支各六千、敵將 5 → 對戰（RND(16)==0 那一擲在
-		//      這張盤面第二天就出現；dosgolem 是決定性的，每次都一樣）
+		//   丁 玩家兩千四（武 1，打不痛人）對四支：郡裡原有的兩位（武智壓成 1）
+		//      與擺進去的兩位各五千 → 對戰（RND(16)==0 且 RND(100) ＋ 兵÷2 ≥
+		//      目標兵，只有五千那兩支過得了；兵力比 0.48 > 0.23 擋掉死戰）。
+		//      將領的兵不能超過五千——對戰子畫面的攻擊把「扣完 > 5000」的兵
+		//      當成 0（`0x30628`），八千兵的將領打一下就被抓；雙方戰力值都是
+		//      0，子畫面裡沒有人掉兵，打滿十三個時刻回主戰場（Issue #30）。
+		//      RND(16)==0 這張盤面第 24 天才出現，所以跑 26 天
 		//   戊 玩家兩萬兵、智 10 對五支各一千五、敵將智武 99 → 計謀**成功**的
 		//      那幾條路（火攻／水淹／陷阱／誘敵／燒糧／圍攻的效果與骰序，
 		//      Issue #24）；前四張盤面玩家的智是 99，電腦的計謀一次都不會成
@@ -138,7 +149,8 @@ func baseDayRig() dayRig {
 			{name: "甲", soldiers: 20000, enemies: 5, enemySoldiers: 1500, difficulty: 5},
 			{name: "乙", soldiers: 30000, enemies: 5, enemySoldiers: 1000, difficulty: 5},
 			{name: "丙", soldiers: 6000, enemies: 5, enemySoldiers: 27000, stats: 5, difficulty: 5},
-			{name: "丁", soldiers: 1300, enemies: 5, enemySoldiers: 6000, stats: 5, difficulty: 5},
+			{name: "丁", soldiers: 2400, enemies: 2, enemySoldiers: 5000, stats: 1, difficulty: 5,
+				weak: true, enemyWeak: true, enemyLoyal: true, allStats: true, solid: true, days: 26},
 			{name: "戊", soldiers: 20000, enemies: 5, enemySoldiers: 1500, stats: 99, myIntel: 10, difficulty: 5},
 		},
 		seedLo: 0xa3ae, seedHi: 0xa3b0,
@@ -301,6 +313,12 @@ func runUnitAIDayBoards(t *testing.T, rig dayRig) {
 	}
 }
 
+// restInSkirmish 是對戰子畫面裡玩家那一方的答案：每一位每一時刻都休息
+// ——與送給原版的鍵序（「0」再「Y」）相同。
+func restInSkirmish(*battle.Skirmish, *battle.SkirmishGeneral) battle.SkirmishCommand {
+	return battle.SkirmishCommand{Kind: battle.SkirmishRest}
+}
+
 // compactDraws 把連續的 `srand=` 折成一格（讀鍵的迴圈一次會播種幾十萬次）。
 func compactDraws(in []string) []string {
 	var out []string
@@ -359,7 +377,7 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 			}
 		}
 	}
-	if bd.enemyWeak || bd.enemyLoyal || len(bd.enemySoldiersBy) > 0 {
+	if bd.enemyWeak || bd.enemyLoyal || bd.allStats || len(bd.enemySoldiersBy) > 0 {
 		nth := 0
 		for i := 0; i < 350; i++ {
 			rec := genBase + uint32(i*30)
@@ -369,6 +387,10 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 			if bd.enemyWeak {
 				o.SetByte(addr(rec+24), 0)
 				o.SetByte(addr(rec+25), 0)
+			}
+			if bd.allStats && bd.stats > 0 {
+				o.SetByte(addr(rec+9), byte(bd.stats))
+				o.SetByte(addr(rec+10), byte(bd.stats))
 			}
 			if bd.enemyLoyal {
 				o.SetByte(addr(rec+16), 100)
@@ -391,6 +413,11 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 
 	work := func() uint16 { return o.Word(oracle.Addr{Seg: dgroup, Off: rig.workSegPtr}) }
 	w16 := func(off int) int { return int(o.Word(oracle.Addr{Seg: work(), Off: uint16(off)})) }
+	// `SAN1_SKIRMISH=1`：把對戰子畫面的每一步倒出來（原版限定，Issue #30）。
+	var skirmish *[]string
+	if envOr("SAN1_SKIRMISH", "") != "" && rig.edition == state.EditionBase {
+		skirmish = attachSkirmishTrace(t, o, work, w16, genBase)
+	}
 
 	// 一次決策的紀錄。
 	type decision struct {
@@ -472,14 +499,25 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 					Quality: w16(rec + unitAbility),
 					Cap:     w16(rec + unitCap),
 				}
+				// 槽號要保留：對戰子畫面照槽號擺起點、看第 0 槽在不在
+				// （`0x2e68a`），被抓走留下的洞不能往前補。洞用一位「不在
+				// 陣中」的佔位將領頂著（只到最後一位真的將領為止）。
+				last := -1
 				for pos := 0; pos < 10; pos++ {
+					if w16(rec+pos*2) != 0xFFFF {
+						last = pos
+					}
+				}
+				for pos := 0; pos <= last; pos++ {
 					idx := w16(rec + pos*2)
 					if idx == 0xFFFF {
+						u.Leaders = append(u.Leaders, battle.Leader{Index: -1, Dead: true})
 						continue
 					}
 					g := genBase + uint32(idx*30)
 					l := battle.Leader{
 						Index: idx, Intel: o.Byte(addr(g + 9)), War: o.Byte(addr(g + 10)),
+						Stamina:  o.Byte(addr(g + 8)),
 						Soldiers: int(o.Word(addr(g + 22))), Training: o.Byte(addr(g + 24)),
 						Arms: o.Byte(addr(g + 25)), Troop: battle.TroopKind(o.Byte(addr(g + 21))),
 						Lord: o.Byte(addr(g+17)) == 0,
@@ -727,7 +765,7 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 	// 玩家那支是在第一天的電腦部隊都動完之後才被搬到守軍旁邊的
 	// （紮寨那幾步已經讓守方走完第一天）；不重拍模式要在同一個時點
 	// 把 remake 的那支也搬過去。
-	meRec, _ := placeNearDefenderRig(t, o, dgroup, rig, bd.apart)
+	meRec, _ := placeNearDefenderRig(t, o, dgroup, rig, bd.apart, bd.solid)
 	placedAt := battle.NoHex
 	if meRec >= 0 {
 		placedAt = battle.FromOffset(w16(meRec+unitCol), w16(meRec+unitRow))
@@ -772,6 +810,11 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		}
 	}
 
+	if skirmish != nil {
+		for _, l := range *skirmish {
+			t.Log(l)
+		}
+	}
 	// remake 這一邊：同一份盤面、同一串骰值。
 	sideName := func(a int) string { return toSide[a].String() }
 	bad := 0
@@ -784,6 +827,7 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		}
 		i := 0
 		var asked []int
+		d.model.PlayerSkirmish = restInSkirmish
 		d.model.UseRoll(func(n int) int {
 			asked = append(asked, n)
 			if i < len(d.rolls) {
@@ -845,6 +889,9 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 	first := decisions[0]
 	model := first.fresh
 	seed := first.seed
+	// 電腦選了對戰（選項 7）就進對戰子畫面，玩家那一位每一時刻吃「0」
+	// 休息（上面的鍵序）；remake 這一邊用同一個答案。
+	model.PlayerSkirmish = restInSkirmish
 	// 玩家那一邊：原版每天在電腦的部隊之後輪到它們，測試每一支都送「0」
 	// 休息；休息印一句對白，回合結束一樣判投敵、回填移動力。投敵或招降
 	// 的人進了空槽位會多出一支（後軍），所以照行動順序逐支來。
@@ -961,10 +1008,12 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 			t.Errorf("✗ %s：進鏈時部隊狀態不同——remake %s；原版 %s", tag, got, want)
 			stateBad++
 		}
-		if d.option == 7 {
-			// 對戰子畫面（`0x2deb0`）還沒對齊：remake 的「對戰」是叫陣
-			// 單挑，骰序不同（`docs/mechanics/40` §8）。不重拍走到這裡為止。
-			t.Logf("%s：原版選了對戰（選項 7），子畫面的骰序還沒對齊，不重拍比到這一條為止（%d／%d 條）", tag, i, len(decisions))
+		if d.option == 7 && rig.edition == state.EditionPlus {
+			// 加強版的對戰子畫面（`0x2ae66`）還沒對回 `ASV.EXE`：行動門是
+			// `RND(40)`、單挑門是 `RND(5)` 再 `RND(3)`（已讀），但版型、起點、
+			// 移動力與走法還沒讀，remake 走到第三個行動時刻就比原版早一步
+			// 貼上敵帥。不重拍走到這裡為止；原版這一層見 `docs/re/05` §10.9。
+			t.Logf("%s：原版選了對戰（選項 7），加強版的子畫面還沒對回 ASV.EXE，不重拍比到這一條為止（%d／%d 條）", tag, i, len(decisions))
 			break
 		}
 		got := model.DecideBase(u)

@@ -7,17 +7,16 @@ import (
 
 // 單挑與六種計謀（說明書 p.30–34）。
 
-// Duel 是「單挑」：部隊將領叫陣單打獨鬥（說明書 p.30）。
+// Duel 是領隊對領隊的單挑：兩支部隊的領隊叫陣單打獨鬥（說明書 p.30）。
 //
 // 「**依其戰力強弱分高下，與率領軍力大小無關**；若於單挑時體力降到 0
 // 即告落敗；若拒絕挑戰，麾下士兵將有部份逃跑；單挑落敗可能被擒，
 // 或死於刀下。」
 //
-// accept 為假表示對方拒絕挑戰。要照原版判斷用 DuelAccepted。
-func (b *Battle) Duel(a *Unit, d Dir, accept bool) error { return b.duel(a, d, accept, true) }
-
-// duel 是 Duel 的本體；spend 為真把移動力歸零（玩家的對戰 `0x29009`）。
-func (b *Battle) duel(a *Unit, d Dir, accept bool, spend bool) error {
+// ⚠ **這是 remake 的 `enhanced` 模式用的**（`auto.go`）。原版的主戰場
+// 沒有這一步——單挑只在對戰子畫面裡、一位將領對一位將領
+// （`Skirmish`，`docs/re/05` §9／§10）。accept 為假表示對方拒絕挑戰。
+func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 	if err := b.canAct(a); err != nil {
 		return err
 	}
@@ -32,21 +31,36 @@ func (b *Battle) duel(a *Unit, d Dir, accept bool, spend bool) error {
 	if ca == nil || ct == nil {
 		return fmt.Errorf("battle: 有一方沒有領隊")
 	}
-	if spend {
-		a.Move = 0
+	a.Move = 0
+	loser, _ := b.duelLeaders(ca, ct, accept, nil)
+	if loser != nil {
+		u := a
+		if loser == ct {
+			u = t
+		}
+		// 「如果雙方領隊之一被擒或死亡，這場對戰便告一段落」。
+		b.wipeCheck(u)
+		b.checkOver()
 	}
+	return nil
+}
+
+// duelLeaders 是一場單挑的本體（`0x30a1e`，`docs/re/05` §9）：ca 叫陣、
+// ct 應戰或拒絕。回落敗的那一位（平手或拒絕是 nil）與勝方。落敗被擒時
+// 先叫 seized（對戰子畫面用它把人記進捕獲方的名單），戰死的當場標記。
+func (b *Battle) duelLeaders(ca, ct *Leader, accept bool, seized func(loser *Leader)) (loser, winner *Leader) {
 	if !accept {
 		// 「若拒絕挑戰，麾下士兵將有部份逃跑」——**跑的是拒絕那一方的**
-		// （`0x30de6`，三條分支的 `si` 都指向被挑戰者）。
+		// （`0x30de6`，三條分支的 `si` 都指向被挑戰者的人物記錄）。
 		div := RefuseDuelDivisor(int(ct.Intel), int(ct.War), int(ca.War),
 			b.roll(RefuseIntelSpread), b.roll(RefuseWarSpread),
 			b.roll(RefuseIntelSpread), b.roll(max(1, int(ct.War)/RefuseWarDiv)))
 		lost := ct.Soldiers / div
 		if lost > 0 {
-			b.casualty(t, lost)
+			ct.Soldiers -= lost
 		}
 		b.note("blog.refuse", pn(ct.Name), pn(ca.Name), lost)
-		return nil
+		return nil, nil
 	}
 	// 依戰力分高下，與兵力無關。**體能就是血條**，降到 0 即落敗。
 	rounds := DuelRounds(int(ca.War), int(ct.War), b.roll(duelRoundSpread(int(ca.War), int(ct.War))))
@@ -55,8 +69,8 @@ func (b *Battle) duel(a *Unit, d Dir, accept bool, spend bool) error {
 			b.roll(DuelBlowSpread), b.roll(DuelBlowSpread), b.roll(DuelBlowWide))
 		if int(ct.Stamina) <= blow {
 			ct.Stamina = 0
-			b.defeatInDuel(t, ct, ca)
-			return nil
+			b.defeatInDuel(ct, ca, seized)
+			return ct, ca
 		}
 		ct.Stamina -= uint8(blow)
 
@@ -64,13 +78,13 @@ func (b *Battle) duel(a *Unit, d Dir, accept bool, spend bool) error {
 			b.roll(DuelBlowSpread), b.roll(DuelBlowSpread), b.roll(DuelBlowWide))
 		if int(ca.Stamina) <= blow {
 			ca.Stamina = 0
-			b.defeatInDuel(a, ca, ct)
-			return nil
+			b.defeatInDuel(ca, ct, seized)
+			return ca, ct
 		}
 		ca.Stamina -= uint8(blow)
 	}
 	b.note("blog.draw", pn(ca.Name), pn(ct.Name))
-	return nil
+	return nil, nil
 }
 
 // 單挑的兩條公式（`0x310b6`／`0x31170`，`L0`、`[base]`）。
@@ -196,17 +210,17 @@ const DuelDeathRoll = 7
 func DuelKills(roll int) bool { return roll == 0 }
 
 // defeatInDuel 處理單挑落敗：可能被擒，或死於刀下（說明書 p.30）。
-func (b *Battle) defeatInDuel(u *Unit, loser, winner *Leader) {
+func (b *Battle) defeatInDuel(loser, winner *Leader, seized func(*Leader)) {
 	if !DuelKills(b.roll(DuelDeathRoll)) {
 		loser.Captured = true
+		if seized != nil {
+			seized(loser)
+		}
 		b.note("blog.duelCaptured", pn(loser.Name), pn(winner.Name))
 	} else {
 		loser.Dead = true
 		b.note("blog.duelKilled", pn(loser.Name), pn(winner.Name))
 	}
-	// 「如果雙方領隊之一被擒或死亡，這場對戰便告一段落」。
-	b.wipeCheck(u)
-	b.checkOver()
 }
 
 // Stratagem 是六種計謀（說明書 p.32–34）。

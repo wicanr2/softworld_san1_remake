@@ -688,18 +688,13 @@ func (b *Battle) baseEngage(u *Unit, ev baseEval) bool {
 	} else if ev.holdsCity && ev.ratio >= baseAttackRatioCap {
 		return false
 	}
-	d, ok := b.dirTo(u, ev.target)
-	if !ok {
+	if _, ok := b.dirTo(u, ev.target); !ok {
 		return false
 	}
-	ca, ct := u.Chief(), ev.target.Chief()
-	accept := false
-	if ca != nil && ct != nil {
-		accept = DuelAccepted(int(ca.War), int(ct.War), u.Soldiers(), ev.target.Soldiers(),
-			b.roll(DuelWarSpread), b.roll(DuelOddsSpread))
-	}
-	// 電腦的對戰不動移動力（`0x29b82`–`0x29c56` 不碰 offset 36）。
-	return b.duel(u, d, accept, false) == nil
+	// 進對戰子畫面（`0x29c3e` → `0x2deb0`）。電腦的對戰不動移動力
+	// （`0x29b82`–`0x29c56` 不碰 offset 36）。
+	b.NewSkirmish(u, ev.target).Run()
+	return true
 }
 
 // baseQuickBattle 是選項 8（`0x29ade`）：守著城池且主帥沒被貼身時要
