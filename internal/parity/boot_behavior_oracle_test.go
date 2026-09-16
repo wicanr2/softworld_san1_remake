@@ -69,6 +69,7 @@ type bootSignals struct {
 
 func observeBoot(o *oracle.Oracle) *bootSignals {
 	s := &bootSignals{}
+	faceCensus(o)
 	o.OnCall(addr(imgLoadFn), func(o *oracle.Oracle) {
 		name := cstr(o, uint32(o.Arg(1))*16+uint32(o.Arg(0)))
 		if name == "MENU3.IMG" {
