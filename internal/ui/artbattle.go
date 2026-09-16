@@ -6,6 +6,10 @@ package ui
 // 上方花邊、場地圖塊、部隊的旗與兵力牌、兩個軍力面板與指令面板的位置、
 // 肖像與肖像框。**字是 remake 自己的字庫**（`CLAUDE.md` §3.3），
 // 所以字級與原版的 32×32／16×16 不同；面板裡的排法也是 remake 自己排的。
+//
+// 戰場上的對白不在這裡：`DrawBattleSpeech`（`bubble.go`）把那一塊面板
+// 填藍再走 `DrawBubble` 疊在這一張上，主程式畫完 `DrawArtBattle` 才叫它
+// （`docs/spec/005` §9.7）。
 
 import (
 	"fmt"
