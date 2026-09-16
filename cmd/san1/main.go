@@ -967,6 +967,9 @@ func (a *app) paint() {
 			if a.artBattle != nil {
 				ui.DrawArtBattle(a.canvas, a.artBattle, a.fight.pending.Battle(),
 					a.fight.view, a.battleInfo())
+				if sp := a.fight.speech(true); sp != nil {
+					ui.DrawBattleSpeech(a.canvas, a.art, a.s.G, sp)
+				}
 			} else {
 				ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
 			}
@@ -993,6 +996,14 @@ func (a *app) paint() {
 // Esc 收起覆蓋頁——**Esc 不會離開戰役**：出兵是不能反悔的。
 func (a *app) updateBattle() error {
 	defer func() { a.dirty = true }()
+	// 戰場對白（肖像＋泡泡）一次一格，按任意鍵收掉——與主畫面的訊息框
+	// 同一個做法（remake 差異：原版走延遲設定）。
+	if a.fight.speech(a.artBattle != nil) != nil {
+		if anyKeyPressed() {
+			a.fight.speeches = a.fight.speeches[1:]
+		}
+		return nil
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		a.fight.view.Page, a.fight.view.PageTitle = nil, ""
 		return nil

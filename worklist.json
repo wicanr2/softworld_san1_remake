@@ -1156,6 +1156,32 @@
       "layer": "verification"
     },
     {
+      "id": "battle-dialogue-bubbles",
+      "title": "戰場、對戰子畫面與單挑的對白走訊息框",
+      "group": "畫面",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/05",
+        "docs/re/12"
+      ],
+      "note": "2026-09-17（Issue #52）：戰場的對白框是面板——主戰場與對戰子畫面用第三塊 (448,268)–(623,363)（呼叫端先填藍）、單挑用攻守各自那一塊側面板（位置 `DS:0x7b24`／`0x7b34`，肖像攻左守右 `DS:0x8894`）；47 個呼叫端的片語與說話者列在 `docs/spec/005` §9.7。remake：`internal/battle` 每一處原本就擲的字色那一擲改由 `say` 留下值排進 `Battle.Speeches`，`cmd/san1` 一格一格畫（`ui.DrawBattleSpeech`）、任意鍵收；骰序不變。沒接：戰役結束回郡那一句（478，remake 沒有對應的擲）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZBattleSpeechMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "verification"
+    },
+    {
       "id": "art-main-overlays",
       "title": "原版素材畫面看得到指令表、子選單、挑選清單、分頁與戰場選項",
       "group": "畫面",

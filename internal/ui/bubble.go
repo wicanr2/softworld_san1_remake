@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
@@ -160,6 +161,16 @@ func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
 			x += c.DrawRuneScaledPx(x, y1+12+i*bubbleLineGap, r, fg, 1, bubbleTextScale)
 		}
 	}
+}
+
+// DrawBattleSpeech 在主戰場上畫一句對白：那一塊面板先填成藍（原版
+// `es:0x252e` 填 1），再照訊息框的規矩畫肖像、名字、泡泡與字
+// （`docs/spec/005` §9.7）。肖像從 `a` 取（`a` 可為 nil）。
+func DrawBattleSpeech(c *Canvas, a *ArtScreen, g *game.State, sp *battle.Speech) {
+	x1, y1, x2, y2 := sp.Rect()
+	c.FillRect(x1, y1, x2+1, y2+1, assets.EGAPalette[1])
+	DrawBubble(c, a, g, &game.Bubble{X1: x1, Y1: y1, X2: x2, Y2: y2, Left: sp.Left,
+		Speaker: sp.Speaker, Color: sp.Color, Text: sp.Text})
 }
 
 // ClearPanel 照原版的 `0x1058:0x27e8(x1, y1, x2, y2, 色)` 清一塊面板的

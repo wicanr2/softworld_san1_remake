@@ -763,7 +763,7 @@ func (s *Skirmish) stepAlong(g *SkirmishGeneral) bool {
 // ——攻方先看，攻方沒事守方才看（`0x30716`／`0x307e5`）。
 func (s *Skirmish) attack(g, t *SkirmishGeneral) {
 	b := s.b
-	b.msg()
+	b.say(g.Leader, BoxThird, false, "bub.kill") // `0x303fc`
 	spend(g.Leader, skirmishAttackStamina)
 	spend(t.Leader, skirmishStruckStamina)
 	hitBy := func(x *SkirmishGeneral) int { return SkirmishDamage(s16(x.Leader.Soldiers), x.Power) }
@@ -827,7 +827,7 @@ func (s *Skirmish) duel(g, t *SkirmishGeneral) {
 		}
 	}
 	s.log("  單挑 %d/%d ⇒ %d/%d", g.Side, g.Slot, t.Side, t.Slot)
-	loser, _ := b.duelLeaders(g.Leader, t.Leader, answer, func(x *Leader) {
+	loser, _ := b.duelLeaders(g.Leader, t.Leader, g.Unit.Side, t.Unit.Side, answer, func(x *Leader) {
 		// 落敗被擒：寫進捕獲方的名單。
 		var lg, winner *SkirmishGeneral
 		if x == g.Leader {

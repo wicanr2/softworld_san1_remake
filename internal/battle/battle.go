@@ -68,6 +68,9 @@ type Battle struct {
 
 	Log []string
 
+	// Speeches 是還沒畫的對白（`speech.go`），畫面那一層一格一格收。
+	Speeches []Speech
+
 	// Over／AttackerWon 是結果。
 	Over        bool
 	AttackerWon bool
@@ -298,7 +301,7 @@ func (b *Battle) defections(u *Unit) {
 		if b.leadersOf(opp) >= SurrenderRoom {
 			continue
 		}
-		b.msg()
+		b.say(x, BoxThird, false, "bub.desert") // `0x27768`
 		loyalty := 100 - x.Loyalty
 		if loyalty > 100 {
 			loyalty = 100
@@ -483,7 +486,7 @@ func (b *Battle) Rest(u *Unit) error {
 	if err := b.canAct(u); err != nil {
 		return err
 	}
-	b.msg()
+	b.sayUnit(u, "bub.camp") // `0x27cb0`
 	u.Move += RestMove
 	if u.Move > MoveMax {
 		u.Move = MoveMax
@@ -648,7 +651,7 @@ var (
 // 打光的將領交給對方處置（`0x2a7b7`／`0x2a7e6`）——**先出手方的、再
 // 承受方的**，各照槽位由 0 往 9。處置本身的骰見 `capture`。
 func (b *Battle) exchange(a, d *Unit, mode int) (int, int) {
-	b.msg()
+	b.sayUnit(a, "bub.kill") // `0x2a2b6`
 	// 部隊的兵士數（offset 30）是 **16 位元有號數**（`fimuls`／`fidivrs`）：
 	// 兩位各兩萬七的部隊在這裡是負的，比例那一步 `兵 ≤ 0 → 0.0`，
 	// 只剩逐將領那道 −1（盤面丙量到，`L1`）。
@@ -886,12 +889,12 @@ func (b *Battle) capture(captor Side, u *Unit, x *Leader) {
 		}
 		switch fate {
 		case Executed:
-			b.msg()
+			b.say(x, BoxThird, false, "bub.captiveDie") // `0x25fcb`
 			x.Fate = Executed
 			b.note("blog.executed", pn(x.Name))
 			return
 		case Jailed:
-			b.msg()
+			b.say(x, BoxThird, false, "bub.captiveJailed") // `0x26178`
 			b.fx()
 			x.Fate = Jailed
 			b.note("blog.jailed", pn(x.Name))
@@ -899,10 +902,10 @@ func (b *Battle) capture(captor Side, u *Unit, x *Leader) {
 		case Defected:
 			c := b.surrenderChance(captor, x)
 			if c <= 0 {
-				b.msg()
+				b.say(x, BoxThird, false, "bub.captiveRefuse", pn(x.Name)) // `0x25c0e`
 				continue
 			}
-			b.msg()
+			b.say(x, BoxThird, false, "bub.captiveYield") // `0x25c82`
 			b.fx()
 			x.Fate = Defected
 			x.Loyalty = c
@@ -1210,7 +1213,7 @@ func (b *Battle) archery(a *Unit, target Hex, n int) error {
 		if !t.Alive() {
 			break
 		}
-		b.msg()
+		b.sayUnit(a, "bub.arrows") // `0x2a88e`
 		b.fx()
 		d := MeleeDamage(ArrowTerrainValue(b.Field.At(a.At)),
 			s16(a.Soldiers()), a.Quality, 1, b.arrowScale())
@@ -1271,7 +1274,7 @@ func (b *Battle) Retreat(u *Unit) error {
 	//
 	// 原版是挑完去處才找路，找不到印「逃不掉」回頭重挑；remake 先查
 	// 有沒有路，查不到在擲骰之前就回錯——只有退不成的那一趟骰數不同。
-	b.msg()
+	b.sayUnit(u, "bub.retreat") // `0x23fa1`
 	if b.Computer[u.Side] {
 		home := b.Origin[u.Side]
 		if u.Side == MainDefender || home.Prefecture == 0 || u.LeaderCount()+home.Active > baseEscapeRoom {

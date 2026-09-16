@@ -33,7 +33,7 @@ func (b *Battle) Duel(a *Unit, d Dir, answer func() bool) error {
 		return fmt.Errorf("battle: 有一方沒有領隊")
 	}
 	a.Move = 0
-	loser, _ := b.duelLeaders(ca, ct, answer, nil)
+	loser, _ := b.duelLeaders(ca, ct, a.Side, t.Side, answer, nil)
 	if loser != nil {
 		u := a
 		if loser == ct {
@@ -61,9 +61,16 @@ func (b *Battle) Duel(a *Unit, d Dir, answer func() bool) error {
 // 對白，第 30、60、80、100、130、150 回合再各一句（都是一擲）；任一方
 // 體能歸零或回合用完就停。收尾：平手特效一擲、兩句對白；落敗的
 // `RND(7)`，非 0 被擒、0 戰死，各接特效一擲、兩句對白。
-func (b *Battle) duelLeaders(ca, ct *Leader, answer func() bool, seized func(loser *Leader)) (loser, winner *Leader) {
+func (b *Battle) duelLeaders(ca, ct *Leader, sa, st Side, answer func() bool, seized func(loser *Leader)) (loser, winner *Leader) {
+	// 對白的格：挑戰者與應戰者各用自己那一側的面板（`speech.go`）。
+	boxA, leftA := duelBox(sa)
+	boxT, leftT := duelBox(st)
+	sayA := func(key string, a ...any) { b.say(ca, boxA, leftA, key, a...) }
+	sayT := func(key string, a ...any) { b.say(ct, boxT, leftT, key, a...) }
 	b.fx()
-	b.msg()
+	// 挑戰（`0x30be6`：「X 出來與我決一死戰」）；第二句是空的（`0x30c2e`，
+	// 只亮應戰者那一格），remake 不畫。
+	sayA("bub.duelChallenge", pn(ct.Name))
 	b.msg()
 	var accept bool
 	if answer == nil {
@@ -72,14 +79,16 @@ func (b *Battle) duelLeaders(ca, ct *Leader, answer func() bool, seized func(los
 		accept = answer()
 	}
 	if !accept && int(ct.War) >= b.roll(DuelBraveSpread)+DuelBraveFloor {
-		// 「%s 好大的膽子」：還沒接受的猛將照樣應戰（`0x30d66`–`0x30dd8`）。
-		b.msg()
+		// 「%s 好大的膽子」：還沒接受的猛將照樣應戰（`0x30d66`–`0x30dd8`，
+		// 對白 436「吾非膽小之人 豈可不戰」）。
+		sayT("bub.duelBrave")
 		accept = true
 	}
 	if !accept {
 		// 「若拒絕挑戰，麾下士兵將有部份逃跑」——**跑的是拒絕那一方的**
-		// （`0x30de6`，三條分支的 `si` 都指向被挑戰者的人物記錄）。
-		b.msg()
+		// （`0x30de6`，三條分支的 `si` 都指向被挑戰者的人物記錄；對白 435
+		// 「汝何人也 不配與吾交手」）。
+		sayT("bub.duelRefuse")
 		div := b.refuseDivisor(ct, ca)
 		lost := ct.Soldiers / div
 		if lost > 0 {
@@ -88,7 +97,8 @@ func (b *Battle) duelLeaders(ca, ct *Leader, answer func() bool, seized func(los
 		b.note("blog.refuse", pn(ct.Name), pn(ca.Name), lost)
 		return nil, nil
 	}
-	b.msg()
+	// 應戰（`0x30ff9`：「X 鼠輩 吾豈懼汝哉」）。
+	sayT("bub.duelAccept", pn(ca.Name))
 	// 依戰力分高下，與兵力無關。**體能就是血條**，降到 0 即落敗。
 	cw, tw := int(ca.War), int(ct.War)
 	rounds := DuelRounds(cw, tw, b.roll(duelRoundSpread(cw, tw)))
@@ -111,27 +121,43 @@ func (b *Battle) duelLeaders(ca, ct *Leader, answer func() bool, seized func(los
 			victim.Stamina -= uint8(blow)
 		}
 		// 回合數先加一，再看要不要印對白（`0x31526`–`0x31809`）。
+		// 八句照原版的次序（`0x31572`–`0x31801`）：第 5、15 回合兩人各喝一聲，
+		// 30／60／80／100／130／150 回合輪流一句。
 		switch next := round + 1; {
-		case next%20 == 5, next%20 == 15,
-			next == 130, next == 150, next == 30, next == 60, next == 100, next == 80:
-			b.msg()
+		case next%20 == 5:
+			sayA("bub.duelShout1")
+		case next%20 == 15:
+			sayT("bub.duelShout2")
+		case next == 130:
+			sayA("bub.duelPraise", pn(ct.Name))
+		case next == 150:
+			sayT("bub.duelEqual", pn(ca.Name))
+		case next == 30:
+			sayA("bub.duelKill", pn(ct.Name))
+		case next == 60:
+			sayT("bub.duelBlade")
+		case next == 100:
+			sayA("bub.duelHundred")
+		case next == 80:
+			sayT("bub.duelFamed", pn(ca.Name))
 		}
 		if ca.Stamina == 0 || ct.Stamina == 0 || round+1 > rounds {
 			break
 		}
 	}
 	if ca.Stamina > 0 && ct.Stamina > 0 {
+		// 平手（`0x3197c`／`0x319d3`）：「賊將 他日再戰」「逆賊 改日再戰」。
 		b.fx()
-		b.msg()
-		b.msg()
+		sayT("bub.duelLater1")
+		sayA("bub.duelLater2")
 		b.note("blog.draw", pn(ca.Name), pn(ct.Name))
 		return nil, nil
 	}
 	if ca.Stamina == 0 {
-		b.defeatInDuel(ca, ct, seized)
+		b.defeatInDuel(ca, ct, sa, st, seized)
 		return ca, ct
 	}
-	b.defeatInDuel(ct, ca, seized)
+	b.defeatInDuel(ct, ca, st, sa, seized)
 	return ct, ca
 }
 
@@ -324,12 +350,20 @@ const DuelDeathRoll = 7
 func DuelKills(roll int) bool { return roll == 0 }
 
 // defeatInDuel 處理單挑落敗：可能被擒，或死於刀下（說明書 p.30）。
-func (b *Battle) defeatInDuel(loser, winner *Leader, seized func(*Leader)) {
+func (b *Battle) defeatInDuel(loser, winner *Leader, sl, sw Side, seized func(*Leader)) {
 	kills := DuelKills(b.roll(DuelDeathRoll))
-	// 被擒與戰死各接一段特效、兩句對白（`0x31b51`／`0x31c96`）。
+	// 被擒與戰死各接一段特效、兩句對白（`0x31b51`／`0x31c96`）：勝者
+	// 「X 快下馬受縛」／「X 受死吧」，敗者「哇 呀」／「啊」。
+	boxL, leftL := duelBox(sl)
+	boxW, leftW := duelBox(sw)
 	b.fx()
-	b.msg()
-	b.msg()
+	if !kills {
+		b.say(winner, boxW, leftW, "bub.duelSeize", pn(loser.Name))
+		b.say(loser, boxL, leftL, "bub.duelSeized")
+	} else {
+		b.say(winner, boxW, leftW, "bub.duelDie", pn(loser.Name))
+		b.say(loser, boxL, leftL, "bub.duelDied")
+	}
 	if !kills {
 		loser.Captured = true
 		if seized != nil {
@@ -628,7 +662,8 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	// 每一支先印自己那一句對白，火攻、水淹、燒糧接著播特效（`RND(4)`），
 	// 再擲效果的骰。
 	if !StratagemSucceeds(ci, vi, b.roll(s.Spread())) {
-		b.msg()
+		// 被看穿（`0x2ad72`）：目標的統帥說「X 汝計已被吾識破」，肖像在左。
+		b.say(t.Chief(), BoxThird, true, "bub.seen", pn(u.Chief().Name))
 		b.note("blog.seen", u.Name(), t.Name(), s.Label())
 		b.checkOver()
 		return nil
@@ -636,13 +671,13 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 
 	switch s {
 	case Fire:
-		b.msg()
+		b.sayUnit(u, "bub.fire") // `0x2ae6b`
 		b.fx()
 		r := FireRatio(terrain, ci, b.roll(StratagemRollSpread))
 		loss := b.scorch(u.Side, t, r)
 		b.note("blog.fire", u.Name(), t.Name(), loss, terrain.Label(), int(r*100))
 	case Flood:
-		b.msg()
+		b.sayUnit(u, "bub.flood") // `0x2b1d9`
 		b.fx()
 		r := FloodRatio(terrain, ci, b.roll(StratagemRollSpread))
 		loss := b.scorch(u.Side, t, r)
@@ -655,12 +690,12 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		//
 		// 划不划算看的是「目標的攻擊力 vs 施法者的防禦力」——引一支弱的
 		// 部隊來撞自己的硬點才是這一招的用法。
-		b.msg()
+		b.sayUnit(u, "bub.lure") // `0x2b72d`
 		lost, back := b.exchange(t, u, LureStrike)
 		b.note("blog.lure", u.Name(), t.Name(), u.Name(), back, t.Name(), lost)
 	case Trap:
 		// 第二擲只有領隊謀略 ≥ 98 才有（`0x2b683`–`0x2b68f`）。
-		b.msg()
+		b.sayUnit(u, "bub.trap") // `0x2b54b`
 		bonus := 0
 		days := b.roll(TrapSpread)
 		if ci >= StratagemGeniusIntel {
@@ -670,7 +705,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		b.note("blog.trap", u.Name(), t.Name(), t.Trapped)
 	case Burn:
 		// 兩條路各擲一次，不是兩擲都擲（`0x2ba6b`–`0x2ba9b`）。
-		b.msg()
+		b.sayUnit(u, "bub.burn") // `0x2b911`
 		b.fx()
 		side := t.Side
 		genius, plain := 0, 0
@@ -706,7 +741,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		if w := u.Smartest(); w != nil && int(w.Intel) >= StratagemGeniusIntel {
 			mode++
 		}
-		b.msg()
+		b.sayUnit(u, "bub.siege") // `0x2bb81`
 		total, n := 0, 0
 		for _, d := range Dirs() {
 			x := b.UnitAt(target.Step(d))

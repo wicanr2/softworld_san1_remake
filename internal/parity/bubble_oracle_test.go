@@ -11,6 +11,7 @@ import (
 
 	"github.com/wicanr2/dosgolem/oracle"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
@@ -298,5 +299,142 @@ func TestZZSearchFaceMatchesTheOriginal(t *testing.T) {
 	}
 	if bad != 0 {
 		t.Errorf("面板有 %d 個像素不同，第一個 %s", bad, first)
+	}
+}
+
+// TestZZBattleSpeechMatchesTheOriginal 釘住戰場上的三種訊息框
+// （`docs/spec/005` §9.7）：第三塊面板 (448,268)–(623,363) 肖像在右、單挑
+// 攻方那一塊 (64,268)–(239,363) 肖像在左、守方那一塊 (256,268)–(431,363)
+// 肖像在右。底圖用原版當下的畫面（呼叫端的填藍另外算），直接呼叫原版的
+// 常式，肖像、泡泡、名字的黑底逐像素相同；對白框裡只有白與擲出來的那一色。
+func TestZZBattleSpeechMatchesTheOriginal(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	base := bootToGame(t, o, seedMas)
+	genBase := base + uint32(state.MasterTableSize+state.PrefectureTableSize)
+	g, err := game.New(sc0, 0, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	art, err := ui.NewArtScreen(openContainer(t, filepath.Join(root, "DATA3")),
+		openContainer(t, filepath.Join(root, "DATA1")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fh, err := os.Open("../../fonts/unifont.hex.gz")
+	if err != nil {
+		t.Skipf("沒有字型檔：%v", err)
+	}
+	face, err := font.ParseHexGz(fh, 16)
+	fh.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	colour := -1
+	o.OnCall(addr(msgRndAt), func(o *oracle.Oracle) { colour = int(o.Regs().AX) })
+	idx := func(c color.RGBA) int {
+		for i, p := range assets.EGAPalette {
+			if p == c {
+				return i
+			}
+		}
+		return -1
+	}
+	who := 151
+	x := g.General(who)
+	nameLin := genBase + uint32(who*state.GeneralRecordSize)
+	for _, k := range []struct {
+		name   string
+		sp     battle.Speech
+		phrase uint16
+	}{
+		{"第三塊面板（殺）", battle.Speech{Speaker: who, Box: battle.BoxThird, Text: i18n.S("bub.kill")}, 432},
+		{"單挑攻方那一塊（肖像在左）", battle.Speech{Speaker: who, Box: battle.BoxAttacker, Left: true, Text: i18n.S("bub.duelLater2")}, 438},
+		{"單挑守方那一塊（肖像在右）", battle.Speech{Speaker: who, Box: battle.BoxDefender, Text: i18n.S("bub.duelLater1")}, 437},
+	} {
+		t.Run(k.name, func(t *testing.T) {
+			x1, y1, x2, y2 := k.sp.Rect()
+			before := o.IndexedEGASize(scrW, scrH)
+			cv := ui.NewCanvasPx(scrW, scrH, face)
+			for y := 0; y < scrH; y++ {
+				for xx := 0; xx < scrW; xx++ {
+					cv.Img.SetRGBA(xx, y, assets.EGAPalette[before[y*scrW+xx]&15])
+				}
+			}
+			side := uint16(0)
+			if k.sp.Left {
+				side = 0xFFFF
+			}
+			colour = -1
+			if _, err := o.Call(addr(msgFn), uint16(x1), uint16(y1), uint16(x2), uint16(y2),
+				side, uint16(x.Portrait), uint16(nameLin&0xF), uint16(nameLin>>4),
+				k.phrase, 499, 499); err != nil {
+				t.Fatal(err)
+			}
+			if colour < 0 {
+				t.Fatal("字色那一擲沒攔到")
+			}
+			orig := o.IndexedEGASize(scrW, scrH)
+			dumpScreen(t, o, "speech-"+fmt.Sprint(k.phrase))
+			sp := k.sp
+			sp.Color = colour
+			ui.DrawBubble(cv, art, g, &game.Bubble{X1: x1, Y1: y1, X2: x2, Y2: y2, Left: sp.Left,
+				Speaker: sp.Speaker, Color: sp.Color, Text: sp.Text})
+
+			tx, right := x1+8, x2-70
+			if sp.Left {
+				tx, right = x1+72, x2-5
+			}
+			nx := x1 + 8
+			if !sp.Left {
+				nx = x2 - 55
+			}
+			inText := func(px, py int) bool {
+				line1 := py >= y1+12 && py < y1+44
+				line2 := py >= y1+52 && py < y1+84
+				return px >= tx && px < right && (line1 || line2)
+			}
+			inName := func(px, py int) bool { return px >= nx && px < nx+48 && py >= y1+80 && py < y1+96 }
+			bad, first, ink := 0, "", 0
+			for py := y1; py <= y2; py++ {
+				for px := x1; px <= x2; px++ {
+					op, mp := int(orig[py*scrW+px]&15), idx(cv.Img.RGBAAt(px, py))
+					switch {
+					case inText(px, py):
+						if (op != 15 && op != colour) || (mp != 15 && mp != colour) {
+							t.Fatalf("對白框裡 (%d,%d) 原版 %d remake %d，該只有白與 %d", px, py, op, mp, colour)
+						}
+						if op == colour {
+							ink++
+						}
+					case inName(px, py):
+					default:
+						if op != mp {
+							bad++
+							if first == "" {
+								first = fmt.Sprintf("(%d,%d) 原版 %d remake %d", px, py, op, mp)
+							}
+						}
+					}
+				}
+			}
+			if bad != 0 {
+				t.Errorf("肖像／泡泡／黑底有 %d 個像素不同，第一個 %s", bad, first)
+			}
+			if ink == 0 {
+				t.Error("原版的對白框裡沒有字")
+			}
+			t.Logf("%s：字色 %d，對白墨點 %d", k.name, colour, ink)
+		})
 	}
 }

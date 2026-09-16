@@ -38,7 +38,26 @@ type fight struct {
 	// camping 是還沒紮完營的部隊（開戰前逐隊指定位置）。
 	camping []*battle.Unit
 
+	// speeches 是還沒畫的戰場對白（原版的訊息框，`docs/spec/005` §9.7），
+	// 一格一格按任意鍵收；從 `Battle.TakeSpeeches` 補進來。
+	speeches []battle.Speech
+
 	view ui.BattleView
+}
+
+// speech 是現在該畫的那一句戰場對白；沒有就是 nil。文字版面（沒有原版
+// 素材）畫不出肖像，直接丟掉——戰報文字本來就有那一句。
+func (f *fight) speech(art bool) *battle.Speech {
+	if f.pending != nil {
+		f.speeches = append(f.speeches, f.pending.Battle().TakeSpeeches()...)
+	}
+	if !art {
+		f.speeches = nil
+	}
+	if len(f.speeches) == 0 {
+		return nil
+	}
+	return &f.speeches[0]
 }
 
 type waitFor int
