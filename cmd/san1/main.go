@@ -181,10 +181,10 @@ func (a *app) Update() error {
 		return nil
 	}
 	// 人物資料卡（原版素材畫面的「查看→武將」）：按任意鍵收掉，
-	// 右側面板回到原樣。
-	if a.view.HasCard {
+	// 右側面板回到原樣。郡地理誌同一個做法（原版畫在第二頁，等鍵切回）。
+	if a.view.HasCard || a.view.Atlas != 0 {
 		if anyKeyPressed() {
-			a.view.HasCard = false
+			a.view.HasCard, a.view.Atlas, a.view.AtlasBubble = false, 0, nil
 			a.dirty = true
 		}
 		return nil
@@ -501,6 +501,13 @@ func (a *app) begin(cat, item byte) {
 			name = p.Name
 		}
 		f := g.Field(sel)
+		// 原版素材畫面照原版畫整張地理誌（場地圖、通道編號、主事者那一句，
+		// `docs/spec/005` §9.8）；文字版面仍走分頁。
+		if a.artBattle != nil {
+			a.view.Atlas, a.view.AtlasBubble = sel, g.AtlasBubble(sel)
+			closeMenu()
+			return
+		}
 		a.view.SetPage(ui.TerrainPage(name, f, f.Gates))
 		closeMenu()
 	case cat == '1' && item == '2':
@@ -973,6 +980,17 @@ func (a *app) paint() {
 			} else {
 				ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
 			}
+		case a.view.Atlas != 0 && a.artBattle != nil:
+			// 郡地理誌：整張換成那個郡的場地圖（原版畫在第二頁再切過去）。
+			p := a.s.G.Prefecture(a.view.Atlas)
+			if p == nil {
+				a.view.Atlas = 0
+				break
+			}
+			ui.DrawArtAtlas(a.canvas, a.artBattle, p.BattleField, a.s.G.Field(a.view.Atlas))
+			if b := a.view.AtlasBubble; b != nil {
+				ui.DrawBubble(a.canvas, a.art, a.s.G, b)
+			}
 		default:
 			a.view.Over = a.s.Over
 			if a.art != nil {
@@ -1002,6 +1020,10 @@ func (a *app) updateBattle() error {
 		if anyKeyPressed() {
 			a.fight.speeches = a.fight.speeches[1:]
 		}
+		return nil
+	}
+	if a.fight.ending {
+		a.endBattle()
 		return nil
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {

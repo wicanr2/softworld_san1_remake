@@ -361,6 +361,9 @@ func TestZZBattleSpeechMatchesTheOriginal(t *testing.T) {
 		{"第三塊面板（殺）", battle.Speech{Speaker: who, Box: battle.BoxThird, Text: i18n.S("bub.kill")}, 432},
 		{"單挑攻方那一塊（肖像在左）", battle.Speech{Speaker: who, Box: battle.BoxAttacker, Left: true, Text: i18n.S("bub.duelLater2")}, 438},
 		{"單挑守方那一塊（肖像在右）", battle.Speech{Speaker: who, Box: battle.BoxDefender, Text: i18n.S("bub.duelLater1")}, 437},
+		// Issue #60：用計三道門（`0x28d48`）與打完回郡（`0x256fa`）也是第三塊面板。
+		{"第三塊面板（資金不足）", battle.Speech{Speaker: who, Box: battle.BoxThird, Text: i18n.S("bub.plotGold")}, 479},
+		{"第三塊面板（回郡）", battle.Speech{Speaker: who, Box: battle.BoxThird, Text: i18n.S("bub.helperReturn")}, 478},
 	} {
 		t.Run(k.name, func(t *testing.T) {
 			x1, y1, x2, y2 := assets.BattleWide.Panel(k.sp.Box.Panel())

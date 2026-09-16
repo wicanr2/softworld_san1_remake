@@ -34,6 +34,7 @@ const (
 	Scenario
 	Lord
 	CustomLord // 新君主的設定（`docs/spec/013`）
+	LordBorn   // 「新君主出現!!」那一格：新君主的肖像與一句話，按任意鍵（`docs/spec/005` §9.5）
 	Difficulty
 	Load
 	Music
@@ -171,6 +172,10 @@ func (s *Screen) Confirm(i int) *session.Session {
 		}
 	case CustomLord:
 		s.confirmCustom(i)
+	case LordBorn:
+		if s.custom != nil {
+			s.pickDifficulty(s.custom.faction)
+		}
 	case Difficulty:
 		if len(s.lords) > 0 {
 			return s.start(s.slot, s.lords[0], i+1)

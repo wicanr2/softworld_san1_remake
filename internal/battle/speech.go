@@ -1,6 +1,10 @@
 package battle
 
-import "github.com/wicanr2/softworld_san1_remake/internal/i18n"
+import (
+	"errors"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+)
 
 // 戰場上的對白（原版的訊息常式 `0x3273e`，`docs/spec/005` §9.7，`L0`、`[base]`）。
 //
@@ -86,4 +90,84 @@ func (b *Battle) TakeSpeeches() []Speech {
 	out := b.Speeches
 	b.Speeches = nil
 	return out
+}
+
+// 玩家下計謀時的三道門（`0x28bc2`–`0x28cac`）：錢不夠、領隊謀略不夠、
+// 天候地理不合，各配一句對白（479／480／481），由那支部隊第 0 槽那一位
+// 在第三塊面板說（`0x28cd5`–`0x28d48`，先填藍，肖像在右），說完等鍵回
+// 到提示。電腦下計謀走另一條檢查（`0x2a22:0x1cc8`），不說話。
+var (
+	ErrPlotGold  = errors.New("資金不足 無法用計")
+	ErrPlotIntel = errors.New("將軍謀略不足 無法用計")
+	ErrPlotPlace = errors.New("天侯地理因素 無法用計")
+)
+
+// SayPlotGate 把 `UseStratagem` 撞到的那一道門說出來（玩家那一邊才叫）。
+// 不是三道門之一（沒目標、不相鄰、友軍）原版是直接取消，不說話。
+func (b *Battle) SayPlotGate(u *Unit, err error) bool {
+	key := ""
+	switch {
+	case errors.Is(err, ErrPlotGold):
+		key = "bub.plotGold"
+	case errors.Is(err, ErrPlotIntel):
+		key = "bub.plotIntel"
+	case errors.Is(err, ErrPlotPlace):
+		key = "bub.plotPlace"
+	default:
+		return false
+	}
+	b.say(u.Head(), BoxThird, false, key)
+	return true
+}
+
+// SayHelperReturn 是打完之後助軍回郡那一句（`0x25652`，日循環結束、印完
+// 勝負之後 `0x23d04` 叫）：勝方的助軍還有將領、勝方的主軍也還有將領，
+// 助軍的統帥在第三塊面板說 478「吾軍眾將聽令 回本郡駐守」。只說一次。
+func (b *Battle) SayHelperReturn() bool {
+	if !b.Over || b.helperSaid {
+		return false
+	}
+	b.helperSaid = true
+	main, helper := MainDefender, AidDefender
+	if b.AttackerWon {
+		main, helper = MainAttacker, AidAttacker
+	}
+	if b.leaderCount(helper) == 0 || b.leaderCount(main) == 0 {
+		return false
+	}
+	b.say(b.commanderOf(helper), BoxThird, false, "bub.helperReturn")
+	return true
+}
+
+// leaderCount 是一個軍力還在隊裡的將領數（軍力記錄 offset 12）。
+func (b *Battle) leaderCount(s Side) int {
+	n := 0
+	for _, u := range b.Units {
+		if u.Side == s {
+			n += u.LeaderCount()
+		}
+	}
+	return n
+}
+
+// commanderOf 是一個軍力的統帥（軍力記錄 offset 0）；找不到就拿第一支
+// 部隊第 0 槽那一位。
+func (b *Battle) commanderOf(s Side) *Leader {
+	id := b.Commander[s]
+	for _, u := range b.Units {
+		if u.Side != s {
+			continue
+		}
+		for i := range u.Leaders {
+			if u.Leaders[i].Index == id && id >= 0 {
+				return &u.Leaders[i]
+			}
+		}
+	}
+	for _, u := range b.Units {
+		if u.Side == s && u.Head() != nil {
+			return u.Head()
+		}
+	}
+	return nil
 }

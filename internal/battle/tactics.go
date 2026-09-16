@@ -580,13 +580,15 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	if err := b.canAct(u); err != nil {
 		return err
 	}
-	wise := u.Smartest()
-	if wise == nil || int(wise.Intel) < s.MinIntel() {
-		return fmt.Errorf("battle: %s 要領隊智力不小於 %d", s, s.MinIntel())
-	}
+	// 三道門的順序照原版（`0x28bc2`–`0x28cac`）：錢、謀略、天候地理，
+	// 各配一句對白（`ErrPlot*`，`SayPlotGate`）。
 	// 「沒有帶錢就無法用計」（說明書 p.28）。
 	if b.Gold[u.Side] < s.Cost() {
-		return fmt.Errorf("battle: %s 要 %d 金，隨軍只有 %d", s, s.Cost(), b.Gold[u.Side])
+		return fmt.Errorf("battle: %s 要 %d 金，隨軍只有 %d：%w", s, s.Cost(), b.Gold[u.Side], ErrPlotGold)
+	}
+	wise := u.Smartest()
+	if wise == nil || int(wise.Intel) < s.MinIntel() {
+		return fmt.Errorf("battle: %s 要領隊智力不小於 %d：%w", s, s.MinIntel(), ErrPlotIntel)
 	}
 	// **目標只能是相鄰的六格**（`L0`）：原版下計謀時**先問方向**
 	// （`0x28af5` 讀 `1`–`6`），`0x28d7a` 拿那個索引查
@@ -608,28 +610,28 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	switch s {
 	case Fire:
 		if b.Weather != Windy {
-			return fmt.Errorf("battle: 火攻要刮風時節才能使用")
+			return fmt.Errorf("battle: 火攻要刮風時節才能使用：%w", ErrPlotPlace)
 		}
 	case Flood:
 		if b.Weather != Rainy {
-			return fmt.Errorf("battle: 水淹要下雨天才能用")
+			return fmt.Errorf("battle: 水淹要下雨天才能用：%w", ErrPlotPlace)
 		}
 		// **岸邊的判準是「六個鄰格裡有一格淺水」**（`L0`、`0x2bfa2`）：
 		// 原版掃目標的六個方向，只認地形碼 3（淺水），深水不算，
 		// 目標自己站在水上也不算。
 		if !b.nextToShallow(target) {
-			return fmt.Errorf("battle: 水淹的目標旁邊要有淺水")
+			return fmt.Errorf("battle: 水淹的目標旁邊要有淺水：%w", ErrPlotPlace)
 		}
 	case Burn:
 		if b.Weather == Rainy {
-			return fmt.Errorf("battle: 下雨天無法燒糧")
+			return fmt.Errorf("battle: 下雨天無法燒糧：%w", ErrPlotPlace)
 		}
 		if terrain.Water() {
-			return fmt.Errorf("battle: 不能對水上的敵軍燒糧")
+			return fmt.Errorf("battle: 不能對水上的敵軍燒糧：%w", ErrPlotPlace)
 		}
 	case Trap:
 		if terrain.Water() || terrain == City || terrain == Fort {
-			return fmt.Errorf("battle: 陷阱不得用在水上、城池或關寨中")
+			return fmt.Errorf("battle: 陷阱不得用在水上、城池或關寨中：%w", ErrPlotPlace)
 		}
 	case Siege:
 		// **目標周圍我方的部隊要有兩支以上**（`L0`、`0x2c140`）：原版數
@@ -637,7 +639,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		// 陣營與目標不同的就記一筆，**施法者自己也在裡面**，
 		// 最後要 `> 1`。這裡的 `alliesAround` 不含施法者，所以門檻是 1。
 		if b.alliesAround(u, target) < 1 {
-			return fmt.Errorf("battle: 圍攻要目標旁邊還有另一支我方部隊")
+			return fmt.Errorf("battle: 圍攻要目標旁邊還有另一支我方部隊：%w", ErrPlotPlace)
 		}
 	}
 

@@ -40,6 +40,11 @@ func (a *app) drawTitle() {
 			[2]string{tf("title.newLordPoints", cv.Spare), t("title.newLordHint")}, a.view.Calendar)
 		return
 	}
+	// 「新君主出現!!」：面板還原成底圖，新君主的肖像在上格說一句（§9.5）。
+	if cv := m.Custom(); m.Stage() == menu.LordBorn && a.art != nil && m.Game() != nil && cv != nil {
+		ui.DrawNewLordBorn(a.canvas, a.art, m.Game(), cv.Portrait, cv.Name, cv.Color, a.view.Calendar)
+		return
+	}
 	ui.DrawTitleList(a.canvas, a.titleArt, m.Title(), m.Items(), m.Sel())
 }
 
@@ -122,6 +127,11 @@ func (a *app) updateTitle() error {
 	}
 	if m.Stage() == menu.Note && anyKeyPressed() {
 		m.Back()
+		a.dirty = true
+	}
+	// 「新君主出現!!」按任意鍵往下（原版等一個鍵）。
+	if m.Stage() == menu.LordBorn && anyKeyPressed() {
+		a.titleConfirm(0)
 		a.dirty = true
 	}
 	return nil

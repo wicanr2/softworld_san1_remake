@@ -81,13 +81,19 @@ func BubbleLines(b *game.Bubble) [2]string {
 // DrawBubble 在畫布上畫一格訊息框。肖像從 `a` 取；`a` 為 nil（沒有
 // 原版素材）時只畫名字、泡泡與字。
 func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
-	x1, y1, x2, y2 := b.X1, b.Y1, b.X2, b.Y2
 	name := ""
 	portrait := -1
 	if x := g.General(b.Speaker); x != nil {
 		name = i18n.PersonName(x.Name)
 		portrait = int(x.Portrait)
 	}
+	DrawBubbleAs(c, a, b, name, portrait)
+}
+
+// DrawBubbleAs 是 DrawBubble 的本體：說話者不查人物表，名字與肖像編號
+// 直接給（還沒進人物表的新君主用，`docs/spec/005` §9.5）。
+func DrawBubbleAs(c *Canvas, a *ArtScreen, b *game.Bubble, name string, portrait int) {
+	x1, y1, x2, y2 := b.X1, b.Y1, b.X2, b.Y2
 	// 只亮肖像的那一格（尋訪找到人）：貼在 (x1, y1)，不翻面、沒有別的。
 	if b.FaceOnly {
 		if a != nil && portrait >= 0 {

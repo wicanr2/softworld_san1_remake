@@ -195,3 +195,28 @@ func DrawCustomLord(c *Canvas, a *ArtScreen, g *game.State, faction, portrait in
 		}
 	}
 }
+
+// 「新君主出現!!」那一格（`0x133f2`，`L0`）：分完能力之後提示框印
+// `DS:0x6278`「新君主出現!!」，把右側面板 (424,52)–(623,211) 還原成底圖，
+// 再以訊息常式在上格 (424,66)–(615,161) 畫新君主的肖像（右）與一句
+// 498「天地英雄氣 千秋尚凜然」，等鍵。
+const (
+	newLordBubbleY1 = 66
+	newLordBubbleY2 = 161
+)
+
+// DrawNewLordBorn 畫「新君主出現!!」那一格：面板框、提示、新君主的訊息框。
+func DrawNewLordBorn(c *Canvas, a *ArtScreen, g *game.State, portrait int, name string, colour int, cal game.Calendar) {
+	im := a.Compose(g, 0)
+	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{}, draw.Src)
+	drawArtDate(c, g.Date.FormatWithSeason(cal))
+	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
+	if a.havePanel {
+		drawSideFrame(c, a.panels[0], assets.MainPanelX, 36, assets.MainPanelW, 288)
+		c.FillRect(assets.MainPanelX+8, 324+8, assets.MainPanelX+assets.MainPanelW-8, 372-8, ink(3))
+		drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48)
+	}
+	c.DrawTextPx(lordPickPromptX, lordPickPromptY, cells.Truncate(t("title.newLordBorn"), 25), ink(10))
+	DrawBubbleAs(c, a, &game.Bubble{X1: game.BubbleX1, Y1: newLordBubbleY1, X2: game.BubbleX2, Y2: newLordBubbleY2,
+		Color: colour, Text: t("bub.newLord")}, name, portrait)
+}

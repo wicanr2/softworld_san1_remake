@@ -223,11 +223,18 @@ func TestPicksACustomLord(t *testing.T) {
 		t.Error("d=0 也被當成調整")
 	}
 
-	// 「完成」→ 難度 → 開局。
+	// 「完成」→ 「新君主出現!!」（地圖上那一郡已經是新君主的）→ 難度 → 開局。
 	s.pick = customRows - 1
 	s.Confirm(customRows - 1)
+	if s.Stage() != LordBorn {
+		t.Fatalf("完成之後沒進「新君主出現」（stage %d）：%v", s.Stage(), s.Items())
+	}
+	if g := s.Game(); g == nil || len(g.Territory(state.FactionID(s.custom.faction))) != 1 {
+		t.Fatalf("「新君主出現」那一格底下的局面沒有新君主的領地：%v", g)
+	}
+	s.Confirm(0)
 	if s.Stage() != Difficulty {
-		t.Fatalf("完成之後沒進難度（stage %d）：%v", s.Stage(), s.Items())
+		t.Fatalf("「新君主出現」之後沒進難度（stage %d）：%v", s.Stage(), s.Items())
 	}
 	ss := s.Confirm(4)
 	if ss == nil {
@@ -271,7 +278,8 @@ func TestCustomLordCarriesTheShippedGlyphs(t *testing.T) {
 	s.Confirm(0)
 	first := len(s.lords) - len(s.customs)
 	s.Confirm(first)
-	s.Confirm(customRows - 1)
+	s.Confirm(customRows - 1) // 完成 → 「新君主出現!!」
+	s.Confirm(0)              // 任意鍵 → 難度
 	ss := s.Confirm(4)
 	if ss == nil {
 		t.Fatal("沒有開出一局")

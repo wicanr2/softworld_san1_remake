@@ -125,6 +125,8 @@ type Battle struct {
 	// inSkirmish 是正在跑的對戰子畫面（`Skirmish.Run` 期間），對白要記
 	// 那兩支部隊（`Speech.Units`）。
 	inSkirmish *Skirmish
+	// helperSaid 記助軍回郡那一句說過了（`SayHelperReturn`）。
+	helperSaid bool
 
 	rng    *rand
 	rollFn func(int) int

@@ -1,6 +1,10 @@
 package battle
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
+)
 
 // TestStratagemThresholdsAndCosts 釘住六種計謀的智力門檻與費用（說明書 p.32–34）。
 //
@@ -637,5 +641,91 @@ func TestDuelDefeatIsUsuallyCapture(t *testing.T) {
 	}
 	if DuelDeathRoll != 7 {
 		t.Errorf("擲的範圍是 RND(%d)，原版是 RND(7)", DuelDeathRoll)
+	}
+}
+
+// TestStratagemGatesSpeak 釘住三道門各配一句（`0x28cd5`，Issue #60）：錢在
+// 謀略之前，天候地理最後；每一句由第 0 槽那一位在第三塊面板說，說一句
+// 擲一次字色（`RND(8)`）；沒目標、不相鄰那些不說話。
+func TestStratagemGatesSpeak(t *testing.T) {
+	for _, k := range []struct {
+		name         string
+		intel        uint8
+		gold         int
+		weather      Weather
+		wantErr      error
+		wantKey      string
+		speaks, roll bool
+	}{
+		{"錢不夠（謀略也不夠，錢先）", 79, 599, Windy, ErrPlotGold, "資金不足", true, true},
+		{"謀略不夠", 79, 600, Windy, ErrPlotIntel, "謀略不足", true, true},
+		{"沒刮風", 80, 600, Clear, ErrPlotPlace, "天侯地理", true, true},
+	} {
+		b, u, e := plotting(Plain, k.weather, k.intel, k.gold)
+		draws := 0
+		b.UseRoll(func(n int) int { draws++; return 0 })
+		err := b.UseStratagem(u, Fire, e.At)
+		if !errors.Is(err, k.wantErr) {
+			t.Errorf("%s：錯誤 %v，該是 %v", k.name, err, k.wantErr)
+		}
+		if got := b.SayPlotGate(u, err); got != k.speaks {
+			t.Errorf("%s：SayPlotGate 回 %v", k.name, got)
+		}
+		sp := b.TakeSpeeches()
+		if len(sp) != 1 {
+			t.Fatalf("%s：排了 %d 句，該是 1", k.name, len(sp))
+		}
+		if sp[0].Box != BoxThird || sp[0].Left || sp[0].Speaker != u.Head().Index || !strings.Contains(sp[0].Text, k.wantKey) {
+			t.Errorf("%s：那一句 %+v", k.name, sp[0])
+		}
+		if draws != 1 {
+			t.Errorf("%s：擲了 %d 次，該是字色那一擲", k.name, draws)
+		}
+	}
+	// 不相鄰：原版直接取消，不說話、不擲。
+	b, u, e := plotting(Plain, Windy, 80, 600)
+	far := Hex{Q: e.At.Q + 3, R: e.At.R}
+	draws := 0
+	b.UseRoll(func(n int) int { draws++; return 0 })
+	err := b.UseStratagem(u, Fire, far)
+	if err == nil || b.SayPlotGate(u, err) || len(b.TakeSpeeches()) != 0 || draws != 0 {
+		t.Errorf("不相鄰的目標不該說話：%v", err)
+	}
+}
+
+// TestHelperReturnSpeaks 釘住打完之後助軍回郡那一句（`0x25652`）：勝方的
+// 助軍與主軍都還有將領才說，說的是助軍的統帥，只說一次。
+func TestHelperReturnSpeaks(t *testing.T) {
+	fld := Generate(Params{Prefecture: 25})
+	mk := func(name string, idx int) Leader {
+		return Leader{Index: idx, Name: name, War: 50, Intel: 50, Stamina: 100, Soldiers: 1000, Troop: TroopLand}
+	}
+	b := New(Setup{Field: fld, Seed: 1,
+		Attackers: []Leader{mk("攻", 1)}, Defenders: []Leader{mk("守", 2)},
+		AidAttackers: []Leader{mk("助", 3)}})
+	if b.SayHelperReturn() {
+		t.Fatal("還沒打完不該說")
+	}
+	b.Over, b.AttackerWon = true, true
+	draws := 0
+	b.UseRoll(func(n int) int { draws++; return 0 })
+	if !b.SayHelperReturn() {
+		t.Fatal("攻方贏了、助攻軍還在，該說")
+	}
+	sp := b.TakeSpeeches()
+	if len(sp) != 1 || sp[0].Box != BoxThird || sp[0].Speaker != 3 || !strings.Contains(sp[0].Text, "回本郡") {
+		t.Fatalf("那一句 %+v", sp)
+	}
+	if draws != 1 {
+		t.Errorf("擲了 %d 次", draws)
+	}
+	if b.SayHelperReturn() {
+		t.Error("第二次不該再說")
+	}
+	// 守方贏、沒有助守軍：不說。
+	b2 := New(Setup{Field: fld, Seed: 1, Attackers: []Leader{mk("攻", 1)}, Defenders: []Leader{mk("守", 2)}})
+	b2.Over, b2.AttackerWon = true, false
+	if b2.SayHelperReturn() {
+		t.Error("沒有助守軍不該說")
 	}
 }

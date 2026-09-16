@@ -3,6 +3,7 @@ package menu
 import (
 	"fmt"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -25,6 +26,8 @@ type customState struct {
 	// blanks 是可以選的空白郡，pref 是選到第幾個。
 	blanks []state.Prefecture
 	pref   int
+	// color 是「新君主出現」那一句的字色（`RND(8)`）。
+	color int
 }
 
 // customRows 是清單上的項數：四項能力 ＋ 領地 ＋ 完成。
@@ -149,7 +152,25 @@ func (s *Screen) confirmCustom(i int) {
 		s.note(i18n.S("title.newLord"), err.Error())
 		return
 	}
-	s.pickDifficulty(c.faction)
+	// 原版分完能力先印「新君主出現!!」、畫新君主的肖像說一句 498
+	// （`0x133f2`），等鍵才往下走；字色是訊息常式進去就擲的 `RND(8)`。
+	// 這時地圖上那一郡**已經是新君主的顏色**（領地在收工那一刻寫進州郡表，
+	// 對拍 `TestZZNewLordBornMatchesTheOriginal`），所以底下那張局面要換成
+	// 加了這一位的劇本。
+	sc, err = sc.WithCustomLord(c.faction, c.lord)
+	if err != nil {
+		s.note(i18n.S("title.newLord"), err.Error())
+		return
+	}
+	g, err := game.New(sc, state.FactionID(c.faction), 5, s.edition)
+	if err != nil {
+		s.note(i18n.S("title.newLord"), err.Error())
+		return
+	}
+	s.g = g
+	s.stage, s.pick = LordBorn, 0
+	s.title, s.items = i18n.S("title.newLordBorn"), nil
+	c.color = s.g.Roll(game.MessageLines, c.faction, 0x133f2)
 }
 
 // CustomView 是原版素材畫面畫新君主那一格要的東西（`docs/spec/005` §9.5）：
@@ -160,7 +181,9 @@ type CustomView struct {
 	Portrait int
 	Name     string
 	Lines    [customRows]string
-	Spare    int
+	// Color 是「新君主出現」那一句的字色（`RND(8)`），LordBorn 那一格用。
+	Color int
+	Spare int
 }
 
 // Custom 交出設定到一半那一位給原版素材畫面；沒有就回 nil。
@@ -189,7 +212,7 @@ func (s *Screen) Custom() *CustomView {
 		pref = i18n.PlaceName(c.blanks[c.pref].Name)
 	}
 	return &CustomView{
-		Faction: c.faction, Portrait: portrait, Name: name, Spare: c.spare,
+		Faction: c.faction, Portrait: portrait, Name: name, Spare: c.spare, Color: c.color,
 		Lines: [customRows]string{
 			i18n.Sf("title.artStamina", 1, st),
 			i18n.Sf("title.artIntel", 2, in),

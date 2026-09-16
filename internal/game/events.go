@@ -131,6 +131,26 @@ func (g *State) say(x *General, upper, left bool, text string, salt ...int) {
 	g.pending = append(g.pending, g.bubbleEvent(x, upper, left, text, salt...))
 }
 
+// AtlasBubble 是郡地理誌那一句（`0x18663`）：郡的主事者在主戰場的第三塊
+// 面板 (448,268)–(623,363) 說 356「此乃本郡之地理圖誌」，肖像在右。
+// 沒有主事者（無主郡）原版讀到 `0xFFFF` 那一筆，remake 不說。
+func (g *State) AtlasBubble(prefecture int) *Bubble {
+	x := g.Governor(prefecture)
+	if x == nil {
+		return nil
+	}
+	b := &Bubble{X1: AtlasBubbleX1, Y1: AtlasBubbleY1, X2: AtlasBubbleX2, Y2: AtlasBubbleY2,
+		Speaker: x.Index, Text: t("bub.atlas")}
+	b.Color = g.Roll(MessageLines, prefecture, 0x18663)
+	return b
+}
+
+// 郡地理誌那一句的框：主戰場第三塊面板（含端點）。
+const (
+	AtlasBubbleX1, AtlasBubbleY1 = 448, 268
+	AtlasBubbleX2, AtlasBubbleY2 = 623, 363
+)
+
 // WarDeclaration 是玩家發動戰役前的兩句（`0x202e1`／`0x20322`）：攻方君主
 // 在上格對守方君主說「汝多行不義 吾將伐之」，守方君主在下格回「匹夫
 // 安敢欺吾」。沒有君主的一方（無主郡）那一句不說。

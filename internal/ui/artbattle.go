@@ -748,3 +748,56 @@ func battleNumeral(n int) string {
 	}
 	return s
 }
+
+// 郡地理誌（查看 5，`0x185a6`，`L0`＋`L1`、Issue #60）：原版把主戰場的
+// 合成常式（`0x2020:0x2244(郡, −1)`——第二個參數非零只畫第三塊面板）畫在
+// 顯示記憶體的**第二頁**再切過去：底紋、上下花邊、場地邊框與圖塊、第三塊
+// 面板填藍；沒有左欄、沒有軍力面板、年月那一行也不寫。通道那幾格
+// （標記高四位 0–9）由 `0x18742(郡, 0)` 在格子左上角加 (16,15) 印鄰郡的
+// 編號 `%d`（黃 14、底 7，`0x104e`）；最後主事者在第三塊面板說 356
+// 「此乃本郡之地理圖誌」，等鍵回主畫面。
+const (
+	atlasLabelDX, atlasLabelDY = 16, 15
+	// 編號的字色與底色。
+	atlasLabelInk, atlasLabelBG = 14, 7
+)
+
+// DrawArtAtlas 畫郡地理誌那一張（不含對白，對白由呼叫端用 `DrawBubble`
+// 疊在第三塊面板上）。field 是州郡記錄的 120 個位元組，fld 是解出來的戰場
+// （通道的格子與鄰郡編號從它取）。
+func DrawArtAtlas(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field) {
+	var im *assets.Image
+	if ab.bg != nil {
+		im = ab.bg.Clone()
+	} else {
+		im = &assets.Image{W: assets.ScreenW, H: assets.ScreenH,
+			Pix: make([]byte, assets.ScreenW*assets.ScreenH)}
+	}
+	if ab.top != nil {
+		im.Blit(ab.top, 0, 0)
+	}
+	if ab.bottom != nil {
+		im.Blit(ab.bottom, 0, assets.MapBorderBottomY)
+	}
+	l := assets.BattleLayoutFor(fld.Narrow())
+	im.FieldEdges(l)
+	im.BlitField(ab.tiles, field)
+	im.FieldLines(l)
+	x0, y0, x1, y1 := l.Panel(2)
+	im.FillRect(x0, y0, assets.BattlePanelW, assets.BattlePanelH, assets.BattlePanelPaper)
+	im.BevelBox(x0, y0, x1, y1)
+	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{}, draw.Src)
+	// 通道格子上的鄰郡編號。
+	ink, bg := assets.EGAPalette[atlasLabelInk], assets.EGAPalette[atlasLabelBG]
+	for n, hs := range fld.Gates {
+		label := strconv.Itoa(n)
+		for _, h := range hs {
+			col, row := battle.ToOffset(h)
+			x, y := assets.FieldCell(col, row)
+			x, y = x+atlasLabelDX, y+atlasLabelDY
+			c.FillRect(x, y, x+len(label)*CellW, y+CellH, bg)
+			c.DrawTextPx(x, y, label, ink)
+		}
+	}
+}

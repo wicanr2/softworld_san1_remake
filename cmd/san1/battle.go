@@ -41,6 +41,8 @@ type fight struct {
 	// speeches 是還沒畫的戰場對白（原版的訊息框，`docs/spec/005` §9.7），
 	// 一格一格按任意鍵收；從 `Battle.TakeSpeeches` 補進來。
 	speeches []battle.Speech
+	// ending 表示戰役已經打完，對白收完就回主畫面（`endBattle`）。
+	ending bool
 
 	view ui.BattleView
 }
@@ -114,12 +116,18 @@ func (a *app) nextCamp() {
 	f.view.Prompt = tf("bat.campWho", u.Name(), len(f.camping))
 }
 
-// nextActor 推進到下一支要玩家下令的部隊；沒有就收尾。
+// nextActor 推進到下一支要玩家下令的部隊；沒有就收尾——打完先讓助軍
+// 回郡那一句（`0x25652`）與其餘還沒畫的對白畫完再回主畫面（`ending`）。
 func (a *app) nextActor() {
 	f := a.fight
 	f.acting = f.runner.Next()
 	f.engage, f.waiting = false, waitCommand
 	if f.acting == nil {
+		f.pending.Battle().SayHelperReturn()
+		if a.fight.speech(a.artBattle != nil) != nil {
+			f.ending = true
+			return
+		}
 		a.endBattle()
 		return
 	}
@@ -210,7 +218,11 @@ func (a *app) battleKey(k byte) {
 			say(t("bat.noTarget"))
 			return
 		}
-		done(b.UseStratagem(f.acting, s, target.At))
+		err := b.UseStratagem(f.acting, s, target.At)
+		// 三道門各一句（`0x28cd5`，第三塊面板，第 0 槽那一位）——說完回到
+		// 指令提示，回合不算用掉。
+		b.SayPlotGate(f.acting, err)
+		done(err)
 	}
 }
 

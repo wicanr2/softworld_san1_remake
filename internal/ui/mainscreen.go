@@ -89,6 +89,11 @@ type View struct {
 	// 文字版的畫面走 `GeneralPage`，不看它。
 	HasCard bool
 	Card    int
+
+	// Atlas 不是 0 時，原版素材畫面整張換成那個郡的地理誌（場地圖與
+	// 通道編號，`DrawArtAtlas`），按任意鍵回來；AtlasBubble 是主事者那一句。
+	Atlas       int
+	AtlasBubble *game.Bubble
 }
 
 // DrawMainScreen 畫遊戲主畫面。

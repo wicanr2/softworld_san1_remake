@@ -1096,7 +1096,7 @@
         "docs/spec/005",
         "docs/re/12"
       ],
-      "note": "2026-09-16（Issue #49）：原版每一則對白都由訊息常式 `0x3273e` 畫肖像、名字、白泡泡與 16×32 的兩行字，字色是進去就擲的 `RND(8)`。remake：`game.Bubble` 掛在事件上、`ui.DrawBubble`、`session.Bubbles` 佇列、主畫面按任意鍵收一格。對拍直接呼叫原版的常式畫上格（肖像在右）與下格（肖像在左），肖像、泡泡、尾巴、名字的黑底逐像素相同。接上的是元月與繼承的六個呼叫端；其餘 105 處（電腦諸侯的人事與計略、戰場、單挑）在 #51、#52。片語表 350–499 抽出在 `docs/re/12`。",
+      "note": "2026-09-16（Issue #49）：原版每一則對白都由訊息常式 `0x3273e` 畫肖像、名字、白泡泡與 16×32 的兩行字，字色是進去就擲的 `RND(8)`。remake：`game.Bubble` 掛在事件上、`ui.DrawBubble`、`session.Bubbles` 佇列、主畫面按任意鍵收一格。對拍直接呼叫原版的常式畫上格（肖像在右）與下格（肖像在左），肖像、泡泡、尾巴、名字的黑底逐像素相同。接上的是元月與繼承的六個呼叫端；其餘呼叫端在 #51、#52、#60 接上（防拷那一張的六處不做）。片語表 350–499 抽出在 `docs/re/12`。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -1146,7 +1146,7 @@
         "docs/spec/005",
         "docs/re/12"
       ],
-      "note": "2026-09-17（Issue #51）：訊息常式在主畫面這一層的 38 個呼叫端逐個讀出框、肖像左右、說話者與片語（`docs/spec/005` §9.6）——全在玩家的命令裡，電腦諸侯本來就不叫它。remake：`game.State.Advise` 擲 `RND(5)+80 < 軍師謀略` 那一擲、回勸諫那一格（19 道命令；買賣看物價、尋訪／登用／挖角／計略看判定、`RND(18)+80` 決定準不準），`cmd/san1` 收完問「主公是否繼續呢(Y/N)」；登用、賞賜、撤職、指定軍師／太守、自治、賜物、挖角、計略的回話由 `Order.Apply` 排進 pending，宣戰兩句在進主戰場之前。沒接：郡地理誌那一句、尋訪的掃描動畫。",
+      "note": "2026-09-17（Issue #51）：訊息常式在主畫面這一層的 38 個呼叫端逐個讀出框、肖像左右、說話者與片語（`docs/spec/005` §9.6）——全在玩家的命令裡，電腦諸侯本來就不叫它。remake：`game.State.Advise` 擲 `RND(5)+80 < 軍師謀略` 那一擲、回勸諫那一格（19 道命令；買賣看物價、尋訪／登用／挖角／計略看判定、`RND(18)+80` 決定準不準），`cmd/san1` 收完問「主公是否繼續呢(Y/N)」；登用、賞賜、撤職、指定軍師／太守、自治、賜物、挖角、計略的回話由 `Order.Apply` 排進 pending，宣戰兩句在進主戰場之前。郡地理誌那一句在 #60 接上；沒接：尋訪的掃描動畫（#58）。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/game",
@@ -1168,7 +1168,7 @@
         "docs/re/05",
         "docs/re/12"
       ],
-      "note": "2026-09-17（Issue #52）：戰場的對白框是面板——主戰場與對戰子畫面用第三塊 (448,268)–(623,363)（呼叫端先填藍）、單挑用攻守各自那一塊側面板（位置 `DS:0x7b24`／`0x7b34`，肖像攻左守右 `DS:0x8894`）；47 個呼叫端的片語與說話者列在 `docs/spec/005` §9.7。remake：`internal/battle` 每一處原本就擲的字色那一擲改由 `say` 留下值排進 `Battle.Speeches`，`cmd/san1` 一格一格畫（`ui.DrawBattleSpeech`）、任意鍵收；骰序不變。沒接：戰役結束回郡那一句（478，remake 沒有對應的擲）。",
+      "note": "2026-09-17（Issue #52）：戰場的對白框是面板——主戰場與對戰子畫面用第三塊 (448,268)–(623,363)（呼叫端先填藍）、單挑用攻守各自那一塊側面板（位置 `DS:0x7b24`／`0x7b34`，肖像攻左守右 `DS:0x8894`）；47 個呼叫端的片語與說話者列在 `docs/spec/005` §9.7。remake：`internal/battle` 每一處原本就擲的字色那一擲改由 `say` 留下值排進 `Battle.Speeches`，`cmd/san1` 一格一格畫（`ui.DrawBattleSpeech`）、任意鍵收；骰序不變。戰役結束回郡那一句（478）在 #60 接上。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
@@ -1252,6 +1252,31 @@
           "org_game",
           "workplace/shots/bf/orig-battle.png",
           "workplace/shots/bf/orig-battle-narrow.png"
+        ]
+      },
+      "layer": "verification"
+    },
+    {
+      "id": "message-callers-last-five",
+      "title": "訊息常式剩下的五組呼叫端：新君主出現、用計三道門、戰役結束回郡、郡地理誌、計略的成敗回話",
+      "group": "畫面",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/12"
+      ],
+      "note": "2026-09-17（Issue #60）：`0x133f2` 自創君主收工——點數用完送 0 才收（`0x13826`／`0x1381e`），印「新君主出現!!」、還原面板、上格往上挪成 (424,66)–(615,161) 說 498，那一郡已歸新君主；`0x28d48` 用計三道門（金／謀略／地點）在第三塊面板說 479／480／481；`0x256fa` 戰役結束援軍統帥說 478 回郡（兩側都還有將才說）；`0x18663` 查看 5 的郡地理誌整張畫在顯示記憶體第二頁（合成常式旗標 −1、通道格疊鄰郡號、主事者說 356）；計略四種的成敗回話 482／483 在上格右（聯合出兵沒有）。remake：`menu.LordBorn` ＋ `ui.DrawNewLordBorn`、`Battle.SayPlotGate`／`SayHelperReturn`、`ui.DrawArtAtlas` ＋ `game.AtlasBubble`、`PlotOrder.Apply`。dosgolem 為第二頁多了 `IndexedEGAFrom`。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "tags": "oracle",
+        "run": "TestZZNewLordBornMatchesTheOriginal|TestZZAtlasMatchesTheOriginal|TestZZBattleSpeechMatchesTheOriginal",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
         ]
       },
       "layer": "verification"
