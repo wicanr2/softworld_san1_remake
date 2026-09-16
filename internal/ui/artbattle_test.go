@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image/color"
 	imgpng "image/png"
 	"os"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
+	"github.com/wicanr2/softworld_san1_remake/internal/cells"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -297,4 +300,148 @@ func TestArtBattlePortraitsMatchTheOriginal(t *testing.T) {
 			t.Errorf("第 %d 側畫出來的肖像有 %d 點與基準不同", side, bad)
 		}
 	}
+}
+
+// TestArtBattleTextCellsMatchTheOriginal 把主戰場面板與左欄的**每一格字**
+// 對回基準畫面（廬陵，陳就一軍三千兵五千金打蒯越軍的周瑜四軍七千八百兵
+// 五百金）：郡名兩格 32×32、兩邊統帥名各兩格 32×32、五行資料的每一格
+// 16×16——**格內有墨、格外那一圈沒有墨**，兩邊要同時成立。字模不比
+// （remake 自建字庫），比的是落點與字級（Issue #48）。
+func TestArtBattleTextCellsMatchTheOriginal(t *testing.T) {
+	f, err := os.Open(artShotPath)
+	if err != nil {
+		t.Skipf("沒有主戰場基準畫面 %s", artShotPath)
+	}
+	shot, err := imgpng.Decode(f)
+	f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c1, c3 := artContainers(t)
+	ab, err := NewArtBattle(c1, c3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	i18n.Current = i18n.ZhHant
+
+	att := []battle.Leader{{Index: 228, Name: "陳就", War: 60, Intel: 50, Stamina: 100,
+		Charm: 50, Soldiers: 3000, Training: 60, Arms: 60, Troop: battle.TroopLand}}
+	var def []battle.Leader
+	for i, n := range []int{2000, 2000, 2000, 1800} {
+		def = append(def, battle.Leader{Index: 14 + i, Name: "周瑜", War: 70, Intel: 90,
+			Stamina: 100, Charm: 80, Soldiers: n, Training: 60, Arms: 60, Troop: battle.TroopLand})
+	}
+	b := battle.New(battle.Setup{
+		Field: battle.Generate(battle.Params{Prefecture: 25}), Seed: 1,
+		Attackers: att, Defenders: def,
+		AttackerGold: 5000, DefenderGold: 500,
+	})
+	c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
+	c.SetSmallFace(testSmallFace(t))
+	DrawArtBattle(c, ab, b, BattleView{}, ArtBattleInfo{
+		Prefecture: "廬陵", Province: "揚州", ID: 25, Portrait: [2]int{-1, -1},
+		Commander: [2]string{"陳就", "周瑜"}, Lord: [2]string{"陳就", "蒯越"},
+	})
+
+	// 一格：(x, y, 寬, 高, 底色, 所在的文字區)。墨 ＝ 不是底色的像素；
+	// 文字區之外（面板的框、肖像、左欄的框線）不算。
+	type cell struct {
+		name       string
+		x, y, w, h int
+		paper      int
+		region     [4]int // x0, y0, x1, y1（含）
+	}
+	var cellsToCheck []cell
+	nameRegion := [4]int{assets.BattleNameX, assets.BattleNameY,
+		assets.BattleNameX + 31, assets.BattleNameY + 2*assets.BattleNameStep - 1}
+	for i, r := range []rune("廬陵") {
+		cellsToCheck = append(cellsToCheck, cell{"郡名" + string(r),
+			assets.BattleNameX, assets.BattleNameY + i*assets.BattleNameStep, 32, 32,
+			assets.BattleOrderPaper, nameRegion})
+	}
+	for side, name := range []string{"陳就", "周瑜"} {
+		nx := assets.BattlePanelNameX[side]
+		region := [4]int{nx, assets.BattlePanelY, nx + 31, assets.BattlePanelY + assets.BattlePanelH - 1}
+		for k, r := range []rune(name) {
+			cellsToCheck = append(cellsToCheck, cell{"統帥" + string(r),
+				nx, assets.BattlePanelY + 16 + k*32, 32, 32, assets.BattlePanelPaper, region})
+		}
+	}
+	lines := [2][]string{
+		{" 陳就 軍", " 主攻軍 ", "一軍 1將", "兵  3000", "金  5000"},
+		{" 蒯越 軍", " 主守軍 ", "四軍 4將", "兵  7800", "金   500"},
+	}
+	for side := range lines {
+		tx := assets.BattlePanelTextX[side]
+		region := [4]int{tx, assets.BattlePanelY, tx + 63, assets.BattlePanelLineY(5) - 1}
+		for k, line := range lines[side] {
+			x := tx
+			for _, r := range line {
+				w := cells.RuneWidth(r) * CellW
+				if r != ' ' {
+					cellsToCheck = append(cellsToCheck, cell{fmt.Sprintf("面板%d行%d「%c」", side, k+1, r),
+						x, assets.BattlePanelLineY(k), w, CellH, assets.BattlePanelPaper, region})
+				}
+				x += w
+			}
+		}
+	}
+	ink := func(im interface {
+		At(x, y int) color.Color
+	}, x, y, paper int) bool {
+		if x < 0 || y < 0 || x >= assets.ScreenW || y >= assets.ScreenH {
+			return false
+		}
+		return color.RGBAModel.Convert(im.At(x, y)).(color.RGBA) != assets.EGAPalette[paper]
+	}
+	inAnyCell := func(x, y int) bool {
+		for _, k := range cellsToCheck {
+			if x >= k.x && x < k.x+k.w && y >= k.y && y < k.y+k.h {
+				return true
+			}
+		}
+		return false
+	}
+	// inside：格內的墨；stray：格外那一圈上、而且不屬於任何一格的墨
+	// （相鄰的字貼著是正常的，字模不同才會差在格的邊上）。
+	count := func(im interface {
+		At(x, y int) color.Color
+	}, k cell) (inside, stray int) {
+		for y := k.y - 1; y <= k.y+k.h; y++ {
+			for x := k.x - 1; x <= k.x+k.w; x++ {
+				if y >= assets.ScreenH || !ink(im, x, y, k.paper) {
+					continue
+				}
+				if x < k.region[0] || x > k.region[2] || y < k.region[1] || y > k.region[3] {
+					continue
+				}
+				switch {
+				case x >= k.x && x < k.x+k.w && y >= k.y && y < k.y+k.h:
+					inside++
+				case !inAnyCell(x, y):
+					stray++
+				}
+			}
+		}
+		return
+	}
+	for _, k := range cellsToCheck {
+		oi, os := count(shot, k)
+		mi, ms := count(c.Img, k)
+		if oi == 0 {
+			t.Errorf("%s：基準畫面那一格 (%d,%d) 沒有墨——格子讀錯了", k.name, k.x, k.y)
+		}
+		if mi == 0 {
+			t.Errorf("%s：remake 那一格 (%d,%d) 沒有墨", k.name, k.x, k.y)
+		}
+		if os != 0 {
+			t.Errorf("%s：基準畫面格 (%d,%d) 外那一圈有 %d 點不屬於任何一格——格子擺錯了", k.name, k.x, k.y, os)
+		}
+		if ms != 0 {
+			t.Errorf("%s：remake 格 (%d,%d) 外那一圈有 %d 點不屬於任何一格", k.name, k.x, k.y, ms)
+		}
+	}
+	t.Logf("比了 %d 格", len(cellsToCheck))
 }

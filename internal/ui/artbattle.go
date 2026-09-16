@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	"strconv"
 	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
@@ -43,6 +44,10 @@ type ArtBattleInfo struct {
 	// （−1 ＝ 沒有）。順序是攻方、守方，與 `assets.BattleFrameX` 相同。
 	Commander [2]string
 	Portrait  [2]int
+
+	// Lord 是兩邊**君主**的姓名：面板第一行「X軍」寫的是勢力的君主
+	// （`0x22dbb` 從統帥的勢力查諸侯表），不是統帥。空的就用統帥。
+	Lord [2]string
 }
 
 // artBattleSides 是兩個面板各自代表的軍力：攻方看主攻軍、守方看主守軍。
@@ -167,14 +172,20 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	ab.drawPlates(c, b, v)
 	drawBattleDate(c, info.Date, info.Calendar)
 
-	// 左欄：郡名一個字一列（原版 32×32，這裡是 16×16）、州名、日數、天氣。
+	// 左欄：郡名一個字一列（原版 32×32 的雙倍字，`0x2181d`）、州名、日數、天氣。
+	// 拉丁字母的郡名放不進兩格 32×32，退成一倍字直排（`docs/spec/014` 的
+	// 規則，remake 差異）。
 	ink := assets.EGAPalette[14]
+	nameScale := assets.BattleNameScale
+	if artHasLatin(info.Prefecture) {
+		nameScale = 1
+	}
 	for i, r := range []rune(info.Prefecture) {
 		if i >= 2 {
 			break
 		}
-		c.DrawTextPx(assets.BattleNameX, assets.BattleNameY+i*assets.BattleNameStep,
-			string(r), ink)
+		c.DrawRuneScaledPx(assets.BattleNameX, assets.BattleNameY+i*assets.BattleNameStep,
+			r, ink, nameScale, nameScale)
 	}
 	c.DrawTextPx(assets.BattleNameX, assets.BattleProvinceY, info.Province,
 		assets.EGAPalette[15])
@@ -185,12 +196,8 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	y0, _ = assets.BattleLeftBox(3)
 	c.DrawTextPx(assets.BattleNameX, y0, tf("bat.dayShort", b.Day), assets.EGAPalette[15])
 
-	// 兩個軍力面板。
+	// 兩個軍力面板（`0x22c94`，位置在 `assets.BattlePanelNameX`／`TextX`）。
 	for i, side := range artBattleSides {
-		x := assets.BattlePanelX[i] + assets.BattleFrameW + 4
-		if i == 1 {
-			x = assets.BattlePanelX[i] + 4
-		}
 		units, men := 0, 0
 		leaders := 0
 		for _, u := range b.Units {
@@ -200,21 +207,49 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 				leaders += len(u.Leaders)
 			}
 		}
+		ink := assets.EGAPalette[assets.BattlePanelInks[i]]
+		// 統帥名：32×32 直排在肖像旁邊（`0x22fd4`），兩字名從 y+16 起、
+		// 三字名從 y+0 起。拉丁字母的名字直排讀不下去，不畫（第一行的
+		// 「X's army」已經有名字；remake 差異）。
+		bigName := false
+		if name := []rune(info.Commander[i]); artAllWide(info.Commander[i]) && len(name) <= 3 {
+			bigName = true
+			y := assets.BattlePanelY
+			if len(name) == 2 {
+				y += 16
+			}
+			for k, r := range name {
+				c.DrawRuneScaledPx(assets.BattlePanelNameX[i], y+k*32, r, ink, 2, 2)
+			}
+		}
+		// 五行資料：原版的第一行是 6 個位元組的姓名欄接「軍」（兩字名前後
+		// 各一個空白），第三行的軍數是國字（`DS:0x7927`），兵是存的百位
+		// 接「00」。
+		lord := info.Lord[i]
+		if lord == "" {
+			lord = info.Commander[i]
+		}
 		lines := []string{
-			tf("bat.armyOf", info.Commander[i]),
-			SideName(side),
-			tf("bat.forcesLine", units, leaders),
-			tf("bat.menLine", men),
+			tf("bat.armyOf", battlePaddedName(lord)),
+			tf("bat.sideLine", SideName(side)),
+			tf("bat.forcesLine", battleUnitsNumeral(units), leaders),
+			tf("bat.menLine", men/100*100),
 			tf("bat.goldLine", b.Gold[side]),
 		}
-		ink := assets.EGAPalette[assets.BattlePanelInk]
-		if rows, small := sidePanelLayout(c, lines); small {
+		// 沒畫統帥名（拉丁字母）的時候，那 32 像素讓給資料，文字區從
+		// 統帥名的位置起算、寬 96。
+		x, width := assets.BattlePanelTextX[i], sideTextW
+		if !bigName {
+			x = min(assets.BattlePanelTextX[i], assets.BattlePanelNameX[i])
+			width = sideTextW + 32
+		}
+		if rows, small := sidePanelLayout(c, lines, width); small {
 			for k, s := range rows {
-				c.DrawSmallTextPx(x, assets.BattlePanelY+4+k*SmallH, s, ink)
+				c.DrawSmallTextPx(x, assets.BattlePanelLineY(0)+k*SmallH, s, ink)
 			}
 		} else {
 			for k, s := range rows {
-				c.DrawTextPx(x, assets.BattlePanelY+4+k*CellH, s, ink)
+				c.DrawTextPx(x, assets.BattlePanelLineY(k), s, ink)
 			}
 		}
 	}
@@ -282,16 +317,39 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	}
 }
 
-// sideTextW 是軍力面板上文字區的寬：面板 176 扣掉肖像框 80 與兩邊的
-// 間隙，92 像素。先前照整塊面板截在 21 格，英文的「Main Attackers」
-// 就畫進隔壁那一塊面板——中文剛好都短，才沒露出來。
-const sideTextW = assets.BattlePanelW - assets.BattleFrameW - 4
+// sideTextW 是軍力面板上五行資料的寬：面板 176 扣掉肖像 80 與統帥名
+// 32，64 像素（攻方 176–239、守方 256–319）。先前照整塊面板截在 21 格，
+// 英文的「Main Attackers」就畫進隔壁那一塊面板——中文剛好都短，才沒露出來。
+const sideTextW = assets.BattlePanelW - assets.BattleFrameW - 32
+
+// battlePaddedName 照原版人物表的 6 位元組姓名欄排名字：兩字名前後各
+// 一個空白（原版第一行因此是「 陳就 軍」），三字名剛好填滿；拉丁字母的
+// 名字照原樣。
+func battlePaddedName(name string) string {
+	if artAllWide(name) && cells.Width(name) == 4 {
+		return " " + name + " "
+	}
+	return name
+}
+
+// battleUnitsNumeral 是第三行的軍數：原版查 `DS:0x7927` 的國字表
+// （十、一…九），譯文的格式裡沒有「軍」字就用阿拉伯數字。
+func battleUnitsNumeral(n int) string {
+	if !strings.Contains(t("bat.forcesLine"), "軍") {
+		return strconv.Itoa(n)
+	}
+	numerals := []string{"十", "一", "二", "三", "四", "五", "六", "七", "八", "九"}
+	if n >= 0 && n < len(numerals) {
+		return numerals[n]
+	}
+	return strconv.Itoa(n)
+}
 
 // sidePanelLayout 決定軍力面板的五行怎麼畫：原尺寸放得下（11 格）就照畫；
 // 放不下而且都是 ASCII 就整塊改小字，長的一行折成兩行（一行 15 字、
 // 面板放得下 8 行）；都不行才截。回傳要畫的行與用不用小字。
-func sidePanelLayout(c *Canvas, lines []string) ([]string, bool) {
-	cols := sideTextW / CellW
+func sidePanelLayout(c *Canvas, lines []string, width int) ([]string, bool) {
+	cols := width / CellW
 	fit := true
 	for _, l := range lines {
 		if cells.Width(l) > cols {
@@ -301,7 +359,7 @@ func sidePanelLayout(c *Canvas, lines []string) ([]string, bool) {
 	if fit {
 		return lines, false
 	}
-	scols, srows := sideTextW/SmallW, (assets.BattlePanelH-8)/SmallH
+	scols, srows := width/SmallW, (assets.BattlePanelH-8)/SmallH
 	var rows []string
 	for _, l := range lines {
 		rows = append(rows, cells.Wrap(l, scols)...)

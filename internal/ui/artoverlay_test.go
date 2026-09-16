@@ -593,24 +593,29 @@ func TestArtDateStaysInTheStrip(t *testing.T) {
 }
 
 // TestBattleSidePanelsFitEveryLanguage 釘住戰場左右兩塊軍力面板的五行字：
-// 中日文原尺寸放得進文字區（92 像素＝11 格，左邊是肖像框），英文放不下就
-// 整塊改小字、長的一行折兩行，一個字都不截（`docs/spec/014` §7）。
-// 數值取上限：兵與金五位數。
+// 中日文原尺寸放得進文字區（64 像素＝8 格：肖像 80、統帥名 32 之外的
+// 部分，`assets.BattlePanelTextX`），英文放不下就整塊改小字、長的一行折
+// 兩行，一個字都不截（`docs/spec/014` §7）。數值取上限：兵與金五位數。
+// 兩塊面板只畫主攻軍與主守軍（`artBattleSides`）。
 func TestBattleSidePanelsFitEveryLanguage(t *testing.T) {
 	c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
 	saved := i18n.Current
 	defer func() { i18n.Current = saved }()
 	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
 		i18n.Current = l
-		for s := battle.Side(0); s < 4; s++ {
+		for _, s := range artBattleSides {
 			lines := []string{
-				i18n.Sf("bat.armyOf", i18n.PersonName("諸葛亮")),
-				SideName(s),
-				i18n.Sf("bat.forcesLine", 10, 10),
-				i18n.Sf("bat.menLine", 99999),
+				i18n.Sf("bat.armyOf", battlePaddedName(i18n.PersonName("諸葛亮"))),
+				i18n.Sf("bat.sideLine", SideName(s)),
+				i18n.Sf("bat.forcesLine", battleUnitsNumeral(10), 10),
+				i18n.Sf("bat.menLine", 99900),
 				i18n.Sf("bat.goldLine", 30000),
 			}
-			rows, small := sidePanelLayout(c, lines)
+			width := sideTextW
+			if l == i18n.En {
+				width = sideTextW + 32 // 沒畫統帥名，那 32 像素讓給資料
+			}
+			rows, small := sidePanelLayout(c, lines, width)
 			if small && l != i18n.En {
 				t.Errorf("%s 的軍力面板用了小字——只有英文放不下時才用：%q", l, lines)
 			}

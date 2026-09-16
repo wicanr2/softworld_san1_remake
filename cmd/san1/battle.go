@@ -344,6 +344,9 @@ func (a *app) battleInfo() ui.ArtBattleInfo {
 		}
 		info.Commander[i] = who.Name
 		info.Portrait[i] = int(who.Portrait)
+		if lord := a.s.G.Lord(who.Faction); lord != nil {
+			info.Lord[i] = lord.Name
+		}
 	}
 	return info
 }

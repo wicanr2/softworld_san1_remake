@@ -31,11 +31,13 @@ const (
 	BattleWeatherX = 8
 	BattleWeatherY = 155
 
-	// BattleNameX／Y／Step 是左欄郡名的位置（`0x2181d`–`0x218a4`）。
-	// 原版一個字 32×32，remake 用自己的字庫，字級不同。
-	BattleNameX    = 8
-	BattleNameY    = 52
-	BattleNameStep = 32
+	// BattleNameX／Y／Step 是左欄郡名的位置（`0x2181d`–`0x218a4`）：
+	// 兩個字各 32×32（`0x33d8:0x16b4` 的 `sx=2, sy=2`），黃字青底。
+	// remake 用自己的字庫放大成同一個字級。
+	BattleNameX     = 8
+	BattleNameY     = 52
+	BattleNameStep  = 32
+	BattleNameScale = 2
 
 	// BattleProvinceY 是州名（`0x218d7`，白色）、BattleNumberY 是郡編號
 	// （`0x21921`，`%2d`、洋紅）。兩個都在左欄第一個框裡。
@@ -53,12 +55,32 @@ const (
 	BattleFaceW  = 64
 	BattleFaceH  = 80
 
-	// 面板的底色與字色，量自基準畫面。
-	BattlePanelInk   = 12 // 淺紅
+	// 面板的底色與字色，量自基準畫面；四個軍團各一色（`DS:0x796a`：
+	// 主守 10、助守 11、主攻 12、助攻 13）。
+	BattlePanelInk   = 12 // 淺紅（主攻）
 	BattlePanelPaper = 1  // 藍
 	BattleOrderInk   = 14 // 黃
 	BattleOrderPaper = 3  // 青
 )
+
+// 軍力面板裡的東西各在哪（`0x22c94`，`L0`）：每一側從 `DS:0x7b8c` 那張
+// 表拿三個位移——肖像、統帥名、五行資料——加在面板左緣上。順序是
+// 攻方、守方，與 `BattleFrameX` 相同。
+//
+//	攻方（主攻軍，側 2）：肖像 +8、統帥名 +80、資料 +112；字色 12
+//	守方（主守軍，側 0）：肖像 +104、統帥名 +64、資料 +0；字色 10
+//
+// 統帥名是 32×32 直排（`0x22fd4`）：兩字名在 y+16／y+48，三字名在
+// y+0／+32／+64。五行資料 16×16，在 y+0、+16、+32、+48、+64
+// （`%s軍`、` %s `、`%s軍%2d將`、`兵%4d00`、`金%6d`）。
+var (
+	BattlePanelNameX = [2]int{144, 320}
+	BattlePanelTextX = [2]int{176, 256}
+	BattlePanelInks  = [2]int{12, 10}
+)
+
+// BattlePanelLineY 是軍力面板第 k 行資料的上緣。
+func BattlePanelLineY(k int) int { return BattlePanelY + k*16 }
 
 // BattlePanelX 是三個面板的左緣：攻方、守方、指令列。
 var BattlePanelX = [3]int{64, 256, 448}

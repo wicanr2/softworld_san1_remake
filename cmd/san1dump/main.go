@@ -177,7 +177,7 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 		// 部隊要接上原版的旗幟，就得真的有一場戰役。**優先用劇本裡真的
 		// 兩個勢力**——那樣連統帥的姓名與肖像都是原版的資料；湊不出
 		// 對手才退回自組的樣本局面。
-		b, chiefs := realBattle(sc, at)
+		b, chiefs, lords := realBattle(sc, at)
 		if b == nil {
 			fmt.Fprintf(os.Stderr,
 				"san1dump：郡 %d 湊不出真的兩軍（沒有駐軍或鄰郡同屬一方），"+
@@ -217,6 +217,9 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 			if chiefs[k] != nil {
 				info.Commander[k] = chiefs[k].Name
 				info.Portrait[k] = int(chiefs[k].Portrait)
+			}
+			if lords[k] != nil {
+				info.Lord[k] = lords[k].Name
 			}
 		}
 		ui.DrawArtBattle(c, ab, b, ui.BattleView{Acting: hi,
@@ -497,19 +500,19 @@ func promptFor(u *battle.Unit) string {
 
 // realBattle 用劇本裡真的兩個勢力開一場：守方是這個郡的主人，攻方是
 // 第一個**不同勢力**又有駐軍的鄰郡。湊不出來就回 nil。
-func realBattle(sc *state.Scenario, at int) (*battle.Battle, [2]*game.General) {
-	var chiefs [2]*game.General
+func realBattle(sc *state.Scenario, at int) (*battle.Battle, [2]*game.General, [2]*game.General) {
+	var chiefs, lords [2]*game.General
 	act := sc.ActiveFactions()
 	if len(act) == 0 {
-		return nil, chiefs
+		return nil, chiefs, lords
 	}
 	g, err := game.New(sc, state.FactionID(act[0]), 5, state.EditionBase)
 	if err != nil {
-		return nil, chiefs
+		return nil, chiefs, lords
 	}
 	to := g.Prefecture(at)
 	if to == nil || len(g.Garrison(at)) == 0 {
-		return nil, chiefs
+		return nil, chiefs, lords
 	}
 	for _, n := range to.Neighbours {
 		from := g.Prefecture(n)
@@ -532,9 +535,10 @@ func realBattle(sc *state.Scenario, at int) (*battle.Battle, [2]*game.General) {
 		}
 		att, def := p.Chiefs()
 		chiefs[0], chiefs[1] = att, def
-		return p.Battle(), chiefs
+		lords[0], lords[1] = g.Lord(from.Owner), g.Lord(to.Owner)
+		return p.Battle(), chiefs, lords
 	}
-	return nil, chiefs
+	return nil, chiefs, lords
 }
 
 // loadSmallFace 讀小字級（與大字型同一個目錄的 `ascii6x10.hex.gz`）；
