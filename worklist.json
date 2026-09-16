@@ -1232,6 +1232,31 @@
       "layer": "verification"
     },
     {
+      "id": "battle-rice-line-and-day-box",
+      "title": "主戰場漏畫的字：軍力面板第六行「米」、左欄第四框的國字日數與時辰",
+      "group": "畫面",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/05"
+      ],
+      "note": "2026-09-17（Issue #57）：`0x22c94` 第六行 `米%6d`（y0＋80，`DS:0x7bc6`）；左欄第四框 `0x219b5`–`0x21b38`：國字日數三格各 32×16（sx2 sy1，位數表 `DS:0x78a8＋4×天` → `DS:0x7924` 起的「　十一…九」）、「日」32×16、時辰名 `DS:0x7946[((時＋1) mod 24)÷2]` 16×16 淺青、「時」16×32、時數 `%2d`；時刻 `es:0x31a6` 主戰場上永遠 6。remake：`bat.riceLine`、`drawBattleDayBox`／`battleDayNumerals`；英文用阿拉伯數字與 Day／Hour（remake 差異）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/ui",
+        "run": "TestArtBattleTextCellsMatchTheOriginal|TestArtBattleNarrowTextCellsMatchTheOriginal|TestBattleDayNumeralsFollowTheTable",
+        "needs": [
+          "org_game",
+          "workplace/shots/bf/orig-battle.png",
+          "workplace/shots/bf/orig-battle-narrow.png"
+        ]
+      },
+      "layer": "verification"
+    },
+    {
       "id": "art-main-overlays",
       "title": "原版素材畫面看得到指令表、子選單、挑選清單、分頁與戰場選項",
       "group": "畫面",

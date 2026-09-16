@@ -363,9 +363,10 @@ func TestArtBattleTextCellsMatchTheOriginal(t *testing.T) {
 		prefecture: 25, name: "廬陵", province: "揚州",
 		defenders: []int{2000, 2000, 2000, 1800},
 		commander: [2]string{"陳就", "周瑜"}, lord: [2]string{"陳就", "蒯越"},
+		rice: [2]int{8970, 2922},
 		lines: [2][]string{
-			{" 陳就 軍", " 主攻軍 ", "一軍 1將", "兵  3000", "金  5000"},
-			{" 蒯越 軍", " 主守軍 ", "四軍 4將", "兵  7800", "金   500"},
+			{" 陳就 軍", " 主攻軍 ", "一軍 1將", "兵  3000", "金  5000", "米  8970"},
+			{" 蒯越 軍", " 主守軍 ", "四軍 4將", "兵  7800", "金   500", "米  2922"},
 		},
 	})
 }
@@ -378,9 +379,10 @@ func TestArtBattleNarrowTextCellsMatchTheOriginal(t *testing.T) {
 		prefecture: 26, name: "夷郡", province: "揚州",
 		defenders: []int{1500, 1500},
 		commander: [2]string{"陳就", "關羽"}, lord: [2]string{"陳就", "郭嘉"},
+		rice: [2]int{8970, 2970},
 		lines: [2][]string{
-			{" 陳就 軍", " 主攻軍 ", "一軍 1將", "兵  3000", "金  5000"},
-			{" 郭嘉 軍", " 主守軍 ", "二軍 2將", "兵  3000", "金   500"},
+			{" 陳就 軍", " 主攻軍 ", "一軍 1將", "兵  3000", "金  5000", "米  8970"},
+			{" 郭嘉 軍", " 主守軍 ", "二軍 2將", "兵  3000", "金   500", "米  2970"},
 		},
 	})
 }
@@ -391,6 +393,7 @@ type battleTextCase struct {
 	prefecture      int
 	name, province  string
 	defenders       []int
+	rice            [2]int
 	commander, lord [2]string
 	lines           [2][]string
 }
@@ -443,7 +446,10 @@ func battleTextCells(t *testing.T, shotPath string, tc battleTextCase) {
 		Field: fld, Seed: 1,
 		Attackers: att, Defenders: def,
 		AttackerGold: 5000, DefenderGold: 500,
+		AttackerRice: tc.rice[0], DefenderRice: tc.rice[1],
 	})
+	// 兩張基準都是紮完寨、休息到第四天的畫面（左欄第四框「四／日／卯時／6」）。
+	b.Day = 4
 	c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
 	c.SetSmallFace(testSmallFace(t))
 	DrawArtBattle(c, ab, b, BattleView{}, ArtBattleInfo{
@@ -467,6 +473,18 @@ func battleTextCells(t *testing.T, shotPath string, tc battleTextCase) {
 			assets.BattleNameX, assets.BattleNameY + i*assets.BattleNameStep, 32, 32,
 			assets.BattleOrderPaper, nameRegion})
 	}
+	// 左欄第四框：第四天——「四」在中格 32×16、「日」32×16、「卯」16×16、
+	// 「時」16×32、「 6」的 6 在第二格 8×16（Issue #57）。
+	dayRegion := [4]int{assets.BattleLeftBoxX0, 228, assets.BattleLeftBoxX1, 323}
+	for _, k := range []cell{
+		{"日數「四」", 8, 244, 32, 16, assets.BattleOrderPaper, dayRegion},
+		{"「日」", 8, 276, 32, 16, assets.BattleOrderPaper, dayRegion},
+		{"時辰「卯」", 8, 292, 16, 16, assets.BattleOrderPaper, dayRegion},
+		{"「時」", 24, 292, 16, 32, assets.BattleOrderPaper, dayRegion},
+		{"時數「6」", 16, 308, 8, 16, assets.BattleOrderPaper, dayRegion},
+	} {
+		cellsToCheck = append(cellsToCheck, k)
+	}
 	for side, name := range tc.commander {
 		nx, py := wide.NameX(side), wide.PanelY[side]
 		region := [4]int{nx, py, nx + 31, py + assets.BattlePanelH - 1}
@@ -478,7 +496,7 @@ func battleTextCells(t *testing.T, shotPath string, tc battleTextCase) {
 	lines := tc.lines
 	for side := range lines {
 		tx := wide.TextX(side)
-		region := [4]int{tx, wide.PanelY[side], tx + 63, wide.LineY(side, 5) - 1}
+		region := [4]int{tx, wide.PanelY[side], tx + 63, wide.LineY(side, 6) - 1}
 		for k, line := range lines[side] {
 			x := tx
 			for _, r := range line {
@@ -652,6 +670,64 @@ func TestArtBattleUnitAndInspectPanelsStayInTheirColumns(t *testing.T) {
 		}
 		if n := overdrawn(c, layers, inspectFaceX-8, inspectFaceY-8, x1, y1); n > 0 {
 			t.Errorf("%s 查看：字壓到肖像與框 %d 點", loc, n)
+		}
+	}
+}
+
+// TestBattleDayNumeralsFollowTheTable 釘住國字日數的三格（原版 `DS:0x78a8`
+// 的位數表：個位在中格、十幾的「十」在中格、二十幾三格全用）。
+func TestBattleDayNumeralsFollowTheTable(t *testing.T) {
+	for _, k := range []struct {
+		day  int
+		want [3]string
+	}{
+		{0, [3]string{}},
+		{1, [3]string{"", "一", ""}},
+		{4, [3]string{"", "四", ""}},
+		{9, [3]string{"", "九", ""}},
+		{10, [3]string{"", "十", ""}},
+		{11, [3]string{"", "十", "一"}},
+		{19, [3]string{"", "十", "九"}},
+		{20, [3]string{"", "二", "十"}},
+		{21, [3]string{"二", "十", "一"}},
+		{29, [3]string{"二", "十", "九"}},
+		{30, [3]string{"", "三", "十"}},
+		{31, [3]string{"", "三", "十"}},
+	} {
+		if got := battleDayNumerals(k.day); got != k.want {
+			t.Errorf("第 %d 天：%q，該是 %q", k.day, got, k.want)
+		}
+	}
+}
+
+// TestBattleDayBoxStaysInTheColumn 釘住三個語系的第四框都畫在 x 8–39 裡。
+func TestBattleDayBoxStaysInTheColumn(t *testing.T) {
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	for _, loc := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = loc
+		for _, day := range []int{1, 24, 30} {
+			c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
+			drawBattleDayBox(c, day)
+			ink, stray := 0, 0
+			for y := 0; y < assets.ScreenH; y++ {
+				for x := 0; x < assets.ScreenW; x++ {
+					if c.Img.RGBAAt(x, y).A == 0 {
+						continue
+					}
+					if x >= assets.BattleLeftBoxX0 && x <= assets.BattleLeftBoxX1 && y >= 228 && y <= 323 {
+						ink++
+					} else {
+						stray++
+					}
+				}
+			}
+			if ink == 0 {
+				t.Errorf("%s 第 %d 天：第四框裡沒有字", loc, day)
+			}
+			if stray > 0 {
+				t.Errorf("%s 第 %d 天：有 %d 點畫到第四框外", loc, day, stray)
+			}
 		}
 	}
 }

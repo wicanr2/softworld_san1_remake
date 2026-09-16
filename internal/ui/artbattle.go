@@ -273,8 +273,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		assets.EGAPalette[13])
 	y0, _ := assets.BattleLeftBox(2)
 	c.DrawTextPx(assets.BattleNameX, y0, WeatherName(b.Weather), assets.EGAPalette[15])
-	y0, _ = assets.BattleLeftBox(3)
-	c.DrawTextPx(assets.BattleNameX, y0, tf("bat.dayShort", b.Day), assets.EGAPalette[15])
+	drawBattleDayBox(c, b.Day)
 
 	// 兩個軍力面板（`0x22c94`，位置在 `assets.BattleLayout.NameX`／`TextX`）；
 	// 對戰子畫面裡換成兩支部隊的面板（`0x320a6`）。
@@ -338,6 +337,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 				tf("bat.forcesLine", battleUnitsNumeral(units), leaders),
 				tf("bat.menLine", men/100*100),
 				tf("bat.goldLine", b.Gold[side]),
+				tf("bat.riceLine", b.Rice[side]),
 			}
 		}
 		// 沒畫統帥名（拉丁字母）的時候，那 32 像素讓給資料，文字區從
@@ -480,6 +480,74 @@ func battlePaddedName(name string) string {
 		return " " + name + " "
 	}
 	return name
+}
+
+// 左欄第四框（y 228–323，`0x219b5`–`0x21b38`）：**國字日數直排**——三格
+// 各 32×16（`0x1d4e` 的 sx＝2、sy＝1，白 15）在 (8,228)／(8,244)／(8,260)，
+// 位數表 `DS:0x78a8＋4×天` 指到 `DS:0x7924` 起的「　十一二…九」；「日」
+// (8,276) 也是 32×16；時辰名 `DS:0x7946[((時＋1) mod 24) ÷ 2]` 16×16
+// 淺青 11 在 (8,292)、「時」16×32 在 (24,292)、時數 `%2d` 在 (8,308)。
+// 時刻 `es:0x31a6` 進戰場設 6（`0x2055c`），對戰子畫面裡每時刻 +1、結束
+// 又設回 6（`0x2e67a`），所以主戰場上永遠是「卯時 6」。
+//
+// 英文沒有國字與地支：日數用阿拉伯數字一格 16×16、「Day」「Hour」照原
+// 尺寸（remake 差異）。
+const (
+	battleDayBoxX        = assets.BattleLeftBoxX0
+	battleDayNumeralY    = 228
+	battleDaySignY       = 276
+	battleHourY          = 292
+	battleHourNumberY    = 308
+	battleDayNumeralStep = 16
+)
+
+// battleDayNumerals 照原版的位數表把第幾天拆成三格國字（空的是 ""）：
+// 1–9 在中格、10 是「十」、11–19「十」＋個位、20「二十」、21–29 三格全用、
+// 30「三十」；超過 30 原版讀到表外，remake 夾在 30。
+func battleDayNumerals(day int) [3]string {
+	numerals := []string{"十", "一", "二", "三", "四", "五", "六", "七", "八", "九"}
+	n := func(d int) string { return numerals[d%10] }
+	switch {
+	case day <= 0:
+		return [3]string{}
+	case day < 10:
+		return [3]string{"", n(day), ""}
+	case day == 10:
+		return [3]string{"", "十", ""}
+	case day < 20:
+		return [3]string{"", "十", n(day)}
+	case day == 20:
+		return [3]string{"", "二", "十"}
+	case day < 30:
+		return [3]string{"二", "十", n(day)}
+	default:
+		return [3]string{"", "三", "十"}
+	}
+}
+
+// drawBattleDayBox 畫左欄第四框：日數、「日」、時辰、「時」、時數。
+func drawBattleDayBox(c *Canvas, day int) {
+	white, cyan := assets.EGAPalette[15], assets.EGAPalette[11]
+	hour := battle.SkirmishFirstHour
+	if sign := t("bat.daySign"); artAllWide(sign) {
+		for k, r := range battleDayNumerals(day) {
+			if r != "" {
+				c.DrawRuneScaledPx(battleDayBoxX, battleDayNumeralY+k*battleDayNumeralStep,
+					[]rune(r)[0], white, 2, 1)
+			}
+		}
+		c.DrawRuneScaledPx(battleDayBoxX, battleDaySignY, []rune(sign)[0], white, 2, 1)
+		branches := []rune(t("bat.hourBranches"))
+		if i := ((hour + 1) % 24) / 2; i < len(branches) {
+			c.DrawRuneWidePx(battleDayBoxX, battleHourY, branches[i], cyan, 1)
+		}
+		c.DrawRuneScaledPx(battleDayBoxX+CellW*2, battleHourY, []rune(t("bat.hourSign"))[0], cyan, 1, 2)
+	} else {
+		c.DrawTextPx(battleDayBoxX, battleDayNumeralY+battleDayNumeralStep, fmt.Sprintf("%2d", day), white)
+		c.DrawTextPx(battleDayBoxX, battleDaySignY, cells.Truncate(sign, 4), white)
+		c.DrawTextPx(battleDayBoxX, battleHourY, cells.Truncate(t("bat.hourSign"), 4), cyan)
+	}
+	c.DrawTextPx(battleDayBoxX, battleHourNumberY, fmt.Sprintf("%2d", hour), cyan)
 }
 
 // battleUnitsNumeral 是第三行的軍數：原版查 `DS:0x7927` 的國字表
