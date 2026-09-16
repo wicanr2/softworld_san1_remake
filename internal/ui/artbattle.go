@@ -41,7 +41,7 @@ type ArtBattleInfo struct {
 	Calendar game.Calendar
 
 	// Commander 是攻方與守方的統帥姓名，Portrait 是他們的肖像編號
-	// （−1 ＝ 沒有）。順序是攻方、守方，與 `assets.BattleFrameX` 相同。
+	// （−1 ＝ 沒有）。順序是攻方、守方，與 `assets.BattleLayout.Face` 的側別相同。
 	Commander [2]string
 	Portrait  [2]int
 
@@ -85,29 +85,35 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 	}
 	// 下方花邊上那一行年月是**文字層**（`drawBattleDate`，`docs/spec/011`），
 	// 不在這裡——這一層只拼圖塊。
-	im.FieldEdges()
+	//
+	// 版面照州郡的形狀挑：12 欄的寬圖面板在下、8 欄的窄圖面板在右
+	// （`docs/spec/005` §8「主戰場整張畫面的版面」）。
+	l := assets.BattleLayoutFor(b.Field.Narrow())
+	im.FieldEdges(l)
 	im.BlitField(ab.tiles, info.Field)
 	ab.drawUnits(im, b, v)
 
-	// 左欄與三個面板：先塗底色再畫下凹的外框。
+	// 左欄、場地左右緣的線與三個面板：先塗底色再畫下凹的外框。
 	im.LeftColumn()
-	for i, x := range assets.BattlePanelX {
+	im.FieldLines(l)
+	for i := range l.PanelX {
 		paper := byte(assets.BattlePanelPaper)
 		if i == 2 {
 			paper = assets.BattleOrderPaper
 		}
-		im.FillRect(x, assets.BattlePanelY, assets.BattlePanelW, assets.BattlePanelH, paper)
-		im.BevelBox(x, assets.BattlePanelY,
-			x+assets.BattlePanelW-1, assets.BattlePanelY+assets.BattlePanelH-1)
+		x0, y0, x1, y1 := l.Panel(i)
+		im.FillRect(x0, y0, assets.BattlePanelW, assets.BattlePanelH, paper)
+		im.BevelBox(x0, y0, x1, y1)
 	}
 
 	// 天氣圖示與肖像。
 	if w := ab.weather[b.Weather.OriginalIndex()%len(ab.weather)]; w != nil {
 		im.Blit(w, assets.BattleWeatherX, assets.BattleWeatherY)
 	}
-	for i := range assets.BattleFrameX {
+	for i := range assets.BattleFaceMirror {
 		if ab.frame[0] != nil {
-			im.Blit(ab.frame[0], assets.BattleFrameX[i], assets.BattlePanelY)
+			fx, fy := l.Frame(i)
+			im.Blit(ab.frame[0], fx, fy)
 		}
 		face := ab.face(info.Portrait[i])
 		if face == nil {
@@ -116,7 +122,8 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 		if assets.BattleFaceMirror[i] {
 			face = face.Mirror()
 		}
-		im.Blit(face, assets.BattleFaceX[i], assets.BattleFaceY)
+		fx, fy := l.Face(i)
+		im.Blit(face, fx, fy)
 	}
 	return im
 }
@@ -196,7 +203,8 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	y0, _ = assets.BattleLeftBox(3)
 	c.DrawTextPx(assets.BattleNameX, y0, tf("bat.dayShort", b.Day), assets.EGAPalette[15])
 
-	// 兩個軍力面板（`0x22c94`，位置在 `assets.BattlePanelNameX`／`TextX`）。
+	// 兩個軍力面板（`0x22c94`，位置在 `assets.BattleLayout.NameX`／`TextX`）。
+	l := assets.BattleLayoutFor(b.Field.Narrow())
 	for i, side := range artBattleSides {
 		units, men := 0, 0
 		leaders := 0
@@ -214,12 +222,12 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		bigName := false
 		if name := []rune(info.Commander[i]); artAllWide(info.Commander[i]) && len(name) <= 3 {
 			bigName = true
-			y := assets.BattlePanelY
+			y := l.PanelY[i]
 			if len(name) == 2 {
 				y += 16
 			}
 			for k, r := range name {
-				c.DrawRuneScaledPx(assets.BattlePanelNameX[i], y+k*32, r, ink, 2, 2)
+				c.DrawRuneScaledPx(l.NameX(i), y+k*32, r, ink, 2, 2)
 			}
 		}
 		// 五行資料：原版的第一行是 6 個位元組的姓名欄接「軍」（兩字名前後
@@ -238,18 +246,18 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		}
 		// 沒畫統帥名（拉丁字母）的時候，那 32 像素讓給資料，文字區從
 		// 統帥名的位置起算、寬 96。
-		x, width := assets.BattlePanelTextX[i], sideTextW
+		x, width := l.TextX(i), sideTextW
 		if !bigName {
-			x = min(assets.BattlePanelTextX[i], assets.BattlePanelNameX[i])
+			x = min(l.TextX(i), l.NameX(i))
 			width = sideTextW + 32
 		}
 		if rows, small := sidePanelLayout(c, lines, width); small {
 			for k, s := range rows {
-				c.DrawSmallTextPx(x, assets.BattlePanelLineY(0)+k*SmallH, s, ink)
+				c.DrawSmallTextPx(x, l.LineY(i, 0)+k*SmallH, s, ink)
 			}
 		} else {
 			for k, s := range rows {
-				c.DrawTextPx(x, assets.BattlePanelLineY(k), s, ink)
+				c.DrawTextPx(x, l.LineY(i, k), s, ink)
 			}
 		}
 	}
@@ -257,7 +265,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	// 指令面板：原版的三行三列 ＋ 提示。**選了用計、交戰、方向或紮營
 	// 之後，那三行換成該選的選項**——先前只畫選單標題，六種計謀、交戰
 	// 方式都看不到，玩家只能照手冊背編號（`docs/spec/014` §7）。
-	ordX := assets.BattlePanelX[2] + 4
+	ordX, ordY := l.PanelX[2]+4, l.PanelY[2]+4
 	ord := assets.EGAPalette[assets.BattleOrderInk]
 	w := (assets.BattlePanelW - 8) / CellW
 	opts := BattleCommandLines()
@@ -268,7 +276,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	switch {
 	case len(opts) <= battleOptRows:
 		for k, s := range opts {
-			c.DrawTextPx(ordX, assets.BattlePanelY+4+k*CellH, cells.Truncate(s, w), ord)
+			c.DrawTextPx(ordX, ordY+k*CellH, cells.Truncate(s, w), ord)
 		}
 	case small != nil:
 		// 英文九個指令原尺寸要五行以上：**整塊改用小字**留在面板裡
@@ -280,7 +288,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 			if k == len(small)-1 && v.Prompt != "" {
 				ink = assets.EGAPalette[15]
 			}
-			c.DrawSmallTextPx(ordX, assets.BattlePanelY+4+k*SmallH, cells.Truncate(s, cols), ink)
+			c.DrawSmallTextPx(ordX, ordY+k*SmallH, cells.Truncate(s, cols), ink)
 		}
 		if len(v.Page) > 0 {
 			drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
@@ -291,8 +299,8 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		// 譯文排不進三行（英文九個指令要五行以上）：在面板**正上方**畫
 		// 一個同寬的選單框往上長，戰場的其餘部分照樣看得到——選指令的
 		// 時候玩家要看得到戰場，所以不能像主畫面那樣整片蓋掉。
-		x0, x1 := assets.BattlePanelX[2], assets.BattlePanelX[2]+assets.BattlePanelW
-		y1 := assets.BattlePanelY - 2
+		x0, x1 := l.PanelX[2], l.PanelX[2]+assets.BattlePanelW
+		y1 := l.PanelY[2] - 2
 		y0 := y1 - len(opts)*CellH - 8
 		c.FillRect(x0, y0, x1, y1, artInkPageBG)
 		for k, s := range opts {
@@ -301,12 +309,12 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	}
 	row := battleOptRows
 	if v.Menu != "" {
-		c.DrawTextPx(ordX, assets.BattlePanelY+4+row*CellH,
+		c.DrawTextPx(ordX, ordY+row*CellH,
 			cells.Truncate(v.Menu, (assets.BattlePanelW-8)/CellW), ord)
 		row++
 	}
 	if v.Prompt != "" {
-		c.DrawTextPx(ordX, assets.BattlePanelY+4+row*CellH,
+		c.DrawTextPx(ordX, ordY+row*CellH,
 			cells.Truncate(v.Prompt, (assets.BattlePanelW-8)/CellW),
 			assets.EGAPalette[15])
 	}
@@ -424,10 +432,10 @@ const (
 	// 正好是 96 像素高的面板放得下的五列。
 	battleOptRows = 3
 
-	// 分頁蓋在三個面板上方那一整塊：左右對齊面板的外緣（64–624），
-	// 上緣留 4 像素，下緣停在面板上面。
+	// 分頁蓋在三個面板上方那一整塊：左右對齊寬版面面板的外緣（64–624），
+	// 上緣留 4 像素，下緣停在指令面板上面（兩種版面的指令面板都在 y 268）。
 	battlePageX0, battlePageY0 = 64, 4
-	battlePageX1, battlePageY1 = 624, assets.BattlePanelY - 4
+	battlePageX1, battlePageY1 = 624, 268 - 4
 )
 
 // face 取一張肖像；沒有就回 nil。

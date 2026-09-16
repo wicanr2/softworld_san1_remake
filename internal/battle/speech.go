@@ -4,12 +4,13 @@ import "github.com/wicanr2/softworld_san1_remake/internal/i18n"
 
 // 戰場上的對白（原版的訊息常式 `0x3273e`，`docs/spec/005` §9.7，`L0`、`[base]`）。
 //
-// 主戰場上一句話就是第三塊面板那一格：框 (448,268)–(623,363)、肖像在右
-// （只有「汝計已被吾識破」肖像在左）、說話者是部隊的統帥或當事的將領。
-// 單挑的話用兩塊側面板：攻方那一塊 (64,268)–(239,363) 肖像在左、守方那一塊
-// (256,268)–(431,363) 肖像在右（`DS:0x7b24`／`0x7b34` 的位置表、`DS:0x8894`
-// 的左右表，`0x30a43`–`0x30b9b`）。字色照原版是進去就擲的 `RND(8)`——
-// 這一擲 remake 本來就在擲（`msg`），現在把值留下來畫。
+// 主戰場上一句話就是第三塊面板那一格：肖像在右（只有「汝計已被吾識破」
+// 肖像在左）、說話者是部隊的統帥或當事的將領。單挑的話用兩塊側面板：
+// 攻方那一塊肖像在左、守方那一塊肖像在右（`DS:0x7b24`／`0x7b34` 的位置表
+// 索引 `版面×4＋側`、`DS:0x8894` 的左右表，`0x30a43`–`0x30b9b`）。
+// 三塊面板在畫面上的位置隨版面走——寬版面排在場地下方、窄版面疊在右邊
+// （`assets.BattleLayout.Panel`），這裡只記是哪一塊。字色照原版是進去就擲的
+// `RND(8)`——這一擲 remake 本來就在擲（`msg`），現在把值留下來畫。
 
 // SpeechBox 是對白用哪一塊面板。
 type SpeechBox int
@@ -29,15 +30,16 @@ type Speech struct {
 	Text    string
 }
 
-// Rect 是這一格的四個角（含端點）；主戰場 12×7 的版面。
-func (s Speech) Rect() (x1, y1, x2, y2 int) {
-	switch s.Box {
+// Panel 是這一塊在版面裡的面板編號：攻方 0、守方 1、指令列（第三塊）2，
+// 與 `assets.BattleLayout.Panel` 的順序相同。
+func (b SpeechBox) Panel() int {
+	switch b {
 	case BoxAttacker:
-		return 64, 268, 239, 363
+		return 0
 	case BoxDefender:
-		return 256, 268, 431, 363
+		return 1
 	}
-	return 448, 268, 623, 363
+	return 2
 }
 
 // say 印一句對白：擲字色那一擲（與 `msg` 同一擲），排進 Speeches。

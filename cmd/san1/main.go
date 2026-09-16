@@ -968,7 +968,7 @@ func (a *app) paint() {
 				ui.DrawArtBattle(a.canvas, a.artBattle, a.fight.pending.Battle(),
 					a.fight.view, a.battleInfo())
 				if sp := a.fight.speech(true); sp != nil {
-					ui.DrawBattleSpeech(a.canvas, a.art, a.s.G, sp)
+					ui.DrawBattleSpeech(a.canvas, a.art, a.s.G, a.fight.pending.Battle(), sp)
 				}
 			} else {
 				ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)

@@ -1182,6 +1182,31 @@
       "layer": "verification"
     },
     {
+      "id": "battle-narrow-layout",
+      "title": "8×10 版面的主戰場：面板在右側 x 448 疊放",
+      "group": "畫面",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/05",
+        "docs/playtest/03"
+      ],
+      "note": "2026-09-17（Issue #53）：州郡 offset 34 ≠ 9 的 21 個郡走窄版面（`0x225c8`–`0x226cb`）：上下階梯各 4 組（下緣用 `0x21fe0`，y 324）、左緣黑線到 356、右緣白線 x 440–441 到 373、三塊面板疊在 x 448、y 44／156／268（攻、守、指令），肖像與五行資料的位移表兩種版面共用。remake：`assets.BattleLayout`（`BattleWide`／`BattleNarrow`），`battle.Field.Narrow` 挑；對白框也跟著版面走。基準 `orig-battle-narrow.png`（`SAN1_BATTLETO=26`）整片場地 125,680 格逐格相同、肖像 F228／F002 逐點相同、45 格字落點相同；順手接上寬版面的右緣 x 632–633 與左欄第四框的真正下緣 323。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/ui",
+        "run": "TestArtBattleNarrowFurnitureMatchesTheOriginal|TestArtBattleNarrowPortraitsMatchTheOriginal|TestArtBattleNarrowTextCellsMatchTheOriginal",
+        "needs": [
+          "org_game",
+          "workplace/shots/bf/orig-battle-narrow.png"
+        ]
+      },
+      "layer": "verification"
+    },
+    {
       "id": "art-main-overlays",
       "title": "原版素材畫面看得到指令表、子選單、挑選清單、分頁與戰場選項",
       "group": "畫面",

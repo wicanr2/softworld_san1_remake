@@ -393,3 +393,8 @@ func (k TroopKind) String() string {
 	}
 	return fmt.Sprintf("?%d", k)
 }
+
+// Narrow 回報這張圖是不是 8 欄的窄圖：窄圖的 (8,0) 那一格在圖外
+// （劇本 001 的 42 個郡只有 12×7 與 8×10 兩種形狀，§2.1）。
+// 主戰場的版面與對戰子畫面的版型都照它挑。
+func (f *Field) Narrow() bool { return f.Outside(FromOffset(8, 0)) }

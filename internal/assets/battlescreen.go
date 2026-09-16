@@ -4,8 +4,10 @@ import "fmt"
 
 // 主戰場整張畫面的版面。
 //
-// 座標讀自 `0x224c6`–`0x226ff`（寬版面那一條路，州郡 offset 34 ＝ 9），
-// 每一項都拿紮完寨的基準畫面驗過。
+// 座標讀自 `0x224c6`–`0x226ff`：州郡 offset 34 ＝ 9 走**寬版面**（12 欄，
+// 場地滿版，三塊面板排在下方），否則走**窄版面**（8 欄，三塊面板疊在
+// 右邊 x 448–623）。兩條路各自的數字放在 `BattleWide`／`BattleNarrow`，
+// 每一項都拿紮完寨的基準畫面驗過（`orig-battle.png`／`orig-battle-narrow.png`）。
 //
 // 原版先把整個畫面鋪滿 8×8 的底紋（`0x223e4` 的雙重迴圈，一次 8 像素，
 // 鋪到 640×408），再蓋上方花邊、場地、面板。底紋是 `8x8PAT0.IMG`
@@ -15,17 +17,17 @@ import "fmt"
 // 也就是**下凹**的立體邊。面板本身沒有底色，內容自己填：
 // 兩個軍力面板是藍底（1）配淺紅字（12），指令面板是青底（3）配黃字（14）。
 //
-// 面板在 y ＝ 268 高 96，下緣 364；`MAINMAP8` 畫在 y ＝ 372 高 36，
+// 寬版面的面板在 y ＝ 268 高 96，下緣 364；`MAINMAP8` 畫在 y ＝ 372 高 36，
 // 下緣正好 408。**兩個都完整落在畫面裡**——上面那句「鋪到 640×408」
 // 就是原版自己的底紋迴圈給的高度（`docs/spec/006`）。
 const (
 	// BattleBGTile 是鋪滿畫面的底紋。
 	BattleBGTile = "8x8PAT0.IMG"
 
-	// BattleFieldLeft／Right／Top 是場地區的邊（`0x22527`、`0x2250c`）。
-	BattleFieldLeft  = 54
-	BattleFieldRight = 632
-	BattleFieldTop   = 34
+	// BattleFieldLeft／Top 是場地區的左緣與上緣（`0x22527`、`0x2250c`）；
+	// 右緣隨版面走（`BattleLayout.RightX`）。
+	BattleFieldLeft = 54
+	BattleFieldTop  = 34
 
 	// BattleWeatherX／Y 是天氣圖示的位置（`0x21969`，`WEATHER%d.IMG`）。
 	BattleWeatherX = 8
@@ -44,8 +46,8 @@ const (
 	BattleProvinceY = 116
 	BattleNumberY   = 132
 
-	// 三個面板：兩個軍力 ＋ 一個指令列（`0x2259e`、`0x226cb`）。
-	BattlePanelY = 268
+	// 三個面板的大小：兩個軍力 ＋ 一個指令列（`0x2259e`、`0x226cb`）；
+	// 位置在 `BattleLayout.PanelX`／`PanelY`。
 	BattlePanelW = 176
 	BattlePanelH = 96
 
@@ -63,27 +65,107 @@ const (
 	BattleOrderPaper = 3  // 青
 )
 
+// BattleLayout 是主戰場的一種版面：場地邊框有幾組、三塊面板在哪。
+//
+// 兩種版面的差別全在 `0x224c6`–`0x226ff` 那條 if：寬版面（`BattleWide`）
+// 六組階梯、面板排在場地下方；窄版面（`BattleNarrow`）四組階梯、
+// 面板疊在場地右邊。左欄、天氣圖示、上下花邊、年月那一行兩種版面相同。
+type BattleLayout struct {
+	// Narrow 是窄版面（8 欄）。
+	Narrow bool
+
+	// Groups 是場地上緣與下緣的階梯邊框各幾組（一組 96 像素、兩欄；
+	// `0x21ee2` 與 `0x220f0`／`0x21fe0` 各叫這麼多次）。
+	Groups int
+
+	// BottomY 是下緣那一排階梯的基準 y（`0x220f0`／`0x21fe0` 的第二個參數）。
+	// 寬版面 228（第 6 列的上緣，那一列只有偶數欄），窄版面 324（第 9 列）。
+	BottomY int
+
+	// LeftY1 是場地左緣兩條黑線（x 54、55）的下端，第二條少一格。
+	LeftY1 int
+
+	// RightX／RightY1 是場地右緣兩條白線的 x 與下端：第一條在 RightX 從
+	// y ＝ 51 起、第二條在 RightX+1 從 y ＝ 50 起，(RightX, 50) 是黑的。
+	RightX, RightY1 int
+
+	// PanelX／PanelY 是三塊面板的左上角：攻方、守方、指令列。
+	PanelX, PanelY [3]int
+}
+
+// BattleWide 是 12 欄的寬版面（州郡 offset 34 ＝ 9）。
+var BattleWide = BattleLayout{
+	Groups: 6, BottomY: 228, LeftY1: 260, RightX: 632, RightY1: 245,
+	PanelX: [3]int{64, 256, 448}, PanelY: [3]int{268, 268, 268},
+}
+
+// BattleNarrow 是 8 欄的窄版面：面板從上到下攻方、守方、指令列
+// （`0x226a9`、`0x226c0`、`0x226d7`）。
+var BattleNarrow = BattleLayout{
+	Narrow: true, Groups: 4, BottomY: 324, LeftY1: 356, RightX: 440, RightY1: 373,
+	PanelX: [3]int{448, 448, 448}, PanelY: [3]int{44, 156, 268},
+}
+
+// BattleLayoutFor 挑版面：窄圖的 (8,0) 那一格在圖外。
+func BattleLayoutFor(narrow bool) BattleLayout {
+	if narrow {
+		return BattleNarrow
+	}
+	return BattleWide
+}
+
 // 軍力面板裡的東西各在哪（`0x22c94`，`L0`）：每一側從 `DS:0x7b8c` 那張
 // 表拿三個位移——肖像、統帥名、五行資料——加在面板左緣上。順序是
-// 攻方、守方，與 `BattleFrameX` 相同。
+// 攻方、守方，與 `PanelX` 的前兩項相同；**兩種版面用同一張表**，
+// 只有面板的左上角不同。
 //
 //	攻方（主攻軍，側 2）：肖像 +8、統帥名 +80、資料 +112；字色 12
 //	守方（主守軍，側 0）：肖像 +104、統帥名 +64、資料 +0；字色 10
 //
-// 統帥名是 32×32 直排（`0x22fd4`）：兩字名在 y+16／y+48，三字名在
-// y+0／+32／+64。五行資料 16×16，在 y+0、+16、+32、+48、+64
-// （`%s軍`、` %s `、`%s軍%2d將`、`兵%4d00`、`金%6d`）。
+// 肖像框 `FBRC0.IMG` 畫在肖像左上角往左上各 8（寬版面 (64,268) 與
+// (352,268) 各 100% 相符）。統帥名是 32×32 直排（`0x22fd4`）：兩字名在
+// y+16／y+48，三字名在 y+0／+32／+64。五行資料 16×16，在 y+0、+16、
+// +32、+48、+64（`%s軍`、` %s `、`%s軍%2d將`、`兵%4d00`、`金%6d`）。
 var (
-	BattlePanelNameX = [2]int{144, 320}
-	BattlePanelTextX = [2]int{176, 256}
-	BattlePanelInks  = [2]int{12, 10}
+	battleSideFaceX = [2]int{8, 104}
+	battleSideNameX = [2]int{80, 64}
+	battleSideTextX = [2]int{112, 0}
+
+	// BattlePanelInks 是兩個軍力面板的字色：攻方、守方。
+	BattlePanelInks = [2]int{12, 10}
 )
 
-// BattlePanelLineY 是軍力面板第 k 行資料的上緣。
-func BattlePanelLineY(k int) int { return BattlePanelY + k*16 }
+// FieldY1 是場地最下面那一列白線的 y：下緣階梯的最後一條。
+func (l BattleLayout) FieldY1() int {
+	if l.Narrow {
+		return l.BottomY + 49
+	}
+	return l.BottomY + 33
+}
 
-// BattlePanelX 是三個面板的左緣：攻方、守方、指令列。
-var BattlePanelX = [3]int{64, 256, 448}
+// Panel 回傳第 i 塊面板的四個角（含端點）：攻方、守方、指令列。
+func (l BattleLayout) Panel(i int) (x0, y0, x1, y1 int) {
+	return l.PanelX[i], l.PanelY[i], l.PanelX[i] + BattlePanelW - 1, l.PanelY[i] + BattlePanelH - 1
+}
+
+// Frame 回傳第 i 側肖像框的左上角。
+func (l BattleLayout) Frame(i int) (x, y int) {
+	return l.PanelX[i] + battleSideFaceX[i] - 8, l.PanelY[i]
+}
+
+// Face 回傳第 i 側肖像的左上角（框內縮 8）。
+func (l BattleLayout) Face(i int) (x, y int) {
+	return l.PanelX[i] + battleSideFaceX[i], l.PanelY[i] + 8
+}
+
+// NameX 回傳第 i 側統帥名那一欄的左緣。
+func (l BattleLayout) NameX(i int) int { return l.PanelX[i] + battleSideNameX[i] }
+
+// TextX 回傳第 i 側五行資料的左緣。
+func (l BattleLayout) TextX(i int) int { return l.PanelX[i] + battleSideTextX[i] }
+
+// LineY 回傳第 i 側面板第 k 行資料的上緣。
+func (l BattleLayout) LineY(i, k int) int { return l.PanelY[i] + k*16 }
 
 // 主戰場下方花邊上那一行年月（`docs/spec/011`）。
 //
@@ -113,20 +195,11 @@ const (
 	BattleDateInkEven = 2 // (x+y) 偶數
 )
 
-// BattleFrameX 是兩個肖像框的左緣。**攻方的框在左、守方的在右**，
-// 兩人因此面對面。
-var BattleFrameX = [2]int{64, 352}
-
-// BattleFaceX 是兩張肖像的左緣（框內縮 8）。
-var BattleFaceX = [2]int{72, 360}
-
-// BattleFaceY 是兩張肖像的上緣。
-const BattleFaceY = 276
-
 // BattleFaceMirror 說某一側的肖像要不要左右翻。
 //
 // **攻方的肖像是鏡像**：基準畫面上守方的 `F014.FAC` 直接對得上，
 // 攻方的 `F228.FAC` 要左右翻過來才 100%（各 4736 格，下緣被畫面切掉）。
+// 攻方的框在左（寬版面）或在上（窄版面），兩人因此面對面。
 var BattleFaceMirror = [2]bool{true, false}
 
 // BattleBackground 鋪出整張底紋。
@@ -204,12 +277,11 @@ func (im *Image) BevelBox(x0, y0, x1, y1 int) {
 //	郡名／州名／郡編號  y 52–147   （32＋32＋16＋16 剛好填滿）
 //	天氣圖示            y 155–187  （圖示 32×32 畫在 (8,155)）
 //	天氣名              y 196–211
-//	日數                y 228 起，與面板一樣被畫面下緣切掉
+//	日數與時辰          y 228–323  （`0x22200(8, 228, 39, 323)`，與面板同高）
 //
 // 框與框之間露出底紋。右邊 x 54–55 那兩條黑線是場地的左緣，不屬於框
-// （`0x22527`、`0x22542`）。
-var battleLeftBoxes = [4][2]int{{52, 147}, {155, 187}, {196, 211},
-	{228, BattlePanelY + BattlePanelH - 1}}
+// （`0x22527`、`0x22542`），長度隨版面走（`FieldLines`）。
+var battleLeftBoxes = [4][2]int{{52, 147}, {155, 187}, {196, 211}, {228, 323}}
 
 // BattleLeftBox 回傳左欄第 i 個框的上下緣。
 func BattleLeftBox(i int) (y0, y1 int) { return battleLeftBoxes[i][0], battleLeftBoxes[i][1] }
@@ -220,15 +292,24 @@ const (
 	BattleLeftBoxX1 = 39
 )
 
-// LeftColumn 畫左欄的三個框與場地的左緣。
+// LeftColumn 畫左欄的四個框。
 func (im *Image) LeftColumn() {
 	for _, b := range battleLeftBoxes {
 		im.FillRect(BattleLeftBoxX0, b[0],
 			BattleLeftBoxX1-BattleLeftBoxX0+1, b[1]-b[0]+1, BattleOrderPaper)
 		im.BevelBox(BattleLeftBoxX0, b[0], BattleLeftBoxX1, b[1])
 	}
-	im.vline(BattleFieldLeft, BattleFieldTop, 260, 0)
-	im.vline(BattleFieldLeft+1, BattleFieldTop, 259, 0)
+}
+
+// FieldLines 畫場地左緣的兩條黑線與右緣的兩條白線（`0x2250c`–`0x22594`、
+// `0x2260e`–`0x22694`）：左邊 x 54 畫到 LeftY1、x 55 少一格；右邊
+// (RightX, 50–51) 先畫黑，再從 51 起蓋白到 RightY1，RightX+1 從 50 起。
+func (im *Image) FieldLines(l BattleLayout) {
+	im.vline(l.RightX, 50, 51, 0)
+	im.vline(BattleFieldLeft, BattleFieldTop, l.LeftY1, 0)
+	im.vline(BattleFieldLeft+1, BattleFieldTop, l.LeftY1-1, 0)
+	im.vline(l.RightX, 51, l.RightY1, 15)
+	im.vline(l.RightX+1, 50, l.RightY1, 15)
 }
 
 func (im *Image) hline(x0, x1, y int, v byte) {
@@ -313,12 +394,13 @@ func TitleArt(data1 *Container) (*Image, error) {
 
 // 場地四周的階梯狀邊框。
 //
-// 原版每 96 像素（兩欄）畫一組：上緣 `0x21ee2`、下緣 `0x220f0`，
-// 寬版面各叫六次，x ＝ 96i + 56，上緣的 y ＝ 36、下緣的 y ＝ 228。
-// 兩支都是把黑線畫在上與左、白線畫在下與右——**奇數欄低 16 像素**，
-// 所以每一組都是一個階梯。
+// 原版每 96 像素（兩欄）畫一組：上緣 `0x21ee2`，兩種版面共用，
+// x ＝ 96i + 56、y ＝ 36；下緣寬版面用 `0x220f0`（y ＝ 228，第 6 列只有
+// 偶數欄，所以奇數欄那一半的白線高 16）、窄版面用 `0x21fe0`（y ＝ 324，
+// 第 9 列兩欄都有）。每一支都是把黑線畫在上與左、白線畫在下與右——
+// **奇數欄低 16 像素**，所以每一組都是一個階梯。
 //
-// 端點逐條抄自那兩支常式；差一格的參差就是立體感的來源。
+// 端點逐條抄自那三支常式；差一格的參差就是立體感的來源。
 func (im *Image) fieldEdgeTop(x, y int) {
 	im.vline(x-2, y-2, y+15, 0)
 	im.vline(x-1, y-2, y+15, 0)
@@ -330,7 +412,7 @@ func (im *Image) fieldEdgeTop(x, y int) {
 	im.hline(x+49, x+95, y+15, 0)
 }
 
-func (im *Image) fieldEdgeBottom(x, y int) {
+func (im *Image) fieldEdgeBottomWide(x, y int) {
 	im.vline(x-1, y+17, y+32, 0)
 	im.vline(x-2, y+16, y+31, 0)
 	im.hline(x-1, x+49, y+32, 15)
@@ -341,11 +423,26 @@ func (im *Image) fieldEdgeBottom(x, y int) {
 	im.hline(x+48, x+94, y+17, 15)
 }
 
+func (im *Image) fieldEdgeBottomNarrow(x, y int) {
+	im.hline(x-2, x+46, y+32, 15)
+	im.hline(x-2, x+45, y+33, 15)
+	im.vline(x+46, y+33, y+48, 0)
+	im.vline(x+47, y+32, y+47, 0)
+	im.hline(x+47, x+95, y+48, 15)
+	im.hline(x+46, x+95, y+49, 15)
+	im.vline(x+96, y+32, y+49, 15)
+	im.vline(x+97, y+32, y+49, 15)
+}
+
 // FieldEdges 畫整個場地的邊框。
-func (im *Image) FieldEdges() {
-	for i := 0; i < FieldCols/2; i++ {
+func (im *Image) FieldEdges(l BattleLayout) {
+	for i := 0; i < l.Groups; i++ {
 		x := i*96 + FieldOriginX
 		im.fieldEdgeTop(x, FieldOriginY)
-		im.fieldEdgeBottom(x, FieldOriginY+6*TileH)
+		if l.Narrow {
+			im.fieldEdgeBottomNarrow(x, l.BottomY)
+		} else {
+			im.fieldEdgeBottomWide(x, l.BottomY)
+		}
 	}
 }

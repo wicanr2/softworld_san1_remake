@@ -214,7 +214,7 @@ func (b *Battle) NewSkirmish(att, def *Unit) *Skirmish {
 	s := &Skirmish{b: b, Units: [2]*Unit{def, att}, Hour: SkirmishFirstHour,
 		Player: b.PlayerSkirmish, Answer: b.PlayerDuelAnswer}
 	// 版型：守方部隊所在格的地形碼，窄圖再加一。
-	s.Narrow = b.Field.Outside(FromOffset(8, 0))
+	s.Narrow = b.Field.Narrow()
 	s.Layout = (int(terrainCode[b.Field.At(def.At)]) - 2) * 2
 	if s.Narrow {
 		s.Layout++

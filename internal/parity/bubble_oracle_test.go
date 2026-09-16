@@ -363,7 +363,7 @@ func TestZZBattleSpeechMatchesTheOriginal(t *testing.T) {
 		{"單挑守方那一塊（肖像在右）", battle.Speech{Speaker: who, Box: battle.BoxDefender, Text: i18n.S("bub.duelLater1")}, 437},
 	} {
 		t.Run(k.name, func(t *testing.T) {
-			x1, y1, x2, y2 := k.sp.Rect()
+			x1, y1, x2, y2 := assets.BattleWide.Panel(k.sp.Box.Panel())
 			before := o.IndexedEGASize(scrW, scrH)
 			cv := ui.NewCanvasPx(scrW, scrH, face)
 			for y := 0; y < scrH; y++ {

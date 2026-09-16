@@ -311,7 +311,7 @@ func TestArtBattleDrawsOptionsAndPages(t *testing.T) {
 		return c
 	}
 	base := draw(BattleView{Menu: i18n.S("page.command"), Items: BattleCommandLines()})
-	px, py := assets.BattlePanelX[2], assets.BattlePanelY
+	px, py := assets.BattleWide.PanelX[2], assets.BattleWide.PanelY[2]
 	for _, c := range []struct {
 		name           string
 		v              BattleView
@@ -409,8 +409,8 @@ func TestArtBattleTallOptionsGoAboveThePanel(t *testing.T) {
 	}
 	DrawArtBattle(c, ab, b, BattleView{Menu: CommandName(battle.CmdPlot), Items: lines},
 		ArtBattleInfo{Portrait: [2]int{-1, -1}})
-	x0, x1 := assets.BattlePanelX[2], assets.BattlePanelX[2]+assets.BattlePanelW
-	y1 := assets.BattlePanelY - 2
+	x0, x1 := assets.BattleWide.PanelX[2], assets.BattleWide.PanelX[2]+assets.BattlePanelW
+	y1 := assets.BattleWide.PanelY[2] - 2
 	y0 := y1 - len(lines)*CellH - 8
 	bg, ink := 0, 0
 	ord := assets.EGAPalette[assets.BattleOrderInk]
@@ -453,16 +453,16 @@ func TestArtBattleEnglishStaysInThePanel(t *testing.T) {
 	c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
 	DrawArtBattle(c, ab, b, BattleView{Menu: i18n.S("page.command"), Items: BattleCommandLines()},
 		ArtBattleInfo{Portrait: [2]int{-1, -1}})
-	x0, x1 := assets.BattlePanelX[2], assets.BattlePanelX[2]+assets.BattlePanelW
+	x0, x1 := assets.BattleWide.PanelX[2], assets.BattleWide.PanelX[2]+assets.BattlePanelW
 	ord := assets.EGAPalette[assets.BattleOrderInk]
 	above, inside := 0, 0
 	for y := 0; y < assets.ScreenH; y++ {
 		for x := x0; x < x1; x++ {
 			px := c.Img.RGBAAt(x, y)
-			if y < assets.BattlePanelY && px == artInkPageBG {
+			if y < assets.BattleWide.PanelY[2] && px == artInkPageBG {
 				above++
 			}
-			if y >= assets.BattlePanelY && y < assets.BattlePanelY+assets.BattlePanelH && px == ord {
+			if y >= assets.BattleWide.PanelY[2] && y < assets.BattleWide.PanelY[2]+assets.BattlePanelH && px == ord {
 				inside++
 			}
 		}
@@ -594,7 +594,7 @@ func TestArtDateStaysInTheStrip(t *testing.T) {
 
 // TestBattleSidePanelsFitEveryLanguage 釘住戰場左右兩塊軍力面板的五行字：
 // 中日文原尺寸放得進文字區（64 像素＝8 格：肖像 80、統帥名 32 之外的
-// 部分，`assets.BattlePanelTextX`），英文放不下就整塊改小字、長的一行折
+// 部分，`assets.BattleLayout.TextX`），英文放不下就整塊改小字、長的一行折
 // 兩行，一個字都不截（`docs/spec/014` §7）。數值取上限：兵與金五位數。
 // 兩塊面板只畫主攻軍與主守軍（`artBattleSides`）。
 func TestBattleSidePanelsFitEveryLanguage(t *testing.T) {

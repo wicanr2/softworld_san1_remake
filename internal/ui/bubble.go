@@ -165,9 +165,10 @@ func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
 
 // DrawBattleSpeech 在主戰場上畫一句對白：那一塊面板先填成藍（原版
 // `es:0x252e` 填 1），再照訊息框的規矩畫肖像、名字、泡泡與字
-// （`docs/spec/005` §9.7）。肖像從 `a` 取（`a` 可為 nil）。
-func DrawBattleSpeech(c *Canvas, a *ArtScreen, g *game.State, sp *battle.Speech) {
-	x1, y1, x2, y2 := sp.Rect()
+// （`docs/spec/005` §9.7）。那一塊在哪隨版面走（寬版面在下、窄版面在右）。
+// 肖像從 `a` 取（`a` 可為 nil）。
+func DrawBattleSpeech(c *Canvas, a *ArtScreen, g *game.State, b *battle.Battle, sp *battle.Speech) {
+	x1, y1, x2, y2 := assets.BattleLayoutFor(b.Field.Narrow()).Panel(sp.Box.Panel())
 	c.FillRect(x1, y1, x2+1, y2+1, assets.EGAPalette[1])
 	DrawBubble(c, a, g, &game.Bubble{X1: x1, Y1: y1, X2: x2, Y2: y2, Left: sp.Left,
 		Speaker: sp.Speaker, Color: sp.Color, Text: sp.Text})

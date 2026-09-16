@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -226,16 +227,25 @@ func stageABattleWith(t *testing.T, o *oracle.Oracle, base uint32, soldiers, ene
 		t.Fatalf("勢力 %d 在盤面上沒有郡", me)
 	}
 
-	// 鄰郡：州郡 offset 45–54，`0xFF` 補齊。
+	// 鄰郡：州郡 offset 45–54，`0xFF` 補齊。預設第一個；要打別的鄰郡
+	// （例如版面 10 的郡，`docs/spec/005` §8.4）用 `SAN1_BATTLETO` 指定。
 	to := 0
 	for k := 45; k <= 54; k++ {
 		if n := int(sta[at*176+k]); n != 0xFF && n != 0 {
-			to = n
-			break
+			if to == 0 {
+				to = n
+			}
+			if v, err := strconv.Atoi(os.Getenv("SAN1_BATTLETO")); err == nil && v == n {
+				to = n
+				break
+			}
 		}
 	}
 	if to == 0 {
 		t.Fatalf("郡 %d 沒有鄰郡", at)
+	}
+	if v, err := strconv.Atoi(os.Getenv("SAN1_BATTLETO")); err == nil && v != to {
+		t.Fatalf("SAN1_BATTLETO=%d 不是郡 %d 的鄰郡", v, at)
 	}
 	enemy := -1
 	for _, f := range sc.ActiveFactions() {
