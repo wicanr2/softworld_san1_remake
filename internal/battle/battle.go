@@ -115,6 +115,9 @@ type Battle struct {
 	// 電腦向玩家的部隊發動對戰時（`0x2deb0` 由選項 7 進入）從這裡問；
 	// nil 就照電腦的判斷式走。
 	PlayerSkirmish SkirmishPlayer
+	// PlayerDuelAnswer 是玩家那一方的將領在子畫面裡被叫陣時的答案
+	// （`SkirmishAnswer`）；nil 就當接受。
+	PlayerDuelAnswer SkirmishAnswer
 
 	rng    *rand
 	rollFn func(int) int

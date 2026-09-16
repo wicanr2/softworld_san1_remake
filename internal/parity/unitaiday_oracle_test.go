@@ -75,6 +75,13 @@ type dayBoard struct {
 	// solid 把玩家那支擺在走得進去的地形上（見 placeNearDefenderRig）：
 	// 對戰子畫面照那一格的地形碼挑版型，大山會索引到表外。
 	allStats, solid bool
+	// zeroWar 把玩家那一位的戰力壓成 0 而不是 weak 的 1：子畫面裡敵將的
+	// 單挑門是 `戰力 > 玩家戰力 + RND(20)`，敵將戰力壓在 4（戰力值才會是 0、
+	// 快戰打不痛人）時，0 比 1 多一格機會。
+	zeroWar bool
+	// short 表示這張盤面本來就幾天就打完（要看的是一場單挑），不套
+	// 「至少十次決策」的樣本門。
+	short bool
 }
 
 // dayRig 是一版的路標：哪些位址攔、工作區的哪幾格讀。兩版的戰場工作區
@@ -113,6 +120,10 @@ type dayRig struct {
 	colTable, rowTable   uint16
 	// keyGap 是進戰場那串鍵同一段裡兩個鍵之間跑的指令數（0 ＝ 一段一送）。
 	keyGap uint64
+	// braveRet 是單挑常式裡「戰力 ≥ RND(5) + 90」那一擲的回傳位址：
+	// 玩家答了 N 原版才走到它，答 Y 直接進打鬥——用來從骰序回推玩家
+	// 在「接受嗎(Y/N)」的答案（`duelAnswerFrom`）。
+	braveRet string
 }
 
 // baseDayRig 是原版的路標（`docs/re/05` §12、`docs/re/03` §1.45）。
@@ -145,6 +156,11 @@ func baseDayRig() dayRig {
 		//   戊 玩家兩萬兵、智 10 對五支各一千五、敵將智武 99 → 計謀**成功**的
 		//      那幾條路（火攻／水淹／陷阱／誘敵／燒糧／圍攻的效果與骰序，
 		//      Issue #24）；前四張盤面玩家的智是 99，電腦的計謀一次都不會成
+		//   己 同丁但四支五千、敵將武 4、玩家戰力 0 → 子畫面裡的**單挑**
+		//      （敵將貼上玩家那一位時 `4 > 0 + RND(20)` 就叫陣，每個時刻
+		//      兩成；武 4 是戰力值還是 0 的上限——城池攻值 27 ＋ 猛將 8，
+		//      4×7×35 < 1000——再高快戰就打得痛人，玩家撐不到對戰；
+		//      玩家的答案從鍵序來，Issue #38）
 		// 難度是存檔裡的（5），這一版的 boot 不改它。
 		boards: []dayBoard{
 			{name: "甲", soldiers: 20000, enemies: 5, enemySoldiers: 1500, difficulty: 5},
@@ -153,11 +169,14 @@ func baseDayRig() dayRig {
 			{name: "丁", soldiers: 2400, enemies: 2, enemySoldiers: 5000, stats: 1, difficulty: 5,
 				weak: true, enemyWeak: true, enemyLoyal: true, allStats: true, solid: true, days: 30},
 			{name: "戊", soldiers: 20000, enemies: 5, enemySoldiers: 1500, stats: 99, myIntel: 10, difficulty: 5},
+			{name: "己", soldiers: 2400, enemies: 4, enemySoldiers: 5000, stats: 4, difficulty: 5,
+				weak: true, zeroWar: true, enemyWeak: true, enemyLoyal: true, allStats: true, solid: true, days: 30},
 		},
 		seedLo: 0xa3ae, seedHi: 0xa3b0,
 		rnd: 0x10b0c, rand: oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, srand: oracle.Addr{Seg: 0x5c4, Off: 0x2c9e},
-		msg:   0x3273e,
-		enter: 0x2053c, cmdRead: 0x27a68,
+		msg:      0x3273e,
+		braveRet: "30d6f",
+		enter:    0x2053c, cmdRead: 0x27a68,
 		chain: 0x29014, chainExit: 0x29132,
 		options: map[uint32]int{
 			0x29e78: 1, 0x29138: 2, 0x29344: 3, 0x2985c: 4, 0x29784: 5,
@@ -214,8 +233,9 @@ func plusDayRig() dayRig {
 		},
 		seedLo: 0xa566, seedHi: 0xa568,
 		rnd: plusRndFn, rand: oracle.Addr{Seg: 0x5b9, Off: 0x2cb2}, srand: oracle.Addr{Seg: 0x5b9, Off: 0x2ca0},
-		msg:   0x2f366,
-		enter: 0x1e574, cmdRead: 0x25028,
+		msg:      0x2f366,
+		braveRet: "2db31",
+		enter:    0x1e574, cmdRead: 0x25028,
 		chain: 0x2644a, chainExit: 0x26590,
 		options: map[uint32]int{
 			0x27396: 1, 0x26594: 2, 0x26748: 3, 0x26d64: 4, 0x26ca4: 5,
@@ -320,6 +340,13 @@ func restInSkirmish(*battle.Skirmish, *battle.SkirmishGeneral) battle.SkirmishCo
 	return battle.SkirmishCommand{Kind: battle.SkirmishRest}
 }
 
+// duelAnswerFrom 從原版的骰序回推玩家在「接受嗎(Y/N)」的答案：答 N 之後
+// 原版緊接著擲「戰力 ≥ RND(5) + 90」那一道（`braveRet`），答 Y 則接著是
+// 接受那一句對白的 `RND(8)`。next 是 remake 問答案那一刻原版的下一擲。
+func duelAnswerFrom(next, braveRet string) bool {
+	return !strings.HasSuffix(next, "@"+braveRet)
+}
+
 // compactDraws 把連續的 `srand=` 折成一格（讀鍵的迴圈一次會播種幾十萬次）。
 func compactDraws(in []string) []string {
 	var out []string
@@ -373,6 +400,9 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 			}
 			if bd.weak {
 				o.SetByte(addr(rec+10), 1)
+				if bd.zeroWar {
+					o.SetByte(addr(rec+10), 0)
+				}
 				o.SetByte(addr(rec+24), 0)
 				o.SetByte(addr(rec+25), 0)
 			}
@@ -829,6 +859,12 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		i := 0
 		var asked []int
 		d.model.PlayerSkirmish = restInSkirmish
+		d.model.PlayerDuelAnswer = func(*battle.Skirmish, *battle.SkirmishGeneral, *battle.SkirmishGeneral) bool {
+			if i < len(d.callers) {
+				return duelAnswerFrom(d.callers[i], rig.braveRet)
+			}
+			return true
+		}
 		d.model.UseRoll(func(n int) int {
 			asked = append(asked, n)
 			if i < len(d.rolls) {
@@ -875,7 +911,7 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		}
 	}
 	t.Logf("決策 %d 次，原版各選項定案：%v，不同 %d 次", len(decisions), byOpt, bad)
-	if len(decisions) < 10 {
+	if len(decisions) < 10 && !bd.short {
 		t.Errorf("只比到 %d 次決策——樣本太少", len(decisions))
 	}
 	if !noresync || len(decisions) == 0 {
@@ -942,6 +978,13 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		}
 	}
 	var asked []string
+	model.PlayerDuelAnswer = func(*battle.Skirmish, *battle.SkirmishGeneral, *battle.SkirmishGeneral) bool {
+		applySrands()
+		if cursor < len(stream) {
+			return duelAnswerFrom(stream[cursor], rig.braveRet)
+		}
+		return true
+	}
 	model.UseRoll(func(n int) int {
 		applySrands()
 		if cursor < len(stream) {

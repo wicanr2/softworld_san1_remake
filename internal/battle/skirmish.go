@@ -170,6 +170,9 @@ const (
 // 照電腦的判斷式走（registered remake 差異，`docs/mechanics/40` §8）。
 type SkirmishPlayer func(s *Skirmish, g *SkirmishGeneral) SkirmishCommand
 
+// SkirmishAnswer 是玩家那一方的將領 t 被 g 叫陣時接不接受。
+type SkirmishAnswer func(s *Skirmish, g, t *SkirmishGeneral) bool
+
 // Skirmish 是一場對戰。
 type Skirmish struct {
 	b *Battle
@@ -190,6 +193,9 @@ type Skirmish struct {
 	Captured [2][skirmishSlots]*SkirmishGeneral
 	// Player 是玩家那一方的介面（見 SkirmishPlayer）。
 	Player SkirmishPlayer
+	// Answer 是玩家那一方的將領被叫陣時的答案（原版問「接受嗎(Y/N)」，
+	// `0x30d06`）；nil 就當接受。
+	Answer SkirmishAnswer
 
 	// dist／goal 是尋路的距離圖與路徑圖（`es:0x2e7c`／`0x300c`）。
 	dist, goal [SkirmishRows][SkirmishCols]int
@@ -203,7 +209,8 @@ type Skirmish struct {
 // NewSkirmish 照原版的前置（`0x2deb0`–`0x2e493`）擺好一場對戰：
 // att 是發動的那一支、def 是被對戰的那一支。
 func (b *Battle) NewSkirmish(att, def *Unit) *Skirmish {
-	s := &Skirmish{b: b, Units: [2]*Unit{def, att}, Hour: SkirmishFirstHour, Player: b.PlayerSkirmish}
+	s := &Skirmish{b: b, Units: [2]*Unit{def, att}, Hour: SkirmishFirstHour,
+		Player: b.PlayerSkirmish, Answer: b.PlayerDuelAnswer}
 	// 版型：守方部隊所在格的地形碼，窄圖再加一。
 	s.Narrow = b.Field.Outside(FromOffset(8, 0))
 	s.Layout = (int(terrainCode[b.Field.At(def.At)]) - 2) * 2
@@ -794,13 +801,19 @@ func (s *Skirmish) seize(by SkirmishSide, x *SkirmishGeneral) {
 // 被擒寫進捕獲方的名單，戰死的當場處理。
 func (s *Skirmish) duel(g, t *SkirmishGeneral) {
 	b := s.b
-	accept := true
-	if b.Computer[t.Unit.Side] {
-		accept = DuelAccepted(int(g.Leader.War), int(t.Leader.War), g.Leader.Soldiers, t.Leader.Soldiers,
-			b.roll(DuelWarSpread), b.roll(DuelOddsSpread))
+	// 被挑戰的一方由玩家控制時原版問「接受嗎(Y/N)」：答案由 Answer 給，
+	// 沒有就當接受。
+	var answer func() bool
+	if !b.Computer[t.Unit.Side] {
+		answer = func() bool {
+			if s.Answer != nil {
+				return s.Answer(s, g, t)
+			}
+			return true
+		}
 	}
-	s.log("  單挑 %d/%d ⇒ %d/%d（接受 %v）", g.Side, g.Slot, t.Side, t.Slot, accept)
-	loser, _ := b.duelLeaders(g.Leader, t.Leader, accept, func(x *Leader) {
+	s.log("  單挑 %d/%d ⇒ %d/%d", g.Side, g.Slot, t.Side, t.Slot)
+	loser, _ := b.duelLeaders(g.Leader, t.Leader, answer, func(x *Leader) {
 		// 落敗被擒：寫進捕獲方的名單。
 		var lg, winner *SkirmishGeneral
 		if x == g.Leader {

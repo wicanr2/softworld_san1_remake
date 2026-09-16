@@ -351,7 +351,7 @@ func TestDuelIsDecidedByWarNotSoldiers(t *testing.T) {
 	// 猛將帶五十人，庸將帶兩萬人。
 	a := place(b, MainAttacker, Vanguard, spot, lead("呂布", 100, 30, 50))
 	e := place(b, MainDefender, Centre, spot.Step(DirDownRight), lead("庸將", 10, 30, 20000))
-	if err := b.Duel(a, DirDownRight, true); err != nil {
+	if err := b.Duel(a, DirDownRight, func() bool { return true }); err != nil {
 		t.Fatalf("單挑失敗：%v", err)
 	}
 	loser := &e.Leaders[0]
@@ -376,7 +376,7 @@ func TestRefusingDuelCostsSoldiers(t *testing.T) {
 	spot := FromOffset(6, 6)
 	a := place(b, MainAttacker, Vanguard, spot, lead("挑戰者", 90, 30, 1000))
 	e := place(b, MainDefender, Centre, spot.Step(DirDownRight), lead("怯戰", 20, 30, 1000))
-	if err := b.Duel(a, DirDownRight, false); err != nil {
+	if err := b.Duel(a, DirDownRight, func() bool { return false }); err != nil {
 		t.Fatalf("拒絕單挑不該回錯誤：%v", err)
 	}
 	// 除數最小是 10 − RND(戰力÷20)，最大是 RND(10) − 戰力÷10 + 50，
@@ -395,10 +395,10 @@ func TestDuelRejectsFriendlyAndEmpty(t *testing.T) {
 	spot := FromOffset(6, 6)
 	a := place(b, MainAttacker, Vanguard, spot, lead("甲", 50, 50, 1000))
 	place(b, AidAttacker, Left, spot.Step(DirUp), lead("友", 50, 50, 1000))
-	if err := b.Duel(a, DirUp, true); err == nil {
+	if err := b.Duel(a, DirUp, nil); err == nil {
 		t.Error("不該跟友軍單挑")
 	}
-	if err := b.Duel(a, DirDown, true); err == nil {
+	if err := b.Duel(a, DirDown, nil); err == nil {
 		t.Error("那個方向沒有部隊，單挑應該失敗")
 	}
 }
@@ -497,6 +497,8 @@ func TestStratagemSucceeds(t *testing.T) {
 //
 // **預設是拒絕**，三道機會翻成接受。這一條同時擋住「一律應戰」與
 // 「一律拒絕」兩種寫法——兩者都會讓整條單挑看起來正常卻不對。
+// 後兩道比的是**挑戰者**的兵除以二、除以五（`0x30ca5`／`0x30cf1` 讀
+// `30 × [bp-0x2c]`，挑戰者那一筆）——被大軍叫陣的人才應戰。
 func TestDuelAccepted(t *testing.T) {
 	const same = 1000
 	// 戰力相同：`RND(10) + 戰力 − 5 > 戰力` ⇒ RND 要大於 5，十分之四。
@@ -525,16 +527,20 @@ func TestDuelAccepted(t *testing.T) {
 			t.Errorf("被挑戰者弱五點、兵力相當，RND ＝ %d 卻接受了", r)
 		}
 	}
-	// **兵力懸殊會翻盤**：對方兵是我方兩倍以上時第二道開，
-	// 五倍以上時第三道無條件接受——「猛將帶寡兵」靠的就是這一條。
-	if !DuelAccepted(99, 60, 400, 3000, 0, 0) {
-		t.Error("對方兵力五倍以上應該無條件接受")
+	// **兵力懸殊會翻盤**：挑戰者的兵是被挑戰者兩倍以上時第二道開，
+	// 五倍以上時第三道無條件接受——帶大軍去叫陣，對方一定應戰。
+	if !DuelAccepted(99, 60, 3000, 400, 0, 0) {
+		t.Error("挑戰者兵力五倍以上，對方應該無條件接受")
 	}
-	if DuelAccepted(99, 60, 1600, 3000, 9, 19) {
-		t.Error("兵力不到兩倍、戰力又差很多，不該接受")
+	if DuelAccepted(99, 60, 3000, 1600, 9, 19) {
+		t.Error("挑戰者兵力不到兩倍、戰力又差很多，不該接受")
 	}
-	if !DuelAccepted(62, 60, 1000, 2500, 0, 5) {
-		t.Error("對方兵力兩倍以上、戰力接近時，第二道應該讓它接受")
+	if !DuelAccepted(62, 60, 2500, 1000, 0, 5) {
+		t.Error("挑戰者兵力兩倍以上、戰力接近時，第二道應該讓它接受")
+	}
+	// 反過來（被挑戰者兵多）不開後兩道。
+	if DuelAccepted(99, 60, 400, 3000, 0, 0) || DuelAccepted(62, 60, 1000, 2500, 0, 5) {
+		t.Error("被挑戰者兵多不是應戰的理由——比的是挑戰者的兵")
 	}
 }
 
@@ -544,7 +550,10 @@ func TestDuelAccepted(t *testing.T) {
 // 這一條擋的是「把傷害寫成一個固定值再乘戰力比」——那樣寫的話
 // 五十對五十也會分出勝負，而原版是打到回合用完平手。
 func TestDuelFormula(t *testing.T) {
-	// 回合數：RND((甲+乙)/2) + 甲/7 + 乙/7。
+	// 回合數：RND(甲/2 + 乙/2) + 甲/7 + 乙/7——兩個 ÷2 各自截尾。
+	if got := duelRoundSpread(85, 85); got != 84 {
+		t.Errorf("戰力 85 對 85 的回合亂數上限是 %d，應該是 42+42 ＝ 84（不是 170÷2）", got)
+	}
 	if got := DuelRounds(90, 70, 0); got != 12+10 {
 		t.Errorf("戰力 90 對 70、亂數 0 打 %d 回合，應該是 22", got)
 	}

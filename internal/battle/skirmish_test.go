@@ -249,36 +249,43 @@ func TestSkirmishDuelsWhenStronger(t *testing.T) {
 	g.Col, g.Row = 10, 3
 	s.Occ[3][10] = g.index()
 	// RND(30)=0；RND(3)=0（3000 < 3000÷1 不成立）；敵帥相鄰 → 交手；
-	// RND(20)=0 → 99 > 10 + 0 單挑；接受判定 RND(10)=9 → 9+10−5 > 99
-	// 不成立、RND(20)：兵相同第二道不看、第三道不看 → 拒絕 → 拒絕的
-	// 損兵四擲。
-	dice := useScript(b, 0, 0, 0, 9, 0, 0, 0, 0, 0)
+	// RND(20)=0 → 99 > 10 + 0 單挑。叫陣：特效 RND(4)、兩句對白各 RND(8)；
+	// 接受判定 RND(10)=9 → 9+10−5 > 99 不成立、兵相同第二道不擲、第三道
+	// 不過；還沒接受再 RND(5)：10 ≥ r+90 不成立 → 拒絕：一句對白、
+	// RND(10)（謀略 50 不到 81）、RND(5)（0+10 < 99 → 25 − RND(10÷20)，
+	// 上限 0 不抽）→ 掉 3000÷25 ＝ 120。
+	dice := useScript(b, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0)
 	s.step(g)
 	wantAsked(t, "單挑被拒", dice, skirmishActRange, skirmishFleeSpread, skirmishDuelSpread,
-		DuelWarSpread, DuelOddsSpread, RefuseIntelSpread, RefuseWarSpread, RefuseIntelSpread, 1)
-	if s.Gens[SkirmishDefender][0].Leader.Soldiers >= 3000 {
-		t.Errorf("拒絕單挑的一方該掉兵，還有 %d", s.Gens[SkirmishDefender][0].Leader.Soldiers)
+		EffectVariants, MessageLines, MessageLines, DuelWarSpread, DuelBraveSpread,
+		MessageLines, RefuseIntelSpread, RefuseWarSpread)
+	if got := s.Gens[SkirmishDefender][0].Leader.Soldiers; got != 3000-120 {
+		t.Errorf("拒絕單挑的一方該掉 120 兵，剩 %d", got)
 	}
-	// 再來一次，這次接受（RND(10)=0：0+10−5 > 99 不成立；RND(20)=19：
-	// 兵不到一半不看…）——直接把守方兵壓低讓第三道過：3000÷5 > 300。
-	s.Gens[SkirmishDefender][0].Leader.Soldiers = 3000
-	g.Leader.Soldiers = 300
+	// 再來一次，這次接受：接受判定比的是**挑戰者**的兵——把守方兵壓到
+	// 300、攻方 3000：3000÷2 > 300 → RND(20)=0：0+10 > 99 不成立；
+	// 3000÷5 = 600 > 300 → 接受。
+	s.Gens[SkirmishDefender][0].Leader.Soldiers = 300
+	g.Leader.Soldiers = 3000
 	g.Leader.Stamina, s.Gens[SkirmishDefender][0].Leader.Stamina = 100, 100
-	// RND(30)=0；RND(3)=2（300 < 3000÷3 = 1000 → 想逃）；RND(3)=0 → 方向
-	// 1 → (10,4)；走得成 → 這一步結束。要交手得讓它逃不了：把 (10,4)
-	// 佔住。
-	s.Occ[4][10] = 19 // 攻方第 9 槽（空槽）的佔位碼，佔住就好
-	// 逃不成 → 敵帥相鄰 → 交手：RND(20)=0 單挑；接受：RND(10)=0、
-	// RND(20)=0 → 第三道 3000÷5 = 600 > 300 接受；回合數 RND((99+10)÷2)=0
-	// → 0 + 14 + 1 = 15 回合；每回合甲 RND(5) RND(5) RND(6)＝0 0 0 →
-	// 0 + 89 − 0 − 0 − 4 = 85 → 對方體能 100 > 85 扣成 15；乙 0+(10−99)…
-	// = 0；第二回合再 85 → 落敗，RND(7)=1 被擒。
-	dice = useScript(b, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
+	// RND(30)=0；RND(3)=0（3000 < 300÷1 不成立）；敵帥相鄰 → 交手：
+	// RND(20)=0 單挑；特效、兩句對白；接受：RND(10)=0、RND(20)=0、第三道
+	// 過；接受的那一句對白；回合數 RND(99÷2+10÷2=54)=0 → 0 + 14 + 1 =
+	// 15 回合；第 1 回合守方打攻方：RND(3)=0（回合÷2=0 是 10 的倍數）、
+	// RND(5) RND(6) RND(5)＝0 0 0 → 0+(10−99)−0−0−4 < 0 → 0；第 2 回合
+	// 攻方打守方：0+89−4 = 85 → 守方體能 100 → 15；第 3 回合 0；第 4
+	// 回合 85 → 0；回合數加成 5 → 第 5 回合那一句對白照印（先印再判
+	// 結束）；落敗 RND(7)=1 被擒：特效、兩句對白。
+	dice = useScript(b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
 	s.step(g)
-	wantAsked(t, "單挑得勝", dice, skirmishActRange, skirmishFleeSpread, skirmishFleeSpread, skirmishDuelSpread,
-		DuelWarSpread, DuelOddsSpread, duelRoundSpread(99, 10),
-		DuelBlowSpread, DuelBlowSpread, DuelBlowWide, DuelBlowSpread, DuelBlowSpread, DuelBlowWide,
-		DuelBlowSpread, DuelBlowSpread, DuelBlowWide, DuelDeathRoll)
+	wantAsked(t, "單挑得勝", dice, skirmishActRange, skirmishFleeSpread, skirmishDuelSpread,
+		EffectVariants, MessageLines, MessageLines, DuelWarSpread, DuelOddsSpread, MessageLines,
+		duelRoundSpread(99, 10), DuelBonusSpread,
+		DuelBlowSpread, DuelBlowWide, DuelBlowSpread,
+		DuelBlowSpread, DuelBlowWide, DuelBlowSpread,
+		DuelBlowSpread, DuelBlowWide, DuelBlowSpread,
+		DuelBlowSpread, DuelBlowWide, DuelBlowSpread, MessageLines,
+		DuelDeathRoll, EffectVariants, MessageLines, MessageLines)
 	p := s.Gens[SkirmishDefender][0]
 	if !p.Gone || !p.Leader.Captured || s.Captured[SkirmishAttacker][0] != p {
 		t.Errorf("守方該被抓進攻方的名單：%+v", p)

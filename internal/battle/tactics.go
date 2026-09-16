@@ -15,8 +15,9 @@ import (
 //
 // ⚠ **這是 remake 的 `enhanced` 模式用的**（`auto.go`）。原版的主戰場
 // 沒有這一步——單挑只在對戰子畫面裡、一位將領對一位將領
-// （`Skirmish`，`docs/re/05` §9／§10）。accept 為假表示對方拒絕挑戰。
-func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
+// （`Skirmish`，`docs/re/05` §9／§10）。answer 是被挑戰方由玩家控制時
+// 的答案（nil 就照電腦的判定）。
+func (b *Battle) Duel(a *Unit, d Dir, answer func() bool) error {
 	if err := b.canAct(a); err != nil {
 		return err
 	}
@@ -32,7 +33,7 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 		return fmt.Errorf("battle: 有一方沒有領隊")
 	}
 	a.Move = 0
-	loser, _ := b.duelLeaders(ca, ct, accept, nil)
+	loser, _ := b.duelLeaders(ca, ct, answer, nil)
 	if loser != nil {
 		u := a
 		if loser == ct {
@@ -45,16 +46,40 @@ func (b *Battle) Duel(a *Unit, d Dir, accept bool) error {
 	return nil
 }
 
-// duelLeaders 是一場單挑的本體（`0x30a1e`，`docs/re/05` §9）：ca 叫陣、
-// ct 應戰或拒絕。回落敗的那一位（平手或拒絕是 nil）與勝方。落敗被擒時
-// 先叫 seized（對戰子畫面用它把人記進捕獲方的名單），戰死的當場標記。
-func (b *Battle) duelLeaders(ca, ct *Leader, accept bool, seized func(loser *Leader)) (loser, winner *Leader) {
+// duelLeaders 是一場單挑的本體（`0x30a1e`，`docs/re/05` §9）：ca 叫陣、ct 應戰或拒絕。回落敗的那一位（平手或拒絕是 nil）與
+// 勝方。落敗被擒時先叫 seized（對戰子畫面用它把人記進捕獲方的名單），
+// 戰死的當場標記。answer 是被挑戰方由玩家控制時的答案（原版問
+// 「接受嗎(Y/N)」），nil 就照電腦的判定 `acceptsDuel`。
+//
+// 骰照原版的順序（`docs/re/05` §9.5 的表）：叫陣的特效一擲、兩句對白
+// 各一擲；接不接受（§9.1）；還沒接受再看「戰力 ≥ RND(5) + 90」；拒絕
+// 走 §9.2；接受了先一句對白，再打——**一回合只有一方出手**，第 1 回合
+// 是被挑戰者打挑戰者，之後輪流；每回合 `RND(5)`、`RND(6)`、`RND(5)`
+// 三擲，回合 ÷ 2 是 10 的倍數時（第 1、20、21、40、41…回合）多擲
+// `RND(3)` 加在那一擊上；打完一擊回合數加一，第 5、15、25…回合印一句
+// 對白，第 30、60、80、100、130、150 回合再各一句（都是一擲）；任一方
+// 體能歸零或回合用完就停。收尾：平手特效一擲、兩句對白；落敗的
+// `RND(7)`，非 0 被擒、0 戰死，各接特效一擲、兩句對白。
+func (b *Battle) duelLeaders(ca, ct *Leader, answer func() bool, seized func(loser *Leader)) (loser, winner *Leader) {
+	b.fx()
+	b.msg()
+	b.msg()
+	var accept bool
+	if answer == nil {
+		accept = b.acceptsDuel(ca, ct)
+	} else {
+		accept = answer()
+	}
+	if !accept && int(ct.War) >= b.roll(DuelBraveSpread)+DuelBraveFloor {
+		// 「%s 好大的膽子」：還沒接受的猛將照樣應戰（`0x30d66`–`0x30dd8`）。
+		b.msg()
+		accept = true
+	}
 	if !accept {
 		// 「若拒絕挑戰，麾下士兵將有部份逃跑」——**跑的是拒絕那一方的**
 		// （`0x30de6`，三條分支的 `si` 都指向被挑戰者的人物記錄）。
-		div := RefuseDuelDivisor(int(ct.Intel), int(ct.War), int(ca.War),
-			b.roll(RefuseIntelSpread), b.roll(RefuseWarSpread),
-			b.roll(RefuseIntelSpread), b.roll(max(1, int(ct.War)/RefuseWarDiv)))
+		b.msg()
+		div := b.refuseDivisor(ct, ca)
 		lost := ct.Soldiers / div
 		if lost > 0 {
 			ct.Soldiers -= lost
@@ -62,58 +87,84 @@ func (b *Battle) duelLeaders(ca, ct *Leader, accept bool, seized func(loser *Lea
 		b.note("blog.refuse", pn(ct.Name), pn(ca.Name), lost)
 		return nil, nil
 	}
+	b.msg()
 	// 依戰力分高下，與兵力無關。**體能就是血條**，降到 0 即落敗。
-	rounds := DuelRounds(int(ca.War), int(ct.War), b.roll(duelRoundSpread(int(ca.War), int(ct.War))))
-	for i := 0; i < rounds; i++ {
-		blow := DuelBlow(int(ca.War), int(ct.War),
-			b.roll(DuelBlowSpread), b.roll(DuelBlowSpread), b.roll(DuelBlowWide))
-		if int(ct.Stamina) <= blow {
-			ct.Stamina = 0
-			b.defeatInDuel(ct, ca, seized)
-			return ct, ca
+	cw, tw := int(ca.War), int(ct.War)
+	rounds := DuelRounds(cw, tw, b.roll(duelRoundSpread(cw, tw)))
+	for round := 1; ; round++ {
+		bonus := 0
+		if (round/2)%DuelChatEvery == 0 {
+			bonus = b.roll(DuelBonusSpread)
 		}
-		ct.Stamina -= uint8(blow)
-
-		blow = DuelBlow(int(ct.War), int(ca.War),
-			b.roll(DuelBlowSpread), b.roll(DuelBlowSpread), b.roll(DuelBlowWide))
-		if int(ca.Stamina) <= blow {
-			ca.Stamina = 0
-			b.defeatInDuel(ca, ct, seized)
-			return ca, ct
+		striker, victim := ca, ct
+		if round%2 == 1 {
+			striker, victim = ct, ca
 		}
-		ca.Stamina -= uint8(blow)
+		r5a := b.roll(DuelBlowSpread)
+		r6 := b.roll(DuelBlowWide)
+		r5b := b.roll(DuelBlowSpread)
+		blow := DuelBlow(int(striker.War), int(victim.War), r5a, r5b, r6) + bonus
+		if int(victim.Stamina) <= blow {
+			victim.Stamina = 0
+		} else {
+			victim.Stamina -= uint8(blow)
+		}
+		// 回合數先加一，再看要不要印對白（`0x31526`–`0x31809`）。
+		switch next := round + 1; {
+		case next%20 == 5, next%20 == 15,
+			next == 130, next == 150, next == 30, next == 60, next == 100, next == 80:
+			b.msg()
+		}
+		if ca.Stamina == 0 || ct.Stamina == 0 || round+1 > rounds {
+			break
+		}
 	}
-	b.note("blog.draw", pn(ca.Name), pn(ct.Name))
-	return nil, nil
+	if ca.Stamina > 0 && ct.Stamina > 0 {
+		b.fx()
+		b.msg()
+		b.msg()
+		b.note("blog.draw", pn(ca.Name), pn(ct.Name))
+		return nil, nil
+	}
+	if ca.Stamina == 0 {
+		b.defeatInDuel(ca, ct, seized)
+		return ca, ct
+	}
+	b.defeatInDuel(ct, ca, seized)
+	return ct, ca
 }
 
 // 單挑的兩條公式（`0x310b6`／`0x31170`，`L0`、`[base]`）。
 //
-//	回合數 ＝ RND((甲戰力 + 乙戰力) ÷ 2) + 甲戰力 ÷ 7 + 乙戰力 ÷ 7
-//	每回合 ＝ max(0, RND(5) − RND(5) − RND(6) + (我方戰力 − 對方戰力) − 4)
+//	回合數 ＝ RND(甲戰力 ÷ 2 + 乙戰力 ÷ 2) + 甲戰力 ÷ 7 + 乙戰力 ÷ 7
+//	每一擊 ＝ max(0, RND(5) − RND(5) − RND(6) + (出手方戰力 − 對方戰力) − 4)
+//	         ＋ 那一回合的 RND(3)（只在回合 ÷ 2 是 10 的倍數時擲）
 //
-// 打掉的是對方的**體能**（人物 offset 8），歸零就落敗。
+// 打掉的是對方的**體能**（人物 offset 8），歸零就落敗。兩個 `÷ 2` 是
+// 各自截尾再相加（`0x310a3`／`0x310b1` 兩次 `idiv`），不是和的一半。
 // **期望值是「戰力差 − 6.5」**：`RND(5) − RND(5)` 的平均是 0、
 // `RND(6)` 的平均是 2.5，所以戰力沒有高過對方七點左右就傷不了人
 // ——正是說明書說的「依其戰力強弱分高下」。
 const (
-	DuelBlowSpread = 5  // 兩次 RND(5)
-	DuelBlowWide   = 6  // 一次 RND(6)
-	DuelBlowEdge   = 4  // 再扣掉的常數
-	DuelRoundDiv   = 7  // 回合數裡兩人戰力各除的數
-	DuelRoundHalf  = 2  // 亂數上限是兩人戰力和的一半
-	DuelStaminaBar = 46 // 畫面上體能條的上限（0x2e），不影響判定
+	DuelBlowSpread  = 5  // 兩次 RND(5)
+	DuelBlowWide    = 6  // 一次 RND(6)
+	DuelBlowEdge    = 4  // 再扣掉的常數
+	DuelRoundDiv    = 7  // 回合數裡兩人戰力各除的數
+	DuelRoundHalf   = 2  // 亂數上限是兩人戰力各自的一半相加
+	DuelStaminaBar  = 46 // 畫面上體能條的上限（0x2e），不影響判定
+	DuelBonusSpread = 3  // 回合 ÷ 2 是 10 的倍數時加在那一擊上的 RND(3)
+	DuelChatEvery   = 10
 )
 
 // duelRoundSpread 是回合數那個亂數的上限。
-func duelRoundSpread(warA, warB int) int { return (warA + warB) / DuelRoundHalf }
+func duelRoundSpread(warA, warB int) int { return warA/DuelRoundHalf + warB/DuelRoundHalf }
 
-// DuelRounds 是一場單挑打幾回合。
+// DuelRounds 是一場單挑打幾回合（一回合一擊）。
 func DuelRounds(warA, warB, roll int) int {
 	return roll + warA/DuelRoundDiv + warB/DuelRoundDiv
 }
 
-// DuelBlow 是一回合打掉對方多少體能。
+// DuelBlow 是一擊打掉對方多少體能（不含那一回合的 RND(3)）。
 func DuelBlow(mine, theirs, roll5a, roll5b, roll6 int) int {
 	n := roll5a + (mine - theirs) - roll5b - roll6 - DuelBlowEdge
 	if n < 0 {
@@ -124,36 +175,66 @@ func DuelBlow(mine, theirs, roll5a, roll5b, roll6 int) int {
 
 // 接不接受單挑（`0x30c5b`–`0x30d5b`，`L0`、`[base]`）。
 //
-// **預設是拒絕**，被挑戰者由電腦控制時有三道機會翻成接受：
+// **預設是拒絕**，被挑戰者由電腦控制時逐道看，過了任一道就翻成接受
+// ——**每一道都會走到**，翻成接受之後後面的骰照擲（旗標只是被寫成 0）：
 //
 //	RND(10) + 被挑戰者的戰力 − 5 > 挑戰者的戰力                → 接受
-//	被挑戰者的兵 ÷ 2 > 挑戰者的兵，且 RND(20) + 被挑戰者的戰力
-//	                                 > 挑戰者的戰力            → 接受
-//	被挑戰者的兵 ÷ 5 > 挑戰者的兵                              → 接受
+//	挑戰者的兵 ÷ 2 > 被挑戰者的兵 才擲 RND(20)：
+//	        RND(20) + 被挑戰者的戰力 > 挑戰者的戰力            → 接受
+//	挑戰者的兵 ÷ 5 > 被挑戰者的兵                              → 接受
 //
-// 也就是**強者才應戰**，兵力懸殊時更願意應戰。被挑戰者由玩家控制時
-// 原版直接問「接受嗎(Y/N)」，不走這一套。
+// 也就是**強者才應戰，被打不過的大軍叫陣時也應戰**——兵是挑戰者
+// （`[bp-0x2c]`，`0x30ad4` 從 `[bp+6]`／`[bp+8]` 取）的兵除以二、除以
+// 五去比被挑戰者（`[bp-0x3c]`）的兵（`0x30ca5`／`0x30cf1` 讀的都是
+// `30 × [bp-0x2c]` 那一筆）。被挑戰者由玩家控制時原版直接問
+// 「接受嗎(Y/N)」，不走這一套。
 //
-// 接受之後若被挑戰者的戰力 ≥ `RND(5) + 90`，原版會多印一句對白
-// （`0x30d66`）——那只是台詞，不影響勝負。
+// 走完還沒接受的，再看 `被挑戰者的戰力 ≥ RND(5) + 90`（`0x30d66`）：
+// 猛將照樣應戰，多印一句對白。玩家答 N 之後也走這一道。
 const (
 	DuelWarSpread   = 10 // 第一道的 RND 上限
 	DuelWarEdge     = 5  // 第一道扣掉的常數
 	DuelOddsSpread  = 20 // 第二道的 RND 上限
 	DuelHalfTroops  = 2  // 第二道的兵力比
 	DuelFifthTroops = 5  // 第三道的兵力比
+	DuelBraveFloor  = 90 // 最後那一道：戰力 ≥ RND(5) + 90 就應戰
+	DuelBraveSpread = 5
 )
 
-// DuelAccepted 回報電腦控制的被挑戰者接不接受這場單挑。
+// DuelAccepted 回報電腦控制的被挑戰者接不接受這場單挑（原版的三道，
+// 純函式；roll20 只在第二道的兵力條件成立時才會被讀）。
 func DuelAccepted(challengerWar, defenderWar, challengerTroops, defenderTroops, roll10, roll20 int) bool {
+	accept := false
 	if roll10+defenderWar-DuelWarEdge > challengerWar {
-		return true
+		accept = true
 	}
-	if defenderTroops/DuelHalfTroops > challengerTroops &&
+	if challengerTroops/DuelHalfTroops > defenderTroops &&
 		roll20+defenderWar > challengerWar {
-		return true
+		accept = true
 	}
-	return defenderTroops/DuelFifthTroops > challengerTroops
+	if challengerTroops/DuelFifthTroops > defenderTroops {
+		accept = true
+	}
+	return accept
+}
+
+// acceptsDuel 是被挑戰者（電腦）接不接受，骰照原版的順序抽：第一道一擲、
+// 第二道的兵力條件成立才一擲。「戰力 ≥ RND(5) + 90」那一道兩種控制方
+// 都走，在 `duelLeaders` 裡。
+func (b *Battle) acceptsDuel(challenger, defender *Leader) bool {
+	cw, dw := int(challenger.War), int(defender.War)
+	cs, ds := challenger.Soldiers, defender.Soldiers
+	accept := false
+	if b.roll(DuelWarSpread)+dw-DuelWarEdge > cw {
+		accept = true
+	}
+	if cs/DuelHalfTroops > ds && b.roll(DuelOddsSpread)+dw > cw {
+		accept = true
+	}
+	if cs/DuelFifthTroops > ds {
+		accept = true
+	}
+	return accept
 }
 
 // 拒絕單挑之後跑掉多少兵（`0x30de6`–`0x30ef5`，`L0`、`[base]`）。
@@ -180,7 +261,8 @@ const (
 	RefuseWarShare    = 10
 )
 
-// RefuseDuelDivisor 是拒絕單挑時兵士數要除的數。
+// RefuseDuelDivisor 是拒絕單挑時兵士數要除的數（純函式；哪幾擲會被讀
+// 要看走到哪一條——`refuseDivisor` 才是照原版順序抽的那一支）。
 func RefuseDuelDivisor(intel, war, challengerWar, roll10, roll5, roll10b, rollWar int) int {
 	div := 0
 	switch {
@@ -197,6 +279,18 @@ func RefuseDuelDivisor(intel, war, challengerWar, roll10, roll5, roll10b, rollWa
 	return div
 }
 
+// refuseDivisor 照原版的順序擲：先 `RND(10)` 看謀略；過了再 `RND(10)`；
+// 沒過先 `RND(5)` 比戰力，再 `RND(戰力 ÷ 20)`（戰力不到 20 不抽）。
+func (b *Battle) refuseDivisor(refuser, challenger *Leader) int {
+	intel, war, cw := int(refuser.Intel), int(refuser.War), int(challenger.War)
+	r10 := b.roll(RefuseIntelSpread)
+	if intel > r10+RefuseIntelFloor {
+		return RefuseDuelDivisor(intel, war, cw, r10, 0, b.roll(RefuseIntelSpread), 0)
+	}
+	r5 := b.roll(RefuseWarSpread)
+	return RefuseDuelDivisor(intel, war, cw, r10, r5, 0, b.roll(war/RefuseWarDiv))
+}
+
 // DuelDeathRoll 是單挑落敗的處置：`RND(7)`，**只有 0 才死**
 // （`0x31b04`–`0x31b16`，`L0`）。
 //
@@ -211,7 +305,12 @@ func DuelKills(roll int) bool { return roll == 0 }
 
 // defeatInDuel 處理單挑落敗：可能被擒，或死於刀下（說明書 p.30）。
 func (b *Battle) defeatInDuel(loser, winner *Leader, seized func(*Leader)) {
-	if !DuelKills(b.roll(DuelDeathRoll)) {
+	kills := DuelKills(b.roll(DuelDeathRoll))
+	// 被擒與戰死各接一段特效、兩句對白（`0x31b51`／`0x31c96`）。
+	b.fx()
+	b.msg()
+	b.msg()
+	if !kills {
 		loser.Captured = true
 		if seized != nil {
 			seized(loser)

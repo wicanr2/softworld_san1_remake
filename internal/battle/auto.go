@@ -136,18 +136,20 @@ func (b *Battle) meleeTurn(u *Unit, desperate bool) bool {
 			continue
 		}
 		// 領隊戰力明顯佔優就單挑——「依其戰力強弱分高下，
-		// **與率領軍力大小無關**」（p.30），所以正面打不贏的時候
-		// 這是唯一的翻盤手段。
+		// **與率領軍力大小無關**」（p.30）：帶著大軍的猛將叫陣，
+		// 對方應戰就省下一場硬仗的兵。
+		//
+		// **對方接不接受是原版的判定**（`acceptsDuel`，`0x30c5b`，
+		// `docs/re/05` §9.1）：兵不到對方兩倍時只剩「對方戰力 − 5 ＋
+		// RND(10) > 我方戰力」那一道，戰力壓過對方就一定被拒——所以
+		// 只在對方會應戰的局面叫陣：兵五倍以上無條件應戰；兩倍以上要
+		// 戰力差不到 20 才有機會（`RND(20) ＋ 對方戰力 > 我方戰力`）。
 		ca, ct := u.Chief(), t.Chief()
 		if ca != nil && ct != nil &&
 			int(ca.War) >= int(ct.War)+TuneDuelWarEdge &&
-			b.power(u) < b.defence(t) {
-			// **對方接不接受是原版的判定**，不是一律應戰
-			// （`0x30c5b`，`docs/re/05` §9）。
-			accept := DuelAccepted(
-				int(ca.War), int(ct.War), u.Soldiers(), t.Soldiers(),
-				b.roll(DuelWarSpread), b.roll(DuelOddsSpread))
-			_ = b.Duel(u, d, accept)
+			(u.Soldiers()/DuelFifthTroops > t.Soldiers() ||
+				u.Soldiers()/DuelHalfTroops > t.Soldiers() && int(ca.War)-int(ct.War) < DuelOddsSpread) {
+			_ = b.Duel(u, d, nil)
 			return true
 		}
 		// 「死戰：一決生死的激戰，雙方將互戰至分出勝負為止」（p.32）。
