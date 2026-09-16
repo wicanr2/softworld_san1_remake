@@ -1338,11 +1338,32 @@ func (b *Battle) EndDay() {
 			}
 		}
 	}
+	// 三十天期滿（`0x250d4`）在**這一天的部隊都動完之後、天數加一之前**判
+	// （`0x23c3b` 先 `call 0x250d4` 再 `incw 0x2100`；加強版 `0x22aae` 同）
+	// ——所以第 30 天是打完整的一天，判定看的是第 30 天結束時誰站在城池。
+	// 天數留在 30 給戰報用；原版的計數器之後還會加到 31，但那時勝方
+	// 已經定了，沒有人再讀它。
+	if !b.Over && b.Day >= BattleDays {
+		b.timeUp()
+		return
+	}
 	b.Day++
 	b.checkOver()
 	// 天候每天重擲一次（`0x26f48`）：`RND(10) > 5` 才換，換成 `RND(3)`。
 	if b.roll(WeatherChangeRange) > WeatherChangeAbove {
 		b.Weather = weatherFromOriginal(b.roll(WeatherKinds))
+	}
+}
+
+// timeUp 是三十天期滿的判定（`0x250d4`，說明書 p.35）：看**此刻**誰站在
+// 城池那一格，空著算守方。
+func (b *Battle) timeUp() {
+	b.Over = true
+	b.AttackerWon = b.CityHolder().Attacking()
+	if b.AttackerWon {
+		b.note("blog.timeAtt")
+	} else {
+		b.note("blog.timeDef")
 	}
 }
 
@@ -1378,15 +1399,9 @@ func (b *Battle) checkOver() {
 	case !attackers:
 		b.Over, b.AttackerWon = true, false
 		b.note("blog.attZero")
-	case b.Day >= BattleDays:
-		b.Over = true
-		b.AttackerWon = b.CityHolder().Attacking()
-		if b.AttackerWon {
-			b.note("blog.timeAtt")
-		} else {
-			b.note("blog.timeDef")
-		}
 	}
+	// 三十天期滿不在這裡：它只在一天結束時判（`EndDay` → `timeUp`），
+	// 第 30 天當天的行動不受它影響。
 }
 
 // CommanderAlive 回報這一方的統帥還在不在場上。

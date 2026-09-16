@@ -140,7 +140,8 @@ func baseDayRig() dayRig {
 		//      將領的兵不能超過五千——對戰子畫面的攻擊把「扣完 > 5000」的兵
 		//      當成 0（`0x30628`），八千兵的將領打一下就被抓；雙方戰力值都是
 		//      0，子畫面裡沒有人掉兵，打滿十三個時刻回主戰場（Issue #30）。
-		//      RND(16)==0 這張盤面第 24 天才出現，所以跑 26 天
+		//      RND(16)==0 這張盤面第 24 天才出現；跑滿 30 天，第 30 天原版
+		//      還打一整天、動完才判期滿（Issue #36）
 		//   戊 玩家兩萬兵、智 10 對五支各一千五、敵將智武 99 → 計謀**成功**的
 		//      那幾條路（火攻／水淹／陷阱／誘敵／燒糧／圍攻的效果與骰序，
 		//      Issue #24）；前四張盤面玩家的智是 99，電腦的計謀一次都不會成
@@ -150,7 +151,7 @@ func baseDayRig() dayRig {
 			{name: "乙", soldiers: 30000, enemies: 5, enemySoldiers: 1000, difficulty: 5},
 			{name: "丙", soldiers: 6000, enemies: 5, enemySoldiers: 27000, stats: 5, difficulty: 5},
 			{name: "丁", soldiers: 2400, enemies: 2, enemySoldiers: 5000, stats: 1, difficulty: 5,
-				weak: true, enemyWeak: true, enemyLoyal: true, allStats: true, solid: true, days: 26},
+				weak: true, enemyWeak: true, enemyLoyal: true, allStats: true, solid: true, days: 30},
 			{name: "戊", soldiers: 20000, enemies: 5, enemySoldiers: 1500, stats: 99, myIntel: 10, difficulty: 5},
 		},
 		seedLo: 0xa3ae, seedHi: 0xa3b0,

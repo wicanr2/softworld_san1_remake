@@ -178,9 +178,28 @@ func TestThirtyDayRule(t *testing.T) {
 	if b.AttackerWon {
 		t.Error("三十天期滿而城池未失，應該是守方衛郡成功")
 	}
-	// 原版第 1 天開始，**滿 30 就判**（`0x250f6`：`天數 < 30` 才繼續）。
+	// 原版第 1 天開始，**第 30 天動完才判**（`0x23c3b`：先 `0x250d4` 比
+	// `天數 < 30`，再 `incw` 天數），所以第 30 天還打得成一整天。
 	if b.Day != BattleDays {
 		t.Errorf("結束在第 %d 天，應該是第 %d 天", b.Day, BattleDays)
+	}
+	// 第 30 天當天部隊還能動：期滿只在一天結束時判。
+	b4 := arena(flat(Plain))
+	a4 := place(b4, MainAttacker, Centre, FromOffset(1, 1), lead("攻", 50, 50, 1000))
+	place(b4, MainDefender, Centre, FromOffset(19, 13), lead("守", 50, 50, 1000))
+	b4.Rice[MainAttacker], b4.Rice[MainDefender] = 100000, 100000
+	for i := 0; i < BattleDays-1; i++ {
+		b4.EndDay()
+	}
+	if b4.Day != BattleDays || b4.Over {
+		t.Fatalf("第 29 天結束之後應該是第 30 天、還沒結束（第 %d 天，結束 %v）", b4.Day, b4.Over)
+	}
+	if err := b4.Rest(a4); err != nil {
+		t.Errorf("第 30 天當天的部隊還能動：%v", err)
+	}
+	b4.EndDay()
+	if !b4.Over || b4.Day != BattleDays {
+		t.Errorf("第 30 天動完才期滿（結束 %v，第 %d 天）", b4.Over, b4.Day)
 	}
 
 	// **勝負看的是「此刻誰站在城池上」**，不是「攻方進去過」
