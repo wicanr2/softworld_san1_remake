@@ -33,6 +33,60 @@ func TestSearchThreshold(t *testing.T) {
 	}
 }
 
+// TestSearchRevealsTheLastHiddenOne 釘住郡裡站著兩位以上在野未露面的人
+// 時露面的是**槽號最大的那一位**（`0xcc9b`–`0xcce5`，`L0`、`[both]`）：
+// 原版掃完 350 人不 break，最後一位相符的留下。取第一位在四月的月度
+// 對拍量到郡 20 露面 187、原版露面 248，登用進來的人跟著錯。
+func TestSearchRevealsTheLastHiddenOne(t *testing.T) {
+	g := newGame(t)
+	at := 0
+	for _, p := range g.Prefectures() {
+		if p.Owned() && p.Owner == 0 {
+			at = p.ID
+			break
+		}
+	}
+	if at == 0 {
+		t.Fatal("劉備一個郡都沒有")
+	}
+	// 局面自己擺：郡裡先清掉原本在野未露面的人，再放兩位進去。
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Location == at && x.Status == state.StatusIdle {
+			x.Location = 0
+		}
+	}
+	lo, hi := g.General(200), g.General(300)
+	for _, x := range []*General{lo, hi} {
+		if x == nil || x.Name == "" {
+			t.Fatal("找不到人物 200／300")
+		}
+		x.Location, x.Status, x.Faction = at, state.StatusIdle, state.NoFaction
+	}
+	// 尋訪者：郡裡智最高的在職者，門檻壓到一定過（等級 0 的底 30，
+	// 智 99 一定大於 30–94）。
+	var by *General
+	for _, x := range g.Garrison(at) {
+		if by == nil || x.Intel > by.Intel {
+			by = x
+		}
+	}
+	if by == nil {
+		t.Fatal("郡裡沒有在職的人")
+	}
+	by.Intel = 99
+	found, err := g.search(at, by.Index, 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found == nil || found.Index != hi.Index {
+		t.Fatalf("露面的是 %v，應該是槽號大的 %d", found, hi.Index)
+	}
+	if hi.Status != state.StatusAvailable || lo.Status != state.StatusIdle {
+		t.Errorf("身分：300 ＝ %d（應為 8）、200 ＝ %d（應為 9）", hi.Status, lo.Status)
+	}
+}
+
 // TestRecruitBondGate 釘住登用的牽絆閘門（`0xce8c`，`L0`）。
 //
 // **三條路要各驗一次**：牽絆對象效力於招募方（一定成功）、在野

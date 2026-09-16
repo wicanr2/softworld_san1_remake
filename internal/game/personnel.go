@@ -104,7 +104,7 @@ func (g *State) roll(salt ...int) int {
 // `rand()` 對 n 取 **idiv 的餘數**。
 //
 // **這是亂數對齊的地基**：remake 現在用的是與局面綁定的雜湊
-//（`roll`），跟原版的序列無關，所以月度對拍剩下的差異多半來自
+// （`roll`），跟原版的序列無關，所以月度對拍剩下的差異多半來自
 // 「哪個郡擲到了什麼」。要收斂就得從原版的狀態接著抽，而且每一處
 // 消耗的次數都要一樣（`internal/parity/rand_oracle_test.go`）。
 func MSCRand(seed uint32) (uint32, int) {
@@ -164,7 +164,7 @@ func (g *State) search(prefectureID, generalIndex int, by state.FactionID,
 	// 的亂數序列全部錯開。
 	//
 	// 玩家那一條維持比對：他是從自己的名單挑人，而原版玩家那一支
-	// （`0x1a…`）還沒讀過，沒有證據就不動。
+	// （`0x1b912`）只看過形狀、沒有對拍，沒有證據就不動。
 	x := g.General(generalIndex)
 	if x == nil || x.Location != prefectureID {
 		return nil, ErrUnknownUnit
@@ -195,12 +195,21 @@ func (g *State) search(prefectureID, generalIndex int, by state.FactionID,
 	bar := g.roll(prefectureID, x.Index)%tier.Spread + tier.Floor
 
 	// 這個郡有沒有人可找：身分是「在野但不列入該郡在野數」的那些人。
+	//
+	// **露面的是槽號最大的那一位**（`0xcc9b`–`0xcce5`，加強版 `0xca4d`–
+	// `0xca8f`，`L0`、`[both]`）：原版掃完 350 人不 break，每一位相符的都
+	// 把槽號寫進同一個變數，最後留下的是最後一位。郡裡站著兩位以上時
+	// 這一步決定登用進來的是誰（四月視窗量到郡 20：187／189／191／248
+	// 四位在野未露面，原版露面 248）。
+	//
+	// 玩家那一條（`0x1b912`）形狀不同：先把郡裡的人列成表、`RND(表長)`
+	// 挑一位，再問金夠不夠 5、`RND(60)` 對尋訪者的智——還沒對拍，
+	// remake 先共用這一支（`L2`）。
 	var hidden *General
 	for i := range g.generals {
 		c := &g.generals[i]
 		if c.Location == prefectureID && c.Status == state.StatusIdle && c.Name != "" {
 			hidden = c
-			break
 		}
 	}
 	if hidden == nil {
