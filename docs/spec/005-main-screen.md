@@ -204,8 +204,10 @@ remake：`game.Bubble`（事件帶著它，`game.Event.Bubble`）、`ui.DrawBubb
 原版的 `0x3273e` 畫上格與下格各一次，肖像、泡泡、尾巴、名字的黑底
 **逐像素相同**；對白框裡兩邊都只有白與擲出來的那一色（字模不比）。
 
-其餘 105 個呼叫端（電腦諸侯的人事與計略、戰場、單挑）remake 還沒接
-（Issue #51、#52）。
+其餘的呼叫端：主畫面命令那一層 37 處在 §9.6（#51）、戰場與單挑 47 處
+在 §9.7（#52）；還沒接的五組（新君主出現、用計三道門、戰役結束、
+郡地理誌、計略的另外三種回話）見 Issue #60，防拷密碼那一張的六處
+remake 不做（`docs/spec/004`）。
 
 ### 9.1 誰畫肖像：畫肖像常式 `0xf7b4` 的呼叫端（`L0`＋`L1`、Issue #50）
 
@@ -707,7 +709,7 @@ SAN1_SHOTS=/src/workplace/shots/bf SAN1_BATTLESHOT=orig-battle SAN1_BATTLEKEY='2
 軍力面板（`0x22c94`，一側一次）：面板左緣 `x0` 由**戰場版面**（州郡
 offset 34）決定——12×7（值 9）是主攻在 64、主守在 256、y 268；8×10
 （值 10）四塊都在 x 448、主守 y 156、主攻 y 44（`DS:0x7b24`／`0x7b34` 表，
-remake 還沒接 8×10 的擺法）。面板裡每一樣東西的位移從 `DS:0x7b8c`
+remake 兩種都有：`assets.BattleLayout`，§8「窄版面」）。面板裡每一樣東西的位移從 `DS:0x7b8c`
 那張表拿（每側三個 word）：
 
 | 側 | 肖像 | 統帥名 | 五行資料 | 字色（`DS:0x796a`）|
@@ -723,7 +725,7 @@ y+0／+32／+64；名字取部隊記錄第一個非空槽的將領。五行資�
 `兵%4d00`（存的百位）、`金%6d`。文字區因此只有 64 像素寬（攻方 176–239、
 守方 256–319）。
 
-remake：`assets.BattlePanelNameX`／`TextX`／`Inks`、`ui.ArtBattle.drawText`。
+remake：`assets.BattleLayout.NameX`／`TextX`、`BattlePanelInks`、`ui.ArtBattle.drawText`。
 對拍 `TestArtBattleTextCellsMatchTheOriginal`：基準畫面 `orig-battle.png`
 （廬陵，陳就一軍三千兵五千金打蒯越軍的周瑜四軍七千八百兵五百金）與
 remake 畫的同一局，45 個文字格**格內都有墨、格外那一圈在文字區裡沒有
