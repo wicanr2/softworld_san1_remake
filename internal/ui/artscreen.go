@@ -44,6 +44,15 @@ type ArtScreen struct {
 	panels    [2]assets.SideFrame
 	frame     [4]*assets.Image
 	havePanel bool
+
+	// cardPanel／cardFrame 是人物資料卡用的那兩組（`SIDEC`／`FBRC`）：
+	// 原版拼框的 `0x1058:0x262c` 用 `(樣式＋500) mod 5` 挑 `SIDEA`–`SIDEE`，
+	// 卡片傳 7 → `C`；肖像框的 `0x276c` 傳 2 → `FBRC`（`docs/spec/005` §9.2）。
+	cardPanel assets.SideFrame
+	cardFrame [4]*assets.Image
+
+	// pickBox 是選君主那一格下方提示框的拼件（`SIDEA`）。
+	pickBox assets.SideFrame
 }
 
 // NewArtScreen 拼出主畫面的底圖，順便留著容器好取肖像。
@@ -72,6 +81,18 @@ func NewArtScreen(data3, data1 *assets.Container) (*ArtScreen, error) {
 		if fr, err := assets.PortraitFrame(data1, 'D'); err == nil && ok {
 			a.frame = fr
 			a.havePanel = true
+		}
+		if f, err := assets.LoadSideFrame(data1, 'C'); err != nil {
+			a.havePanel = false
+		} else if fr, err := assets.PortraitFrame(data1, 'C'); err != nil {
+			a.havePanel = false
+		} else {
+			a.cardPanel, a.cardFrame = f, fr
+		}
+		if f, err := assets.LoadSideFrame(data1, 'A'); err != nil {
+			a.havePanel = false
+		} else {
+			a.pickBox = f
 		}
 	}
 	return a, nil
@@ -232,15 +253,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	// 英文逐字母一列直排讀不下去、按字折行又會把「Zhongping」切斷
 	//（直條內側只有 5 格寬），所以**有拉丁字母就整行轉 90° 排**，
 	// 像書脊一樣由上往下讀（`docs/spec/014` §3.5）。
-	date := g.Date.FormatWithSeason(v.Calendar)
-	ink := color.RGBA{0x00, 0x00, 0x00, 0xFF}
-	if artHasLatin(date) {
-		c.DrawTextRotatedPx(artDateCol*CellW, artDateRow*CellH, date, ink)
-	} else {
-		for i, r := range []rune(date) {
-			c.DrawText(artDateCol, artDateRow+i, string(r), ink)
-		}
-	}
+	drawArtDate(c, g.Date.FormatWithSeason(v.Calendar))
 
 	// **下面板先畫**：清單寬到要蓋整個內容區時，覆蓋頁要蓋在它上面，
 	// 不能讓提示字浮在覆蓋頁上。
@@ -256,8 +269,24 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	default:
 		drawArtCommands(c)
 	}
+	// 人物資料卡蓋掉右側整塊面板（原版畫卡之前先清 (408,36)–(631,291)）。
+	if v.HasCard {
+		DrawPersonCard(c, a, g, v.Card)
+	}
 	if len(v.Page) > 0 {
 		drawArtOverlay(c, v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+	}
+}
+
+// drawArtDate 把年月直排在左側直條上（選君主那一格也用）。
+func drawArtDate(c *Canvas, date string) {
+	ink := color.RGBA{0x00, 0x00, 0x00, 0xFF}
+	if artHasLatin(date) {
+		c.DrawTextRotatedPx(artDateCol*CellW, artDateRow*CellH, date, ink)
+		return
+	}
+	for i, r := range []rune(date) {
+		c.DrawText(artDateCol, artDateRow+i, string(r), ink)
 	}
 }
 

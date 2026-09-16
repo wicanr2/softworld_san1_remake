@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -225,5 +226,73 @@ func TestHeadhuntGates(t *testing.T) {
 	b.Faction = 2
 	if !g.Headhuntable(x, at) {
 		t.Error("牽絆對象已經不在他陣營，應該挖得動")
+	}
+}
+
+// TestPlayerSearchQueuesTheScreens 釘住玩家尋訪之後排進 pending 的畫面
+// （`0x1bb58`–`0x1bc45`）：找到人是「亮肖像 (488,88)」＋「尋訪者在下格
+// 報名士的名字」兩格；沒找到只有尋訪者報「沒有找到人才」一格；電腦那一條
+// 什麼都不排。
+func TestPlayerSearchQueuesTheScreens(t *testing.T) {
+	g := newGame(t)
+	at := 0
+	for _, p := range g.Prefectures() {
+		if p.Owned() && p.Owner == 0 {
+			at = p.ID
+			break
+		}
+	}
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Location == at && x.Status == state.StatusIdle {
+			x.Location = 0
+		}
+	}
+	hidden := g.General(300)
+	hidden.Location, hidden.Status, hidden.Faction = at, state.StatusIdle, state.NoFaction
+	var by *General
+	for _, x := range g.Garrison(at) {
+		if x.Faction == 0 && (by == nil || x.Intel > by.Intel) {
+			by = x
+		}
+	}
+	by.Intel = 99
+	g.Prefecture(at).Gold = 100
+	if err := (SearchOrder{At: at, General: by.Index}).Apply(g, 0); err != nil {
+		t.Fatal(err)
+	}
+	ev := g.PendingEvents()
+	if len(ev) != 2 || ev[0].Bubble == nil || ev[1].Bubble == nil {
+		t.Fatalf("找到人該排兩格，排了 %d：%+v", len(ev), ev)
+	}
+	face, say := ev[0].Bubble, ev[1].Bubble
+	if !face.FaceOnly || face.Speaker != hidden.Index || face.X1 != SearchFaceX || face.Y1 != SearchFaceY {
+		t.Errorf("第一格該是亮 %d 的肖像在 (%d,%d)，是 %+v", hidden.Index, SearchFaceX, SearchFaceY, face)
+	}
+	if say.FaceOnly || say.Speaker != by.Index || say.Left || say.Y1 != BubbleLowerY1 {
+		t.Errorf("第二格該是尋訪者 %d 在下格、肖像在右，是 %+v", by.Index, say)
+	}
+	if !strings.Contains(say.Text, personName(hidden.Name)) {
+		t.Errorf("對白 %q 沒有名士的名字", say.Text)
+	}
+
+	// 沒找到：郡裡沒人可找（下令旗標放掉，這個月再下一道）。
+	hidden.Location = 0
+	g.Prefecture(at).Gold, g.Prefecture(at).Commanded = 100, false
+	if err := (SearchOrder{At: at, General: by.Index}).Apply(g, 0); err != nil {
+		t.Fatal(err)
+	}
+	ev = g.PendingEvents()
+	if len(ev) != 1 || ev[0].Bubble == nil || ev[0].Bubble.FaceOnly || ev[0].Bubble.Speaker != by.Index {
+		t.Fatalf("沒找到該只排尋訪者那一格，排了 %+v", ev)
+	}
+
+	// 電腦那一條不排畫面。
+	g.Prefecture(at).Commanded = false
+	if err := (SearchOrder{At: at, General: by.Index, Auto: true}).Apply(g, 0); err != nil {
+		t.Fatal(err)
+	}
+	if ev = g.PendingEvents(); len(ev) != 0 {
+		t.Errorf("電腦尋訪排了 %d 格畫面", len(ev))
 	}
 }

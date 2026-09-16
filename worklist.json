@@ -1110,6 +1110,31 @@
       "layer": "verification"
     },
     {
+      "id": "portrait-screens-card-search-lords",
+      "title": "人物資料卡、尋訪找到人、選君主與新君主的肖像畫面",
+      "group": "畫面",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/spec/013"
+      ],
+      "note": "2026-09-17（Issue #54）：`0xf7b4` 九個呼叫端裡主畫面這一層的四種畫面接上——查看→武將畫人物資料卡（`0xf874`：灰底、`SIDEC` 外框、`FBRC` 框、名字 32×32、八行資料），玩家尋訪找到人先亮那一位的肖像 (488,88) 再由尋訪者報結果（`Bubble{FaceOnly}`），開新局選君主是一頁六位的肖像、空心框、勢力色塊與編號（`0x124ca`），新君主分配能力畫肖像加框、名字與六行（`0x12df4`）。四張都對原版逐像素比（字模除外），選君主那一格另拿 DOSBox-X 的畫面交叉驗（只差游標）。順手量到：面板清底 `0x27e8` 只清外框裡面；`0x262c` 用樣式 mod 5 挑 `SIDEA`–`E`；文字常式 `0x1d4e` 的「背景」是描邊色；新君主開局的起始值是 18／80／50／50／50（與 spec/013 的範本不同，規則層另開 Issue）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZPersonCardMatchesTheOriginal|TestZZSearchFaceMatchesTheOriginal|TestZZLordPickScreenMatchesTheOriginal|TestZZCustomLordScreenMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "verification"
+    },
+    {
       "id": "art-main-overlays",
       "title": "原版素材畫面看得到指令表、子選單、挑選清單、分頁與戰場選項",
       "group": "畫面",

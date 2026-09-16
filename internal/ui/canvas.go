@@ -215,6 +215,39 @@ func (c *Canvas) DrawRuneScaledPx(px, py int, r rune, fg color.RGBA, sx, sy int)
 	return cells.RuneWidth(r) * CellW * sx
 }
 
+// DrawRuneOutlinedPx 畫一個放大的字，四周描一圈 `edge` 色的邊（八個方向
+// 各一像素），回傳畫掉的寬度。原版選君主那一格的名字與編號是白字黑邊
+// （`docs/spec/005` §9.4）。
+func (c *Canvas) DrawRuneOutlinedPx(px, py int, r rune, fg, edge color.RGBA, sx, sy int) int {
+	if sx < 1 {
+		sx = 1
+	}
+	if sy < 1 {
+		sy = 1
+	}
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			if dx != 0 || dy != 0 {
+				c.drawRuneScaledPx(px+dx, py+dy, r, edge, sx, sy)
+			}
+		}
+	}
+	c.drawRuneScaledPx(px, py, r, fg, sx, sy)
+	return cells.RuneWidth(r) * CellW * sx
+}
+
+// StrokeRect 畫一個空心矩形，四個角含端點。
+func (c *Canvas) StrokeRect(x0, y0, x1, y1 int, col color.RGBA) {
+	for x := x0; x <= x1; x++ {
+		c.setClipped(x, y0, col)
+		c.setClipped(x, y1, col)
+	}
+	for y := y0; y <= y1; y++ {
+		c.setClipped(x0, y, col)
+		c.setClipped(x1, y, col)
+	}
+}
+
 func (c *Canvas) drawRuneWidePx(px, py int, r rune, fg color.RGBA, sx int) {
 	c.drawRuneScaledPx(px, py, r, fg, sx, 1)
 }

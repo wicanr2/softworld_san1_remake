@@ -83,6 +83,12 @@ type View struct {
 	// 按「0.狀態」才換成郡的資料——這一格就是那個開關。文字版的畫面
 	// 兩樣都一直畫著，不看它。
 	Status bool
+
+	// HasCard 為真時，原版素材畫面的右側面板整塊換成 `Card` 這位人物的
+	// 資料卡（原版「查看→武將」的 `0xf874`，`docs/spec/005` §9.2）。
+	// 文字版的畫面走 `GeneralPage`，不看它。
+	HasCard bool
+	Card    int
 }
 
 // DrawMainScreen 畫遊戲主畫面。

@@ -171,6 +171,9 @@ func (s *Session) PopBubble() {
 // 「名字：對白」），佇列清空。
 func (s *Session) FlushBubbles() {
 	for _, b := range s.Bubbles {
+		if b.FaceOnly {
+			continue // 只亮肖像的那一格沒有字
+		}
 		name := ""
 		if x := s.G.General(b.Speaker); x != nil {
 			name = i18n.PersonName(x.Name)

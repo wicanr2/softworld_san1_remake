@@ -62,6 +62,9 @@ type Screen struct {
 	lords []int
 	saves []save.Info
 
+	// g 是選君主那一層拿來列候選的局面（肖像、名字、地圖填色都從它取）。
+	g *game.State
+
 	// customs 是這個劇本還空著的新君主欄（諸侯槽號）。
 	customs []int
 	// custom 非 nil 表示玩家選了其中一個，正在設定那一位。
@@ -98,6 +101,23 @@ func (s *Screen) Len() int {
 		return ItemCount
 	}
 	return len(s.items)
+}
+
+// Lords 是選君主那一層的候選（諸侯槽號，與 Items 同序）；Game 是列出
+// 它們的那個局面。兩者只在 Lord 那一層有意義。
+func (s *Screen) Lords() []int      { return s.lords }
+func (s *Screen) Game() *game.State { return s.g }
+
+// IsCustom 回報候選 f 是不是空的新君主欄；CustomIndex 是它排第幾個新君主
+// （0 起；不是新君主欄回 −1）。
+func (s *Screen) IsCustom(f int) bool { return s.isCustom(f) }
+func (s *Screen) CustomIndex(f int) int {
+	for i, c := range s.customs {
+		if c == f {
+			return i
+		}
+	}
+	return -1
 }
 
 // Quit 回報玩家有沒有選「回作業系統」。
@@ -216,7 +236,7 @@ func (s *Screen) pickLord() {
 	}
 	s.stage, s.pick = Lord, 0
 	s.title = i18n.S("title.pickLord")
-	s.items, s.lords, s.customs = nil, nil, nil
+	s.items, s.lords, s.customs, s.g = nil, nil, nil, g
 	for _, f := range g.Factions() {
 		if !f.Alive {
 			continue

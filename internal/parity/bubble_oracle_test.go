@@ -214,3 +214,81 @@ func TestZZBubbleMatchesTheOriginal(t *testing.T) {
 		})
 	}
 }
+
+// faceFn 是畫肖像常式 `0xf7b4(x, y, 肖像, 模式, 翻面)`，用它真正的段呼叫。
+var faceFn = oracle.Addr{Seg: 0x0f17, Off: 0x644}
+
+// TestZZSearchFaceMatchesTheOriginal 釘住玩家尋訪找到人時亮的那一張肖像
+// （`0x1bb7e`：`0xf7b4(488, 88, 肖像, 0, 0)`）：清成藍的面板上，原版與
+// remake 的 `FaceOnly` 那一格逐像素相同。
+func TestZZSearchFaceMatchesTheOriginal(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	bootToGame(t, o, seedMas)
+	g, err := game.New(sc0, 0, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	art, err := ui.NewArtScreen(openContainer(t, filepath.Join(root, "DATA3")),
+		openContainer(t, filepath.Join(root, "DATA1")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fh, err := os.Open("../../fonts/unifont.hex.gz")
+	if err != nil {
+		t.Skipf("沒有字型檔：%v", err)
+	}
+	face, err := font.ParseHexGz(fh, 16)
+	fh.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	who := 151 // 呂蒙
+	x := g.General(who)
+	if _, err := o.Call(addr(clearRectFn), 408, 36, 631, 291, panelClear); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := o.Call(faceFn, uint16(game.SearchFaceX), uint16(game.SearchFaceY), uint16(x.Portrait), 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	orig := o.IndexedEGASize(scrW, scrH)
+	dumpScreen(t, o, "search-face")
+
+	// 原版清的是外框裡面；外框（`SIDEB`）本身照主畫面拼一次。
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, art, g, nil, ui.View{Sel: 1})
+	ui.ClearPanel(cv, 408, 36, 631, 291, assets.EGAPalette[panelClear])
+	ui.DrawBubble(cv, art, g, &game.Bubble{X1: game.SearchFaceX, Y1: game.SearchFaceY, Speaker: who, FaceOnly: true})
+	idx := func(c color.RGBA) int {
+		for i, p := range assets.EGAPalette {
+			if p == c {
+				return i
+			}
+		}
+		return -1
+	}
+	bad, first := 0, ""
+	for y := 36; y <= 291; y++ {
+		for x := 408; x <= 631; x++ {
+			if op, mp := int(orig[y*scrW+x]&15), idx(cv.Img.RGBAAt(x, y)); op != mp {
+				bad++
+				if first == "" {
+					first = fmt.Sprintf("(%d,%d) 原版 %d remake %d", x, y, op, mp)
+				}
+			}
+		}
+	}
+	if bad != 0 {
+		t.Errorf("面板有 %d 個像素不同，第一個 %s", bad, first)
+	}
+}

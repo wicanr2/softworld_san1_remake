@@ -155,6 +155,15 @@ func (a *app) Update() error {
 		}
 		return nil
 	}
+	// 人物資料卡（原版素材畫面的「查看→武將」）：按任意鍵收掉，
+	// 右側面板回到原樣。
+	if a.view.HasCard {
+		if anyKeyPressed() {
+			a.view.HasCard = false
+			a.dirty = true
+		}
+		return nil
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
 		a.view.Prompt, a.view.Page = "", nil
@@ -452,6 +461,12 @@ func (a *app) begin(cat, item byte) {
 		a.askOwn(t("ask.pref"), func(id int) { a.view.Sel = id })
 	case cat == '1' && item == '3':
 		a.askGeneral(t("ask.inspect"), func(gi int) {
+			// 原版素材畫面照原版畫人物資料卡在右側面板（`docs/spec/005`
+			// §9.2）；文字版面沒有肖像，仍走整頁的 `GeneralPage`。
+			if a.art != nil {
+				a.view.Card, a.view.HasCard = gi, true
+				return
+			}
 			a.view.SetPage(ui.GeneralPage(g, gi))
 		})
 		closeMenu()
@@ -847,8 +862,9 @@ func (a *app) paint() {
 			if a.art != nil {
 				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, a.view)
 				if b := a.s.Bubble(); b != nil {
-					// 原版在對白之前把右側面板清成藍色（`0x1058:0x27e8`）。
-					a.canvas.FillRect(408, 36, 632, 292, assets.EGAPalette[1])
+					// 原版在對白之前把右側面板的內部清成藍色（`0x1058:0x27e8`，
+					// 外框留著）。
+					ui.ClearPanel(a.canvas, 408, 36, 631, 291, assets.EGAPalette[1])
 					ui.DrawBubble(a.canvas, a.art, a.s.G, b)
 				}
 			} else {

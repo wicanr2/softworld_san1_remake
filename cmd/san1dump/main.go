@@ -34,7 +34,7 @@ func main() {
 	what := flag.String("what", "all", "印什麼：pref／gen／master／all")
 	cols := flag.Int("cols", 6, "郡名槽位寬度（半形格），用來檢查裝不裝得下")
 	png := flag.String("png", "", "把畫面存成 PNG（無頭環境驗版面用）")
-	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／art（接原版素材的主畫面）／title（主選單）／artfield（接原版素材的戰場地形）／artbattle（接原版素材的整張主戰場）／poem（開場詞）／titleart（開場的三英圖）／battle（主戰場）")
+	screen := flag.String("screen", "list", "畫哪一張：list（州郡一覽）／main（遊戲主畫面）／art（接原版素材的主畫面）／title（主選單）／artfield（接原版素材的戰場地形）／artbattle（接原版素材的整張主戰場）／poem（開場詞）／titleart（開場的三英圖）／battle（主戰場）／lordpick（開新局選君主，-sel 是第幾頁）")
 	faction := flag.Int("faction", -1, "main 畫面的玩家勢力；−1 ＝ 用第一個在用的勢力")
 	sel := flag.Int("sel", 0, "main 畫面訊息欄要顯示哪一個郡；0 ＝ 玩家的第一個郡")
 	months := flag.Int("months", 0, "main 畫面先讓電腦跑幾個月再畫；battle／artfield 畫面是先打幾天")
@@ -44,6 +44,7 @@ func main() {
 	saveDir := flag.String("saves", "", "存檔目錄（配 -save／-load 用）")
 	saveTo := flag.Int("save", 0, "跑完 -months 之後存到第幾個進度（1..6）")
 	loadFrom := flag.Int("load", 0, "改成從第幾個進度開始（1..6）")
+	card := flag.Int("card", -1, "art 畫面在右側面板畫哪一位人物的資料卡（查看→武將）；−1 ＝ 不畫")
 	flag.Parse()
 	if l, ok := i18n.Parse(*lang); ok {
 		i18n.Current = l
@@ -67,7 +68,7 @@ func main() {
 	fmt.Printf("劇本 %s（來源 %s）\n\n", *slot, *root)
 
 	if *png != "" {
-		if err := writePNG(*png, *fontPath, *root, sc, *slot, *screen, *aiMode, *faction, *sel, *months); err != nil {
+		if err := writePNG(*png, *fontPath, *root, sc, *slot, *screen, *aiMode, *faction, *sel, *months, *card); err != nil {
 			die(err)
 		}
 		fmt.Printf("畫面存到 %s\n\n", *png)
@@ -128,7 +129,7 @@ func main() {
 //
 // **和 cmd/san1 畫的是同一張**（都走 ui.DrawPrefectureList）。
 // 畫面 bug 測試看不到，但存成圖就看得到，而且無頭環境也產得出來。
-func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMode string, faction, sel, months int) error {
+func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMode string, faction, sel, months, card int) error {
 	fh, err := os.Open(fontPath)
 	if err != nil {
 		return err
@@ -141,7 +142,7 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 	c := ui.NewCanvas(ui.Cols, ui.Rows, face)
 	if screen == "art" || screen == "title" || screen == "artfield" ||
 		screen == "artbattle" || screen == "poem" || screen == "titleart" ||
-		screen == "credits" || screen == "hall" {
+		screen == "credits" || screen == "hall" || screen == "lordpick" {
 		c = ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
 	}
 	// 小字級與 cmd/san1 同一份（英文在原版版面放不下的地方用）。
@@ -278,6 +279,44 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 			return err
 		}
 		ui.DrawTitle(c, ts, 0)
+	case "lordpick":
+		// 開新局選君主那一格：第 `sel` 頁（0 起）的候選。
+		g, err := game.New(sc, 0, 5, state.EditionBase)
+		if err != nil {
+			return err
+		}
+		c3, err := openContainer(root, "DATA3")
+		if err != nil {
+			return fmt.Errorf("接原版素材要讀 DATA3：%w", err)
+		}
+		c1, err := openContainer(root, "DATA1")
+		if err != nil {
+			return fmt.Errorf("外框與填色要讀 DATA1：%w", err)
+		}
+		art, err := ui.NewArtScreen(c3, c1)
+		if err != nil {
+			return err
+		}
+		var lords []int
+		for _, f := range g.Factions() {
+			if f.Alive {
+				lords = append(lords, int(f.ID))
+			}
+		}
+		customs := sc.CustomLordSlots()
+		lords = append(lords, customs...)
+		var slots []ui.LordPickSlot
+		for i := sel * ui.LordPickPerPage; i < len(lords) && i < (sel+1)*ui.LordPickPerPage; i++ {
+			f := lords[i]
+			slot := ui.LordPickSlot{Number: f + 1, Faction: f, Lord: g.Lord(state.FactionID(f))}
+			for nth, cf := range customs {
+				if cf == f && nth < len(state.CustomLordPortrait) {
+					slot.Lord, slot.Label, slot.Portrait = nil, i18n.S("title.newLord"), state.CustomLordPortrait[nth]
+				}
+			}
+			slots = append(slots, slot)
+		}
+		ui.DrawLordPick(c, art, g, slots, -1, i18n.Sf("title.lordPrompt", len(lords)), 0)
 	case "art", "main":
 		f := faction
 		if f < 0 {
@@ -316,7 +355,7 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 			if err != nil {
 				return err
 			}
-			ui.DrawArtSession(c, art, g, s.Log, ui.View{Sel: sel, Over: s.Over})
+			ui.DrawArtSession(c, art, g, s.Log, ui.View{Sel: sel, Over: s.Over, HasCard: card >= 0, Card: card})
 			break
 		}
 		ui.DrawSession(c, g, s.Log, ui.View{Sel: sel, Over: s.Over})

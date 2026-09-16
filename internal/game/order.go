@@ -350,7 +350,11 @@ type SearchOrder struct {
 
 func (o SearchOrder) Prefecture() int { return o.At }
 func (o SearchOrder) Apply(g *State, by state.FactionID) error {
-	_, err := g.search(o.At, o.General, by, !o.Auto)
+	found, err := g.search(o.At, o.General, by, !o.Auto)
+	if err == nil && !o.Auto {
+		// 玩家那一條之後有畫面：找到的人先亮肖像，再由尋訪者報結果。
+		g.pending = append(g.pending, g.searchEvents(g.General(o.General), found)...)
+	}
 	return err
 }
 func (o SearchOrder) Describe(g *State) string {

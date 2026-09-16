@@ -64,6 +64,31 @@ type Bubble struct {
 	Speaker        int  // 人物槽：肖像與名字從這裡取
 	Color          int  // 對白的字色 0–7（`RND(8)`）
 	Text           string
+
+	// FaceOnly 為真是「只亮一張肖像」的那一格：不畫名字、泡泡與字，
+	// 肖像貼在 (X1, Y1)。玩家尋訪找到人時原版先把那一位的肖像亮在
+	// (488,88)、等一下，再清掉畫對白（`0x1bb7e`，`docs/spec/005` §9.3）。
+	FaceOnly bool
+}
+
+// 尋訪找到的那一位亮肖像的位置（`0x1bb76`／`0x1bb7a`）。
+const (
+	SearchFaceX = 488
+	SearchFaceY = 88
+)
+
+// searchEvents 是玩家尋訪之後的畫面（`0x1bb58`–`0x1bc45`，`L0`、`[base]`）：
+// 找到人先亮那一位的肖像，再由尋訪者在下格報「主公洪福  發現名士」加
+// 名字（片語 383）；沒找到只報「屬下無能  沒有找到人才」（384）。
+// 肖像都在右邊（side 0）。
+func (g *State) searchEvents(searcher, found *General) []Event {
+	if found != nil {
+		return []Event{
+			{Prefecture: searcher.Location, Bubble: &Bubble{X1: SearchFaceX, Y1: SearchFaceY, Speaker: found.Index, FaceOnly: true}},
+			g.bubbleEvent(searcher, false, false, tf("bub.found", personName(found.Name)), searcher.Index),
+		}
+	}
+	return []Event{g.bubbleEvent(searcher, false, false, t("bub.notFound"), searcher.Index)}
 }
 
 // 原版訊息框固定用的兩個位置（右側面板那一塊）：上格與下格。

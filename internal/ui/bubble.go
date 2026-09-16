@@ -87,6 +87,15 @@ func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
 		name = i18n.PersonName(x.Name)
 		portrait = int(x.Portrait)
 	}
+	// 只亮肖像的那一格（尋訪找到人）：貼在 (x1, y1)，不翻面、沒有別的。
+	if b.FaceOnly {
+		if a != nil && portrait >= 0 {
+			if face := a.Portrait(portrait); face != nil {
+				drawImageAt(c, face, x1, y1)
+			}
+		}
+		return
+	}
 	// 肖像：左邊那一張左右翻（原版把 side 當翻面旗傳給畫肖像常式，
 	// 主戰場攻方那一張同一個形狀），臉朝著泡泡。
 	px := x2 - bubblePortraitW + 1
@@ -151,6 +160,15 @@ func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
 			x += c.DrawRuneScaledPx(x, y1+12+i*bubbleLineGap, r, fg, 1, bubbleTextScale)
 		}
 	}
+}
+
+// ClearPanel 照原版的 `0x1058:0x27e8(x1, y1, x2, y2, 色)` 清一塊面板的
+// **內部**：外框的拼件留著——角是 16×16、邊是 8 寬，所以清的是兩塊矩形
+// 拼成的十字：(x1+16, y1+8)–(x2−16, y2−8) 與 (x1+8, y1+16)–(x2−8, y2−16)。
+// 座標含端點。呼叫端在對白之前拿它把右側面板清成藍（`0x14899`／`0x1bb3c`）。
+func ClearPanel(c *Canvas, x1, y1, x2, y2 int, ink color.RGBA) {
+	c.FillRect(x1+16, y1+8, x2-16+1, y2-8+1, ink)
+	c.FillRect(x1+8, y1+16, x2-8+1, y2-16+1, ink)
 }
 
 // drawImageAt 把一張原版的圖貼到畫布的像素座標上。

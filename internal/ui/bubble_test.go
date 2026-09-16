@@ -73,3 +73,20 @@ func TestDrawBubbleWithoutArt(t *testing.T) {
 		t.Error("對白沒有畫出色 4 的字")
 	}
 }
+
+// TestDrawFaceOnlyBubbleDrawsNothingElse 釘住「只亮肖像」的那一格（尋訪
+// 找到人）：沒有原版素材時什麼都不畫——底色一個像素都不動。
+func TestDrawFaceOnlyBubbleDrawsNothingElse(t *testing.T) {
+	c := NewCanvasPx(assets.ScreenW, assets.ScreenH, testFace(t))
+	blue := assets.EGAPalette[1]
+	c.FillRect(408, 36, 632, 292, blue)
+	g := loadGame(t)
+	DrawBubble(c, nil, g, &game.Bubble{X1: game.SearchFaceX, Y1: game.SearchFaceY, Speaker: 0, FaceOnly: true})
+	for y := 36; y < 292; y++ {
+		for x := 408; x < 632; x++ {
+			if c.Img.RGBAAt(x, y) != blue {
+				t.Fatalf("(%d,%d) 被畫了", x, y)
+			}
+		}
+	}
+}

@@ -31,76 +31,98 @@ func bootToNewGame(t *testing.T, o *oracle.Oracle, lord int, mas []byte) uint32 
 	return bootToNewGameAt(t, o, lord, 5, mas)
 }
 
-// bootToNewGameAt 是 bootToNewGame 加上難度（1..10）。
-func bootToNewGameAt(t *testing.T, o *oracle.Oracle, lord, difficulty int, mas []byte) uint32 {
+// newGameDrive 是開新局那幾步的行為停點：主選單 → 年代 → 玩家數 → 君主
+// → 難度 → 防拷／就任對白 → 主命令。拆成兩段，讓選君主那一格的畫面
+// 也拿得到（`TestZZLordPickScreenMatchesTheOriginal`）。
+type newGameDrive struct {
+	t          *testing.T
+	o          *oracle.Oracle
+	s          *bootSignals
+	ascCallers []uint32
+	keyCalls   int
+	nums       []numAsk
+}
+
+type numAsk struct {
+	lo, hi int
+}
+
+// 主選單選「開始新遊戲」後，年代選擇的低階輸入 caller 是
+// runtime 1058:17D7；保留原始定位，不把它改名成產品語意。
+const eraCaller = 0x1058*16 + 0x17d7
+
+// 年代確認後先走 runtime 33D8:1FAB 的字元輸入，再進入君主欄位。
+const playerCountCaller = 0x33d8*16 + 0x1fab
+
+func (d *newGameDrive) waitCaller(name string, want uint32) {
+	before := len(d.ascCallers)
+	waitBoot(d.t, d.o, name, 500_000_000, func() bool {
+		for _, c := range d.ascCallers[before:] {
+			if c == want {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func (d *newGameDrive) waitNum(name string, lo, hi int) {
+	before := len(d.nums)
+	cond := oracle.NewCond(name, func(*oracle.Oracle) bool {
+		for _, n := range d.nums[before:] {
+			if n.lo == lo && n.hi == hi {
+				return true
+			}
+		}
+		return false
+	})
+	if err := d.o.RunUntil(cond, oracle.Budget(1_000_000_000)); err != nil {
+		d.t.Fatalf("等待%s失敗（nums=%v、asc=%v）：%v", name, d.nums, d.ascCallers, err)
+	}
+	// 玩家數、君主與難度都走 runtime `1058:0E57` 的掃描碼等待。
+	waitBootScan(d.t, d.o, name+"掃描碼", 5_000_000)
+}
+
+// bootToLordPick 把原版開到**選君主**那一格（劇本一、一位玩家），停在
+// 君主編號的數字輸入（1..6）——右側面板這時畫著第一頁六位君主的肖像
+// （`0x124ca`）。
+func bootToLordPick(t *testing.T, o *oracle.Oracle) *newGameDrive {
 	t.Helper()
 	// 以行為停點驅動，不再依賴已作廢的 50M 指令分段配方。
 	// `bootToMenu` 已完成裝置題、開場與標題，並停在主選單掃描碼迴圈。
-	s := bootToMenu(t, o)
-
-	type numAsk struct {
-		lo, hi int
-	}
-	var ascCallers []uint32
-	var keyCalls int
-	var nums []numAsk
+	d := &newGameDrive{t: t, o: o, s: bootToMenu(t, o)}
 	o.OnCall(addr(bootASCInputFn), func(o *oracle.Oracle) {
 		c := o.Caller()
-		ascCallers = append(ascCallers, uint32(c.Seg)*16+uint32(c.Off))
+		d.ascCallers = append(d.ascCallers, uint32(c.Seg)*16+uint32(c.Off))
 	})
-	o.OnCall(addr(bootKeyInputFn), func(*oracle.Oracle) { keyCalls++ })
+	o.OnCall(addr(bootKeyInputFn), func(*oracle.Oracle) { d.keyCalls++ })
 	o.OnCall(addr(bootNumInputFn), func(o *oracle.Oracle) {
-		nums = append(nums, numAsk{int(o.Arg(0)), int(o.Arg(1))})
+		d.nums = append(d.nums, numAsk{int(o.Arg(0)), int(o.Arg(1))})
 	})
-
-	// 主選單選「開始新遊戲」後，年代選擇的低階輸入 caller 是
-	// runtime 1058:17D7；保留原始定位，不把它改名成產品語意。
-	const eraCaller = 0x1058*16 + 0x17d7
-	// 年代確認後先走 runtime 33D8:1FAB 的字元輸入，再進入君主欄位。
-	const playerCountCaller = 0x33d8*16 + 0x1fab
-	waitCaller := func(name string, want uint32) {
-		before := len(ascCallers)
-		waitBoot(t, o, name, 500_000_000, func() bool {
-			for _, c := range ascCallers[before:] {
-				if c == want {
-					return true
-				}
-			}
-			return false
-		})
-	}
-	waitNum := func(name string, lo, hi int) {
-		before := len(nums)
-		cond := oracle.NewCond(name, func(*oracle.Oracle) bool {
-			for _, n := range nums[before:] {
-				if n.lo == lo && n.hi == hi {
-					return true
-				}
-			}
-			return false
-		})
-		if err := o.RunUntil(cond, oracle.Budget(1_000_000_000)); err != nil {
-			t.Fatalf("等待%s失敗（nums=%v、asc=%v）：%v", name, nums, ascCallers, err)
-		}
-		// 玩家數、君主與難度都走 runtime `1058:0E57` 的掃描碼等待。
-		waitBootScan(t, o, name+"掃描碼", 5_000_000)
-	}
 
 	o.Drain()
 	o.PressScan("1")
-	waitCaller("新局年代選擇輸入", eraCaller)
+	d.waitCaller("新局年代選擇輸入", eraCaller)
 	// callback 只證明年代輸入常式被呼叫；先等它回到 runtime 掃描碼
 	// 迴圈，才送下一個字元，避免鍵在畫面切換前被消費。
 	waitBootScan(t, o, "新局年代畫面", 500_000_000)
 	o.Drain()
 	o.TypeBoth("1")
-	waitCaller("新局玩家數輸入", playerCountCaller)
+	d.waitCaller("新局玩家數輸入", playerCountCaller)
 	waitBootScan(t, o, "新局玩家數畫面", 500_000_000)
 	o.Drain()
 	o.TypeBoth("1\r")
 
 	// 玩家數已在上面的字元 caller 停點送出 1；這個數字欄位是選君主。
-	waitNum("新局君主輸入", 1, 6)
+	d.waitNum("新局君主輸入", 1, 6)
+	return d
+}
+
+// bootToNewGameAt 是 bootToNewGame 加上難度（1..10）。
+func bootToNewGameAt(t *testing.T, o *oracle.Oracle, lord, difficulty int, mas []byte) uint32 {
+	t.Helper()
+	d := bootToLordPick(t, o)
+	s := d.s
 	o.Drain()
 	o.PressScan(fmt.Sprintf("%d\r", lord))
 	// 密碼提示同樣有既有 observer 的行為路標（03EB:02C2、0..9999）。
@@ -108,7 +130,7 @@ func bootToNewGameAt(t *testing.T, o *oracle.Oracle, lord, difficulty int, mas [
 	// 出現在那段沉澱期間時被漏算。
 	beforePassword := s.passwordAsk
 	beforeMain := s.mainAsk
-	waitNum("新局難度輸入", 1, 10)
+	d.waitNum("新局難度輸入", 1, 10)
 	o.Drain()
 	// 不把後續主命令的 0..9 callback 誤當成密碼欄位；那個 callback
 	// 可能在掃描碼等待期間先出現。
@@ -136,12 +158,12 @@ func bootToNewGameAt(t *testing.T, o *oracle.Oracle, lord, difficulty int, mas [
 	// 的行為停點；主命令 caller 出現即停止。最多 32 句是失敗即關閉的
 	// 安全上限，不是成功條件。
 	for i := 0; i < 32 && s.mainAsk == beforeMain; i++ {
-		beforeKey := keyCalls
+		beforeKey := d.keyCalls
 		o.Drain()
 		o.PressScan("\r")
 		waitBoot(t, o, fmt.Sprintf("新局就任對白第 %d 句", i+1),
 			100_000_000, func() bool {
-				return s.mainAsk > beforeMain || keyCalls > beforeKey
+				return s.mainAsk > beforeMain || d.keyCalls > beforeKey
 			})
 	}
 	if s.mainAsk == beforeMain {

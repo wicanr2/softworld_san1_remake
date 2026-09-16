@@ -152,6 +152,55 @@ func (s *Screen) confirmCustom(i int) {
 	s.pickDifficulty(c.faction)
 }
 
+// CustomView 是原版素材畫面畫新君主那一格要的東西（`docs/spec/005` §9.5）：
+// 諸侯槽、肖像編號、名字、六行字（與 Items 同序，字串是原版的短格式）、
+// 目前這一位排第幾個新君主。沒有在設定就回 false。
+type CustomView struct {
+	Faction  int
+	Portrait int
+	Name     string
+	Lines    [customRows]string
+	Spare    int
+}
+
+// Custom 交出設定到一半那一位給原版素材畫面；沒有就回 nil。
+func (s *Screen) Custom() *CustomView {
+	c := s.custom
+	if c == nil {
+		return nil
+	}
+	nth := 0
+	for i, f := range s.customs {
+		if f == c.faction {
+			nth = i
+		}
+	}
+	portrait := 0
+	if nth < len(state.CustomLordPortrait) {
+		portrait = state.CustomLordPortrait[nth]
+	}
+	st, in, mi, ch := c.lord.Stats()
+	name := ""
+	for _, r := range c.lord.Name {
+		name += string(r)
+	}
+	pref := "—"
+	if c.pref < len(c.blanks) {
+		pref = i18n.PlaceName(c.blanks[c.pref].Name)
+	}
+	return &CustomView{
+		Faction: c.faction, Portrait: portrait, Name: name, Spare: c.spare,
+		Lines: [customRows]string{
+			i18n.Sf("title.artStamina", 1, st),
+			i18n.Sf("title.artIntel", 2, in),
+			i18n.Sf("title.artWar", 3, mi),
+			i18n.Sf("title.artCharm", 4, ch),
+			i18n.Sf("title.artPref", 5, pref),
+			i18n.Sf("title.artDone", 6, c.spare),
+		},
+	}
+}
+
 // CustomSummary 是設定到一半那一位的摘要，給畫面用；沒有就回空字串。
 func (s *Screen) CustomSummary() string {
 	if s.custom == nil {

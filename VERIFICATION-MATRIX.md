@@ -85,7 +85,11 @@
 | 主戰場的三個面板 | 接上 | 176×96 在 x 64／256／448、y 268；外框的黑白立體邊照 `0x22200` 逐條抄，上緣兩列 100% |
 | 主戰場的肖像 | 接上 | 框 `FBRC0` 在 (64,268)／(352,268) 各 100%；肖像 64×80 在 (72,276)／(360,276)，**攻方那張左右翻**（`F228` 翻過來 100%）|
 | 訊息框（肖像＋對白泡泡） | 接上 | 原版的訊息常式 `0x3273e` 直接呼叫兩次（上格肖像在右、下格肖像在左），肖像 64×80、白泡泡、四邊、尾巴、名字的黑底與 remake 的 `ui.DrawBubble` **逐像素相同**；對白框裡兩邊只有白與擲出來的那一色（`TestZZBubbleMatchesTheOriginal`，Issue #49）。接上的呼叫端是元月與繼承的六處，其餘 105 處還沒（#51、#52）|
-| 畫肖像的九個呼叫端 | 盤點完 | `0xf7b4` 的九個呼叫端各對到畫面（`docs/spec/005` §9.1；`SAN1_FACES` 的普查跑玩家命令、盤面己、盤面丁、戰役鍵掃，573 次命中七處）：主畫面與主戰場面板接上、訊息框六處接上（#49）、人物資料卡／尋訪／自創與選君主（#54）、單挑與戰場查看（#55）還沒 |
+| 畫肖像的九個呼叫端 | 盤點完 | `0xf7b4` 的九個呼叫端各對到畫面（`docs/spec/005` §9.1；`SAN1_FACES` 的普查跑玩家命令、盤面己、盤面丁、戰役鍵掃，573 次命中七處）：主畫面與主戰場面板接上、訊息框六處接上（#49）、人物資料卡／尋訪／自創與選君主接上（#54）、單挑與戰場查看（#55）還沒 |
+| 人物資料卡（查看→武將） | 接上 | 直接呼叫原版的 `0xf874`（要用真正的段 `0x0f17:0x0704`），盤面從原版記憶體解出、三位各走身分那一行的一個分支：灰底、`SIDEC` 外框、肖像與 `FBRC` 框**逐像素相同**，每一行字兩邊都有墨（`TestZZPersonCardMatchesTheOriginal`）；三種語言每一行都放得進它的槽（`TestCardFitsEveryLanguage`）。字模是 remake 的字庫；譯文的三處退路是 remake 差異（`docs/spec/005` §9.2，Issue #54）|
+| 尋訪找到人的肖像 | 接上 | 清成藍的面板上直接呼叫 `0xf7b4(488, 88, …)`，整塊面板（含留著的 `SIDEB` 外框）與 remake 的 `Bubble{FaceOnly}` **逐像素相同**（`TestZZSearchFaceMatchesTheOriginal`）；玩家尋訪之後排進 pending 的兩格（`TestPlayerSearchQueuesTheScreens`）。軍師的建議與掃描動畫還沒接（`docs/spec/005` §9.3）|
+| 選君主（一頁六位） | 接上 | `bootToLordPick` 停在君主編號的數字輸入：地圖、`SIDEB`／`SIDEA` 外框、六張肖像、彩色空心框、勢力色塊**逐像素相同**，名字／編號／提示只比有沒有墨（`TestZZLordPickScreenMatchesTheOriginal`）；DOSBox-X 的同一格（`workplace/rec7` 第 10 步）只差游標的 55–59 個像素（`docs/spec/005` §9.4）|
+| 新君主分配能力 | 接上 | 翻兩頁選 15、難度 5、停在 `0x13150`：地圖、外框、肖像與 `FBRD` 框**逐像素相同**，六行字與名字只比有沒有墨（`TestZZCustomLordScreenMatchesTheOriginal`）。原版開局把範本改寫成 18／80／50／50／50、100 點——規則層對齊另開 Issue（`docs/spec/005` §9.5、`docs/spec/013` §4）|
 | 主戰場面板裡的字 | 接上 | 郡名 32×32 在 (8,52)／(8,84)、統帥名 32×32 直排（攻 144、守 320）、五行資料在攻 176／守 256 的 y 268＋16k，字色攻 12 守 10，全部從 `0x22c94`／`0x22fd4`／`0x2181d` 與 `DS:0x7b8c` 的表讀出；45 個文字格對基準畫面**格內有墨、格外那一圈沒有不屬於任何一格的墨**（`TestArtBattleTextCellsMatchTheOriginal`，Issue #48）。字模是 remake 的字庫 |
 | 場地四周的階梯邊框 | 接上 | `0x21ee2`／`0x220f0` 的十六條線逐條抄；整片場地（含邊框與空隙）**121560 格逐格相同**，只挖掉五支部隊站的格子 |
 | 城門圖示（每組旗的第六張）| 原版不畫 | `WFLAG?5.IMG` 是 16×15 的城門圖，載進槽 25／31／37／43 之後沒有呼叫端畫它——槽號的式子只有 `0x21c06` 一處而隊伍永遠 0–4；實跑一場含對戰子畫面，四個槽畫 0 次（`TestZZCityGateIconNeverDrawn`，`docs/re/05` §2.5）。remake 不畫 |
@@ -374,6 +378,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 訊息框：肖像＋對白泡泡（元月與繼承的六處） | 完成 | L1 | base | `TestZZBubbleMatchesTheOriginal` | 2026-09-16（Issue #49）：原版每一則對白都由訊息常式 `0x3273e` 畫肖像、名字、白泡泡與 16×32 的兩行字，字色是進去就擲的 `RND(8)`。remake：`game.Bubble` 掛在事件上、`ui.DrawBubble`、`session.Bubbles` 佇列、主畫面按任意鍵收一格。對拍直接呼叫原版的常式畫上格（肖像在右）與下格（肖像在左），肖像、泡泡、尾巴、名字的黑底逐像素相同。接上的是元月與繼承的六個呼叫端；其餘 105 處（電腦諸侯的人事與計略、戰場、單挑）在 #51、#52。片語表 350–499 抽出在 `docs/re/12`。（`docs/spec/005`、`docs/re/12`） |
 | 開新局：自創君主做好了，多人還沒 | 完成 | L1 | base | `TestPicksACustomLord`、`TestOrdinaryLordDoesNotCarryCustomState` | **自創君主做好了**（`docs/spec/013`）：選角色那一層列出新君主欄，四項能力用 100 點分配、領地在空白郡之間換，寫進劇本之後開局。  資料是原版的：劇本 001 的槽 14／15 君主欄指向填充筆且沒有領地，與手冊「16（含 2 個新君主欄）」對得上；初始值取 `AA.EXE` `0x3e44c` 的四筆範本（年齡 20、90／60／80／90、肖像各異）。  ⚠ 三件沒做：**年齡與姓名照範本不給改**（原版怎麼收沒解）、**點數怎麼花是 `L3`**（手冊只說 100 點）、**多人還沒做**（見 `multiplayer`）。字模見 `custom-lord-glyphs`。（`docs/spec/013`） |
 | 分頁捲得動、長句折行不截字 | 完成 | — | both | `TestPageScrollsToTheEnd`、`TestTacticalReportsAreTranslatedAndFit` | 分頁先前沒有捲動（只放得下十九行，三十天的戰報、一郡五十位將軍讀不到後面），而且把超出寬度的部分截掉——戰報長句截掉的正好是句尾的傷亡數字。改成 ↑↓／PgUp／PgDn 捲動、長句折行（`PageLines`），標題帶位置。（`docs/spec/014`） |
+| 人物資料卡、尋訪找到人、選君主與新君主的肖像畫面 | 完成 | L1 | base | `TestZZPersonCardMatchesTheOriginal`、`TestZZSearchFaceMatchesTheOriginal`、`TestZZLordPickScreenMatchesTheOriginal`、`TestZZCustomLordScreenMatchesTheOriginal` | 2026-09-17（Issue #54）：`0xf7b4` 九個呼叫端裡主畫面這一層的四種畫面接上——查看→武將畫人物資料卡（`0xf874`：灰底、`SIDEC` 外框、`FBRC` 框、名字 32×32、八行資料），玩家尋訪找到人先亮那一位的肖像 (488,88) 再由尋訪者報結果（`Bubble{FaceOnly}`），開新局選君主是一頁六位的肖像、空心框、勢力色塊與編號（`0x124ca`），新君主分配能力畫肖像加框、名字與六行（`0x12df4`）。四張都對原版逐像素比（字模除外），選君主那一格另拿 DOSBox-X 的畫面交叉驗（只差游標）。順手量到：面板清底 `0x27e8` 只清外框裡面；`0x262c` 用樣式 mod 5 挑 `SIDEA`–`E`；文字常式 `0x1d4e` 的「背景」是描邊色；新君主開局的起始值是 18／80／50／50／50（與 spec/013 的範本不同，規則層另開 Issue）。（`docs/spec/005`、`docs/spec/013`） |
 
 ### 多語系
 
