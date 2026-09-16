@@ -82,6 +82,19 @@ type dayBoard struct {
 	// short 表示這張盤面本來就幾天就打完（要看的是一場單挑），不套
 	// 「至少十次決策」的樣本門。
 	short bool
+	// enemyWar 把守方每一位的戰力另外壓成這個值（0 ＝ 不動）：stats 把智與
+	// 戰力一起設，要「智 99 會用計、戰力 1 打不痛人」就靠它。
+	enemyWar int
+	// weatherDays 把每一天的天候直寫進原版（0 晴、1 雨、2 風；索引是
+	// 天數 − 1，超出就從頭循環）——火攻要風、水淹要雨、燒糧不能雨。
+	// 每天第一條鏈進來之前寫，remake 那一邊在同一個時點跟著設。
+	weatherDays []int
+	// shallow 把玩家那支旁邊的一個空格改成淺水（地形碼 3）：水淹要目標的
+	// 鄰格有淺水。
+	shallow bool
+	// enemyGold 把目標郡的金改成這個數（0 ＝ 照 stageABattleWith 的 500）：
+	// 守方軍力的金從它來，火攻 600、水淹 500，只有五百一次都用不了。
+	enemyGold int
 }
 
 // dayRig 是一版的路標：哪些位址攔、工作區的哪幾格讀。兩版的戰場工作區
@@ -156,6 +169,11 @@ func baseDayRig() dayRig {
 		//   戊 玩家兩萬兵、智 10 對五支各一千五、敵將智武 99 → 計謀**成功**的
 		//      那幾條路（火攻／水淹／陷阱／誘敵／燒糧／圍攻的效果與骰序，
 		//      Issue #24）；前四張盤面玩家的智是 99，電腦的計謀一次都不會成
+		//   辛 玩家兩萬、智 10 對五支各一千五、敵將智 99 戰力 1、兩邊都打不痛
+		//      人、天候單日風雙日雨、玩家旁邊擺一格淺水、守方金九千 →
+		//      電腦用計**成功**的那幾條路（火攻要風、水淹要雨加淺水、
+		//      圍攻要兩支貼著、誘敵無條件；`RND(6)` 挑計，三十天約八十次；
+		//      Issue #40）
 		//   己 同丁但四支五千、敵將武 4、玩家戰力 0 → 子畫面裡的**單挑**
 		//      （敵將貼上玩家那一位時 `4 > 0 + RND(20)` 就叫陣，每個時刻
 		//      兩成；武 4 是戰力值還是 0 的上限——城池攻值 27 ＋ 猛將 8，
@@ -171,6 +189,9 @@ func baseDayRig() dayRig {
 			{name: "戊", soldiers: 20000, enemies: 5, enemySoldiers: 1500, stats: 99, myIntel: 10, difficulty: 5},
 			{name: "己", soldiers: 2400, enemies: 4, enemySoldiers: 5000, stats: 4, difficulty: 5,
 				weak: true, zeroWar: true, enemyWeak: true, enemyLoyal: true, allStats: true, solid: true, days: 30},
+			{name: "辛", soldiers: 20000, enemies: 5, enemySoldiers: 1500, stats: 99, enemyWar: 1, myIntel: 10, difficulty: 5,
+				weak: true, enemyWeak: true, enemyLoyal: true, allStats: true, solid: true, shallow: true, enemyGold: 9000, days: 30,
+				weatherDays: []int{2, 1}},
 		},
 		seedLo: 0xa3ae, seedHi: 0xa3b0,
 		rnd: 0x10b0c, rand: oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, srand: oracle.Addr{Seg: 0x5c4, Off: 0x2c9e},
@@ -413,6 +434,9 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 			}
 		}
 	}
+	if bd.enemyGold > 0 {
+		o.SetWord(addr(staBase+uint32(to*176+18)), uint16(bd.enemyGold))
+	}
 	if bd.enemyWeak || bd.enemyLoyal || bd.allStats || len(bd.enemySoldiersBy) > 0 {
 		nth := 0
 		for i := 0; i < 350; i++ {
@@ -427,6 +451,9 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 			if bd.allStats && bd.stats > 0 {
 				o.SetByte(addr(rec+9), byte(bd.stats))
 				o.SetByte(addr(rec+10), byte(bd.stats))
+			}
+			if bd.enemyWar > 0 {
+				o.SetByte(addr(rec+10), byte(bd.enemyWar))
 			}
 			if bd.enemyLoyal {
 				o.SetByte(addr(rec+16), 100)
@@ -475,12 +502,14 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		// seed 是進決策鏈時原版的亂數種子，gap 是這條鏈結束到下一條
 		// 鏈開始之間原版擲的骰（呼叫端），不重拍模式要接這些。
 		// entry 是進鏈時這支部隊的樣子（複本，重拍那一段跑 DecideBase
-		// 會改到 unit），fresh 是第一條鏈另拍的一份完整盤面，給不重拍
-		// 模式從頭走。
-		seed  uint32
-		gap   []string
-		entry *battle.Unit
-		fresh *battle.Battle
+		// 會改到 unit），others 是同一刻其餘每一支的複本（重拍那一段的
+		// 快戰、計謀、圍攻也改到 model 裡被打的那幾支），fresh 是第一條鏈
+		// 另拍的一份完整盤面，給不重拍模式從頭走。
+		seed   uint32
+		gap    []string
+		entry  *battle.Unit
+		others []*battle.Unit
+		fresh  *battle.Battle
 	}
 	cloneUnit := func(u *battle.Unit) *battle.Unit {
 		if u == nil {
@@ -653,15 +682,33 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		}
 		gapN = 0
 	}
+	forcedWeather := func(day int) int {
+		if len(bd.weatherDays) == 0 {
+			return -1
+		}
+		i := day - 1
+		if i < 0 {
+			i = 0
+		}
+		return bd.weatherDays[i%len(bd.weatherDays)]
+	}
 	o.OnCall(addr(rig.chain), func(o *oracle.Oracle) {
 		if dgroup == 0 {
 			return
 		}
 		flushGap(o)
+		if wx := forcedWeather(w16(rig.day)); wx >= 0 {
+			o.SetWord(oracle.Addr{Seg: work(), Off: 0x17bc}, uint16(wx))
+		}
 		cur = snapshot(int(int16(o.Arg(0))), int(int16(o.Arg(1))))
 		cur.seed = seedNow(o)
 		if noresync {
 			cur.entry = cloneUnit(cur.unit)
+			for _, ou := range cur.model.Units {
+				if ou != cur.unit {
+					cur.others = append(cur.others, cloneUnit(ou))
+				}
+			}
 			if len(decisions) == 0 {
 				cur.fresh = snapshot(cur.army, cur.team).model
 			}
@@ -809,6 +856,28 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 	placedAt := battle.NoHex
 	if meRec >= 0 {
 		placedAt = battle.FromOffset(w16(meRec+unitCol), w16(meRec+unitRow))
+	}
+	shallowAt := battle.NoHex
+	if bd.shallow && meRec >= 0 {
+		// 玩家那支的六個鄰格裡挑第一個空格改成淺水（地形碼 3）。
+		c, r := w16(meRec+unitCol), w16(meRec+unitRow)
+		for dir := 0; dir < 6; dir++ {
+			i := ((c%2)*6 + dir) * 2
+			dc := int(int16(o.Word(oracle.Addr{Seg: dgroup, Off: rig.colTable + uint16(i)})))
+			dr := int(int16(o.Word(oracle.Addr{Seg: dgroup, Off: rig.rowTable + uint16(i)})))
+			nc, nr := c+dc, r+dr
+			if nc < 0 || nc >= 12 || nr < 0 || nr >= 10 {
+				continue
+			}
+			if o.Word(oracle.Addr{Seg: work(), Off: uint16(rig.occ + (nr*12+nc)*2)}) != 0xFFFF {
+				continue
+			}
+			at := oracle.Addr{Seg: work(), Off: uint16(0x163a + nr*12 + nc)}
+			o.SetByte(at, o.Byte(at)&0xf0|3)
+			shallowAt = battle.FromOffset(nc, nr)
+			t.Logf("把玩家那支旁邊的 (%d,%d) 改成淺水", nc, nr)
+			break
+		}
 	}
 
 	days := 32
@@ -1020,6 +1089,17 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		return fmt.Sprintf("兵 %d 將 %d 落點 (%d,%d) 移動 %d 箭 %d 陷阱 %d 綜合 %d 在場 %v",
 			u.Soldiers(), u.LeaderCount(), x, y, u.Move, u.Arrows, u.Trapped, u.Quality, u.Alive())
 	}
+	// leaderRoster 是一支部隊逐槽的「人物槽號:兵」（火攻、水淹逐將領扣兵
+	// 與除名，只比部隊的合計看不出是哪一位掉了兵）。
+	leaderRoster := func(u *battle.Unit) string {
+		var parts []string
+		for i := range u.Leaders {
+			if l := &u.Leaders[i]; l.InUnit() {
+				parts = append(parts, fmt.Sprintf("%d:%d", l.Index, l.Soldiers))
+			}
+		}
+		return fmt.Sprint(parts)
+	}
 	layout := func(b *battle.Battle) string {
 		var parts []string
 		for _, u := range b.Units {
@@ -1061,6 +1141,26 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 			t.Errorf("✗ %s：進鏈時部隊狀態不同——remake %s；原版 %s", tag, got, want)
 			stateBad++
 		}
+		// **被打的那一邊也要比**：火攻、水淹、圍攻、快戰的殺傷落在別支
+		// 部隊上，只比決策的那一支看不到。原版那一刻的其餘每一支
+		// （d.others 是進鏈時拍的複本；d.model 裡的那幾支已經被重拍那一段
+		// 的 DecideBase 打過）逐支對 remake 的兵、將領數、落點。
+		for _, ou := range d.others {
+			ru := findUnit(model, int(ou.Side.OriginalIndex()), int(ou.Formation.OriginalIndex()))
+			if ru == nil {
+				if ou.Alive() {
+					t.Errorf("✗ %s：remake 少了 %s%s（原版 %s）", tag, ou.Side, ou.Formation, unitState(ou))
+					stateBad++
+				}
+				continue
+			}
+			if ru.Soldiers() != ou.Soldiers() || ru.LeaderCount() != ou.LeaderCount() || ru.At != ou.At ||
+				leaderRoster(ru) != leaderRoster(ou) {
+				t.Errorf("✗ %s：%s%s 進鏈時不同——remake %s %s；原版 %s %s", tag, ou.Side, ou.Formation,
+					unitState(ru), leaderRoster(ru), unitState(ou), leaderRoster(ou))
+				stateBad++
+			}
+		}
 		got := model.DecideBase(u)
 		model.EndTurn(u)
 		if i+1 < len(decisions) && decisions[i+1].day != d.day {
@@ -1071,6 +1171,10 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 				if day == first.day && placedAt != battle.NoHex {
 					if p := findUnit(model, 2, 0); p != nil {
 						p.At = placedAt
+					}
+					// 玩家那支搬過去的同一個時點，那一格淺水也是那時改的。
+					if shallowAt != battle.NoHex {
+						model.Field.Set(shallowAt, battle.Shallow)
 					}
 				}
 				placeNew(next.model)
@@ -1084,6 +1188,11 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 					model.EndTurn(p)
 				}
 				model.EndDay()
+			}
+			if wx := forcedWeather(next.day); wx >= 0 {
+				// 原版那一邊在每天第一條鏈之前把天候直寫掉了，remake 跟著設
+				// （每天重擲那一擲兩邊都擲過了，只是值被蓋掉）。
+				model.Weather = [...]battle.Weather{battle.Clear, battle.Rainy, battle.Windy}[wx%3]
 			}
 			applySrands()
 			if model.Weather != next.model.Weather {

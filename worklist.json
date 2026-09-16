@@ -305,11 +305,11 @@
       "docs": [
         "docs/re/05"
       ],
-      "note": "陷阱那一支量到：隨軍的金 5000 → 4900（費用表 `DS:0x7f62`）、守軍被困 6 天。順帶解出計謀只能對相鄰六格用。",
+      "note": "陷阱那一支量到：隨軍的金 5000 → 4900（費用表 `DS:0x7f62`）、守軍被困 6 天。順帶解出計謀只能對相鄰六格用。2026-09-16 補齊成功的效果：`TestZZUnitAIDayParity` 盤面辛（電腦用計 22 次全成：火攻 6、水淹 3、誘敵 6、圍攻 7）不重拍下每一條鏈進來時被打的那幾支逐將領的兵、將領數與落點都與原版相同（Issue #40）；打光之後的除名與燒死實跑還沒走到。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
-        "run": "TestBattlePlotsRunLive|TestSiegeWithTwoUnits",
+        "run": "TestBattlePlotsRunLive|TestSiegeWithTwoUnits|TestZZUnitAIDayParity",
         "tags": "oracle",
         "needs": [
           "org_game",
