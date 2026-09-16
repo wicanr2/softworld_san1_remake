@@ -46,7 +46,8 @@ func (b *Battle) Duel(a *Unit, d Dir, answer func() bool) error {
 	return nil
 }
 
-// duelLeaders 是一場單挑的本體（`0x30a1e`，`docs/re/05` §9）：ca 叫陣、ct 應戰或拒絕。回落敗的那一位（平手或拒絕是 nil）與
+// duelLeaders 是一場單挑的本體（`0x30a1e`，加強版 `0x2d7ec`，`docs/re/05`
+// §9）：ca 叫陣、ct 應戰或拒絕。回落敗的那一位（平手或拒絕是 nil）與
 // 勝方。落敗被擒時先叫 seized（對戰子畫面用它把人記進捕獲方的名單），
 // 戰死的當場標記。answer 是被挑戰方由玩家控制時的答案（原版問
 // 「接受嗎(Y/N)」），nil 就照電腦的判定 `acceptsDuel`。
@@ -134,7 +135,7 @@ func (b *Battle) duelLeaders(ca, ct *Leader, answer func() bool, seized func(los
 	return ct, ca
 }
 
-// 單挑的兩條公式（`0x310b6`／`0x31170`，`L0`、`[base]`）。
+// 單挑的兩條公式（`0x310b6`／`0x31170`，`L0`、`[both]`）。
 //
 //	回合數 ＝ RND(甲戰力 ÷ 2 + 乙戰力 ÷ 2) + 甲戰力 ÷ 7 + 乙戰力 ÷ 7
 //	每一擊 ＝ max(0, RND(5) − RND(5) − RND(6) + (出手方戰力 − 對方戰力) − 4)
@@ -173,7 +174,7 @@ func DuelBlow(mine, theirs, roll5a, roll5b, roll6 int) int {
 	return n
 }
 
-// 接不接受單挑（`0x30c5b`–`0x30d5b`，`L0`、`[base]`）。
+// 接不接受單挑（`0x30c5b`–`0x30d5b`，加強版 `0x2da09`–`0x2db1f`，`L0`）。
 //
 // **預設是拒絕**，被挑戰者由電腦控制時逐道看，過了任一道就翻成接受
 // ——**每一道都會走到**，翻成接受之後後面的骰照擲（旗標只是被寫成 0）：
@@ -189,16 +190,25 @@ func DuelBlow(mine, theirs, roll5a, roll5b, roll6 int) int {
 // `30 × [bp-0x2c]` 那一筆）。被挑戰者由玩家控制時原版直接問
 // 「接受嗎(Y/N)」，不走這一套。
 //
+// 加強版（`[plus]`）第一道是 `RND(15) − 7`（`0x2da14`–`0x2da2f`），
+// 前三道之後再加一道：`RND(3 × (((難度 − 1) mod 10) + 1))` 擲到 1
+// 才擲 `RND(3)`，也擲到 1 就接受（`0x2daa2`–`0x2db1f`）。
+//
 // 走完還沒接受的，再看 `被挑戰者的戰力 ≥ RND(5) + 90`（`0x30d66`）：
 // 猛將照樣應戰，多印一句對白。玩家答 N 之後也走這一道。
 const (
-	DuelWarSpread   = 10 // 第一道的 RND 上限
-	DuelWarEdge     = 5  // 第一道扣掉的常數
-	DuelOddsSpread  = 20 // 第二道的 RND 上限
-	DuelHalfTroops  = 2  // 第二道的兵力比
-	DuelFifthTroops = 5  // 第三道的兵力比
-	DuelBraveFloor  = 90 // 最後那一道：戰力 ≥ RND(5) + 90 就應戰
-	DuelBraveSpread = 5
+	DuelWarSpread       = 10 // 第一道的 RND 上限
+	DuelWarEdge         = 5  // 第一道扣掉的常數
+	PlusDuelWarSpread   = 15 // 加強版第一道的 RND 上限
+	PlusDuelWarEdge     = 7  // 加強版第一道扣掉的常數
+	DuelOddsSpread      = 20 // 第二道的 RND 上限
+	DuelHalfTroops      = 2  // 第二道的兵力比
+	DuelFifthTroops     = 5  // 第三道的兵力比
+	PlusDuelLuckPerMode = 3  // 加強版第四道：RND(3 × 模式) 擲到 1
+	PlusDuelLuckHit     = 1
+	PlusDuelLuckSpread  = 3  // 再擲 RND(3) 也要 1
+	DuelBraveFloor      = 90 // 接受之後那一句台詞的門：戰力 ≥ RND(5) + 90
+	DuelBraveSpread     = 5
 )
 
 // DuelAccepted 回報電腦控制的被挑戰者接不接受這場單挑（原版的三道，
@@ -219,13 +229,17 @@ func DuelAccepted(challengerWar, defenderWar, challengerTroops, defenderTroops, 
 }
 
 // acceptsDuel 是被挑戰者（電腦）接不接受，骰照原版的順序抽：第一道一擲、
-// 第二道的兵力條件成立才一擲。「戰力 ≥ RND(5) + 90」那一道兩種控制方
-// 都走，在 `duelLeaders` 裡。
+// 第二道的兵力條件成立才一擲、（加強版）第四道一擲、擲到 1 再一擲。
+// 「戰力 ≥ RND(5) + 90」那一道兩種控制方都走，在 `duelLeaders` 裡。
 func (b *Battle) acceptsDuel(challenger, defender *Leader) bool {
 	cw, dw := int(challenger.War), int(defender.War)
 	cs, ds := challenger.Soldiers, defender.Soldiers
 	accept := false
-	if b.roll(DuelWarSpread)+dw-DuelWarEdge > cw {
+	if b.AI == AIPlus {
+		if b.roll(PlusDuelWarSpread)+dw-PlusDuelWarEdge > cw {
+			accept = true
+		}
+	} else if b.roll(DuelWarSpread)+dw-DuelWarEdge > cw {
 		accept = true
 	}
 	if cs/DuelHalfTroops > ds && b.roll(DuelOddsSpread)+dw > cw {
@@ -233,6 +247,12 @@ func (b *Battle) acceptsDuel(challenger, defender *Leader) bool {
 	}
 	if cs/DuelFifthTroops > ds {
 		accept = true
+	}
+	if b.AI == AIPlus {
+		mode := (b.Difficulty-1)%plusModeSpan10 + 1
+		if b.roll(PlusDuelLuckPerMode*mode) == PlusDuelLuckHit && b.roll(PlusDuelLuckSpread) == PlusDuelLuckHit {
+			accept = true
+		}
 	}
 	return accept
 }

@@ -1714,12 +1714,12 @@
         "docs/mechanics/40",
         "docs/design/02"
       ],
-      "note": "九支的角色、條件與骰序（`docs/re/05` §12.1–12.2，Issue #22／#24）、加強版的改動（§12.5，#28）與選項 7 進的對戰子畫面（§10，#30：版型、起點、每一時刻的判斷式與六處骰、尋路、攻擊、俘虜）都對回原版；`SAN1_NORESYNC=1 TestZZUnitAIDayParity` 五張盤面整場逐條相同（丁含一整場對戰）。還沒對的是加強版的對戰子畫面（§10.9）與子畫面裡單挑的兩擲對白（§13）。",
+      "note": "九支的角色、條件與骰序（`docs/re/05` §12.1–12.2，Issue #22／#24）、加強版的改動（§12.5，#28）與選項 7 進的對戰子畫面（§10，#30：版型、起點、每一時刻的判斷式與六處骰、尋路、攻擊、俘虜）都對回原版；`SAN1_NORESYNC=1 TestZZUnitAIDayParity` 五張盤面整場逐條相同（丁含一整場對戰）。2026-09-16 補齊：加強版的對戰子畫面（§10.9，兩版指令流只差五處）與單挑常式的整串骰（§9.0，接受判定後兩道比挑戰者的兵、一回合一擊輪流打、對白與特效各一擲）——`TestZZUnitAIDayParity` 六張（己：兩場單挑）、`TestZZUnitAIDayParityPlus` 七張（庚：一場單挑）不重拍逐條相同（Issue #37／#38）。",
       "acceptance": "九個選項各自對應哪一個動作有答案，選項 7 的子畫面整場對拍相同",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
-        "run": "TestZZUnitAIDayParity",
+        "run": "TestZZUnitAIDayParity|TestZZUnitAIDayParityPlus",
         "tags": "oracle",
         "needs": [
           "org_game",

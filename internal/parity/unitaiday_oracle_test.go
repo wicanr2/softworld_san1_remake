@@ -221,6 +221,9 @@ func plusDayRig() dayRig {
 		//   戊 玩家智 10 對五位智武 99 → 計謀成功的那幾條路
 		//   己 玩家擺在帥隊同一直線隔一格 → 弓箭（沒有相鄰敵軍時只剩移動、
 		//      弓箭、休息三支）
+		//   庚 同丁但敵將武 99、難度 10（子畫面的行動門 92%）→ 子畫面裡的
+		//      **單挑**：敵將貼上玩家那一位就叫陣（`戰力 > 1 + RND(5)`），
+		//      玩家的答案從鍵序來（Issue #37／#38）
 		boards: []dayBoard{
 			{name: "甲", soldiers: 20000, enemies: 5, enemySoldiers: 1500, difficulty: 5},
 			{name: "乙", soldiers: 30000, enemies: 5, enemySoldiers: 1000, difficulty: 15, weak: true, days: 14},
@@ -230,6 +233,8 @@ func plusDayRig() dayRig {
 				weak: true, enemyWeak: true, enemyLoyal: true, enemySoldiersBy: []int{3000, 4000, 8000, 4000, 4000}, days: 12},
 			{name: "戊", soldiers: 20000, enemies: 5, enemySoldiers: 1500, stats: 99, myIntel: 10, difficulty: 5, clearTarget: true},
 			{name: "己", soldiers: 20000, enemies: 5, enemySoldiers: 1500, difficulty: 5, clearTarget: true, apart: true, days: 10},
+			{name: "庚", soldiers: 2000, enemies: 5, enemySoldiers: 4000, stats: 99, difficulty: 10, clearTarget: true,
+				weak: true, enemyWeak: true, enemyLoyal: true, enemySoldiersBy: []int{3000, 4000, 8000, 4000, 4000}, days: 12, short: true},
 		},
 		seedLo: 0xa566, seedHi: 0xa568,
 		rnd: plusRndFn, rand: oracle.Addr{Seg: 0x5b9, Off: 0x2cb2}, srand: oracle.Addr{Seg: 0x5b9, Off: 0x2ca0},
@@ -444,10 +449,14 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 
 	work := func() uint16 { return o.Word(oracle.Addr{Seg: dgroup, Off: rig.workSegPtr}) }
 	w16 := func(off int) int { return int(o.Word(oracle.Addr{Seg: work(), Off: uint16(off)})) }
-	// `SAN1_SKIRMISH=1`：把對戰子畫面的每一步倒出來（原版限定，Issue #30）。
+	// `SAN1_SKIRMISH=1`：把對戰子畫面的每一步倒出來（Issue #30／#37）。
 	var skirmish *[]string
-	if envOr("SAN1_SKIRMISH", "") != "" && rig.edition == state.EditionBase {
-		skirmish = attachSkirmishTrace(t, o, work, w16, genBase)
+	if envOr("SAN1_SKIRMISH", "") != "" {
+		sites := baseSkirmishSites
+		if rig.edition == state.EditionPlus {
+			sites = plusSkirmishSites
+		}
+		skirmish = attachSkirmishTrace(t, o, work, w16, genBase, sites)
 	}
 
 	// 一次決策的紀錄。
@@ -1051,14 +1060,6 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		if got, want := unitState(u), unitState(d.entry); got != want {
 			t.Errorf("✗ %s：進鏈時部隊狀態不同——remake %s；原版 %s", tag, got, want)
 			stateBad++
-		}
-		if d.option == 7 && rig.edition == state.EditionPlus {
-			// 加強版的對戰子畫面（`0x2ae66`）還沒對回 `ASV.EXE`：行動門是
-			// `RND(40)`、單挑門是 `RND(5)` 再 `RND(3)`（已讀），但版型、起點、
-			// 移動力與走法還沒讀，remake 走到第三個行動時刻就比原版早一步
-			// 貼上敵帥。不重拍走到這裡為止；原版這一層見 `docs/re/05` §10.9。
-			t.Logf("%s：原版選了對戰（選項 7），加強版的子畫面還沒對回 ASV.EXE，不重拍比到這一條為止（%d／%d 條）", tag, i, len(decisions))
-			break
 		}
 		got := model.DecideBase(u)
 		model.EndTurn(u)

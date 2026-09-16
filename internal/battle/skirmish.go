@@ -50,8 +50,10 @@ const (
 	// 就想逃，逃的方向是 (RND(3) ＋ 最強鄰敵的方向 ＋ 2) mod 6。
 	skirmishFleeSpread = 3
 	// skirmishEngageGate：敵帥不在旁邊時 `RND(16)==0` 才就地交手，
-	// 否則往敵帥靠（`0x2f086`）。
-	skirmishEngageGate = 16
+	// 否則往敵帥靠（`0x2f086`）。加強版比的是 `== 15`（`0x2bf55`，`[plus]`）
+	// ——機率一樣，值不一樣，接原版的骰序時分得出來。
+	skirmishEngageGate    = 16
+	plusSkirmishEngageHit = 15
 	// skirmishDuelSpread：`我方戰力 > 對方戰力 ＋ RND(20)` 就單挑（`0x2f1b7`）。
 	// 加強版是 `RND(5)`，過了再擲 `RND(3)`，擲到 1 就不單挑
 	//（`0x2c068`–`0x2c09f`，`[plus]`）。
@@ -355,7 +357,15 @@ func (s *Skirmish) Run() {
 	for {
 		s.log("── 時刻 %d", s.Hour)
 		for side := range s.Gens {
-			for _, g := range s.Gens[side] {
+			// 原版每一時刻第 0 槽先動、第 9 槽最後（`0x2e4a0`–`0x2e4f6`）；
+			// 加強版反過來，**第 9 槽先動、帥隊最後**（`0x2b418`–`0x2b47a`
+			// 的迴圈從 9 數到 0，`[plus]`）。
+			for k := 0; k < skirmishSlots; k++ {
+				slot := k
+				if b.AI == AIPlus {
+					slot = skirmishSlots - 1 - k
+				}
+				g := s.Gens[side][slot]
 				if s.over() || g == nil || g.Gone {
 					continue
 				}
@@ -483,8 +493,12 @@ func (s *Skirmish) auto(g *SkirmishGeneral) {
 		target = s.Gens[1-g.Side][0]
 	}
 	if !(hasAdj && target != nil && target.Slot == 0) {
-		if b.roll(skirmishEngageGate) != 0 {
-			s.log("  RND(16)!=0 → 往敵帥靠")
+		hit := 0
+		if b.AI == AIPlus {
+			hit = plusSkirmishEngageHit
+		}
+		if b.roll(skirmishEngageGate) != hit {
+			s.log("  RND(16)!=%d → 往敵帥靠", hit)
 			enemy := s.Gens[1-g.Side][0]
 			s.route(g.Col, g.Row, enemy.Col, enemy.Row, g.Side)
 			for s.stepAlong(g) {
