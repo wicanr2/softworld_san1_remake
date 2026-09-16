@@ -1054,6 +1054,72 @@ func TestLastChiefDeathReleasesThePrefecture(t *testing.T) {
 	}
 }
 
+// TestPlagueStrikesGeneralsToo 釘住瘟疫對人物那一段（`0x1690d`–`0x169aa`，
+// `L0`、`[both]`）：郡裡每一位人物兵剩 40–59%、體能剩 70–79%（截尾），
+// 別的郡一個都不動；人口剩 40–59% 且截到百位、低於五千補到五千；骰序是
+// 特效一擲（`RND(4)`）、人口一擲，再每一位兵、體能各一擲。
+func TestPlagueStrikesGeneralsToo(t *testing.T) {
+	sc := loadScenario(t, state.Scenario1)
+	g, err := New(sc, 0, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := g.Prefecture(8) // 齊郡，劉備的郡
+	before := map[int][2]int{}
+	var inside []int
+	for i := range g.generals {
+		x := &g.generals[i]
+		before[i] = [2]int{x.Soldiers, int(x.Stamina)}
+		if x.Location == p.ID {
+			inside = append(inside, i)
+		}
+	}
+	if len(inside) == 0 {
+		t.Fatal("齊郡裡沒有人")
+	}
+	p.Population = 123_456
+	var asked []int
+	g.SeedRand(0x13579bdf)
+	g.TraceRolls(func(n, out int, salt []int) { asked = append(asked, n) })
+	g.plague(p)
+	if want := 2 + 2*len(inside); len(asked) != want {
+		t.Errorf("瘟疫擲了 %d 次，應該是特效、人口各一次加郡裡 %d 位各兩次 ＝ %d", len(asked), len(inside), want)
+	}
+	if p.Population%100 != 0 || p.Population < 123_400*40/100 || p.Population > 123_400*59/100 {
+		t.Errorf("人口 %d：應該是 1234 × (40..59)%% 再乘一百", p.Population)
+	}
+	for i := range g.generals {
+		x := &g.generals[i]
+		b := before[i]
+		if x.Location != p.ID {
+			if x.Soldiers != b[0] || int(x.Stamina) != b[1] {
+				t.Errorf("人物 %d 不在齊郡卻被動到：兵 %d→%d 體 %d→%d", i, b[0], x.Soldiers, b[1], x.Stamina)
+			}
+			continue
+		}
+		if b[0] > 0 && (x.Soldiers < b[0]*40/100 || x.Soldiers > b[0]*59/100) {
+			t.Errorf("人物 %d 兵 %d → %d，應該剩 40–59%%", i, b[0], x.Soldiers)
+		}
+		if b[1] > 0 && (int(x.Stamina) < b[1]*70/100 || int(x.Stamina) > b[1]*79/100) {
+			t.Errorf("人物 %d 體能 %d → %d，應該剩 70–79%%", i, b[1], x.Stamina)
+		}
+	}
+	// 守將清單重整過：存的兵士是 Σ兵力 ÷ 100。
+	sum := 0
+	for _, x := range g.Garrison(p.ID) {
+		sum += x.Soldiers
+	}
+	if p.troops != sum/100 {
+		t.Errorf("存的兵士 %d，應該是 Σ兵力 ÷ 100 ＝ %d", p.troops, sum/100)
+	}
+	// 人口下限五千。
+	p.Population = 6000
+	g.plague(p)
+	if p.Population != QuakePopFloor {
+		t.Errorf("六千人鬧瘟疫剩 %d，應該補到 %d", p.Population, QuakePopFloor)
+	}
+}
+
 // TestFloodBaseMatchesTheExe 把 `floodBase` 對回兩支執行檔裡那 43 個 word
 // （`DS:0x679c`；AA.EXE 檔內位移 0x484d0、ASV.EXE 0x3e8a5）。表要數滿
 // 43 格——最後一格是郡 42 的 3，少了它郡 42 的洪水率每年就少長 3。

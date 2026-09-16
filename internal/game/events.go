@@ -13,18 +13,7 @@ import (
 // 四種天災的**機率與損失幅度都是量到的**，各自的形狀不一樣——
 // 地震純機率、水災只看洪水率、瘟疫要忠誠低且田瘦、蝗害要忠誠低但田肥。
 // 手冊 p.36 的「天災多因人怨引起」只對瘟疫與蝗害成立。
-//
-// 剩下的 `Tune*` 是碼裡找不到對應的那幾項（瘟疫的體能下降、秋收的米、
-// 老化、進貢件數、出頭年齡）。
-
 const (
-	// TunePlagueStamina 是瘟疫讓將領體能下降多少。
-	//
-	// **只剩這一項是 remake 選的**：碼裡的瘟疫只動人口
-	// （`0x168fc`），手冊 p.36 說的「將領體能下降」在碼裡找不到，
-	// 但把它拿掉會讓瘟疫與「人口減少」完全同義。
-	TunePlagueStamina = 5
-
 	// PopulationCap 是每個郡的人口上限（原版 `0x16f0a` 夾在 10000，
 	// 存的值 ×100，`L0`）。
 	PopulationCap = 1_000_000
@@ -149,9 +138,11 @@ const (
 
 // PlagueStrikes 回報隨機挑中的那個郡鬧不鬧瘟疫。
 //
-// **瘟疫不逐郡掃**，原版每個月只挑一個郡（`RND(42) + 1`）。
+// **瘟疫不逐郡掃**，原版每年只挑一個郡（`RND(42) + 1`），不看所屬。
 // 兩道門檻都要過：忠誠 70 以上一定安全（門檻上限 69），
 // 25 以下一定過第一關；土地價值 59 以上安全、20 以下必過。
+// 兩擲是一道一道來的（忠誠那一道沒過就不擲土地那一道，`0x16814`），
+// 所以呼叫端要自己先判第一道再抽 landRoll。
 //
 // **這才是說明書「天災多因人怨引起」的出處**——水災完全不看忠誠。
 func PlagueStrikes(loyalty, landValue, loyaltyRoll, landRoll int) bool {
@@ -323,8 +314,13 @@ var (
 	FloodLandKeep     = Keep{20, 60}  // 60–79%
 	FloodRateGain     = Keep{20, 120} // 洪水率 ×1.20–1.39，越界變 100
 	FloodSoldiersKeep = Keep{10, 70}  // 兵 70–79%
-	// 瘟疫（`0x168ce`）：只動人口。
-	PlaguePopKeep = Keep{20, 40} // 40–59%
+	// 瘟疫（`0x168ce`；人物那一段 `0x1690d`–`0x169aa`，加強版 `0x157a8`–
+	// `0x15878`，`[both]`）：人口一份，郡裡**每一位人物**（人物表順序、
+	// 所在郡等於那個郡的，不分在職在野）兵一份、體能一份——手冊 p.36
+	// 「將領體能下降」的出處。
+	PlaguePopKeep      = Keep{20, 40} // 40–59%
+	PlagueSoldiersKeep = Keep{20, 40} // 兵 40–59%
+	PlagueStaminaKeep  = Keep{10, 70} // 體能 70–79%
 	// 蝗害（`0x16cba`／`0x16cfa`）。
 	LocustRiceKeep = Keep{10, 20} // 20–29%，米幾乎被吃光
 	LocustLandKeep = Keep{90, 80} // 80–169% ⚠ 見下
@@ -339,9 +335,8 @@ type Keep struct {
 // Apply 把保留率套上去。roll 是 `RND(Spread)`。
 func (k Keep) Apply(value, roll int) int { return value * (roll + k.Floor) / 100 }
 
-// QuakePopFloor 是地震之後人口的下限（`0x163bb`：低於 50 就補到 50，`L0`）。
-//
-// 存的值是實際值 ÷ 100，所以下限是五千人。
+// QuakePopFloor 是地震（`0x163bb`）與瘟疫（`0x16901`）之後人口的下限：
+// 低於 50 就補到 50（`L0`）。存的值是實際值 ÷ 100，所以下限是五千人。
 const QuakePopFloor = 50 * 100
 
 // keepPopulation 把保留率套在**存的單位**（實際值 ÷ 100）上：原版
@@ -523,7 +518,7 @@ func (g *State) bondDebut(x *General) (int, state.FactionID, bool) {
 }
 
 // summer 是夏天：洪水與瘟疫（`0x164c8`–`0x167df`，加強版 `0x15423`–，
-// `L0`、`[both]`；對拍 `SAN1_MONTH=3 TestZZMonthParity`）。
+// `L0`、`[both]`；對拍 `SAN1_MONTH=3 SAN1_PLAGUE=1 TestZZMonthParity`）。
 //
 // 水災分兩段。第一段**逐郡 1..42、不看所屬**：洪水率先自己長、再擲兩道
 // 門，淹的郡記進清單；第二段照清單的順序演——人口、土地價值、洪水率、
@@ -596,23 +591,47 @@ func (g *State) summer() []Event {
 		g.RefreshGarrison(id)
 		out = append(out, Event{p.ID, tf("ev.flood", placeName(p.Name))})
 	}
-	// **瘟疫每個月只挑一個郡**（`RND(42) + 1`，`0x167df`），不逐郡掃。
+	// **瘟疫每年只挑一個郡**（`RND(42) + 1`，`0x167df`），不逐郡掃、也
+	// **不看所屬**。兩道門一道一道擲：忠誠那一道沒過就不擲土地那一道
+	// （`0x16814` 直接跳到結尾）。
 	{
 		id := g.roll(int(Summer), 0, 5)%state.PrefectureCount + 1
 		p := g.Prefecture(id)
-		if p != nil && p.Owned() &&
-			PlagueStrikes(int(p.PublicLoyalty), int(p.LandValue),
-				g.roll(int(Summer), id, 6)%PlagueLoyaltySpread,
+		loyaltyRoll := g.roll(int(Summer), id, 6) % PlagueLoyaltySpread
+		if p != nil && int(p.PublicLoyalty) < loyaltyRoll+PlagueLoyaltyFloor &&
+			PlagueStrikes(int(p.PublicLoyalty), int(p.LandValue), loyaltyRoll,
 				g.roll(int(Summer), id, 7)%PlagueLandSpread) {
-			p.Population = PlaguePopKeep.Apply(p.Population,
-				g.roll(int(Summer), id, 20)%PlaguePopKeep.Spread)
-			for _, x := range g.Garrison(p.ID) {
-				x.Stamina = uint8(clampTo(int(x.Stamina)-TunePlagueStamina, 100))
-			}
+			g.plague(p)
 			out = append(out, Event{p.ID, tf("ev.plague", placeName(p.Name))})
 		}
 	}
 	return out
+}
+
+// plague 是瘟疫落在一個郡上的損失（`0x168c4`–`0x169b4`，加強版
+// `0x157a8`–`0x1587f`，`L0`、`[both]`）：人口一擲（`RND(20)+40`%，低於 50
+// 補到 50），然後**郡裡每一位人物**——照人物表的順序、所在郡等於那個郡
+// 的，不看在不在職——各擲兩次：兵 `RND(20)+40`%、體能 `RND(10)+70`%
+// （都截尾）。最後重整那個郡的守將清單（`0x1949e`），存的兵士跟著變成
+// Σ兵力 ÷ 100。手冊 p.36 的「將領體能下降」出處在這裡。
+func (g *State) plague(p *Prefecture) {
+	id := p.ID
+	// 印字、特效一次（`0x16871` 叫 `0x32dfa`，`RND(4)` 挑動畫）。
+	g.roll(int(Summer), id, 8)
+	p.Population = keepPopulation(p.Population, PlaguePopKeep,
+		g.roll(int(Summer), id, 20)%PlaguePopKeep.Spread)
+	if p.Population < QuakePopFloor {
+		p.Population = QuakePopFloor
+	}
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Location != id {
+			continue
+		}
+		x.Soldiers = PlagueSoldiersKeep.Apply(x.Soldiers, g.roll(int(Summer), id, 30+i)%PlagueSoldiersKeep.Spread)
+		x.Stamina = uint8(PlagueStaminaKeep.Apply(int(x.Stamina), g.roll(int(Summer), id, 400+i)%PlagueStaminaKeep.Spread))
+	}
+	g.RefreshGarrison(id)
 }
 
 // 年度事件落在哪一個月。
