@@ -81,6 +81,11 @@ func BubbleLines(b *game.Bubble) [2]string {
 // DrawBubble 在畫布上畫一格訊息框。肖像從 `a` 取；`a` 為 nil（沒有
 // 原版素材）時只畫名字、泡泡與字。
 func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
+	if b.Card {
+		// 人物資料卡那一格：整塊右側面板換成說話者的卡（§9.2）。
+		DrawPersonCard(c, a, g, b.Speaker)
+		return
+	}
 	name := ""
 	portrait := -1
 	if x := g.General(b.Speaker); x != nil {

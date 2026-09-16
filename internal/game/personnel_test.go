@@ -405,6 +405,18 @@ func TestPlayerOrdersQueueTheirDialogue(t *testing.T) {
 		ev[1].Bubble.Speaker != officer.Index || !ev[1].Bubble.Left || ev[1].Bubble.Y1 != BubbleLowerY1 {
 		t.Fatalf("指定軍師該是君主上格右、新軍師下格左：%+v", ev)
 	}
+	// 賜物（`0x1d005`）：受賜者在上格右邊道謝（`0x1d4c1`）之後，右側面板
+	// 再換成他的人物資料卡（`0x1d4d1`）——卡那一格沒有字。
+	g.Prefecture(at).Commanded, officer.Rewarded = false, false
+	g.Faction(0).Treasury[TreasureBook] = 1
+	if err := (GiftOrder{At: at, Target: officer.Index, What: TreasureBook}).Apply(g, 0); err != nil {
+		t.Fatal(err)
+	}
+	ev = g.PendingEvents()
+	if len(ev) != 2 || ev[0].Bubble.Speaker != officer.Index || ev[0].Bubble.Left || ev[0].Bubble.Y1 != BubbleUpperY1 || ev[0].Bubble.Card ||
+		!ev[1].Bubble.Card || ev[1].Bubble.Speaker != officer.Index {
+		t.Fatalf("賜物該是受賜者上格右道謝、再一格他的資料卡：%+v", ev)
+	}
 	// 電腦那一條沒有畫面。
 	g.Prefecture(at).Commanded, officer.Rewarded = false, false
 	g.Player = 5

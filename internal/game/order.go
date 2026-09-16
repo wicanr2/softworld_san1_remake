@@ -494,8 +494,10 @@ func (o GiftOrder) Apply(g *State, by state.FactionID) error {
 	}
 	err := g.GiftTreasure(o.At, o.Target, o.What, by)
 	if err == nil && g.playerCommand(by) {
+		// `0x1d4c1` 道謝之後再畫一次受賜者的資料卡（`0x1d4d1`），等鍵。
 		t := g.General(o.Target)
-		g.say(t, true, false, tf("bub.giftThanks", personName(t.Name)), o.At, 0x1d4c1) // `0x1d4c1`
+		g.say(t, true, false, tf("bub.giftThanks", personName(t.Name)), o.At, 0x1d4c1)
+		g.showCard(t)
 	}
 	return err
 }

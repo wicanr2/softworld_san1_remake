@@ -52,6 +52,9 @@ type app struct {
 	// Y/N、宣戰對白之後開打）；confirm 是等著的 Y/N。
 	afterBubbles func()
 	confirm      *confirmEntry
+	// afterCard 是人物資料卡按任意鍵收掉之後要接著做的事（查看再問
+	// 「檢視那位」、賜物接著列物品表）。
+	afterCard func()
 
 	// fight 非 nil 表示正在打一場玩家親自指揮的戰役。
 	fight *fight
@@ -185,7 +188,12 @@ func (a *app) Update() error {
 	if a.view.HasCard || a.view.Atlas != 0 {
 		if anyKeyPressed() {
 			a.view.HasCard, a.view.Atlas, a.view.AtlasBubble = false, 0, nil
+			a.view.Prompt = ""
 			a.dirty = true
+			if next := a.afterCard; next != nil {
+				a.afterCard = nil
+				next()
+			}
 		}
 		return nil
 	}
@@ -485,16 +493,9 @@ func (a *app) begin(cat, item byte) {
 	case cat == '1' && item == '1':
 		a.askOwn(t("ask.pref"), func(id int) { a.view.Sel = id })
 	case cat == '1' && item == '3':
-		a.askGeneral(t("ask.inspect"), func(gi int) {
-			// 原版素材畫面照原版畫人物資料卡在右側面板（`docs/spec/005`
-			// §9.2）；文字版面沒有肖像，仍走整頁的 `GeneralPage`。
-			if a.art != nil {
-				a.view.Card, a.view.HasCard = gi, true
-				return
-			}
-			a.view.SetPage(ui.GeneralPage(g, gi))
-		})
-		closeMenu()
+		// 挑選清單留著（結尾那一句只在沒有清單時收選單）——先前這裡
+		// 多收一次，「檢視那位」的名單畫不出來。
+		a.inspectGeneral(sel)
 	case cat == '1' && item == '5':
 		name := tf("msg.prefN", sel)
 		if p := g.Prefecture(sel); p != nil {
@@ -665,11 +666,16 @@ func (a *app) begin(cat, item byte) {
 			{t("auto.self"), int(game.AutoSelf), a.setAutonomy},
 		})
 	case cat == '7' && item == '4':
-		a.pickFrom(t("ask.gift"), []pickItem{
-			{t("tre.book"), int(game.TreasureBook), a.giftThen},
-			{t("tre.blade"), int(game.TreasureBlade), a.giftThen},
-			{t("tre.beauty"), int(game.TreasureBeauty), a.giftThen},
-			{t("tre.horse"), int(game.TreasureHorse), a.giftThen},
+		// 原版（`0x1d005`）先問「賞賜那一位」，畫那一位的資料卡、
+		// 「請按任一鍵 查看物品表」，任意鍵之後列君主物品表再問「那一樣」。
+		a.askGeneral(t("ask.giftTo"), func(gi int) {
+			if a.art == nil {
+				a.giftPick(gi)
+				return
+			}
+			a.view.Card, a.view.HasCard = gi, true
+			a.view.Prompt = t("ask.giftItems")
+			a.afterCard = func() { a.giftPick(gi) }
 		})
 	case cat == '7' && item == '5':
 		a.askEnemyGeneral(t("ask.headhunt"), func(gi int) { a.run(game.HeadhuntOrder{At: sel, Target: gi}) })
@@ -695,10 +701,41 @@ func (a *app) setAutonomy(mode int) {
 	a.run(game.AutonomyOrder{At: a.view.Sel, Mode: game.Autonomy(mode)})
 }
 
-func (a *app) giftThen(what int) {
-	a.askGeneral(t("ask.giftTo"), func(gi int) {
+// giftPick 列出君主物品表、問賞哪一件，選了就送給 gi 那一位。
+func (a *app) giftPick(gi int) {
+	a.view.SetPage(ui.TreasuryList(a.s.G, a.s.Player))
+	then := func(what int) {
 		a.run(game.GiftOrder{At: a.view.Sel, Target: gi, What: game.Treasure(what)})
+	}
+	a.pickFrom(t("ask.gift"), []pickItem{
+		{t("tre.book"), int(game.TreasureBook), then},
+		{t("tre.blade"), int(game.TreasureBlade), then},
+		{t("tre.beauty"), int(game.TreasureBeauty), then},
+		{t("tre.horse"), int(game.TreasureHorse), then},
 	})
+}
+
+// inspectGeneral 是查看→3.檢視將軍（`0x17cba`，`docs/spec/005` §9.2）：
+// 看別人的郡先問「此郡非我軍所有 確定查看(Y/N)」，然後「檢視那位」→
+// 那一位的資料卡 → 任意鍵 → 再問「檢視那位」，直到取消。
+// 文字版面沒有肖像，卡片走整頁的 `GeneralPage`，不循環。
+func (a *app) inspectGeneral(sel int) {
+	var ask func()
+	ask = func() {
+		a.askAnyGeneral(t("ask.inspect"), func(gi int) {
+			if a.art == nil {
+				a.view.SetPage(ui.GeneralPage(a.s.G, gi))
+				return
+			}
+			a.view.Card, a.view.HasCard = gi, true
+			a.afterCard = ask
+		})
+	}
+	if p := a.s.G.Prefecture(sel); p != nil && p.Owned() && p.Owner != a.s.Player {
+		a.askYN(t("ask.inspectForeign"), ask)
+		return
+	}
+	ask()
 }
 
 // confirmEntry 是等著的 Y/N；then 是按 Y 要做的事。
@@ -823,6 +860,15 @@ func (a *app) askGeneral(title string, then func(int)) {
 		if x.Faction != a.s.Player {
 			continue
 		}
+		items = append(items, pickItem{x.Name, x.Index, then})
+	}
+	a.pickFrom(title, items)
+}
+
+// askAnyGeneral 讓玩家從當地的現役將領裡挑一位，不分勢力（查看用）。
+func (a *app) askAnyGeneral(title string, then func(int)) {
+	var items []pickItem
+	for _, x := range a.s.G.Garrison(a.view.Sel) {
 		items = append(items, pickItem{x.Name, x.Index, then})
 	}
 	a.pickFrom(title, items)

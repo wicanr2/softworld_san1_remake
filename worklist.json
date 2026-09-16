@@ -1282,6 +1282,31 @@
       "layer": "verification"
     },
     {
+      "id": "person-card-timings",
+      "title": "人物資料卡的五個呼叫端：查看的迴圈與 Y/N 門、賞賜物品前後兩張、示範模式與除錯陷阱不做",
+      "group": "畫面",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/06"
+      ],
+      "note": "2026-09-17（Issue #59）：`0xf874` 的呼叫端是 `0x17ccb`（查看→3：別人的郡先問「此郡非我軍所有 確定查看(Y/N)」，名單不分勢力，卡片任意鍵之後回到「檢視那位」）、`0x1d183`／`0x1d4d1`（君主→4 賞賜物品：卡 → 「請按任一鍵 查看物品表」→ 物品表 → 那一樣(2-5) → `SCG24.IMG` → 道謝 405 → 再一次卡，`0x1058:0xe80` 延遲或按鍵）、`0x1e336`（示範模式月底的鏡頭：偶數月標郡、奇數月畫隨機一位的卡）、`0xc55d`（調整兵力份額為負的除錯陷阱）。remake：`inspectGeneral` 的 Y/N 門、不分勢力的名單與迴圈；賞賜物品先卡片與提示、任意鍵後物品表分頁、送完 `GiftOrder.Apply` 排道謝＋卡（`game.Bubble.Card`）。沒接：寶物圖 `SCG24.IMG`（場景圖格式未解）、賞完的迴圈、示範模式。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "tags": "oracle",
+        "run": "TestZZCardTimingsMatchTheOriginal",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "verification"
+    },
+    {
       "id": "art-main-overlays",
       "title": "原版素材畫面看得到指令表、子選單、挑選清單、分頁與戰場選項",
       "group": "畫面",

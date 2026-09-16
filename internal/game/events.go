@@ -69,6 +69,11 @@ type Bubble struct {
 	// 肖像貼在 (X1, Y1)。玩家尋訪找到人時原版先把那一位的肖像亮在
 	// (488,88)、等一下，再清掉畫對白（`0x1bb7e`，`docs/spec/005` §9.3）。
 	FaceOnly bool
+
+	// Card 為真是「右側面板整塊換成說話者的人物資料卡」的那一格
+	// （`0xf874`，`docs/spec/005` §9.2）：不畫泡泡與字，X1…Y2 不用。
+	// 賜物做完、受賜者道謝之後原版再畫一次他的卡（`0x1d4d1`）。
+	Card bool
 }
 
 // 尋訪找到的那一位亮肖像的位置（`0x1bb76`／`0x1bb7a`）。
@@ -129,6 +134,18 @@ func (g *State) say(x *General, upper, left bool, text string, salt ...int) {
 		return
 	}
 	g.pending = append(g.pending, g.bubbleEvent(x, upper, left, text, salt...))
+}
+
+// showCard 把「那一位的人物資料卡」排進 pending（不擲骰：卡片沒有字色）。
+func (g *State) showCard(x *General) {
+	if x == nil || x.Name == "" {
+		return
+	}
+	at := x.Location
+	if at < 1 || at > len(g.prefectures) {
+		at = 0
+	}
+	g.pending = append(g.pending, Event{Prefecture: at, Bubble: &Bubble{Speaker: x.Index, Card: true}})
 }
 
 // AtlasBubble 是郡地理誌那一句（`0x18663`）：郡的主事者在主戰場的第三塊
