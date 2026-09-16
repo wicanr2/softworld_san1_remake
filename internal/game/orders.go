@@ -201,8 +201,11 @@ func (g *State) Conscript(prefectureID, generalIndex, n int, by state.FactionID)
 	if p.Population-n < MinPopulationToConscript {
 		return ErrNoPeople
 	}
+	// **電腦那一條不比對勢力**：徵兵走的是共用的守將清單（`0xbf2d`，
+	// 模式 2 只看所在郡與身分），別家留在這個郡的人也照徵；玩家從自己的
+	// 名單挑人，維持比對。
 	x := g.General(generalIndex)
-	if x == nil || x.Faction != by || x.Location != prefectureID {
+	if x == nil || x.Location != prefectureID || (x.Faction != by && !g.byComputer(by)) {
 		return ErrUnknownUnit
 	}
 	cost := g.price(by, n*CostConscriptPerSoldier)
@@ -240,8 +243,10 @@ func (g *State) BuyArms(prefectureID, generalIndex, units int, by state.FactionI
 	if units <= 0 {
 		return fmt.Errorf("game: 武器數要是正數，拿到 %d", units)
 	}
+	// **電腦那一條不比對勢力**（`0xc1af` 走共用清單，整支沒讀人物 offset 18）：
+	// 郡 13 讓勢力 5 跑分派器時清單上有一位勢力 4 的人，原版照樣替他買。
 	x := g.General(generalIndex)
-	if x == nil || x.Faction != by || x.Location != prefectureID {
+	if x == nil || x.Location != prefectureID || (x.Faction != by && !g.byComputer(by)) {
 		return ErrUnknownUnit
 	}
 	cost := g.price(by, units/100*CostArmsPer100)

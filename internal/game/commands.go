@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -599,11 +600,14 @@ func (g *State) TradeRiceTo(prefectureID, target int, by state.FactionID) error 
 	if f := g.Faction(by); f != nil && f.ByComputer {
 		rate = AIRicePerGold(p.PriceLevel, f.AILevel)
 	}
-	// **逐字照抄那一串 8087 指令**（`0xc6c3`–`0xc767`），順序不能動：
+	// **逐字照抄那一串 8087 指令**（原版 `0xc6c3`–`0xc767`、加強版
+	// `0xc4c6`–`0xc5a0`），順序不能動：
 	//
 	//	剩金 ← 金 − 缺口 ÷ 量        ; filds/fldl/fidivs/fsubrp，量是整數
+	//	fstpl 剩金                   ; **落地成 double**
 	//	剩金 夾在 [0, 30000]
 	//	新米 ← (金 − 剩金) × 量 + 米 ; fsubl/fimuls/**fiadds**
+	//	fstpl 新米                   ; 落地成 double
 	//	金 ← trunc(剩金)；米 ← trunc(新米)
 	//
 	// ⚠ **米要先加進去再截尾**（`fiadds` 在 `ftol` 之前）。先把「買到」
@@ -611,20 +615,33 @@ func (g *State) TradeRiceTo(prefectureID, target int, by state.FactionID) error 
 	// 位數，算出 −169.999… 或 −705.000…1，截尾的方向剛好相反。
 	// 代數上那個乘積等於缺口，但**原版的捨入誤差是它行為的一部分**：
 	// 郡 22 落在目標上（3060），郡 30 落在目標下面一格（3054）。
-	gap := float64(target - p.Rice)
-	left := float64(p.Gold) - gap/float64(rate)
-	if left < 0 {
-		left = 0
+	//
+	// ⚠ **暫存器是 64 位元有效位數，只有 `fstpl` 那兩處捨成 double**
+	// （`x87` 的說明）。整段用 Go 的 `float64` 算會在每一步都多捨一次：
+	// 加強版七月郡 3 賣米 3805 → 目標 1482、量 7，原版算出 1481.999…
+	// 截成 1481，`float64` 算出剛好 1482.0——差的就是那一次捨入。
+	// 加強版在 `fstpl 新米` 之後多一道 [0, 30000] 的夾（`0xc54a`–`0xc588`），
+	// 原版沒有；目標已經先夾在 30000，兩版走到這裡的值一樣。
+	x := func(v int) *big.Float { return x87(int64(v)) }
+	asDouble := func(f *big.Float) *big.Float {
+		d, _ := f.Float64()
+		return new(big.Float).SetPrec(64).SetMode(big.ToNearestEven).SetFloat64(d)
 	}
-	if left > MaxGold {
-		left = MaxGold
+	quo := new(big.Float).SetPrec(64).SetMode(big.ToNearestEven).Quo(x(target-p.Rice), x(rate))
+	left := asDouble(new(big.Float).SetPrec(64).SetMode(big.ToNearestEven).Sub(x(p.Gold), quo))
+	if left.Sign() < 0 {
+		left = x(0)
 	}
-	newRice := (float64(p.Gold)-left)*float64(rate) + float64(p.Rice)
-	p.Gold = int(left)
-	p.Rice = clampTo(int(newRice), MaxRice)
-	if p.Rice < 0 {
-		p.Rice = 0
+	if left.Cmp(x(MaxGold)) > 0 {
+		left = x(MaxGold)
 	}
+	spent := new(big.Float).SetPrec(64).SetMode(big.ToNearestEven).Sub(x(p.Gold), left)
+	spent.Mul(spent, x(rate))
+	newRice := asDouble(spent.Add(spent, x(p.Rice)))
+	leftN, _ := left.Int64()
+	riceN, _ := newRice.Int64()
+	p.Gold = int(leftN)
+	p.Rice = clampTo(int(riceN), MaxRice)
 	if p.Rice < 0 {
 		p.Rice = 0
 	}

@@ -1055,6 +1055,15 @@ func (g *State) refreshGovernor(prefectureID int) {
 	p.troops = g.Soldiers(prefectureID) / 100
 }
 
+// RefreshActiveGenerals 只刷新現役將那一欄（州郡 offset 22）：電腦挖角
+// 挑人那一支開頭重建本郡的守將清單之後寫回人數（`0xe0d5`–`0xe0f9`），
+// 兵士那一欄不動。
+func (g *State) RefreshActiveGenerals(prefectureID int) {
+	if p := g.Prefecture(prefectureID); p != nil {
+		p.activeGenerals = g.ActiveGenerals(prefectureID)
+	}
+}
+
 // RefreshTroops 只刷新兵士與現役將兩欄（分派器建清單那一段的收尾
 // `0xefe8`–`0xf083`：`0xf072` 寫兵士、`0xf083` 寫現役將），調整兵力那一張
 // 表重建清單時順手做的。不碰所屬與主事者。

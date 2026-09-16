@@ -861,6 +861,24 @@ func SortieShare(amount, units, force int) int {
 	return int(int16(n))
 }
 
+// SortieCarry 是移防真的帶走的量（`0xb90b`–`0xb9d3`，`L0`、`[base]`）：
+// 按比例算出來的份額還要看**目標郡裝不裝得下**——
+//
+//	t ＝ int16(目標郡的存量 ＋ 份額)
+//	t > 30000 → t ＝ 30000
+//	帶走 ＝ ftol(t − 目標郡的存量)
+//
+// 目標郡的金已經是 30000 就一塊都不帶（一月視窗郡 10 → 9 帶走金 0、
+// 米 399）。相加是 16 位元的：超過 32767 會變負、過不了 30000 那一道，
+// 減回去之後又繞回原本的份額——之後 `0x1938a` 再把目標郡夾成 30000。
+func SortieCarry(share, destStock int) int {
+	t := int(int16(destStock + share))
+	if t > 30000 {
+		t = 30000
+	}
+	return int(int16(t - destStock))
+}
+
 // ScaleTroops 是「double 係數 × 整數兵力(百)，再截成整數」——加強版
 // 留守目標那一段（`0xe9f7`–`0xea1f`）的形狀。走與 SortieThreshold 同一條
 // x87 路徑。

@@ -175,6 +175,15 @@ func TestRoundTrip(t *testing.T) {
 				got = &h.Factions()[i]
 			}
 		}
+		if !f.Alive {
+			// 絕嗣的勢力寫的是哨兵（君主欄與操縱方都是 `0xFFFF`，
+			// `Tables()`），讀回來就該不在——與 `TestLordSuccessionSurvives`
+			// 同一條。三十個月裡有沒有哪一家絕嗣看局面怎麼走。
+			if got != nil {
+				t.Errorf("勢力 %d 已經絕嗣，讀回來卻還在：%+v", f.ID, *got)
+			}
+			continue
+		}
 		if got == nil {
 			t.Fatalf("勢力 %d 讀不回來", f.ID)
 		}

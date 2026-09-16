@@ -159,105 +159,167 @@ func PlagueStrikes(loyalty, landValue, loyaltyRoll, landRoll int) bool {
 // 分別是建安三年元月與建安四年元月（`L1`、`[base]`）。
 func (g *State) spring() []Event {
 	var out []Event
-	if g.Date.Month == agingMonth {
-		// **原版分兩圈走**（`L0`）：第一圈 `0x15d40`–`0x15eb3` 是老死，
-		// 第二圈 `0x15f64`–`0x16042` 才加歲、忠誠漂移、訓練與武裝衰減、
-		// 出頭。**老死比的是加歲之前的年齡**——先加再比的話每個人
-		// 都早一年走下坡（Issue #23）。
-		for i := range g.generals {
-			x := &g.generals[i]
-			// 第一圈只跳過已故（`0x15d55`），未登場的也掃。
-			if x.Name == "" || x.Status == state.StatusFallen {
-				continue
-			}
-			// **年齡是有號的**（`0x15d71` 的 `cbw`）：還沒出生的人年齡是負的
-			// （曹叡在 189 年是 −16，位元組 `0xF0`），負的年齡自然過不了
-			// 壽命那一道。當成無號讀的話那些人 240 歲、當年就老死。
-			age := x.SignedAge()
-			// **老死看壽命，不是每年掉一點**（`0x15d5d`，`L0`）：
-			// 沒過壽命的人體能一點都不掉。
-			if AlreadyPastPrime(age, int(x.Lifespan),
-				g.roll(int(Spring), x.Index, 43)%LifespanRollSpread) {
-				n := AgingDrop(int(x.Stamina), age, int(x.Lifespan),
-					g.roll(int(Spring), x.Index, 44)%DeathStaminaSpread)
-				x.Stamina = uint8(n)
-				if n == 0 {
-					out = append(out, Event{x.Location, tf("ev.death", personName(x.Name))})
-					g.retire(x)
-				}
-			}
-		}
-		for i := range g.generals {
-			x := &g.generals[i]
-			if x.Name == "" {
-				continue
-			}
-			// 全部 350 筆都加歲（`0x15f7a`），已故與未登場也加。
-			x.Age++
-			// **只有在職的部下（身分 1–3）才有下面三項**（`0x15f7f`–`0x15fa2`）：
-			// 君主不會對自己不忠，他的訓練度與武裝度也不衰減；在野與未登場
-			// 的人凍在原值。
-			if x.Faction == state.NoFaction ||
-				(x.Status != state.StatusChief && x.Status != state.StatusGovernor &&
-					x.Status != state.StatusOfficer) {
-				continue
-			}
-			// **忠誠每年跟著君主的人望漂移**（`0x15fc2`，`L0`）：
-			// `忠誠 += (人望 − 60) ÷ 2`。
-			if f := g.Faction(x.Faction); f != nil {
-				x.Loyalty = uint8(LoyaltyDrift(int(x.Loyalty), f.Prestige,
-					g.roll(int(Spring), x.Index, 42)%LoyaltyFloorSpread))
-			}
-			// **訓練度與武裝度每年各自掉**（`0x16006`／`0x16025`，`L0`）：
-			// `−RND(值 ÷ 10)`，與土地價值同一個形狀。
-			//
-			// 這是「訓練兵士」與「購置武器」要一直做的原因——少了它，
-			// 一次練到頂就永遠是精兵，而數值欄停在 100 看起來完全正常。
-			x.Arms = uint8(AnnualDecay(int(x.Arms),
-				g.roll(int(Spring), x.Index, 40)%max(1, int(x.Arms)/10+1)))
-			x.Training = uint8(AnnualDecay(int(x.Training),
-				g.roll(int(Spring), x.Index, 41)%max(1, int(x.Training)/10+1)))
-		}
+	if g.Date.Month != agingMonth {
+		return nil
 	}
-	out = append(out, g.comeOfAge()...)
-	// **土地價值每個春月自己掉**（`0x15c96`，`L0`）：`−RND(土地價值 ÷ 10)`。
-	// 逐郡跑，無主的郡也跑。這是「土地開發要一直做」的原因——
+	// **順序照 `0x15c5c`**（骰序要同）：土地價值衰減 → 玉璽 → 老死那一圈
+	// → 加歲／忠誠／衰減／出頭那一圈 → 地震。
+	//
+	// **土地價值每年自己掉**（`0x15c96`，`L0`）：`−RND(土地價值 ÷ 10)`，逐郡跑，
+	// 無主的郡也跑；`÷ 10` 前先 `cbw`，蝗害推到 128 以上的值是負的，
+	// `RND(負)` 不抽、不掉。這是「土地開發要一直做」的原因——
 	// 少了它，一次開發到頂就永遠不用再管。
 	for i := range g.prefectures {
 		p := &g.prefectures[i]
 		p.LandValue = uint8(LandValueDecay(int(p.LandValue),
-			g.roll(int(Spring), p.ID, 8)%max(1, int(p.LandValue)/10+1)))
+			g.Roll(int(int8(p.LandValue))/10, int(Spring), p.ID, 8)))
 	}
 	// **玉璽現世**（`0x15cfd`–`0x1519a`，`L0`）：玉璽還沒出現的話，
-	// 每個春月約半數機率落到隨機一個活著的勢力手上，那一家的人望
-	// 大漲。玉璽是勝利條件之一（說明書 p.24）。
+	// 每年約半數機率落到隨機一個活著的勢力手上，那一家的人望大漲。
 	out = append(out, g.sealEvent()...)
-	// **地震：每個春月 1/3 的機率，落在隨機一個郡**（`0x162d2`，`L0`）。
-	// 不看民眾忠誠也不看土地價值——那道「天災多因人怨」的門檻是瘟疫的。
-	if g.roll(int(Spring), 0, 10)%QuakeChance == 0 {
-		id := g.roll(int(Spring), 0, 11)%state.PrefectureCount + 1
-		if p := g.Prefecture(id); p != nil && p.Owned() {
-			// 三份保留率各擲一次，**不是同一個百分比套三次**。
+	// **原版分兩圈走**（`L0`）：第一圈 `0x15d40`–`0x15eb3` 是老死，
+	// 第二圈 `0x15f64`–`0x16042` 才加歲、忠誠漂移、訓練與武裝衰減、
+	// 出頭。**老死比的是加歲之前的年齡**——先加再比的話每個人
+	// 都早一年走下坡（Issue #23）。
+	for i := range g.generals {
+		x := &g.generals[i]
+		// 第一圈只跳過已故（`0x15d55`），未登場、填充槽也掃、也擲。
+		if x.Status == state.StatusFallen {
+			continue
+		}
+		// **年齡與壽命都是有號的**（`0x15d71`／`0x15d79` 的 `cbw`）：還沒出生
+		// 的人年齡是負的（曹叡在 189 年是 −16，位元組 `0xF0`），負的年齡
+		// 自然過不了壽命那一道。當成無號讀的話那些人 240 歲、當年就老死。
+		age, lifespan := x.SignedAge(), int(int8(x.Lifespan))
+		// **老死看壽命，不是每年掉一點**（`0x15d5d`，`L0`）：
+		// 沒過壽命的人體能一點都不掉。
+		if !AlreadyPastPrime(age, lifespan, g.Roll(LifespanRollSpread, int(Spring), x.Index, 43)) {
+			continue
+		}
+		n := AgingDrop(int(x.Stamina), age, lifespan, g.Roll(DeathStaminaSpread, int(Spring), x.Index, 44))
+		x.Stamina = uint8(n)
+		if n != 0 {
+			continue
+		}
+		// 在職的（身分 1–3）先印一句、播一次特效（`0x15e8e` → `0x32dfa`，
+		// `RND(4)`）；之後的處置常式 `0x14792` 不分身分都印一則對白
+		// （`0x14848`／`0x14a38` → `0x3273e`，`RND(8)`），槽 96（周瑜）再多
+		// 一則（`0x14893`）。
+		if x.Status == state.StatusChief || x.Status == state.StatusGovernor ||
+			x.Status == state.StatusOfficer {
+			g.Roll(EffectVariants, int(Spring), x.Index, 47)
+		}
+		if x.Status != state.StatusLord {
+			// 君主那一則在繼承常式裡（`SucceedLord`）。
+			g.Roll(MessageLines, int(Spring), x.Index, 48)
+		}
+		out = append(out, Event{x.Location, tf("ev.death", personName(x.Name))})
+		g.retire(x)
+		if x.Index == DeathEpilogueSlot {
+			g.Roll(MessageLines, int(Spring), x.Index, 49)
+		}
+	}
+	for i := range g.generals {
+		x := &g.generals[i]
+		// 全部 350 筆都加歲（`0x15f7a`），已故與未登場也加。
+		x.Age++
+		// **只有在職的部下（身分 1–3）才有下面三項**（`0x15f7f`–`0x15fa2`）：
+		// 君主不會對自己不忠，他的訓練度與武裝度也不衰減；在野與未登場
+		// 的人凍在原值。
+		if x.Faction != state.NoFaction &&
+			(x.Status == state.StatusChief || x.Status == state.StatusGovernor ||
+				x.Status == state.StatusOfficer) {
+			// **忠誠每年跟著君主的人望漂移**（`0x15fc2`，`L0`）：
+			// `忠誠 += (人望 − 60) ÷ 2`；算出負的才擲 `RND(5)`（`0x15fd8`）。
+			prestige := 0
+			if f := g.Faction(x.Faction); f != nil {
+				prestige = f.Prestige
+			}
+			// 與 `LoyaltyDrift` 同一條式，只是那一擲要在算出負的之後才抽。
+			n := int(int8(x.Loyalty)) + (prestige-LoyaltyPivot)/2
+			if n < 0 {
+				n = g.Roll(LoyaltyFloorSpread, int(Spring), x.Index, 42)
+			} else if n > 100 {
+				n = 100
+			}
+			// **加強版多一道門**（`0x14f8d`–`0x14fb9`，`L0`、`[plus]`）：
+			// 忠誠**原本**就不低於 `(難度 − 1) mod 10 + 90` 的人不寫回——
+			// 難度 5 是 94 以上不動。那一擲 `RND(5)` 在門之前，照抽。
+			// 原版沒有這道門（`0x15fad`–`0x16001` 直接寫回）。
+			if g.Edition != state.EditionPlus ||
+				int(int8(x.Loyalty)) < PlusLoyaltyDriftCeiling(g.Difficulty) {
+				x.Loyalty = uint8(n)
+			}
+			// **武裝度與訓練度每年各自掉**（`0x16006`／`0x16025`，`L0`）：
+			// `−RND(值 ÷ 10)`，與土地價值同一個形狀，先武裝後訓練；
+			// 值不到 10 的不抽。
+			//
+			// 這是「訓練兵士」與「購置武器」要一直做的原因——少了它，
+			// 一次練到頂就永遠是精兵，而數值欄停在 100 看起來完全正常。
+			x.Arms = uint8(AnnualDecay(int(x.Arms),
+				g.Roll(int(int8(x.Arms))/10, int(Spring), x.Index, 40)))
+			x.Training = uint8(AnnualDecay(int(x.Training),
+				g.Roll(int(int8(x.Training))/10, int(Spring), x.Index, 41)))
+		}
+		out = append(out, g.debut(x)...)
+	}
+	// **地震：每年 1/3 的機率，落在隨機一個郡**（`0x162d2`，`L0`），
+	// **不看所屬**（無主郡也震）、不看民眾忠誠也不看土地價值——那道
+	// 「天災多因人怨」的門檻是瘟疫的。
+	if g.Roll(QuakeChance, int(Spring), 0, 10) == 0 {
+		id := g.Roll(state.PrefectureCount, int(Spring), 0, 11) + 1
+		if p := g.Prefecture(id); p != nil {
+			// 印字、特效一次（`0x1633b` → `0x32dfa`，`RND(4)`）。
+			g.Roll(EffectVariants, int(Spring), id, 9)
+			// 四份保留率各擲一次，**不是同一個百分比套四次**：人口、金、米
+			// （`0x1638b`／`0x163d5`／`0x1640e`），然後**郡裡每一位人物的兵**
+			// （`0x16444`–`0x1649c`：人物表順序、所在郡等於那個郡的，各擲一次
+			// `RND(20)+40`%），最後重整守將清單（`0x164a2` → `0x1949e`）。
 			p.Population = keepPopulation(p.Population, QuakePopKeep,
-				g.roll(int(Spring), id, 20)%QuakePopKeep.Spread)
+				g.Roll(QuakePopKeep.Spread, int(Spring), id, 20))
 			if p.Population < QuakePopFloor {
 				p.Population = QuakePopFloor
 			}
 			p.Gold = QuakeGoldKeep.Apply(p.Gold,
-				g.roll(int(Spring), id, 21)%QuakeGoldKeep.Spread)
+				g.Roll(QuakeGoldKeep.Spread, int(Spring), id, 21))
 			p.Rice = QuakeRiceKeep.Apply(p.Rice,
-				g.roll(int(Spring), id, 22)%QuakeRiceKeep.Spread)
+				g.Roll(QuakeRiceKeep.Spread, int(Spring), id, 22))
+			for j := range g.generals {
+				x := &g.generals[j]
+				if x.Location != id {
+					continue
+				}
+				x.Soldiers = QuakeSoldiersKeep.Apply(x.Soldiers,
+					g.Roll(QuakeSoldiersKeep.Spread, int(Spring), x.Index, 23))
+			}
+			g.RefreshGarrison(id)
 			out = append(out, Event{p.ID, tf("ev.quake", placeName(p.Name))})
 		}
 	}
 	return out
 }
 
+// DeathEpilogueSlot 是死了會多印一則對白的那一位（`0x14893`：人物槽 96，
+// 劇本 001 是周瑜，`L0`）。
+const DeathEpilogueSlot = 96
+
+// MessageLines 是對白常式 `0x3273e` 每次進去挑句子的那一擲 `RND(8)`
+// （`0x32d4d`，`L0`；戰場那一份是 `battle.MessageLines`）。
+const MessageLines = 8
+
+// EffectVariants 是特效常式 `0x32dfa` 進去先擲的 `RND(4)`（`0x32e4f`，`L0`）。
+const EffectVariants = 4
+
 // 人望決定忠誠漲跌的分水嶺與下限（`0x15fc7`／`0x15fd8`，`L0`）。
 const (
 	LoyaltyPivot       = 60 // 人望高於它部下向心，低於它離心
 	LoyaltyFloorSpread = 5  // 算出負的就換成 RND(5)
 )
+
+// PlusLoyaltyDriftCeiling 是加強版元月忠誠漂移的門（`0x14f8d`–`0x14fb9`，
+// `L0`、`[plus]`）：`(難度 − 1) mod 10 + 90`，忠誠不低於它的人不動。
+// 與加強版賞賜金帛的門同一個 `(難度 − 1) mod 10` 形狀。
+func PlusLoyaltyDriftCeiling(difficulty int) int { return (difficulty-1)%10 + 90 }
 
 // LoyaltyDrift 是元月的忠誠漂移（`0x15fad`–`0x16001`，`L0`）：
 //
@@ -308,6 +370,9 @@ var (
 	QuakePopKeep  = Keep{20, 60} // 60–79%
 	QuakeGoldKeep = Keep{20, 50} // 50–69%
 	QuakeRiceKeep = Keep{20, 40} // 40–59%
+	// 地震之後**郡裡每一位人物的兵**（`0x16444`–`0x1649c`，人物表順序、
+	// 所在郡等於那個郡的，各擲一次）。
+	QuakeSoldiersKeep = Keep{20, 40} // 兵 40–59%
 	// 水災（`0x1666d`／`0x166c1`／`0x16701`；人物那一段 `0x16748`–`0x167a5`，
 	// `[both]`）：人口、土地價值、洪水率各一份，郡裡每一位人物的兵一份。
 	FloodPopKeep      = Keep{10, 70}  // 70–79%
@@ -363,59 +428,80 @@ func LandValueDecay(landValue, roll int) int { return AnnualDecay(landValue, rol
 func (g *State) comeOfAge() []Event {
 	var out []Event
 	for i := range g.generals {
-		x := &g.generals[i]
-		if x.Status != state.StatusUnborn || x.Name == "" {
-			continue
-		}
-		// **出頭年齡是每個人自己的**（人物表 offset 26，`0x1605a`）——
-		// 不是一個全域常數。原版比的是「年齡 > Debut」，不是 >=，而且
-		// 年齡是**有號**的（`cbw`）：還沒出生的人是負的，要等到真的長到
-		// 出頭年齡才出現。當成無號讀的話 −16 歲的人 240 歲，開局第二年
-		// 全部出頭、隔年全部老死（Issue #23）。
-		if x.SignedAge() <= int(x.Debut) {
-			continue
-		}
-		// **先看牽絆對象**（`0x16064`）：他有勢力、而且他所在的郡還沒
-		// 滿五十位現役武將的話，這個人直接投奔他，不是回出身郡當在野。
-		//
-		// 少了這一條，名將的子姪與舊部都會變成散落各地的在野人士，
-		// 而「牽絆」在登用之外就沒有別的作用了。
-		if at, id, ok := g.bondDebut(x); ok {
-			x.Location = at
-			x.Faction = id
-			x.Status = state.StatusOfficer
-			out = append(out, Event{at,
-				tf("ev.appear", personName(x.Name), placeName(g.Prefecture(at).Name))})
-			continue
-		}
-		at := x.Origin
-		if at < 1 || at > len(g.prefectures) {
-			at = x.Location
-		}
-		if at < 1 || at > len(g.prefectures) {
-			continue
-		}
-		// 退路是**出身郡**、無勢力，身分先寫 **9**（`0x15eda`：在野但不列入
-		// 郡的在野數，要被尋訪到才變成 8），接著看露不露面（`0x15ee6`–
-		// `0x15f5c`）：**年紀到了（≥ RND(5)+32）直接露面；年輕的看才能——
-		// 謀略與戰力取大者，`RND(30)+30` 壓不過它就藏著。** 年輕的名將要被
-		// 尋訪才出現，庸才一出頭就在名單上。
-		x.Location = at
-		x.Faction = state.NoFaction
-		x.Status = state.StatusIdle
-		if DebutShowsUp(x.SignedAge(), int(x.Intel), int(x.War),
-			g.roll(int(Spring), x.Index, 45)%DebutShowAgeSpread,
-			g.roll(int(Spring), x.Index, 46)%DebutHideTalentSpread) {
-			x.Status = state.StatusAvailable
-		}
-		p := g.Prefecture(at)
-		name := ""
-		if p != nil {
-			name = p.Name
-		}
-		out = append(out, Event{at, tf("ev.appear", personName(x.Name), placeName(name))})
+		out = append(out, g.debut(&g.generals[i])...)
 	}
 	return out
+}
+
+// debut 是第二圈每一筆最後的出頭判定（`0x16042`–`0x160a2`，加歲之後）。
+func (g *State) debut(x *General) []Event {
+	if x.Status != state.StatusUnborn {
+		return nil
+	}
+	// **出頭年齡是每個人自己的**（人物表 offset 26，`0x1605a`）——
+	// 不是一個全域常數。原版比的是「年齡 > Debut」，不是 >=，而且
+	// 年齡是**有號**的（`cbw`）：還沒出生的人是負的，要等到真的長到
+	// 出頭年齡才出現。當成無號讀的話 −16 歲的人 240 歲，開局第二年
+	// 全部出頭、隔年全部老死（Issue #23）。
+	if x.SignedAge() <= int(x.Debut) {
+		return nil
+	}
+	// **先看牽絆對象**（`0x16064`）：他有勢力、而且他所在的郡還沒
+	// 滿五十位現役武將的話，這個人直接投奔他，不是回出身郡當在野。
+	//
+	// 少了這一條，名將的子姪與舊部都會變成散落各地的在野人士，
+	// 而「牽絆」在登用之外就沒有別的作用了。
+	if at, id, ok := g.bondDebut(x); ok {
+		b := &g.generals[x.Bond]
+		// 印字、特效一次（`0x16152` → `0x32dfa`，`RND(4)`）；牽絆對象不是
+		// 君主再一則對白（`0x161c4` → `0x3273e`，`RND(8)`），然後一定一則
+		// （`0x16270`）。忠誠寫成牽絆對象的九成（`0x1629e`–`0x162b4`）。
+		g.Roll(EffectVariants, int(Spring), x.Index, 47)
+		if b.Status != state.StatusLord {
+			g.Roll(MessageLines, int(Spring), x.Index, 48)
+		}
+		g.Roll(MessageLines, int(Spring), x.Index, 49)
+		x.Location = at
+		x.Faction = id
+		x.Status = state.StatusOfficer
+		x.Loyalty = uint8(int(int8(b.Loyalty)) * 9 / 10)
+		// 那一郡存的現役將 +1（`0x162ca`），兵士不動。
+		if p := g.Prefecture(at); p != nil {
+			p.activeGenerals++
+		}
+		return []Event{{at,
+			tf("ev.appear", personName(x.Name), placeName(g.Prefecture(at).Name))}}
+	}
+	at := int(x.Origin)
+	if at < 1 || at > len(g.prefectures) {
+		at = x.Location
+	}
+	if at < 1 || at > len(g.prefectures) {
+		return nil
+	}
+	// 退路是**出身郡**、無勢力，身分先寫 **9**（`0x15eda`：在野但不列入
+	// 郡的在野數，要被尋訪到才變成 8），接著看露不露面（`0x15ee6`–
+	// `0x15f5c`）：**年紀到了（≥ RND(5)+32）直接露面；年輕的才看才能——
+	// 謀略與戰力取大者，`RND(30)+30` 壓不過它就藏著。** 兩道門依序擲，
+	// 第一道過了就不擲第二道。年輕的名將要被尋訪才出現，庸才一出頭就
+	// 在名單上。
+	x.Location = at
+	x.Faction = state.NoFaction
+	x.Status = state.StatusIdle
+	show := x.SignedAge() >= g.Roll(DebutShowAgeSpread, int(Spring), x.Index, 45)+DebutShowAge
+	if !show {
+		show = g.Roll(DebutHideTalentSpread, int(Spring), x.Index, 46)+DebutHideTalent >
+			max(int(x.Intel), int(x.War))
+	}
+	if show {
+		x.Status = state.StatusAvailable
+	}
+	p := g.Prefecture(at)
+	name := ""
+	if p != nil {
+		name = p.Name
+	}
+	return []Event{{at, tf("ev.appear", personName(x.Name), placeName(name))}}
 }
 
 // 玉璽現世的兩個數（`0x15d11`／`0x1518b`，`L0`）。
@@ -511,7 +597,8 @@ func (g *State) bondDebut(x *General) (int, state.FactionID, bool) {
 	if p == nil {
 		return 0, state.NoFaction, false
 	}
-	if len(g.Garrison(at)) >= DebutGarrisonCap {
+	// 比的是州郡**存的**現役將（`0x16097` 讀 offset 22），不是重算的。
+	if g.StoredActiveGenerals(at) >= DebutGarrisonCap {
 		return 0, state.NoFaction, false
 	}
 	return at, b.Faction, true
@@ -735,22 +822,29 @@ func (g *State) autumn() []Event {
 		out = append(out, Event{p.ID,
 			tf("ev.harvest", placeName(p.Name), rice, gold)})
 	}
-	// **蝗害每年只挑一個郡**（`0x16bd5`，`L0`），不逐郡掃。
+	// **蝗害每年只挑一個郡**（`0x16bd5`，`L0`），不逐郡掃，**也不看所屬**
+	// （`0x16bf6` 直接讀那個郡的民眾忠誠，沒有 `0x49e` 的比較；無主郡照樣
+	// 鬧）。兩道門**依序擲**：忠誠那一道沒過就不擲土地那一道
+	// （`0x16c00` 直接跳到人望調整）。發生時先播一次特效（`0x16c5b` →
+	// `0x32dfa`，`RND(4)`），再擲米與土地的保留率。
 	{
 		id := g.roll(int(Autumn), 0, 12)%state.PrefectureCount + 1
 		p := g.Prefecture(id)
-		if p != nil && p.Owned() &&
-			LocustStrikes(int(p.PublicLoyalty), int(p.LandValue),
-				g.roll(int(Autumn), id, 13)%LocustLoyaltySpread,
+		loyaltyRoll := g.roll(int(Autumn), id, 13) % LocustLoyaltySpread
+		if p != nil && int(p.PublicLoyalty) < loyaltyRoll+LocustLoyaltyFloor &&
+			LocustStrikes(int(p.PublicLoyalty), int(p.LandValue), loyaltyRoll,
 				g.roll(int(Autumn), id, 14)%LocustLandSpread) {
+			g.roll(int(Autumn), id, 8) // 特效 `RND(4)`
 			p.Rice = LocustRiceKeep.Apply(p.Rice,
 				g.roll(int(Autumn), id, 20)%LocustRiceKeep.Spread)
 			// ⚠ **蝗害的土地價值保留率是 80–169%**（`0x16cfa`：`RND(90) + 80`），
-			// 也就是平均會**上升**。碼就是這樣寫的——以碼為準，
-			// 但夾在 100 以內（欄位是 u8，說明書的範圍是 0–100）。
-			// 這一條與直覺相反到值得單獨對拍一次，記在 `docs/re/06` §6。
-			p.LandValue = uint8(clampTo(LocustLandKeep.Apply(int(p.LandValue),
-				g.roll(int(Autumn), id, 21)%LocustLandKeep.Spread), 100))
+			// 也就是平均會**上升**。碼就是這樣寫的——以碼為準，而且**不夾**：
+			// `0x16d26` 把 `ftol` 的低位元組直接寫回（100 × 1.69 ＝ 169 裝得下），
+			// 之後秋收、瘟疫讀到的就是那個超過 100 的值。記在 `docs/re/06` §6。
+			p.LandValue = uint8(LocustLandKeep.Apply(int(p.LandValue),
+				g.roll(int(Autumn), id, 21)%LocustLandKeep.Spread))
+			// 之後重整那個郡的守將清單（`0x16d2e` → `0x1949e`），與水災、瘟疫同。
+			g.RefreshGarrison(id)
 			out = append(out, Event{p.ID, tf("ev.locust", placeName(p.Name))})
 		}
 	}
@@ -1040,9 +1134,10 @@ func (g *State) retireBy(x *General, cause string) {
 	// **死掉的人身分是 12（已故），君主與部下都一樣**（`0x147f6`／`0x14881`：
 	// 身分 ← 12、勢力 ← 0xFF、領地 ← 0xFF）。先前寫成在野（9）——
 	// 原版 280 年時已故累積 342 人，remake 一直是 3（`docs/playtest/05` §5）。
+	// **忠誠不動、所在寫 0xFF**：那三行只寫這三格（加強版七月視窗量到，
+	// 死掉的君主忠誠還是 100、所在 255）。
 	x.Status = state.StatusFallen
-	x.Location = 0
-	x.Loyalty = state.NoValue
+	x.Location = int(state.NoValue)
 	if f := g.Faction(faction); f != nil && f.Chief == x.Index {
 		f.Chief = -1
 	}
@@ -1153,6 +1248,9 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 	if f == nil {
 		return nil
 	}
+	// 進來先印一則對白（`0x14a38`／加強版 `0x13c6b` → 對白常式，`RND(8)`）；
+	// 老死與戰死都走這一支。
+	g.Roll(MessageLines, int(id), 0x14a38)
 	var heir *General
 	for i := range g.generals {
 		x := &g.generals[i]
@@ -1170,8 +1268,24 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 	if f.Chief == heir.Index {
 		f.Chief = -1
 	}
+	// 繼承者：職位 ← 0、兵種 ← 6、身分 ← 君主（`0x14cce`–`0x14cda`）；他所在
+	// 的郡：自治 ← 0、原本的太守降成一般武將、主事者 ← 他（`0x14cf1`–`0x14d36`）。
+	heir.Rank = state.RankLord
+	heir.Troop = state.TroopType(6)
 	heir.Status = state.StatusLord
 	f.Lord = heir.Index
+	if p := g.Prefecture(heir.Location); p != nil {
+		p.Autonomy = AutoNormal
+		if old := g.General(p.governor); old != nil && old.Status == state.StatusGovernor {
+			old.Status = state.StatusOfficer
+		}
+		p.governor = heir.Index
+	}
+	// 找到繼承者那一則：原版用純印字（`0x14d61`，不擲），**加強版改走
+	// 對白常式**（`0x13fa7`，`RND(8)`，`[plus]`）。
+	if g.Edition == state.EditionPlus {
+		g.Roll(MessageLines, int(id), 0x13fa7)
+	}
 	return heir
 }
 

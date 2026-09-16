@@ -449,10 +449,22 @@ func (o GiftOrder) Describe(g *State) string {
 	return tf("log.gift", TreasureName(o.What), byWhom(g, o.Target))
 }
 
-type HeadhuntOrder struct{ At, Target int }
+// HeadhuntOrder 是挖角。Vetted 表示目標是電腦的挑人常式（`0xe0bc`）
+// 掃全表挑出來的——那一支已經替每一位候選擲過忠誠那一道 `RND(15)`，
+// 判定常式 `0x1dc0a` 不再擲；玩家下的命令則在這裡擲（`Headhuntable`）。
+// Bonus 是電腦那三張表挑完人之後加在開價上的數（`0x1dcb5` 的第三個參數）：
+// 等級 3 是 0、等級 4 `RND(10)+3`（`0xe3a6`）、等級 5 `RND(10)+10`（`0xe44e`）。
+type HeadhuntOrder struct {
+	At, Target int
+	Vetted     bool
+	Bonus      int
+}
 
 func (o HeadhuntOrder) Prefecture() int { return o.At }
 func (o HeadhuntOrder) Apply(g *State, by state.FactionID) error {
+	if o.Vetted {
+		return g.headhuntVetted(o.At, o.Target, by, o.Bonus)
+	}
 	return g.Headhunt(o.At, o.Target, by)
 }
 func (o HeadhuntOrder) Describe(g *State) string {

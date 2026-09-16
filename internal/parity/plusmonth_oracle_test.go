@@ -41,6 +41,9 @@ const (
 	plusWorkSegPtr = 0xa8f8
 	// plusMonthCursor 是「這個月處理到第幾格」在工作段的位移（原版 `0x20f4`）。
 	plusMonthCursor = 0x20f6
+	// plusMonthOff 是工作段裡的月份（四季分派器 `0x14c19` 讀 `es:[0x3f14]`；
+	// 原版 `0x3f08`）。
+	plusMonthOff = 0x3f14
 )
 
 // plusDispatchTables 是加強版十八張分派表的呼叫端（形狀 `shl bx,2 /
@@ -223,12 +226,22 @@ func TestZZMonthParityPlus(t *testing.T) {
 			}
 			if curDisp == watch && atSettle != nil && curDisp >= 0 {
 				rec := base + uint32(nMas) + uint32(curDisp)*176
-				rndLog = append(rndLog, fmt.Sprintf("〔%s 兵(百) %d 金 %d 米 %d〕", name,
-					o.Word(addr(rec+16)), o.Word(addr(rec+18)), o.Word(addr(rec+20))))
+				ws := uint32(o.Word(addr(uint32(o.DSReg())*16+plusWorkSegPtr))) * 16
+				// 留守目標 `es:[0x2e6a]`（原版 `0x2e62`）與清單長度 `es:0xc`。
+				rndLog = append(rndLog, fmt.Sprintf("〔%s 兵(百) %d 金 %d 米 %d 留守 %d〕", name,
+					o.Word(addr(rec+16)), o.Word(addr(rec+18)), o.Word(addr(rec+20)),
+					int16(o.Word(addr(ws+0x2e6a)))))
 			}
 		})
 	}
 
+	// 對白常式（`0x2f366`，裡面那一擲 `RND(8)` 在 `0x2f912`）：追的郡把
+	// 呼叫端記下來，才分得出是哪一句對白在擲。
+	o.OnCall(addr(0x2f366), func(o *oracle.Oracle) {
+		if curDisp == watch && atSettle != nil {
+			rndLog = append(rndLog, fmt.Sprintf("msg@%05x", o.Caller().Linear()))
+		}
+	})
 	// 月底結算入口：第一次到的時候讀種子、拍盤面。
 	// 第一場電腦對電腦的戰役：原版從出兵那一支直接進戰役入口
 	// （`0xb590` → `1E25:0002`）。這一格之後的骰序含戰役結算，那一段
@@ -348,6 +361,35 @@ func TestZZMonthParityPlus(t *testing.T) {
 		t.Fatalf("工作段裡找不到順序表（%d）或旗標（%d）", orderOff, flagsOff)
 	}
 	t.Logf("工作段：順序表 +%#x、旗標 +%#x、游標 +%#x", orderOff, flagsOff, plusMonthCursor)
+	// `SAN1_MONTH=n`：把原版的月份改寫成 n，讓視窗跨進 n+1 月——四季常式
+	// 一年各只跑一次（`0x14c38` 比 1、4、7、10：春 `0x14c4c`、夏 `0x153fe`、
+	// 秋 `0x158a6`、冬 `0x15cd0`），開新局是元月，不改寫就只看得到二月。
+	// 月份在工作段的 `0x3f14`（分派器 `0x14c19` 讀的；原版 `0x3f08`）。
+	// `SAN1_PLAGUE=1` 再把每個郡的民眾忠誠與土地價值歸零，瘟疫的兩道門
+	// 一定過（原版那支同一組旋鈕，Issue #44）。
+	month := 1
+	if v := os.Getenv("SAN1_MONTH"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 12 {
+			ds := uint32(o.DSReg()) * 16
+			// 分派器讀的段值在 DS:0xa8fc，游標那一格用的是 DS:0xa8f8
+			// （原版 0xa72a／0xa726 同一回事）——兩格要是同一個段。
+			work := uint32(o.Word(addr(ds+plusWorkSegPtr))) * 16
+			if w2 := uint32(o.Word(addr(ds+0xa8fc))) * 16; w2 != work {
+				t.Fatalf("DS:0xa8f8 與 DS:0xa8fc 指的段不同（%#x／%#x），月份的位移要重讀", work, w2)
+			}
+			o.SetWord(addr(work+plusMonthOff), uint16(n))
+			month = n
+			t.Logf("月份改寫成 %d（視窗跨進 %d 月）", n, n%12+1)
+		}
+	}
+	if envOr("SAN1_PLAGUE", "") != "" {
+		for id := 1; id <= state.PrefectureCount; id++ {
+			rec := base + uint32(nMas+id*176)
+			o.SetByte(addr(rec+26), 0)
+			o.SetByte(addr(rec+27), 0)
+		}
+		t.Log("每個郡的民眾忠誠與土地價值歸零：瘟疫必發")
+	}
 
 	// 玩家：內政 → 休息 → Y（與原版那支同一串鍵）。每一步都等到
 	// 「等新鍵」那一道再送，早送會被吃掉。
@@ -394,7 +436,7 @@ func TestZZMonthParityPlus(t *testing.T) {
 	}
 	player := state.FactionID(players[0])
 	// 開新局是 189 年元月；結算入口那一刻月份還沒推進。
-	g, err := game.Continue(sc, player, 5, state.EditionPlus, game.Date{Year: 189, Month: 1})
+	g, err := game.Continue(sc, player, 5, state.EditionPlus, game.Date{Year: 189, Month: month})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -582,6 +624,9 @@ func TestZZMonthParityPlus(t *testing.T) {
 		differs8(after, mine), where(after, mine, nMas, nSta))
 	t.Log(byPrefecture(after, mine, nMas, nSta))
 	t.Log(byGeneral(after, mine, nMas, nSta))
+	dumpTables(t, atSettle, "plusparity-005-結算前")
+	dumpTables(t, after, "plusparity-01-原版走完")
+	dumpTables(t, mine, "plusparity-02-remake走完")
 	// **釘住的是整個月**（Issue #29）：換月之後的每一個郡，入口的亂數狀態
 	// 與本體的抽樣次數兩邊都要相同——十八張表的骰序逐格對上，含電腦對
 	// 電腦的戰役（原版在出兵裡就地結算：每天 `RND(11)`、打殘 `RND(10)`×4、

@@ -690,6 +690,17 @@ func raiseTo(v uint8, d, cap int) uint8 {
 // 對象必須是**別國的現役將領**，諸侯不算；
 // **太守被挖角的話全郡同時歸屬新諸侯**。
 func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) error {
+	return g.headhunt(prefectureID, targetIndex, by, false, 0)
+}
+
+// headhuntVetted 是電腦挑好人之後的挖角：候選那一道忠誠的 `RND(15)`
+// 在挑人時擲過了（`0xe0bc`），判定常式 `0x1dc0a` 只再看牽絆，不擲；
+// bonus 是那一級的表加在開價上的數（`0x1dcb5`）。
+func (g *State) headhuntVetted(prefectureID, targetIndex int, by state.FactionID, bonus int) error {
+	return g.headhunt(prefectureID, targetIndex, by, true, bonus)
+}
+
+func (g *State) headhunt(prefectureID, targetIndex int, by state.FactionID, vetted bool, bonus int) error {
 	if err := g.requireLordAt(prefectureID, by); err != nil {
 		return err
 	}
@@ -712,7 +723,12 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 	if g.ActiveGenerals(prefectureID) >= MaxGeneralsPerPrefecture {
 		return ErrTooManyGens
 	}
-	if !g.Headhuntable(t, prefectureID) {
+	if vetted {
+		if b := g.General(t.Bond); b != nil && b.Index != t.Index &&
+			b.Employed() && b.Faction == t.Faction {
+			return fmt.Errorf("%s：%w", tf("msg.unmoved", t.Name), ErrDeclined)
+		}
+	} else if !g.Headhuntable(t, prefectureID) {
 		return fmt.Errorf("%s：%w", tf("msg.unmoved", t.Name), ErrDeclined)
 	}
 	p.Gold -= CostHeadhunt
@@ -744,27 +760,77 @@ func (g *State) Headhunt(prefectureID, targetIndex int, by state.FactionID) erro
 		resist += HeadhuntSealPenalty
 	}
 	won := HeadhuntNewLoyalty(int(t.Loyalty), mine)
-	if resist >= HeadhuntOffer(lordCharm, mine, 0) || won <= 0 {
+	if resist >= HeadhuntOffer(lordCharm, mine, bonus) || won <= 0 {
 		return fmt.Errorf("%s：%w", tf("msg.unmoved", t.Name), ErrDeclined)
 	}
-	old := t.Faction
-	wasGovernor := t.Status.Governs()
-	at := t.Location
+	// 成功之後的寫回（`0x1df6a`–`0x1e1f9`，`L0`）：忠誠 ← 算出來的、身分 ← 3、
+	// 勢力 ← 本郡的所屬，然後分三條路。
+	old, oldStatus, at := t.Faction, t.Status, t.Location
 	t.Faction = by
 	t.Status = state.StatusOfficer
 	t.Loyalty = uint8(won)
-	if wasGovernor {
-		// 太守被挖角 → 全郡同時歸屬新諸侯。
-		if q := g.Prefecture(at); q != nil {
-			q.Owner = by
+	q := g.Prefecture(at)
+	switch {
+	case oldStatus == state.StatusAvailable || oldStatus == state.StatusStranded:
+		// 在野的（身分 8／10，`0x1dfb4`）：原郡的在野數 −1，搬到本郡，
+		// 本郡的現役將 +1、兵士 += 兵 ÷ 100。
+		t.Location = prefectureID
+		p.activeGenerals++
+		p.troops += t.Soldiers / 100
+	case q != nil && q.governor == t.Index:
+		// **太守被挖角，整郡跟著換旗**（`0x1e057`–`0x1e1b6`）：那一郡的所屬
+		// ← 本郡的所屬；重建那一郡的守將清單（模式 2、行動者鍵），除了
+		// 他本人之外每一位：忠誠 ← (100 − 忠誠) × 挖角方人望 ÷ (RND(10)+100)、
+		// 勢力 ← 挖角方，身分是軍師的把**挖角方**的軍師欄清掉（`0x1e10f`
+		// 讀的是已經改寫過的所屬——原版就這樣），身分 ← 3，再 `RND(10)+30`
+		// 壓過忠誠的就變在野（身分 8、勢力 0xFF）。最後他當太守（身分 2）、
+		// 那一郡重整（`0x1949e`）。他人不動。
+		if oldStatus == state.StatusChief {
+			if f := g.Faction(old); f != nil && f.Chief == t.Index {
+				f.Chief = -1
+			}
+		}
+		q.Owner = by
+		prestige := 0
+		if f := g.Faction(by); f != nil {
+			prestige = f.Prestige
+		}
+		for _, x := range g.ActorRoster(at) {
+			if x.Index == t.Index {
+				continue
+			}
+			div := g.Roll(10, at, x.Index, 0x1e0a6) + 100
+			x.Loyalty = uint8((100 - int(int8(x.Loyalty))) * prestige / div)
+			x.Faction = by
+			if x.Status == state.StatusChief {
+				if f := g.Faction(by); f != nil {
+					f.Chief = -1
+				}
+			}
+			x.Status = state.StatusOfficer
+			if int(int8(x.Loyalty)) < g.Roll(10, at, x.Index, 0x1e139)+30 {
+				x.Status = state.StatusAvailable
+				x.Faction = state.NoFaction
+				x.Loyalty = state.NoValue
+			}
 		}
 		t.Status = state.StatusGovernor
-		// 原本那一郡的其他人還效忠舊主，跟著失去駐地——先讓他們留下，
-		// 由「主事者唯一」的規則決定後續。
-		_ = old
-	} else {
-		// 人被挖走要離開原郡，回到挖角方的所在地。
+		q.governor = t.Index
+		g.RefreshGarrison(at)
+	default:
+		// 一般的（`0x1e018`–`0x1e1f9`）：軍師的話舊主的軍師欄清掉；搬到本郡，
+		// 本郡的現役將 +1、原郡 −1，本郡的兵士 += 兵 ÷ 100（原郡的兵士不動）。
+		if oldStatus == state.StatusChief {
+			if f := g.Faction(old); f != nil && f.Chief == t.Index {
+				f.Chief = -1
+			}
+		}
 		t.Location = prefectureID
+		p.activeGenerals++
+		if q != nil {
+			q.activeGenerals--
+		}
+		p.troops += t.Soldiers / 100
 	}
 	return nil
 }

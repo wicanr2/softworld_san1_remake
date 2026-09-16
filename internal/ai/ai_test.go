@@ -353,7 +353,7 @@ func TestArmsPurchaseFillsToFull(t *testing.T) {
 	pref := g.Prefecture(p)
 	pref.Gold = 30000 // 預算不設限，先看「買到滿編」這一半
 
-	orders := armsPurchase(g, g.ActorRoster(p), p, pref.Gold)
+	orders := armsPurchase(g, g.ActorRoster(p), p, 0, pref.Gold)
 	if len(orders) == 0 {
 		t.Fatalf("郡 %d 的守軍一個都不缺武器？", p)
 	}
@@ -381,7 +381,7 @@ func TestArmsPurchaseFillsToFull(t *testing.T) {
 		x.Arms = 0
 	}
 	total := 0
-	for _, o := range armsPurchase(g, g.ActorRoster(p), p, pref.Gold) {
+	for _, o := range armsPurchase(g, g.ActorRoster(p), p, 0, pref.Gold) {
 		total += o.(game.ArmsOrder).Units
 	}
 	if total > 1*game.ArmsPerGold {

@@ -1778,7 +1778,7 @@ RND(3)@0x2eeee：我方兵 < 最強的兵 ÷ (骰 + 1) → 想逃               
 (10,3)`，第 11 時貼上，之後每一時刻 `[30, 3, 20, 8]` 攻擊——雙方戰力值
 都是 0，一個兵都掉不了；守方每一時刻吃「0」「Y」休息，餘步 11 → 13 →
 15 → 17。第 19 時結束，體能寫回。`SAN1_SKIRMISH=1` 把每一步倒出來
-（`skirmish_trace_test.go`），`SAN1_NORESYNC=1` 下 108 條鏈逐條相同，
+（`skirmish_trace_test.go`），`SAN1_NORESYNC=1` 下 120 條鏈逐條相同，
 單測 `TestSkirmishMatchesTheTracedFight` 用腳本骰釘住同一場。
 
 ### 10.9 加強版（`0x2ae66`，`L0`、`[plus]`）
@@ -2133,7 +2133,7 @@ remake：`internal/battle` 的 `msg()`／`fx()`，各常式照上表擲
 `SAN1_NORESYNC=1 TestZZUnitAIDayParity`：只拍第一天的盤面，之後 remake
 自己走，骰用 MSC 的 LCG 從原版的種子接；四張盤面（甲 38、乙 52、丙 29、
 戊 59 條鏈）每一條鏈進來時的種子、部隊狀態（兵、將領數、位置、移動力、
-箭、陷阱、綜合能力）與決策逐條相同；盤面丁 108 條鏈含第 24 天的對戰
+箭、陷阱、綜合能力）與決策逐條相同；盤面丁 120 條鏈含第 24 天的對戰
 子畫面（§10.8）整場相同。**被打的那幾支也比**：每一條鏈進來時其餘每一支
 的兵、將領數、逐將領的兵與落點都要與原版那一刻相同，火攻、水淹、圍攻、
 快戰的殺傷落在別支部隊上才看得到（盤面辛 150 條鏈，狀態不同 0 次）。
@@ -2371,8 +2371,8 @@ registered remake 差異）。
 remake：鏈在 `internal/battle/autobase.go`（`AIPlus`，`plus*` 常數與
 `plusMove`），後果在 `battle.Rules`（`MeleeTerrainPlus`、`ArrowHalfScale`、
 `QualityAddsWarFirst`；`RulesFor(EditionPlus, …)` 全開）。對拍
-`TestZZUnitAIDayParityPlus`：六張盤面（甲、乙難度 15、丙、丁、戊、己），
-九支都定案過，`SAN1_NORESYNC=1` 六張整場逐條相同（丁到第一次對戰為止）。
+`TestZZUnitAIDayParityPlus`：七張盤面（甲、乙難度 15、丙、丁、戊、己、庚），
+九支都定案過，`SAN1_NORESYNC=1` 七張整場逐條相同（含子畫面與單挑，§10.9／§9）。
 
 ## 13. 還沒解
 

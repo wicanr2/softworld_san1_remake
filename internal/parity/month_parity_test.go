@@ -270,7 +270,9 @@ func TestZZMonthParity(t *testing.T) {
 			curTable = name
 			if watch >= 0 && curDisp == watch {
 				rosterLog = append(rosterLog,
-					fmt.Sprintf("進 %-10s 之前　清單 %v", name, rosterAt(o)))
+					fmt.Sprintf("進 %-10s 之前　清單 %v　在職將 %d 兵士 %d", name, rosterAt(o),
+						o.Byte(addr(base+uint32(nMas)+uint32(watch*176+22))),
+						o.Word(addr(base+uint32(nMas)+uint32(watch*176+16)))))
 			}
 			if watch >= 0 && curDisp == watch {
 				// 郡的所屬（offset 30）與槽號最大的那位——`0x1e394` 是
@@ -529,9 +531,15 @@ func TestZZMonthParity(t *testing.T) {
 	// 兩串印出來對——季節事件哪一擲多了、少了，看這個比看總數快。
 	rollLog := envOr("SAN1_ROLLLOG", "") != ""
 	var origRolls []string
+	// `SAN1_WATCH=n` 那個郡的回合裡原版每一道 `RND(n)` 也記（呼叫端），
+	// remake 那一邊在跑那個郡時記問的 n 與鹽——差一擲時看這兩串。
+	var origWatchRolls []string
 	o.OnCall(oracle.Addr{Seg: 0x1058, Off: 0x058c}, func(o *oracle.Oracle) {
 		if rollLog && curDisp < 0 {
 			origRolls = append(origRolls, fmt.Sprintf("%d@%05x", int(int16(o.Arg(0))), o.Caller().Linear()))
+		}
+		if curDisp == firstGapAt && atSettle != nil {
+			origWatchRolls = append(origWatchRolls, fmt.Sprintf("%d@%05x", int(int16(o.Arg(0))), o.Caller().Linear()))
 		}
 	})
 	o.OnCall(oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, func(*oracle.Oracle) {
@@ -945,6 +953,9 @@ func TestZZMonthParity(t *testing.T) {
 		})
 	}
 	g.EndMonth()
+	if em, es, eg, err := g.Tables(); err == nil {
+		dumpTables(t, append(append(append([]byte{}, em...), es...), eg...), "parity-007-remake換月後")
+	}
 	if rollLog {
 		g.TraceRolls(nil)
 		t.Logf("原版郡回合之外的骰（%d）：%s", len(origRolls), strings.Join(origRolls, " "))
@@ -1016,13 +1027,22 @@ func TestZZMonthParity(t *testing.T) {
 				}(), q.Gold, q.Rice)
 		}
 		d0 := g.RandDraws()
+		var mineWatchRolls []string
 		if at == firstGapAt {
 			for k, v := range mineTbl {
 				firstMine[k] = -v
 			}
+			g.TraceRolls(func(n, out int, salt []int) {
+				mineWatchRolls = append(mineWatchRolls, fmt.Sprintf("%d=%v", n, salt))
+			})
 		}
 		if _, n, err := pp.ActPrefecture(g, q.Owner, at, g.AILevel(q.Owner)); err != nil {
 			t.Errorf("郡 %d（勢力 %d）的命令有 %d 道成立，然後：%v", at, q.Owner, n, err)
+		}
+		if at == firstGapAt {
+			g.TraceRolls(nil)
+			t.Logf("郡 %d 原版的骰（%d）：%s", at, len(origWatchRolls), strings.Join(origWatchRolls, " "))
+			t.Logf("郡 %d remake 的骰（%d）：%s", at, len(mineWatchRolls), strings.Join(mineWatchRolls, " "))
 		}
 		mineBy[at] = g.RandDraws() - d0
 		if at == firstGapAt {
@@ -1186,6 +1206,7 @@ func TestZZMonthParity(t *testing.T) {
 			differs8(atSettle, atFirstTurn),
 			where(atSettle, atFirstTurn, nMas, nSta))
 		t.Log(byPrefecture(atSettle, atFirstTurn, nMas, nSta))
+		dumpTables(t, atFirstTurn, "parity-006-原版第一郡")
 	}
 	if len(atSettle) == total {
 		dumpTables(t, atSettle, "parity-005-結算前")
@@ -1283,6 +1304,10 @@ func byPrefecture(a, b []byte, nMas, nSta int) string {
 		if fields[fieldName(prefField, 16)] || fields[fieldName(prefField, 17)] {
 			line += fmt.Sprintf("｜兵士 原版 %d／remake %d",
 				int(a[lo+16])|int(a[lo+17])<<8, int(b[lo+16])|int(b[lo+17])<<8)
+		}
+		// 在職將（offset 22）也是存值，誰刷新它決定差在哪一支常式。
+		if fields[fieldName(prefField, 22)] {
+			line += fmt.Sprintf("｜在職將 原版 %d／remake %d", a[lo+22], b[lo+22])
 		}
 		lines = append(lines, line)
 	}

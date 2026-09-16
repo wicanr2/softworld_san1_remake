@@ -172,6 +172,11 @@ type faithful struct {
 	// 1 與 2 是兩種特別的出兵目標選法（`0xb3f4`／`0xb402`），其餘走預設；
 	// 行動者那一支評估鄰郡時也看它（`0xe9e2`）。原版沒有這一抽。
 	plan int
+	// keep／best 是加強版行動者那一支算好的留守目標（`es:[0x2e6a]`）與
+	// 最弱的鄰敵（`es:0x1600`）：**在回合開頭、清單剛建好時算**，出兵那一張
+	// 只讀。中間的調整兵力會把兵攤平，「清單最後一位的兵力」到了出兵已經
+	// 不是算的那一個（十月視窗郡 38：行動者時 3，出兵時重算是 4）。
+	keep, best int
 }
 
 func (f *faithful) Mode() Mode    { return f.mode }
@@ -279,8 +284,8 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 				for _, x := range g.Garrison(curP) {
 					n += x.Soldiers
 				}
-				f.trace[fmt.Sprintf("值|%-10s 人口 %6d 兵(百) %3d 金 %5d 米 %5d",
-					name, q.Population, n/100, q.Gold, q.Rice)]++
+				f.trace[fmt.Sprintf("值|%-10s 人口 %6d 兵(百) %3d 金 %5d 米 %5d 在職將 %d",
+					name, q.Population, n/100, q.Gold, q.Rice, g.StoredActiveGenerals(curP))]++
 			}
 		}
 	}
@@ -325,6 +330,11 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 			// 加強版的行動者那一支開頭先抽本回合的策略值（見 `plan`）。
 			// 這一抽排在整張表之前，漏掉的話後面十七張的骰序全部錯位。
 			f.plan = g.Roll(PlusPlanRange(g.Difficulty), int(id), p, tableActor)
+			// 留守目標與最弱鄰敵也在這裡算好（`0xe9d2`–`0xea4f`），出兵只讀。
+			if q := g.Prefecture(p); q != nil {
+				_, _, foe := neighbourLists(g, q, id)
+				f.keep, f.best = f.plusKeep(g, p, foe)
+			}
 		}
 		f.order = roster(g, p)
 		// 帶兵上限的總和在分派器入口算一次就存起來（`es:0x347e`，
@@ -499,7 +509,7 @@ func (f *faithful) planIn(g *game.State, id state.FactionID,
 		f.rewards(g, acting, p, emit, mark)
 		mark("賞賜物品")
 		// 購置武器（表 `0x5594`）：預算是郡的金的 2 %。
-		bought := armsPurchase(g, f.turnList(g, p), p, aiBudget(gold(), aiLevel, tableArms))
+		bought := armsPurchase(g, f.turnList(g, p), p, aiLevel, aiBudget(gold(), aiLevel, tableArms))
 		for _, o := range bought {
 			emit(o)
 		}
@@ -876,11 +886,11 @@ func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 	if p == nil {
 		return nil, false
 	}
-	troops := 0
-	for _, x := range g.Garrison(prefecture) {
-		troops += x.Soldiers
-	}
-	units := troops / 100 // 原版整份用「百」當單位
+	// **讀的是州郡存的兵士（offset 16，百）**，不是當下守軍的合計：入口的
+	// 門檻（`0xb666`）與帶走錢糧的份額（`0xb8b6`／`0xb8c5` 的 `filds 0x490`）
+	// 都讀那一格，而它是調整兵力那一張表**攤平之前**寫的——攤平會讓
+	// 合計變一兩百人，四月視窗郡 38 → 36 的移防因此帶走 70 金不是 65。
+	units := g.Troops(prefecture)
 	// **入口只有一道門檻**：`0xb666`／`0xb696`／`0xb6c6` 三個等級的碼
 	// 一模一樣，都只判「州郡 offset 16（兵士，百）>= 5」，然後就
 	// `0xb2b4`（編隊）再 `0xb47a`（挑目標）。
@@ -1007,9 +1017,25 @@ func (f *faithful) sortie(g *game.State, prefecture int, id state.FactionID,
 		// 會把它壓低，帶走的錢因此少一截。米一直是對的，兩邊不一致本身
 		// 就是線索。驗算：郡 1 出兵時金 4137、米 1155、兵 77 百，原版帶走
 		// 金 1558、米 435 —— `4137÷77×29` 與 `1155÷77×29` 同一個 29。
-		Gold: min(game.SortieShare(p.Gold, units, sent/100), p.Gold),
-		Rice: min(game.SortieShare(p.Rice, units, sent/100), p.Rice),
+		// 目標郡裝不下的不帶（`SortieCarry`）；來源郡扣到負的由搬運那一支夾 0。
+		Gold: game.SortieCarry(game.SortieShare(p.Gold, units, sent/100), destGold(g, to)),
+		Rice: game.SortieCarry(game.SortieShare(p.Rice, units, sent/100), destRice(g, to)),
 	}, true
+}
+
+// destGold／destRice 是移防目標郡此刻的存量（`0xb917`／`0xb979` 讀的）。
+func destGold(g *game.State, to int) int {
+	if q := g.Prefecture(to); q != nil {
+		return q.Gold
+	}
+	return 0
+}
+
+func destRice(g *game.State, to int) int {
+	if q := g.Prefecture(to); q != nil {
+		return q.Rice
+	}
+	return 0
 }
 
 // keepFunc 是戰役入口的整編要的「留守目標」（`0x23630` 先 `call 行動者`
@@ -1092,18 +1118,16 @@ func (f *faithful) sortiePlus(g *game.State, prefecture int, id state.FactionID)
 	if p == nil {
 		return nil, false
 	}
-	troops := 0
-	for _, x := range g.Garrison(prefecture) {
-		troops += x.Soldiers
-	}
-	units := troops / 100
+	// 同原版那一支：讀州郡存的兵士（offset 16，百）。
+	units := g.Troops(prefecture)
 	if units < SortieMinTroops {
 		return nil, false
 	}
 	free, mine, foe := neighbourLists(g, p, id)
-	// 留守目標與最弱的鄰敵（`0xe920`–`0xe9c6`），清單是重建過的
-	// （這一輪登用的新人到了出兵已經在裡面）。
-	want, best := f.plusKeep(g, prefecture, foe)
+	// 留守目標與最弱的鄰敵是行動者那一支在回合開頭算好的（`f.keep`／
+	// `f.best`，`0xe920`–`0xea4f`），這裡只讀——中間的調整兵力攤平了兵，
+	// 現在重算會拿到另一個「清單最後一位的兵力」。
+	want, best := f.keep, f.best
 	cand := roster(g, prefecture)
 	candIdx := make([]int, 0, len(cand))
 	for _, x := range cand {
@@ -1192,8 +1216,8 @@ func (f *faithful) sortiePlus(g *game.State, prefecture int, id state.FactionID)
 	}
 	return game.RelocateOrder{
 		At: prefecture, To: to, Force: force,
-		Gold: min(game.SortieShare(p.Gold, units, going/100), p.Gold),
-		Rice: min(game.SortieShare(p.Rice, units, going/100), p.Rice),
+		Gold: game.SortieCarry(game.SortieShare(p.Gold, units, going/100), destGold(g, to)),
+		Rice: game.SortieCarry(game.SortieShare(p.Rice, units, going/100), destRice(g, to)),
 	}, true
 }
 
@@ -1520,15 +1544,58 @@ func headhunt(g *game.State, prefecture int, id state.FactionID, gold int) (game
 	if budget < game.CostHeadhunt {
 		return game.HeadhuntOrder{}, false
 	}
+	// **挑誰**（`0xe0bc`，`L0`）：本郡現役滿五十位就放棄；掃**全部 350 筆**
+	// （不提早停），有主、不是本郡所屬那一家的、不是君主，忠誠那一道
+	// `RND(15)+80` 過了、牽絆對象不在他自己陣營的才進候選清單；然後挑
+	// **忠誠最低的**（相同取前面的），`RND(4) == 0` 時改成 `RND(候選數)`
+	// 隨機一位（`0xe23e`–`0xe26c`）。
+	g.RefreshActiveGenerals(prefecture)
+	if g.ActiveGenerals(prefecture) >= game.MaxGeneralsPerPrefecture {
+		return game.HeadhuntOrder{}, false
+	}
+	// **加強版在掃候選之前多一道難度門**（`0xdcf8`–`0xdd1c`，`L0`、`[plus]`）：
+	// `RND(1010) > ((難度−1) mod 10 + 1) × 100` 就放棄——與賞賜金帛每人那
+	// 一道同一個式子（`PlusRewardGate`）。
+	if g.Edition == state.EditionPlus &&
+		g.Roll(PlusRewardGateRange, int(id), prefecture, tableHeadhunt, 4) > PlusRewardGate(g.Difficulty) {
+		return game.HeadhuntOrder{}, false
+	}
+	owner := id
+	if q := g.Prefecture(prefecture); q != nil {
+		owner = q.Owner
+	}
+	var list []*game.General
 	for _, x := range g.AllGenerals() {
-		if !x.Employed() || x.Faction == id || x.Status == state.StatusLord {
+		if !x.Employed() || x.Faction == owner || x.Status == state.StatusLord {
 			continue
 		}
 		if g.Headhuntable(x, prefecture) {
-			return game.HeadhuntOrder{At: prefecture, Target: x.Index}, true
+			list = append(list, x)
 		}
 	}
-	return game.HeadhuntOrder{}, false
+	if len(list) == 0 {
+		return game.HeadhuntOrder{}, false
+	}
+	pick := list[0]
+	for _, x := range list[1:] {
+		if int(int8(x.Loyalty)) < int(int8(pick.Loyalty)) {
+			pick = x
+		}
+	}
+	if g.Roll(4, int(id), prefecture, tableHeadhunt, 1) == 0 {
+		pick = list[g.Roll(len(list), int(id), prefecture, tableHeadhunt, 2)]
+	}
+	// 挑完人之後那一級的表再擲一次加在開價上（判定常式的第三個參數）：
+	// 等級 3 是 0（`0xe308`）、等級 4 `RND(10)+3`（`0xe3a6`）、
+	// 等級 5 `RND(10)+10`（`0xe44e`）。
+	bonus := 0
+	switch level {
+	case 4:
+		bonus = g.Roll(10, int(id), prefecture, tableHeadhunt, 3) + 3
+	case 5:
+		bonus = g.Roll(10, int(id), prefecture, tableHeadhunt, 3) + 10
+	}
+	return game.HeadhuntOrder{At: prefecture, Target: pick.Index, Vetted: true, Bonus: bonus}, true
 }
 
 // headhuntBar 是 `RND(10) > K` 裡的 K：等級 3／4／5 ＝ 6／3／1。
@@ -1692,7 +1759,7 @@ func indicesOf(list []*game.General) []int {
 // ⚠ **原版的預算是勢力層級的**（`es:[0x3d16]`，§2.12），它怎麼算出來
 // 還沒解（`L3`）。這裡拿郡的金當上限，因為那是 remake 這一邊唯一
 // 擋得住的東西——`ApplyAll` 遇到買不起會整串中斷，不是少買一點。
-func armsPurchase(g *game.State, list []*game.General, prefecture, budget int) []game.Order {
+func armsPurchase(g *game.State, list []*game.General, prefecture, level, budget int) []game.Order {
 	var out []game.Order
 	// 走的也是共用的那份清單（`0xc1af` 讀 `es:0x58c`）。
 	for _, x := range list {
@@ -1703,7 +1770,11 @@ func armsPurchase(g *game.State, list []*game.General, prefecture, budget int) [
 		if gap <= 0 {
 			continue
 		}
-		budget -= gap / game.ArmsPerGold
+		// **預算扣的是折扣之後真的付的**（`0xc211` 走付錢那一支 `0xec24`：
+		// `es:0x3d16 −= ftol(係數 × 花費)`，等級 5 是 0.75）：花 1 金的人
+		// 付 0、預算不動，所以整份清單每一位都買得到（一月視窗郡 8 七位
+		// 全補到 99）。與徵兵同一個形狀。
+		budget -= state.AICost(gap/game.ArmsPerGold, level)
 		out = append(out, game.ArmsOrder{At: prefecture, General: x.Index, Units: gap})
 	}
 	return out
