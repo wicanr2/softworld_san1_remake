@@ -353,6 +353,8 @@ func (s *Skirmish) log(format string, a ...any) {
 // Run 把一場對戰從頭走到尾（`0x2e498`–`0x2e688`）。
 func (s *Skirmish) Run() {
 	b := s.b
+	b.inSkirmish = s
+	defer func() { b.inSkirmish = nil }()
 	b.note("blog.skirmish", s.Units[SkirmishAttacker].Name(), s.Units[SkirmishDefender].Name())
 	for {
 		s.log("── 時刻 %d", s.Hour)

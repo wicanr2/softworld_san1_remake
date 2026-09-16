@@ -288,6 +288,18 @@ func (u *Unit) refreshQuality(warFirst bool) {
 	u.Quality = int(v)
 }
 
+// Head 是這支部隊第 0 槽那一位（整編時第一個編進來的），還在隊裡才算。
+//
+// 原版的部隊面板（對戰子畫面的兩塊、查看那一塊）畫的是他的肖像與名字
+// （`0x320a6` 讀 `es:0x3502[(軍力×10＋隊伍)×42]`），第 0 槽空了面板就
+// 只剩藍底——與 `Chief`（戰力最高的那一位）不一定是同一個人。
+func (u *Unit) Head() *Leader {
+	if len(u.Leaders) == 0 || !u.Leaders[0].InUnit() {
+		return nil
+	}
+	return &u.Leaders[0]
+}
+
 // Chief 是這支部隊的領隊：戰力最高的那一位。
 //
 // 單挑與計謀的智力門檻都看領隊（說明書 p.30、p.32–34）。

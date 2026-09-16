@@ -1207,6 +1207,31 @@
       "layer": "verification"
     },
     {
+      "id": "battle-unit-and-inspect-panels",
+      "title": "對戰子畫面的部隊面板與主戰場查看：面板換成當事部隊／那一位的肖像",
+      "group": "畫面",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/05"
+      ],
+      "note": "2026-09-17（Issue #55）：`0x320a6(軍力, 隊伍)` 在對戰子畫面進場與攻擊／單挑結算後把兩塊軍力面板換成那兩支部隊的面板——第 0 槽那一位的肖像（攻方翻面）、框 `FBRA`、32×32 名字、君主／軍力名／（空）／隊伍名與將數／兵數／（空）；`0x284a2(軍力, 人物)` 查看：第三塊清藍、肖像 (552,276)、框 `FBRB`、名字 x 512、六行 `體能／謀略／戰力／訓練／武裝／兵`。remake：`ui.UnitPanel`／`InspectPanel` 掛在 `ArtBattleInfo`，子畫面裡的對白記著兩支部隊（`battle.Speech.Units`）畫那一句時換面板；查看的覆蓋頁打開時第三塊畫第 0 槽那一位。順手：指令面板的字從 (448,268) 起、肖像框四片全畫。沒接：對戰子畫面本身（子地圖、時刻、選單）remake 沒有畫面。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZUnitPanelsMatchTheOriginal|TestZZInspectPanelMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      },
+      "layer": "verification"
+    },
+    {
       "id": "art-main-overlays",
       "title": "原版素材畫面看得到指令表、子選單、挑選清單、分頁與戰場選項",
       "group": "畫面",

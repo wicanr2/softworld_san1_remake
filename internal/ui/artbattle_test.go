@@ -548,3 +548,110 @@ func battleTextCells(t *testing.T, shotPath string, tc battleTextCase) {
 	}
 	t.Logf("比了 %d 格", len(cellsToCheck))
 }
+
+// TestArtBattleUnitAndInspectPanelsStayInTheirColumns 釘住對戰子畫面的
+// 部隊面板與查看那一塊（`docs/spec/005` §8「部隊面板」「查看」）在三個
+// 語系下都畫得出來、而且字不壓到肖像：部隊面板的六行只落在資料那一欄
+// （攻 176–239、守 256–319）與名字那一欄（144／320 起 32 寬），查看的
+// 六行只落在 448–511、名字在 512–543，肖像那一塊 (544,268)–(623,363)
+// 只有框與肖像的顏色，沒有字色。
+func TestArtBattleUnitAndInspectPanelsStayInTheirColumns(t *testing.T) {
+	c1, c3 := artContainers(t)
+	ab, err := NewArtBattle(c1, c3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	fld := battle.Generate(battle.Params{Prefecture: 25})
+	b := battle.New(battle.Setup{Field: fld, Seed: 1})
+	l := assets.BattleWide
+	mk := func(side battle.Side, name string, n int) *battle.Unit {
+		u := &battle.Unit{Side: side, Formation: battle.Centre}
+		for k := 0; k < n; k++ {
+			u.Leaders = append(u.Leaders, battle.Leader{Index: 228 + k, Name: name, War: 78, Intel: 99,
+				Stamina: 82, Soldiers: 3000, Training: 80, Arms: 80, Troop: battle.TroopLand})
+		}
+		return u
+	}
+	inkAt := func(c *Canvas, x0, y0, x1, y1 int, ink color.RGBA) int {
+		n := 0
+		for y := y0; y <= y1; y++ {
+			for x := x0; x <= x1; x++ {
+				if c.Img.RGBAAt(x, y) == ink {
+					n++
+				}
+			}
+		}
+		return n
+	}
+	// overdrawn 數一塊裡有幾點與只拼圖層（沒有字）的畫面不同——肖像自己
+	// 也有黃與淺紅，只能這樣分出「字壓上去」的點。
+	overdrawn := func(c *Canvas, im *assets.Image, x0, y0, x1, y1 int) int {
+		n := 0
+		for y := y0; y <= y1; y++ {
+			for x := x0; x <= x1; x++ {
+				if c.Img.RGBAAt(x, y) != assets.EGAPalette[im.At(x, y)&15] {
+					n++
+				}
+			}
+		}
+		return n
+	}
+	for _, loc := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = loc
+		names := []string{"陳就", "周瑜"}
+		if loc == i18n.En {
+			names = []string{"Chen Jiu", "Zhou Yu"}
+		}
+		units := [2]UnitPanel{
+			{Unit: mk(battle.MainAttacker, names[0], 1), Portrait: 228, Lord: names[0]},
+			{Unit: mk(battle.MainDefender, names[1], 3), Portrait: 14, Lord: names[1]},
+		}
+		c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
+		c.SetSmallFace(testSmallFace(t))
+		info := ArtBattleInfo{Portrait: [2]int{-1, -1}, Units: &units}
+		DrawArtBattle(c, ab, b, BattleView{}, info)
+		layers := ab.compose(b, BattleView{}, info)
+		for i := range units {
+			ink := assets.EGAPalette[assets.FlagPlateColour[units[i].Unit.Side.OriginalIndex()]]
+			fx, fy := l.Face(i)
+			if n := overdrawn(c, layers, fx-8, fy-8, fx+71, fy+87); n > 0 {
+				t.Errorf("%s 部隊面板 %d：字壓到肖像與框 %d 點", loc, i, n)
+			}
+			x0, y0, _, _ := l.Panel(i)
+			if n := inkAt(c, x0, y0, x0+assets.BattlePanelW-1, y0+assets.BattlePanelH-1, ink); n == 0 {
+				t.Errorf("%s 部隊面板 %d 沒有字", loc, i)
+			}
+		}
+		// 第 0 槽空了的部隊：那一塊只剩藍底。
+		gone := mk(battle.MainDefender, names[1], 1)
+		gone.Leaders[0].Captured = true
+		units[1] = UnitPanel{Unit: gone, Portrait: 14, Lord: names[1]}
+		c = testCanvasPx(t, assets.ScreenW, assets.ScreenH)
+		DrawArtBattle(c, ab, b, BattleView{}, ArtBattleInfo{Portrait: [2]int{-1, -1}, Units: &units})
+		x0, y0, x1, y1 := l.Panel(1)
+		if n := inkAt(c, x0, y0, x1, y1, assets.EGAPalette[assets.BattlePanelPaper]); n != assets.BattlePanelW*assets.BattlePanelH {
+			t.Errorf("%s 第 0 槽空了的部隊面板該只剩藍底，藍的只有 %d／%d 點", loc, n, assets.BattlePanelW*assets.BattlePanelH)
+		}
+
+		// 查看。
+		leader := &mk(battle.MainAttacker, names[0], 1).Leaders[0]
+		c = testCanvasPx(t, assets.ScreenW, assets.ScreenH)
+		info = ArtBattleInfo{Portrait: [2]int{-1, -1},
+			Inspect: &InspectPanel{Leader: leader, Side: battle.MainAttacker, Portrait: 228}}
+		DrawArtBattle(c, ab, b, BattleView{Page: []string{"x"}, PageTitle: "x"}, info)
+		layers = ab.compose(b, BattleView{}, info)
+		yellow := assets.EGAPalette[assets.BattleOrderInk]
+		x0, y0, x1, y1 = l.Panel(2)
+		if n := inkAt(c, x0, y0, x0+63, y1, yellow); n == 0 {
+			t.Errorf("%s 查看：六行資料沒有字", loc)
+		}
+		if n := overdrawn(c, layers, x0+64, y0, inspectFaceX-9, y1); n == 0 {
+			t.Errorf("%s 查看：名字那一欄沒有字", loc)
+		}
+		if n := overdrawn(c, layers, inspectFaceX-8, inspectFaceY-8, x1, y1); n > 0 {
+			t.Errorf("%s 查看：字壓到肖像與框 %d 點", loc, n)
+		}
+	}
+}

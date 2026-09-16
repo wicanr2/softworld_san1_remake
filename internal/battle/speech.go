@@ -22,12 +22,18 @@ const (
 )
 
 // Speech 是一句對白：說話者（人物槽）、哪一塊、肖像在左、字色、內容。
+//
+// Units 是說這句話時對戰子畫面裡的兩支部隊（攻方陣營那一支、守方陣營
+// 那一支），不在子畫面裡就都是 nil。原版進子畫面（`0x2deb0`）先把兩塊
+// 軍力面板換成這兩支部隊的面板（`0x320a6`：第 0 槽那一位的肖像與名字、
+// 君主、軍力名、隊伍名與將數、兵數），對白就畫在那樣的畫面上。
 type Speech struct {
 	Speaker int
 	Box     SpeechBox
 	Left    bool
 	Color   int
 	Text    string
+	Units   [2]*Unit
 }
 
 // Panel 是這一塊在版面裡的面板編號：攻方 0、守方 1、指令列（第三塊）2，
@@ -49,8 +55,17 @@ func (b *Battle) say(speaker *Leader, box SpeechBox, left bool, key string, a ..
 	if speaker == nil {
 		return
 	}
-	b.Speeches = append(b.Speeches, Speech{Speaker: speaker.Index, Box: box, Left: left,
-		Color: c, Text: i18n.Sf(key, a...)})
+	sp := Speech{Speaker: speaker.Index, Box: box, Left: left, Color: c, Text: i18n.Sf(key, a...)}
+	if s := b.inSkirmish; s != nil {
+		for _, u := range s.Units {
+			if u.Side.Attacking() {
+				sp.Units[0] = u
+			} else {
+				sp.Units[1] = u
+			}
+		}
+	}
+	b.Speeches = append(b.Speeches, sp)
 }
 
 // sayUnit 是部隊的統帥在第三塊面板說一句。

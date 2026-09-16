@@ -71,11 +71,20 @@ type BattleView struct {
 	Page      []string
 	// PageTop 是分頁捲到第幾行（見 `View.PageTop`）。
 	PageTop int
+
+	// Inspecting 是查看中的那支部隊；原版素材的畫面把第三塊面板換成
+	// 它第 0 槽那一位的肖像與資料（`ArtBattleInfo.Inspect`）。
+	Inspecting *battle.Unit
 }
 
 // SetPage 打開一頁，捲回最上面。
 func (v *BattleView) SetPage(title string, lines []string) {
 	v.PageTitle, v.Page, v.PageTop = title, lines, 0
+}
+
+// ClosePage 收起分頁，查看中的部隊一起清掉。
+func (v *BattleView) ClosePage() {
+	v.PageTitle, v.Page, v.Inspecting = "", nil, nil
 }
 
 // ScrollPage 捲動分頁；art 為真表示原版素材的戰場畫面。

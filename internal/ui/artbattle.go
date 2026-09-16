@@ -52,7 +52,43 @@ type ArtBattleInfo struct {
 	// Lord 是兩邊**君主**的姓名：面板第一行「X軍」寫的是勢力的君主
 	// （`0x22dbb` 從統帥的勢力查諸侯表），不是統帥。空的就用統帥。
 	Lord [2]string
+
+	// Units 不是 nil 時，兩塊軍力面板改畫**部隊面板**（對戰子畫面裡的
+	// 兩支：攻方陣營那一支、守方陣營那一支，`0x320a6`），見 UnitPanel。
+	Units *[2]UnitPanel
+
+	// Inspect 不是 nil 時，第三塊面板改畫**查看**那一位將領（`0x284a2`）。
+	Inspect *InspectPanel
 }
+
+// UnitPanel 是對戰子畫面裡一塊部隊面板要的東西（`0x320a6(軍力, 隊伍)`，
+// `L0`）：第 0 槽那一位的肖像與名字（`Unit.Head`），君主名，軍力名，
+// 「隊伍名 N將」，「兵 N」。Unit 為 nil、或第 0 槽空了，面板只剩藍底。
+type UnitPanel struct {
+	Unit *battle.Unit
+	// Portrait 是第 0 槽那一位的肖像編號（−1 ＝ 沒有）。
+	Portrait int
+	// Lord 是這支部隊勢力的君主名。
+	Lord string
+}
+
+// InspectPanel 是查看那一塊要的東西（`0x284a2(軍力, 人物)`，`L0`）：
+// 那一位的肖像（不翻面）與名字（該側的字色）、六行「體能／謀略／戰力／
+// 訓練／武裝／兵」。
+type InspectPanel struct {
+	Leader *battle.Leader
+	Side   battle.Side
+	// Portrait 是肖像編號（−1 ＝ 沒有）。
+	Portrait int
+}
+
+// 查看那一塊的位置（`0x284a2`，兩種版面相同——座標是寫死的）：肖像
+// 64×80 在 (552,276)、框 `FBRB` 在肖像外圍 8、名字 32×32 直排在 x 512、
+// 六行字從 (448,268) 起一行 16。
+const (
+	inspectFaceX, inspectFaceY = 552, 276
+	inspectNameX               = 512
+)
 
 // artBattleSides 是兩個面板各自代表的軍力：攻方看主攻軍、守方看主守軍。
 var artBattleSides = [2]battle.Side{battle.MainAttacker, battle.MainDefender}
@@ -98,11 +134,12 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 	ab.drawUnits(im, b, v)
 
 	// 左欄、場地左右緣的線與三個面板：先塗底色再畫下凹的外框。
+	// 查看那一塊（`0x284a2`）把第三塊面板清成藍再畫，與軍力面板同色。
 	im.LeftColumn()
 	im.FieldLines(l)
 	for i := range l.PanelX {
 		paper := byte(assets.BattlePanelPaper)
-		if i == 2 {
+		if i == 2 && info.Inspect == nil {
 			paper = assets.BattleOrderPaper
 		}
 		x0, y0, x1, y1 := l.Panel(i)
@@ -114,22 +151,52 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 	if w := ab.weather[b.Weather.OriginalIndex()%len(ab.weather)]; w != nil {
 		im.Blit(w, assets.BattleWeatherX, assets.BattleWeatherY)
 	}
+	// 兩塊軍力面板的肖像：統帥（框 `FBRC`），或對戰子畫面裡那兩支部隊
+	// 的第 0 槽（框 `FBRA`；第 0 槽空了那一塊只剩藍底，`0x320a6` 的
+	// `0xFFFF` 分支）。
 	for i := range assets.BattleFaceMirror {
-		if ab.frame[0] != nil {
-			fx, fy := l.Frame(i)
-			im.Blit(ab.frame[0], fx, fy)
+		portrait, frame := info.Portrait[i], ab.frame
+		if info.Units != nil {
+			portrait, frame = -1, ab.frameA
+			if u := info.Units[i]; u.Unit != nil && u.Unit.Head() != nil {
+				portrait = u.Portrait
+			}
+			if portrait < 0 {
+				continue
+			}
 		}
-		face := ab.face(info.Portrait[i])
+		fx, fy := l.Face(i)
+		ab.blitFrame(im, frame, fx, fy)
+		face := ab.face(portrait)
 		if face == nil {
 			continue
 		}
 		if assets.BattleFaceMirror[i] {
 			face = face.Mirror()
 		}
-		fx, fy := l.Face(i)
 		im.Blit(face, fx, fy)
 	}
+	// 查看：那一位的肖像在 (552,276)，不翻面，框是 `FBRB`。
+	if info.Inspect != nil {
+		ab.blitFrame(im, ab.frameB, inspectFaceX, inspectFaceY)
+		if face := ab.face(info.Inspect.Portrait); face != nil {
+			im.Blit(face, inspectFaceX, inspectFaceY)
+		}
+	}
 	return im
+}
+
+// blitFrame 把一組肖像框的四片畫在肖像 (x, y) 的外圍：上 (x−8, y−8)、
+// 下 (x−8, y+80)、左 (x−8, y)、右 (x+64, y)（`0x1058:0x276c`，樣式
+// 0–3 ＝ `FBRA`–`FBRD`；軍力面板的 `FBRC`、部隊面板的 `FBRA`、查看的
+// `FBRB` 四片在基準畫面上各 0 像素差）。
+func (ab *ArtBattle) blitFrame(im *assets.Image, fr [4]*assets.Image, x, y int) {
+	at := [4][2]int{{x - 8, y - 8}, {x - 8, y + 80}, {x - 8, y}, {x + 64, y}}
+	for k, piece := range fr {
+		if piece != nil {
+			im.Blit(piece, at[k][0], at[k][1])
+		}
+	}
 }
 
 // drawUnits 把部隊的旗與兵力牌畫上去。
@@ -207,7 +274,8 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	y0, _ = assets.BattleLeftBox(3)
 	c.DrawTextPx(assets.BattleNameX, y0, tf("bat.dayShort", b.Day), assets.EGAPalette[15])
 
-	// 兩個軍力面板（`0x22c94`，位置在 `assets.BattleLayout.NameX`／`TextX`）。
+	// 兩個軍力面板（`0x22c94`，位置在 `assets.BattleLayout.NameX`／`TextX`）；
+	// 對戰子畫面裡換成兩支部隊的面板（`0x320a6`）。
 	l := assets.BattleLayoutFor(b.Field.Narrow())
 	for i, side := range artBattleSides {
 		units, men := 0, 0
@@ -220,11 +288,32 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 			}
 		}
 		ink := assets.EGAPalette[assets.BattlePanelInks[i]]
+		commander, lord := info.Commander[i], info.Lord[i]
+		var lines []string
+		if info.Units != nil {
+			// 部隊面板：第 0 槽那一位的名字，字色照那支部隊的軍力
+			// （`DS:0x796a`）；六行是君主、軍力名、（空）、隊伍名與將數、
+			// 兵數、（空）（`DS:0x889c`–`0x88be`）。第 0 槽空了整塊只剩藍底。
+			u := info.Units[i]
+			if u.Unit == nil || u.Unit.Head() == nil {
+				continue
+			}
+			side = u.Unit.Side
+			ink = assets.EGAPalette[assets.FlagPlateColour[side.OriginalIndex()]]
+			commander, lord = u.Unit.Head().Name, u.Lord
+			lines = []string{
+				tf("bat.armyOf", battlePaddedName(lord)),
+				tf("bat.sideLine", SideName(side)),
+				"",
+				tf("bat.panelUnit", u.Unit.Formation.Label(), u.Unit.LeaderCount()),
+				tf("bat.panelMen", u.Unit.Soldiers()),
+			}
+		}
 		// 統帥名：32×32 直排在肖像旁邊（`0x22fd4`），兩字名從 y+16 起、
 		// 三字名從 y+0 起。拉丁字母的名字直排讀不下去，不畫（第一行的
 		// 「X's army」已經有名字；remake 差異）。
 		bigName := false
-		if name := []rune(info.Commander[i]); artAllWide(info.Commander[i]) && len(name) <= 3 {
+		if name := []rune(commander); artAllWide(commander) && len(name) <= 3 {
 			bigName = true
 			y := l.PanelY[i]
 			if len(name) == 2 {
@@ -237,16 +326,17 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		// 五行資料：原版的第一行是 6 個位元組的姓名欄接「軍」（兩字名前後
 		// 各一個空白），第三行的軍數是國字（`DS:0x7927`），兵是存的百位
 		// 接「00」。
-		lord := info.Lord[i]
 		if lord == "" {
-			lord = info.Commander[i]
+			lord = commander
 		}
-		lines := []string{
-			tf("bat.armyOf", battlePaddedName(lord)),
-			tf("bat.sideLine", SideName(side)),
-			tf("bat.forcesLine", battleUnitsNumeral(units), leaders),
-			tf("bat.menLine", men/100*100),
-			tf("bat.goldLine", b.Gold[side]),
+		if lines == nil {
+			lines = []string{
+				tf("bat.armyOf", battlePaddedName(lord)),
+				tf("bat.sideLine", SideName(side)),
+				tf("bat.forcesLine", battleUnitsNumeral(units), leaders),
+				tf("bat.menLine", men/100*100),
+				tf("bat.goldLine", b.Gold[side]),
+			}
 		}
 		// 沒畫統帥名（拉丁字母）的時候，那 32 像素讓給資料，文字區從
 		// 統帥名的位置起算、寬 96。
@@ -266,12 +356,58 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		}
 	}
 
-	// 指令面板：原版的三行三列 ＋ 提示。**選了用計、交戰、方向或紮營
-	// 之後，那三行換成該選的選項**——先前只畫選單標題，六種計謀、交戰
-	// 方式都看不到，玩家只能照手冊背編號（`docs/spec/014` §7）。
-	ordX, ordY := l.PanelX[2]+4, l.PanelY[2]+4
+	// 查看（`0x284a2`）：第三塊面板換成那一位的肖像、名字與六行資料，
+	// 字黃（14）從面板左上角起一行 16；名字 32×32 直排在 x 512，字色照
+	// 那一側（`DS:0x796a`）。分頁照樣蓋在場地上（remake 差異：原版是
+	// 逐位翻看，remake 一頁列出整支部隊）。
+	if ins := info.Inspect; ins != nil && ins.Leader != nil {
+		x0, y0, _, _ := l.Panel(2)
+		yellow := assets.EGAPalette[assets.BattleOrderInk]
+		for k, s := range []string{
+			tf("bat.insp.stamina", ins.Leader.Stamina),
+			tf("bat.insp.intel", ins.Leader.Intel),
+			tf("bat.insp.war", ins.Leader.War),
+			tf("bat.insp.training", ins.Leader.Training),
+			tf("bat.insp.arms", ins.Leader.Arms),
+			tf("bat.insp.men", ins.Leader.Soldiers),
+		} {
+			c.DrawTextPx(x0, y0+k*CellH, cells.Truncate(s, (inspectNameX-x0)/CellW), yellow)
+		}
+		ink := assets.EGAPalette[assets.FlagPlateColour[ins.Side.OriginalIndex()]]
+		if name := []rune(ins.Leader.Name); artAllWide(ins.Leader.Name) && len(name) <= 3 {
+			y := y0
+			if len(name) == 2 {
+				y += 16
+			}
+			for k, r := range name {
+				c.DrawRuneScaledPx(inspectNameX, y+k*32, r, ink, 2, 2)
+			}
+		} else {
+			// 拉丁字母的名字 32×32 直排讀不下去：小字折進那 32 像素寬的
+			// 一欄，一行 5 個字母、最多 6 行（remake 差異）。
+			cols := (inspectFaceX - 8 - inspectNameX) / SmallW
+			for k, line := range cells.Wrap(ins.Leader.Name, cols) {
+				if k*SmallH >= assets.BattlePanelH {
+					break
+				}
+				c.DrawSmallTextPx(inspectNameX, y0+k*SmallH, cells.Truncate(line, cols), ink)
+			}
+		}
+		if len(v.Page) > 0 {
+			drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
+				v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+		}
+		return
+	}
+
+	// 指令面板：原版的三行三列 ＋ 提示，字從面板的左上角 (448,268) 起
+	// （文字視窗的原點；基準畫面上「1.移動」的墨從 (449,269) 起）。
+	// **選了用計、交戰、方向或紮營之後，那三行換成該選的選項**——先前
+	// 只畫選單標題，六種計謀、交戰方式都看不到，玩家只能照手冊背編號
+	// （`docs/spec/014` §7）。
+	ordX, ordY := l.PanelX[2], l.PanelY[2]
 	ord := assets.EGAPalette[assets.BattleOrderInk]
-	w := (assets.BattlePanelW - 8) / CellW
+	w := assets.BattlePanelW / CellW
 	opts := BattleCommandLines()
 	if len(v.Items) > 0 {
 		opts = v.Items
@@ -286,7 +422,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		// 英文九個指令原尺寸要五行以上：**整塊改用小字**留在面板裡
 		//（使用者裁定「文字允許縮小」，`docs/spec/014` §7）——選項、
 		// 標題、提示都用小字，一行 28 字、面板放得下 8 行。
-		cols := (assets.BattlePanelW - 8) / SmallW
+		cols := assets.BattlePanelW / SmallW
 		for k, s := range small {
 			ink := ord
 			if k == len(small)-1 && v.Prompt != "" {
@@ -308,18 +444,18 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		y0 := y1 - len(opts)*CellH - 8
 		c.FillRect(x0, y0, x1, y1, artInkPageBG)
 		for k, s := range opts {
-			c.DrawTextPx(ordX, y0+4+k*CellH, cells.Truncate(s, w), ord)
+			c.DrawTextPx(ordX+4, y0+4+k*CellH, cells.Truncate(s, w-1), ord)
 		}
 	}
 	row := battleOptRows
 	if v.Menu != "" {
 		c.DrawTextPx(ordX, ordY+row*CellH,
-			cells.Truncate(v.Menu, (assets.BattlePanelW-8)/CellW), ord)
+			cells.Truncate(v.Menu, assets.BattlePanelW/CellW), ord)
 		row++
 	}
 	if v.Prompt != "" {
 		c.DrawTextPx(ordX, ordY+row*CellH,
-			cells.Truncate(v.Prompt, (assets.BattlePanelW-8)/CellW),
+			cells.Truncate(v.Prompt, assets.BattlePanelW/CellW),
 			assets.EGAPalette[15])
 	}
 	// 查看部隊那一頁蓋在戰場區上（面板上面那一整塊）。

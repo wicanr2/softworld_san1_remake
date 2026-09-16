@@ -127,7 +127,7 @@ func (a *app) nextActor() {
 	f.view.Cursor = ui.Hexer{At: f.acting.At, Shown: true}
 	f.view.Menu, f.view.Items = t("page.command"), ui.BattleCommandLines()
 	f.view.Prompt = tf("bat.unitMoves", f.acting.Name(), f.acting.Move)
-	f.view.Page, f.view.PageTitle = nil, ""
+	f.view.ClosePage()
 }
 
 // endBattle 把打完的戰役搬回局面，回到主畫面。
@@ -242,6 +242,7 @@ func (a *app) battleCommand(k byte, done func(error), say func(string, ...any)) 
 			return
 		}
 		f.view.SetPage(ui.BattleUnitPage(u))
+		f.view.Inspecting = u
 		say(t("bat.close"))
 	case battle.CmdRetreat:
 		done(b.Retreat(f.acting))
@@ -276,6 +277,7 @@ func (a *app) battleEngage(k byte, done func(error), say func(string, ...any)) {
 			return
 		}
 		f.view.SetPage(ui.BattleUnitPage(u))
+		f.view.Inspecting = u
 		say(t("bat.close"))
 	default:
 		say(t("bat.engageBad"))
@@ -365,6 +367,36 @@ func (a *app) battleInfo() ui.ArtBattleInfo {
 		info.Portrait[i] = int(who.Portrait)
 		if lord := a.s.G.Lord(who.Faction); lord != nil {
 			info.Lord[i] = lord.Name
+		}
+	}
+	// 對戰子畫面裡的對白：那時兩塊軍力面板是子畫面裡那兩支部隊的面板
+	// （`docs/spec/005` §8「部隊面板」）。
+	if sp := a.fight.speech(a.artBattle != nil); sp != nil && (sp.Units[0] != nil || sp.Units[1] != nil) {
+		var panels [2]ui.UnitPanel
+		for i, u := range sp.Units {
+			panels[i] = ui.UnitPanel{Unit: u, Portrait: -1}
+			if u == nil {
+				continue
+			}
+			if head := u.Head(); head != nil {
+				if x := a.s.G.General(head.Index); x != nil {
+					panels[i].Portrait = int(x.Portrait)
+					if lord := a.s.G.Lord(x.Faction); lord != nil {
+						panels[i].Lord = lord.Name
+					}
+				}
+			}
+		}
+		info.Units = &panels
+	}
+	// 查看：第三塊面板換成那支部隊第 0 槽那一位（`docs/spec/005` §8「查看」）。
+	if u := a.fight.view.Inspecting; u != nil {
+		if head := u.Head(); head != nil {
+			ins := &ui.InspectPanel{Leader: head, Side: u.Side, Portrait: -1}
+			if x := a.s.G.General(head.Index); x != nil {
+				ins.Portrait = int(x.Portrait)
+			}
+			info.Inspect = ins
 		}
 	}
 	return info

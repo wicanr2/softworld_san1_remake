@@ -122,6 +122,10 @@ type Battle struct {
 	// （`SkirmishAnswer`）；nil 就當接受。
 	PlayerDuelAnswer SkirmishAnswer
 
+	// inSkirmish 是正在跑的對戰子畫面（`Skirmish.Run` 期間），對白要記
+	// 那兩支部隊（`Speech.Units`）。
+	inSkirmish *Skirmish
+
 	rng    *rand
 	rollFn func(int) int
 }

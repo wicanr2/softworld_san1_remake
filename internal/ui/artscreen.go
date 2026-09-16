@@ -815,7 +815,9 @@ type ArtBattle struct {
 	flags   [4][6]*assets.Image
 	top     *assets.Image
 	bg      *assets.Image
-	frame   [4]*assets.Image
+	frame   [4]*assets.Image // 軍力面板的肖像框 `FBRC`（`0x22c94` 的樣式 2）
+	frameA  [4]*assets.Image // 對戰子畫面部隊面板的肖像框 `FBRA`（`0x320a6` 的樣式 0）
+	frameB  [4]*assets.Image // 查看那一塊的肖像框 `FBRB`（`0x284a2` 的樣式 1）
 	weather [3]*assets.Image
 	faces   *assets.Container
 	bottom  *assets.Image
@@ -837,6 +839,12 @@ func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 		return nil, err
 	}
 	if ab.frame, err = assets.PortraitFrame(data1, 'C'); err != nil {
+		return nil, err
+	}
+	if ab.frameA, err = assets.PortraitFrame(data1, 'A'); err != nil {
+		return nil, err
+	}
+	if ab.frameB, err = assets.PortraitFrame(data1, 'B'); err != nil {
 		return nil, err
 	}
 	for i := range ab.weather {

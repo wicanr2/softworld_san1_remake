@@ -1005,7 +1005,7 @@ func (a *app) updateBattle() error {
 		return nil
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		a.fight.view.Page, a.fight.view.PageTitle = nil, ""
+		a.fight.view.ClosePage()
 		return nil
 	}
 	// 分頁（查看部隊）打開時方向鍵捲動，不移游標。
