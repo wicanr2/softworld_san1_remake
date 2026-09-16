@@ -78,6 +78,29 @@ func TestZZMonthParity(t *testing.T) {
 		}
 	}
 	before := driveToMonthStart(t, o, turnSeqKeys, base, total, seed)
+	// `SAN1_MONTH=n`：把原版的月份（`es:0x3f08`）改寫成 n，讓視窗跨進
+	// n+1 月——四季常式一年各只跑一次（1 春、4 夏、7 秋、10 冬），存檔停
+	// 在九月，不改寫就永遠看不到春夏秋的事件。`SAN1_PLAGUE=1` 再把
+	// 每個郡的民眾忠誠與土地價值歸零，瘟疫的兩道門一定過（Issue #39）。
+	month := 9
+	if v := os.Getenv("SAN1_MONTH"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 12 {
+			ds := uint32(o.DSReg()) * 16
+			work := uint32(o.Word(addr(ds+0xa726))) * 16
+			o.SetWord(addr(work+0x3f08), uint16(n))
+			month = n
+			t.Logf("月份改寫成 %d（視窗跨進 %d 月）", n, n%12+1)
+		}
+	}
+	if envOr("SAN1_PLAGUE", "") != "" {
+		for id := 1; id <= state.PrefectureCount; id++ {
+			rec := base + uint32(nMas+id*176)
+			o.SetByte(addr(rec+26), 0)
+			o.SetByte(addr(rec+27), 0)
+		}
+		before = o.Bytes(addr(base), total)
+		t.Log("每個郡的民眾忠誠與土地價值歸零：瘟疫必發")
+	}
 	// **出發盤面的幾個郡印出來。** 兩邊都從這一份走，所以它是共同的起點；
 	// 郡回合開始時對不上時，要先分得出「起點就不同」與「走的過程不同」。
 	for _, id := range []int{6, 10} {
@@ -120,7 +143,7 @@ func TestZZMonthParity(t *testing.T) {
 	//
 	// 年月不在三張表裡（存檔的 `BASEPRO.SVn` 還沒解），所以先寫死，
 	// 出處是原版主畫面左側直排的「建安二年九月秋」。
-	g.Date = game.Date{Year: 197, Month: 9}
+	g.Date = game.Date{Year: 197, Month: month}
 	t.Logf("兩邊都從 %d 年 %d 月出發", g.Date.Year, g.Date.Month)
 
 	// **兩邊從同一個亂數狀態出發**（`DS:0xa3ae`，`docs/re/03` §1.45）。
@@ -499,6 +522,16 @@ func TestZZMonthParity(t *testing.T) {
 		if curTable == "計略" {
 			plotCallers[fmt.Sprintf("far %s／near %s",
 				o.Caller(), o.NearCaller())]++
+		}
+	})
+	// `SAN1_ROLLLOG=1`：把郡回合之外（開月、洗牌、四季）原版每一道
+	// `RND(n)` 的 n 與呼叫端記下來，remake 那一邊記四季那一段問的 n，
+	// 兩串印出來對——季節事件哪一擲多了、少了，看這個比看總數快。
+	rollLog := envOr("SAN1_ROLLLOG", "") != ""
+	var origRolls []string
+	o.OnCall(oracle.Addr{Seg: 0x1058, Off: 0x058c}, func(o *oracle.Oracle) {
+		if rollLog && curDisp < 0 {
+			origRolls = append(origRolls, fmt.Sprintf("%d@%05x", int(int16(o.Arg(0))), o.Caller().Linear()))
 		}
 	})
 	o.OnCall(oracle.Addr{Seg: 0x5c4, Off: 0x2cb0}, func(*oracle.Oracle) {
@@ -905,7 +938,23 @@ func TestZZMonthParity(t *testing.T) {
 	phaseSeed := map[string]uint32{}
 	g.TracePhases(phase, phaseSeed)
 	t.Logf("兩邊都從月底結算那一刻的亂數狀態 0x%08x 接上", seedAtSettle)
+	var remakeRolls []string
+	if rollLog {
+		g.TraceRolls(func(n, out int, salt []int) {
+			remakeRolls = append(remakeRolls, fmt.Sprintf("%d=%v", n, salt))
+		})
+	}
 	g.EndMonth()
+	if rollLog {
+		g.TraceRolls(nil)
+		t.Logf("原版郡回合之外的骰（%d）：%s", len(origRolls), strings.Join(origRolls, " "))
+		t.Logf("remake 換月的骰（%d）：%s", len(remakeRolls), strings.Join(remakeRolls, " "))
+		var rates []string
+		for id := 1; id <= state.PrefectureCount; id++ {
+			rates = append(rates, fmt.Sprintf("%d:%d→%d", id, before[nMas+id*176+28], g.Prefecture(id).FloodRate))
+		}
+		t.Logf("remake 換月後的洪水率（郡:前→後）：%s", strings.Join(rates, " "))
+	}
 	t.Logf("起點：接上的是 0x%08x，remake 走完 0 步是 0x%08x（該相同）",
 		seedAtSettle, phaseSeed["換月"])
 	for _, f := range g.Factions() {
@@ -933,7 +982,7 @@ func TestZZMonthParity(t *testing.T) {
 		g.TurnTick()
 		at := turnSeq[i]
 		// 回合入口先重整這個郡的守將清單（`0x1949e`），兵士欄跟著刷新。
-				g.RefreshGarrison(at)
+		g.RefreshGarrison(at)
 		q := g.Prefecture(at)
 		// 照 `0x17471`：先用**重算之前**的所屬決定跳不跳過，再重算
 		// 全部 43 個郡（`0x1e394`），分派器看的是重算之後的那一位。
@@ -1092,7 +1141,13 @@ func TestZZMonthParity(t *testing.T) {
 	}
 	for n, m := range hhGate {
 		t.Logf("原版 %s：共 %d 次，郡 %d 佔 %d 次",
-			n, func() int { s := 0; for _, v := range m { s += v }; return s }(),
+			n, func() int {
+				s := 0
+				for _, v := range m {
+					s += v
+				}
+				return s
+			}(),
 			firstGapAt, m[firstGapAt])
 	}
 	for k, v := range plotCallers {

@@ -1,6 +1,9 @@
 package game
 
 import (
+	"encoding/binary"
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 
@@ -919,7 +922,7 @@ func TestDebutFallbackIsHidden(t *testing.T) {
 	if who == nil {
 		t.Skip("劇本 001 找不到沒有牽絆對象可投奔的未登場人物")
 	}
-	who.Age = who.Debut + 1 // 過了出頭年齡，還年輕
+	who.Age = who.Debut + 1     // 過了出頭年齡，還年輕
 	who.Intel, who.War = 90, 40 // 才能壓過 RND(30)+30 的最大值 59 → 一定藏著
 	g.comeOfAge()
 	if who.Status != state.StatusIdle {
@@ -940,9 +943,9 @@ func TestDebutFallbackIsHidden(t *testing.T) {
 func TestDebutShowsUp(t *testing.T) {
 	for _, c := range []struct {
 		age, intel, war, ageRoll, talentRoll int
-		show                                  bool
+		show                                 bool
 	}{
-		{36, 100, 100, 4, 0, true},  // 36 ≥ 4+32：年紀到了，才能再高也露面
+		{36, 100, 100, 4, 0, true},   // 36 ≥ 4+32：年紀到了，才能再高也露面
 		{35, 100, 100, 4, 29, false}, // 35 < 36：年輕；59 ≤ 100 藏著
 		{20, 29, 29, 0, 0, true},     // 30 > 29：庸才露面
 		{20, 30, 10, 0, 0, false},    // 30 ≤ 30：剛好壓住
@@ -992,7 +995,7 @@ func TestOnlySubordinatesDecayInSpring(t *testing.T) {
 	g := newGame(t)
 	g.Date.Month = agingMonth
 	type frozen struct {
-		x               *General
+		x              *General
 		arms, training uint8
 	}
 	var keep []frozen
@@ -1048,5 +1051,43 @@ func TestLastChiefDeathReleasesThePrefecture(t *testing.T) {
 	g.retire(chief)
 	if p := g.Prefecture(at); p.Owned() {
 		t.Errorf("軍師是最後一位現役，他死了郡還有主（勢力 %d）", p.Owner)
+	}
+}
+
+// TestFloodBaseMatchesTheExe 把 `floodBase` 對回兩支執行檔裡那 43 個 word
+// （`DS:0x679c`；AA.EXE 檔內位移 0x484d0、ASV.EXE 0x3e8a5）。表要數滿
+// 43 格——最後一格是郡 42 的 3，少了它郡 42 的洪水率每年就少長 3。
+// 沒掛素材就跳過（本儲存庫不含原版檔案）。
+func TestFloodBaseMatchesTheExe(t *testing.T) {
+	root := os.Getenv("SAN1_ORIG")
+	if root == "" {
+		t.Skip("沒設 SAN1_ORIG，跳過需要原版素材的測試")
+	}
+	for _, exe := range []struct {
+		path string
+		off  int
+	}{
+		{filepath.Join("三國演義", "AA.EXE"), 0x484d0},
+		{filepath.Join("三國演義1加強版", "ASV.EXE"), 0x3e8a5},
+	} {
+		b, err := os.ReadFile(filepath.Join(root, exe.path))
+		if err != nil {
+			t.Fatalf("讀 %s：%v", exe.path, err)
+		}
+		n := state.PrefectureCount + 1
+		if len(b) < exe.off+2*n {
+			t.Fatalf("%s 只有 %d 個位元組", exe.path, len(b))
+		}
+		sum := 0
+		for i := 0; i < n; i++ {
+			want := int(int16(binary.LittleEndian.Uint16(b[exe.off+2*i:])))
+			sum += want
+			if got := FloodBase(i); got != want {
+				t.Errorf("%s 郡 %d：remake %d，原版 %d", exe.path, i, got, want)
+			}
+		}
+		if sum != 158 {
+			t.Errorf("%s 表的總和 %d，文件記的是 158", exe.path, sum)
+		}
 	}
 }

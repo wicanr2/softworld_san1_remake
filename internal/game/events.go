@@ -87,16 +87,18 @@ func (g *State) RunSeason() []Event {
 	}
 }
 
-// floodBase 是各郡的洪水基礎值（`DS:0x679c`，43 個 word，`L0`）。
+// floodBase 是各郡的洪水基礎值（`DS:0x679c`，43 個 word，AA.EXE 檔內
+// 位移 0x484d0、ASV.EXE 0x3e8a5，`L0`、`[both]`，總和 158）。
 //
-// **各郡不同**——有些郡天生就容易淹。索引 0 是啞元郡。
+// **各郡不同**——有些郡天生就容易淹。索引 0 是啞元郡，索引 42 是
+// 最後一郡（值 3），表要數滿 43 格。
 var floodBase = [state.PrefectureCount + 1]int{
 	0, 0, 5, 4, 3, 1, 2, 5,
 	7, 3, 3, 7, 2, 2, 7, 7,
 	3, 2, 1, 2, 0, 5, 5, 3,
 	10, 3, 12, 2, 2, 5, 5, 10,
 	3, 3, 3, 1, 2, 5, 4, 1,
-	2, 3,
+	2, 3, 3,
 }
 
 // FloodBase 是某個郡的洪水基礎值。
@@ -107,15 +109,17 @@ func FloodBase(prefectureID int) int {
 	return floodBase[prefectureID]
 }
 
-// FloodRise 是每個月洪水率自己的變動（`0x16500`–`0x16543`，`L0`）：
+// FloodRise 是每年四月洪水率自己的變動（`0x16500`–`0x16543`，`L0`）：
 //
-//	新洪水率 ＝ min(100, RND(舊 ÷ 4) + 舊 % 4 + 基礎[郡])
+//	新洪水率 ＝ min(100, RND(舊 ÷ 4) + 舊 + 基礎[郡])
 //
-// **這件事每個月都發生，與淹不淹無關。** 期望值大約
-// `舊 × 0.625 + 基礎`，所以洪水率會往 `基礎 ÷ 0.375` 收斂——
-// 防洪（`FloodDrop` ＝ 謀略 ÷ 10）壓下去之後還會爬回來。
+// **這件事每年四月都發生，與淹不淹無關。** `mov %ax,%dx` 存的是除法
+// 之前的洪水率、`mov -0xa(%bp),%al` 讀回來的也是它——加的是整個舊值，
+// 不是 `舊 % 4`。所以洪水率只會往上（每年至少加基礎值），只有防洪
+// （`FloodDrop` ＝ 謀略 ÷ 10）壓得下來，最後停在 100。roll 是
+// `RND(舊 ÷ 4)`，舊 < 4 時原版不抽、當 0。
 func FloodRise(rate, base, roll int) int {
-	v := roll + rate%4 + base
+	v := roll + rate + base
 	if v > 100 {
 		v = 100
 	}
@@ -125,23 +129,15 @@ func FloodRise(rate, base, roll int) int {
 	return v
 }
 
-// 水災的兩道判定（`0x16574`／`0x16585`，`L0`）。
+// 水災的兩道判定（`0x16574`／`0x16585`，`L0`）：先 `RND(新洪水率)`、再
+// `RND(65)`，`RND(65) + 5 >= RND(新洪水率)` 就不淹；過了才擲 `RND(100)`，
+// `<= 80` 也不淹——第二道是無條件的 19%，洪水率滿檔也不是每年都淹。
 const (
 	FloodRollSpread = 65 // RND(65) + 5
 	FloodRollFloor  = 5
 	FloodGateSpread = 100 // 再擲一次 RND(100)，<= 80 就不淹
 	FloodGateBar    = 80
 )
-
-// FloodStrikes 回報這個郡這個月淹不淹。
-//
-// rateRoll ＝ `RND(新洪水率)`、guard ＝ `RND(65)`、gate ＝ `RND(100)`。
-//
-// **兩道都要過**：`RND(65) + 5 < RND(洪水率)` 而且 `RND(100) > 80`。
-// 第二道是無條件的 19%，所以就算洪水率滿檔也不是每個月都淹。
-func FloodStrikes(rateRoll, guard, gate int) bool {
-	return guard+FloodRollFloor < rateRoll && gate > FloodGateBar
-}
 
 // 瘟疫的兩道門檻（`0x167df`–`0x1683d`，`L0`）。
 const (
@@ -251,7 +247,7 @@ func (g *State) spring() []Event {
 		id := g.roll(int(Spring), 0, 11)%state.PrefectureCount + 1
 		if p := g.Prefecture(id); p != nil && p.Owned() {
 			// 三份保留率各擲一次，**不是同一個百分比套三次**。
-			p.Population = QuakePopKeep.Apply(p.Population,
+			p.Population = keepPopulation(p.Population, QuakePopKeep,
 				g.roll(int(Spring), id, 20)%QuakePopKeep.Spread)
 			if p.Population < QuakePopFloor {
 				p.Population = QuakePopFloor
@@ -321,10 +317,12 @@ var (
 	QuakePopKeep  = Keep{20, 60} // 60–79%
 	QuakeGoldKeep = Keep{20, 50} // 50–69%
 	QuakeRiceKeep = Keep{20, 40} // 40–59%
-	// 水災（`0x1666d`／`0x166c1`／`0x16701`）。
-	FloodPopKeep  = Keep{10, 70}  // 70–79%
-	FloodLandKeep = Keep{20, 60}  // 60–79%
-	FloodRateGain = Keep{20, 120} // 洪水率 ×1.20–1.39，越界變 100
+	// 水災（`0x1666d`／`0x166c1`／`0x16701`；人物那一段 `0x16748`–`0x167a5`，
+	// `[both]`）：人口、土地價值、洪水率各一份，郡裡每一位人物的兵一份。
+	FloodPopKeep      = Keep{10, 70}  // 70–79%
+	FloodLandKeep     = Keep{20, 60}  // 60–79%
+	FloodRateGain     = Keep{20, 120} // 洪水率 ×1.20–1.39，越界變 100
+	FloodSoldiersKeep = Keep{10, 70}  // 兵 70–79%
 	// 瘟疫（`0x168ce`）：只動人口。
 	PlaguePopKeep = Keep{20, 40} // 40–59%
 	// 蝗害（`0x16cba`／`0x16cfa`）。
@@ -345,6 +343,14 @@ func (k Keep) Apply(value, roll int) int { return value * (roll + k.Floor) / 100
 //
 // 存的值是實際值 ÷ 100，所以下限是五千人。
 const QuakePopFloor = 50 * 100
+
+// keepPopulation 把保留率套在**存的單位**（實際值 ÷ 100）上：原版
+// `filds 人口` 讀的是那個字，乘完 `ftol` 截尾再存回去，零頭在那一刻就
+// 沒了——remake 的人口是實際值，直接乘會留下零頭，下一次人口成長或
+// 徵兵讀到的就不是原版存的那個數（`GrowPopulation` 那一段量到過）。
+func keepPopulation(population int, k Keep, roll int) int {
+	return k.Apply(population/100, roll) * 100
+}
 
 // LandValueDecay 是土地價值每個春月的自然衰減（`0x15c96`，`L0`）。
 //
@@ -516,36 +522,79 @@ func (g *State) bondDebut(x *General) (int, state.FactionID, bool) {
 	return at, b.Faction, true
 }
 
-// summer 是夏天：洪水與瘟疫。
+// summer 是夏天：洪水與瘟疫（`0x164c8`–`0x167df`，加強版 `0x15423`–，
+// `L0`、`[both]`；對拍 `SAN1_MONTH=3 TestZZMonthParity`）。
+//
+// 水災分兩段。第一段**逐郡 1..42、不看所屬**：洪水率先自己長、再擲兩道
+// 門，淹的郡記進清單；第二段照清單的順序演——人口、土地價值、洪水率、
+// **郡裡每一位人物的兵**各一擲，再重整守將清單。每一道 `RND(n)` 在
+// `n <= 0` 時不抽（`0x10b0c`）。
 func (g *State) summer() []Event {
 	var out []Event
-	for i := range g.prefectures {
-		p := &g.prefectures[i]
-		if !p.Owned() {
+	var flooded []int
+	for id := 1; id <= state.PrefectureCount; id++ {
+		p := g.Prefecture(id)
+		if p == nil {
 			continue
 		}
-		// **洪水率每個月都會自己動**，與淹不淹無關（`0x16500`）。
-		p.FloodRate = uint8(FloodRise(int(p.FloodRate), FloodBase(p.ID),
-			g.roll(int(Summer), p.ID, 3)%max(1, int(p.FloodRate)/4+1)))
-		// 淹不淹：兩道擲骰都要過（`0x16574`／`0x16585`）。
-		if FloodStrikes(g.roll(int(Summer), p.ID, 4)%max(1, int(p.FloodRate)+1),
-			g.roll(int(Summer), p.ID, 1)%FloodRollSpread,
-			g.roll(int(Summer), p.ID, 2)%FloodGateSpread) {
-			p.Population = FloodPopKeep.Apply(p.Population,
-				g.roll(int(Summer), p.ID, 20)%FloodPopKeep.Spread)
-			p.LandValue = uint8(FloodLandKeep.Apply(int(p.LandValue),
-				g.roll(int(Summer), p.ID, 21)%FloodLandKeep.Spread))
-			// 洪水率**乘上去**（`0x16711`）：×1.20–1.39，算出來超過 100
-			// 或變成負的就是 100。說明書 p.21 說「水災後洪水率立刻升到
-			// 100」——那是高洪水率的郡才成立，低的只是往上推一截。
-			rate := FloodRateGain.Apply(int(p.FloodRate),
-				g.roll(int(Summer), p.ID, 22)%FloodRateGain.Spread)
-			if rate > 100 || rate < 0 {
-				rate = 100
-			}
-			p.FloodRate = uint8(rate)
-			out = append(out, Event{p.ID, tf("ev.flood", placeName(p.Name))})
+		// 洪水率每年都會自己長（`0x16500`–`0x16552`）：
+		// `min(100, RND(舊 ÷ 4) + 舊 + 基礎[郡])`，與淹不淹無關。
+		rate := int(int8(p.FloodRate))
+		rise := 0
+		if q := rate / 4; q > 0 {
+			rise = g.roll(int(Summer), id, 3) % q
 		}
+		p.FloodRate = uint8(FloodRise(rate, FloodBase(id), rise))
+		// 淹不淹（`0x16559`–`0x16585`）：先 `RND(新洪水率)`、再 `RND(65)`，
+		// `RND(65) + 5 >= RND(新洪水率)` 就不淹；過了才擲 `RND(100)`，
+		// `<= 80` 也不淹。
+		rateRoll := 0
+		if n := int(p.FloodRate); n > 0 {
+			rateRoll = g.roll(int(Summer), id, 4) % n
+		}
+		guard := g.roll(int(Summer), id, 1) % FloodRollSpread
+		if guard+FloodRollFloor >= rateRoll {
+			continue
+		}
+		if g.roll(int(Summer), id, 2)%FloodGateSpread <= FloodGateBar {
+			continue
+		}
+		flooded = append(flooded, id)
+	}
+	if len(flooded) > 0 {
+		// 有郡淹了才印字、放一次特效（`0x165f6` 叫 `0x32dfa`，進去就擲
+		// `RND(4)` 挑動畫，`docs/re/05` §12.2）——整個夏天一次，不是每郡一次。
+		g.roll(int(Summer), 0, 8)
+	}
+	for _, id := range flooded {
+		p := g.Prefecture(id)
+		// 效果（`0x1663a`–`0x167ae`）：人口 70–79%（低於五千補到五千）、
+		// 土地價值 60–79%、洪水率 ×1.20–1.39（算出來超過 100 或變成負的
+		// 就是 100——說明書 p.21 說「水災後洪水率立刻升到 100」，那是高
+		// 洪水率的郡才成立）、郡裡每一位人物（人物表順序、所在郡等於
+		// 那個郡，不看在不在職）兵 70–79%；然後重整守將清單（`0x1949e`）。
+		p.Population = keepPopulation(p.Population, FloodPopKeep,
+			g.roll(int(Summer), id, 20)%FloodPopKeep.Spread)
+		if p.Population < QuakePopFloor {
+			p.Population = QuakePopFloor
+		}
+		p.LandValue = uint8(FloodLandKeep.Apply(int(p.LandValue),
+			g.roll(int(Summer), id, 21)%FloodLandKeep.Spread))
+		rate := FloodRateGain.Apply(int(int8(p.FloodRate)),
+			g.roll(int(Summer), id, 22)%FloodRateGain.Spread)
+		if rate > 100 || rate < 0 {
+			rate = 100
+		}
+		p.FloodRate = uint8(rate)
+		for i := range g.generals {
+			x := &g.generals[i]
+			if x.Location != id {
+				continue
+			}
+			x.Soldiers = FloodSoldiersKeep.Apply(x.Soldiers, g.roll(int(Summer), id, 30+i)%FloodSoldiersKeep.Spread)
+		}
+		g.RefreshGarrison(id)
+		out = append(out, Event{p.ID, tf("ev.flood", placeName(p.Name))})
 	}
 	// **瘟疫每個月只挑一個郡**（`RND(42) + 1`，`0x167df`），不逐郡掃。
 	{
