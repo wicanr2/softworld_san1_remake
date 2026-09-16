@@ -1157,3 +1157,45 @@ func TestFloodBaseMatchesTheExe(t *testing.T) {
 		}
 	}
 }
+
+// TestBubbleEventsCarryTheSpeaker 釘住元月的對白帶著原版訊息框的形狀：
+// 說話者是真的人、框是右側面板的上格或下格、字色是 0–7。
+//
+// 走到有人出頭或老死為止（劇本 001 開局第二年元月就有人出頭）。
+func TestBubbleEventsCarryTheSpeaker(t *testing.T) {
+	g := newGame(t)
+	var bubbles []*Bubble
+	for i := 0; i < 12*3 && len(bubbles) == 0; i++ {
+		for _, e := range g.EndMonth() {
+			if e.Bubble != nil {
+				bubbles = append(bubbles, e.Bubble)
+			}
+		}
+		if g.PendingEvents() != nil {
+			t.Fatal("EndMonth 之後 pending 還有東西沒交出來")
+		}
+	}
+	if len(bubbles) == 0 {
+		t.Fatal("三年裡一則對白都沒有——出頭與老死至少該有一種")
+	}
+	for _, b := range bubbles {
+		x := g.General(b.Speaker)
+		if x == nil || x.Name == "" {
+			t.Errorf("對白的說話者 %d 不是人", b.Speaker)
+		}
+		if b.X1 != BubbleX1 || b.X2 != BubbleX2 {
+			t.Errorf("框的左右是 %d–%d，該是 %d–%d", b.X1, b.X2, BubbleX1, BubbleX2)
+		}
+		upper := b.Y1 == BubbleUpperY1 && b.Y2 == BubbleUpperY2
+		lower := b.Y1 == BubbleLowerY1 && b.Y2 == BubbleLowerY2
+		if !upper && !lower {
+			t.Errorf("框的上下是 %d–%d，該是上格或下格", b.Y1, b.Y2)
+		}
+		if b.Color < 0 || b.Color > 7 {
+			t.Errorf("字色 %d 不在 RND(8) 的範圍", b.Color)
+		}
+		if b.Text == "" {
+			t.Errorf("說話者 %d 的對白是空的", b.Speaker)
+		}
+	}
+}

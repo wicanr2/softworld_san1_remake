@@ -34,6 +34,11 @@ type Session struct {
 	MonthCursor int
 
 	battles []*game.BattleResult
+
+	// Bubbles 是還沒給玩家看的訊息框（原版的訊息常式畫的「肖像＋對白」，
+	// `game.Bubble`），新的在後面。畫面層一次秀一格、按鍵收一格
+	// （`PopBubble`）；沒有原版素材的文字版面直接把它們寫進 Log。
+	Bubbles []*game.Bubble
 }
 
 // New 開一局。
@@ -127,9 +132,52 @@ func (s *Session) drainBattles() {
 		s.note("%s", r.Summary(s.G))
 		s.battles = append(s.battles, r)
 	}
+	// 君主戰死的繼承在戰役的分贓裡跑（`0x26c28` → `0x14968`），那兩則
+	// 對白從 `PendingEvents` 收。
+	s.collect(s.G.PendingEvents())
 	if n := len(s.battles); n > MaxBattles {
 		s.battles = append([]*game.BattleResult(nil), s.battles[n-MaxBattles:]...)
 	}
+}
+
+// collect 把一串事件收進 Log 與訊息框佇列：有字的進 Log，帶泡泡的排隊。
+func (s *Session) collect(events []game.Event) {
+	for _, e := range events {
+		if e.Text != "" {
+			s.note("%s", e.Text)
+		}
+		if e.Bubble != nil {
+			s.Bubbles = append(s.Bubbles, e.Bubble)
+		}
+	}
+}
+
+// Bubble 是現在該秀的那一格訊息框；沒有就是 nil。
+func (s *Session) Bubble() *game.Bubble {
+	if len(s.Bubbles) == 0 {
+		return nil
+	}
+	return s.Bubbles[0]
+}
+
+// PopBubble 收掉現在這一格。
+func (s *Session) PopBubble() {
+	if len(s.Bubbles) > 0 {
+		s.Bubbles = s.Bubbles[1:]
+	}
+}
+
+// FlushBubbles 把佇列裡的訊息框全部改寫成 Log 的一行（文字版面用：
+// 「名字：對白」），佇列清空。
+func (s *Session) FlushBubbles() {
+	for _, b := range s.Bubbles {
+		name := ""
+		if x := s.G.General(b.Speaker); x != nil {
+			name = i18n.PersonName(x.Name)
+		}
+		s.note("%s：「%s」", name, b.Text)
+	}
+	s.Bubbles = nil
 }
 
 // MonthOrder 是這個月的郡順序（43 格），`MonthCursor` 是走到哪一格。
@@ -237,9 +285,7 @@ func (s *Session) EndMonth() {
 		s.Over = true
 	}
 	s.say("sess.month", s.G.Date.Year, s.G.Date.Month)
-	for _, e := range events {
-		s.note("%s", e.Text)
-	}
+	s.collect(events)
 	// 統一判定在原版是每個月最後一件事，緊接在四季常式之後
 	// （`0x1583d`，`docs/re/06` §9）。條件只有「所有有主的郡同屬一方」
 	// ——**玉璽不在條件裡**。

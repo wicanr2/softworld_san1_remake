@@ -45,6 +45,59 @@ const (
 type Event struct {
 	Prefecture int // 0 表示不屬於特定郡
 	Text       string
+
+	// Bubble 非 nil 時這一則在原版是**訊息常式**畫的「肖像＋對白泡泡」
+	// （`0x3273e`，`docs/spec/005` §訊息框）；Text 可以是空的（原版那一句
+	// 是片語表拼的，remake 的譯文放在 Bubble.Text）。
+	Bubble *Bubble
+}
+
+// Bubble 是原版訊息常式（`0x3273e`）畫的那一格：框、說話者的肖像與名字、
+// 兩行對白（`docs/spec/005` §訊息框，`L0`、`[base]`）。
+//
+// 呼叫端給的是框的四個角、肖像在左還是右、肖像號與三段片語；字色是進去
+// 就擲的 `RND(8)`（`0x32d4d`）——**原版的對白字色是隨機的**，remake 把同一擲
+// 的值放進 Color。
+type Bubble struct {
+	X1, Y1, X2, Y2 int  // 框的範圍（含肖像那一塊），螢幕座標
+	Left           bool // 肖像在左（原版 side ＝ 0xFFFF）；否則在右
+	Speaker        int  // 人物槽：肖像與名字從這裡取
+	Color          int  // 對白的字色 0–7（`RND(8)`）
+	Text           string
+}
+
+// 原版訊息框固定用的兩個位置（右側面板那一塊）：上格與下格。
+const (
+	BubbleX1, BubbleX2 = 424, 615
+	BubbleUpperY1      = 80 // `0x14a38`／`0x161c4`：(424,80)–(615,175)
+	BubbleUpperY2      = 175
+	BubbleLowerY1      = 180 // `0x14848`／`0x148eb`／`0x16270`：(424,180)–(615,275)
+	BubbleLowerY2      = 275
+)
+
+// bubbleEvent 擲對白那一擲（`RND(8)`）並造一則帶泡泡的事件。
+// upper 選上格或下格，left 是肖像在左。
+func (g *State) bubbleEvent(x *General, upper, left bool, text string, salt ...int) Event {
+	b := &Bubble{X1: BubbleX1, X2: BubbleX2, Left: left, Speaker: x.Index, Text: text}
+	if upper {
+		b.Y1, b.Y2 = BubbleUpperY1, BubbleUpperY2
+	} else {
+		b.Y1, b.Y2 = BubbleLowerY1, BubbleLowerY2
+	}
+	b.Color = g.Roll(MessageLines, salt...)
+	at := x.Location
+	if at < 1 || at > len(g.prefectures) {
+		at = 0
+	}
+	return Event{Prefecture: at, Bubble: b}
+}
+
+// PendingEvents 交出內層常式（繼承、戰役分贓）累積的泡泡事件，交出就清掉。
+// 呼叫端在自己的事件序列裡把它們接在該接的位置。
+func (g *State) PendingEvents() []Event {
+	out := g.pending
+	g.pending = nil
+	return out
 }
 
 // SeasonMonths 是四季常式真正會跑的四個月（`L0`、`0x15c48`）。
@@ -209,14 +262,18 @@ func (g *State) spring() []Event {
 			x.Status == state.StatusOfficer {
 			g.Roll(EffectVariants, int(Spring), x.Index, 47)
 		}
+		out = append(out, Event{Prefecture: x.Location, Text: tf("ev.death", personName(x.Name))})
 		if x.Status != state.StatusLord {
-			// 君主那一則在繼承常式裡（`SucceedLord`）。
-			g.Roll(MessageLines, int(Spring), x.Index, 48)
+			// 君主那一則在繼承常式裡（`SucceedLord`）。下格、肖像在右
+			// （`0x14848`：(424,180)–(615,275)，side 0）。
+			out = append(out, g.bubbleEvent(x, false, false,
+				tf("bub.death", personName(x.Name)), int(Spring), x.Index, 48))
 		}
-		out = append(out, Event{x.Location, tf("ev.death", personName(x.Name))})
 		g.retire(x)
+		out = append(out, g.PendingEvents()...)
 		if x.Index == DeathEpilogueSlot {
-			g.Roll(MessageLines, int(Spring), x.Index, 49)
+			out = append(out, g.bubbleEvent(x, false, false,
+				tf("bub.epilogue", personName(x.Name)), int(Spring), x.Index, 49))
 		}
 	}
 	for i := range g.generals {
@@ -293,7 +350,7 @@ func (g *State) spring() []Event {
 					g.Roll(QuakeSoldiersKeep.Spread, int(Spring), x.Index, 23))
 			}
 			g.RefreshGarrison(id)
-			out = append(out, Event{p.ID, tf("ev.quake", placeName(p.Name))})
+			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.quake", placeName(p.Name))})
 		}
 	}
 	return out
@@ -457,10 +514,15 @@ func (g *State) debut(x *General) []Event {
 		// 君主再一則對白（`0x161c4` → `0x3273e`，`RND(8)`），然後一定一則
 		// （`0x16270`）。忠誠寫成牽絆對象的九成（`0x1629e`–`0x162b4`）。
 		g.Roll(EffectVariants, int(Spring), x.Index, 47)
+		var bubbles []Event
 		if b.Status != state.StatusLord {
-			g.Roll(MessageLines, int(Spring), x.Index, 48)
+			// 上格、肖像在右，說話的是牽絆對象（`0x161c4`）。
+			bubbles = append(bubbles, g.bubbleEvent(b, true, false,
+				tf("bub.debutBond", personName(x.Name)), int(Spring), x.Index, 48))
 		}
-		g.Roll(MessageLines, int(Spring), x.Index, 49)
+		// 下格、肖像在左，說話的是新人（`0x16270`）。
+		bubbles = append(bubbles, g.bubbleEvent(x, false, true,
+			tf("bub.debut", personName(x.Name)), int(Spring), x.Index, 49))
 		x.Location = at
 		x.Faction = id
 		x.Status = state.StatusOfficer
@@ -469,8 +531,9 @@ func (g *State) debut(x *General) []Event {
 		if p := g.Prefecture(at); p != nil {
 			p.activeGenerals++
 		}
-		return []Event{{at,
-			tf("ev.appear", personName(x.Name), placeName(g.Prefecture(at).Name))}}
+		return append([]Event{{Prefecture: at,
+			Text: tf("ev.appear", personName(x.Name), placeName(g.Prefecture(at).Name))}},
+			bubbles...)
 	}
 	at := int(x.Origin)
 	if at < 1 || at > len(g.prefectures) {
@@ -501,7 +564,7 @@ func (g *State) debut(x *General) []Event {
 	if p != nil {
 		name = p.Name
 	}
-	return []Event{{at, tf("ev.appear", personName(x.Name), placeName(name))}}
+	return []Event{{Prefecture: at, Text: tf("ev.appear", personName(x.Name), placeName(name))}}
 }
 
 // 玉璽現世的兩個數（`0x15d11`／`0x1518b`，`L0`）。
@@ -554,7 +617,7 @@ func (g *State) sealEvent() []Event {
 	if lord != nil {
 		name = personName(lord.Name)
 	}
-	return []Event{{0, tf("ev.seal", name)}}
+	return []Event{{Prefecture: 0, Text: tf("ev.seal", name)}}
 }
 
 // DebutGarrisonCap 是「牽絆對象的郡收不收得下」的門檻
@@ -676,7 +739,7 @@ func (g *State) summer() []Event {
 			x.Soldiers = FloodSoldiersKeep.Apply(x.Soldiers, g.roll(int(Summer), id, 30+i)%FloodSoldiersKeep.Spread)
 		}
 		g.RefreshGarrison(id)
-		out = append(out, Event{p.ID, tf("ev.flood", placeName(p.Name))})
+		out = append(out, Event{Prefecture: p.ID, Text: tf("ev.flood", placeName(p.Name))})
 	}
 	// **瘟疫每年只挑一個郡**（`RND(42) + 1`，`0x167df`），不逐郡掃、也
 	// **不看所屬**。兩道門一道一道擲：忠誠那一道沒過就不擲土地那一道
@@ -689,7 +752,7 @@ func (g *State) summer() []Event {
 			PlagueStrikes(int(p.PublicLoyalty), int(p.LandValue), loyaltyRoll,
 				g.roll(int(Summer), id, 7)%PlagueLandSpread) {
 			g.plague(p)
-			out = append(out, Event{p.ID, tf("ev.plague", placeName(p.Name))})
+			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.plague", placeName(p.Name))})
 		}
 	}
 	return out
@@ -819,8 +882,8 @@ func (g *State) autumn() []Event {
 		}
 		p.Gold = clampTo(gotGold, HarvestGoldCap)
 		p.Rice = clampTo(gotRice, MaxRice)
-		out = append(out, Event{p.ID,
-			tf("ev.harvest", placeName(p.Name), rice, gold)})
+		out = append(out, Event{Prefecture: p.ID,
+			Text: tf("ev.harvest", placeName(p.Name), rice, gold)})
 	}
 	// **蝗害每年只挑一個郡**（`0x16bd5`，`L0`），不逐郡掃，**也不看所屬**
 	// （`0x16bf6` 直接讀那個郡的民眾忠誠，沒有 `0x49e` 的比較；無主郡照樣
@@ -845,7 +908,7 @@ func (g *State) autumn() []Event {
 				g.roll(int(Autumn), id, 21)%LocustLandKeep.Spread))
 			// 之後重整那個郡的守將清單（`0x16d2e` → `0x1949e`），與水災、瘟疫同。
 			g.RefreshGarrison(id)
-			out = append(out, Event{p.ID, tf("ev.locust", placeName(p.Name))})
+			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.locust", placeName(p.Name))})
 		}
 	}
 	// **人望的年度調整**（`0x16d4f`–`0x16e6a`，`L0`）：蝗害之後、
@@ -1105,7 +1168,7 @@ func (g *State) winter() []Event {
 			if lord != nil {
 				name = personName(lord.Name)
 			}
-			out = append(out, Event{0, tf("ev.tribute", name, n)})
+			out = append(out, Event{Prefecture: 0, Text: tf("ev.tribute", name, n)})
 		}
 	}
 	return out
@@ -1249,8 +1312,14 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 		return nil
 	}
 	// 進來先印一則對白（`0x14a38`／加強版 `0x13c6b` → 對白常式，`RND(8)`）；
-	// 老死與戰死都走這一支。
-	g.Roll(MessageLines, int(id), 0x14a38)
+	// 老死與戰死都走這一支。說話的是**死去的君主**（`es:0x24d6`，`0x147d9`
+	// 寫進去的），上格、肖像在右。
+	if dead := g.General(f.Lord); dead != nil {
+		g.pending = append(g.pending, g.bubbleEvent(dead, true, false,
+			tf("bub.lordDeath", personName(dead.Name)), int(id), 0x14a38))
+	} else {
+		g.Roll(MessageLines, int(id), 0x14a38)
+	}
 	var heir *General
 	for i := range g.generals {
 		x := &g.generals[i]
@@ -1281,11 +1350,13 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 		}
 		p.governor = heir.Index
 	}
-	// 找到繼承者那一則：原版用純印字（`0x14d61`，不擲），**加強版改走
-	// 對白常式**（`0x13fa7`，`RND(8)`，`[plus]`）。
-	if g.Edition == state.EditionPlus {
-		g.Roll(MessageLines, int(id), 0x13fa7)
-	}
+	// 找到繼承者：先印一行（`0x14d61`／`0x14d71`，不擲），再一則對白
+	// （原版 `0x14dd2`、加強版 `0x13fa7` → 對白常式，`RND(8)`，`[both]`；
+	// 片語 465「主公寬心  某必光大主公之霸業」，下格、肖像在左，說話的是
+	// 繼承者 `es:0x1eda`）。兩版的碼逐字相同；加強版七月視窗量到過，
+	// 原版的視窗還沒剛好死過君主。
+	g.pending = append(g.pending, g.bubbleEvent(heir, false, true,
+		tf("bub.succeed", personName(heir.Name)), int(id), 0x14dd2))
 	return heir
 }
 
@@ -1347,5 +1418,5 @@ func (g *State) winterUnrest() []Event {
 	if f == nil || f.Prestige >= g.Roll(UnrestSpread, at, 42)+UnrestPrestigeFloor {
 		return nil
 	}
-	return []Event{{p.ID, tf("ev.unrest", p.Name)}}
+	return []Event{{Prefecture: p.ID, Text: tf("ev.unrest", p.Name)}}
 }

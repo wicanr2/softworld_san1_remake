@@ -139,6 +139,22 @@ func (a *app) Update() error {
 	if a.fight != nil {
 		return a.updateBattle()
 	}
+	// 訊息框（原版的「肖像＋對白」）一次一格，按任意鍵收掉。
+	// **原版沒有這一步的按鍵**：語音開著時等語音播完，關著時走延遲設定
+	// （`docs/spec/005` §9）；remake 用按鍵收，登記為 remake 差異。
+	// 沒有原版素材的文字版面畫不出肖像，直接把它們寫進訊息列。
+	if a.s != nil && a.s.Bubble() != nil {
+		if a.art == nil {
+			a.s.FlushBubbles()
+			a.dirty = true
+			return nil
+		}
+		if anyKeyPressed() {
+			a.s.PopBubble()
+			a.dirty = true
+		}
+		return nil
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
 		a.view.Prompt, a.view.Page = "", nil
@@ -830,6 +846,11 @@ func (a *app) paint() {
 			a.view.Over = a.s.Over
 			if a.art != nil {
 				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, a.view)
+				if b := a.s.Bubble(); b != nil {
+					// 原版在對白之前把右側面板清成藍色（`0x1058:0x27e8`）。
+					a.canvas.FillRect(408, 36, 632, 292, assets.EGAPalette[1])
+					ui.DrawBubble(a.canvas, a.art, a.s.G, b)
+				}
 			} else {
 				ui.DrawSession(a.canvas, a.s.G, a.s.Log, a.view)
 			}

@@ -339,6 +339,9 @@ type State struct {
 	// Edition 是原版還是加強版（`docs/spec/004`）。
 	Edition state.Edition
 
+	// pending 是內層常式（繼承、戰役分贓）累積的泡泡事件，`PendingEvents` 交出。
+	pending []Event
+
 	// Difficulty 是難度。上限看版本：原版問「請設定難度(1-10)」，
 	// 加強版問「請設定難度(1-20)」。
 	Difficulty int

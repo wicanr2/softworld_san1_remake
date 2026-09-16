@@ -1,0 +1,216 @@
+//go:build oracle
+
+package parity
+
+import (
+	"fmt"
+	"image/color"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/wicanr2/dosgolem/oracle"
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/font"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
+	"github.com/wicanr2/softworld_san1_remake/internal/ui"
+)
+
+// 原版的訊息常式與它用到的兩支（`docs/spec/005` §9）。
+const (
+	msgFn       = 0x3273e            // msg(x1, y1, x2, y2, side, 肖像, 名字 far*, 片語×3)
+	msgRndAt    = 0x32d52            // `RND(8)` 回來的下一道：AX ＝ 字色
+	msgDoneAt   = 0x32df1            // 畫完、等完，`lret` 之前
+	clearRectFn = 0x1058*16 + 0x27e8 // 清一塊（呼叫端在對白之前清右側面板）
+	panelClear  = 1                  // 面板底色（藍）
+)
+
+// TestZZBubbleMatchesTheOriginal 直接呼叫原版的訊息常式，拿它畫出來的
+// 那一格對 remake 的 `ui.DrawBubble`。
+//
+// 兩格各一次：出頭那兩則（`0x161c4` 上格、肖像在右；`0x16270` 下格、
+// 肖像在左），片語與原版同一組（459／460、461／462），說話者是劇本 001
+// 的呂蒙（151，肖像 28）與魯肅（132）。判準：
+//
+//   - 肖像 64×80、泡泡（白底、四邊、尾巴）、名字的黑底：**逐像素相同**
+//     （remake 的字型不接原版，兩行對白與名字的字模不比）。
+//   - 對白那兩行的框裡：兩邊都只有白與擲出來的那一色，而且都有墨。
+func TestZZBubbleMatchesTheOriginal(t *testing.T) {
+	root := origRoot(t)
+	c := openContainer(t, filepath.Join(root, "DATA2"))
+	sc0, err := state.LoadScenario(c, state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedMas, _, _ := sc0.Tables()
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	base := bootToGame(t, o, seedMas)
+	genBase := base + uint32(state.MasterTableSize+state.PrefectureTableSize)
+
+	g, err := game.New(sc0, 0, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	art, err := ui.NewArtScreen(openContainer(t, filepath.Join(root, "DATA3")),
+		openContainer(t, filepath.Join(root, "DATA1")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fh, err := os.Open("../../fonts/unifont.hex.gz")
+	if err != nil {
+		t.Skipf("沒有字型檔：%v", err)
+	}
+	face, err := font.ParseHexGz(fh, 16)
+	fh.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	newcomer, bond := 151, 132
+	for _, who := range []int{newcomer, bond} {
+		if x := g.General(who); x == nil || x.Name == "" {
+			t.Fatalf("劇本 001 沒有人物 %d", who)
+		}
+	}
+
+	colour := -1
+	o.OnCall(addr(msgRndAt), func(o *oracle.Oracle) { colour = int(o.Regs().AX) })
+	done := 0
+	o.OnCall(addr(msgDoneAt), func(*oracle.Oracle) { done++ })
+
+	type tc struct {
+		name    string
+		b       game.Bubble
+		speaker int
+		phrases [3]uint16
+		text    string
+	}
+	cases := []tc{
+		{"上格肖像在右（牽絆對象）", game.Bubble{X1: 424, Y1: 80, X2: 615, Y2: 175, Left: false},
+			bond, [3]uint16{459, uint16(newcomer), 460},
+			i18n.Sf("bub.debutBond", i18n.PersonName(g.General(newcomer).Name))},
+		{"下格肖像在左（新人）", game.Bubble{X1: 424, Y1: 180, X2: 615, Y2: 275, Left: true},
+			newcomer, [3]uint16{461, uint16(newcomer), 462},
+			i18n.Sf("bub.debut", i18n.PersonName(g.General(newcomer).Name))},
+	}
+	for _, k := range cases {
+		t.Run(k.name, func(t *testing.T) {
+			// 呼叫端在對白之前把右側面板清成藍色（`0x14899`／`0x149e3`）。
+			if _, err := o.Call(addr(clearRectFn), 408, 36, 631, 291, panelClear); err != nil {
+				t.Fatal(err)
+			}
+			side := uint16(0)
+			if k.b.Left {
+				side = 0xFFFF
+			}
+			x := g.General(k.speaker)
+			nameLin := genBase + uint32(k.speaker*state.GeneralRecordSize)
+			colour, done = -1, 0
+			if _, err := o.Call(addr(msgFn), uint16(k.b.X1), uint16(k.b.Y1), uint16(k.b.X2), uint16(k.b.Y2),
+				side, uint16(x.Portrait), uint16(nameLin&0xF), uint16(nameLin>>4),
+				k.phrases[0], k.phrases[1], k.phrases[2]); err != nil {
+				t.Fatal(err)
+			}
+			if done != 1 || colour < 0 {
+				t.Fatalf("訊息常式走完 %d 次、字色 %d——hook 沒攔到", done, colour)
+			}
+			orig := o.IndexedEGASize(scrW, scrH)
+			dumpScreen(t, o, "bubble-"+fmt.Sprint(k.speaker))
+
+			// remake：同一塊藍底、同一格泡泡、同一個字色。
+			cv := ui.NewCanvasPx(scrW, scrH, face)
+			cv.FillRect(408, 36, 632, 292, assets.EGAPalette[panelClear])
+			b := k.b
+			b.Speaker, b.Color, b.Text = k.speaker, colour, k.text
+			ui.DrawBubble(cv, art, g, &b)
+
+			// 對白那兩行的框：字模不比，只比顏色集合與有沒有墨。
+			tx, right := b.X1+8, b.X2-70
+			if b.Left {
+				tx, right = b.X1+72, b.X2-5
+			}
+			var textBox [2][4]int
+			for i := range textBox {
+				textBox[i] = [4]int{tx, b.Y1 + 12 + i*40, right, b.Y1 + 12 + i*40 + 32}
+			}
+			// 名字那一格：字模不比，只比黑底與字色。
+			nx := b.X1 + 8
+			if !b.Left {
+				nx = b.X2 - 55
+			}
+			nameBox := [4]int{nx, b.Y1 + 80, nx + 48, b.Y1 + 96}
+			inBox := func(x, y int, bx [4]int) bool {
+				return x >= bx[0] && x < bx[2] && y >= bx[1] && y < bx[3]
+			}
+			idx := func(c color.RGBA) int {
+				for i, p := range assets.EGAPalette {
+					if p == c {
+						return i
+					}
+				}
+				return -1
+			}
+			bad, first := 0, ""
+			inkOrig, inkMine := [2]int{}, [2]int{}
+			for y := b.Y1; y <= b.Y2; y++ {
+				for x := b.X1; x <= b.X2; x++ {
+					op := int(orig[y*scrW+x] & 15)
+					mp := idx(cv.Img.RGBAAt(x, y))
+					boxed := -1
+					for i := range textBox {
+						if inBox(x, y, textBox[i]) {
+							boxed = i
+						}
+					}
+					switch {
+					case boxed >= 0:
+						if op != 15 && op != colour {
+							t.Fatalf("原版對白框裡 (%d,%d) 是色 %d，該只有白與 %d", x, y, op, colour)
+						}
+						if mp != 15 && mp != colour {
+							t.Fatalf("remake 對白框裡 (%d,%d) 是色 %d，該只有白與 %d", x, y, mp, colour)
+						}
+						if op == colour {
+							inkOrig[boxed]++
+						}
+						if mp == colour {
+							inkMine[boxed]++
+						}
+					case inBox(x, y, nameBox):
+						want := 12
+						if !b.Left {
+							want = 10
+						}
+						if op != 0 && op != want {
+							t.Fatalf("原版名字格 (%d,%d) 是色 %d，該只有黑與 %d", x, y, op, want)
+						}
+						if mp != 0 && mp != want {
+							t.Fatalf("remake 名字格 (%d,%d) 是色 %d，該只有黑與 %d", x, y, mp, want)
+						}
+					default:
+						if op != mp {
+							bad++
+							if first == "" {
+								first = fmt.Sprintf("(%d,%d) 原版 %d remake %d", x, y, op, mp)
+							}
+						}
+					}
+				}
+			}
+			if bad != 0 {
+				t.Errorf("肖像／泡泡／黑底有 %d 個像素不同，第一個 %s", bad, first)
+			}
+			for i := range textBox {
+				if (inkOrig[i] == 0) != (inkMine[i] == 0) {
+					t.Errorf("第 %d 行：原版有墨 %d 點、remake %d 點——一邊沒字", i+1, inkOrig[i], inkMine[i])
+				}
+			}
+			t.Logf("%s：字色 %d，對白墨點 原版 %v remake %v", k.name, colour, inkOrig, inkMine)
+		})
+	}
+}
