@@ -916,3 +916,26 @@ func TestAppointGovernorOrderTargetsAnotherPrefecture(t *testing.T) {
 		t.Error("電腦那一條照舊結束回合")
 	}
 }
+
+// TestFortSpotStepWalksTheHexGrid 釘住挑關寨位置的六個方向（`0x1ae2e`）：斜走看出發欄的奇偶，
+// 出界或落在 0xFF 留在原地。
+func TestFortSpotStepWalksTheHexGrid(t *testing.T) {
+	field := make([]byte, 120)
+	field[0*12+5] = 0xFF
+	for _, c := range []struct {
+		col, row int
+		key      byte
+		wc, wr   int
+	}{
+		{0, 0, '3', 1, 0}, {1, 0, '3', 2, 1}, {2, 1, '3', 3, 1},
+		{2, 2, '6', 3, 1}, {3, 1, '6', 4, 1}, {4, 1, '4', 3, 0}, {3, 1, '4', 2, 1},
+		{3, 1, '1', 2, 2}, {2, 2, '1', 1, 2}, {1, 1, '5', 1, 0}, {1, 1, '2', 1, 2},
+		{0, 0, '5', 0, 0}, {0, 0, '4', 0, 0}, {11, 9, '2', 11, 9},
+		{4, 0, '3', 4, 0}, // 落在 0xFF
+		{3, 3, '9', 3, 3},
+	} {
+		if gc, gr := FortSpotStep(c.col, c.row, c.key, field); gc != c.wc || gr != c.wr {
+			t.Errorf("(%d,%d) 按 %c 到 (%d,%d)，應該是 (%d,%d)", c.col, c.row, c.key, gc, gr, c.wc, c.wr)
+		}
+	}
+}

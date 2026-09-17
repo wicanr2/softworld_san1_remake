@@ -908,6 +908,8 @@ type ArtBattle struct {
 	bottom  *assets.Image
 	// cursor 是主戰場的輸入游標（`CURC`，`docs/spec/014` §4.1）。
 	cursor *[assets.MenuOrnamentFrameCount]assets.CursorFrame
+	// mapCursor 是挑關寨位置的游標 `MAPCUR1`（48×32，開機載進槽 47，`0x1160c`）。
+	mapCursor *assets.Image
 }
 
 // NewArtBattle 解出三十六張地形圖塊與上下兩條花邊。data3 可以是 nil，
@@ -936,6 +938,11 @@ func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 	}
 	if ab.frameB, err = assets.PortraitFrame(data1, 'B'); err != nil {
 		return nil, err
+	}
+	if j, ok := data1.ByName("MAPCUR1.IMG"); ok {
+		if im, err := assets.DecodeImage(data1.Data(j)); err == nil {
+			ab.mapCursor = im
+		}
 	}
 	for i := range ab.weather {
 		if j, ok := data1.ByName(fmt.Sprintf("WEATHER%d.IMG", i)); ok {

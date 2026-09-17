@@ -10,6 +10,8 @@ import (
 
 	"github.com/wicanr2/dosgolem/oracle"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -1425,6 +1427,115 @@ func TestZZRewardLoopMatchesTheOriginal(t *testing.T) {
 		t.Logf("槽號 %d（謀略 %d 戰力 %d）賞 %d 金：忠誠 %d → 原版 %d、remake %d；主事者 %d 魅力 %d", w.who,
 			before[off+9], before[off+10], w.gold, before[off+16], after[off+16], got[off+16], gov.Index, gov.Charm)
 	}
+	if n := diffCount(after, got); n != 0 {
+		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
+	}
+}
+
+// TestZZFortSpotMatchesTheOriginal 建築關寨挑位置（Issue #94，補 #92 的第三項）：選人之後原版在第二頁畫
+// 場地圖、說明與 `MAPCUR1` 的 XOR 游標；按「3」三次走到 (欄 3, 列 1)，整張畫面與 remake 相同（說明五行與
+// 輸入游標那一格只比有沒有墨）；「0」、「Y」蓋下去之後三張表在結束回合那一刻逐位元組相同。
+func TestZZFortSpotMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	root := origRoot(t)
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	pref := b.base + uint32(nMas+b.at*state.PrefectureRecordSize)
+	b.o.SetWord(addr(pref+18), 9000)
+	lord := int(b.o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
+	for _, i := range b.people {
+		if i != lord {
+			b.o.SetByte(addr(b.base+uint32(nMas+nSta+i*state.GeneralRecordSize+9)), 90)
+			break
+		}
+	}
+	total := nMas + nSta + state.GeneralTableSize
+	done := 0
+	var after []byte
+	b.o.OnCall(addr(mainTurnDoneAt), func(o *oracle.Oracle) {
+		if done++; after == nil {
+			after = o.Bytes(addr(b.base), total)
+		}
+	})
+	spot := 0
+	b.o.OnCall(addr(0x1acba), func(*oracle.Oracle) { spot++ })
+
+	g := b.game(t)
+	b.press(t, "內政", "4\r")
+	b.press(t, "建築關寨", "3\r")
+	gi := g.PickRoster(b.at, game.PickWise, game.PickByIntel)[0].Index
+	b.o.Drain()
+	b.o.TypeBoth("1\r")
+	waitBoot(t, b.o, "挑位置", 100_000_000, func() bool { return spot > 0 })
+	waitBootScan(t, b.o, "挑位置讀鍵", 100_000_000)
+	p := g.Prefecture(b.at)
+	col, row := 0, 0
+	for i := 0; i < 3; i++ {
+		b.o.Drain()
+		b.o.TypeBoth("3")
+		if err := b.o.Run(2_000_000); err != nil {
+			t.Fatal(err)
+		}
+		waitBootScan(t, b.o, "走游標", 100_000_000)
+		col, row = game.FortSpotStep(col, row, '3', p.BattleField)
+	}
+	if col != 3 || row != 1 || !game.CanBuildFortOn(p.BattleField[row*12+col]) {
+		t.Fatalf("按三次 3 走到 (%d,%d)，那一格 %#x", col, row, p.BattleField[row*12+col])
+	}
+	orig := b.o.IndexedEGAFrom(atlasPage, scrW, scrH)
+	marked := b.o.Byte(oracle.Addr{Seg: b.o.DSReg(), Off: 0xb296}) == 1
+
+	ab, err := ui.NewArtBattle(openContainer(t, filepath.Join(root, "DATA1")), openContainer(t, filepath.Join(root, "DATA3")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtFortSpot(cv, ab, p.BattleField, g.Field(b.at), ui.FortSpot{Col: col, Row: row, Marked: marked})
+	if dir := os.Getenv("SAN1_SHOTS"); dir != "" {
+		savePNG(t, filepath.Join(dir, "remake-fortspot.png"), cv)
+	}
+	// 說明五行（含輸入游標那一格）只比有沒有墨；通道編號同地理誌。
+	text := [][4]int{{448, 268, 447 + 13*8, 347}}
+	fld := g.Field(b.at)
+	for _, hs := range fld.Gates {
+		for _, h := range hs {
+			c, r := battle.ToOffset(h)
+			x, y := assets.FieldCell(c, r)
+			text = append(text, [4]int{x + 16, y + 15, x + 31, y + 30})
+		}
+	}
+	t.Logf("游標 (%d,%d)，原版此刻 XOR %v", col, row, marked)
+	compareFullScreen(t, "挑位置", orig, cv, 0, text, map[int]bool{1: true, 7: true, 0: true})
+
+	before := b.o.Bytes(addr(b.base), total)
+	for _, k := range []string{"0", "Y"} {
+		b.o.Drain()
+		b.o.TypeBoth(k)
+		if err := b.o.Run(4_000_000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i := 0; i < 40 && done == 0; i++ {
+		if err := b.o.Run(20_000_000); err != nil {
+			t.Fatal(err)
+		}
+		if done == 0 && i >= 4 {
+			b.o.Drain()
+			b.o.TypeBoth(" ")
+		}
+	}
+	if after == nil {
+		t.Fatal("確認之後原版沒有結束回合")
+	}
+	if err := (game.BuildFortOrder{At: b.at, General: gi, Cell: row*12 + col + 1}).Apply(g, b.me); err != nil {
+		t.Fatal(err)
+	}
+	rm, rs, rg, err := g.Tables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := append(append(append([]byte{}, rm...), rs...), rg...)
+	t.Logf("原版動到的記錄：%s", changedRecords(before, after, nMas, nSta))
 	if n := diffCount(after, got); n != 0 {
 		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
 	}

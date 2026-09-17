@@ -2005,13 +2005,37 @@
       "docs": [
         "docs/spec/014"
       ],
-      "note": "`TestZZBuildFortAskMatchesTheOriginal` 兩道閘門與清單一格相同。挑位置的畫面（`0x1acba`）與建完之後的三張表沒有對拍——初始格按 0、Y 沒有蓋成，另開 issue。",
+      "note": "`TestZZBuildFortAskMatchesTheOriginal` 兩道閘門與清單一格相同；挑位置與建完的三張表由 `TestZZFortSpotMatchesTheOriginal`（#94）驗。",
       "verify": {
         "kind": "present",
         "paths": [
           "cmd/san1/main.go"
         ],
         "pattern": "func \\(a \\*app\\) buildFort"
+      }
+    },
+    {
+      "id": "fort-spot-screen",
+      "title": "建築關寨挑位置：場地圖、五行說明、MAPCUR1 的 XOR 游標與六方向鍵、確認(Y/N)照原版",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014"
+      ],
+      "note": "`TestZZFortSpotMatchesTheOriginal`：按 3 三次到 (3,1)，第二頁整張字以外逐像素相同，「0」「Y」之後三張表逐位元組相同；`TestFortSpotStepWalksTheHexGrid`。說明五行只比有沒有墨；確認(Y/N) 那一格沒有實拍。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZFortSpotMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
       }
     },
     {

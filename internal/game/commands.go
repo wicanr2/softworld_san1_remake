@@ -464,8 +464,8 @@ var fortableTerrain = [16]bool{2: true, 7: true, 8: true, 10: true, 11: true, 12
 
 // fortSpotFor 挑一格拿來蓋關寨。
 //
-// 原版由玩家在地圖上指（`0x1acba` 的游標畫面，`DS:0x70cc`「數字鍵選方向」），
-// remake 自己挑——**那是登記在案的差異**。挑的順序先平原後其他，
+// 原版由玩家在地圖上指（`0x1acba` 的游標畫面，`FortSpotStep`）；原版素材畫面照做，
+// 這一支只剩文字版面與沒指定格子的呼叫端在用。挑的順序先平原後其他，
 // 但收的範圍與原版一樣寬：只挑平原的話，地圖上平原都被佔滿而山丘、
 // 樹林還空著時，remake 會說蓋不了而原版蓋得起來。
 func fortSpotFor(field []byte) int {
@@ -725,4 +725,44 @@ func clampTo(v, max int) int {
 		return 0
 	}
 	return v
+}
+
+// FortSpotStep 是建築關寨挑位置那個畫面的一鍵（`0x1ae2e`–`0x1af73`，`L0`、`[base]`）。
+// 六角格奇數欄往下錯半格，所以斜走要看出發那一欄的奇偶：
+//
+//	5 上、2 下；4 左上、6 右上（出發欄是偶數才往上一列）；1 左下、3 右下（奇數才往下一列）。
+//
+// 走出 12 × 10 的範圍，或落在 0xFF（圖外）那一格，就留在原地。
+func FortSpotStep(col, row int, key byte, field []byte) (int, int) {
+	c, r := col, row
+	switch key {
+	case '5':
+		r--
+	case '2':
+		r++
+	case '4', '6':
+		if key == '4' {
+			c--
+		} else {
+			c++
+		}
+		if col%2 == 0 {
+			r--
+		}
+	case '1', '3':
+		if key == '1' {
+			c--
+		} else {
+			c++
+		}
+		if col%2 == 1 {
+			r++
+		}
+	default:
+		return col, row
+	}
+	if c < 0 || r < 0 || c > 11 || r > 9 || r*12+c >= len(field) || field[r*12+c] == 0xFF {
+		return col, row
+	}
+	return c, r
 }

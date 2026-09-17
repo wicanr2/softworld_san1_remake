@@ -61,6 +61,8 @@ type app struct {
 	afterCard func()
 	// treasuryWait 為真時查看→物品的物品表在等一鍵（`0x17b97`）。
 	treasuryWait bool
+	// fortSpot 非 nil 表示建築關寨正在挑位置（`0x1acba`）。
+	fortSpot *fortSpotState
 	// cancel 是挑選清單或數字輸入被空 Enter／Esc 收掉時要接著做的事
 	// （賞賜物品的「那一位」收掉回到「那一郡」）；nil 表示照一般規則收。
 	cancel func()
@@ -265,6 +267,10 @@ func (a *app) Update() error {
 	// 右側面板回到原樣。郡地理誌同一個做法（原版畫在第二頁，等鍵切回）。
 	if a.roster != nil {
 		a.updateRoster()
+		return nil
+	}
+	if a.fortSpot != nil {
+		a.updateFortSpot()
 		return nil
 	}
 	if a.treasuryWait {
@@ -1015,13 +1021,76 @@ func (a *app) buildFort(sel int) {
 		return
 	}
 	a.askRoster(tf("ask.fort", cost), sel, game.PickWise, game.PickByIntel, func(gi int) {
-		before := p.Forts
-		a.run(game.BuildFortOrder{At: sel, General: gi})
-		if p.Forts > before {
-			msg := tf("msg.fortBuilt", p.Name, p.Forts, p.Gold)
-			a.afterBubbles = func() { a.view.Prompt = msg }
+		if a.artBattle == nil {
+			a.fortBuild(sel, gi, 0)
+			return
 		}
+		a.view.Prompt = ""
+		a.fortSpot = &fortSpotState{at: sel, general: gi}
 	}, nil)
+}
+
+// fortSpotState 是挑位置那個畫面的狀態：游標在第幾欄第幾列、是不是正在問確認。
+type fortSpotState struct {
+	at, general int
+	col, row    int
+	confirm     bool
+}
+
+// fortBuild 下建築關寨，cell 是戰場索引加一（0 表示 remake 自己挑）；蓋成之後在對白講完時印
+// 「%s現有%d個關寨／剩餘金:%d」。
+func (a *app) fortBuild(sel, gi, cell int) {
+	p := a.s.G.Prefecture(sel)
+	before := p.Forts
+	a.run(game.BuildFortOrder{At: sel, General: gi, Cell: cell})
+	if p.Forts > before {
+		msg := tf("msg.fortBuilt", p.Name, p.Forts, p.Gold)
+		a.afterBubbles = func() { a.view.Prompt = msg }
+	}
+}
+
+// updateFortSpot 收挑位置畫面的一鍵（`0x1ae29`）：數字鍵走游標（`game.FortSpotStep`）；「0」在
+// 能蓋的格子上改問「確認(Y/N):」，Y 才蓋、其他鍵回到走游標；ESC 印「取消」回選單（`0x1ab48`）。
+func (a *app) updateFortSpot() {
+	s := a.fortSpot
+	p := a.s.G.Prefecture(s.at)
+	if p == nil {
+		a.fortSpot = nil
+		return
+	}
+	if s.confirm {
+		if !anyKeyPressed() {
+			return
+		}
+		s.confirm = false
+		if inpututil.IsKeyJustPressed(ebiten.KeyY) {
+			a.fortSpot = nil
+			a.fortBuild(s.at, s.general, s.row*12+s.col+1)
+		}
+		a.dirty = true
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		a.fortSpot = nil
+		a.view.Prompt = t("msg.cancel")
+		a.dirty = true
+		return
+	}
+	for k := byte('0'); k <= '6'; k++ {
+		if !inpututil.IsKeyJustPressed(ebiten.Key0+ebiten.Key(k-'0')) &&
+			!inpututil.IsKeyJustPressed(ebiten.KeyNumpad0+ebiten.Key(k-'0')) {
+			continue
+		}
+		if k == '0' {
+			if i := s.row*12 + s.col; i < len(p.BattleField) && game.CanBuildFortOn(p.BattleField[i]) {
+				s.confirm = true
+			}
+		} else {
+			s.col, s.row = game.FortSpotStep(s.col, s.row, k, p.BattleField)
+		}
+		a.dirty = true
+		return
+	}
 }
 
 // appointGovernor 是君主→2.指定太守（`0x1caea`）：「指定那一郡的太守」收自己的其他郡
@@ -1433,6 +1502,14 @@ func (a *app) paint() {
 			} else {
 				ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
 			}
+		case a.fortSpot != nil && a.artBattle != nil:
+			s := a.fortSpot
+			p := a.s.G.Prefecture(s.at)
+			ui.DrawArtFortSpot(a.canvas, a.artBattle, p.BattleField, a.s.G.Field(s.at), ui.FortSpot{
+				Col: s.col, Row: s.row, Confirm: s.confirm,
+				Marked: a.cursorTick/ui.CursorTicksPerFrame%2 == 0,
+				Input:  ui.InputCursor{On: true, Frame: ui.CursorFrameAt(a.cursorTick)},
+			})
 		case a.view.Atlas != 0 && a.artBattle != nil:
 			// 郡地理誌：整張換成那個郡的場地圖（原版畫在第二頁再切過去）。
 			p := a.s.G.Prefecture(a.view.Atlas)
