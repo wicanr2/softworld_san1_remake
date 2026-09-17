@@ -846,3 +846,59 @@ func TestPageScrollsToTheEnd(t *testing.T) {
 		t.Errorf("捲到底時最後一行是 %q", lines[top+rows-1])
 	}
 }
+
+// TestArtStatusShowsTheStoredSnapshots 釘住面板右欄的現役將與兵士讀州郡記錄的
+// 快照（offset 22／16，兵士以百計印成「%d00」，`0x33500`／`0x33540`，Issue #76），
+// 不是即時算的人數與兵力；也檢查軍師那一行在三個語系都塞得下。
+func TestArtStatusShowsTheStoredSnapshots(t *testing.T) {
+	_, g := artSessionFixture(t)
+	// 開局時每一郡的即時兵力都剛好等於快照×100；動一位在職武將的兵，讓那一郡
+	// 分得出兩種讀法（快照要到回合入口重整才會跟上）。
+	for _, x := range g.AllGenerals() {
+		if x != nil && x.Employed() && x.Location >= 1 {
+			x.Soldiers += 34
+			break
+		}
+	}
+	differs := 0
+	for _, pv := range g.Prefectures() {
+		if !pv.Owned() {
+			continue
+		}
+		p := g.Prefecture(pv.ID)
+		var officers, soldiers string
+		for _, f := range artStatusFields(g, p) {
+			switch f.label {
+			case i18n.S("stat.officers"):
+				officers = f.value
+			case i18n.S("stat.soldiers"):
+				soldiers = f.value
+			}
+		}
+		if want := fmt.Sprintf("%d", g.StoredActiveGenerals(p.ID)); officers != want {
+			t.Errorf("郡 %d 現役將畫 %q，快照是 %q", p.ID, officers, want)
+		}
+		if want := fmt.Sprintf("%d00", g.Troops(p.ID)); soldiers != want {
+			t.Errorf("郡 %d 兵士畫 %q，快照是 %q", p.ID, soldiers, want)
+		}
+		if g.Soldiers(p.ID) != g.Troops(p.ID)*100 {
+			differs++
+		}
+	}
+	t.Logf("即時兵力與快照×100 不同的郡：%d 個（這支測試分得出兩種讀法）", differs)
+	if differs == 0 {
+		t.Error("每一郡的即時兵力都剛好等於快照×100——分不出兩種讀法，換一個盤面")
+	}
+	saved := i18n.Current
+	defer func() { i18n.Current = saved }()
+	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
+		i18n.Current = l
+		for _, f := range g.Factions() {
+			if x := g.General(f.Chief); f.Alive && x != nil {
+				if s := i18n.Sf("stat.chief", PersonName(x.Name)); cells.Width(s) > artLordCols {
+					t.Errorf("%s 勢力 %d 的軍師欄 %q 超過 %d 格", l, f.ID, s, artLordCols)
+				}
+			}
+		}
+	}
+}

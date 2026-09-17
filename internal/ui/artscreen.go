@@ -144,14 +144,17 @@ const (
 	artMapX = 72 // 地圖區左緣（左邊那 72 像素是花邊直條）
 
 	// 郡名是 32×32 的雙倍字；州名與編號疊在它右邊，君主與人望再右邊。
-	artNameX = 424
-	artNameY = 52
-	artProvX = 488
-	artProvY = 52
-	artIDY   = 68
-	artLordX = 536
-	artLordY = 52
-	artFameY = 68
+	artNameX  = 424
+	artNameY  = 52
+	artProvX  = 488
+	artProvY  = 52
+	artIDY    = 68
+	artLordX  = 536
+	artLordY  = 52
+	artFameY  = 68
+	artChiefY = 84
+	// artGovFieldX 是主事者姓名欄（6 byte、兩倍寬）的左緣。
+	artGovFieldX = 520
 
 	// 面板上的資料排成**兩欄**：左欄標籤從 424 起、數值靠右對齊到 520；
 	// 右欄從 536 起、數值靠右對齊到 616。
@@ -188,6 +191,7 @@ var (
 	artInkProv  = color.RGBA{0xFF, 0x55, 0xFF, 0xFF} // 13
 	artInkLord  = color.RGBA{0xFF, 0xFF, 0xFF, 0xFF} // 15
 	artInkFame  = color.RGBA{0xFF, 0xFF, 0x55, 0xFF} // 14
+	artInkChief = color.RGBA{0xFF, 0x55, 0xFF, 0xFF} // 13
 	artInkAuto  = color.RGBA{0xFF, 0xFF, 0xFF, 0xFF} // 15
 	artInkField = color.RGBA{0x55, 0xFF, 0xFF, 0xFF} // 11
 	artInkGold  = color.RGBA{0xFF, 0xFF, 0x55, 0xFF} // 14
@@ -617,6 +621,13 @@ func drawArtStatus(c *Canvas, g *game.State, p *game.Prefecture, sel int) {
 		c.DrawTextPx(artLordX, artLordY, t("stat.noLord"), artInkLord)
 	}
 	c.DrawTextPx(artAutoX, artAutoY, game.AutonomyName(p.Autonomy), artInkAuto)
+	// 軍師：所屬諸侯有軍師、而且那一位就在這一郡才畫（`0x33411`–`0x3347c`）。
+	if f := g.Faction(p.Owner); f != nil && p.Owned() && f.Chief >= 0 {
+		if x := g.General(f.Chief); x != nil && x.Location == p.ID {
+			c.DrawTextPx(artLordX, artChiefY,
+				cells.Truncate(tf("stat.chief", PersonName(x.Name)), rightCols), artInkChief)
+		}
+	}
 
 	// 欄位表：標籤靠左、數值靠右對齊。
 	//
@@ -629,9 +640,16 @@ func drawArtStatus(c *Canvas, g *game.State, p *game.Prefecture, sel int) {
 		c.DrawTextPx(f.x, f.y, f.label, f.fg)
 		right(f.r, f.y, f.value, f.fg)
 	}
-	// 右欄：主事者姓名（32×32 的雙倍字）。
+	// 右欄：主事者姓名（32×32 的雙倍字）。原版把 6 byte 的姓名欄整條從 x 520
+	// 起畫（`0x334f4`）：兩字名前後各補一個空白，所以字落在 536；三字名填滿，
+	// 從 520 起。
 	if who := g.Governor(sel); who != nil {
-		artBigName(c, artRightX, 212, artRightR-artRightX, PersonName(who.Name), artInkGov)
+		name := PersonName(who.Name)
+		x := artRightX
+		if n := len([]rune(name)); artAllWide(name) && n >= 1 && n <= 3 {
+			x = artGovFieldX + 8*(6-2*n)
+		}
+		artBigName(c, x, 212, artRightR-x, name, artInkGov)
 	}
 }
 
@@ -661,8 +679,10 @@ func artStatusFields(g *game.State, p *game.Prefecture) []artStatusField {
 		L(212, "stat.gold", num(int(p.Gold)), artInkGold),
 		L(228, "stat.rice", num(int(p.Rice)), artInkGold),
 		L(260, "stat.free", num(g.FreeGenerals(p.ID)), artInkAuto),
-		R(244, "stat.officers", num(len(g.Garrison(p.ID))), artInkField),
-		R(260, "stat.soldiers", num(g.Soldiers(p.ID)), artInkField),
+		// 現役將與兵士畫的是州郡記錄的**快照**（offset 22／16），不是即時算的：
+		// 兵士以百計，原版印 `"兵士%4d00"`（`0x33500`／`0x33540`）。
+		R(244, "stat.officers", num(g.StoredActiveGenerals(p.ID)), artInkField),
+		R(260, "stat.soldiers", fmt.Sprintf("%d00", g.Troops(p.ID)), artInkField),
 	}
 }
 

@@ -566,6 +566,7 @@
   "skm.menu": "1.March 2.Duel 3.Attack|7.View 0.Rest",
   "skm.prompt": "%s(%d/%d)(0-4):",
   "skm.restConfirm": "Rest? (Y/N):",
+  "stat.chief": "%s",
   "stat.fame": "Fame %3d",
   "stat.flood": "Flood",
   "stat.free": "Free",

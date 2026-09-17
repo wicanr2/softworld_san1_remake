@@ -566,6 +566,7 @@
   "skm.menu": "1.行軍 2.單挑 3.攻擊|7.查看 0.休息",
   "skm.prompt": "%s(%d/%d)(0-4):",
   "skm.restConfirm": "休息 確認(Y/N):",
+  "stat.chief": "軍師%s",
   "stat.fame": "人望：%3d",
   "stat.flood": "洪水率",
   "stat.free": "在野武將",

@@ -1685,6 +1685,27 @@
       }
     },
     {
+      "id": "status-panel-right-column",
+      "title": "郡的資料面板右欄：軍師一行、現役將與兵士讀快照、主事者姓名欄從 520 起（0x33020）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005"
+      ],
+      "note": "`TestZZStatusPanelMatchesTheOriginal` 37 個有主的郡文字格墨相同、其餘逐像素相同（軍師在郡裡 9、不在 28）；`TestArtStatusShowsTheStoredSnapshots` 釘住快照。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/ui/artscreen.go"
+        ],
+        "pattern": "stat\\.chief"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",
