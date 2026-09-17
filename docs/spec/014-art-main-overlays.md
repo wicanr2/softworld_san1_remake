@@ -203,8 +203,9 @@ remake 在「其他」加了兩項（`docs/design/02` §5），前兩行與原�
 remake：`assets.CursorFrames`（四組）、`ui.InputCursor`（`View.Input`、`BattleView.Input`）、
 `ui.DrawLordPickCursor`／`DrawLordPickAskCursor`；位置由下面板與文字視窗最後一行的
 字寬算。主畫面在沒有對白、示範模式以外都畫（原版的對白走延遲不讀鍵）；主戰場只在文字
-視窗等鍵時畫。節拍是 remake 差異（§4）。人物資料卡的「請按任一鍵」、自創君主那兩行
-提示還沒接游標。
+視窗等鍵時畫。節拍是 remake 差異（§4）。人物資料卡等鍵時下面板的提示照原版（查看→檢視將軍
+「請按任一鍵」`0x17cd8`、賞賜物品「請按任一鍵\n查看物品表」），游標接在後面
+（`TestZZCardPromptMatchesTheOriginal`，Issue #81）；自創君主那兩行提示還沒量有沒有讀鍵游標。
 
 驗證：
 - `TestZZSaveScreenMatchesTheOriginal`：「(1-6):」後面那一格連取六格，順序與原版相同、

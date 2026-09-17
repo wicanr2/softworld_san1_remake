@@ -909,7 +909,9 @@ func (a *app) inspectGeneral(sel int) {
 				a.view.SetPage(ui.GeneralPage(a.s.G, gi))
 				return
 			}
+			// 卡片之後下面板清掉、寫「請按任一鍵」（`0x17cd8`，`DS:0x69cf`）再讀鍵。
 			a.view.Card, a.view.HasCard = gi, true
+			a.view.Prompt = t("msg.anyKey")
 			a.afterCard = ask
 		}, nil)
 	}

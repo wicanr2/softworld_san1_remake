@@ -60,9 +60,11 @@ func newPickBoard(t *testing.T) *pickBoard {
 			have++
 		}
 	}
+	lord := int(o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
 	for i := 200; have < 14 && i < 350; i++ {
 		rec := b.base + uint32(nMas+nSta+i*state.GeneralRecordSize)
-		if o.Byte(addr(rec)) < 0xa1 { // 沒有名字的填充筆不要
+		// 沒有名字的填充筆、君主本人（自創君主是填充筆，名字也是 0xA1 起）、已經在這一郡的人都不要動。
+		if o.Byte(addr(rec)) < 0xa1 || i == lord || (o.Byte(addr(rec+17)) <= 3 && int(o.Byte(addr(rec+19))) == b.at) {
 			continue
 		}
 		o.SetByte(addr(rec+9), uint8(40+(i*7)%55))  // 謀略
@@ -360,4 +362,45 @@ func lowerPaper(pix func(x, y int) int) int {
 		}
 	}
 	return best
+}
+
+// TestZZCardPromptMatchesTheOriginal 走查看→檢視將軍→第 1 位與君主→賞賜物品→那一郡→第 1 位：
+// 卡片之後原版在下面板寫提示再讀鍵（`0x17cd8`「請按任一鍵」、`0x1d190`「請按任一鍵\n查看物品表」），
+// 游標接在後面。下面板字格有墨與游標逐像素相同（Issue #81）。
+func TestZZCardPromptMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	cards := 0
+	b.o.OnCall(cardFn, func(*oracle.Oracle) { cards++ })
+	card := func(name, keys string) ([]uint8, cursorTrack) {
+		t.Helper()
+		before := cards
+		b.o.Drain()
+		b.o.TypeBoth(keys)
+		waitBoot(t, b.o, name, 300_000_000, func() bool { return cards > before })
+		waitCursorShown(t, b.o, b.tr, name)
+		dumpScreen(t, b.o, "cardprompt-"+name)
+		return append([]uint8(nil), b.o.IndexedEGASize(scrW, scrH)...), *b.tr
+	}
+	g := b.game(t)
+	render := func(prompt string, in ui.InputCursor) *ui.Canvas {
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: prompt, Input: in})
+		return cv
+	}
+	b.press(t, "君主", "7\r")
+	b.press(t, "賞賜物品", "4\r")
+	b.press(t, "賞賜那一郡", fmt.Sprintf("%d\r", b.at))
+	shot, tr := card("賞賜那一位 1", "1\r")
+	compareLower(t, "賞賜物品的卡片", shot, render(i18n.S("ask.giftItems"), tr.input()), render(i18n.S("ask.giftItems"), ui.InputCursor{}), tr)
+
+	// 收掉賞賜物品：任意鍵看物品表 → 空 Enter 回那一位 → 空 Enter 回那一郡 → 空 Enter 回主命令。
+	b.press(t, "看物品表", " ")
+	b.press(t, "不選物品", "\r")
+	b.press(t, "不選那一位", "\r")
+	b.press(t, "不選那一郡", "\r")
+	b.press(t, "查看", "1\r")
+	b.press(t, "檢視將軍", "3\r")
+	shot, tr = card("檢視那位 1", "1\r")
+	compareLower(t, "查看的卡片", shot, render(i18n.S("msg.anyKey"), tr.input()), render(i18n.S("msg.anyKey"), ui.InputCursor{}), tr)
 }
