@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -19,8 +20,10 @@ import (
 type Extra struct {
 	Year, Month int
 	Player      state.FactionID
-	Edition     state.Edition
-	Difficulty  int
+	// Players 是全部玩家（依玩家序號）；舊進度只有 Player，讀的時候當一位。
+	Players    []state.FactionID
+	Edition    state.Edition
+	Difficulty int
 
 	// Prefectures 依郡編號 1..42，索引 0 對應郡 1。
 	Prefectures []PrefectureExtra
@@ -63,7 +66,8 @@ type FactionExtra struct {
 func (g *State) CaptureExtra() Extra {
 	e := Extra{
 		Year: g.Date.Year, Month: g.Date.Month,
-		Player: g.Player, Edition: g.Edition, Difficulty: g.Difficulty,
+		Player: g.Player, Players: append([]state.FactionID(nil), g.Players...),
+		Edition: g.Edition, Difficulty: g.Difficulty,
 		Options:  g.Options,
 		Factions: map[state.FactionID]FactionExtra{},
 	}
@@ -105,18 +109,24 @@ func Restore(sc *state.Scenario, e Extra) (*State, error) {
 	// 借 New 把三張表解出來。難度先給合法值，年月與玩家馬上蓋掉——
 	// New 會擋「玩家控制的勢力沒在用」，而存檔裡的玩家可能已經被消滅，
 	// 那不是錯誤，是輸掉了。
-	g, err := newAt(sc, state.NoFaction, e.Difficulty, ed,
+	g, err := newAt(sc, nil, e.Difficulty, ed,
 		Date{Year: e.Year, Month: e.Month})
 	if err != nil {
 		return nil, err
 	}
-	g.Player = e.Player
+	g.Player, g.Players = e.Player, append([]state.FactionID(nil), e.Players...)
+	if len(g.Players) == 0 && e.Player != state.NoFaction {
+		g.Players = []state.FactionID{e.Player}
+	}
+	if len(g.Players) > 0 {
+		g.Player = g.Players[0]
+	}
 	g.Options = e.Options
 	// `New` 是拿 `NoFaction` 叫的，所以它把每一個勢力都標成電腦。
 	// 玩家蓋回去之後要重算——**這個旗標會改規則**（「每郡每月一道令」
 	// 只擋玩家），漏掉的話讀檔之後玩家就能一個月下十八道令。
 	for i := range g.factions {
-		g.factions[i].ByComputer = g.factions[i].ID != g.Player
+		g.factions[i].ByComputer = !slices.Contains(g.Players, g.factions[i].ID)
 	}
 
 	if n := len(e.Prefectures); n != len(g.prefectures) {

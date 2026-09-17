@@ -46,11 +46,14 @@ type meta struct {
 	Slot    string `json:"slot"`
 	SavedAt string `json:"saved_at"`
 
-	Year       int             `json:"year"`
-	Month      int             `json:"month"`
-	Player     state.FactionID `json:"player"`
-	Edition    state.Edition   `json:"edition,omitempty"`
-	Difficulty int             `json:"difficulty"`
+	Year   int             `json:"year"`
+	Month  int             `json:"month"`
+	Player state.FactionID `json:"player"`
+	// Players 是全部玩家（依玩家序號，`docs/spec/019`）；舊存檔沒有這一欄，
+	// 讀的時候照 Player 當一位。
+	Players    []state.FactionID `json:"players,omitempty"`
+	Edition    state.Edition     `json:"edition,omitempty"`
+	Difficulty int               `json:"difficulty"`
 
 	Prefectures []prefMeta          `json:"prefectures"`
 	Rewarded    []int               `json:"rewarded"`
@@ -144,6 +147,7 @@ func Write(root string, slot int, g *game.State, name string) error {
 		Year:       e.Year,
 		Month:      e.Month,
 		Player:     e.Player,
+		Players:    e.Players,
 		Edition:    e.Edition,
 		Difficulty: e.Difficulty,
 		Factions:   map[string]factMeta{},
@@ -321,7 +325,7 @@ func Read(root string, slot int) (*game.State, error) {
 
 	e := game.Extra{
 		Year: m.Year, Month: m.Month,
-		Player: m.Player, Edition: m.Edition, Difficulty: m.Difficulty,
+		Player: m.Player, Players: m.Players, Edition: m.Edition, Difficulty: m.Difficulty,
 		Rewarded: append([]int(nil), m.Rewarded...),
 		Factions: map[state.FactionID]game.FactionExtra{},
 	}

@@ -88,6 +88,19 @@ func (d *newGameDrive) waitNum(name string, lo, hi int) {
 // （`0x124ca`）。
 func bootToLordPick(t *testing.T, o *oracle.Oracle) *newGameDrive {
 	t.Helper()
+	d := bootToPlayerCount(t, o)
+	o.Drain()
+	o.TypeBoth("1\r")
+
+	// 玩家數已在上面的字元 caller 停點送出 1；這個數字欄位是選君主。
+	d.waitNum("新局君主輸入", 1, 6)
+	return d
+}
+
+// bootToPlayerCount 把原版開到「請問有幾人玩(0-16):」那一格（劇本一），
+// 停在讀人數的字元輸入（`docs/spec/019` §1）。
+func bootToPlayerCount(t *testing.T, o *oracle.Oracle) *newGameDrive {
+	t.Helper()
 	// 以行為停點驅動，不再依賴已作廢的 50M 指令分段配方。
 	// `bootToMenu` 已完成裝置題、開場與標題，並停在主選單掃描碼迴圈。
 	d := &newGameDrive{t: t, o: o, s: bootToMenu(t, o)}
@@ -110,11 +123,6 @@ func bootToLordPick(t *testing.T, o *oracle.Oracle) *newGameDrive {
 	o.TypeBoth("1")
 	d.waitCaller("新局玩家數輸入", playerCountCaller)
 	waitBootScan(t, o, "新局玩家數畫面", 500_000_000)
-	o.Drain()
-	o.TypeBoth("1\r")
-
-	// 玩家數已在上面的字元 caller 停點送出 1；這個數字欄位是選君主。
-	d.waitNum("新局君主輸入", 1, 6)
 	return d
 }
 

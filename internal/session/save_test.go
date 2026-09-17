@@ -208,3 +208,29 @@ func TestEnglishLogHasNoChinese(t *testing.T) {
 		t.Errorf("共 %d 行有漢字", bad)
 	}
 }
+
+// TestSaveKeepsEveryPlayer 釘住多位玩家存讀檔之後每一位都還是玩家、
+// 序號不變，其餘在用的諸侯還是電腦（`docs/spec/019` §3）。
+func TestSaveKeepsEveryPlayer(t *testing.T) {
+	players := []state.FactionID{1, 0}
+	s := newPlayersSession(t, players)
+	dir := t.TempDir()
+	if err := s.Save(dir, 2, ""); err != nil {
+		t.Fatal(err)
+	}
+	t2, err := Load(dir, 2, ai.ModeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(t2.G.Players) != 2 || t2.G.Players[0] != 1 || t2.G.Players[1] != 0 {
+		t.Fatalf("讀回來的玩家是 %v，存的是 %v", t2.G.Players, players)
+	}
+	for _, f := range s.G.Factions() {
+		if s.G.IsHuman(f.ID) != t2.G.IsHuman(f.ID) {
+			t.Errorf("勢力 %d：存之前 IsHuman %v、讀回來 %v", f.ID, s.G.IsHuman(f.ID), t2.G.IsHuman(f.ID))
+		}
+	}
+	if at := t2.AdvanceToHuman(0); at == 0 || !t2.G.IsHuman(t2.G.Prefecture(at).Owner) {
+		t.Errorf("讀回來之後停在郡 %d", at)
+	}
+}

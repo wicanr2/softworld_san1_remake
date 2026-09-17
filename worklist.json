@@ -1,7 +1,7 @@
 {
   "schema": "san1-worklist/1",
   "note": "完成度與未完成項的單一真相（`rulebook/61`）。**verify 回答的是「這一條的 status 還成立嗎」，不是「這一項好不好」**——`done` 項驗證據還在，`open`／`blocked` 項驗未完成的訊號還在；任一邊翻面就是清單長出了過期斷言。跑法與四種結果的意思見 tools/worklist.py。VERIFICATION-MATRIX.md 的資料段由 `tools/worklist.py render` 產生，不要手改。",
-  "updated": "2026-09-11",
+  "updated": "2026-09-17",
   "items": [
     {
       "id": "parity-rand-lcg",
@@ -1611,13 +1611,36 @@
       "docs": [
         "docs/spec/005"
       ],
-      "note": "`TestZZDifficultyScreenMatchesTheOriginal` 框外逐像素相同、提示框兩邊有墨、序號外框重合。新君主欄那條路原版先問難度（§9.5），remake 的順序未對。",
+      "note": "`TestZZDifficultyScreenMatchesTheOriginal` 框外逐像素相同、提示框兩邊有墨、序號外框重合。新君主欄那條路照原版先問難度再分配能力（#68 對齊，§9.5）。",
       "verify": {
         "kind": "present",
         "paths": [
           "cmd/san1/title.go"
         ],
         "pattern": "title\\.difficultyPrompt"
+      }
+    },
+    {
+      "id": "players-0-16",
+      "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/019",
+        "docs/mechanics/10",
+        "docs/spec/005"
+      ],
+      "note": "2 人／0 人開局的表只差開月物價、`es:0x3120` 序號表相同；人數與「第2位」兩格畫面框外逐像素相同；兩位玩家第一個月的停點 [郡 11, 郡 8] remake 逐一相同。整月位元組、玩家打玩家的守方、示範模式鏡頭未做（spec/019 §5）。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/session/session.go"
+        ],
+        "pattern": "func \\(s \\*Session\\) AdvanceToHuman"
       }
     },
     {

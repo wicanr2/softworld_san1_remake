@@ -88,7 +88,7 @@ func (g *State) ComputerAttack(from, to int, by state.FactionID, keep KeepFunc) 
 	if g.Edition != state.EditionPlus {
 		def = g.ActorRoster(to)
 	}
-	if dst.Owner != g.Player {
+	if !g.IsHuman(dst.Owner) {
 		g.sortForFormation(def)
 	}
 	g.endTurn(src)

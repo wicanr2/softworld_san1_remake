@@ -429,7 +429,7 @@ func TestPlayerOrdersQueueTheirDialogue(t *testing.T) {
 	}
 	// 電腦那一條沒有畫面。
 	g.Prefecture(at).Commanded, officer.Rewarded = false, false
-	g.Player = 5
+	g.Faction(0).ByComputer = true // 勢力 0 交給電腦
 	if err := (RewardOrder{At: at, Target: officer.Index, Gold: 10}).Apply(g, 0); err != nil {
 		t.Fatal(err)
 	}

@@ -200,7 +200,7 @@ func (g *State) bubbleEvent(x *General, upper, left bool, text string, salt ...i
 // playerCommand 回報這一道命令是不是玩家自己下的（有畫面的那一條）：
 // 玩家的勢力、而且不是電腦代操。
 func (g *State) playerCommand(by state.FactionID) bool {
-	return by == g.Player && !g.byComputer(by)
+	return g.IsHuman(by)
 }
 
 // say 把一則對白排進 pending（玩家命令的畫面用；x 為 nil 就不排）。

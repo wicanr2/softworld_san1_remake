@@ -45,7 +45,8 @@ func (s *Screen) isCustom(faction int) bool {
 
 // pickCustomLord 進新君主的設定。
 func (s *Screen) pickCustomLord(faction int) {
-	sc, err := state.LoadScenario(s.c2, s.slot)
+	// 前面幾位新君主已經佔了空白郡，這一位從剩下的挑。
+	sc, err := s.scenarioWithCustoms()
 	if err != nil {
 		s.note(i18n.S("title.newLord"), err.Error())
 		return
@@ -143,7 +144,7 @@ func (s *Screen) confirmCustom(i int) {
 		return
 	}
 	// 開局之前先驗一次：點數、空白郡、姓名都在這裡擋下來。
-	sc, err := state.LoadScenario(s.c2, s.slot)
+	sc, err := s.scenarioWithCustoms()
 	if err != nil {
 		s.note(i18n.S("title.newLord"), err.Error())
 		return
@@ -162,7 +163,7 @@ func (s *Screen) confirmCustom(i int) {
 		s.note(i18n.S("title.newLord"), err.Error())
 		return
 	}
-	g, err := game.New(sc, state.FactionID(c.faction), 5, s.edition)
+	g, err := game.New(sc, state.FactionID(c.faction), s.difficulty, s.edition)
 	if err != nil {
 		s.note(i18n.S("title.newLord"), err.Error())
 		return

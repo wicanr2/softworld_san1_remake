@@ -430,12 +430,9 @@ const WarFleeSpread = 200
 // 主守、助守）各判一次，郡編號不在 1..42 的那一格跳過——所以「沒有援軍」
 // 的 `0xFFFF` 不會被誤判成玩家。
 func (g *State) noPlayerIn(prefectures ...int) bool {
-	if g.Player == state.NoFaction {
-		return true // 純觀戰：一個玩家都沒有
-	}
 	for _, n := range prefectures {
 		p := g.Prefecture(n)
-		if p != nil && p.Owned() && p.Owner == g.Player {
+		if p != nil && p.Owned() && g.IsHuman(p.Owner) {
 			return false
 		}
 	}
@@ -521,7 +518,7 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 	// 退兵時不看它（`0x23fd7`），留 0。
 	factions := g.sideFactions(by, dst, aid)
 	for side, id := range factions {
-		setup.Computer[side] = id != state.NoFaction && id != g.Player
+		setup.Computer[side] = id != state.NoFaction && !g.IsHuman(id)
 		if f := g.Faction(id); f != nil {
 			setup.Renown[side] = f.Prestige
 		}

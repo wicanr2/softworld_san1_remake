@@ -120,10 +120,6 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 			ctl = 0xFFFF
 		case !f.ByComputer:
 			ctl = 1
-		case binary.LittleEndian.Uint16(mas[int(f.ID)*masRecord+masController:]) == 1:
-			// 原版的進度可以有好幾個玩家；remake 只操作一個，其餘照舊
-			// 留著人控的旗標（`save/import.go`），不要存一次就變電腦。
-			ctl = 1
 		}
 		put16(mas[int(f.ID)*masRecord+masController:], ctl)
 		put16(mas[int(f.ID)*masRecord+masAILevel:], f.AILevel)

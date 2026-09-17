@@ -9,7 +9,7 @@
 //	← → ↑ ↓ ／ Tab   在自己的郡之間移動
 //	0–9              指令類別（查看／軍事／兵士／內政／商業／人事／君主／謀略）
 //	1–9              子選單與挑選清單
-//	Enter            結束這個月
+//	Enter            這個郡這個月休息，換下一個郡
 //	Esc              返回上一層
 //	M                換下一首配樂
 package main
@@ -109,6 +109,9 @@ type app struct {
 	// lure 是播放中的誘敵特效（主戰場對白佇列裡的那一格）。
 	lure lurePlay
 
+	// newMenu 開一份新的主選單（示範模式按鍵回主選單用）；沒有主選單是 nil。
+	newMenu func() *menu.Screen
+
 	// opening 非 nil 表示正在播開機片頭（`docs/spec/005`「片頭」），
 	// 播完才到主選單。
 	opening *openingPlayer
@@ -201,6 +204,28 @@ func (a *app) Update() error {
 		}
 		return nil
 	}
+	// 0 人的電腦自動示範模式：一幀推一格，按任意鍵回主選單（`docs/spec/019` §2）。
+	if a.s != nil && len(a.s.G.Players) == 0 {
+		if anyKeyPressed() && a.newMenu != nil {
+			a.s = nil
+			a.view = ui.View{}
+			a.startTitle(a.titleArt, a.newMenu())
+			return nil
+		}
+		a.s.AdvanceToHuman(1)
+		a.view.Prompt = t("msg.demoEnd")
+		a.dirty = true
+		return nil
+	}
+	// 輪流下令：沒停在玩家的郡就照這個月的順序往下跑，停在下一個玩家的郡。
+	if a.s != nil && a.menu == 0 && a.pick == nil && a.num == nil && a.s.Waiting() == 0 && !a.s.Over {
+		if at := a.s.AdvanceToHuman(0); at != 0 {
+			a.view.Sel, a.view.Status = at, true
+			a.view.Prompt = tf("msg.prefTurn", lordName(a.s.G, a.s.Player), prefName(a.s.G, at))
+		}
+		a.dirty = true
+		return nil
+	}
 	// 人物資料卡（原版素材畫面的「查看→武將」）：按任意鍵收掉，
 	// 右側面板回到原樣。郡地理誌同一個做法（原版畫在第二頁，等鍵切回）。
 	if a.view.HasCard || a.view.Atlas != 0 {
@@ -257,7 +282,10 @@ func (a *app) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 		inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
-		a.s.EndMonth()
+		// 這個郡這個月不下令，換下一個郡（原版主命令的「休息」）。
+		if a.s.Waiting() != 0 {
+			a.s.EndTurn()
+		}
 		a.menu, a.view.Menu, a.view.Items, a.pick = 0, "", nil, nil
 		a.view.Prompt, a.view.Page = "", nil
 		a.dirty = true
@@ -842,8 +870,13 @@ func adviceTargetOf(o game.Order) game.AdviceTarget {
 	return game.AdviceTarget{}
 }
 
-// apply 真的送出一個命令。
+// apply 真的送出一個命令。**只給輪到的那個郡**：原版一次只問那一郡的主人
+// （`docs/spec/019` §2）；查看類不經過這裡。
 func (a *app) apply(o game.Order) {
+	if w := a.s.Waiting(); w != 0 && o.Prefecture() != 0 && o.Prefecture() != w {
+		a.view.Prompt = tf("msg.notThisPref", prefName(a.s.G, w))
+		return
+	}
 	if err := a.s.Do(o); err != nil {
 		a.view.Prompt = game.ErrorText(err)
 		return
@@ -1350,7 +1383,8 @@ func main() {
 	// `-load`／`-orig-load` 是「我要那一局」，中間再問一次沒有道理，
 	// 而 `-title=false` 是給截圖與腳本用的。
 	if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
-		a.startTitle(titleScreen, menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len()))
+		a.newMenu = func() *menu.Screen { return menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len()) }
+		a.startTitle(titleScreen, a.newMenu())
 		if openArt != nil {
 			a.opening = newOpeningPlayer(openArt)
 		}
@@ -1378,6 +1412,22 @@ func main() {
 	if err := ebiten.RunGame(a); err != nil {
 		die(err)
 	}
+}
+
+// lordName 是一個勢力的君主名字（沒有君主用「勢力 N」）。
+func lordName(g *game.State, f state.FactionID) string {
+	if lord := g.Lord(f); lord != nil {
+		return i18n.PersonName(lord.Name)
+	}
+	return i18n.Sf("fld.factionN", f)
+}
+
+// prefName 是郡名。
+func prefName(g *game.State, at int) string {
+	if p := g.Prefecture(at); p != nil {
+		return i18n.PlaceName(p.Name)
+	}
+	return fmt.Sprintf("%d", at)
 }
 
 func die(err error) {

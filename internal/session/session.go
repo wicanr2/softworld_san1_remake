@@ -35,6 +35,12 @@ type Session struct {
 
 	battles []*game.BattleResult
 
+	// entered 表示游標那一格已經跑過回合入口（抽樣、重整、重算所屬），
+	// 停在玩家的郡時留著，玩家下完令才往下走（`AdvanceToHuman`）。
+	entered bool
+	// done 是這個月電腦諸侯各下了幾道令（紀錄彙總用）。
+	done map[state.FactionID]int
+
 	// Bubbles 是還沒給玩家看的訊息框（原版的訊息常式畫的「肖像＋對白」，
 	// `game.Bubble`），新的在後面。畫面層一次秀一格、按鍵收一格
 	// （`PopBubble`）；沒有原版素材的文字版面直接把它們寫進 Log。
@@ -204,24 +210,40 @@ func (s *Session) shuffleMonth() {
 	s.MonthCursor = 0
 }
 
-// runPrefectureTurns 走完這個月的郡順序。
+// runPrefectureTurns 走完這個月剩下的郡順序，玩家的郡不停（`EndMonth` 用：
+// 玩家在這之前已經自己下過令）。
+func (s *Session) runPrefectureTurns() {
+	for s.MonthCursor < len(s.MonthOrder) || len(s.MonthOrder) != 43 {
+		if _, stop := s.turnCell(false); stop {
+			break
+		}
+	}
+	s.reportOrders()
+}
+
+// turnCell 走順序表的一格（`0x15763` 的一輪 ＋ `0x17471`）。
 //
 // 每一格照 `0x17471`：無主的郡跳過；重算所屬；**玩家的郡不跑分派器**
-// （原版是在那裡停下來讓玩家下令，remake 這一邊玩家已經先下過了）；
-// 自治的郡拿 offset 12 減一當等級跑同一個分派器（`0x17550`）。
-func (s *Session) runPrefectureTurns() {
+// ——stopAtHuman 為真時停在那裡（游標不動）回傳那個郡，由玩家下令之後
+// `EndTurn` 往下走；為假時跳過（`EndMonth` 那一條）。自治的郡拿 offset 12
+// 減一當等級跑同一個分派器（`0x17550`）。
+func (s *Session) turnCell(stopAtHuman bool) (at int, stop bool) {
 	planner, ok := s.Brain.(ai.PrefecturePlanner)
 	if !ok {
-		return
+		s.MonthCursor = len(s.MonthOrder)
+		return 0, false
 	}
 	if len(s.MonthOrder) != 43 {
 		s.shuffleMonth()
 	}
-	done := map[state.FactionID]int{}
-	for ; s.MonthCursor < len(s.MonthOrder); s.MonthCursor++ {
+	if s.MonthCursor >= len(s.MonthOrder) {
+		return 0, false
+	}
+	at = s.MonthOrder[s.MonthCursor]
+	if !s.entered {
+		s.entered = true
 		// 月迴圈每一格先抽一次（`0x15790`），跳過的格子也算。
 		s.G.TurnTick()
-		at := s.MonthOrder[s.MonthCursor]
 		// **回合入口先重整這個郡的守將清單**（`0x17471` 的第一道
 		// `call 0x1949e`），兵士與現役將兩欄跟著刷新。
 		s.G.RefreshGarrison(at)
@@ -229,38 +251,62 @@ func (s *Session) runPrefectureTurns() {
 		// **跳過的判斷用重算之前的值**，重算才在後面（`0x17471`：
 		// 所屬 == 0xFF → 回 −1；接著才 `call 0x1e394`）。
 		if p == nil || !p.Owned() {
-			continue
+			s.nextCell()
+			return at, false
 		}
 		s.G.RecomputeOwners()
-		// 重算之後可能已經易主或變無主（別的郡搬空了它、或搬進來的人
-		// 槽號較大蓋過原主）——分派器看的是重算之後的那一位。
-		if p = s.G.Prefecture(at); p == nil || !p.Owned() {
-			continue
-		}
-		id, level := p.Owner, s.G.AILevel(p.Owner)
-		if id == s.Player {
-			// 自治的郡是玩家的地盤，交給電腦按指定的性格經營
-			// （`game.AutonomousFor`）；其餘的玩家已經自己下過令了。
-			lv, auto := s.G.AutonomousFor(at)
-			if !auto || p.Commanded {
-				continue
-			}
-			level = lv
-		}
-		_, n, err := planner.ActPrefecture(s.G, id, at, level)
-		s.drainBattles()
-		s.G.FinishTurn(at)
-		if err != nil {
-			s.say("sess.blocked", prefectureName(s.G, at), err)
-		}
-		if n > 0 && id != s.Player {
-			done[id] += n
-		}
 	}
-	// **紀錄按勢力彙總。** 一郡一行會把紀錄淹掉，而玩家關心的是
-	// 「這個月哪個諸侯動得多」。
+	// 重算之後可能已經易主或變無主（別的郡搬空了它、或搬進來的人
+	// 槽號較大蓋過原主）——分派器看的是重算之後的那一位。
+	p := s.G.Prefecture(at)
+	if p == nil || !p.Owned() {
+		s.nextCell()
+		return at, false
+	}
+	id, level := p.Owner, s.G.AILevel(p.Owner)
+	if s.G.IsHuman(id) {
+		// 自治的郡是玩家的地盤，交給電腦按指定的性格經營
+		// （`game.AutonomousFor`）；其餘的由那個郡的主人下令。
+		lv, auto := s.G.AutonomousFor(at)
+		if !auto || p.Commanded {
+			if stopAtHuman && !p.Commanded && !auto {
+				s.Player = id
+				return at, true
+			}
+			s.nextCell()
+			return at, false
+		}
+		level = lv
+	}
+	_, n, err := planner.ActPrefecture(s.G, id, at, level)
+	s.drainBattles()
+	s.G.FinishTurn(at)
+	if err != nil {
+		s.say("sess.blocked", prefectureName(s.G, at), err)
+	}
+	if n > 0 && !s.G.IsHuman(id) {
+		if s.done == nil {
+			s.done = map[state.FactionID]int{}
+		}
+		s.done[id] += n
+	}
+	s.nextCell()
+	return at, false
+}
+
+// nextCell 把游標推到下一格。
+func (s *Session) nextCell() {
+	s.MonthCursor++
+	s.entered = false
+}
+
+// reportOrders 把這個月電腦諸侯下的令按勢力彙總進紀錄。
+//
+// **紀錄按勢力彙總。** 一郡一行會把紀錄淹掉，而玩家關心的是
+// 「這個月哪個諸侯動得多」。
+func (s *Session) reportOrders() {
 	for _, f := range s.G.Factions() {
-		n := done[f.ID]
+		n := s.done[f.ID]
 		if n == 0 {
 			continue
 		}
@@ -270,6 +316,58 @@ func (s *Session) runPrefectureTurns() {
 		}
 		s.say("sess.orders", name, n)
 	}
+	s.done = nil
+}
+
+// AdvanceToHuman 照原版的順序往下跑（`docs/spec/019` §2）：停在「玩家的郡、
+// 這個月還沒下令、不是自治」回傳那個郡，並把 Player 換成那個郡的主人；
+// 游標跑完就月底結算、開月、接著跑。maxCells > 0 時最多走那麼多格就回 0
+// （0 人的示範模式一幀推一格）。遊戲結束也回 0。
+func (s *Session) AdvanceToHuman(maxCells int) int {
+	for n := 0; maxCells <= 0 || n < maxCells; n++ {
+		if s.Over {
+			return 0
+		}
+		if len(s.MonthOrder) == 43 && s.MonthCursor >= len(s.MonthOrder) {
+			s.reportOrders()
+			s.finishMonth()
+			continue
+		}
+		if at, stop := s.turnCell(true); stop {
+			return at
+		}
+		if maxCells <= 0 && len(s.G.Players) == 0 {
+			// 沒有玩家又沒給上限會永遠跑下去：一次最多一個月。
+			if s.MonthCursor >= len(s.MonthOrder) {
+				return 0
+			}
+		}
+	}
+	return 0
+}
+
+// EndTurn 結束現在停著的那個玩家郡的回合（下完令或休息），游標往下走。
+func (s *Session) EndTurn() {
+	if s.MonthCursor < len(s.MonthOrder) {
+		s.G.FinishTurn(s.MonthOrder[s.MonthCursor])
+		s.nextCell()
+	}
+}
+
+// Waiting 回停著等玩家下令的那個郡；0 表示沒有停著。
+func (s *Session) Waiting() int {
+	if !s.entered || s.MonthCursor >= len(s.MonthOrder) {
+		return 0
+	}
+	at := s.MonthOrder[s.MonthCursor]
+	p := s.G.Prefecture(at)
+	if p == nil || !p.Owned() || !s.G.IsHuman(p.Owner) || p.Commanded {
+		return 0
+	}
+	if _, auto := s.G.AutonomousFor(at); auto {
+		return 0
+	}
+	return at
 }
 
 // MaxBattles 是保留幾場戰役的逐日戰報。
@@ -281,6 +379,11 @@ const MaxBattles = 8
 // 月份裡回應。推進之後才清掉各郡的下令旗標。
 func (s *Session) EndMonth() {
 	s.runPrefectureTurns()
+	s.finishMonth()
+}
+
+// finishMonth 是月底結算到開月（游標跑完之後）。
+func (s *Session) finishMonth() {
 	wasAlive := s.PlayerAlive()
 	events := s.G.EndMonth()
 	// 開月在結算裡跑完了，順序表換成新的一份。
@@ -323,10 +426,26 @@ func (s *Session) PlayerTerritory() []int { return s.G.Territory(s.Player) }
 //
 // **沒有這一個的話，被消滅之後畫面只是變成空白**——玩家會以為是壞掉。
 func (s *Session) PlayerAlive() bool {
-	if s.Player == state.NoFaction {
+	if len(s.G.Players) == 0 && s.Player == state.NoFaction {
 		return true // 純觀戰
 	}
-	return s.G.Lord(s.Player) != nil
+	for _, p := range s.players() {
+		if s.G.Lord(p) != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// players 是全部玩家；舊的單一玩家局面只有 Player。
+func (s *Session) players() []state.FactionID {
+	if len(s.G.Players) > 0 {
+		return s.G.Players
+	}
+	if s.Player != state.NoFaction {
+		return []state.FactionID{s.Player}
+	}
+	return nil
 }
 
 func prefectureName(g *game.State, at int) string {

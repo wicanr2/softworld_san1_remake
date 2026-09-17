@@ -305,6 +305,10 @@ const (
 
 // startBattle 開一場由玩家指揮的戰役。
 func (a *app) startBattle(from, to int, force []int, sup game.Supply) {
+	if w := a.s.Waiting(); w != 0 && from != w {
+		a.view.Prompt = tf("msg.notThisPref", prefName(a.s.G, w))
+		return
+	}
 	p, err := a.s.G.BeginAttack(from, to, force, a.s.Player, sup)
 	if err != nil {
 		a.view.Prompt = tf("bat.attackFailed", err)

@@ -33,7 +33,18 @@ func (a *app) drawTitle() {
 	// 肖像（`docs/spec/005` §9.4）；沒有素材退回文字清單。
 	if m.Stage() == menu.Lord && a.art != nil && m.Game() != nil {
 		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPickPage(), m.Sel()%ui.LordPickPerPage,
-			tf("title.lordPrompt", len(m.Lords())), a.view.Calendar)
+			m.Title(), a.view.Calendar)
+		return
+	}
+	// 幾人玩：選君主那一頁，提示框裡問人數（`0x120a5`，`docs/spec/019` §1）。
+	if m.Stage() == menu.PlayerCount && a.art != nil && m.Game() != nil {
+		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPage(m.Lords(), 0), -1, "", a.view.Calendar)
+		ui.DrawLordPickAsk(a.canvas, m.Title()+m.Items()[m.Sel()])
+		return
+	}
+	// 0 人：「電腦自動示範模式」，等一個鍵。
+	if m.Stage() == menu.Demo && a.art != nil && m.Game() != nil {
+		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPage(m.Lords(), 0), -1, m.Title(), a.view.Calendar)
 		return
 	}
 	// 新君主：同一塊面板，肖像加框、名字、六行能力（`docs/spec/005` §9.5）。
@@ -47,23 +58,17 @@ func (a *app) drawTitle() {
 		ui.DrawNewLordBorn(a.canvas, a.art, m.Game(), cv.Portrait, cv.Name, cv.Color, a.view.Calendar)
 		return
 	}
-	// 設難度：原版留在選君主那一頁，選中的那一位印玩家序號，提示換成
-	// 「請設定難度(1-10)」（`docs/spec/005` §9.4）。remake 用方向鍵選的數字
-	// 接在提示後面（remake 差異）。
-	if m.Stage() == menu.Difficulty && a.art != nil && m.Game() != nil && len(m.Lords()) == 1 {
-		cands, chosen := m.Candidates(), m.Lords()[0]
-		at := slices.Index(cands, chosen)
-		if at >= 0 {
-			slots := a.lordPage(cands, at)
-			for i := range slots {
-				if slots[i].Faction == chosen {
-					slots[i].Player = 1
-				}
-			}
-			prompt := tf("title.difficultyPrompt", len(m.Items())) + m.Items()[m.Sel()]
-			ui.DrawLordPick(a.canvas, a.art, m.Game(), slots, -1, prompt, a.view.Calendar)
-			return
+	// 設難度：原版留在選君主那一頁（最後一位玩家選的那一頁），選走的君主
+	// 印玩家序號，提示換成「請設定難度(1-10)」（`docs/spec/005` §9.4）。remake
+	// 用方向鍵選的數字接在提示後面（remake 差異）。
+	if m.Stage() == menu.Difficulty && a.art != nil && m.Game() != nil {
+		at := 0
+		if ps := m.Players(); len(ps) > 0 {
+			at = max(0, slices.Index(m.Lords(), ps[len(ps)-1]))
 		}
+		prompt := tf("title.difficultyPrompt", len(m.Items())) + m.Items()[m.Sel()]
+		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPage(m.Lords(), at), -1, prompt, a.view.Calendar)
+		return
 	}
 	// 選擇年代：原版不換畫面，直牌與六個按鈕換字（`docs/spec/005` §6.4）。
 	if m.Stage() == menu.Scenario {
@@ -94,6 +99,9 @@ func (a *app) lordPage(lords []int, at int) []ui.LordPickSlot {
 			}
 		} else {
 			slot.Lord = g.Lord(state.FactionID(f))
+		}
+		if k := slices.Index(m.Players(), f); k >= 0 {
+			slot.Player = k + 1 // 已被第 k+1 位玩家選走（`0x12291`）
 		}
 		out = append(out, slot)
 	}
@@ -139,6 +147,15 @@ func (a *app) updateTitle() error {
 		a.titleConfirm(m.Sel())
 		return nil
 	}
+	// 幾人玩那一層：數字鍵就是人數（0 起）。
+	if m.Stage() == menu.PlayerCount {
+		for k := ebiten.Key0; k <= ebiten.Key9; k++ {
+			if d := int(k - ebiten.Key0); inpututil.IsKeyJustPressed(k) && d < m.Len() {
+				a.titleConfirm(d)
+				return nil
+			}
+		}
+	}
 	for k := ebiten.Key1; k <= ebiten.Key9; k++ {
 		if inpututil.IsKeyJustPressed(k) {
 			i := int(k - ebiten.Key1)
@@ -159,8 +176,8 @@ func (a *app) updateTitle() error {
 		m.Back()
 		a.dirty = true
 	}
-	// 「新君主出現!!」按任意鍵往下（原版等一個鍵）。
-	if m.Stage() == menu.LordBorn && anyKeyPressed() {
+	// 「新君主出現!!」與「電腦自動示範模式」按任意鍵往下（原版等一個鍵）。
+	if (m.Stage() == menu.LordBorn || m.Stage() == menu.Demo) && anyKeyPressed() {
 		a.titleConfirm(0)
 		a.dirty = true
 	}

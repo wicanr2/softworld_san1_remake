@@ -16,6 +16,7 @@ package menu
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
@@ -32,6 +33,8 @@ type Stage int
 const (
 	Menu Stage = iota // 六個項目
 	Scenario
+	PlayerCount // 「請問有幾人玩(0-%d)」（`docs/spec/019` §1）
+	Demo        // 0 人：「電腦自動示範模式」，按任意鍵往下
 	Lord
 	CustomLord // 新君主的設定（`docs/spec/013`）
 	LordBorn   // 「新君主出現!!」那一格：新君主的肖像與一句話，按任意鍵（`docs/spec/005` §9.5）
@@ -63,14 +66,22 @@ type Screen struct {
 	lords []int
 	saves []save.Info
 
-	// candidates 是選君主那一層的候選，進設難度之後 lords 只剩選中的那一位。
-	candidates []int
+	// playerCount 是這一局幾位玩家；players 是已經選好的君主（依玩家序號）。
+	playerCount int
+	players     []int
+	// difficulty 是設好的難度；pendingCustom 是被選走、還沒分配能力的新君主欄；
+	// customDone 是分配好的新君主（開局時依序寫進劇本）。
+	difficulty    int
+	pendingCustom []int
+	customDone    []customLordDone
 
 	// g 是選君主那一層拿來列候選的局面（肖像、名字、地圖填色都從它取）。
 	g *game.State
 
 	// customs 是這個劇本還空著的新君主欄（諸侯槽號）。
 	customs []int
+	// lordItems 是選君主那一層的清單（文字版面用）。
+	lordItems []string
 	// custom 非 nil 表示玩家選了其中一個，正在設定那一位。
 	custom *customState
 
@@ -107,9 +118,13 @@ func (s *Screen) Len() int {
 	return len(s.items)
 }
 
-// Lords 是選君主那一層的候選（諸侯槽號，與 Items 同序）；Game 是列出
-// 它們的那個局面。兩者只在 Lord 那一層有意義。
-func (s *Screen) Lords() []int      { return s.lords }
+// Lords 是選君主那一層的候選（諸侯槽號）；Game 是列出它們的那個局面。
+// 從玩家人數到設難度那幾層都有意義。
+func (s *Screen) Lords() []int { return s.lords }
+
+// Players 是已經選好的君主（諸侯槽號，依玩家序號）；PlayerCount 是這一局幾位。
+func (s *Screen) Players() []int    { return s.players }
+func (s *Screen) PlayerCount() int  { return s.playerCount }
 func (s *Screen) Game() *game.State { return s.g }
 
 // IsCustom 回報候選 f 是不是空的新君主欄；CustomIndex 是它排第幾個新君主
@@ -154,6 +169,7 @@ func (s *Screen) Back() {
 	}
 	s.stage, s.items, s.pick, s.title = Menu, nil, 0, ""
 	s.custom = nil
+	s.players, s.playerCount, s.pendingCustom, s.customDone = nil, 0, nil, nil
 }
 
 // Confirm 選下去。回傳非 nil 表示這一局開好了（或讀好了）。
@@ -165,24 +181,31 @@ func (s *Screen) Confirm(i int) *session.Session {
 	case Scenario:
 		s.slot = state.Slot(fmt.Sprintf("%03d", i+1))
 		s.pickLord()
+	case PlayerCount:
+		s.pickPlayers(i)
+	case Demo:
+		s.pickDifficulty()
 	case Lord:
-		if i < len(s.lords) {
-			if s.isCustom(s.lords[i]) {
-				s.pickCustomLord(s.lords[i])
-			} else {
-				s.pickDifficulty(s.lords[i])
-			}
-		}
+		s.pickPlayerLord(i)
 	case CustomLord:
 		s.confirmCustom(i)
 	case LordBorn:
 		if s.custom != nil {
-			s.pickDifficulty(s.custom.faction)
+			s.customDone = append(s.customDone, customLordDone{s.custom.faction, s.custom.lord})
+			s.custom = nil
 		}
+		return s.nextCustomOrStart()
 	case Difficulty:
-		if len(s.lords) > 0 {
-			return s.start(s.slot, s.lords[0], i+1)
+		s.difficulty = i + 1
+		// 被選走的新君主欄**設完難度才分配能力**（`0x123aa`，照槽號順序）。
+		s.pendingCustom = nil
+		for _, f := range s.lords {
+			if s.isCustom(f) && slices.Contains(s.players, f) {
+				s.pendingCustom = append(s.pendingCustom, f)
+			}
 		}
+		slices.Sort(s.pendingCustom)
+		return s.nextCustomOrStart()
 	case Load:
 		return s.load(i)
 	case Music:
@@ -243,9 +266,8 @@ func (s *Screen) pickLord() {
 		s.note(i18n.S("title.pickLord"), err.Error())
 		return
 	}
-	s.stage, s.pick = Lord, 0
-	s.title = i18n.S("title.pickLord")
 	s.items, s.lords, s.customs, s.g = nil, nil, nil, g
+	s.players, s.customDone = nil, nil
 	for _, f := range g.Factions() {
 		if !f.Alive {
 			continue
@@ -266,10 +288,72 @@ func (s *Screen) pickLord() {
 		s.lords = append(s.lords, f)
 		s.customs = append(s.customs, f)
 	}
+	s.lordItems = s.items
+	// 先問幾人玩（`0x12072`）：0 … 候選數，預設 1。
+	s.stage, s.pick = PlayerCount, 1
+	s.title = i18n.Sf("title.playerCount", len(s.lords))
+	s.items = nil
+	for k := 0; k <= len(s.lords); k++ {
+		s.items = append(s.items, fmt.Sprintf("%d", k))
+	}
+}
+
+// pickPlayers 收玩家人數：0 人進示範模式，否則逐位選君主。
+func (s *Screen) pickPlayers(n int) {
+	if n < 0 || n > len(s.lords) {
+		return
+	}
+	s.playerCount, s.players = n, nil
+	if n == 0 {
+		s.stage, s.pick = Demo, 0
+		s.title, s.items = i18n.S("title.demo"), []string{i18n.S("title.demo")}
+		return
+	}
+	s.askLord()
+}
+
+// askLord 問下一位玩家選哪一位君主（「第%d位,請選擇(1-%d)」）。
+func (s *Screen) askLord() {
+	s.stage = Lord
+	s.title = i18n.Sf("title.lordPrompt", len(s.players)+1, len(s.lords))
+	s.items = s.lordItems
+	if s.pick >= len(s.items) {
+		s.pick = 0
+	}
+}
+
+// pickPlayerLord 收一位玩家的君主。已經被選走的不收（原版重問）。
+func (s *Screen) pickPlayerLord(i int) {
+	if i < 0 || i >= len(s.lords) || slices.Contains(s.players, s.lords[i]) {
+		return
+	}
+	s.players = append(s.players, s.lords[i])
+	if len(s.players) < s.playerCount {
+		s.askLord()
+		return
+	}
+	s.pickDifficulty()
+}
+
+// customLordDone 是分配好能力的一位新君主。
+type customLordDone struct {
+	faction int
+	lord    state.CustomLord
+}
+
+// nextCustomOrStart 分配下一位被選走的新君主欄；都分完就開局。
+func (s *Screen) nextCustomOrStart() *session.Session {
+	if len(s.pendingCustom) > 0 {
+		f := s.pendingCustom[0]
+		s.pendingCustom = s.pendingCustom[1:]
+		s.pickCustomLord(f) // 沒有空白郡時停在那一句話
+		return nil
+	}
+	return s.start()
 }
 
 // pickDifficulty 問難度。上限看版本（原版 10、加強版 20）。
-func (s *Screen) pickDifficulty(faction int) {
+func (s *Screen) pickDifficulty() {
 	max := 10
 	if s.edition == state.EditionPlus {
 		max = 20
@@ -280,13 +364,7 @@ func (s *Screen) pickDifficulty(faction int) {
 	for k := 1; k <= max; k++ {
 		s.items = append(s.items, fmt.Sprintf("%d", k))
 	}
-	// 候選清單留著：原版設難度時畫面還是選君主那一頁（`docs/spec/005` §9.4）。
-	s.candidates = s.lords
-	s.lords = []int{faction}
 }
-
-// Candidates 是選君主那一層的候選（諸侯槽號）；設難度那一層畫面要用。
-func (s *Screen) Candidates() []int { return s.candidates }
 
 // pickSave 列出可以讀的進度。
 func (s *Screen) pickSave() {
@@ -319,22 +397,17 @@ func (s *Screen) load(i int) *session.Session {
 	return ss
 }
 
-func (s *Screen) start(slot state.Slot, faction, difficulty int) *session.Session {
-	sc, err := state.LoadScenario(s.c2, slot)
+func (s *Screen) start() *session.Session {
+	sc, err := s.scenarioWithCustoms()
 	if err != nil {
-		s.note(i18n.S("title.pickScenario"), err.Error())
+		s.note(i18n.S("title.newLord"), err.Error())
 		return nil
 	}
-	// 選了新君主欄就先把那一位寫進劇本，再開局。
-	custom := s.custom != nil && s.custom.faction == faction
-	if custom {
-		sc, err = sc.WithCustomLord(faction, s.custom.lord)
-		if err != nil {
-			s.note(i18n.S("title.newLord"), err.Error())
-			return nil
-		}
+	players := make([]state.FactionID, len(s.players))
+	for i, f := range s.players {
+		players[i] = state.FactionID(f)
 	}
-	g, err := game.New(sc, state.FactionID(faction), difficulty, s.edition)
+	g, err := game.NewPlayers(sc, players, s.difficulty, s.edition)
 	if err != nil {
 		s.note(i18n.S("title.pickScenario"), err.Error())
 		return nil
@@ -344,7 +417,7 @@ func (s *Screen) start(slot state.Slot, faction, difficulty int) *session.Sessio
 		s.note(i18n.S("title.pickScenario"), err.Error())
 		return nil
 	}
-	if custom {
+	if len(s.customDone) > 0 {
 		// 名字的字模：人物表裡只有造字碼位，字模另外存
 		//（`docs/spec/013` R4）。名字固定是「新君主」，而**原版出貨的
 		// `BASEPRE` 內容正好就是它**（`docs/re/08` §3：六個進度位元組
@@ -353,7 +426,25 @@ func (s *Screen) start(slot state.Slot, faction, difficulty int) *session.Sessio
 			g.SetGlyphs(x)
 		}
 	}
-	return session.New(g, brain, state.FactionID(faction))
+	first := state.FactionID(state.NoFaction)
+	if len(players) > 0 {
+		first = players[0]
+	}
+	return session.New(g, brain, first)
+}
+
+// scenarioWithCustoms 是這個劇本加上已經分配好的新君主（依分配順序寫進去）。
+func (s *Screen) scenarioWithCustoms() (*state.Scenario, error) {
+	sc, err := state.LoadScenario(s.c2, s.slot)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range s.customDone {
+		if sc, err = sc.WithCustomLord(c.faction, c.lord); err != nil {
+			return nil, err
+		}
+	}
+	return sc, nil
 }
 
 // shippedGlyphs 取原版出貨的字模；讀不到回 nil。

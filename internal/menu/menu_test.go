@@ -35,7 +35,18 @@ func newScreen(t *testing.T) *Screen {
 	return New(c, state.EditionBase, ai.ModeEnhanced, "", 6)
 }
 
-// TestStartsANewGame 走完「開始新遊戲」那三層。
+// toLord 走到「第1位,請選擇」：開始新遊戲 → 劇本 → 1 人。
+func toLord(t *testing.T, s *Screen, scenario int) {
+	t.Helper()
+	s.Confirm(0)
+	s.Confirm(scenario)
+	if s.Stage() != PlayerCount {
+		t.Fatalf("選完劇本沒問人數（stage %d）", s.Stage())
+	}
+	s.Confirm(1)
+}
+
+// TestStartsANewGame 走完「開始新遊戲」那幾層。
 func TestStartsANewGame(t *testing.T) {
 	s := newScreen(t)
 	if s.Confirm(0) != nil { // 1. 開始新遊戲
@@ -45,6 +56,10 @@ func TestStartsANewGame(t *testing.T) {
 		t.Fatalf("選年代那一層有 %d 項（stage %d）", len(s.Items()), s.Stage())
 	}
 	s.Confirm(0) // 第一個劇本
+	if s.Stage() != PlayerCount || len(s.Items()) != len(s.lords)+1 || s.Sel() != 1 {
+		t.Fatalf("人數那一層有 %d 項、預設 %d（stage %d）", len(s.Items()), s.Sel(), s.Stage())
+	}
+	s.Confirm(1) // 1 人
 	if s.Stage() != Lord {
 		t.Fatalf("選君主那一層沒出來（stage %d）：%v", s.Stage(), s.Items())
 	}
@@ -72,8 +87,7 @@ func TestStartsANewGame(t *testing.T) {
 func TestPlusRaisesTheDifficultyCap(t *testing.T) {
 	s := newScreen(t)
 	s.edition = state.EditionPlus
-	s.Confirm(0)
-	s.Confirm(0)
+	toLord(t, s, 0)
 	s.Confirm(0)
 	if s.Stage() != Difficulty || len(s.Items()) != 20 {
 		t.Errorf("加強版的難度有 %d 項", len(s.Items()))
@@ -145,8 +159,7 @@ func TestNoSavesSaysSo(t *testing.T) {
 // 新君主欄要列在「選角色」那一層的最後面，而且走得完整條流程。
 func TestPicksACustomLord(t *testing.T) {
 	s := newScreen(t)
-	s.Confirm(0) // 開始新遊戲
-	s.Confirm(0) // 第一個劇本
+	toLord(t, s, 0)
 	if s.Stage() != Lord {
 		t.Fatalf("沒到選角色那一層（stage %d）", s.Stage())
 	}
@@ -161,10 +174,14 @@ func TestPicksACustomLord(t *testing.T) {
 	if !s.isCustom(s.lords[first]) || s.isCustom(s.lords[first-1]) {
 		t.Fatal("新君主欄不在清單的最後面")
 	}
-	// **先存起來**：`pickDifficulty` 會把 `lords` 換成只剩選中的那一個。
 	want := s.lords[first]
 
+	// 原版先設難度，被選走的新君主欄才分配能力（`0x123aa`）。
 	s.Confirm(first)
+	if s.Stage() != Difficulty {
+		t.Fatalf("選完新君主欄沒問難度（stage %d）", s.Stage())
+	}
+	s.Confirm(4)
 	if s.Stage() != CustomLord {
 		t.Fatalf("沒進新君主的設定（stage %d）：%v", s.Stage(), s.Items())
 	}
@@ -223,7 +240,7 @@ func TestPicksACustomLord(t *testing.T) {
 		t.Error("d=0 也被當成調整")
 	}
 
-	// 「完成」→ 「新君主出現!!」（地圖上那一郡已經是新君主的）→ 難度 → 開局。
+	// 「完成」→ 「新君主出現!!」（地圖上那一郡已經是新君主的）→ 開局。
 	s.pick = customRows - 1
 	s.Confirm(customRows - 1)
 	if s.Stage() != LordBorn {
@@ -232,13 +249,12 @@ func TestPicksACustomLord(t *testing.T) {
 	if g := s.Game(); g == nil || len(g.Territory(state.FactionID(s.custom.faction))) != 1 {
 		t.Fatalf("「新君主出現」那一格底下的局面沒有新君主的領地：%v", g)
 	}
-	s.Confirm(0)
-	if s.Stage() != Difficulty {
-		t.Fatalf("「新君主出現」之後沒進難度（stage %d）：%v", s.Stage(), s.Items())
-	}
-	ss := s.Confirm(4)
+	ss := s.Confirm(0)
 	if ss == nil {
-		t.Fatal("沒有開出一局")
+		t.Fatalf("「新君主出現」之後沒開局（stage %d）", s.Stage())
+	}
+	if ss.G.Difficulty != 5 {
+		t.Errorf("難度是 %d，選的是 5", ss.G.Difficulty)
 	}
 	if int(ss.Player) != want {
 		t.Errorf("玩家是勢力 %d，選的是 %d", ss.Player, want)
@@ -260,8 +276,7 @@ func TestPicksACustomLord(t *testing.T) {
 // 沒選新君主的時候不該把 custom 的狀態帶進去。
 func TestOrdinaryLordDoesNotCarryCustomState(t *testing.T) {
 	s := newScreen(t)
-	s.Confirm(0)
-	s.Confirm(0)
+	toLord(t, s, 0)
 	s.Confirm(0) // 第一位真的君主
 	if s.Stage() != Difficulty {
 		t.Fatalf("stage %d", s.Stage())
@@ -274,13 +289,12 @@ func TestOrdinaryLordDoesNotCarryCustomState(t *testing.T) {
 // 自創君主的名字要帶著字模，否則存出去給原版讀是三個空白。
 func TestCustomLordCarriesTheShippedGlyphs(t *testing.T) {
 	s := newScreen(t)
-	s.Confirm(0)
-	s.Confirm(0)
+	toLord(t, s, 0)
 	first := len(s.lords) - len(s.customs)
 	s.Confirm(first)
+	s.Confirm(4)              // 難度 5 → 分配能力
 	s.Confirm(customRows - 1) // 完成 → 「新君主出現!!」
-	s.Confirm(0)              // 任意鍵 → 難度
-	ss := s.Confirm(4)
+	ss := s.Confirm(0)        // 任意鍵 → 開局
 	if ss == nil {
 		t.Fatal("沒有開出一局")
 	}
@@ -317,8 +331,7 @@ func TestCustomLordCarriesTheShippedGlyphs(t *testing.T) {
 
 	// 一般君主的局不帶字模：那一局沒有造字要畫。
 	s2 := newScreen(t)
-	s2.Confirm(0)
-	s2.Confirm(0)
+	toLord(t, s2, 0)
 	s2.Confirm(0)
 	if ss2 := s2.Confirm(4); ss2 == nil || ss2.G.Glyphs() != nil {
 		t.Error("一般君主的局也帶了字模")
@@ -358,6 +371,8 @@ func TestTitleListsFitEveryLanguage(t *testing.T) {
 			}
 			check("年代")
 			s.Confirm(k)
+			check("人數")
+			s.Confirm(1)
 			check("君主")
 		}
 		t.Logf("%s：六個劇本共 %d 個君主欄，最寬一項 %d 格 %q", l, lords, cells.Width(widest), widest)
@@ -368,8 +383,7 @@ func TestTitleListsFitEveryLanguage(t *testing.T) {
 // 先前「不在 ActiveFactions 裡」的判準在這個劇本一個都列不出來。
 func TestNewLordSlotsInScenarioThree(t *testing.T) {
 	s := newScreen(t)
-	s.Confirm(0) // 開始新遊戲
-	s.Confirm(2) // 第三個劇本
+	toLord(t, s, 2) // 第三個劇本
 	if s.Stage() != Lord {
 		t.Fatalf("沒到選角色那一層（stage %d）", s.Stage())
 	}
@@ -379,6 +393,76 @@ func TestNewLordSlotsInScenarioThree(t *testing.T) {
 	for _, f := range s.lords[:len(s.lords)-4] {
 		if s.isCustom(f) {
 			t.Errorf("槽 %d 是新君主欄卻排在一般君主中間", f)
+		}
+	}
+}
+
+// TestPicksSeveralPlayers 釘住多人開局：逐位選、選走的不能再選、
+// 被選走的都是玩家，其餘在用的諸侯歸電腦（`docs/spec/019` §1）。
+func TestPicksSeveralPlayers(t *testing.T) {
+	s := newScreen(t)
+	s.Confirm(0)
+	s.Confirm(0)
+	s.Confirm(2) // 2 人
+	if s.Stage() != Lord || s.Title() != i18n.Sf("title.lordPrompt", 1, len(s.lords)) {
+		t.Fatalf("第 1 位的提示是 %q（stage %d）", s.Title(), s.Stage())
+	}
+	s.Confirm(1)
+	if s.Title() != i18n.Sf("title.lordPrompt", 2, len(s.lords)) {
+		t.Fatalf("第 2 位的提示是 %q", s.Title())
+	}
+	s.Confirm(1) // 已被第 1 位選走：原版重問
+	if s.Stage() != Lord || len(s.Players()) != 1 {
+		t.Fatalf("選走的又被收了一次：%v", s.Players())
+	}
+	s.Confirm(0)
+	if s.Stage() != Difficulty {
+		t.Fatalf("兩位選完沒問難度（stage %d）", s.Stage())
+	}
+	ss := s.Confirm(0)
+	if ss == nil {
+		t.Fatal("沒有開出一局")
+	}
+	g := ss.G
+	want := []state.FactionID{state.FactionID(s.lords[1]), state.FactionID(s.lords[0])}
+	if len(g.Players) != 2 || g.Players[0] != want[0] || g.Players[1] != want[1] {
+		t.Fatalf("玩家是 %v，想要 %v", g.Players, want)
+	}
+	for _, f := range g.Factions() {
+		if !f.Alive {
+			continue
+		}
+		human := f.ID == want[0] || f.ID == want[1]
+		if f.ByComputer == human || g.IsHuman(f.ID) != human {
+			t.Errorf("勢力 %d：ByComputer %v、IsHuman %v", f.ID, f.ByComputer, g.IsHuman(f.ID))
+		}
+	}
+}
+
+// TestZeroPlayersIsADemo 釘住 0 人：印「電腦自動示範模式」、等鍵、設難度、
+// 開一局沒有玩家的。
+func TestZeroPlayersIsADemo(t *testing.T) {
+	s := newScreen(t)
+	s.Confirm(0)
+	s.Confirm(0)
+	s.Confirm(0)
+	if s.Stage() != Demo || s.Title() != i18n.S("title.demo") {
+		t.Fatalf("0 人沒進示範模式（stage %d、%q）", s.Stage(), s.Title())
+	}
+	s.Confirm(0)
+	if s.Stage() != Difficulty {
+		t.Fatalf("示範模式按鍵之後沒問難度（stage %d）", s.Stage())
+	}
+	ss := s.Confirm(0)
+	if ss == nil {
+		t.Fatal("沒有開出一局")
+	}
+	if len(ss.G.Players) != 0 {
+		t.Errorf("示範模式有玩家 %v", ss.G.Players)
+	}
+	for _, f := range ss.G.Factions() {
+		if f.Alive && !f.ByComputer {
+			t.Errorf("示範模式裡勢力 %d 不是電腦", f.ID)
 		}
 	}
 }

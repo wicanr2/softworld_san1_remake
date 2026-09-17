@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/binary"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
@@ -333,7 +334,11 @@ type State struct {
 	Slot state.Slot
 	Date Date
 
-	// Player 是玩家控制的勢力；NoFaction 表示純觀戰。
+	// Players 是玩家控制的勢力，照玩家序號排（第 1 位在前，`docs/spec/019`）。
+	// 空的是電腦自動示範模式。
+	Players []state.FactionID
+	// Player 是第一位玩家（Players[0]）；沒有玩家時是 NoFaction。只有一位
+	// 玩家的呼叫端用它；規則裡「是不是玩家」一律問 IsHuman。
 	Player state.FactionID
 
 	// Edition 是原版還是加強版（`docs/spec/004`）。
@@ -420,11 +425,24 @@ func (g *State) SetGlyphs(x *state.Glyphs) { g.glyphs = x }
 // **拿加強版的難度 15 去開原版不會是「比較難」，是規則接錯了**——
 // 原版的係數表只有十格，第十五格是表外的位元組。
 func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Edition) (*State, error) {
+	return NewPlayers(sc, playerList(player), difficulty, ed)
+}
+
+// playerList 把單一玩家換成玩家序列（NoFaction 是零位）。
+func playerList(player state.FactionID) []state.FactionID {
+	if player == state.NoFaction {
+		return nil
+	}
+	return []state.FactionID{player}
+}
+
+// NewPlayers 開新局，players 依玩家序號排（0–16 位，`docs/spec/019` §1）。
+func NewPlayers(sc *state.Scenario, players []state.FactionID, difficulty int, ed state.Edition) (*State, error) {
 	start, ok := ScenarioStart[sc.Slot]
 	if !ok {
 		return nil, fmt.Errorf("game: 不知道槽位 %q 的起始年月", sc.Slot)
 	}
-	g, err := newAt(sc, player, difficulty, ed, start)
+	g, err := newAt(sc, players, difficulty, ed, start)
 	if err != nil {
 		return nil, err
 	}
@@ -447,7 +465,7 @@ func New(sc *state.Scenario, player state.FactionID, difficulty int, ed state.Ed
 			g.factions[i].AILevel = adjusted[id]
 		}
 	}
-	g.clearFillerSlots(player)
+	g.clearFillerSlots(players)
 	return g, nil
 }
 
@@ -466,11 +484,11 @@ const fillerLordFrom = 346
 // 中間（槽 4、5、10、11…），`ActiveFactions` 會把它們當在用的勢力建進
 // `factions`；這裡一併拿掉。位元組直接寫在 `rawMas` 上，`Tables()` 從
 // 它起手會原封帶出去。
-func (g *State) clearFillerSlots(player state.FactionID) {
+func (g *State) clearFillerSlots(players []state.FactionID) {
 	isFiller := func(f int) bool {
 		// 原版是有號比較（`jl`）：君主槽 `0xFFFF` 的槽算 −1，不碰。
 		lord := int(int16(binary.LittleEndian.Uint16(g.rawMas[f*masRecord+masLord:])))
-		return lord >= fillerLordFrom && state.FactionID(f) != player
+		return lord >= fillerLordFrom && !slices.Contains(players, state.FactionID(f))
 	}
 	kept := g.factions[:0]
 	for _, f := range g.factions {
@@ -540,10 +558,10 @@ func AILevelsAtStart(levels []int, difficulty int, ed state.Edition) []int {
 // 讀進度用 `Restore`（它多帶三張表放不下的欄位）。
 func Continue(sc *state.Scenario, player state.FactionID, difficulty int,
 	ed state.Edition, at Date) (*State, error) {
-	return newAt(sc, player, difficulty, ed, at)
+	return newAt(sc, playerList(player), difficulty, ed, at)
 }
 
-func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
+func newAt(sc *state.Scenario, players []state.FactionID, difficulty int,
 	ed state.Edition, start Date) (*State, error) {
 	if ed == "" {
 		ed = state.EditionBase
@@ -556,8 +574,12 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 			difficulty, ed, ed.MaxDifficulty())
 	}
 
-	g := &State{Slot: sc.Slot, Date: start, Player: player,
+	g := &State{Slot: sc.Slot, Date: start, Player: state.NoFaction,
+		Players: append([]state.FactionID(nil), players...),
 		Edition: ed, Difficulty: difficulty}
+	if len(players) > 0 {
+		g.Player = players[0]
+	}
 	g.rawMas, g.rawSta, g.rawGen = sc.Tables()
 
 	for _, p := range sc.Prefectures() {
@@ -592,7 +614,7 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 		})
 	}
 
-	valid := false
+	valid := 0
 	for _, f := range sc.ActiveFactions() {
 		lord, err := sc.Lord(f)
 		if err != nil {
@@ -600,7 +622,7 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 		}
 		fa := Faction{ID: state.FactionID(f), Lord: lord.Index, Alive: true, Chief: -1,
 			AILevel: sc.AILevel(f), Prestige: sc.Prestige(f),
-			ByComputer: state.FactionID(f) != player}
+			ByComputer: !slices.Contains(players, state.FactionID(f))}
 		for i, n := range sc.TreasuryOf(f) {
 			if i < len(fa.Treasury) {
 				fa.Treasury[i] = n
@@ -615,14 +637,31 @@ func newAt(sc *state.Scenario, player state.FactionID, difficulty int,
 			fa.Chief = c
 		}
 		g.factions = append(g.factions, fa)
-		if state.FactionID(f) == player {
-			valid = true
+		if slices.Contains(players, state.FactionID(f)) {
+			valid++
 		}
 	}
-	if player != state.NoFaction && !valid {
-		return nil, fmt.Errorf("game: 勢力 %d 在劇本 %s 裡沒有在用", player, sc.Slot)
+	seen := map[state.FactionID]bool{}
+	for _, p := range players {
+		if seen[p] {
+			return nil, fmt.Errorf("game: 勢力 %d 被選了兩次", p)
+		}
+		seen[p] = true
+	}
+	if valid != len(players) {
+		return nil, fmt.Errorf("game: 玩家 %v 裡有勢力在劇本 %s 裡沒有在用", players, sc.Slot)
 	}
 	return g, nil
+}
+
+// IsHuman 回報這個勢力是不是玩家在操作（諸侯記錄 offset 0 ＝ 1）。
+// 規則裡「是不是玩家」都問這一支——多人時玩家不只一位（`docs/spec/019`）。
+func (g *State) IsHuman(id state.FactionID) bool {
+	if id == state.NoFaction {
+		return false
+	}
+	f := g.Faction(id)
+	return f != nil && !f.ByComputer
 }
 
 // Prefecture 用 1-based 編號取一個郡。越界回 nil。

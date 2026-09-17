@@ -290,7 +290,7 @@ remake：查看→3 照原版走——別人的郡先問 Y/N（`ask.inspectForei
 一件」，送完由 `GiftOrder.Apply` 排受賜者道謝再一格他的卡（`game.Bubble.Card`，
 `TestPlayerOrdersQueueTheirDialogue`）；`SCG24.IMG` 那一張由 `GiftOrder.Apply`
 一開頭排成場景圖拉進來（`docs/spec/010` §1.1）。沒接：賞完回到「賞賜那一位」的迴圈（remake 一道命令
-一件）、示範模式（remake 沒有全電腦局）。
+一件）、示範模式月底的鏡頭 `0x1e1fc`（0 人的全電腦局 remake 有，鏡頭沒有，`docs/spec/019`）。
 
 ### 9.3 尋訪找到人（`0x1b912`，`L0`、`[base]`、Issue #54）
 
@@ -317,10 +317,13 @@ remake：`SearchOrder.Apply`（玩家那一條）把兩格排進 `pending`：
 拼成的十字 (x1+16, y1+8)–(x2−16, y2−8) 與 (x1+8, y1+16)–(x2−8, y2−16)，
 角與邊的拼件留著。remake 對白之前的清底改成 `ui.ClearPanel`。
 
-### 9.4 選君主（`0x124ca(人數)`，`L0`＋`L1`、`[base]`、Issue #54）
+### 9.4 選君主（`0x124ca(人數)`，`L0`＋`L1`、`[base]`、Issue #54、#68）
 
-開新局選了年代與人數之後，主畫面的地圖與年月照常，右側整塊換成
-一頁六位候選：
+開新局選了年代之後，主畫面的地圖與年月照常，右側整塊換成
+一頁六位候選，先問人數：提示框**不走訊息常式**，`0x33d8:0x1d4e(424, 340,
+"請問有幾人玩(0-%d):", 13, 0, 1, 1, 6)` 直接寫洋紅 13，輸入 `0x33d8:0x1ef8(0 … 候選數)`。
+0 人印「電腦自動示範模式」等一個鍵；否則逐位問 `第%d位,請選擇(1-%d):`，
+已被選走的重問（流程在 `docs/spec/019` §1）。
 
 | 元件 | 位置 | 怎麼畫 |
 |---|---|---|
@@ -347,6 +350,11 @@ remake：`ui.DrawLordPick`（`internal/ui/lordpick.go`）；原版素材畫面�
 （`010-1Return.png`）與 dosgolem 的畫面只差 55–59 個像素，全在提示後面
 閃爍的游標上。
 
+remake 的人數那一層畫同一頁、提示用 `ui.DrawLordPickAsk`（洋紅 13，從 (424,340)），
+方向鍵選的數字接在後面、數字鍵 0–9 直接收（remake 差異同設難度）；逐位選君主時
+已選的每一位都印序號。驗證 `TestZZTwoPlayersMatchTheOriginal`：人數那一格與
+「第2位,請選擇」那一格（第 1 位選曹操）兩張，比法同下面的設難度。
+
 #### 設難度（`0x122ea`，`L0`＋`L1`、`[base]`、Issue #67）
 
 選完最後一位玩家之後**畫面不換**，還是選君主那一頁：選中的那一位肖像下緣已經印了
@@ -354,8 +362,8 @@ remake：`ui.DrawLordPick`（`internal/ui/lordpick.go`）；原版素材畫面�
 `0x33d8:0xcc0` 寫 `"\n\n請設定難度(1-10):"`，輸入是同一支數字輸入 `0x33d8:0x115e(1, 10)`，
 寫進 `es:0x30fe`。0 人（電腦自動示範模式）也走這一問。
 
-remake：設難度那一層畫 `ui.DrawLordPick`，頁面是選中那一位所在的那一頁、那一格
-`Player ＝ 1`，提示 `title.difficultyPrompt`；方向鍵選的數字接在提示後面
+remake：設難度那一層畫 `ui.DrawLordPick`，頁面是最後一位玩家選的那一頁、每一位選走的
+印自己的序號，提示 `title.difficultyPrompt`；方向鍵選的數字接在提示後面
 （remake 差異，原版是打字回顯）。加強版上限 20（`docs/spec/004` §6），提示照上限換。
 
 驗證 `TestZZDifficultyScreenMatchesTheOriginal`：原版選第 1 位之後停在難度輸入，

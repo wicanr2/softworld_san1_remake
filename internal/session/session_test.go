@@ -14,6 +14,20 @@ import (
 
 func newSession(t *testing.T, mode ai.Mode, player state.FactionID) *Session {
 	t.Helper()
+	g, err := game.New(scenarioOne(t), player, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := ai.New(mode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return New(g, b, player)
+}
+
+// scenarioOne 讀原版劇本一；沒有素材就 skip。
+func scenarioOne(t *testing.T) *state.Scenario {
+	t.Helper()
 	root := os.Getenv("SAN1_ORIG")
 	if root == "" {
 		t.Skip("沒設 SAN1_ORIG，跳過需要原版素材的測試")
@@ -34,15 +48,7 @@ func newSession(t *testing.T, mode ai.Mode, player state.FactionID) *Session {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := game.New(sc, player, 5, state.EditionBase)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := ai.New(mode)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return New(g, b, player)
+	return sc
 }
 
 // TestTwelveMonths 跑一整年，確認迴圈轉得動而且局面有變化。
@@ -159,5 +165,90 @@ func TestAutonomyActuallyRuns(t *testing.T) {
 	}
 	if !moved {
 		t.Errorf("授權自治十二個月，%s 的地力／洪水率／庫銀一動也沒動", p.Name)
+	}
+}
+
+// newPlayersSession 開一局多位玩家（劇本一、難度 5、原版規則）。
+func newPlayersSession(t *testing.T, players []state.FactionID) *Session {
+	t.Helper()
+	g, err := game.NewPlayers(scenarioOne(t), players, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := ai.New(ai.ModeBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := state.FactionID(state.NoFaction)
+	if len(players) > 0 {
+		first = players[0]
+	}
+	return New(g, b, first)
+}
+
+// TestAdvanceToHumanTakesTurnsByPrefecture 釘住多人輪流的形狀（`docs/spec/019`
+// §2）：照這個月的郡順序停在玩家的郡、Player 換成那個郡的主人、每郡每月
+// 最多停一次、停的順序就是順序表的順序，兩位玩家都輪得到。
+func TestAdvanceToHumanTakesTurnsByPrefecture(t *testing.T) {
+	players := []state.FactionID{0, 1}
+	s := newPlayersSession(t, players)
+	month := s.G.Date
+	seen := map[int]bool{}
+	who := map[state.FactionID]int{}
+	last := -1
+	for s.G.Date == month {
+		at := s.AdvanceToHuman(0)
+		if at == 0 {
+			t.Fatal("有玩家的局面卻沒停在任何郡")
+		}
+		if s.G.Date != month {
+			break // 跑過月底才停在下個月的郡
+		}
+		p := s.G.Prefecture(at)
+		if p.Owner != s.Player || !s.G.IsHuman(p.Owner) {
+			t.Fatalf("停在郡 %d（主人 %d），Player 是 %d", at, p.Owner, s.Player)
+		}
+		if s.Waiting() != at {
+			t.Fatalf("停在郡 %d，Waiting 回 %d", at, s.Waiting())
+		}
+		if seen[at] {
+			t.Fatalf("郡 %d 同一個月停了兩次", at)
+		}
+		if s.MonthCursor <= last {
+			t.Fatalf("游標從 %d 退回 %d", last, s.MonthCursor)
+		}
+		if s.MonthOrder[s.MonthCursor] != at {
+			t.Fatalf("游標那一格是郡 %d，停的是 %d", s.MonthOrder[s.MonthCursor], at)
+		}
+		seen[at], last = true, s.MonthCursor
+		who[p.Owner]++
+		s.EndTurn()
+		if s.Waiting() != 0 {
+			t.Fatal("EndTurn 之後還停著")
+		}
+	}
+	for _, f := range players {
+		if who[f] == 0 {
+			t.Errorf("勢力 %d 這個月一次都沒輪到：%v", f, who)
+		}
+	}
+	t.Logf("%v 的月份停了 %d 個郡：%v", month, len(seen), who)
+}
+
+// TestDemoAdvancesOneCellAtATime 釘住 0 人：沒有玩家的郡可停，一次一格，
+// 44 次之內跨過月底。
+func TestDemoAdvancesOneCellAtATime(t *testing.T) {
+	s := newPlayersSession(t, nil)
+	month := s.G.Date
+	for i := 0; i < 45 && s.G.Date == month; i++ {
+		if at := s.AdvanceToHuman(1); at != 0 {
+			t.Fatalf("示範模式停在郡 %d", at)
+		}
+		if s.G.Date == month && s.MonthCursor != i+1 {
+			t.Fatalf("第 %d 次之後游標在 %d", i+1, s.MonthCursor)
+		}
+	}
+	if s.G.Date == month {
+		t.Fatal("45 格還沒跨過月底")
 	}
 }

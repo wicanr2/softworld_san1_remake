@@ -47,7 +47,8 @@ type LordPickSlot struct {
 }
 
 // DrawLordPick 畫選君主那一格。slots 是這一頁的候選（最多六位）；sel 是
-// 反白哪一格（−1 ＝ 沒有）；prompt 是下方提示框的字。
+// 反白哪一格（−1 ＝ 沒有）；prompt 是下方提示框的字。prompt 是空字串時提示框
+// 還沒被訊息常式清過（「請問有幾人玩」那一問，`0x12072`），內部留著底圖。
 func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, sel int, prompt string, cal game.Calendar) {
 	im := a.Compose(g, 0)
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{}, draw.Src)
@@ -56,7 +57,9 @@ func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, 
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
 	if a.havePanel {
 		drawSideFrame(c, a.panels[0], assets.MainPanelX, 36, assets.MainPanelW, 288)
-		c.FillRect(assets.MainPanelX+8, 324+8, assets.MainPanelX+assets.MainPanelW-8, 372-8, ink(3))
+		if prompt != "" {
+			c.FillRect(assets.MainPanelX+8, 324+8, assets.MainPanelX+assets.MainPanelW-8, 372-8, ink(3))
+		}
 		drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48)
 	}
 	c.DrawTextPx(lordPickPromptX, lordPickPromptY, cells.Truncate(prompt, 25), ink(10))
@@ -228,4 +231,10 @@ func DrawNewLordBorn(c *Canvas, a *ArtScreen, g *game.State, portrait int, name 
 	c.DrawTextPx(lordPickPromptX, lordPickPromptY, cells.Truncate(t("title.newLordBorn"), 25), ink(10))
 	DrawBubbleAs(c, a, &game.Bubble{X1: game.BubbleX1, Y1: newLordBubbleY1, X2: game.BubbleX2, Y2: newLordBubbleY2,
 		Color: colour, Text: t("bub.newLord")}, name, portrait)
+}
+
+// DrawLordPickAsk 寫「請問有幾人玩(0-%d):」那一行：原版不走訊息列，直接在
+// (424, 340) 以洋紅 13 寫（`0x120da`，`docs/spec/019` §1）。
+func DrawLordPickAsk(c *Canvas, prompt string) {
+	c.DrawTextPx(lordPickPromptX, 340, cells.Truncate(prompt, 25), assets.EGAPalette[13])
 }

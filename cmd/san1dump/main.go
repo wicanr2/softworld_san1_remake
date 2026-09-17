@@ -316,7 +316,7 @@ func writePNG(out, fontPath, root string, sc *state.Scenario, slot, screen, aiMo
 			}
 			slots = append(slots, slot)
 		}
-		ui.DrawLordPick(c, art, g, slots, -1, i18n.Sf("title.lordPrompt", len(lords)), 0)
+		ui.DrawLordPick(c, art, g, slots, -1, i18n.Sf("title.lordPrompt", 1, len(lords)), 0)
 	case "art", "main":
 		f := faction
 		if f < 0 {

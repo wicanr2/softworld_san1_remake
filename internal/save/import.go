@@ -79,11 +79,13 @@ func ReadOriginal(c *assets.Container, slot int, ed state.Edition) (*game.State,
 		Edition:  ed,
 		Factions: map[state.FactionID]game.FactionExtra{},
 	}
-	// 玩家是哪一個勢力：諸侯表 offset 0 等於 1 的那個（`L1`）。
-	// 原版問「請問有幾人玩」，可以不只一個；remake 這一層只有一個玩家，
-	// **取第一個**，其餘照原版的旗標仍然是人控但這裡當電腦。
-	if ps := sc.Players(); len(ps) > 0 {
-		e.Player = state.FactionID(ps[0])
+	// 玩家是哪些勢力：諸侯表 offset 0 等於 1 的那幾個（`L1`，`docs/spec/019`）。
+	// 玩家序號不在三張表裡，照勢力槽號排。
+	for _, p := range sc.Players() {
+		e.Players = append(e.Players, state.FactionID(p))
+	}
+	if len(e.Players) > 0 {
+		e.Player = e.Players[0]
 	}
 	for i := 0; i < state.MasterTableSize/state.MasterRecordSize; i++ {
 		ctrl := sc.Controller(i)
@@ -120,7 +122,7 @@ func ReadOriginal(c *assets.Container, slot int, ed state.Edition) (*game.State,
 	if p.Cursor >= 0 && p.Cursor < len(p.Order) {
 		at := p.Order[p.Cursor]
 		if at > 0 && at < len(p.Pending) && p.Pending[at] {
-			if q := g.Prefecture(at); q != nil && q.Owner == g.Player {
+			if q := g.Prefecture(at); q != nil && g.IsHuman(q.Owner) {
 				g.RefreshGarrison(at)
 			}
 		}
