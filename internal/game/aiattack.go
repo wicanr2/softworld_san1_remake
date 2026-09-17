@@ -110,6 +110,12 @@ func (g *State) ComputerAttack(from, to int, by state.FactionID, keep KeepFunc) 
 			day++
 			return g.Roll(n, from, to, day, 0x1f5d8)
 		})
+		// `0x1ecfc` 在大地圖上播這一仗、日迴圈在它裡面跑；分贓（`0x1f6fe`）
+		// 在它之後，所以動畫排在分贓的事件前面。加強版的同一段還沒讀，不排。
+		if g.Edition != state.EditionPlus {
+			g.pending = append(g.pending, Event{Prefecture: to,
+				Bubble: &Bubble{MapBattle: &MapBattle{Attacker: from, Defender: to, Days: p.B.Day}}})
+		}
 		g.ravageBattlefield(to)
 	} else {
 		p.B.Auto()

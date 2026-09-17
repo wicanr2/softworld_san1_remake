@@ -34,6 +34,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/menu"
 	"github.com/wicanr2/softworld_san1_remake/internal/opening"
 	"github.com/wicanr2/softworld_san1_remake/internal/session"
+	"github.com/wicanr2/softworld_san1_remake/internal/speaker"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
@@ -101,6 +102,11 @@ type app struct {
 	// quit 為真表示玩家選了「回作業系統」。
 	quit bool
 
+	// marchArt 是大地圖戰役動畫的 `CVSC00`–`CVSC23`；讀不到是 nil，那一格直接跳過。
+	marchArt *[ui.MarchArtCount]*assets.Image
+	// mapBattle 是播放中的那一場大地圖戰役動畫。
+	mapBattle *mapBattlePlay
+
 	// opening 非 nil 表示正在播開機片頭（`docs/spec/005`「片頭」），
 	// 播完才到主選單。
 	opening *openingPlayer
@@ -152,6 +158,14 @@ func (a *app) Update() error {
 	if a.s != nil && a.s.Bubble() != nil {
 		if a.art == nil {
 			a.s.FlushBubbles()
+			a.dirty = true
+			return nil
+		}
+		if b := a.s.Bubble(); b.MapBattle != nil {
+			// 大地圖上的戰役自己播完就收，不等鍵（原版不收鍵）。
+			if a.updateMapBattle(b) {
+				a.s.PopBubble()
+			}
 			a.dirty = true
 			return nil
 		}
@@ -1043,7 +1057,11 @@ func (a *app) paint() {
 			a.view.Over = a.s.Over
 			if a.art != nil {
 				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, a.view)
-				if b := a.s.Bubble(); b != nil && (!b.Wiped() || a.scenePlayed == b) {
+				if b := a.s.Bubble(); b != nil && b.MapBattle != nil {
+					if p := a.mapBattle; p != nil && p.b == b {
+						ui.DrawMarch(a.canvas, p.m)
+					}
+				} else if b != nil && (!b.Wiped() || a.scenePlayed == b) {
 					// 原版在對白之前把右側面板的內部清成藍色（`0x1058:0x27e8`，
 					// 外框留著）；場景圖那一格不清（`0x2c8be` 也清藍，但整張
 					// 176×96 蓋滿那一塊）。還沒拉過的場景圖先不畫：Draw 那一層
@@ -1237,6 +1255,7 @@ func main() {
 	var artBattle *ui.ArtBattle
 	var titleScreen *ui.TitleScreen
 	var openArt *opening.Art
+	var marchArt *[ui.MarchArtCount]*assets.Image
 	if *useArt {
 		if c3, err := openContainer(*root, "DATA3"); err == nil {
 			// `DATA1` 給的是小飾框動畫、州郡填色圖樣與主戰場素材。
@@ -1249,6 +1268,18 @@ func main() {
 			if art, err = ui.NewArtScreen(c3, c1); err != nil {
 				fmt.Fprintln(os.Stderr, "san1：原版素材讀不進來，改用文字版面：", err)
 				art = nil
+			}
+			if art != nil {
+				if ma, err := ui.MarchArt(c3); err == nil {
+					marchArt = &ma
+				} else {
+					fmt.Fprintln(os.Stderr, "san1：大地圖戰役動畫的素材讀不進來：", err)
+				}
+			}
+			if c1 != nil {
+				if i, ok := c1.ByName(speaker.SFXName); ok {
+					sfxSamples = speaker.NewClip(c1.Data(i)).Samples()
+				}
 			}
 			if art != nil && c1 != nil {
 				if artBattle, err = ui.NewArtBattle(c1, c3); err != nil {
@@ -1281,6 +1312,7 @@ func main() {
 	}
 	a.canvas.SetSmallFace(small)
 	a.artBattle = artBattle
+	a.marchArt = marchArt
 	a.c2 = c
 	a.edition = ed
 	// **先確認音訊裝置開得起來**（`audioprobe.go`）：Ebiten 把驅動開不起來

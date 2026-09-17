@@ -85,6 +85,16 @@ type Bubble struct {
 	// 面板上、再用 Style 那一種拉幕把 (432,80) 起 176×96 那一塊拉進來
 	// （尋訪找到人，`0x1bb2c`–`0x1bbb9`）。
 	WipeIn bool
+
+	// MapBattle 非 nil 時這一格是大地圖上的戰役動畫（`0x1ecfc`，
+	// `docs/spec/005`「大地圖上的戰役」）：其餘欄位不用。
+	MapBattle *MapBattle
+}
+
+// MapBattle 是電腦對電腦那一仗在大地圖上的動畫要的三個數。動畫本身不擲骰。
+type MapBattle struct {
+	Attacker, Defender int // 主攻郡、主守郡
+	Days               int // 日迴圈跑了幾天（每天結算一次）
 }
 
 // Wiped 回報這一格要不要用拉幕拉進來。

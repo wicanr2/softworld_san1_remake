@@ -1600,6 +1600,27 @@
       }
     },
     {
+      "id": "map-battle-animation",
+      "title": "大地圖上的戰役動畫（電腦對電腦，0x1ecfc）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/05",
+        "docs/re/10"
+      ],
+      "note": "`ui.March` 兩場每一格整張逐格相同、收尾還原相同、`speak` 速度序列相同（`TestZZMarchAnimationMatchesTheOriginal`）；事件 `Bubble.MapBattle` 不擲骰。往左與往上只讀碼；加強版不播。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/ui",
+        "run": "TestMarchLayoutFollowsTheOriginal"
+      }
+    },
+    {
       "id": "opening-sequence",
       "title": "開機片頭整段（船隊、寫詞、淡出、頭像橫幅、三英圖捲入）",
       "group": "畫面",
