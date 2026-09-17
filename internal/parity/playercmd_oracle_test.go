@@ -63,6 +63,11 @@ type playerCase struct {
 	// trace 為真時每送一段鍵存一張畫面，用來找序列在哪一步走偏。
 	trace bool
 	apply func(g *game.State, at, to, gi int, me state.FactionID) error
+	// advice 是這道命令開頭軍師勸諫那一擲（`game.Advise`）；不是
+	// `AdviceNone` 時 remake 先擲它再套命令，命令結束時兩邊的亂數狀態
+	// 必須相同——勸諫、場景圖（`0x32dfa`）與命令本身的擲骰一次都不能多、
+	// 不能少。沒設的 case 只記不判。
+	advice game.AdviceKind
 	// applyWith 給需要看原版盤面才做得出來的命令用（有它就不看 apply）。
 	// **不是拿答案回填**：只用來取原版自己挑的那一格，規則仍由 remake 算。
 	applyWith func(g *game.State, at, to, gi int, me state.FactionID,
@@ -117,6 +122,9 @@ const generalTrainingOff = 24
 func runApply(tc playerCase, g *game.State, at, to, gi int,
 	me state.FactionID, before, after []byte) error {
 	var err error
+	if tc.advice != game.AdviceNone {
+		g.Advise(tc.advice, at, me, game.AdviceTarget{})
+	}
 	if tc.applyWith != nil {
 		err = tc.applyWith(g, at, to, gi, me, before, after)
 	} else {
@@ -144,6 +152,10 @@ type playerRig struct {
 	boot func(*testing.T, *oracle.Oracle) uint32
 	// seedLo／seedHi 是亂數種子在 DS 的位移。
 	seedLo, seedHi uint32
+	// rnd／rand 是 `RND(n)` 包裝與 MSC `rand()` 的線性位址：命令期間兩邊
+	// 抽了幾次、每次的 n 逐項比（原版在等鍵與延遲時會重設種子，所以
+	// 比的是抽樣序列，不是結束時的種子）。
+	rnd, rand uint32
 	// workSeg 回工作段的段值（目前的郡、守將清單都在裡面）。
 	workSeg func(*oracle.Oracle) uint16
 	// curPrefOff 是「目前的郡」在工作段的位移。
@@ -173,6 +185,7 @@ func baseRig(boot func(*testing.T, *oracle.Oracle, []byte) uint32) playerRig {
 			return boot(t, o, seedMas)
 		},
 		seedLo: 0xa3ae, seedHi: 0xa3b0,
+		rnd: 0x10b0c, rand: 0x5c4*16 + 0x2cb0,
 		workSeg:    func(o *oracle.Oracle) uint16 { return o.ES() },
 		curPrefOff: curPrefOff,
 		rosterSegs: func(o *oracle.Oracle) (uint16, uint16) {
@@ -199,6 +212,7 @@ func plusRig() playerRig {
 			return base
 		},
 		seedLo: 0xa566, seedHi: 0xa568,
+		rnd: plusRndFn, rand: plusRandFn,
 		workSeg: func(o *oracle.Oracle) uint16 {
 			ds := uint32(o.DSReg()) * 16
 			return o.Word(addr(ds + plusWorkSegPtr))
@@ -343,6 +357,19 @@ func runPlayerCommandsRig(t *testing.T, rig playerRig) {
 			*activeMonthBegun = true
 		}
 	})
+	// 同理，抽樣的兩個攔截點也只註冊一次。
+	var activeRnd *[]int
+	var activeDraws *int
+	o.OnCall(addr(rig.rnd), func(o *oracle.Oracle) {
+		if n := int(int16(o.Arg(0))); activeRnd != nil && n > 0 {
+			*activeRnd = append(*activeRnd, n)
+		}
+	})
+	o.OnCall(addr(rig.rand), func(*oracle.Oracle) {
+		if activeDraws != nil {
+			*activeDraws++
+		}
+	})
 	for _, tc := range playerCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.todo != "" {
@@ -370,6 +397,10 @@ func runPlayerCommandsRig(t *testing.T, rig playerRig) {
 			}
 			before := board()
 			seed := seedOf()
+			var origRnd []int
+			origDraws := 0
+			activeRnd, activeDraws = &origRnd, &origDraws
+			defer func() { activeRnd, activeDraws = nil, nil }()
 
 			// **取樣點是「目前的郡一變」，不是「送完鍵再沉澱」。**
 			// 帶 ＊ 的命令（休息、開墾、買米……）一下完就轉移控制權
@@ -469,6 +500,7 @@ func runPlayerCommandsRig(t *testing.T, rig playerRig) {
 				}
 			}
 			after := board()
+			activeRnd, activeDraws = nil, nil
 
 			// **正對照。** 盤面一個位元組都沒動時，remake 那一邊多半也
 			// 「什麼都沒做」，兩邊就會「相同」——那是按鍵序列不對，
@@ -507,9 +539,12 @@ func runPlayerCommandsRig(t *testing.T, rig playerRig) {
 				t.Fatalf("remake 開不了局：%v", err)
 			}
 			g.SeedRand(seed)
+			var myRnd []int
+			g.TraceRolls(func(n, _ int, _ []int) { myRnd = append(myRnd, n) })
 			if err := runApply(tc, g, at, to, pick, me, before, after); err != nil {
 				t.Fatalf("remake 這一邊：%v", err)
 			}
+			g.TraceRolls(nil)
 			rm, rs, rg, err := g.Tables()
 			if err != nil {
 				t.Fatalf("remake 的盤面寫不回三張表：%v", err)
@@ -519,6 +554,15 @@ func runPlayerCommandsRig(t *testing.T, rig playerRig) {
 
 			if len(got) != len(after) {
 				t.Fatalf("表長度不同：原版 %d、remake %d", len(after), len(got))
+			}
+			if bad := rollsDiffer(origDraws, origRnd, myRnd); bad != "" {
+				if tc.advice != game.AdviceNone {
+					t.Errorf("命令期間的抽樣不同：%s", bad)
+				} else {
+					t.Logf("（不判）命令期間的抽樣不同：%s", bad)
+				}
+			} else {
+				t.Logf("命令期間兩邊都抽 %d 次，RND 的範圍逐項相同：%v", origDraws, origRnd)
 			}
 			t.Logf("亂數狀態 0x%08x 出發；原版動了 %d 個位元組，"+
 				"整份盤面兩邊差 %d 個（remake 抽了 %d 次）",
@@ -694,6 +738,8 @@ func playerCases() []playerCase {
 			// 「休息 (Y/N):Y」，看起來像按鍵序列沒走到底。
 			name: "休息",
 			keys: []string{"4\r", "4\r", "Y\r"},
+			// 休息不判抽樣：這一道一下完就轉移控制權，取樣點之前原版已經把
+			// 其他勢力的郡跑過一輪（實測 1559 抽），那不是這道命令的。
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.Rest(at, me)
 			},
@@ -702,16 +748,18 @@ func playerCases() []playerCase {
 			name:        "土地開墾",
 			trackRoster: true,
 			keys:        []string{"4\r", "1\r", "1\r"},
+			advice: game.AdviceReclaim,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.Reclaim(at, gi, me)
+				return game.ReclaimOrder{At: at, General: gi}.Apply(g, me)
 			},
 		},
 		{
 			name:        "洪水防冶",
 			trackRoster: true,
 			keys:        []string{"4\r", "2\r", "1\r"},
+			advice: game.AdviceFlood,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.FloodControl(at, gi, me)
+				return game.FloodControlOrder{At: at, General: gi}.Apply(g, me)
 			},
 		},
 		{
@@ -740,13 +788,11 @@ func playerCases() []playerCase {
 			// 游標的起始位置，remake 的 UI 還沒有那個畫面所以自己挑一格。
 			// 挑法不同不該算成規則不同——拿原版挑的那一格來比，其餘
 			// （花費、座數、那一格的編碼）仍由 remake 自己算。
+			advice: game.AdviceFort,
 			applyWith: func(g *game.State, at, to, gi int, me state.FactionID,
 				before, after []byte) error {
-				spot := fortSpotOf(before, after, at)
-				if spot < 0 {
-					return g.BuildFort(at, gi, me)
-				}
-				return g.BuildFortAt(at, gi, spot, me)
+				return game.BuildFortOrder{At: at, General: gi,
+					Cell: fortSpotOf(before, after, at) + 1}.Apply(g, me)
 			},
 		},
 		{
@@ -762,24 +808,27 @@ func playerCases() []playerCase {
 				o.SetWord(addr(genRec(gi)+22), 100)
 				o.SetByte(addr(genRec(gi)+generalTrainingOff), 0)
 			},
+			advice: game.AdviceTrain,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.Train(at, me)
+				return game.TrainOrder{At: at}.Apply(g, me)
 			},
 		},
 		{
 			name:        "徵兵",
 			trackRoster: true,
 			keys:        []string{"3\r", "2\r", "1\r", "10\r"},
+			advice: game.AdviceConscript,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.Conscript(at, gi, 10, me)
+				return game.ConscriptOrder{At: at, General: gi, Count: 10}.Apply(g, me)
 			},
 		},
 		{
 			name:        "購買武器",
 			trackRoster: true,
 			keys:        []string{"3\r", "3\r", "1\r", "10\r"},
+			advice: game.AdviceArms,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.BuyArms(at, gi, 10, me)
+				return game.ArmsOrder{At: at, General: gi, Units: 10}.Apply(g, me)
 			},
 		},
 		{
@@ -787,14 +836,15 @@ func playerCases() []playerCase {
 			// 送 100 是花 100 金；實測金 9000 → 8900、米 9000 → 9500，
 			// 所以這個盤面的匯率是 1 金 5 米。remake 的 `BuyRice` 收的是
 			// **米的數量**，所以要換算過再送。
-			name: "買入米糧",
-			keys: []string{"5\r", "1\r", "100\r"},
+			name:   "買入米糧",
+			keys:   []string{"5\r", "1\r", "100\r"},
+			advice: game.AdviceBuy,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				p := g.Prefecture(at)
 				if p == nil {
 					return fmt.Errorf("郡 %d 不在盤面上", at)
 				}
-				return g.BuyRice(at, 100*game.RicePerGold(p.PriceLevel), me)
+				return game.BuyRiceOrder{At: at, Units: 100 * game.RicePerGold(p.PriceLevel)}.Apply(g, me)
 			},
 		},
 		{
@@ -802,6 +852,7 @@ func playerCases() []playerCase {
 			// remake 的 `Relief` 收的是金，所以這一道要看原版實際扣哪一格。
 			name: "開倉賑民",
 			keys: []string{"5\r", "3\r", "100\r"},
+			advice: game.AdviceRelief,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.Relief(at, 100, me)
 			},
@@ -816,6 +867,7 @@ func playerCases() []playerCase {
 			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
 				o.SetByte(addr(genRec(gi)+generalCharmOff), 60)
 			},
+			advice: game.AdviceRelief,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
 				return g.Relief(at, 300, me)
 			},
@@ -823,8 +875,9 @@ func playerCases() []playerCase {
 		{
 			name: "賣出米糧",
 			keys: []string{"5\r", "2\r", "100\r"},
+			advice: game.AdviceSell,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.SellRice(at, 100, me)
+				return game.SellRiceOrder{At: at, Units: 100}.Apply(g, me)
 			},
 		},
 		{
@@ -881,8 +934,9 @@ func playerCases() []playerCase {
 			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
 				o.SetByte(addr(genRec(gi)+generalLoyaltyOff), 100)
 			},
+			advice: game.AdviceReward,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.Reward(at, gi, 100, me)
+				return game.RewardOrder{At: at, Target: gi, Gold: 100}.Apply(g, me)
 			},
 		},
 		{
@@ -897,8 +951,9 @@ func playerCases() []playerCase {
 				o.SetByte(addr(genRec(gi)+generalCharmOff), 60)
 				o.SetByte(addr(genRec(gi)+generalLoyaltyOff), 50)
 			},
+			advice: game.AdviceReward,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.Reward(at, gi, 100, me)
+				return game.RewardOrder{At: at, Target: gi, Gold: 100}.Apply(g, me)
 			},
 		},
 		{
@@ -908,11 +963,33 @@ func playerCases() []playerCase {
 			plant: func(o *oracle.Oracle, genRec func(int) uint32, gi int) {
 				o.SetByte(addr(genRec(gi)+generalLoyaltyOff), 50)
 			},
+			advice: game.AdviceReward,
 			apply: func(g *game.State, at, to, gi int, me state.FactionID) error {
-				return g.Reward(at, gi, 100, me)
+				return game.RewardOrder{At: at, Target: gi, Gold: 100}.Apply(g, me)
 			},
 		},
 	}
+}
+
+// rollsDiffer 比一道命令期間兩邊的抽樣：原版 `rand()` 的次數與 `RND(n)`
+// 的 n 序列，remake 的 `TraceRolls`（直接取原始值的那幾處 n 記 0，當萬用）。
+// 相同回空字串。原版的 `rand()` 次數比 `RND` 多時，表示有地方繞過包裝
+// 直接抽——那樣 n 序列對不齊，只比次數。
+func rollsDiffer(origDraws int, origRnd, mine []int) string {
+	if origDraws != len(mine) {
+		return fmt.Sprintf("原版抽 %d 次（RND %v）、remake 抽 %d 次（%v）",
+			origDraws, origRnd, len(mine), mine)
+	}
+	if len(origRnd) != origDraws {
+		return ""
+	}
+	for i := range mine {
+		if mine[i] != 0 && mine[i] != origRnd[i] {
+			return fmt.Sprintf("第 %d 抽的範圍：原版 RND(%d)、remake RND(%d)（原版 %v、remake %v）",
+				i+1, origRnd[i], mine[i], origRnd, mine)
+		}
+	}
+	return ""
 }
 
 // fortSpotOf 回報原版把關寨蓋在戰場地圖的哪一格。州郡記錄 offset 55–174

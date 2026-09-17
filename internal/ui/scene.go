@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 )
 
 // 場景圖的特效（`0x32dfa(x, y)`，`docs/spec/010`）：呼叫端先把一張
@@ -15,6 +16,30 @@ import (
 
 // sceneAllSteps 傳給 DrawScene 就是「走完」。
 const sceneAllSteps = 1 << 20
+
+// SearchPanel 是尋訪那一段在第二頁上畫好的那一塊（`0x1bb2c`–`0x1bb7e`）：
+// 面板清成藍，找到人時肖像貼在 (488,88)。回的是從 (432,80) 起 176×96、
+// 與場景圖同尺寸的一張，交給 NewSceneWipe 拉進來。portrait < 0 就只有藍底。
+func SearchPanel(a *ArtScreen, portrait int) *assets.Image {
+	im := &assets.Image{W: assets.SceneW, H: assets.SceneH, Pix: make([]byte, assets.SceneW*assets.SceneH)}
+	for i := range im.Pix {
+		im.Pix[i] = 1
+	}
+	if a == nil || portrait < 0 {
+		return im
+	}
+	face := a.Portrait(portrait)
+	if face == nil {
+		return im
+	}
+	ox, oy := game.SearchFaceX-assets.SceneMainX, game.SearchFaceY-assets.SceneMainY
+	for y := 0; y < face.H && oy+y < im.H; y++ {
+		for x := 0; x < face.W && ox+x < im.W; x++ {
+			im.Pix[(oy+y)*im.W+ox+x] = face.Pix[y*face.W+x]
+		}
+	}
+	return im
+}
 
 // SceneRect 是場景圖落在 (x, y) 時蓋到的那一塊。
 func SceneRect(x, y int) image.Rectangle {

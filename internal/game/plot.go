@@ -136,14 +136,12 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 	}
 	g.endTurn(src)
 
-	// **先播一段場景圖，再判定**（`0x2c8de`／`0x2cd6e`／`0x2d338`／`0x2d879`：
-	// 填藍、載 `SCG##`、`0x32dfa` 進去擲 `RND(4)`、延遲，然後才 `0x2dd66`）。
-	// 那一擲不看成敗，**一定要擲**——不擲的話整條亂數序列從這裡錯開。
-	// 判定本身沒有擲骰。畫面只給玩家自己的命令排。
-	scene, x, y := plotScene(p)
-	style := g.Roll(EffectVariants, from, target, int(p))
-	if g.playerCommand(by) && scene > 0 {
-		g.showScene(from, scene, style, x, y)
+	// 遠交近攻與驅虎吞狼**先播場景圖再判定**：玩家的選單常式填藍、載 `SCG18`／
+	// `SCG23`、`0x32dfa` 擲 `RND(4)`，然後才叫 `0x2dd66`（`0x2c8de`→`0x2c926`、
+	// `0x2cd6e`→`0x2cdb6`）。那一擲不看成敗。這兩處在玩家的選單常式裡，電腦
+	// 諸侯不走（`L2`：電腦這兩計的路沒有量過）。
+	if (p == PlotFarNear || p == PlotTigerWolf) && g.playerCommand(by) {
+		g.plotScene(from, target, p, by)
 	}
 
 	// **成敗照原版的分數對決**（`PlotScore`，`0x2dd66`）：兩邊各取
@@ -152,13 +150,19 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 	if !g.plotSucceeds(by, envoy, target) {
 		return false, nil
 	}
+	// 離間君臣與策反人民的場景圖在**得手之後的效果常式末尾**（`0x2d1fa` 的
+	// `0x2d338`、`0x2d6e0` 的 `0x2d879`）：效果的骰擲完才擲 `RND(4)`，沒得手
+	// 就不擲。效果常式電腦與玩家共用，電腦也擲（月度對拍：電腦策反人民沒得手
+	// 的那個月，計略那一段原版抽 34 次、沒有 `RND(4)`）。
 	switch p {
 	case PlotForgery:
 		g.Forgery(target, int(envoy.Charm))
+		g.plotScene(from, target, p, by)
 	case PlotIncite:
 		// 五刀一起下（`Sabotage`，`L0`）：民眾忠誠、洪水率、土地價值、
 		// 米、金。原版沒有把它們拆成不同的計謀。
 		g.Sabotage(target, int(envoy.Charm))
+		g.plotScene(from, target, p, by)
 	case PlotTigerWolf:
 		// 教唆出使郡去打它的鄰郡，我方不參戰（`0x2ce5b`）。
 		if _, err := g.launchCampaign(target, plan.Strike, Aid{}); err != nil {
@@ -174,21 +178,27 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 	return true, nil
 }
 
-// plotScene 是四種帶使者的計謀各自的場景圖與落點（`docs/spec/010` §1）：
-// 遠交近攻 `SCG18`、驅虎吞狼 `SCG23` 在 (432,80)，離間君臣 `SCG13`、
-// 策反人民 `SCG22` 在 (432,120)。聯合出兵沒有。
-func plotScene(p Plot) (scene, x, y int) {
+// plotScene 擲四種帶使者的計謀那一擲 `RND(4)`，玩家自己的命令再把場景圖
+// 排進畫面（`docs/spec/010` §1.1）：遠交近攻 `SCG18`、驅虎吞狼 `SCG23` 在
+// (432,80)，離間君臣 `SCG13`、策反人民 `SCG22` 在 (432,120)。
+func (g *State) plotScene(from, target int, p Plot, by state.FactionID) {
+	scene, x, y := 0, assets.SceneMainX, assets.SceneMainY
 	switch p {
 	case PlotFarNear:
-		return assets.ScenePlotFarNear, assets.SceneMainX, assets.SceneMainY
+		scene = assets.ScenePlotFarNear
 	case PlotTigerWolf:
-		return assets.ScenePlotTiger, assets.SceneMainX, assets.SceneMainY
+		scene = assets.ScenePlotTiger
 	case PlotForgery:
-		return assets.ScenePlotSow, assets.ScenePlotX, assets.ScenePlotY
+		scene, x, y = assets.ScenePlotSow, assets.ScenePlotX, assets.ScenePlotY
 	case PlotIncite:
-		return assets.ScenePlotRevolt, assets.ScenePlotX, assets.ScenePlotY
+		scene, x, y = assets.ScenePlotRevolt, assets.ScenePlotX, assets.ScenePlotY
+	default:
+		return
 	}
-	return 0, 0, 0
+	style := g.Roll(EffectVariants, from, target, int(p))
+	if g.playerCommand(by) {
+		g.showScene(from, scene, style, x, y)
+	}
 }
 
 // jointAttack 是「聯合出兵」（原版 `0x2d88c`）。

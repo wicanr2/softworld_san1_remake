@@ -1146,7 +1146,7 @@
         "docs/spec/005",
         "docs/re/12"
       ],
-      "note": "2026-09-17（Issue #51）：訊息常式在主畫面這一層的 38 個呼叫端逐個讀出框、肖像左右、說話者與片語（`docs/spec/005` §9.6）——全在玩家的命令裡，電腦諸侯本來就不叫它。remake：`game.State.Advise` 擲 `RND(5)+80 < 軍師謀略` 那一擲、回勸諫那一格（19 道命令；買賣看物價、尋訪／登用／挖角／計略看判定、`RND(18)+80` 決定準不準），`cmd/san1` 收完問「主公是否繼續呢(Y/N)」；登用、賞賜、撤職、指定軍師／太守、自治、賜物、挖角、計略的回話由 `Order.Apply` 排進 pending，宣戰兩句在進主戰場之前。郡地理誌那一句在 #60 接上；沒接：尋訪的掃描動畫（#58）。",
+      "note": "2026-09-17（Issue #51）：訊息常式在主畫面這一層的 38 個呼叫端逐個讀出框、肖像左右、說話者與片語（`docs/spec/005` §9.6）——全在玩家的命令裡，電腦諸侯本來就不叫它。remake：`game.State.Advise` 擲 `RND(5)+80 < 軍師謀略` 那一擲、回勸諫那一格（19 道命令；買賣看物價、尋訪／登用／挖角／計略看判定、`RND(18)+80` 決定準不準），`cmd/san1` 收完問「主公是否繼續呢(Y/N)」；登用、賞賜、撤職、指定軍師／太守、自治、賜物、挖角、計略的回話由 `Order.Apply` 排進 pending，宣戰兩句在進主戰場之前。郡地理誌那一句在 #60 接上；勸諫之後那一張場景圖與尋訪的拉幕在 #58 接上（`docs/spec/010`）。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/game",
@@ -1521,20 +1521,21 @@
     },
     {
       "id": "plot-transition-roll",
-      "title": "計謀得手會多擲一次 RND(4)（畫面轉場）",
+      "title": "計謀那一擲 RND(4)（場景圖拉幕）：遠交與驅虎判定前、離間與策反得手後",
       "group": "規則層",
       "layer": "evidence",
       "milestone": "M5",
       "status": "done",
-      "level": "L0",
+      "level": "L1",
       "edition": "base",
       "docs": [
-        "docs/mechanics/70-ai"
+        "docs/mechanics/70-ai",
+        "docs/spec/010"
       ],
-      "note": "`0x32e4f` 的 `RND(4)`：`0x32e40` 是畫面轉場常式，四選一。表現層的抽樣 remake 也要照擲，否則亂數序列從那裡錯開（計略 36／34 → 36／36）。\n\n⚠ 失敗那條路徑沒有樣本，先不擲。",
+      "note": "`0x32e4f` 的 `RND(4)` 是拉幕 `0x32e40` 挑方向那一擲，由場景圖特效 `0x32dfa` 進去（`docs/spec/010` §1.1）。遠交近攻與驅虎吞狼在玩家的選單常式裡、真正的判定之前擲，不看成敗；離間君臣與策反人民在得手之後的效果常式末尾擲（`0x2d1fa`／`0x2d6e0`），沒得手不擲。\n\n月度對拍：電腦策反人民沒得手的那個月，計略那一段原版抽 34 次、沒有 `RND(4)`；改成判定前一律擲時 remake 多一次、郡 3 的金米差 4 個位元組。\n\n⚠ 電腦的遠交與驅虎走哪一條路沒有量過（`L2`）。",
       "verify": {
         "kind": "cmd",
-        "cmd": "grep -q 'g.Roll(4, from, target, int(p))' internal/game/plot.go",
+        "cmd": "grep -q 'g.plotScene(from, target, p, by)' internal/game/plot.go",
         "expect": "pass"
       }
     },
@@ -1699,7 +1700,7 @@
     },
     {
       "id": "anim-transition",
-      "title": "計謀得手的四種拉幕轉場",
+      "title": "四種拉幕轉場與場景圖（48 個呼叫端＋尋訪）",
       "group": "畫面",
       "layer": "verification",
       "milestone": "M6",
@@ -1710,7 +1711,7 @@
         "docs/re/10",
         "docs/spec/010"
       ],
-      "note": "四個分支逐步量畫面（`TestZZTransitionFrames`）：**效果是「新畫面整塊滑進來」**——第 n 步把新畫面靠對邊的那一塊貼到這一邊，最後一步兩邊重合、歸位。\n\n判準是**與前一步差異的範圍**：量到的是整個已蓋區（分支 0 第 5 步 `y80–99`），「逐條露出」的話那只會是新增的 `y96–99`——兩個模型在縮圖上看起來一樣。\n\nremake 是 `internal/ui.Wipe` ＋ `game.PendingWipe`，每一步一聲音效。⚠ **搬運常式 `es:[0x3efc]` 沒有反組譯**，結論是從行為量的；「失敗會不會也轉場」也還沒有樣本（`docs/spec/010` §7）。",
+      "note": "四個分支逐步量畫面（`TestZZTransitionFrames`）：**效果是「新畫面整塊滑進來」**——第 n 步把新畫面靠對邊的那一塊貼到這一邊，最後一步兩邊重合、歸位。\n\n判準是**與前一步差異的範圍**：量到的是整個已蓋區（分支 0 第 5 步 `y80–99`），「逐條露出」的話那只會是新增的 `y96–99`——兩個模型在縮圖上看起來一樣。\n\n拉幕搬的是場景圖 `SCG##`：`0x32dfa` 有 48 個呼叫端、三種落點，尋訪直接叫 `0x32e40`（`docs/spec/010` §1.1）。`TestZZSceneEffectMatchesTheOriginal` 四個方向每一步整張畫面逐像素相同；玩家命令那一擲的位置兩版逐命令比過抽樣序列（§8）。remake 是 `ui.NewSceneWipe` ＋ 佇列裡的 `Bubble{Scene, Style}`／`Speech{Scene, Style}`。⚠ **搬運常式 `es:[0x3efc]` 沒有反組譯**，結論是從行為量的（`docs/spec/010` §7）。",
       "acceptance": "四個分支的步數與逐步範圍與原版量到的相同，且走完之後整塊就是新畫面",
       "verify": {
         "kind": "test",

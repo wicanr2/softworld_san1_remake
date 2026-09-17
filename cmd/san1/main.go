@@ -159,7 +159,7 @@ func (a *app) Update() error {
 			a.dirty = true
 			return nil
 		}
-		if b := a.s.Bubble(); b.Scene > 0 && a.scenePlayed != b {
+		if b := a.s.Bubble(); b.Wiped() && a.scenePlayed != b {
 			// 場景圖那一格先拉進來（Draw 那一層起頭），拉完才收鍵。
 			return nil
 		}
@@ -560,9 +560,10 @@ func (a *app) begin(cat, item byte) {
 					a.askNumber(t("ask.rice"),
 						tf("hint.campaign", p.Rice, men, need), p.Rice,
 						func(rice int) {
-							// 軍師勸諫（`0x18b08`）之後是兩句宣戰（`0x202e1`／`0x20322`），
-							// 對白收完才進主戰場。
+							// 軍師勸諫（`0x18b08`）之後先播 `SCG06`（`0x18b82`），再是兩句
+							// 宣戰（`0x202e1`／`0x20322`），對白收完才進主戰場。
 							a.withAdvice(game.AdviceAttack, sel, game.AdviceTarget{To: to}, func() {
+								a.s.Queue(g.WarScene(sel, s.Player))
 								a.s.Queue(g.WarDeclaration(sel, to, s.Player))
 								a.afterBubbles = func() {
 									a.startBattle(sel, to, force, game.Supply{Gold: gold, Rice: rice})
@@ -1048,7 +1049,7 @@ func (a *app) paint() {
 			a.view.Over = a.s.Over
 			if a.art != nil {
 				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, a.view)
-				if b := a.s.Bubble(); b != nil && (b.Scene == 0 || a.scenePlayed == b) {
+				if b := a.s.Bubble(); b != nil && (!b.Wiped() || a.scenePlayed == b) {
 					// 原版在對白之前把右側面板的內部清成藍色（`0x1058:0x27e8`，
 					// 外框留著）；場景圖那一格不清（`0x2c8be` 也清藍，但整張
 					// 176×96 蓋滿那一塊）。還沒拉過的場景圖先不畫：Draw 那一層
@@ -1337,24 +1338,34 @@ func die(err error) {
 // **每一步送一聲 PC 喇叭的音效**——音效在這一款不是事件音，是動畫的
 // 節拍聲（`docs/spec/008` §4）。
 
-// currentScene 是現在輪到畫的那一格如果是場景圖：主畫面的訊息框佇列
-// 或戰場的對白佇列的頭一格。key 用來認「同一格」。
-func (a *app) currentScene() (key any, scene int, kind ui.WipeKind, x, y int, ok bool) {
+// currentScene 是現在輪到畫的那一格如果要拉幕：主畫面的訊息框佇列
+// 或戰場的對白佇列的頭一格。key 用來認「同一格」，pic 是拉進來的那張。
+func (a *app) currentScene() (key any, pic *assets.Image, kind ui.WipeKind, x, y int, ok bool) {
 	if a.art == nil || a.titlePic != nil || a.poem != nil || a.menuScreen != nil {
-		return nil, 0, 0, 0, 0, false
+		return nil, nil, 0, 0, 0, false
 	}
 	if a.fight != nil {
 		if sp := a.fight.speech(a.artBattle != nil); sp != nil && sp.Scene > 0 {
-			return sp, sp.Scene, ui.WipeKind(sp.Style), assets.SceneBattleX, assets.SceneBattleY, true
+			return sp, a.art.Scene(sp.Scene), ui.WipeKind(sp.Style), assets.SceneBattleX, assets.SceneBattleY, true
 		}
-		return nil, 0, 0, 0, 0, false
+		return nil, nil, 0, 0, 0, false
 	}
 	if a.s != nil {
-		if b := a.s.Bubble(); b != nil && b.Scene > 0 {
-			return b, b.Scene, ui.WipeKind(b.Style), b.X1, b.Y1, true
+		b := a.s.Bubble()
+		switch {
+		case b == nil:
+		case b.Scene > 0:
+			return b, a.art.Scene(b.Scene), ui.WipeKind(b.Style), b.X1, b.Y1, true
+		case b.WipeIn:
+			portrait := -1
+			if x := a.s.G.General(b.Speaker); x != nil {
+				portrait = int(x.Portrait)
+			}
+			return b, ui.SearchPanel(a.art, portrait), ui.WipeKind(b.Style),
+				assets.SceneMainX, assets.SceneMainY, true
 		}
 	}
-	return nil, 0, 0, 0, 0, false
+	return nil, nil, 0, 0, 0, false
 }
 
 // startWipe 看輪到的那一格是不是還沒拉過的場景圖，是就起一段：先照
@@ -1364,12 +1375,12 @@ func (a *app) startWipe() {
 	if a.wipe != nil {
 		return
 	}
-	key, scene, kind, x, y, ok := a.currentScene()
+	key, pic, kind, x, y, ok := a.currentScene()
 	if !ok || a.scenePlayed == key {
 		return
 	}
 	a.paint()
-	a.wipe = ui.NewSceneWipe(a.canvas, a.art.Scene(scene), kind, x, y)
+	a.wipe = ui.NewSceneWipe(a.canvas, pic, kind, x, y)
 	a.scenePlayed = key
 	a.dirty = true
 }

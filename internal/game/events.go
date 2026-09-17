@@ -80,7 +80,15 @@ type Bubble struct {
 	// （`0x32dfa`，`docs/spec/010`）：Style 是進去擲的 `RND(4)`，四種
 	// 拉幕方向；Speaker、Text 不用。
 	Scene, Style int
+
+	// WipeIn 只配 FaceOnly：那張肖像不是直接畫上去，是先畫在第二頁的藍色
+	// 面板上、再用 Style 那一種拉幕把 (432,80) 起 176×96 那一塊拉進來
+	// （尋訪找到人，`0x1bb2c`–`0x1bbb9`）。
+	WipeIn bool
 }
+
+// Wiped 回報這一格要不要用拉幕拉進來。
+func (b *Bubble) Wiped() bool { return b != nil && (b.Scene > 0 || b.WipeIn) }
 
 // sceneEvent 是「一張場景圖拉進 (x, y)」的那一格：style 是那一刻擲出來的
 // `RND(4)`。prefecture 超出範圍就寫 0。
@@ -97,6 +105,37 @@ func (g *State) showScene(prefecture, scene, style, x, y int) {
 	g.pending = append(g.pending, g.sceneEvent(prefecture, scene, style, x, y))
 }
 
+// commandScene 是玩家主畫面命令的那一段場景圖：面板清藍、載 `SCG##`、
+// `0x32dfa(432, 80)` 擲 `RND(4)` 拉進來（`docs/spec/010` §8）。這些常式只
+// 在玩家親自下令時跑；電腦諸侯與自治的郡走分派器（`0x17550`），不播也不擲。
+func (g *State) commandScene(at, scene int, by state.FactionID) {
+	if !g.playerCommand(by) {
+		return
+	}
+	if _, auto := g.AutonomousFor(at); auto {
+		return
+	}
+	style := g.Roll(EffectVariants, at, scene, 0x32e4f)
+	g.showScene(at, scene, style, assets.SceneMainX, assets.SceneMainY)
+}
+
+// GameOverScene 是「所有玩家皆無繼承人」那一張 `SCG16`（`0x159b2`）：月底
+// 絕嗣檢查（`0x15924`）一個玩家都不剩時，面板清藍、播圖、印字、結束程式。
+func (g *State) GameOverScene() []Event {
+	style := g.Roll(EffectVariants, 0x15924)
+	return []Event{g.sceneEvent(0, assets.SceneDeath, style, assets.SceneMainX, assets.SceneMainY)}
+}
+
+// WarScene 是玩家發動戰役那一張 `SCG06`（`0x18b82`）：勸諫之後、進主戰場
+// 常式之前擲，排在宣戰兩句（`WarDeclaration`）前面。電腦的出兵不播。
+func (g *State) WarScene(at int, by state.FactionID) []Event {
+	if !g.playerCommand(by) {
+		return nil
+	}
+	style := g.Roll(EffectVariants, at, assets.SceneWar, 0x32e4f)
+	return []Event{g.sceneEvent(at, assets.SceneWar, style, assets.SceneMainX, assets.SceneMainY)}
+}
+
 // 尋訪找到的那一位亮肖像的位置（`0x1bb76`／`0x1bb7a`）。
 const (
 	SearchFaceX = 488
@@ -108,9 +147,14 @@ const (
 // 名字（片語 383）；沒找到只報「屬下無能  沒有找到人才」（384）。
 // 肖像都在右邊（side 0）。
 func (g *State) searchEvents(searcher, found *General) []Event {
+	// 報結果之前 `0x32e40(432, 80)` 擲 `RND(4)` 把第二頁拉進來（`0x1bbb9`）：
+	// 找到人時第二頁是藍底加那一位的肖像，沒找到只有藍底——拉進來看不出
+	// 變化，但那一擲照擲。
+	style := g.Roll(EffectVariants, searcher.Index, 0x32e4f)
 	if found != nil {
 		return []Event{
-			{Prefecture: searcher.Location, Bubble: &Bubble{X1: SearchFaceX, Y1: SearchFaceY, Speaker: found.Index, FaceOnly: true}},
+			{Prefecture: searcher.Location, Bubble: &Bubble{X1: SearchFaceX, Y1: SearchFaceY, Speaker: found.Index,
+				FaceOnly: true, WipeIn: true, Style: style}},
 			g.bubbleEvent(searcher, false, false, tf("bub.found", personName(found.Name)), searcher.Index),
 		}
 	}
@@ -733,7 +777,11 @@ func (g *State) sealEvent() []Event {
 	if lord != nil {
 		name = personName(lord.Name)
 	}
-	return []Event{{Prefecture: 0, Text: tf("ev.seal", name)}}
+	// 印完「%s主公, 我們發現了玉璽 !」之後播 `SCG05`（`0x15224`）；不看是不是
+	// 玩家的勢力，示範模式也播也擲。
+	style := g.Roll(EffectVariants, int(Spring), int(f.ID), 53)
+	return []Event{{Prefecture: 0, Text: tf("ev.seal", name)},
+		g.sceneEvent(0, assets.SceneAppoint, style, assets.SceneMainX, assets.SceneMainY)}
 }
 
 // DebutGarrisonCap 是「牽絆對象的郡收不收得下」的門檻
@@ -824,8 +872,8 @@ func (g *State) summer() []Event {
 	}
 	var floodScene []Event
 	if len(flooded) > 0 {
-		// 有郡淹了才印字、放一次特效（`0x165f6` 叫 `0x32dfa`，進去就擲
-		// `RND(4)` 挑動畫，`docs/re/05` §12.2）——整個夏天一次，不是每郡一次。
+		// 有郡淹了才印字、拉進一次 `SCG02`（`0x165f6` 叫 `0x32dfa`，進去就擲
+		// `RND(4)` 挑拉幕方向，`docs/spec/010`）——整個夏天一次，不是每郡一次。
 		floodScene = []Event{g.sceneEvent(flooded[0], assets.SceneFlood,
 			g.roll(int(Summer), 0, 8)%EffectVariants, assets.SceneMainX, assets.SceneMainY)}
 	}
@@ -886,7 +934,7 @@ func (g *State) summer() []Event {
 // Σ兵力 ÷ 100。手冊 p.36 的「將領體能下降」出處在這裡。
 func (g *State) plague(p *Prefecture) (style int) {
 	id := p.ID
-	// 印字、特效一次（`0x16871` 叫 `0x32dfa`，`RND(4)` 挑動畫）。
+	// 印字、拉進一次 `SCG14`（`0x16871` 叫 `0x32dfa`，`RND(4)` 挑拉幕方向）。
 	style = g.roll(int(Summer), id, 8) % EffectVariants
 	p.Population = keepPopulation(p.Population, PlaguePopKeep,
 		g.roll(int(Summer), id, 20)%PlaguePopKeep.Spread)
@@ -1279,6 +1327,12 @@ func (g *State) winter() []Event {
 		// **`RND(4)` 對四種**，不是對整個列舉——列舉的第 0 格是玉璽，
 		// 而玉璽只能諸侯持有、不在進貢的四種裡（`0x1723c`）。
 		got[int(TreasureBook)+g.Roll(4, int(f.ID), 33)]++
+		// 玩家操縱的勢力再播一張 `SCG05`（`0x1725b` 看諸侯記錄 offset 0 是不是
+		// 1，`0x1729c`），拉完才印「%s主公, 各郡進貢」；電腦的勢力不播不擲。
+		if !f.ByComputer {
+			style := g.Roll(EffectVariants, int(f.ID), 34)
+			out = append(out, g.sceneEvent(0, assets.SceneAppoint, style, assets.SceneMainX, assets.SceneMainY))
+		}
 		n := 0
 		for t := TreasureBook; t < treasureCount; t++ {
 			f.Treasury[t] = clampTo(f.Treasury[t]+got[t], TreasuryCap)

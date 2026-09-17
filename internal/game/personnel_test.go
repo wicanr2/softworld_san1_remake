@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -266,7 +267,7 @@ func TestPlayerSearchQueuesTheScreens(t *testing.T) {
 		t.Fatalf("找到人該排兩格，排了 %d：%+v", len(ev), ev)
 	}
 	face, say := ev[0].Bubble, ev[1].Bubble
-	if !face.FaceOnly || face.Speaker != hidden.Index || face.X1 != SearchFaceX || face.Y1 != SearchFaceY {
+	if !face.FaceOnly || !face.WipeIn || face.Speaker != hidden.Index || face.X1 != SearchFaceX || face.Y1 != SearchFaceY {
 		t.Errorf("第一格該是亮 %d 的肖像在 (%d,%d)，是 %+v", hidden.Index, SearchFaceX, SearchFaceY, face)
 	}
 	if say.FaceOnly || say.Speaker != by.Index || say.Left || say.Y1 != BubbleLowerY1 {
@@ -369,8 +370,9 @@ func TestAdviseRollsOnceThenSpeaks(t *testing.T) {
 }
 
 // TestPlayerOrdersQueueTheirDialogue 釘住玩家命令之後排進 pending 的對白
-// （`docs/spec/005` §9.6）：賞賜一格（受賞者、下格右）、指定軍師兩格
-// （君主上格右、新軍師下格左）、電腦的同一道命令一格都沒有。
+// （`docs/spec/005` §9.6）：每一道先一格場景圖（`docs/spec/010` §8），
+// 賞賜再一格（受賞者、下格右）、指定軍師再兩格（君主上格右、新軍師
+// 下格左）、電腦的同一道命令一格都沒有。
 func TestPlayerOrdersQueueTheirDialogue(t *testing.T) {
 	g := newGame(t)
 	at := 0
@@ -392,7 +394,15 @@ func TestPlayerOrdersQueueTheirDialogue(t *testing.T) {
 	if err := (RewardOrder{At: at, Target: officer.Index, Gold: 10}).Apply(g, 0); err != nil {
 		t.Fatal(err)
 	}
-	ev := g.PendingEvents()
+	scene := func(ev []Event, n int, what string) []Event {
+		t.Helper()
+		if len(ev) == 0 || ev[0].Bubble == nil || ev[0].Bubble.Scene != n ||
+			ev[0].Bubble.X1 != assets.SceneMainX || ev[0].Bubble.Y1 != assets.SceneMainY {
+			t.Fatalf("%s的第一格該是場景圖 SCG%02d 落在 (432,80)：%+v", what, n, ev)
+		}
+		return ev[1:]
+	}
+	ev := scene(g.PendingEvents(), assets.SceneReward, "賞賜")
 	if len(ev) != 1 || ev[0].Bubble == nil || ev[0].Bubble.Speaker != officer.Index || ev[0].Bubble.Left || ev[0].Bubble.Y1 != BubbleLowerY1 {
 		t.Fatalf("賞賜之後該是受賞者在下格右邊一格：%+v", ev)
 	}
@@ -400,7 +410,7 @@ func TestPlayerOrdersQueueTheirDialogue(t *testing.T) {
 	if err := (AppointChiefOrder{At: at, Target: officer.Index}).Apply(g, 0); err != nil {
 		t.Fatal(err)
 	}
-	ev = g.PendingEvents()
+	ev = scene(g.PendingEvents(), assets.SceneAppoint, "指定軍師")
 	if len(ev) != 2 || ev[0].Bubble.Speaker != g.Lord(0).Index || ev[0].Bubble.Left || ev[0].Bubble.Y1 != BubbleUpperY1 ||
 		ev[1].Bubble.Speaker != officer.Index || !ev[1].Bubble.Left || ev[1].Bubble.Y1 != BubbleLowerY1 {
 		t.Fatalf("指定軍師該是君主上格右、新軍師下格左：%+v", ev)
@@ -412,7 +422,7 @@ func TestPlayerOrdersQueueTheirDialogue(t *testing.T) {
 	if err := (GiftOrder{At: at, Target: officer.Index, What: TreasureBook}).Apply(g, 0); err != nil {
 		t.Fatal(err)
 	}
-	ev = g.PendingEvents()
+	ev = scene(g.PendingEvents(), assets.SceneReward, "賜物")
 	if len(ev) != 2 || ev[0].Bubble.Speaker != officer.Index || ev[0].Bubble.Left || ev[0].Bubble.Y1 != BubbleUpperY1 || ev[0].Bubble.Card ||
 		!ev[1].Bubble.Card || ev[1].Bubble.Speaker != officer.Index {
 		t.Fatalf("賜物該是受賜者上格右道謝、再一格他的資料卡：%+v", ev)

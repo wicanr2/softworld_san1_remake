@@ -288,8 +288,8 @@ remake：查看→3 照原版走——別人的郡先問 Y/N（`ask.inspectForei
 `inspectGeneral`）；賞賜物品先問「賞給誰」、畫那一位的卡與「請按任一鍵
 查看物品表」（`ask.giftItems`），任意鍵之後開君主物品表的分頁問「賞賜哪
 一件」，送完由 `GiftOrder.Apply` 排受賜者道謝再一格他的卡（`game.Bubble.Card`，
-`TestPlayerOrdersQueueTheirDialogue`）。沒接：`SCG24.IMG` 那一張寶物圖
-（場景圖的格式還沒解）、賞完回到「賞賜那一位」的迴圈（remake 一道命令
+`TestPlayerOrdersQueueTheirDialogue`）；`SCG24.IMG` 那一張由 `GiftOrder.Apply`
+一開頭排成場景圖拉進來（`docs/spec/010` §1.1）。沒接：賞完回到「賞賜那一位」的迴圈（remake 一道命令
 一件）、示範模式（remake 沒有全電腦局）。
 
 ### 9.3 尋訪找到人（`0x1b912`，`L0`、`[base]`、Issue #54）
@@ -299,15 +299,17 @@ remake：查看→3 照原版走——別人的郡先問 Y/N（`ask.inspectForei
 接著**軍師先給建議**（`RND(5)+80` 與 `RND(18)+80` 對 `es:0x16f2` 決定
 說 385「主公放心 必可找到人才」、386「主公 可能找不到」還是 387
 「主公 此地已無名士」，下格、肖像在左、說話者 `es:0x3b96`）並問 Y/N；
-然後扣 5 金、清面板。**找到人**：`0xf7b4(488, 88, 那一位的肖像, 0, 0)`
-亮在藍底上、等 `es:0x2e78(0)`、再清面板、跑一段掃描動畫
-（`0x32e40(432, 80)`，四種樣式之一）、尋訪者在下格（肖像在右）報
+然後扣 5 金，`es:[0x2e78](1)` 改畫第二頁：面板清藍，**找到人**才
+`0xf7b4(488, 88, 那一位的肖像, 0, 0)`；`es:[0x2e78](0)` 回第一頁、面板清藍，
+`0x32e40(432, 80)` 擲 `RND(4)` 把第二頁那一塊拉進來（`docs/spec/010` §1）——
+肖像是拉進來的，沒找到時拉進來的是一塊藍。接著尋訪者在下格（肖像在右）報
 383「主公洪福  發現名士」＋名字；沒找到報 384「屬下無能  沒有找到人才」。
 
 remake：`SearchOrder.Apply`（玩家那一條）把兩格排進 `pending`：
-`Bubble{FaceOnly: true}`（只亮肖像，`SearchFaceX/Y` ＝ 488／88）與
-尋訪者的對白（`bub.found`／`bub.notFound`）；任意鍵一格一格收。軍師的
-建議與 Y/N 走 §9.6 的勸諫；**掃描動畫沒接**（下一輪盤點）。驗證
+`Bubble{FaceOnly: true, WipeIn: true, Style}`（肖像在 `SearchFaceX/Y` ＝ 488／88，
+由 `ui.SearchPanel` 合成藍底那一塊拉進來）與尋訪者的對白（`bub.found`／
+`bub.notFound`）；沒找到只擲那一次 `RND(4)`。任意鍵一格一格收。軍師的
+建議與 Y/N 走 §9.6 的勸諫。驗證
 `TestZZSearchFaceMatchesTheOriginal`（清成藍的面板上直接呼叫 `0xf7b4`，
 整塊面板逐像素相同）、`TestPlayerSearchQueuesTheScreens`。
 
@@ -450,7 +452,8 @@ remake：`game.State.Advise`（`internal/game/advice.go`）擲那一擲、回要
 登用與挖角的「看得準」那一半 remake 用不擲骰的預判（`recruitLooksEasy`／
 `headhuntLooksEasy`，`L2`）代替原版判定常式的重跑，免得動到真正登用那一
 串亂數。計略的成敗回話由 `PlotOrder.Apply` 排（聯合出兵除外）。
-**沒接的**：尋訪的掃描動畫（`0x32e40`，#58）、勸諫那一擲與判定的先後
+主畫面命令的場景圖（勸諫之後那一張 `SCG##`）由各 `Order.Apply` 開頭排，
+玩家親自下令才擲（`docs/spec/010` §1.1、§8）。**沒接的**：勸諫那一擲與判定的先後
 （原版登用先判再勸，remake 先勸再判——只影響實玩的骰序）。
 
 驗證：`TestAdviseRollsOnceThenSpeaks`、`TestPlayerOrdersQueueTheirDialogue`、

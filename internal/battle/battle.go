@@ -690,7 +690,7 @@ func (b *Battle) exchange(a, d *Unit, mode int) (int, int) {
 const MessageLines = 8
 
 // EffectVariants：特效常式 `0x32dfa` → `0x32e40` 進去先擲 `RND(4)`
-// （`0x32e4f`，`L0`）挑動畫。
+// （`0x32e4f`，`L0`）挑拉幕的方向，把場景圖拉進來（`docs/spec/010`）。
 const EffectVariants = 4
 
 // msg 是原版印一句戰場對白（`0x3273e`）時的那一擲。

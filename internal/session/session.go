@@ -287,6 +287,7 @@ func (s *Session) EndMonth() {
 	s.shuffleMonth()
 	s.drainBattles()
 	if wasAlive && !s.PlayerAlive() {
+		s.collect(s.G.GameOverScene())
 		s.say("sess.destroyed")
 		s.Over = true
 	}

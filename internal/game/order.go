@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -36,6 +37,9 @@ type ReclaimOrder struct {
 
 func (o ReclaimOrder) Prefecture() int { return o.At }
 func (o ReclaimOrder) Apply(g *State, by state.FactionID) error {
+	if !o.Auto {
+		g.commandScene(o.At, assets.SceneLand, by) // `0x1a721`
+	}
 	return g.reclaim(o.At, o.General, by, !o.Auto)
 }
 func (o ReclaimOrder) Describe(g *State) string {
@@ -53,6 +57,9 @@ type FloodControlOrder struct {
 
 func (o FloodControlOrder) Prefecture() int { return o.At }
 func (o FloodControlOrder) Apply(g *State, by state.FactionID) error {
+	if !o.Auto {
+		g.commandScene(o.At, assets.SceneLand, by) // `0x1a932`
+	}
 	return g.floodControl(o.At, o.General, by, !o.Auto)
 }
 func (o FloodControlOrder) Describe(g *State) string {
@@ -72,6 +79,7 @@ type TrainOrder struct {
 
 func (o TrainOrder) Prefecture() int { return o.At }
 func (o TrainOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneTrain, by) // `0x197f6`
 	return g.TrainUnits(o.At, o.Units, by)
 }
 func (o TrainOrder) Describe(g *State) string {
@@ -94,6 +102,7 @@ type SellRiceOrder struct{ At, Units int }
 
 func (o SellRiceOrder) Prefecture() int { return o.At }
 func (o SellRiceOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneRice, by) // `0x1b5b2`
 	return g.SellRice(o.At, o.Units, by)
 }
 func (o SellRiceOrder) Describe(g *State) string {
@@ -104,6 +113,7 @@ type BuyRiceOrder struct{ At, Units int }
 
 func (o BuyRiceOrder) Prefecture() int { return o.At }
 func (o BuyRiceOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneRice, by) // `0x1b2c7`
 	return g.BuyRice(o.At, o.Units, by)
 }
 func (o BuyRiceOrder) Describe(g *State) string {
@@ -129,9 +139,11 @@ func (o RecruitOrder) Prefecture() int { return o.At }
 func (o RecruitOrder) Apply(g *State, by state.FactionID) error {
 	// 玩家那一條的畫面（`0x1c088`–`0x1c129`）：主事者先在上格問
 	// 「久聞 X 之才 是否願意相助」，判完那一位在下格答應或婉拒。
+	// 問之前先播 `SCG07`（`0x1c00e`），答應之後再播 `SCG04`（`0x1c1ba`）。
 	t := g.General(o.Target)
 	player := g.playerCommand(by) && t != nil
 	if player {
+		g.commandScene(o.At, assets.SceneRecruit, by)
 		g.say(g.Governor(o.At), true, true, tf("bub.recruitAsk", personName(t.Name)), o.At, 0x1c088)
 	}
 	err := g.Recruit(o.At, o.Target, by)
@@ -139,6 +151,7 @@ func (o RecruitOrder) Apply(g *State, by state.FactionID) error {
 	case !player:
 	case err == nil:
 		g.say(t, false, false, tf("bub.recruitYes", personName(t.Name)), o.At, 0x1c129)
+		g.commandScene(o.At, assets.SceneJoin, by)
 	case errors.Is(err, ErrDeclined):
 		g.say(t, false, false, t_("bub.recruitNo"), o.At, 0x1c0cc)
 	}
@@ -191,6 +204,7 @@ type ConscriptOrder struct {
 
 func (o ConscriptOrder) Prefecture() int { return o.At }
 func (o ConscriptOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneArms, by) // `0x199c8`
 	return g.Conscript(o.At, o.General, o.Count, by)
 }
 func (o ConscriptOrder) Describe(g *State) string {
@@ -210,6 +224,7 @@ type ArmsOrder struct {
 
 func (o ArmsOrder) Prefecture() int { return o.At }
 func (o ArmsOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneArms, by) // `0x19d66`
 	return g.BuyArms(o.At, o.General, o.Units, by)
 }
 func (o ArmsOrder) Describe(g *State) string {
@@ -261,6 +276,7 @@ type MoveOrder struct {
 
 func (o MoveOrder) Prefecture() int { return o.At }
 func (o MoveOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneMove, by) // `0x18f99`
 	return g.Move(o.At, o.To, o.General, o.Gold, o.Rice, by)
 }
 func (o MoveOrder) Describe(g *State) string {
@@ -302,6 +318,7 @@ type TransportOrder struct {
 
 func (o TransportOrder) Prefecture() int { return o.At }
 func (o TransportOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneMove, by) // `0x19273`
 	return g.Transport(o.At, o.To, o.Gold, o.Rice, by)
 }
 func (o TransportOrder) Describe(g *State) string {
@@ -327,17 +344,21 @@ func (o RedistributeOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
 		return g.redistributeWith(o.At, o.Units, by, 1, o.CapSum)
 	}
+	g.commandScene(o.At, assets.SceneTrain, by) // `0x1a075`
 	return g.Redistribute(o.At, o.Units, by)
 }
 func (o RedistributeOrder) Describe(g *State) string {
 	return tf("log.balance", prefName(g, o.At), len(o.Units))
 }
 
-type BuildFortOrder struct{ At, General int }
+// BuildFortOrder 是築關。Cell 是戰場地圖索引加一（原版玩家用游標挑的
+// 那一格）；0 表示讓 remake 自己挑（`BuildFort`）。
+type BuildFortOrder struct{ At, General, Cell int }
 
 func (o BuildFortOrder) Prefecture() int { return o.At }
 func (o BuildFortOrder) Apply(g *State, by state.FactionID) error {
-	return g.BuildFort(o.At, o.General, by)
+	g.commandScene(o.At, assets.SceneFort, by) // `0x1ab84`
+	return g.BuildFortAt(o.At, o.General, o.Cell-1, by)
 }
 func (o BuildFortOrder) Describe(g *State) string {
 	return tf("log.fort", prefName(g, o.At), byWhom(g, o.General))
@@ -380,6 +401,7 @@ type RewardOrder struct{ At, Target, Gold int }
 
 func (o RewardOrder) Prefecture() int { return o.At }
 func (o RewardOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneReward, by) // `0x1c501`
 	err := g.Reward(o.At, o.Target, o.Gold, by)
 	if err == nil && g.playerCommand(by) {
 		g.say(g.General(o.Target), false, false, t_("bub.rewardThanks"), o.At, 0x1c547) // `0x1c547`
@@ -394,6 +416,7 @@ type DismissOrder struct{ At, Target int }
 
 func (o DismissOrder) Prefecture() int { return o.At }
 func (o DismissOrder) Apply(g *State, by state.FactionID) error {
+	g.commandScene(o.At, assets.SceneDismiss, by) // `0x1c6ac`
 	err := g.Dismiss(o.At, o.Target, by)
 	if err == nil && g.playerCommand(by) {
 		g.say(g.General(o.Target), true, false, t_("bub.dismissed"), o.At, 0x1c70a) // `0x1c70a`
@@ -417,6 +440,7 @@ func (o AppointChiefOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
 		return g.appointChief(o.At, o.Target, by)
 	}
+	g.commandScene(o.At, assets.SceneAppoint, by) // `0x1c9e5`
 	err := g.AppointChief(o.At, o.Target, by)
 	if err == nil && g.playerCommand(by) {
 		// `0x1ca9e`／`0x1cad5`：君主在上格下令，新軍師在下格領命。
@@ -443,6 +467,7 @@ func (o AppointGovernorOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
 		return g.appointGovernor(o.At, o.Target, by, false)
 	}
+	g.commandScene(o.At, assets.SceneAppoint, by) // `0x1cc77`
 	err := g.AppointGovernor(o.At, o.Target, by)
 	if err == nil && g.playerCommand(by) {
 		// `0x1ccd7`／`0x1cd24`：君主在上格下令，新太守在下格領命。
@@ -492,6 +517,7 @@ func (o GiftOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
 		return g.giftTreasure(o.At, o.Target, o.What, by, false)
 	}
+	g.commandScene(o.At, assets.SceneReward, by) // `0x1d264`
 	err := g.GiftTreasure(o.At, o.Target, o.What, by)
 	if err == nil && g.playerCommand(by) {
 		// `0x1d4c1` 道謝之後再畫一次受賜者的資料卡（`0x1d4d1`），等鍵。
@@ -523,15 +549,18 @@ func (o HeadhuntOrder) Apply(g *State, by state.FactionID) error {
 	}
 	// 玩家那一條的畫面（`0x1dad0`–`0x1dbc9`）：君主先在上格說「尊駕之才
 	// 吾仰慕久矣」，判完那一位在下格投靠或回絕。
+	// 開口之前先播 `SCG13`（`0x1da72`）；投靠的話先播 `SCG04`（`0x1db5d`）再說話。
 	t := g.General(o.Target)
 	player := g.playerCommand(by) && t != nil
 	if player {
+		g.commandScene(o.At, assets.ScenePlotSow, by)
 		g.say(g.Lord(by), true, false, t_("bub.headhuntAsk"), o.At, 0x1dad0)
 	}
 	err := g.Headhunt(o.At, o.Target, by)
 	switch {
 	case !player:
 	case err == nil:
+		g.commandScene(o.At, assets.SceneJoin, by)
 		g.say(t, false, true, tf("bub.headhuntYes", personName(t.Name)), o.At, 0x1dbc9)
 	case errors.Is(err, ErrDeclined):
 		g.say(t, false, true, t_("bub.headhuntNo"), o.At, 0x1db1f)

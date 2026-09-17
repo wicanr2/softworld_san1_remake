@@ -2,6 +2,8 @@ package assets
 
 // 場景圖 `SCG01`–`SCG31.IMG`（176×96，`docs/formats/07` §3）與它們的用途。
 //
+// `SCG11` 在這四十八處都沒有用到。
+//
 // 原版在四十八處先把一張載進來、再叫特效常式 `0x32dfa(x, y)` 把它拉進
 // 畫面（`docs/spec/010` §1 的表，`L0`、`[base]`）。名字照原版檔名的編號，
 // 這裡的常數名是從呼叫端讀出來的用途，不是原版有的名字。
@@ -10,7 +12,7 @@ const (
 	SceneFlood       = 2  // `0x165f6` 洪水
 	SceneFloodTactic = 3  // `0x2b219` 水淹
 	SceneJoin        = 4  // `0x1c1ba` 登用來歸、`0x1db5d` 挖角來歸、`0x25cae` 被擒願降
-	SceneAppoint     = 5  // `0x15224`／`0x1729c` 新君主即位、`0x1c9e5` 指定軍師、`0x1cc77` 指定太守
+	SceneAppoint     = 5  // `0x15224` 玉璽現世、`0x1729c` 玩家的進貢、`0x1c9e5` 指定軍師、`0x1cc77` 指定太守
 	SceneWar         = 6  // `0x18b82` 發動戰役
 	SceneRecruit     = 7  // `0x1c00e` 登用
 	SceneJail        = 8  // `0x261a1` 囚禁
@@ -20,7 +22,7 @@ const (
 	ScenePlotSow     = 13 // `0x1da72` 挖角、`0x2d338` 離間君臣
 	ScenePlague      = 14 // `0x16871` 瘟疫
 	SceneTrain       = 15 // `0x197f6` 訓練、`0x1a075` 調整兵力
-	SceneDeath       = 16 // `0x159b2` 玩家全部絕嗣、`0x15e8e` 元月老死
+	SceneDeath       = 16 // `0x159b2` 所有玩家皆無繼承人、`0x15e8e` 元月老死
 	SceneArrows      = 17 // `0x2a8c8` 弓箭
 	ScenePlotFarNear = 18 // `0x2c8de` 遠交近攻
 	SceneFire        = 19 // `0x2aeab` 火攻、`0x2b951` 燒糧
