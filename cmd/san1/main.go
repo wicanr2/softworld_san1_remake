@@ -815,7 +815,16 @@ func (a *app) begin(cat, item byte) {
 
 	// ---- 7. 君主 ----
 	case cat == '7' && item == '1':
-		a.askRoster(t("ask.chief"), sel, game.PickWiseSub, game.PickByIntel, func(gi int) { a.run(game.AppointChiefOrder{At: sel, Target: gi}) }, nil)
+		// 指定軍師（`0x1c87e`）：清單是下令那一郡的人（模式 6、鍵 1）；指定成功之後下面板
+		// 「%s將任／%s的軍師」（`DS:0x74f8`：新人、君主）。
+		a.askRoster(t("ask.chief"), sel, game.PickWiseSub, game.PickByIntel, func(gi int) {
+			a.run(game.AppointChiefOrder{At: sel, Target: gi})
+			f, x, lord := g.Faction(s.Player), g.General(gi), g.Lord(s.Player)
+			if f != nil && x != nil && lord != nil && f.Chief == gi {
+				msg := tf("msg.chiefSet", ui.NameField(i18n.PersonName(x.Name)), ui.NameField(i18n.PersonName(lord.Name)))
+				a.afterBubbles = func() { a.view.Prompt = msg }
+			}
+		}, nil)
 	case cat == '7' && item == '2':
 		closeMenu()
 		a.appointGovernor(sel)

@@ -1040,3 +1040,90 @@ func TestZZAppointGovernorMatchesTheOriginal(t *testing.T) {
 		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
 	}
 }
+
+// TestZZAppointChiefMatchesTheOriginal 君主→1.指定軍師（Issue #90）：「<指定軍師>謀略須大於79／指定那一位」
+// 是下令那一郡的清單（模式 6、鍵 1），面板、下面板、游標相同；擺一位不主事的舊軍師，指定謀略 90 的一般武將之後
+// 三張表逐位元組相同（舊軍師 1→3、新人 3→1、諸侯 offset 6 換人），原版結束這個郡的回合。
+func TestZZAppointChiefMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	master := b.base + uint32(int(b.me)*state.MasterRecordSize)
+	lord := int(b.o.Word(addr(master + 2)))
+	var two []int
+	for _, i := range b.people {
+		if i != lord && len(two) < 2 {
+			two = append(two, i)
+		}
+	}
+	oldChief, pick := two[0], two[1]
+	gen := func(i int) uint32 { return b.base + uint32(nMas+nSta+i*state.GeneralRecordSize) }
+	b.o.SetByte(addr(gen(oldChief)+17), uint8(state.StatusChief))
+	b.o.SetByte(addr(gen(oldChief)+9), 85)
+	b.o.SetByte(addr(gen(pick)+17), uint8(state.StatusOfficer))
+	b.o.SetByte(addr(gen(pick)+9), 90)
+	b.o.SetWord(addr(master+6), uint16(oldChief))
+	g := b.game(t)
+	total := nMas + nSta + state.GeneralTableSize
+	again, done := 0, 0
+	var after []byte
+	b.o.OnCall(addr(mainAskAgainAt), func(*oracle.Oracle) { again++ })
+	// 回合一結束原版就接著跑下一個郡，表要在「下完令」那一刻取。
+	b.o.OnCall(addr(mainTurnDoneAt), func(o *oracle.Oracle) {
+		if done++; after == nil {
+			after = o.Bytes(addr(b.base), total)
+		}
+	})
+
+	b.press(t, "君主", "7\r")
+	ask, shot, tr := b.press(t, "指定軍師", "1\r")
+	var idx []int
+	row := 0
+	for i, x := range g.PickRoster(b.at, game.PickWiseSub, game.PickByIntel) {
+		idx = append(idx, x.Index)
+		if x.Index == pick {
+			row = i + 1
+		}
+	}
+	rp := &ui.RosterPick{List: idx, Key: game.PickByIntel}
+	if lo, hi := ui.RosterRange(rp); ask != [2]int{lo, hi} || row == 0 {
+		t.Fatalf("名單：原版問 %v，remake %d-%d，新人在第 %d 列", ask, lo, hi, row)
+	}
+	v := ui.View{Sel: b.at, Roster: rp, Prompt: i18n.S("ask.chief") + i18n.Sf("pick.range", 1, len(idx)), Input: tr.input()}
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, v)
+	v.Input = ui.InputCursor{}
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, v)
+	comparePanels(t, "指定那一位", shot, cv, plain, tr, 1)
+
+	before := b.o.Bytes(addr(b.base), total)
+	b.o.Drain()
+	b.o.TypeBoth(fmt.Sprintf("%d\r", row))
+	waitBoot(t, b.o, "換軍師", 100_000_000, func() bool { return int(b.o.Word(addr(master+6))) == pick })
+	for i := 0; i < 40 && again == 0 && done == 0; i++ {
+		b.o.Drain()
+		b.o.TypeBoth(" ")
+		if err := b.o.Run(20_000_000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if done == 0 || again != 0 {
+		t.Errorf("指定完原版回主選單 %d 次、結束回合 %d 次；應該結束回合", again, done)
+	}
+	if after == nil {
+		t.Fatal("沒有攔到結束回合那一刻")
+	}
+	if err := (game.AppointChiefOrder{At: b.at, Target: pick}).Apply(g, b.me); err != nil {
+		t.Fatal(err)
+	}
+	rm, rs, rg, err := g.Tables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := append(append(append([]byte{}, rm...), rs...), rg...)
+	t.Logf("原版動到的記錄：%s", changedRecords(before, after, nMas, nSta))
+	if n := diffCount(after, got); n != 0 {
+		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
+	}
+}

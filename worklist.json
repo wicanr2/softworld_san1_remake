@@ -1972,6 +1972,28 @@
       }
     },
     {
+      "id": "appoint-chief-questions",
+      "title": "君主→指定軍師：原版提示「<指定軍師>謀略須大於79／指定那一位」與「%s將任／%s的軍師」；三張表對拍",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/20"
+      ],
+      "note": "`TestZZAppointChiefMatchesTheOriginal` 清單一格相同，指定之後三張表在結束回合那一刻逐位元組相同；場景圖、訊息與對白那幾格沒有對拍畫面；「君主不可任軍師」（模式 6 碰不到）沒接。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/parity/pickentry_oracle_test.go"
+        ],
+        "pattern": "func TestZZAppointChiefMatchesTheOriginal"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",
