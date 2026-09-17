@@ -817,7 +817,8 @@ func (a *app) begin(cat, item byte) {
 	case cat == '7' && item == '1':
 		a.askRoster(t("ask.chief"), sel, game.PickWiseSub, game.PickByIntel, func(gi int) { a.run(game.AppointChiefOrder{At: sel, Target: gi}) }, nil)
 	case cat == '7' && item == '2':
-		a.askRoster(t("ask.governor"), sel, game.PickServing, game.PickByCharm, func(gi int) { a.run(game.AppointGovernorOrder{At: sel, Target: gi}) }, nil)
+		closeMenu()
+		a.appointGovernor(sel)
 	case cat == '7' && item == '3':
 		closeMenu()
 		a.autonomy(sel)
@@ -844,6 +845,27 @@ func (a *app) begin(cat, item byte) {
 	if len(a.pick) == 0 && a.num == nil {
 		closeMenu()
 	}
+}
+
+// appointGovernor 是君主→2.指定太守（`0x1caea`）：「指定那一郡的太守」收自己的其他郡
+// （`game.GovernorTarget`），挑到之後地圖選到那一郡、列那一郡的人（模式 2、鍵 3）；兩處取消
+// 都收掉命令。指定完場景圖、兩格對白，下面板「%s將任／%s的太守」（`DS:0x753a`），回選單、不耗回合。
+func (a *app) appointGovernor(sel int) {
+	g := a.s.G
+	done := func() { a.view.Sel = sel }
+	a.askPref(t("ask.governorPref"), func(id int) bool { return g.GovernorTarget(sel, id) }, func(pref int) {
+		a.view.Sel = pref
+		a.askRoster(t("ask.governor"), pref, game.PickServing, game.PickByCharm, func(gi int) {
+			done()
+			a.apply(game.AppointGovernorOrder{At: sel, Pref: pref, Target: gi})
+			// 訊息只在指定成功時才有：看新主事者是不是他。
+			x, p, gov := g.General(gi), g.Prefecture(pref), g.Governor(pref)
+			if x != nil && p != nil && gov != nil && gov.Index == gi {
+				msg := tf("msg.governorSet", ui.NameField(i18n.PersonName(x.Name)), p.Name)
+				a.afterBubbles = func() { a.view.Prompt = msg }
+			}
+		}, done)
+	}, done)
 }
 
 // autonomy 是君主→3.郡縣自冶（`0x1cd68`）：「授權自冶那一郡」收同一主人、主事者不是君主的郡

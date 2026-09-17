@@ -460,8 +460,11 @@ func (o AppointChiefOrder) Describe(g *State) string {
 	return tf("log.chief", byWhom(g, o.Target))
 }
 
+// AppointGovernorOrder 是指定太守。玩家那一條（`0x1caea`）At 是下令的郡、Pref 是被指定的郡
+// （`GovernorTarget`），**不耗回合**——君主選單派工器 `0x1c7a2` 回傳預設 0xFFFF，這一支
+// （`0x1c82f`）的回傳丟掉。電腦那一條（Auto）只用 At。
 type AppointGovernorOrder struct {
-	At, Target int
+	At, Pref, Target int
 
 	// Auto 為真表示走電腦諸侯那一條（`0xd652`）。**原版挑名單時不比對
 	// 勢力**，所以目標可能是站在郡裡的外勢力武將；玩家那一條不收這種。
@@ -469,22 +472,37 @@ type AppointGovernorOrder struct {
 }
 
 func (o AppointGovernorOrder) Prefecture() int { return o.At }
+
+// KeepsTurn 見 AppointGovernorOrder。
+func (o AppointGovernorOrder) KeepsTurn() bool { return !o.Auto }
+
+// target 是被指定的郡：玩家那一條是 Pref，電腦那一條是 At。
+func (o AppointGovernorOrder) target() int {
+	if o.Auto {
+		return o.At
+	}
+	return o.Pref
+}
+
 func (o AppointGovernorOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
 		return g.appointGovernor(o.At, o.Target, by, false)
 	}
-	g.commandScene(o.At, assets.SceneAppoint, by) // `0x1cc77`
-	err := g.AppointGovernor(o.At, o.Target, by)
+	if !g.GovernorTarget(o.At, o.Pref) {
+		return ErrNotYours
+	}
+	g.commandScene(o.Pref, assets.SceneAppoint, by) // `0x1cc77`
+	err := g.AppointGovernor(o.Pref, o.Target, by)
 	if err == nil && g.playerCommand(by) {
 		// `0x1ccd7`／`0x1cd24`：君主在上格下令，新太守在下格領命。
 		t := g.General(o.Target)
-		g.say(g.Lord(by), true, false, tf("bub.governorOrder", personName(t.Name)), o.At, 0x1ccd7)
-		g.say(t, false, true, tf("bub.governorReply", personName(t.Name)), o.At, 0x1cd24)
+		g.say(g.Lord(by), true, false, tf("bub.governorOrder", personName(t.Name)), o.Pref, 0x1ccd7)
+		g.say(t, false, true, tf("bub.governorReply", personName(t.Name)), o.Pref, 0x1cd24)
 	}
 	return err
 }
 func (o AppointGovernorOrder) Describe(g *State) string {
-	return tf("log.governor", prefName(g, o.At), byWhom(g, o.Target))
+	return tf("log.governor", prefName(g, o.target()), byWhom(g, o.Target))
 }
 
 // AutonomyOrder 是君主→3.郡縣自冶的一次設定：At 是下令的郡，Pref 是被授權的郡

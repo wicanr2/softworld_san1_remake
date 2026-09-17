@@ -1950,6 +1950,28 @@
       }
     },
     {
+      "id": "appoint-governor-questions",
+      "title": "君主→指定太守：挑自己的其他郡 → 那一郡的清單（模式 2、鍵 3）→ 身分互換；不耗回合",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/20"
+      ],
+      "note": "`TestZZAppointGovernorMatchesTheOriginal` 挑郡一格（字色逐郡）、下令的郡重問、清單一格相同，指定之後三張表逐位元組相同、原版回主選單；`TestAppointGovernorOrderTargetsAnotherPrefecture`。場景圖、對白與「%s將任／%s的太守」那幾格沒有對拍畫面。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/game/personnel.go"
+        ],
+        "pattern": "func \\(g \\*State\\) GovernorTarget"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

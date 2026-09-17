@@ -873,3 +873,46 @@ func TestAutonomyOrderTargetsAnotherPrefecture(t *testing.T) {
 		t.Error("授權君主主事的郡應該被擋")
 	}
 }
+
+// TestAppointGovernorOrderTargetsAnotherPrefecture：玩家的指定太守收自己的其他郡，下令那一郡不收；
+// 新人身分 3 → 2、舊主事者 2 → 3，而且不耗回合（`0x1cb34`、`0x1cc0a`、`0x1c82f`）。
+func TestAppointGovernorOrderTargetsAnotherPrefecture(t *testing.T) {
+	g := newGame(t)
+	at := g.Lord(5).Location
+	if g.GovernorTarget(at, at) {
+		t.Error("下令那一郡不該收")
+	}
+	var other int
+	var pick *General
+	for id := 1; id <= state.PrefectureCount && pick == nil; id++ {
+		if !g.GovernorTarget(at, id) {
+			continue
+		}
+		for _, x := range g.PickRoster(id, PickServing, PickByCharm) {
+			if x.Status == state.StatusOfficer {
+				other, pick = id, x
+				break
+			}
+		}
+	}
+	if pick == nil {
+		t.Fatal("董卓的其他郡裡沒有一般武將")
+	}
+	old := g.Governor(other)
+	o := AppointGovernorOrder{At: at, Pref: other, Target: pick.Index}
+	if !o.KeepsTurn() || o.Prefecture() != at {
+		t.Errorf("回合記在 %d、KeepsTurn %v；應該記在下令的郡 %d 而且不耗回合", o.Prefecture(), o.KeepsTurn(), at)
+	}
+	if err := o.Apply(g, 5); err != nil {
+		t.Fatal(err)
+	}
+	if gov := g.Governor(other); gov == nil || gov.Index != pick.Index || pick.Status != state.StatusGovernor {
+		t.Errorf("郡 %d 的主事者是 %v、新人身分 %d；應該是 %d、身分 2", other, gov, pick.Status, pick.Index)
+	}
+	if old != nil && old.Index != pick.Index && old.Status == state.StatusGovernor {
+		t.Errorf("舊主事者 %d 還是身分 2", old.Index)
+	}
+	if (AppointGovernorOrder{Auto: true}).KeepsTurn() {
+		t.Error("電腦那一條照舊結束回合")
+	}
+}

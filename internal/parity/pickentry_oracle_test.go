@@ -931,3 +931,112 @@ func TestZZGiftItemAskMatchesTheOriginal(t *testing.T) {
 	ui.DrawArtSession(plain, b.art, g, nil, v)
 	compareTreasury("查看物品", shot, cv, plain, tr)
 }
+
+// TestZZAppointGovernorMatchesTheOriginal 君主→2.指定太守（Issue #89）：「指定那一郡的太守」收自己的其他郡
+// （字色逐郡，下令那一郡打進去重問）；挑到之後列那一郡的人（模式 2、鍵 3），面板、下面板、游標相同；
+// 選一般武將之後舊主事者 2→3、新人 3→2、州郡 offset 32 換人，三張表逐位元組相同；原版回主選單、不結束回合。
+func TestZZAppointGovernorMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	// 玩家只有一個郡：把一個鄰郡擺成自己的，派兩位部將過去，一位當主事者（身分 2）、一位一般武將。
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	lord := int(b.o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
+	var movers []int
+	for i := len(b.people) - 1; i >= 0 && len(movers) < 2; i-- {
+		if b.people[i] != lord {
+			movers = append(movers, b.people[i])
+		}
+	}
+	oldGov, newGov := movers[0], movers[1]
+	nb := b.game(t).Prefecture(b.at).Neighbours[0]
+	gen := func(i int) uint32 { return b.base + uint32(nMas+nSta+i*state.GeneralRecordSize) }
+	for _, i := range movers {
+		b.o.SetByte(addr(gen(i)+19), uint8(nb))
+		b.o.SetByte(addr(gen(i)+17), uint8(state.StatusOfficer))
+	}
+	b.o.SetByte(addr(gen(oldGov)+17), uint8(state.StatusGovernor))
+	pref := b.base + uint32(nMas+nb*state.PrefectureRecordSize)
+	b.o.SetByte(addr(pref+30), uint8(b.me))
+	b.o.SetWord(addr(pref+32), uint16(oldGov))
+	g := b.game(t)
+	again, done := 0, 0
+	b.o.OnCall(addr(mainAskAgainAt), func(*oracle.Oracle) { again++ })
+	b.o.OnCall(addr(mainTurnDoneAt), func(*oracle.Oracle) { done++ })
+
+	b.press(t, "君主", "7\r")
+	ask, shot, tr := b.press(t, "指定那一郡的太守", "2\r")
+	if ask != [2]int{1, 42} {
+		t.Fatalf("指定太守先問的不是挑郡：%v", ask)
+	}
+	pp := &ui.PrefPick{}
+	for id := 1; id <= 42; id++ {
+		pp.Valid[id] = g.GovernorTarget(b.at, id)
+	}
+	if !pp.Valid[nb] || pp.Valid[b.at] {
+		t.Fatalf("清單：郡 %d %v、下令的郡 %d %v", nb, pp.Valid[nb], b.at, pp.Valid[b.at])
+	}
+	p := i18n.S("ask.governorPref") + i18n.Sf("pick.range", 1, 42)
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp, Input: tr.input()})
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp})
+	comparePanels(t, "指定那一郡的太守", shot, cv, plain, tr, 1, prefText...)
+	comparePrefColors(t, "指定那一郡的太守", shot, cv)
+	if re, _, _ := b.press(t, "下令的郡重問", fmt.Sprintf("%d\r", b.at)); re != [2]int{1, 42} {
+		t.Errorf("打下令的郡 %d 之後原版問 %v", b.at, re)
+	}
+
+	ask, shot, tr = b.press(t, "指定那一位", fmt.Sprintf("%d\r", nb))
+	var idx []int
+	row := 0
+	for i, x := range g.PickRoster(nb, game.PickServing, game.PickByCharm) {
+		idx = append(idx, x.Index)
+		if x.Index == newGov {
+			row = i + 1
+		}
+	}
+	rp := &ui.RosterPick{List: idx, Key: game.PickByCharm}
+	if lo, hi := ui.RosterRange(rp); ask != [2]int{lo, hi} || row == 0 {
+		t.Fatalf("郡 %d 的名單：原版問 %v，remake %d-%d，新人在第 %d 列", nb, ask, lo, hi, row)
+	}
+	v := ui.View{Sel: nb, Roster: rp, Prompt: i18n.S("ask.governor") + i18n.Sf("pick.range", 1, len(idx)), Input: tr.input()}
+	cv = ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, v)
+	v.Input = ui.InputCursor{}
+	plain = ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, v)
+	comparePanels(t, "指定那一位", shot, cv, plain, tr, 1)
+
+	total := nMas + nSta + state.GeneralTableSize
+	before := b.o.Bytes(addr(b.base), total)
+	b.o.Drain()
+	b.o.TypeBoth(fmt.Sprintf("%d\r", row))
+	waitBoot(t, b.o, "換主事者", 100_000_000, func() bool { return int(b.o.Word(addr(pref+32))) == newGov })
+	for i := 0; i < 40 && again == 0 && done == 0; i++ {
+		b.o.Drain()
+		b.o.TypeBoth(" ")
+		if err := b.o.Run(20_000_000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if again == 0 || done != 0 {
+		t.Errorf("指定完原版回主選單 %d 次、結束回合 %d 次；應該回主選單、不結束回合", again, done)
+	}
+	after := b.o.Bytes(addr(b.base), total)
+	o := game.AppointGovernorOrder{At: b.at, Pref: nb, Target: newGov}
+	if !o.KeepsTurn() {
+		t.Error("remake 的指定太守會結束回合")
+	}
+	if err := o.Apply(g, b.me); err != nil {
+		t.Fatal(err)
+	}
+	rm, rs, rg, err := g.Tables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := append(append(append([]byte{}, rm...), rs...), rg...)
+	t.Logf("原版動到的記錄：%s", changedRecords(before, after, nMas, nSta))
+	if n := diffCount(after, got); n != 0 {
+		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
+	}
+}
