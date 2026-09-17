@@ -851,3 +851,83 @@ func TestZZAutonomyAskMatchesTheOriginal(t *testing.T) {
 		t.Errorf("型態：原版 %d，remake %d", want, got)
 	}
 }
+
+// TestZZGiftItemAskMatchesTheOriginal 君主→4.賞賜物品挑完人之後（Issue #88）：原版等一鍵之後右側面板畫
+// 君主物品表（`0x14de6`），下面板「賞賜某人／那一樣(2-5):」、`0x115e(2, 5)`。右側面板字格以外逐像素、
+// 字格有墨、標題與列的字色、下面板與游標相同。查看→6.物品（`0x17b64`）共用同一張表，下面板「請按任一鍵」，
+// 那一格同樣比過。
+func TestZZGiftItemAskMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	// 玉璽一件（第 0 列才有字）、兵書一件、寶刀兩件；件數錯開，「%2d」那一欄才看得出來。
+	master := b.base + uint32(int(b.me)*state.MasterRecordSize)
+	b.o.SetByte(addr(master+14), 1)
+	b.o.SetByte(addr(master+15), 1)
+	b.o.SetByte(addr(master+16), 2)
+	g := b.game(t)
+	cards := 0
+	b.o.OnCall(cardFn, func(*oracle.Oracle) { cards++ })
+	b.press(t, "君主", "7\r")
+	b.press(t, "賞賜那一郡的將軍", "4\r")
+	b.press(t, "賞賜那一位", fmt.Sprintf("%d\r", b.at))
+	b.o.Drain()
+	b.o.TypeBoth("1\r")
+	waitBoot(t, b.o, "人物卡", 200_000_000, func() bool { return cards > 0 })
+	waitBootScan(t, b.o, "請按任一鍵查看物品表", 100_000_000)
+	ask, shot, tr := b.press(t, "那一樣", " ")
+	if ask != [2]int{2, 5} {
+		t.Errorf("「那一樣」原版問 %v，remake 2-5", ask)
+	}
+	x := g.PickRoster(b.at, game.PickServing, game.PickByLoyalty)[0]
+	v := ui.View{Sel: b.at, Treasury: &ui.TreasuryPanel{Faction: b.me},
+		Prompt: i18n.Sf("ask.gift", ui.NameField(i18n.PersonName(x.Name))), Input: tr.input()}
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, v)
+	v.Input = ui.InputCursor{}
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, v)
+	treasuryText := []textArea{{432, 52, 24, 1, 5}, {416, 68, 26, 5, 5}, {424, 300, 24, 4, -1}}
+	compareTreasury := func(name string, shot []uint8, cv, plain *ui.Canvas, tr cursorTrack) {
+		t.Helper()
+		comparePanels(t, name, shot, cv, plain, tr, 1, treasuryText...)
+		// 標題洋紅 13、五列黃 14：比每一行第一個有墨點的顏色。
+		for _, line := range []struct{ x, y, cols int }{{432, 52, 24}, {416, 68, 26}, {416, 84, 26}, {416, 100, 26}, {416, 116, 26}, {416, 132, 26}} {
+			ink := func(pix func(x, y int) int) int {
+				for y := line.y; y < line.y+16; y++ {
+					for xx := line.x; xx < line.x+line.cols*8; xx++ {
+						if v := pix(xx, y); v != 5 {
+							return v
+						}
+					}
+				}
+				return -1
+			}
+			o := ink(func(x, y int) int { return int(shot[y*scrW+x] & 15) })
+			m := ink(func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) })
+			if o != m {
+				t.Errorf("%s：物品表 (%d,%d) 那一行原版字色 %d、remake %d", name, line.x, line.y, o, m)
+			}
+		}
+	}
+	compareTreasury("那一樣", shot, cv, plain, tr)
+
+	// 收掉賞賜物品，改走查看→6.物品。
+	b.press(t, "不選物品", "\r")
+	b.press(t, "不選那一位", "\r")
+	b.press(t, "不選那一郡", "\r")
+	b.press(t, "查看", "1\r")
+	tables := 0
+	b.o.OnCall(addr(itemTableFn), func(*oracle.Oracle) { tables++ })
+	b.o.Drain()
+	b.o.TypeBoth("6\r")
+	waitBoot(t, b.o, "查看物品", 300_000_000, func() bool { return tables > 0 })
+	waitCursorShown(t, b.o, b.tr, "查看物品")
+	shot, tr = append([]uint8(nil), b.o.IndexedEGASize(scrW, scrH)...), *b.tr
+	v = ui.View{Sel: b.at, Treasury: &ui.TreasuryPanel{Faction: b.me}, Prompt: i18n.S("msg.anyKey"), Input: tr.input()}
+	cv = ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, v)
+	v.Input = ui.InputCursor{}
+	plain = ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, v)
+	compareTreasury("查看物品", shot, cv, plain, tr)
+}

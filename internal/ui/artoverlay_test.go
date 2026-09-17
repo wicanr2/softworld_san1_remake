@@ -90,6 +90,7 @@ func TestArtSessionDrawsWhatThePlayerNeeds(t *testing.T) {
 		{"分頁（內容區）", View{PageTitle: "測試", Page: []string{"第一行", "第二行"}},
 			artPageX0, artPageY0, artPageX1, artPageY1},
 		{"結局（下面板）", View{Over: true}, 408, 292, 632, 372},
+		{"君主物品表（右側面板）", View{Treasury: &TreasuryPanel{Faction: g.Player}}, 408, 36, 632, 292},
 	}
 	for _, c := range cases {
 		got := draw(c.v)

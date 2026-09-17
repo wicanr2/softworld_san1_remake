@@ -59,6 +59,8 @@ type app struct {
 	// afterCard 是人物資料卡按任意鍵收掉之後要接著做的事（查看再問
 	// 「檢視那位」、賜物接著列物品表）。
 	afterCard func()
+	// treasuryWait 為真時查看→物品的物品表在等一鍵（`0x17b97`）。
+	treasuryWait bool
 	// cancel 是挑選清單或數字輸入被空 Enter／Esc 收掉時要接著做的事
 	// （賞賜物品的「那一位」收掉回到「那一郡」）；nil 表示照一般規則收。
 	cancel func()
@@ -270,6 +272,13 @@ func (a *app) Update() error {
 		a.updateRoster()
 		return nil
 	}
+	if a.treasuryWait {
+		if anyKeyPressed() {
+			a.treasuryWait, a.view.Treasury, a.view.Prompt = false, nil, ""
+			a.dirty = true
+		}
+		return nil
+	}
 	if a.view.HasCard || a.view.Atlas != 0 {
 		if anyKeyPressed() {
 			a.view.HasCard, a.view.Atlas, a.view.AtlasBubble = false, 0, nil
@@ -288,14 +297,14 @@ func (a *app) Update() error {
 				inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))) {
 		a.cancel = nil
 		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
-		a.view.Page = nil
+		a.view.Page, a.view.Treasury = nil, nil
 		next()
 		a.dirty = true
 		return nil
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
-		a.view.Prompt, a.view.Page = "", nil
+		a.view.Prompt, a.view.Page, a.view.Treasury = "", nil, nil
 		a.dirty = true
 		return nil
 	}
@@ -668,8 +677,14 @@ func (a *app) begin(cat, item byte) {
 		a.view.SetPage(ui.TerritoryList(g, s.Player))
 		closeMenu()
 	case cat == '1' && item == '6':
-		a.view.SetPage(ui.TreasuryList(g, s.Player))
+		// 查看→物品（`0x17b64`）：右側面板畫君主物品表、下面板「請按任一鍵」、等一鍵回選單。
 		closeMenu()
+		if a.art == nil {
+			a.view.SetPage(ui.TreasuryList(g, s.Player))
+			break
+		}
+		a.view.Treasury, a.treasuryWait = &ui.TreasuryPanel{Faction: s.Player}, true
+		a.view.Prompt = t("msg.anyKey")
 
 	// ---- 2. 軍事 ----
 	case cat == '2' && item == '1':
@@ -901,28 +916,33 @@ func (a *app) giftWho(r *game.GiftRound, pref int) {
 	}, back)
 }
 
-// giftPick 列出君主物品表、問賞哪一件（`0x1d1e5`：2–5，沒有那一件重問）。
-// 送完排道謝與卡片，收掉之後回到「賞賜那一位」。
+// giftPick 是賞賜物品的「那一樣」（`0x1d1ad`）：右側面板是君主物品表（`0x14de6`），下面板
+// 「賞賜某人／那一樣(2-5):」——範圍字樣在提示裡——`0x115e(2, 5)` 減一就是寶物（1 兵書 … 4 駿馬）；
+// 那一件是 0 件重問（`0x1d21a`），取消回到「賞賜那一位」。送完排道謝與卡片，收掉之後回到「賞賜那一位」。
 func (a *app) giftPick(r *game.GiftRound, pref, gi int) {
-	a.view.SetPage(ui.TreasuryList(a.s.G, a.s.Player))
+	if a.art != nil {
+		a.view.Treasury = &ui.TreasuryPanel{Faction: a.s.Player}
+	} else {
+		a.view.SetPage(ui.TreasuryList(a.s.G, a.s.Player))
+	}
 	again := func() { a.giftWho(r, pref) }
-	then := func(what int) {
+	name := ""
+	if x := a.s.G.General(gi); x != nil {
+		name = ui.NameField(i18n.PersonName(x.Name))
+	}
+	a.askBare(tf("ask.gift", name), 2, 5, func(n int) {
+		what := game.Treasure(n - 1)
 		f := a.s.G.Faction(a.s.Player)
 		if f == nil || f.Treasury[what] <= 0 {
 			a.giftPick(r, pref, gi)
 			return
 		}
-		a.view.Page = nil
-		a.apply(game.GiftOrder{At: r.At, Target: gi, What: game.Treasure(what), Round: r})
+		a.view.Page, a.view.Treasury = nil, nil
+		a.apply(game.GiftOrder{At: r.At, Target: gi, What: what, Round: r})
 		a.afterBubbles = again
-	}
-	a.pickFrom(t("ask.gift"), []pickItem{
-		{t("tre.book"), int(game.TreasureBook), then},
-		{t("tre.blade"), int(game.TreasureBlade), then},
-		{t("tre.beauty"), int(game.TreasureBeauty), then},
-		{t("tre.horse"), int(game.TreasureHorse), then},
 	})
 	a.cancel = func() {
+		a.view.Treasury = nil
 		a.view.Prompt = t("msg.cancel")
 		again()
 	}

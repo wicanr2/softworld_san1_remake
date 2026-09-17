@@ -1928,6 +1928,28 @@
       }
     },
     {
+      "id": "treasury-panel",
+      "title": "君主物品表（0x14de6）畫在右側面板；賞賜物品的「那一樣(2-5):」與查看→物品照原版",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/20"
+      ],
+      "note": "`TestZZGiftItemAskMatchesTheOriginal` 「那一樣」與查看物品兩格：面板字格以外逐像素、字格有墨、標題與列的字色、下面板與游標相同；拿掉 remake 物品表的反向對照會紅。得到玉璽事件（`0x15181`）那一條沒接。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/ui/treasury.go"
+        ],
+        "pattern": "func DrawTreasuryPanel"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

@@ -100,6 +100,8 @@ type View struct {
 	Roster *RosterPick
 	// PrefPick 非 nil 時右側面板是「那一郡」的挑郡清單（`DrawPrefPick`）。
 	PrefPick *PrefPick
+	// Treasury 非 nil 時右側面板是君主物品表（`DrawTreasuryPanel`）。
+	Treasury *TreasuryPanel
 
 	// Atlas 不是 0 時，原版素材畫面整張換成那個郡的地理誌（場地圖與
 	// 通道編號，`DrawArtAtlas`），按任意鍵回來；AtlasBubble 是主事者那一句。
@@ -146,8 +148,8 @@ func DrawSession(c *Canvas, g *game.State, log []string, v View) {
 // 領土列表）要的空間比訊息列多。
 //
 // **框延伸到畫面右緣**：領土列表中文就要 60 格、英文 67 格，停在地圖區
-//（44 格）會把最後幾欄截掉。原版素材畫面的分頁也是蓋掉右側面板
-//（`docs/spec/014` §3.3），兩個畫面同一個做法。
+// （44 格）會把最後幾欄截掉。原版素材畫面的分頁也是蓋掉右側面板
+// （`docs/spec/014` §3.3），兩個畫面同一個做法。
 //
 // 清底色要用 `FillRect`：畫空白字元沒有墨水，等於沒清，地圖會從底下透出來。
 func drawPage(c *Canvas, title string, lines []string, top int) {
@@ -497,12 +499,12 @@ var subMenuPrompt = map[byte]string{
 }
 
 // subMenuPerLine 是原版斷行的例外：「軍事」一行一項
-//（`1.調動軍隊\n2.發動戰役\n3.運送錢糧\n請下命令:`），兩項其實塞得下。
+// （`1.調動軍隊\n2.發動戰役\n3.運送錢糧\n請下命令:`），兩項其實塞得下。
 // 其餘八類都是「塞得下就接在同一行」。
 var subMenuPerLine = map[byte]int{'2': 1}
 
 // SubMenuLines 把一類的子選單排成原版下面板上的樣子
-//（`docs/spec/014` §2.2）：`編號.名稱`、項目之間一個半形空白、塞得下
+// （`docs/spec/014` §2.2）：`編號.名稱`、項目之間一個半形空白、塞得下
 // 就接在同一行，最後一行是提示字。cols 是一行幾格。
 //
 // **中文照這個規則排出來與原版字串逐行相同**（`TestSubMenuLinesMatchTheOriginal`），
@@ -540,7 +542,7 @@ func SubMenuLines(key byte, items []Command, cols, rows int) []string {
 // MenuKey 是子選單第 i 項的按鍵。
 //
 // **第十項是 `0` 不是 `:`。** 鍵盤只送得進 `0`–`9`
-//（`cmd/san1` 的 `press`），而 `byte('1'+i)` 到第十項會算出 `:`——
+// （`cmd/san1` 的 `press`），而 `byte('1'+i)` 到第十項會算出 `:`——
 // 那一項就永遠按不動，而且畫面上看起來完全正常。
 func MenuKey(i int) byte {
 	if i >= 9 {
