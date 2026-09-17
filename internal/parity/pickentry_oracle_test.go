@@ -1580,4 +1580,20 @@ func TestZZMainPromptMatchesTheOriginal(t *testing.T) {
 		t.Errorf("打「4」之後原版的游標在 (%d,%d)，該在 (%d,%d)", trEcho.X, trEcho.Y, tr.X+8, tr.Y)
 	}
 	compareLower(t, "回顯 4", echo, render(prompt+"4", trEcho.input()), render(prompt+"4", ui.InputCursor{}), trEcho)
+
+	// 不耗回合那一條（Enter 收下「4」進內政子選單 → 空 Enter 取消）走完，
+	// 原版清訊息、重印提示再問一次（`0x1766d`）。
+	for _, k := range []string{"\r", "\r"} {
+		b.o.Drain()
+		b.o.TypeBoth(k)
+		if err := b.o.Run(4_000_000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	waitBoot(t, b.o, "取消之後再問一次", 100_000_000, func() bool {
+		return (*b.asks)[len(*b.asks)-1] == [2]int{0, 9}
+	})
+	waitCursorShown(t, b.o, b.tr, "取消之後")
+	again, trAgain := append([]uint8(nil), b.o.IndexedEGASize(scrW, scrH)...), *b.tr
+	compareLower(t, "取消之後的主提示", again, render(prompt, trAgain.input()), render(prompt, ui.InputCursor{}), trAgain)
 }

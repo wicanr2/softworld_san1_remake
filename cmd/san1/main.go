@@ -259,6 +259,12 @@ func (a *app) Update() error {
 		if at := a.s.AdvanceToHuman(0); at != 0 {
 			a.view.Sel, a.view.Status = at, true
 			a.mainAsk(at)
+		} else if at := a.s.Waiting(); at != 0 && a.view.Prompt == "" &&
+			a.roster == nil && a.fortSpot == nil && !a.view.HasCard && a.view.Atlas == 0 {
+			// **不耗回合的命令做完就要再問一次**：原版的主迴圈每一輪都清訊息、
+			// 重印提示（`0x1766d`）。留著上一句訊息時先不問，等玩家按鍵——
+			// 原版那一句後面跟著 `0x1058:0xe80`。
+			a.mainAsk(at)
 		}
 		a.dirty = true
 		return nil
@@ -472,9 +478,10 @@ func (a *app) press(k byte) {
 		title, items := ui.SubMenu(k)
 		if items == nil {
 			if k == '0' {
-				// 原版的「0.狀態」：上面板換成郡的資料（`docs/spec/014` §2.1）。
+				// 原版的「0.狀態」：上面板換成郡的資料，**什麼字都不印**
+				// （`0x17706` → `0x32fb:0x70(郡)`，`docs/spec/014` §2.1）。
 				a.view.Status = true
-				a.view.Prompt = t("msg.statusHere")
+				a.view.Prompt = ""
 			} else {
 				a.view.Prompt = tf("msg.notYet", commandName(k))
 			}

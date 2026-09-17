@@ -501,7 +501,6 @@
   "msg.slotEmpty": "%d.（空き）",
   "msg.slotUsed": "%d. %s　%d 年 %d 月",
   "msg.spoils": "%s の宝物はすべて勝者のものになりました",
-  "msg.statusHere": "この州郡の状況は右上に出ています（コマンド消費なし）",
   "msg.treasuryEmpty": "宝物庫は空です。冬に各州郡から貢ぎ物が届き、領地が多いほど増えます。",
   "msg.treasuryFull": "金庫が一杯です\nもう売れません",
   "msg.turnOf": "手番",

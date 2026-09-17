@@ -501,7 +501,6 @@
   "msg.slotEmpty": "%d. (empty)",
   "msg.slotUsed": "%d. %s  %d/%d",
   "msg.spoils": "%s's treasures all went to the victor",
-  "msg.statusHere": "This prefecture's status is in the top-right panel (free)",
   "msg.treasuryEmpty": "The treasury is empty. Prefectures send tribute in winter; the more land, the more tribute.",
   "msg.treasuryFull": "Sorry, the treasury is full\nCannot sell more",
   "msg.turnOf": "Now acting",

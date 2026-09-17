@@ -501,7 +501,6 @@
   "msg.slotEmpty": "%d. （空）",
   "msg.slotUsed": "%d. %s　%d 年 %d 月",
   "msg.spoils": "%s 的寶物盡歸戰勝方",
-  "msg.statusHere": "本郡狀態就在右上角（不耗指令）",
   "msg.treasuryEmpty": "寶庫是空的。冬季各州郡會進貢，領地越多貢品越多。",
   "msg.treasuryFull": "抱歉, 您的金庫已滿\n不能再賣了",
   "msg.turnOf": "輪到",

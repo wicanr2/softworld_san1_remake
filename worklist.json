@@ -2050,7 +2050,7 @@
       "docs": [
         "docs/spec/014"
       ],
-      "note": "`TestZZMainPromptMatchesTheOriginal` 下面板與游標 (544,316)、打 4 的回顯相同。子選單那一層 remake 還是按一鍵（登記在 §4 差異表）。",
+      "note": "`TestZZMainPromptMatchesTheOriginal` 下面板與游標 (544,316)、打 4 的回顯、取消之後重印提示都相同（#97）。`0.狀態` 只換上面板、不印字。子選單那一層 remake 還是按一鍵（登記在 §4 差異表）。",
       "verify": {
         "kind": "test",
         "pkg": "./internal/parity",
