@@ -605,18 +605,30 @@ type PlotOrder struct {
 	At, To int
 	What   Plot
 	Envoy  int
+
+	// Plan 非 nil 時照玩家那幾問的完整計畫下（出使的郡、要打的郡、我方的郡，`PlotPlan`）；
+	// To／Envoy 不用。
+	Plan *PlotPlan
 }
 
 func (o PlotOrder) Prefecture() int { return o.At }
 func (o PlotOrder) Apply(g *State, by state.FactionID) error {
-	ok, err := g.UsePlot(o.At, o.To, o.What, o.Envoy, by)
+	envoy := o.Envoy
+	var ok bool
+	var err error
+	if o.Plan != nil {
+		envoy = o.Plan.Envoy
+		ok, err = g.UsePlotPlan(o.At, o.What, *o.Plan, by)
+	} else {
+		ok, err = g.UsePlot(o.At, o.To, o.What, o.Envoy, by)
+	}
 	if err == nil && g.playerCommand(by) && o.What != PlotJointAttack {
 		// `0x2c962`／`0x2c9ae` 等：使者回來在上格報成敗。
 		key := "bub.plotFailed"
 		if ok {
 			key = "bub.plotWorked"
 		}
-		g.say(g.General(o.Envoy), true, false, t_(key), o.At, 0x2c962)
+		g.say(g.General(envoy), true, false, t_(key), o.At, 0x2c962)
 	}
 	return err
 }

@@ -47,3 +47,21 @@ func TestInputCursorSitsAfterTheLastLine(t *testing.T) {
 		t.Errorf("第 %d 個節拍該是第 1 格，得到 %d", CursorTicksPerFrame*7+1, got)
 	}
 }
+
+// TestMessageLinesWrapLikeTheOriginal 釘住訊息常式的排法：一行剛好寫滿，游標立刻換行，
+// 緊接的換行字元再換一行（「<偽書使疑>派細作到那一郡」24 格，原版「(1-42):」在第三行）。
+func TestMessageLinesWrapLikeTheOriginal(t *testing.T) {
+	got := MessageLines("<偽書使疑>派細作到那一郡\n(1-42):", 24)
+	want := []string{"<偽書使疑>派細作到那一郡", "", "(1-42):"}
+	if len(got) != len(want) {
+		t.Fatalf("排成 %q，該是 %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("排成 %q，該是 %q", got, want)
+		}
+	}
+	if got := MessageLines("儲存進度\n(1-6):", 24); len(got) != 2 {
+		t.Errorf("沒寫滿的行不該多一行：%q", got)
+	}
+}

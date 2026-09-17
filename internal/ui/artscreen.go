@@ -581,7 +581,7 @@ func drawArtLower(c *Canvas, log []string, v View, subLower bool,
 		if msg != "" {
 			// 原版是**兩行**（「新君主主公,請到(41)」／「南海下您的命令:」），
 			// 一句話折過去，不是兩則訊息。
-			lines = append(lines, cells.Wrap(msg, w)...)
+			lines = append(lines, MessageLines(msg, w)...)
 		}
 	}
 	if len(lines) > artLowerRows {
@@ -1127,4 +1127,23 @@ func DrawTitleLayer(c *Canvas, ts *TitleScreen, frame int, label string, labelIn
 			x += w * CellW
 		}
 	}
+}
+
+// MessageLines 照原版訊息常式（`0x33d8:0xcc0`）把一段字排成行：換行字元換行、放不下就折；
+// **一行剛好寫滿，游標立刻移到下一行**（`0x34c3c`：寫完一個字右移，超過右緣就換行），
+// 所以寫滿之後緊接的換行字元會多出一行空白，寫滿結尾的游標也在下一行開頭。
+// 「<偽書使疑>派細作到那一郡\n(1-42):」剛好 24 格，原版的「(1-42):」在第三行。
+func MessageLines(text string, cols int) []string {
+	var out []string
+	for _, par := range strings.Split(text, "\n") {
+		lines := []string{""}
+		if par != "" {
+			lines = cells.Wrap(par, cols)
+		}
+		if n := len(lines); cols > 0 && n > 0 && cells.Width(lines[n-1]) == cols {
+			lines = append(lines, "")
+		}
+		out = append(out, lines...)
+	}
+	return out
 }

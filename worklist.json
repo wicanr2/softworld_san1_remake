@@ -1861,6 +1861,28 @@
       }
     },
     {
+      "id": "plot-questions",
+      "title": "五種計略的問法：先挑郡（一到三問）再挑使者，每一問收哪些郡照原版；訊息寫滿一行立刻換行",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/30",
+        "docs/spec/014"
+      ],
+      "note": "`TestZZPlotPickMatchesTheOriginal` 偽書使疑兩問、遠交近攻三問畫面與字色逐郡相同；驅虎吞狼、策反人民、聯合出兵的問法照碼寫，沒有實拍；計略下完的三張表沒有從這條路對拍。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "cmd/san1/main.go"
+        ],
+        "pattern": "func \\(a \\*app\\) plotFlow"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

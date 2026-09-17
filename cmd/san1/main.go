@@ -813,12 +813,7 @@ func (a *app) begin(cat, item byte) {
 
 	// ---- 8. 謀略 ----
 	case cat == '8':
-		plot := game.Plot(item - '0')
-		a.askRoster(t("ask.envoy"), sel, game.PickServing, game.PickByCharm, func(gi int) {
-			a.askNeighbour(t("ask.plotAt"), false, func(to int) {
-				a.run(game.PlotOrder{At: sel, To: to, What: plot, Envoy: gi})
-			})
-		}, nil)
+		a.plotFlow(sel, game.Plot(item-'0'))
 
 	default:
 		a.view.Prompt = t("msg.noSuchItem")
@@ -1006,6 +1001,13 @@ func adviceTargetOf(o game.Order) game.AdviceTarget {
 	case game.HeadhuntOrder:
 		return game.AdviceTarget{Target: v.Target}
 	case game.PlotOrder:
+		if p := v.Plan; p != nil {
+			to := p.At
+			if v.What == game.PlotJointAttack {
+				to = p.Strike
+			}
+			return game.AdviceTarget{Target: p.Envoy, To: to, What: v.What}
+		}
 		return game.AdviceTarget{Target: v.Envoy, To: v.To, What: v.What}
 	}
 	return game.AdviceTarget{}
@@ -1819,4 +1821,91 @@ func (a *app) moveTroops(sel int) {
 		return
 	}
 	next(sel)
+}
+
+// plotFlow 是計略（類別 8）的問法（`docs/spec/014` §4.4）：每一種先用挑郡清單問郡、有的問兩三個，
+// 最後才用挑人清單（模式 2、鍵 3 魅力）問使者；任何一格取消印「取消」收掉這道命令。
+//
+//	驅虎吞狼 `0x2caf8`：出使那一郡（有主、不是自己）→ 驅使攻打那一郡（出使郡的鄰郡，有主、不是自己也不是出使郡的主人）
+//	遠交近攻 `0x2c3de`：出使那一郡（有主、不是自己，而且鄰郡的鄰郡有自己的郡）→ 聯合攻打那一郡（出使郡的鄰郡，
+//	         有主、不是自己也不是出使郡的主人，而且鄰接自己的郡）→ 聯合我方那一郡（攻打郡的鄰郡裡自己的）
+//	偽書使疑 `0x2cf16`／策反人民 `0x2d41a`：派細作到那一郡（有主、不是自己）
+//	聯合出兵 `0x2d93c`：從我方那一郡出兵（自己的）→ 聯合攻打那一郡（鄰郡，有主、不是自己）→
+//	         聯合我方那一郡合攻（攻打郡的鄰郡裡自己的、不是出兵那一郡；一個都沒有印「無法聯合出兵」）
+func (a *app) plotFlow(sel int, plot game.Plot) {
+	g := a.s.G
+	home := g.Prefecture(sel)
+	if home == nil {
+		return
+	}
+	mine := func(id int) bool {
+		q := g.Prefecture(id)
+		return q != nil && q.Owned() && q.Owner == home.Owner
+	}
+	enemy := func(id int) bool {
+		q := g.Prefecture(id)
+		return q != nil && q.Owned() && q.Owner != home.Owner
+	}
+	neighbours := func(id int, ok func(int) bool) bool {
+		q := g.Prefecture(id)
+		if q == nil {
+			return false
+		}
+		for _, n := range q.Neighbours {
+			if ok(n) {
+				return true
+			}
+		}
+		return false
+	}
+	cancel := func() { a.view.Prompt = t("msg.giftCancel") }
+	envoy := func(prompt string, plan game.PlotPlan) {
+		a.askRoster(prompt, sel, game.PickServing, game.PickByCharm, func(gi int) {
+			plan.Envoy = gi
+			a.run(game.PlotOrder{At: sel, What: plot, Plan: &plan})
+		}, cancel)
+	}
+	switch plot {
+	case game.PlotForgery, game.PlotIncite:
+		key := map[game.Plot]string{game.PlotForgery: "plot.forge", game.PlotIncite: "plot.incite"}[plot]
+		a.askPref(t(key+".at"), enemy, func(at int) {
+			envoy(t(key+".envoy"), game.PlotPlan{At: at})
+		}, cancel)
+	case game.PlotTigerWolf:
+		a.askPref(t("plot.tiger.at"), enemy, func(at int) {
+			a.askPref(t("plot.tiger.strike"), func(id int) bool {
+				return enemy(id) && g.Adjacent(at, id) && g.Prefecture(id).Owner != g.Prefecture(at).Owner
+			}, func(strike int) {
+				envoy(t("plot.tiger.envoy"), game.PlotPlan{At: at, Strike: strike})
+			}, cancel)
+		}, cancel)
+	case game.PlotFarNear:
+		a.askPref(t("plot.far.at"), func(id int) bool {
+			return enemy(id) && neighbours(id, func(n int) bool { return neighbours(n, mine) })
+		}, func(at int) {
+			a.askPref(t("plot.far.strike"), func(id int) bool {
+				return enemy(id) && g.Adjacent(at, id) && g.Prefecture(id).Owner != g.Prefecture(at).Owner &&
+					neighbours(id, mine)
+			}, func(strike int) {
+				a.askPref(t("plot.far.ours"), func(id int) bool { return mine(id) && g.Adjacent(strike, id) },
+					func(ours int) {
+						envoy(t("plot.far.envoy"), game.PlotPlan{At: at, Strike: strike, Ours: ours})
+					}, cancel)
+			}, cancel)
+		}, cancel)
+	case game.PlotJointAttack:
+		a.askPref(t("plot.joint.from"), mine, func(from int) {
+			a.askPref(t("plot.joint.strike"), func(id int) bool { return enemy(id) && g.Adjacent(from, id) },
+				func(strike int) {
+					aid := func(id int) bool { return mine(id) && id != from && g.Adjacent(strike, id) }
+					if !neighbours(strike, aid) {
+						a.view.Prompt = t("plot.joint.none")
+						return
+					}
+					a.askPref(t("plot.joint.aid"), aid, func(ours int) {
+						a.run(game.PlotOrder{At: sel, What: plot, Plan: &game.PlotPlan{Ours: from, Strike: strike, OursAid: ours}})
+					}, cancel)
+				}, cancel)
+		}, cancel)
+	}
 }

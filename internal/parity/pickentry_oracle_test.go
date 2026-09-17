@@ -594,3 +594,132 @@ func TestZZPrefPickMatchesTheOriginal(t *testing.T) {
 		return q != nil && p != nil && g.Adjacent(b.at, to) && q.Owned() && q.Owner != p.Owner
 	}, shot, tr)
 }
+
+// TestZZPlotPickMatchesTheOriginal 計略的問法（Issue #83）：偽書使疑「派細作到那一郡」→
+// 「派那一位去遊說」，遠交近攻「出使那一郡」→「聯合攻打那一郡」→「聯合我方那一郡」（盤面走得到的
+// 那幾問）。每一問的挑郡清單字色逐郡、面板字格以外逐像素、下面板與游標相同。
+func TestZZPlotPickMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	// 計略選單要有軍師（`0x2c241`：諸侯記錄 offset 6），而且軍師或君主在這一郡。把一位部將擺成
+	// 軍師、謀略壓到 50——勸諫要 RND(5)＋80 小於軍師謀略才出來，50 永遠不會。
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	lord := int(b.o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
+	chief := -1
+	for _, i := range b.people {
+		if i != lord {
+			chief = i
+			break
+		}
+	}
+	rec := b.base + uint32(nMas+nSta+chief*state.GeneralRecordSize)
+	b.o.SetByte(addr(rec+17), uint8(state.StatusChief))
+	b.o.SetByte(addr(rec+9), 50)
+	b.o.SetWord(addr(b.base+uint32(int(b.me)*state.MasterRecordSize+6)), uint16(chief))
+	g := b.game(t)
+	home := g.Prefecture(b.at)
+	mine := func(id int) bool { q := g.Prefecture(id); return q != nil && q.Owned() && q.Owner == home.Owner }
+	enemy := func(id int) bool { q := g.Prefecture(id); return q != nil && q.Owned() && q.Owner != home.Owner }
+	nb := func(id int, ok func(int) bool) bool {
+		for _, n := range g.Prefecture(id).Neighbours {
+			if ok(n) {
+				return true
+			}
+		}
+		return false
+	}
+	pref := func(name, prompt string, valid func(int) bool, shot []uint8, tr cursorTrack) {
+		t.Helper()
+		pp := &ui.PrefPick{}
+		for id := 1; id <= 42; id++ {
+			pp.Valid[id] = valid(id)
+		}
+		p := prompt + i18n.Sf("pick.range", 1, 42)
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp, Input: tr.input()})
+		plain := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(plain, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp})
+		comparePanels(t, name, shot, cv, plain, tr, 1, prefText...)
+		bad := 0
+		for id := 1; id <= 42; id++ {
+			x0, y0 := 432+(id-1)/14*64, 60+(id-1)%14*16
+			first := func(pix func(x, y int) int) int {
+				for y := y0; y < y0+16; y++ {
+					for x := x0; x < x0+48; x++ {
+						if v := pix(x, y); v != 1 {
+							return v
+						}
+					}
+				}
+				return -1
+			}
+			if first(func(x, y int) int { return int(shot[y*scrW+x] & 15) }) != first(func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) }) {
+				bad++
+				if bad <= 4 {
+					t.Logf("%s：郡 %d 字色不同", name, id)
+				}
+			}
+		}
+		if bad != 0 {
+			t.Errorf("%s：%d 郡的字色不同", name, bad)
+		}
+	}
+	pick := func(valid func(int) bool) int {
+		for id := 1; id <= 42; id++ {
+			if valid(id) {
+				return id
+			}
+		}
+		return 0
+	}
+
+	b.press(t, "計略", "8\r")
+	_, shot, tr := b.press(t, "偽書使疑", "3\r")
+	pref("派細作到那一郡", i18n.S("plot.forge.at"), enemy, shot, tr)
+	at := pick(enemy)
+	if at == 0 {
+		t.Fatal("沒有別人的郡")
+	}
+	ask, shot, tr := b.press(t, "派細作", fmt.Sprintf("%d\r", at))
+	list := g.PickRoster(b.at, game.PickServing, game.PickByCharm)
+	var idx []int
+	for _, x := range list {
+		idx = append(idx, x.Index)
+	}
+	p := &ui.RosterPick{List: idx, Key: game.PickByCharm}
+	if lo, hi := ui.RosterRange(p); ask != [2]int{lo, hi} {
+		t.Errorf("使者清單：原版問 %v，remake %d-%d", ask, lo, hi)
+	}
+	v := ui.View{Sel: b.at, Roster: p, Prompt: i18n.S("plot.forge.envoy") + i18n.Sf("pick.range", 1, len(idx)), Input: tr.input()}
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, v)
+	v.Input = ui.InputCursor{}
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, v)
+	comparePanels(t, "派那一位去遊說", shot, cv, plain, tr, 1)
+
+	// 空 Enter 取消（原版印「取消」、延遲、回主命令），再走遠交近攻。
+	b.press(t, "取消使者", "\r")
+	b.press(t, "計略", "8\r")
+	farAt := func(id int) bool { return enemy(id) && nb(id, func(n int) bool { return nb(n, mine) }) }
+	_, shot, tr = b.press(t, "遠交近攻", "2\r")
+	pref("出使那一郡", i18n.S("plot.far.at"), farAt, shot, tr)
+	at = pick(farAt)
+	if at == 0 {
+		t.Log("這個盤面沒有遠交近攻出使得到的郡，後兩問不比")
+		return
+	}
+	strike := func(id int) bool {
+		return enemy(id) && g.Adjacent(at, id) && g.Prefecture(id).Owner != g.Prefecture(at).Owner && nb(id, mine)
+	}
+	_, shot, tr = b.press(t, "出使", fmt.Sprintf("%d\r", at))
+	pref("聯合攻打那一郡", i18n.S("plot.far.strike"), strike, shot, tr)
+	st := pick(strike)
+	if st == 0 {
+		t.Log("出使郡沒有可以聯合攻打的鄰郡，第三問不比")
+		return
+	}
+	ours := func(id int) bool { return mine(id) && g.Adjacent(st, id) }
+	_, shot, tr = b.press(t, "聯合攻打", fmt.Sprintf("%d\r", st))
+	pref("聯合我方那一郡", i18n.S("plot.far.ours"), ours, shot, tr)
+}
