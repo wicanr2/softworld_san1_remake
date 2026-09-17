@@ -15,6 +15,11 @@ type RosterPick struct {
 	List []int
 	Key  game.PickKey
 	Page int
+
+	// Multi 為真是多選清單（`0x18286`，調動軍隊）：外框 `SIDEE`，Marked[i] 為真的那一列
+	// 在 (424, 84＋16i) 印白 15 的「*」（`0x18453`）。
+	Multi  bool
+	Marked []bool
 }
 
 // RosterPageRows 是一頁幾列（`0x181d3`：`cmp $0xc`）。
@@ -48,7 +53,11 @@ func DrawRosterPick(c *Canvas, a *ArtScreen, g *game.State, p *RosterPick) {
 	bg := assets.EGAPalette[rosterBG]
 	c.FillRect(rosterX0, rosterY0, rosterX1+1, rosterY1+1, bg)
 	if a != nil && a.havePanel {
-		drawSideFrame(c, a.pickBox, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1)
+		box := a.pickBox
+		if p.Multi {
+			box = a.multiBox
+		}
+		drawSideFrame(c, box, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1)
 	}
 	if len(p.List) == 0 {
 		c.DrawTextPx(rosterEmptyX, rosterEmptyY, t("pick.none"), assets.EGAPalette[rosterHeadInk])
@@ -66,6 +75,9 @@ func DrawRosterPick(c *Canvas, a *ArtScreen, g *game.State, p *RosterPick) {
 			continue
 		}
 		y := rosterRowY + i*CellH
+		if p.Multi && n < len(p.Marked) && p.Marked[n] {
+			c.DrawTextPx(rosterEmptyX, y, "*", assets.EGAPalette[rosterHeadInk])
+		}
 		lead, name, tail := RosterRow(x, n, p.Key)
 		px := rosterHeadX + c.DrawTextPx(rosterHeadX, y, lead, assets.EGAPalette[rosterRowInk])
 		px += c.DrawTextPx(px, y, name, assets.EGAPalette[rosterNameInk])

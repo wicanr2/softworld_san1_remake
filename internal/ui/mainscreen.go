@@ -98,6 +98,8 @@ type View struct {
 
 	// Roster 非 nil 時右側面板是「挑一位將軍」的清單（`DrawRosterPick`）。
 	Roster *RosterPick
+	// PrefPick 非 nil 時右側面板是「那一郡」的挑郡清單（`DrawPrefPick`）。
+	PrefPick *PrefPick
 
 	// Atlas 不是 0 時，原版素材畫面整張換成那個郡的地理誌（場地圖與
 	// 通道編號，`DrawArtAtlas`），按任意鍵回來；AtlasBubble 是主事者那一句。

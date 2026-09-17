@@ -119,15 +119,30 @@ func (b *pickBoard) press(t *testing.T, name, keys string) ([2]int, []uint8, cur
 
 // comparePanels 比右側面板與下面板：字格（8×16）比有沒有墨（字模不接原版），
 // 其餘像素逐點相同；游標那一格逐像素另比。
-func comparePanels(t *testing.T, name string, orig []uint8, cv, plain *ui.Canvas, tr cursorTrack, style int) {
+// textArea 是一塊 8×16 字格：左上角、欄列數、紙色（−1 表示取下面板的紙色）。
+type textArea struct{ x0, y0, cols, rows, bg int }
+
+// rosterText 是挑人清單的字格：表頭、十二列、多選的「*」那一欄、下面板。
+var rosterText = []textArea{
+	{440, 62, 23, 1, 1},
+	{440, 84, 23, 12, 1},
+	{424, 84, 1, 12, 1},
+	{424, 300, 24, 4, -1},
+}
+
+// prefText 是挑郡清單的字格：表頭、三欄 × 14 列、下面板。
+var prefText = []textArea{
+	{424, 44, 25, 1, 1},
+	{432, 60, 24, 14, 1},
+	{424, 300, 24, 4, -1},
+}
+
+func comparePanels(t *testing.T, name string, orig []uint8, cv, plain *ui.Canvas, tr cursorTrack, style int, text ...textArea) {
 	t.Helper()
 	org := func(x, y int) int { return int(orig[y*scrW+x] & 15) }
 	mine := func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) }
-	type area struct{ x0, y0, cols, rows, bg int }
-	text := []area{
-		{440, 62, 23, 1, 1},  // 表頭
-		{440, 84, 23, 12, 1}, // 十二列
-		{424, 300, 24, 4, -1},
+	if len(text) == 0 {
+		text = rosterText
 	}
 	inText := func(x, y int) bool {
 		for _, a := range text {
@@ -403,4 +418,179 @@ func TestZZCardPromptMatchesTheOriginal(t *testing.T) {
 	b.press(t, "檢視將軍", "3\r")
 	shot, tr = card("檢視那位 1", "1\r")
 	compareLower(t, "查看的卡片", shot, render(i18n.S("msg.anyKey"), tr.input()), render(i18n.S("msg.anyKey"), ui.InputCursor{}), tr)
+}
+
+// TestZZMovePickMatchesTheOriginal 走軍事→調動軍隊（Issue #80）：從那一郡移出 → 調到那一郡
+// （把鄰郡擺成無主）→ 多選清單選第 1、2 位 → 金 → 米。多選清單兩格（沒選／選了一位）
+// 與金那一問的畫面、上限相同；改選第 2、3 位、送金 1、米 10，搬完之後三張表逐位元組相同。
+func TestZZMovePickMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
+	rec := b.base + uint32(nMas+b.at*state.PrefectureRecordSize)
+	to := 0
+	for k := 45; k <= 54 && to == 0; k++ {
+		if n := int(b.o.Byte(addr(rec + uint32(k)))); n >= 1 && n <= 42 {
+			to = n
+		}
+	}
+	if to == 0 {
+		t.Fatal("南海沒有鄰郡")
+	}
+	b.o.SetByte(addr(b.base+uint32(nMas+to*state.PrefectureRecordSize+30)), 0xFF)
+	done := 0
+	b.o.OnCall(addr(0x18fc2), func(*oracle.Oracle) { done++ }) // `0x1938a` 搬完回來
+	before := b.o.Bytes(addr(b.base), nMas+nSta+nGen)
+	g := b.game(t)
+
+	b.press(t, "軍事", "2\r")
+	b.press(t, "調動軍隊", "1\r")
+	b.press(t, "從那一郡移出", fmt.Sprintf("%d\r", b.at))
+	ask0, shot0, tr0 := b.press(t, "調到那一郡", fmt.Sprintf("%d\r", to))
+	list := g.PickRoster(b.at, game.PickServing, game.PickByStatus)
+	ds := uint32(b.o.DSReg()) * 16
+	lst := b.o.Word(addr(ds + 0xa79c))
+	var mine []int
+	for i, x := range list {
+		mine = append(mine, x.Index)
+		if o := int(b.o.Word(oracle.Addr{Seg: lst, Off: uint16(0x58c + 2*i)})); o != x.Index {
+			t.Fatalf("多選名單第 %d 位：原版 %d，remake %d", i+1, o, x.Index)
+		}
+	}
+	people, goldMax, riceMax := g.MoveLimits(b.at, to)
+	ask1, shot1, tr1 := b.press(t, "選第 1 位", "1\r")
+	// 再按一次 1 取消選取，改選第 2、3 位：搬走主事者（君主）會讓原版在重整守將清單時
+	// 問「選擇新任太守」（`0x1d6ed`），那是另一條路（CONTEXT R82）。
+	b.press(t, "取消第 1 位", "1\r")
+	b.press(t, "選第 2 位", "2\r")
+	b.press(t, "選第 3 位", "3\r")
+	askGold, shotGold, trGold := b.press(t, "選好了", "\r")
+	askRice, _, _ := b.press(t, "金", "1\r")
+	t.Logf("清單 %d 位 %v（上限 %d 位）；原版問 %v %v 金 %v 米 %v；remake 金上限 %d 米上限 %d",
+		len(mine), ask0, people, ask0, ask1, askGold, askRice, goldMax, riceMax)
+	if askGold[1] != goldMax || askRice[1] != riceMax {
+		t.Errorf("金米上限：原版 %d／%d，remake %d／%d", askGold[1], askRice[1], goldMax, riceMax)
+	}
+	b.o.Drain()
+	b.o.TypeBoth("10\r")
+	if err := b.o.RunUntil(oracle.NewCond("搬運", func(*oracle.Oracle) bool { return done > 0 }), oracle.Budget(600_000_000)); err != nil {
+		dumpScreen(t, b.o, "move-stuck")
+		t.Fatalf("等搬運：%v", err)
+	}
+	after := b.o.Bytes(addr(b.base), nMas+nSta+nGen)
+
+	for _, c := range []struct {
+		name   string
+		marked []bool
+		ask    [2]int
+		shot   []uint8
+		tr     cursorTrack
+	}{
+		{"多選清單", make([]bool, len(mine)), ask0, shot0, tr0},
+		{"選了第 1 位", append([]bool{true}, make([]bool, len(mine)-1)...), ask1, shot1, tr1},
+	} {
+		p := &ui.RosterPick{List: mine, Key: game.PickBySoldiers, Multi: true, Marked: c.marked}
+		if lo, hi := ui.RosterRange(p); lo != c.ask[0] || hi != c.ask[1] {
+			t.Errorf("%s：原版問 %v，remake %d-%d", c.name, c.ask, lo, hi)
+		}
+		v := ui.View{Sel: b.at, Roster: p, Prompt: i18n.S("ask.moveWho") + i18n.Sf("pick.range", 1, len(mine)), Input: c.tr.input()}
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, v)
+		v.Input = ui.InputCursor{}
+		plain := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(plain, b.art, g, nil, v)
+		comparePanels(t, c.name, c.shot, cv, plain, c.tr, 1)
+	}
+	goldPrompt := i18n.S("ask.moveWho") + i18n.Sf("pick.range", 1, len(mine)) + i18n.Sf("ask.moveCount", 2) +
+		i18n.S("ask.sendGold") + i18n.Sf("pick.range", 0, askGold[1])
+	render := func(p string, in ui.InputCursor) *ui.Canvas {
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, Input: in})
+		return cv
+	}
+	compareLower(t, "金那一問", shotGold, render(goldPrompt, trGold.input()), render(goldPrompt, ui.InputCursor{}), trGold)
+
+	// 搬完的盤面：remake 從同一個盤面把第 2、3 位、金 1、米 10 搬過去。
+	sc, err := state.DecodeTables(state.Slot("001"), before[:nMas], before[nMas:nMas+nSta], before[nMas+nSta:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	g2, err := game.New(sc, b.me, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g2.Move(b.at, to, mine[1:3], 1, 10, b.me); err != nil {
+		t.Fatalf("remake 的調動軍隊：%v", err)
+	}
+	rm, rs, rg, err := g2.Tables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := append(append(append([]byte{}, rm...), rs...), rg...)
+	t.Logf("原版動到的記錄：%s", changedRecords(before, after, nMas, nSta))
+	if n := diffCount(after, got); n != 0 {
+		t.Fatalf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
+	}
+}
+
+// TestZZPrefPickMatchesTheOriginal 查看→查看那一郡、軍事→發動戰役→攻打那一郡：下面板提示接
+// 「(1-42):」與游標相同（Issue #80）。
+func TestZZPrefPickMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	g := b.game(t)
+	check := func(name, prompt string, valid func(int) bool, shot []uint8, tr cursorTrack) {
+		pp := &ui.PrefPick{}
+		for id := 1; id <= 42; id++ {
+			pp.Valid[id] = valid(id)
+		}
+		p := prompt + i18n.Sf("pick.range", 1, 42)
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp, Input: tr.input()})
+		plain := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(plain, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp})
+		if dir := os.Getenv("SAN1_SHOTS"); dir != "" {
+			savePNG(t, filepath.Join(dir, "remake-pref-"+name+".png"), cv)
+		}
+		comparePanels(t, name, shot, cv, plain, tr, 1, prefText...)
+		// 收得下的郡是黃 14、其餘棕 6：逐郡比那一格的第一個有墨點的顏色。
+		bad := 0
+		for id := 1; id <= 42; id++ {
+			x0, y0 := 432+(id-1)/14*64, 60+(id-1)%14*16
+			ink := func(pix func(x, y int) int) int {
+				for y := y0; y < y0+16; y++ {
+					for x := x0; x < x0+48; x++ {
+						if v := pix(x, y); v != 1 {
+							return v
+						}
+					}
+				}
+				return -1
+			}
+			if o, m := ink(func(x, y int) int { return int(shot[y*scrW+x] & 15) }), ink(func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) }); o != m {
+				bad++
+				if bad <= 4 {
+					t.Logf("%s：郡 %d 原版字色 %d、remake %d", name, id, o, m)
+				}
+			}
+		}
+		if bad != 0 {
+			t.Errorf("%s：%d 郡的字色不同", name, bad)
+		}
+	}
+	b.press(t, "查看", "1\r")
+	ask, shot, tr := b.press(t, "查看那一郡", "1\r")
+	if ask != [2]int{1, 42} {
+		t.Errorf("查看那一郡原版問 %v", ask)
+	}
+	check("查看那一郡", i18n.S("ask.pref"), func(int) bool { return true }, shot, tr)
+	b.press(t, "不看", "\r")
+	b.press(t, "收掉查看", "\r")
+	b.press(t, "軍事", "2\r")
+	b.press(t, "發動戰役", "2\r")
+	_, shot, tr = b.press(t, "從那一郡攻打", fmt.Sprintf("%d\r", b.at))
+	check("攻打那一郡", i18n.S("ask.attack"), func(to int) bool {
+		q, p := g.Prefecture(to), g.Prefecture(b.at)
+		return q != nil && p != nil && g.Adjacent(b.at, to) && q.Owned() && q.Owner != p.Owner
+	}, shot, tr)
 }

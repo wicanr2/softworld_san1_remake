@@ -40,52 +40,62 @@ const MaxGeneralsPerPrefecture = 50
 
 // ---- 2. 軍事 ------------------------------------------------------------
 
-// Move 是「調動軍隊」（說明書 p.19）：把一位將領調到相鄰的己方州郡，
-// 金米可一併隨行。
+// Move 是玩家的「調動軍隊」（`0x18bc8`，`L0`、`[base]`）：把挑好的一份名單調到
+// 相鄰、無主或同一個主人的郡，金米可一併隨行。
 //
-// `[HARD]` **主事者移出之前要先有接手的人。** 手冊寫「諸侯或太守移動後，
-// 需指派新太守治理」——這裡的做法是**擋下來**而不是留下一個沒人治理的郡：
-// 一個安靜地變成無主的郡，在畫面上只看得出顏色變了。
-func (g *State) Move(from, to, generalIndex, gold, rice int, by state.FactionID) error {
+//	名單：多選清單 `0x18286`（模式 2，最多 50 − 目標郡存的現役將數，`0x18d50`）
+//	金／米上限：min(30000 − 目標郡的量, 來源郡的量)（`0x18dc1`／`0x18e37`）
+//	搬運：`0x1938a`，與電腦的移防同一支（`relocateSupplies`）
+//
+// **碼上沒有「主事者要有人接手」的閘門**，君主或太守一起走、把郡搬空都照搬；
+// 主事者由兩郡的重整守將清單（`0x1949e`）重選。
+func (g *State) Move(from, to int, generals []int, gold, rice int, by state.FactionID) error {
 	src, err := g.canOrder(from, by)
 	if err != nil {
 		return err
 	}
 	dst := g.Prefecture(to)
 	// **無主的郡也走得進去**（`0x18ce1`，`L0`）：原版建目的地清單時，
-	// 鄰郡的所屬是 `0xFF` 就直接放行，其餘要與本郡同屬。郡的歸屬是
-	// 從人物表導出來的，所以搬進去就等於占領——電腦諸侯的「出兵」
-	// 有四分之一的機率走的正是這一條（`docs/mechanics/70-ai` §2.13.6）。
-	if dst == nil || (dst.Owned() && dst.Owner != by) {
+	// 鄰郡的所屬是 `0xFF` 就直接放行，其餘要與本郡同屬。
+	if dst == nil || (dst.Owned() && dst.Owner != src.Owner) {
 		return ErrNotYours
 	}
 	if !g.Adjacent(from, to) {
 		return ErrNotAdjacent
 	}
-	x := g.General(generalIndex)
-	if x == nil || x.Faction != by || x.Location != from {
+	if len(generals) == 0 || len(generals) > MaxGeneralsPerPrefecture-g.StoredActiveGenerals(to) {
 		return ErrUnknownUnit
+	}
+	for _, i := range generals {
+		x := g.General(i)
+		if x == nil || x.Location != from || int(x.Status) > 3 {
+			return ErrUnknownUnit
+		}
 	}
 	if gold < 0 || rice < 0 {
 		return fmt.Errorf("game: 隨行的金米不能是負數")
 	}
-	if src.Gold < gold {
+	if gold > min(RelocateCap-dst.Gold, src.Gold) {
 		return ErrNoGold
 	}
-	if src.Rice < rice {
+	if rice > min(RelocateCap-dst.Rice, src.Rice) {
 		return ErrNoRice
 	}
-	if x.Status.Governs() && g.successorFor(from, x.Index, by) == nil {
-		return ErrNoGovernor
-	}
-	if x.Status.Governs() {
-		succ := g.successorFor(from, x.Index, by)
-		succ.Status = state.StatusGovernor
-		x.Status = state.StatusOfficer
-	}
-	relocateSupplies(g, src, dst, []int{x.Index}, to, gold, rice)
+	relocateSupplies(g, src, dst, generals, to, gold, rice)
+	g.RefreshGarrison(from)
+	g.RefreshGarrison(to)
 	g.endTurn(src)
 	return nil
+}
+
+// MoveLimits 是調動軍隊那三問的上限：最多幾位、金、米（`0x18d50`／`0x18dc1`／`0x18e37`）。
+func (g *State) MoveLimits(from, to int) (people, gold, rice int) {
+	src, dst := g.Prefecture(from), g.Prefecture(to)
+	if src == nil || dst == nil {
+		return 0, 0, 0
+	}
+	return MaxGeneralsPerPrefecture - g.StoredActiveGenerals(to),
+		min(RelocateCap-dst.Gold, src.Gold), min(RelocateCap-dst.Rice, src.Rice)
 }
 
 // RelocateCap 是移防之後目標郡的金／米上限（`0x19413`／`0x1942c` 的
@@ -96,8 +106,8 @@ const RelocateCap = 30000
 
 // Relocate 是**電腦諸侯**的移防（`docs/spec/007`，`0x1938a`，`L0`）。
 //
-// 與 `Move`（玩家的「調動軍隊」）刻意分開：那一支一次一位、而且要有人
-// 接手治理；這一支把整份出征名單搬過去，允許把來源郡搬空——郡的歸屬在
+// 與 `Move`（玩家的「調動軍隊」）搬運是同一支，閘門不同：玩家那一條要相鄰、
+// 有人數與金米上限；這一支把整份出征名單搬過去，允許把來源郡搬空——郡的歸屬在
 // 下一個郡回合由 `0x1e394` 從人物表重算，搬空的郡就此變成無主
 // （`docs/mechanics/70-ai` §「搬進去之後」）。
 //

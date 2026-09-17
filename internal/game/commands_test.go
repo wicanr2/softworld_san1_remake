@@ -7,25 +7,33 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
-// TestMoveNeedsSuccessor 釘住「主事者移出之前要先有接手的人」。
-//
-// **一個安靜地變成無主的郡，在畫面上只看得出顏色變了。**
-func TestMoveNeedsSuccessor(t *testing.T) {
+// TestMoveTakesTheWholeList 釘住玩家的調動軍隊（`0x18bc8` → `0x1938a`）：一次搬一份名單，
+// 沒有「主事者要有人接手」的閘門——唯一的主事者也能走，郡搬空由重整守將清單處理。
+func TestMoveTakesTheWholeList(t *testing.T) {
 	g := newGame(t)
 	// 董卓（勢力 5）在弘農(14)，鄰郡洛陽(15) 也是他的。
 	dz := g.Lord(5)
 	if dz == nil {
 		t.Fatal("找不到董卓")
 	}
-	// 先把弘農其他人搬走，讓董卓變成唯一的守將。
+	var list []int
 	for _, x := range g.Garrison(dz.Location) {
-		if x.Index != dz.Index {
-			x.Location = 15
+		list = append(list, x.Index)
+	}
+	if len(list) < 2 {
+		t.Skip("弘農不到兩位")
+	}
+	from := dz.Location
+	if err := g.Move(from, 15, list, 0, 0, 5); err != nil {
+		t.Fatalf("整份名單連君主一起調走回 %v", err)
+	}
+	for _, i := range list {
+		if g.General(i).Location != 15 {
+			t.Errorf("槽號 %d 還在郡 %d", i, g.General(i).Location)
 		}
 	}
-
-	if err := g.Move(dz.Location, 15, dz.Index, 0, 0, 5); !errors.Is(err, ErrNoGovernor) {
-		t.Errorf("唯一的主事者移出回 %v，應該是 ErrNoGovernor", err)
+	if n := g.StoredActiveGenerals(from); n != 0 {
+		t.Errorf("搬空之後來源郡存的現役將數是 %d", n)
 	}
 }
 
@@ -45,7 +53,7 @@ func TestMoveCarriesGoldAndRice(t *testing.T) {
 		t.Skip("弘農沒有可以移動的非主事者")
 	}
 	g0, r0, dg0, dr0 := src.Gold, src.Rice, dst.Gold, dst.Rice
-	if err := g.Move(from, to, mover.Index, 100, 200, 5); err != nil {
+	if err := g.Move(from, to, []int{mover.Index}, 100, 200, 5); err != nil {
 		t.Fatal(err)
 	}
 	if src.Gold != g0-100 || src.Rice != r0-200 {
@@ -62,7 +70,7 @@ func TestMoveCarriesGoldAndRice(t *testing.T) {
 // TestMoveNeedsAdjacency 釘住「調動只能到相鄰的己方州郡」。
 func TestMoveNeedsAdjacency(t *testing.T) {
 	g := newGame(t)
-	if err := g.Move(14, 6, 0, 0, 0, 5); err == nil {
+	if err := g.Move(14, 6, []int{0}, 0, 0, 5); err == nil {
 		t.Error("跨郡調動一個不存在的將領竟然成功")
 	}
 	// 6 上黨與 14 弘農都是董卓的，但相不相鄰要看資料。
@@ -71,7 +79,7 @@ func TestMoveNeedsAdjacency(t *testing.T) {
 	}
 	for _, x := range g.Garrison(14) {
 		if x.Faction == 5 && !x.Status.Governs() {
-			if err := g.Move(14, 6, x.Index, 0, 0, 5); !errors.Is(err, ErrNotAdjacent) {
+			if err := g.Move(14, 6, []int{x.Index}, 0, 0, 5); !errors.Is(err, ErrNotAdjacent) {
 				t.Errorf("調到不相鄰的郡回 %v，應該是 ErrNotAdjacent", err)
 			}
 			return

@@ -269,25 +269,31 @@ func (g *State) ApplyAll(orders []Order, by state.FactionID) (int, error) {
 
 // ---- 其餘的命令型別 ------------------------------------------------------
 
+// MoveOrder 是玩家的「調動軍隊」：Generals 是多選清單挑的那一份（`game.Move`）。
 type MoveOrder struct {
-	At, To, General int
-	Gold, Rice      int
+	At, To     int
+	Generals   []int
+	Gold, Rice int
 }
 
 func (o MoveOrder) Prefecture() int { return o.At }
 func (o MoveOrder) Apply(g *State, by state.FactionID) error {
 	g.commandScene(o.At, assets.SceneMove, by) // `0x18f99`
-	return g.Move(o.At, o.To, o.General, o.Gold, o.Rice, by)
+	return g.Move(o.At, o.To, o.Generals, o.Gold, o.Rice, by)
 }
 func (o MoveOrder) Describe(g *State) string {
-	return tf("log.move", byWhom(g, o.General),
+	lead := -1
+	if len(o.Generals) > 0 {
+		lead = o.Generals[0]
+	}
+	return tf("log.move", byWhom(g, lead),
 		prefName(g, o.At), prefName(g, o.To))
 }
 
 // RelocateOrder 是**電腦諸侯**的移防（`docs/spec/007`，`L0`）。
 //
-// 與玩家的「調動軍隊」（`MoveOrder`／`0x18ce1`）是兩支不同的碼，
-// 三處不一樣，所以分成兩個命令型別而不是加旗標：
+// 與玩家的「調動軍隊」（`MoveOrder`／`0x18bc8`）搬運共用 `0x1938a`，呼叫端的閘門不同，
+// 所以分成兩個命令型別而不是加旗標：
 //
 //	整份出征名單一起搬（`0x1938a` 的迴圈），不是一位
 //	目標郡的金米加完溢位時夾 30000，來源郡減完夾 0

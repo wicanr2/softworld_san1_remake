@@ -101,8 +101,9 @@ type app struct {
 	cursorTick int
 	// roster 非 nil 表示正在「挑一位將軍」（`0x18024`）；rosterPage 是原版
 	// `DS:0x66b2` 那一格：上一次停在第幾頁，下一次開清單接著用。
-	roster     *rosterEntry
-	rosterPage int
+	roster          *rosterEntry
+	rosterPage      int
+	rosterPageMulti int
 
 	// c2 是 `DATA2`：主選單要重讀劇本，得留著。
 	c2 *assets.Container
@@ -625,7 +626,10 @@ func (a *app) begin(cat, item byte) {
 
 	// ---- 1. 查看（不耗指令）----
 	case cat == '1' && item == '1':
-		a.askOwn(t("ask.pref"), func(id int) { a.view.Sel = id })
+		// 查看那一郡（`0x17c49`）：1–42 都收，選了右側面板換成那一郡的資料。
+		a.askPref(t("ask.pref"), func(int) bool { return true }, func(id int) {
+			a.view.Sel, a.view.Status = id, true
+		}, nil)
 	case cat == '1' && item == '3':
 		// 挑選清單留著（結尾那一句只在沒有清單時收選單）——先前這裡
 		// 多收一次，「檢視那位」的名單畫不出來。
@@ -657,13 +661,13 @@ func (a *app) begin(cat, item byte) {
 
 	// ---- 2. 軍事 ----
 	case cat == '2' && item == '1':
-		a.askGeneral(t("ask.moveWho"), func(gi int) {
-			a.askNeighbour(t("ask.moveTo"), true, func(to int) {
-				a.run(game.MoveOrder{At: sel, To: to, General: gi})
-			})
-		})
+		a.moveTroops(sel)
 	case cat == '2' && item == '2':
-		a.askNeighbour(t("ask.attack"), false, func(to int) {
+		// 攻打那一郡（`0x18a42`）：相鄰、有主、主人不同；取消印「取消」。
+		a.askPref(t("ask.attack"), func(to int) bool {
+			q, p := g.Prefecture(to), g.Prefecture(sel)
+			return q != nil && p != nil && g.Adjacent(sel, to) && q.Owned() && q.Owner != p.Owner
+		}, func(to int) {
 			var force []int
 			var keep *game.General
 			for _, x := range g.Garrison(sel) {
@@ -699,7 +703,7 @@ func (a *app) begin(cat, item byte) {
 							})
 						})
 				})
-		})
+		}, func() { a.view.Prompt = t("msg.giftCancel") })
 	case cat == '2' && item == '3':
 		a.transport()
 
@@ -1751,33 +1755,68 @@ func loadSmallFace(bigFont string) *font.Face {
 	return f
 }
 
-// transport 是運送錢糧（`0x1904a`）：「從那一郡送出」→「送到那一郡」自己的其他郡 →
-// 「金(0-%d)」→「米(0-%d)」；每一格取消都回到「從那一郡送出」，那一格再取消才收掉。
+// transport 是運送錢糧（`0x18fee`）：主事者是君主本人才問「從那一郡送出」（`0x19019`）→
+// 「送到那一郡」自己的其他郡 →「\n金(0-%d):」→「\n米(0-%d):」（兩問不清訊息，接在前面幾行後面）；
+// 任何一格取消都收掉這道命令（`0x1909e` 回 −1）。
 //
-// ⚠ 原版「從那一郡」收的是任何自己的郡（`0x1905c`：主人等於下令那一郡的主人），
-// remake 的規則層（`game.Transport`）還是「下令的郡送出」，所以這裡只收下令的郡
-// ——規則沒改之前不讓畫面答應做不到的事（`docs/spec/014` §4.3）。
+// ⚠ 原版「從那一郡送出」收的是任何自己的郡，remake 的規則層（`game.Transport`）還是
+// 「下令的郡送出」，所以這裡只收下令的郡（Issue #82）。
 func (a *app) transport() {
 	g, me, at := a.s.G, a.s.Player, a.view.Sel
 	own := func(pref int) bool {
 		p := g.Prefecture(pref)
 		return p != nil && p.Owned() && p.Owner == me
 	}
-	var from func()
-	from = func() {
-		a.askPref(t("ask.sendFrom"), func(pref int) bool { return pref == at }, func(src int) {
-			a.view.Sel = src
-			a.askPref(t("ask.sendTo"), func(to int) bool { return to != src && own(to) }, func(to int) {
-				p := g.Prefecture(src)
-				a.askNumber(t("ask.sendGold"), tf("hint.gold", p.Gold), p.Gold, func(gold int) {
-					a.askNumber(t("ask.sendRice"), tf("hint.rice", p.Rice), p.Rice, func(rice int) {
-						a.run(game.TransportOrder{At: src, To: to, Gold: gold, Rice: rice})
-					})
-					a.cancel = from
+	to := func(src int) {
+		a.view.Sel = src
+		a.askPref(t("ask.sendTo"), func(to int) bool { return to != src && own(to) }, func(to int) {
+			// 金、米兩問不清訊息（`0x191a3`），接在「送到那一郡(1-42):N」後面。
+			_, goldMax, riceMax := g.MoveLimits(src, to)
+			head := t("ask.sendTo") + tf("pick.range", 1, 42) + strconv.Itoa(to) + t("ask.sendGold")
+			a.askNumber(head, tf("hint.gold", goldMax), goldMax, func(gold int) {
+				riceHead := head + tf("pick.range", 0, goldMax) + strconv.Itoa(gold) + t("ask.sendRice")
+				a.askNumber(riceHead, tf("hint.rice", riceMax), riceMax, func(rice int) {
+					a.run(game.TransportOrder{At: src, To: to, Gold: gold, Rice: rice})
 				})
-				a.cancel = from
-			}, from)
+			})
 		}, nil)
 	}
-	from()
+	// 主事者是君主本人才問「從那一郡送出」（`0x19019`）；否則來源就是這一郡。
+	if gov := g.Governor(at); gov != nil && gov.Status == state.StatusLord {
+		a.askPref(t("ask.sendFrom"), func(pref int) bool { return pref == at }, to, nil)
+		return
+	}
+	to(at)
+}
+
+// moveTroops 是調動軍隊（`0x18bc8`）：主事者是君主時先問「從那一郡移出」（remake 只收
+// 下令的郡，Issue #82）→「調到那一郡」（相鄰、無主或同一個主人）→ 多選「調動那一位」
+// （模式 2、第三欄兵士，最多 50 − 目標郡的現役將數）→「\n共調%d位將軍」接「\n金(0-%d):」
+// →「\n米(0-%d):」；任何一格取消都收掉這道命令。
+func (a *app) moveTroops(sel int) {
+	g := a.s.G
+	next := func(src int) {
+		a.askPref(t("ask.moveTo"), func(to int) bool {
+			q, p := g.Prefecture(to), g.Prefecture(src)
+			return q != nil && p != nil && g.Adjacent(src, to) && (!q.Owned() || q.Owner == p.Owner)
+		}, func(to int) {
+			people, gold, rice := g.MoveLimits(src, to)
+			roster := len(g.PickRoster(src, game.PickServing, game.PickByStatus))
+			a.askRosterMulti(t("ask.moveWho"), src, game.PickServing, game.PickBySoldiers, people, func(list []int) {
+				// 「共調%d位將軍」與金米兩問都不清訊息（`0x18da2`），接在清單那一行後面。
+				head := t("ask.moveWho") + tf("pick.range", 1, roster) + tf("ask.moveCount", len(list)) + t("ask.sendGold")
+				a.askNumber(head, "", gold, func(gd int) {
+					riceHead := head + tf("pick.range", 0, gold) + strconv.Itoa(gd) + t("ask.sendRice")
+					a.askNumber(riceHead, "", rice, func(rc int) {
+						a.run(game.MoveOrder{At: src, To: to, Generals: list, Gold: gd, Rice: rc})
+					})
+				})
+			}, nil)
+		}, nil)
+	}
+	if gov := g.Governor(sel); gov != nil && gov.Status == state.StatusLord {
+		a.askPref(t("ask.moveFrom"), func(pref int) bool { return pref == sel }, next, nil)
+		return
+	}
+	next(sel)
 }

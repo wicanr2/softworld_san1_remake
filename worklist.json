@@ -1839,6 +1839,28 @@
       }
     },
     {
+      "id": "pref-pick-move-multi",
+      "title": "挑郡清單（0x1d4ec）與調動軍隊的多選清單（0x18286）照原版；玩家的調動軍隊一次搬一份名單、沒有接手閘門",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/40"
+      ],
+      "note": "`TestZZPrefPickMatchesTheOriginal` 查看／攻打兩格面板、字色、下面板相同；`TestZZMovePickMatchesTheOriginal` 多選兩格、金那一問、搬完三張表逐位元組相同。來源郡只收下令的郡（#82）；主事者走了的「選擇新任太守」remake 自動挑。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/ui/prefpick.go"
+        ],
+        "pattern": "func DrawPrefPick"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

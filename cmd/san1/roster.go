@@ -18,6 +18,10 @@ type rosterEntry struct {
 	typed  string
 	then   func(gi int)
 	cancel func()
+
+	// thenMulti 非 nil 是多選清單（`0x18286`）：max 是最多幾位。
+	thenMulti func(list []int)
+	max       int
 }
 
 // askRoster 開一份原版的挑人清單：那一郡（mode 決定收誰、key 決定第三欄與排序），
@@ -43,6 +47,26 @@ func (a *app) askRoster(prompt string, pref int, mode game.PickMode, key game.Pi
 	// 上一次停的那一頁（`DS:0x66b2`）；超出這份清單就從頭（`0x18187`–`0x1819e`）。
 	if a.rosterPage >= 0 && a.rosterPage < len(r.pick.List) {
 		r.pick.Page = a.rosterPage
+	}
+	a.pick, a.num, a.menu, a.view.Menu, a.view.Items = nil, nil, 0, "", nil
+	a.roster = r
+	a.showRoster()
+}
+
+// askRosterMulti 是多選清單（`0x18286(提示, 鍵, 郡, 模式, 上限)`）：名單只按行動者鍵排、
+// 鍵只決定第三欄；數字選一位就切換「*」（已選滿上限時不收），空 Enter 選過人就交出
+// 那一份（照名單順序），一位都沒選是取消。頁數另記一格（`DS:0x66b4`）。
+func (a *app) askRosterMulti(prompt string, pref int, mode game.PickMode, key game.PickKey, max int,
+	then func(list []int), cancel func()) {
+	list := a.s.G.PickRoster(pref, mode, game.PickByStatus)
+	r := &rosterEntry{prompt: prompt, cancel: cancel, thenMulti: then, max: max}
+	r.pick.Key, r.pick.Multi = key, true
+	for _, x := range list {
+		r.pick.List = append(r.pick.List, x.Index)
+	}
+	r.pick.Marked = make([]bool, len(r.pick.List))
+	if a.rosterPageMulti >= 0 && a.rosterPageMulti < len(r.pick.List) {
+		r.pick.Page = a.rosterPageMulti
 	}
 	a.pick, a.num, a.menu, a.view.Menu, a.view.Items = nil, nil, 0, "", nil
 	a.roster = r
@@ -105,6 +129,19 @@ func (a *app) updateRoster() {
 		a.showRoster()
 	case inpututil.IsKeyJustPressed(ebiten.KeyEnter), inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter):
 		if r.typed == "" {
+			if r.thenMulti != nil {
+				var chosen []int
+				for i, m := range r.pick.Marked {
+					if m {
+						chosen = append(chosen, r.pick.List[i])
+					}
+				}
+				if len(chosen) > 0 {
+					a.closeRoster()
+					r.thenMulti(chosen)
+					return
+				}
+			}
 			a.closeRoster()
 			if r.cancel != nil {
 				r.cancel()
@@ -114,6 +151,21 @@ func (a *app) updateRoster() {
 		n, _ := strconv.Atoi(r.typed)
 		r.typed = ""
 		if n < lo || n > hi {
+			a.showRoster()
+			return
+		}
+		if r.thenMulti != nil {
+			// `0x184fb`：已選的人數到上限就不切換（連取消選取也不收）。
+			a.rosterPageMulti = r.pick.Page
+			count := 0
+			for _, m := range r.pick.Marked {
+				if m {
+					count++
+				}
+			}
+			if count < r.max {
+				r.pick.Marked[n-1] = !r.pick.Marked[n-1]
+			}
 			a.showRoster()
 			return
 		}
@@ -134,12 +186,23 @@ func (a *app) updateRoster() {
 
 // askPref 是挑郡的數字輸入（`0x1d4ec`：提示接「(1-42):」，不在 ok 裡就重問）。
 func (a *app) askPref(prompt string, ok func(pref int) bool, then func(pref int), cancel func()) {
+	pp := &ui.PrefPick{}
+	for id := 1; id <= 42; id++ {
+		pp.Valid[id] = ok(id)
+	}
 	a.askRange(prompt, 1, 42, func(pref int) {
+		a.view.PrefPick = nil
 		if !ok(pref) {
 			a.askPref(prompt, ok, then, cancel)
 			return
 		}
 		then(pref)
 	})
-	a.cancel = cancel
+	a.view.PrefPick = pp
+	a.cancel = func() {
+		a.view.PrefPick = nil
+		if cancel != nil {
+			cancel()
+		}
+	}
 }

@@ -51,8 +51,11 @@ type ArtScreen struct {
 	cardPanel assets.SideFrame
 	cardFrame [4]*assets.Image
 
-	// pickBox 是選君主那一格下方提示框的拼件（`SIDEA`）。
-	pickBox assets.SideFrame
+	// pickBox 是選君主那一格下方提示框的拼件（`SIDEA`）；multiBox 是多選清單的外框
+	// （`0x18286` 傳樣式 9 → `SIDEE`）。
+	pickBox, multiBox assets.SideFrame
+	// prefBox 是挑郡清單的外框（`0x1d4ec` 傳樣式 8 → `SIDED`）。
+	prefBox assets.SideFrame
 
 	// scenes 是 `SCG30`／`SCG31` 所在的容器（`DATA1`）；`SCG01`–`29` 與肖像
 	// 同在 `DATA3`（`docs/formats/04`）。
@@ -101,6 +104,16 @@ func NewArtScreen(data3, data1 *assets.Container) (*ArtScreen, error) {
 			a.havePanel = false
 		} else {
 			a.pickBox = f
+		}
+		if f, err := assets.LoadSideFrame(data1, 'E'); err != nil {
+			a.havePanel = false
+		} else {
+			a.multiBox = f
+		}
+		if f, err := assets.LoadSideFrame(data1, 'D'); err != nil {
+			a.havePanel = false
+		} else {
+			a.prefBox = f
 		}
 		if f, err := assets.CursorFrames(data1, assets.CursorMain); err == nil {
 			a.cursor = &f
@@ -310,6 +323,9 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	}
 	if v.Roster != nil {
 		DrawRosterPick(c, a, g, v.Roster)
+	}
+	if v.PrefPick != nil {
+		DrawPrefPick(c, a, g, v.PrefPick)
 	}
 	// 人物資料卡蓋掉右側整塊面板（原版畫卡之前先清 (408,36)–(631,291)）。
 	if v.HasCard {
