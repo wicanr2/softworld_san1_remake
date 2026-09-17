@@ -63,6 +63,9 @@ type Screen struct {
 	lords []int
 	saves []save.Info
 
+	// candidates 是選君主那一層的候選，進設難度之後 lords 只剩選中的那一位。
+	candidates []int
+
 	// g 是選君主那一層拿來列候選的局面（肖像、名字、地圖填色都從它取）。
 	g *game.State
 
@@ -277,8 +280,13 @@ func (s *Screen) pickDifficulty(faction int) {
 	for k := 1; k <= max; k++ {
 		s.items = append(s.items, fmt.Sprintf("%d", k))
 	}
+	// 候選清單留著：原版設難度時畫面還是選君主那一頁（`docs/spec/005` §9.4）。
+	s.candidates = s.lords
 	s.lords = []int{faction}
 }
+
+// Candidates 是選君主那一層的候選（諸侯槽號）；設難度那一層畫面要用。
+func (s *Screen) Candidates() []int { return s.candidates }
 
 // pickSave 列出可以讀的進度。
 func (s *Screen) pickSave() {

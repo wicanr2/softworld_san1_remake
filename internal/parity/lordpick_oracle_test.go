@@ -271,3 +271,147 @@ func TestZZCustomLordScreenMatchesTheOriginal(t *testing.T) {
 	}
 	t.Logf("文字區墨點 原版 %v remake %v", inkOrig, inkMine)
 }
+
+// TestZZDifficultyScreenMatchesTheOriginal 把原版開到選君主那一格、選第 1 位，
+// 停在「請設定難度(1-10)」的數字輸入（Issue #67）。原版畫面還是選君主那一頁，
+// 只多了兩處：選中那一位的肖像下緣印玩家序號、提示框換字。比法：
+//
+//   - 名字、編號、提示框與序號那一塊以外：整張逐像素相同（左側年月不比）
+//   - 提示框：淺綠 10 的墨兩邊都有
+//   - 序號：原版「選君主 → 設難度」變了的像素，與 remake「沒序號 → 有序號」變了
+//     的像素，兩邊都有、外框重疊
+func TestZZDifficultyScreenMatchesTheOriginal(t *testing.T) {
+	root := origRoot(t)
+	sc, err := state.LoadScenario(openContainer(t, filepath.Join(root, "DATA2")), state.Slot("001"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	d := bootToLordPick(t, o)
+	before := append([]uint8(nil), o.IndexedEGASize(scrW, scrH)...)
+	o.Drain()
+	o.TypeBoth("1\r")
+	d.waitNum("設難度輸入", 1, 10)
+	after := append([]uint8(nil), o.IndexedEGASize(scrW, scrH)...)
+	dumpScreen(t, o, "difficulty")
+
+	g, err := game.New(sc, 0, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	art, err := ui.NewArtScreen(openContainer(t, filepath.Join(root, "DATA3")),
+		openContainer(t, filepath.Join(root, "DATA1")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fh, err := os.Open("../../fonts/unifont.hex.gz")
+	if err != nil {
+		t.Skipf("沒有字型檔：%v", err)
+	}
+	face, err := font.ParseHexGz(fh, 16)
+	fh.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	render := func(player int, prompt string) *ui.Canvas {
+		var slots []ui.LordPickSlot
+		for f := 0; f < ui.LordPickPerPage; f++ {
+			s := ui.LordPickSlot{Number: f + 1, Faction: f, Lord: g.Lord(state.FactionID(f))}
+			if f == 0 {
+				s.Player = player
+			}
+			slots = append(slots, s)
+		}
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawLordPick(cv, art, g, slots, -1, prompt, 0)
+		return cv
+	}
+	noMark := render(0, "第1位,請選擇(1-16):")
+	cv := render(1, "請設定難度(1-10):")
+	if dir := os.Getenv("SAN1_SHOTS"); dir != "" {
+		savePNG(t, filepath.Join(dir, "remake-difficulty.png"), cv)
+	}
+	idx := func(c color.RGBA) int {
+		for i, p := range assets.EGAPalette {
+			if p == c {
+				return i
+			}
+		}
+		return -1
+	}
+	type box struct{ x0, y0, x1, y1 int }
+	var text []box
+	for i := 0; i < ui.LordPickPerPage; i++ {
+		x, y := 420+68*(i%3), 56+128*(i/3)
+		text = append(text, box{x + 15, y + 83, x + 64, y + 116}, box{x - 3, y + 99, x + 14, y + 116})
+	}
+	prompt := box{423, 331, 624, 348}
+	mark := box{420 + 15, 56 + 72, 420 + 16 + 64, 56 + 90}
+	in := func(b box, x, y int) bool { return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 }
+	bad, first := 0, ""
+	promptOrig, promptMine := 0, 0
+	var origMark, mineMark []int
+	for y := 0; y < scrH; y++ {
+		for x := 72; x < scrW; x++ {
+			i := y*scrW + x
+			op, mp := int(after[i]&15), idx(cv.Img.RGBAAt(x, y))
+			switch {
+			case in(prompt, x, y):
+				if op == 10 {
+					promptOrig++
+				}
+				if mp == 10 {
+					promptMine++
+				}
+				continue
+			case in(mark, x, y):
+				if after[i] != before[i] {
+					origMark = append(origMark, x, y)
+				}
+				if cv.Img.RGBAAt(x, y) != noMark.Img.RGBAAt(x, y) {
+					mineMark = append(mineMark, x, y)
+				}
+				continue
+			}
+			skip := false
+			for _, b := range text {
+				if in(b, x, y) {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+			if op != mp {
+				bad++
+				if first == "" {
+					first = fmt.Sprintf("(%d,%d) 原版 %d remake %d", x, y, op, mp)
+				}
+			}
+		}
+	}
+	if bad != 0 {
+		t.Errorf("框外有 %d 個像素不同，第一個 %s", bad, first)
+	}
+	if promptOrig == 0 || promptMine == 0 {
+		t.Errorf("提示框的墨：原版 %d 點、remake %d 點", promptOrig, promptMine)
+	}
+	bbox := func(p []int) box {
+		b := box{scrW, scrH, -1, -1}
+		for k := 0; k+1 < len(p); k += 2 {
+			b.x0, b.y0 = min(b.x0, p[k]), min(b.y0, p[k+1])
+			b.x1, b.y1 = max(b.x1, p[k]), max(b.y1, p[k+1])
+		}
+		return b
+	}
+	ob, mb := bbox(origMark), bbox(mineMark)
+	if len(origMark) == 0 || len(mineMark) == 0 || ob.x1 < mb.x0 || mb.x1 < ob.x0 || ob.y1 < mb.y0 || mb.y1 < ob.y0 {
+		t.Errorf("玩家序號：原版變了 %d 點 %+v，remake %d 點 %+v", len(origMark)/2, ob, len(mineMark)/2, mb)
+	}
+	t.Logf("框外逐像素相同；提示框墨 原版 %d remake %d；序號 原版 %+v remake %+v", promptOrig, promptMine, ob, mb)
+}

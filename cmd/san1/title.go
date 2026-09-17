@@ -4,6 +4,8 @@ package main
 // 畫面在 `internal/ui`；這一檔只把兩邊接起來。
 
 import (
+	"slices"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
@@ -45,6 +47,24 @@ func (a *app) drawTitle() {
 		ui.DrawNewLordBorn(a.canvas, a.art, m.Game(), cv.Portrait, cv.Name, cv.Color, a.view.Calendar)
 		return
 	}
+	// 設難度：原版留在選君主那一頁，選中的那一位印玩家序號，提示換成
+	// 「請設定難度(1-10)」（`docs/spec/005` §9.4）。remake 用方向鍵選的數字
+	// 接在提示後面（remake 差異）。
+	if m.Stage() == menu.Difficulty && a.art != nil && m.Game() != nil && len(m.Lords()) == 1 {
+		cands, chosen := m.Candidates(), m.Lords()[0]
+		at := slices.Index(cands, chosen)
+		if at >= 0 {
+			slots := a.lordPage(cands, at)
+			for i := range slots {
+				if slots[i].Faction == chosen {
+					slots[i].Player = 1
+				}
+			}
+			prompt := tf("title.difficultyPrompt", len(m.Items())) + m.Items()[m.Sel()]
+			ui.DrawLordPick(a.canvas, a.art, m.Game(), slots, -1, prompt, a.view.Calendar)
+			return
+		}
+	}
 	// 選擇年代：原版不換畫面，直牌與六個按鈕換字（`docs/spec/005` §6.4）。
 	if m.Stage() == menu.Scenario {
 		ui.DrawTitleLayer(a.canvas, a.titleArt, a.titleAnimFrame, m.Title(), ui.ScenarioLabelInk, m.Items(), m.Sel())
@@ -55,9 +75,14 @@ func (a *app) drawTitle() {
 
 // lordPickPage 是選君主那一格現在這一頁的候選（反白那一位所在的那一頁）。
 func (a *app) lordPickPage() []ui.LordPickSlot {
+	return a.lordPage(a.menuScreen.Lords(), a.menuScreen.Sel())
+}
+
+// lordPage 是 lords 裡第 at 位所在的那一頁。
+func (a *app) lordPage(lords []int, at int) []ui.LordPickSlot {
 	m := a.menuScreen
-	g, lords := m.Game(), m.Lords()
-	first := m.Sel() / ui.LordPickPerPage * ui.LordPickPerPage
+	g := m.Game()
+	first := at / ui.LordPickPerPage * ui.LordPickPerPage
 	var out []ui.LordPickSlot
 	for i := first; i < len(lords) && i < first+ui.LordPickPerPage; i++ {
 		f := lords[i]

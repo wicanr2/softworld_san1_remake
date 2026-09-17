@@ -616,6 +616,7 @@
   "title.artPref": "%d.領地:%s",
   "title.artStamina": "%d.體能:%3d",
   "title.artWar": "%d.戰力:%3d",
+  "title.difficultyPrompt": "請設定難度(1-%d):",
   "title.font": "字型",
   "title.fontNote": "remake 用自己的字庫，不內嵌原版字模",
   "title.lordLine": "%d. %s（%d 郡）",

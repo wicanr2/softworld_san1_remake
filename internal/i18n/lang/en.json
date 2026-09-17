@@ -616,6 +616,7 @@
   "title.artPref": "%d.Land:%s",
   "title.artStamina": "%d.Sta:%3d",
   "title.artWar": "%d.War:%3d",
+  "title.difficultyPrompt": "Difficulty (1-%d): ",
   "title.font": "Typeface",
   "title.fontNote": "This remake ships its own font; no original glyphs are embedded",
   "title.lordLine": "%d. %s (%d pref.)",

@@ -1600,6 +1600,27 @@
       }
     },
     {
+      "id": "title-difficulty",
+      "title": "設難度留在選君主那一頁、印玩家序號（0x122ea）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005"
+      ],
+      "note": "`TestZZDifficultyScreenMatchesTheOriginal` 框外逐像素相同、提示框兩邊有墨、序號外框重合。新君主欄那條路原版先問難度（§9.5），remake 的順序未對。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "cmd/san1/title.go"
+        ],
+        "pattern": "title\\.difficultyPrompt"
+      }
+    },
+    {
       "id": "title-scenario-pick",
       "title": "選擇年代那一層照原版換字（0x11c7e）",
       "group": "畫面",

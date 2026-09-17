@@ -41,6 +41,9 @@ type LordPickSlot struct {
 	Lord     *game.General
 	Portrait int
 	Label    string
+	// Player 不是 0 時這一位已經被第 Player 位玩家選走：肖像下緣印 `%2d`，
+	// 兩倍寬、灰 7 黑邊，在 (格 x＋16, 格 y＋73)（`0x12291`，`docs/spec/005` §9.4）。
+	Player int
 }
 
 // DrawLordPick 畫選君主那一格。slots 是這一頁的候選（最多六位）；sel 是
@@ -86,6 +89,12 @@ func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, 
 					col = a.fills[s.Faction%len(a.fills)].At(px, py)
 				}
 				c.setClipped(px, py, ink(int(col)))
+			}
+		}
+		if s.Player > 0 {
+			px := x + 16
+			for _, r := range fmt.Sprintf("%2d", s.Player) {
+				px += c.DrawRuneOutlinedPx(px, y+73, r, ink(7), black, 2, 1)
 			}
 		}
 		nx := x - 2
