@@ -1005,3 +1005,64 @@ func DrawTitleList(c *Canvas, ts *TitleScreen, title string, items []string, sel
 		c.DrawText(col+2, row+3+i, cells.Truncate(s, cols-4), ink)
 	}
 }
+
+// 主選單以外的幾層（選擇年代…）：原版**不換畫面**，直牌換字、六個按鈕上的
+// 字整條重寫（`0x11c7e` 選擇年代，`docs/spec/005` §6.4）。
+//
+//	直牌  0x33d8:0x1d4e(80, 242+24k, 字, 字色, …)   主選單字色 11、選擇年代 15
+//	按鈕  0x33d8:0x104e(x, y, 字串, 字色 14, 底 3)  x ∈ {168, 392}、y ∈ {224, 276, 329}
+//
+// 按鈕那一條是**照字串逐字排**：半形 8、全形 16，從按鈕左緣 +16 起，字串尾端
+// 的空白蓋掉上一層的字（每條 20 個半形格），按鈕圖本身不重貼。
+const (
+	// TitleLayerTextX／Y 是按鈕上那一條字相對按鈕左上角的位置。
+	TitleLayerTextX = 16
+	TitleLayerTextY = 9
+	// TitleLayerTextCells 是一條有幾個半形格。
+	TitleLayerTextCells = 20
+	// TitleLayerTextBG／FG 是那一條的底色與字色。
+	TitleLayerTextBG = 3
+	TitleLayerTextFG = 14
+	// ScenarioLabelInk 是選擇年代那一層直牌的字色（`0x11c9a`）。
+	ScenarioLabelInk = 15
+)
+
+// DrawTitleLayer 畫主選單的其他一層：frame 是小飾框的畫格、labelInk 是直牌字色、
+// items 是六個按鈕上的字串（原樣排）、sel 是 remake 反白的那一項（−1 不反白）。
+//
+// 直牌的字只有全是全形字時才畫（英日版直排放不下，留白，remake 差異）。
+func DrawTitleLayer(c *Canvas, ts *TitleScreen, frame int, label string, labelInk byte, items []string, sel int) {
+	bg := ts.bg
+	if frame >= 0 && frame < len(ts.frames) && ts.frames[frame] != nil {
+		bg = ts.frames[frame]
+	}
+	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		bg.RGBA(), image.Point{}, draw.Src)
+	if artAllWide(label) {
+		DrawMenuLabel(c, label, assets.EGAPalette[labelInk&15])
+	}
+	for i, b := range assets.MenuButtons() {
+		x, y := b[0]+TitleLayerTextX, b[1]+TitleLayerTextY
+		c.FillRect(x, y, x+TitleLayerTextCells*CellW, y+CellH, assets.EGAPalette[TitleLayerTextBG])
+		if i >= len(items) {
+			continue
+		}
+		ink := assets.EGAPalette[TitleLayerTextFG]
+		if i == sel {
+			ink = assets.EGAPalette[15]
+		}
+		for _, r := range items[i] {
+			w := cells.RuneWidth(r)
+			if w == 0 {
+				continue
+			}
+			if x+w*CellW > b[0]+TitleLayerTextX+TitleLayerTextCells*CellW {
+				break
+			}
+			if r != ' ' {
+				c.DrawRuneWidePx(x, y, r, ink, 1)
+			}
+			x += w * CellW
+		}
+	}
+}

@@ -197,10 +197,11 @@ func (s *Screen) menuPick(i int) {
 	case 0:
 		s.stage, s.pick = Scenario, 0
 		s.title = i18n.S("title.pickScenario")
+		// 六個按鈕上的字照原版的字串（`DS:5ee1`…`DS:5e78`，含字間的空白，
+		// `docs/spec/005` §6.4）。
 		s.items = nil
 		for k := 1; k <= 6; k++ {
-			d := game.ScenarioStart[state.Slot(fmt.Sprintf("%03d", k))]
-			s.items = append(s.items, fmt.Sprintf("%d. %s", k, d.Format(game.ChineseEra)))
+			s.items = append(s.items, i18n.Sf(fmt.Sprintf("title.scenario%d", k)))
 		}
 	case 1:
 		s.pickSave()

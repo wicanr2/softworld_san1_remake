@@ -74,6 +74,7 @@
 
 | 畫面 | 狀態 | 證據 |
 |---|---|---|
+| 選擇年代 | 接上 | 原版不換畫面：直牌換「選擇年代」（字色 15）、六個按鈕換原版字串（字 14、底 3、逐字排）。`TestZZScenarioPickMatchesTheOriginal` 124 個字格墨相同、其餘 257,757 點逐格相同，反對照差 16 格（`docs/spec/005` §6.4，Issue #66）|
 | 主選單的六個項目 | 接上行為 | 片頭 → 主選單 → 選年代／選君主／選難度／載入／音樂欣賞／離開（版面 remake 自排，內容是原版資料）|
 | 主選單 | 接上 | 五張圖全部就位：`MENU0A`(40,27)／`MENU0B`(320,27) 各 **100%**、`MENU1`(56,215) 95.3%、`MENU2` 六格（x ∈ {152,376}、y ∈ {215,267,320}）93–97%、`MENU3`(576,320) 91%——不足的都是字寫在上面。字的落點也照原版量（中文字距 24、直牌四個字橫向拉兩倍寬）：**扣掉字與小飾框那格動畫之後 245,170 點逐點相同**。基準畫面另拿 DOSBox-X 交叉驗證過，兩個實作逐點相同（`docs/playtest/03`）|
 | 遊戲主畫面 | 接上 | 八張 `MAINMAP*` 的底圖：上方與**下方**花邊、最右直條各 **100%**，左直條 94.7%、地圖區 70.8%（差的是後來蓋上去的）；肖像 `F###.FAC` 在 (536,116) **100%**、肖像框 `FBRD` 四塊各 **100%**。右側兩塊面板的花邊外框是 `SIDE*` 拼件平鋪（`SIDEB`／`SIDED`），與原版 **12,544 點逐點相同**；面板上每一列的位置與字色也是量的（`docs/spec/005` §2.1）|
@@ -400,6 +401,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 分頁捲得動、長句折行不截字 | 完成 | — | both | `TestPageScrollsToTheEnd`、`TestTacticalReportsAreTranslatedAndFit` | 分頁先前沒有捲動（只放得下十九行，三十天的戰報、一郡五十位將軍讀不到後面），而且把超出寬度的部分截掉——戰報長句截掉的正好是句尾的傷亡數字。改成 ↑↓／PgUp／PgDn 捲動、長句折行（`PageLines`），標題帶位置。（`docs/spec/014`） |
 | 人物資料卡的五個呼叫端：查看的迴圈與 Y/N 門、賞賜物品前後兩張、示範模式與除錯陷阱不做 | 完成 | L1 | base | `TestZZCardTimingsMatchTheOriginal` | 2026-09-17（Issue #59）：`0xf874` 的呼叫端是 `0x17ccb`（查看→3：別人的郡先問「此郡非我軍所有 確定查看(Y/N)」，名單不分勢力，卡片任意鍵之後回到「檢視那位」）、`0x1d183`／`0x1d4d1`（君主→4 賞賜物品：卡 → 「請按任一鍵 查看物品表」→ 物品表 → 那一樣(2-5) → `SCG24.IMG` → 道謝 405 → 再一次卡，`0x1058:0xe80` 延遲或按鍵）、`0x1e336`（示範模式月底的鏡頭：偶數月標郡、奇數月畫隨機一位的卡）、`0xc55d`（調整兵力份額為負的除錯陷阱）。remake：`inspectGeneral` 的 Y/N 門、不分勢力的名單與迴圈；賞賜物品先卡片與提示、任意鍵後物品表分頁、送完 `GiftOrder.Apply` 排道謝＋卡（`game.Bubble.Card`）。沒接：寶物圖 `SCG24.IMG`（場景圖格式未解）、賞完的迴圈、示範模式。（`docs/spec/005`、`docs/re/06`） |
 | 人物資料卡、尋訪找到人、選君主與新君主的肖像畫面 | 完成 | L1 | base | `TestZZPersonCardMatchesTheOriginal`、`TestZZSearchFaceMatchesTheOriginal`、`TestZZLordPickScreenMatchesTheOriginal`、`TestZZCustomLordScreenMatchesTheOriginal` | 2026-09-17（Issue #54）：`0xf7b4` 九個呼叫端裡主畫面這一層的四種畫面接上——查看→武將畫人物資料卡（`0xf874`：灰底、`SIDEC` 外框、`FBRC` 框、名字 32×32、八行資料），玩家尋訪找到人先亮那一位的肖像 (488,88) 再由尋訪者報結果（`Bubble{FaceOnly}`），開新局選君主是一頁六位的肖像、空心框、勢力色塊與編號（`0x124ca`），新君主分配能力畫肖像加框、名字與六行（`0x12df4`）。四張都對原版逐像素比（字模除外），選君主那一格另拿 DOSBox-X 的畫面交叉驗（只差游標）。順手量到：面板清底 `0x27e8` 只清外框裡面；`0x262c` 用樣式 mod 5 挑 `SIDEA`–`E`；文字常式 `0x1d4e` 的「背景」是描邊色；新君主開局的起始值是 18／80／50／50／50（與 spec/013 的範本不同，規則層另開 Issue）。（`docs/spec/005`、`docs/spec/013`） |
+| 選擇年代那一層照原版換字（0x11c7e） | 完成 | L1 | base | present：cmd/san1/title.go 的「DrawTitleLayer」 | 直牌「選擇年代」字色 15、按鈕原版字串逐字排；`TestZZScenarioPickMatchesTheOriginal` 字格墨相同、其餘逐格相同。英日版直牌留白。（`docs/spec/005`） |
 
 ### 多語系
 

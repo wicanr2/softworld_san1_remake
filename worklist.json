@@ -1600,6 +1600,27 @@
       }
     },
     {
+      "id": "title-scenario-pick",
+      "title": "選擇年代那一層照原版換字（0x11c7e）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005"
+      ],
+      "note": "直牌「選擇年代」字色 15、按鈕原版字串逐字排；`TestZZScenarioPickMatchesTheOriginal` 字格墨相同、其餘逐格相同。英日版直牌留白。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "cmd/san1/title.go"
+        ],
+        "pattern": "DrawTitleLayer"
+      }
+    },
+    {
       "id": "battle-lure-flash",
       "title": "主戰場誘敵的特效（0x2b783）",
       "group": "畫面",
