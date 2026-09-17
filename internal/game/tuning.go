@@ -25,6 +25,9 @@ package game
 // 再加一次 `RND(2)`（`add $底,%al` 之前的 `RND(2)`）。186 次對拍
 // 逐次落在 `底`–`底+1` 裡（`docs/playtest/02`）。
 //
+// **只管電腦諸侯那一條。** 玩家的賞賜物品（`0x1d118`，`GiftRound.Gift`）
+// 加的就是這組底、沒有那一擲，忠誠也看截斷前的能力（`docs/mechanics/20` §5.3）。
+//
 // 忠誠的增幅另見 `TreasureLoyaltyGain`。
 func TreasureEffect(t Treasure) (intel, war, charm int) {
 	switch t {

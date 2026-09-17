@@ -510,22 +510,46 @@ type GiftOrder struct {
 	// 沒有「君主要在場」的檢查**——那是說明書給玩家的規則（p.24），
 	// 兩條不是同一組。
 	Auto bool
+
+	// Round 是玩家那一道賞賜物品（`GiftRound`）；送完這一件**不結束**
+	// 這個郡的回合，等 `CloseGift`。nil 表示只送這一件就收掉。
+	Round *GiftRound
 }
 
 func (o GiftOrder) Prefecture() int { return o.At }
+
+// KeepsTurn 為真時 `session.Do` 不把這一道當成郡回合的結束。
+func (o GiftOrder) KeepsTurn() bool { return o.Round != nil }
+
 func (o GiftOrder) Apply(g *State, by state.FactionID) error {
 	if o.Auto {
-		return g.giftTreasure(o.At, o.Target, o.What, by, false)
+		return g.giftTreasureAuto(o.At, o.Target, o.What, by)
 	}
-	g.commandScene(o.At, assets.SceneReward, by) // `0x1d264`
-	err := g.GiftTreasure(o.At, o.Target, o.What, by)
-	if err == nil && g.playerCommand(by) {
+	r := o.Round
+	if r == nil {
+		var err error
+		if r, err = g.OpenGift(o.At, by); err != nil {
+			return err
+		}
+	}
+	if err := g.GiftCheck(r, o.Target, o.What); err != nil {
+		return err
+	}
+	// 選了那一件：先貼 `SCG24.IMG`（`0x1d264`），再扣寶庫、加能力與忠誠。
+	g.commandScene(o.At, assets.SceneReward, by)
+	if err := g.Gift(r, o.Target, o.What); err != nil {
+		return err
+	}
+	if g.playerCommand(by) {
 		// `0x1d4c1` 道謝之後再畫一次受賜者的資料卡（`0x1d4d1`），等鍵。
 		t := g.General(o.Target)
 		g.say(t, true, false, tf("bub.giftThanks", personName(t.Name)), o.At, 0x1d4c1)
 		g.showCard(t)
 	}
-	return err
+	if o.Round == nil {
+		g.CloseGift(r)
+	}
+	return nil
 }
 func (o GiftOrder) Describe(g *State) string {
 	return tf("log.gift", TreasureName(o.What), byWhom(g, o.Target))

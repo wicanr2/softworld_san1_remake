@@ -57,6 +57,9 @@ type app struct {
 	// afterCard 是人物資料卡按任意鍵收掉之後要接著做的事（查看再問
 	// 「檢視那位」、賜物接著列物品表）。
 	afterCard func()
+	// cancel 是挑選清單或數字輸入被空 Enter／Esc 收掉時要接著做的事
+	// （賞賜物品的「那一位」收掉回到「那一郡」）；nil 表示照一般規則收。
+	cancel func()
 
 	// fight 非 nil 表示正在打一場玩家親自指揮的戰役。
 	fight *fight
@@ -263,6 +266,17 @@ func (a *app) Update() error {
 		}
 		return nil
 	}
+	if next := a.cancel; next != nil && (len(a.pick) > 0 || a.num != nil) &&
+		(inpututil.IsKeyJustPressed(ebiten.KeyEscape) || (len(a.pick) > 0 &&
+			(inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
+				inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))) {
+		a.cancel = nil
+		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
+		a.view.Page = nil
+		next()
+		a.dirty = true
+		return nil
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
 		a.view.Prompt, a.view.Page = "", nil
@@ -279,7 +293,7 @@ func (a *app) Update() error {
 		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 			inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
 			n := a.num
-			a.num = nil
+			a.num, a.cancel = nil, nil
 			a.menu, a.view.Menu, a.view.Items = 0, "", nil
 			n.then(n.value)
 			a.dirty = true
@@ -392,7 +406,7 @@ func (a *app) press(k byte) {
 			return
 		}
 		it := a.pick[i]
-		a.pick = nil
+		a.pick, a.cancel = nil, nil
 		it.do(it.id)
 		return
 	}
@@ -434,7 +448,7 @@ func (a *app) askNumber(title, hint string, max int, then func(int)) {
 	if max < 0 {
 		max = 0
 	}
-	a.num = &numEntry{title: title, hint: hint, max: max, then: then}
+	a.num, a.cancel = &numEntry{title: title, hint: hint, max: max, then: then}, nil
 	a.showNumber()
 }
 
@@ -735,17 +749,15 @@ func (a *app) begin(cat, item byte) {
 			{t("auto.self"), int(game.AutoSelf), a.setAutonomy},
 		})
 	case cat == '7' && item == '4':
-		// 原版（`0x1d005`）先問「賞賜那一位」，畫那一位的資料卡、
-		// 「請按任一鍵 查看物品表」，任意鍵之後列君主物品表再問「那一樣」。
-		a.askGeneral(t("ask.giftTo"), func(gi int) {
-			if a.art == nil {
-				a.giftPick(gi)
-				return
-			}
-			a.view.Card, a.view.HasCard = gi, true
-			a.view.Prompt = t("ask.giftItems")
-			a.afterCard = func() { a.giftPick(gi) }
-		})
+		// 原版（`0x1cfd6`）是兩層迴圈：那一郡 → 那一位 → 物品 → 再問那一位；
+		// 空 Enter 回那一郡，再空 Enter 收掉（`docs/spec/005` §9.2）。
+		r, err := g.OpenGift(sel, s.Player)
+		if err != nil {
+			a.view.Prompt = game.ErrorText(err)
+			break
+		}
+		closeMenu()
+		a.giftPref(r)
 	case cat == '7' && item == '5':
 		a.askEnemyGeneral(t("ask.headhunt"), func(gi int) { a.run(game.HeadhuntOrder{At: sel, Target: gi}) })
 
@@ -761,7 +773,7 @@ func (a *app) begin(cat, item byte) {
 	default:
 		a.view.Prompt = t("msg.noSuchItem")
 	}
-	if len(a.pick) == 0 {
+	if len(a.pick) == 0 && a.num == nil {
 		closeMenu()
 	}
 }
@@ -770,11 +782,80 @@ func (a *app) setAutonomy(mode int) {
 	a.run(game.AutonomyOrder{At: a.view.Sel, Mode: game.Autonomy(mode)})
 }
 
-// giftPick 列出君主物品表、問賞哪一件，選了就送給 gi 那一位。
-func (a *app) giftPick(gi int) {
+// giftPref 是「賞賜那一郡的將軍」（`0x1d4ec`：數字 1–42，不在清單裡就
+// 重問）。空 Enter 收掉這道命令：賞出過東西就是這個郡的回合走完，
+// 一件都沒送回主選單（`0x17791`）。
+func (a *app) giftPref(r *game.GiftRound) {
+	done := func() {
+		// 地圖的選取回到下令的郡（`0x1c855`：`0x1058:0x6b2(0, es:0x30fc)`）。
+		a.view.Page, a.view.Sel = nil, r.At
+		if a.s.CloseGift(r) {
+			a.view.Prompt = ""
+		}
+	}
+	a.askNumber(t("ask.giftPref"), "", state.PrefectureCount, func(pref int) {
+		if pref == 0 {
+			done()
+			return
+		}
+		if !a.s.G.GiftPrefectureOK(r, pref) {
+			a.giftPref(r)
+			return
+		}
+		a.view.Sel = pref
+		a.giftWho(r, pref)
+	})
+	a.cancel = done
+}
+
+// giftWho 是「賞賜那一位」（`0x1d0b0`）：挑到人畫他的卡、等鍵看物品表；
+// 這道命令裡賞過的印「%s已賞賜過了」再問；空 Enter 印「取消」回那一郡。
+func (a *app) giftWho(r *game.GiftRound, pref int) {
+	g := a.s.G
+	back := func() {
+		a.view.Prompt = t("msg.giftCancel")
+		a.giftPref(r)
+	}
+	var items []pickItem
+	for _, x := range g.GiftCandidates(pref) {
+		items = append(items, pickItem{x.Name, x.Index, func(gi int) {
+			if r.Gifted(gi) {
+				a.view.Prompt = tf("msg.gifted", i18n.PersonName(g.General(gi).Name))
+				a.giftWho(r, pref)
+				return
+			}
+			if a.art == nil {
+				a.giftPick(r, pref, gi)
+				return
+			}
+			a.view.Card, a.view.HasCard = gi, true
+			a.view.Prompt = t("ask.giftItems")
+			a.afterCard = func() { a.giftPick(r, pref, gi) }
+		}})
+	}
+	if len(items) == 0 {
+		a.view.Prompt = t("msg.noTargets")
+		a.giftPref(r)
+		return
+	}
+	a.pickFrom(t("ask.giftTo"), items)
+	a.cancel = back
+}
+
+// giftPick 列出君主物品表、問賞哪一件（`0x1d1e5`：2–5，沒有那一件重問）。
+// 送完排道謝與卡片，收掉之後回到「賞賜那一位」。
+func (a *app) giftPick(r *game.GiftRound, pref, gi int) {
 	a.view.SetPage(ui.TreasuryList(a.s.G, a.s.Player))
+	again := func() { a.giftWho(r, pref) }
 	then := func(what int) {
-		a.run(game.GiftOrder{At: a.view.Sel, Target: gi, What: game.Treasure(what)})
+		f := a.s.G.Faction(a.s.Player)
+		if f == nil || f.Treasury[what] <= 0 {
+			a.giftPick(r, pref, gi)
+			return
+		}
+		a.view.Page = nil
+		a.apply(game.GiftOrder{At: r.At, Target: gi, What: game.Treasure(what), Round: r})
+		a.afterBubbles = again
 	}
 	a.pickFrom(t("ask.gift"), []pickItem{
 		{t("tre.book"), int(game.TreasureBook), then},
@@ -782,6 +863,10 @@ func (a *app) giftPick(gi int) {
 		{t("tre.beauty"), int(game.TreasureBeauty), then},
 		{t("tre.horse"), int(game.TreasureHorse), then},
 	})
+	a.cancel = func() {
+		a.view.Prompt = t("msg.giftCancel")
+		again()
+	}
 }
 
 // inspectGeneral 是查看→3.檢視將軍（`0x17cba`，`docs/spec/005` §9.2）：
@@ -910,6 +995,7 @@ func (a *app) apply(o game.Order) {
 //
 // **沒有可選對象時要說出來。** 靜靜地回到主選單，玩家會以為是按鍵沒進去。
 func (a *app) pickFrom(title string, items []pickItem) {
+	a.cancel = nil
 	if len(items) == 0 {
 		a.pick = nil
 		a.menu, a.view.Menu, a.view.Items = 0, "", nil

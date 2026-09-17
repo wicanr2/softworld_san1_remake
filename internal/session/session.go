@@ -115,9 +115,23 @@ func (s *Session) Do(o game.Order) error {
 	}
 	s.note("%s", o.Describe(s.G))
 	s.drainBattles()
+	// 一道命令裡送好幾件的（賞賜物品）等 CloseGift 才算下完。
+	if k, ok := o.(interface{ KeepsTurn() bool }); ok && k.KeepsTurn() {
+		return nil
+	}
 	// 玩家一郡一道令，下完就是這個郡的回合走完（加強版在這裡重整守將清單）。
 	s.G.FinishTurn(o.Prefecture())
 	return nil
+}
+
+// CloseGift 收掉一道賞賜物品（`0x1cfd6` 回到主命令迴圈）：賞出過東西
+// 就是這個郡的回合走完；一件都沒送回主選單再問（`0x17791`）。
+func (s *Session) CloseGift(r *game.GiftRound) bool {
+	if !s.G.CloseGift(r) {
+		return false
+	}
+	s.G.FinishTurn(r.At)
+	return true
 }
 
 // Battles 是最近打完的戰役，新的在後面。畫戰報那一頁要用完整的逐日紀錄。

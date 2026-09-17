@@ -87,6 +87,7 @@ func ErrorText(err error) string {
 		{ErrAlreadyPaid, "err.alreadyPaid"},
 		{ErrNoTreasure, "err.noTreasure"},
 		{ErrCantGift, "err.cantGift"},
+		{ErrAlreadyGifted, "err.gifted"},
 		{ErrNoGovernor, "err.noGovernor"},
 		{ErrNoOne, "err.noCandidate"},
 		{ErrTooManyGens, "err.tooManyGens"},

@@ -415,7 +415,7 @@ func TestPlayerOrdersQueueTheirDialogue(t *testing.T) {
 		ev[1].Bubble.Speaker != officer.Index || !ev[1].Bubble.Left || ev[1].Bubble.Y1 != BubbleLowerY1 {
 		t.Fatalf("指定軍師該是君主上格右、新軍師下格左：%+v", ev)
 	}
-	// 賜物（`0x1d005`）：受賜者在上格右邊道謝（`0x1d4c1`）之後，右側面板
+	// 賜物（`0x1cfd6`）：受賜者在上格右邊道謝（`0x1d4c1`）之後，右側面板
 	// 再換成他的人物資料卡（`0x1d4d1`）——卡那一格沒有字。
 	g.Prefecture(at).Commanded, officer.Rewarded = false, false
 	g.Faction(0).Treasury[TreasureBook] = 1

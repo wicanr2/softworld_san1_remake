@@ -40,56 +40,7 @@ func TestZZCardTimingsMatchTheOriginal(t *testing.T) {
 	}
 	defer o.Close()
 	base := bootToGame(t, o, seedMas)
-	// 玩家的勢力與他的郡：對拍的開局是新君主在南海（一位將領），寶庫是空的
-	// ——賞賜物品那一條要有東西可送，直接在諸侯記錄 offset 15（兵書）寫 1。
-	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
-	live := o.Bytes(addr(base), nMas+nSta+nGen)
-	sc, err := state.DecodeTables(state.Slot("001"), live[:nMas], live[nMas:nMas+nSta], live[nMas+nSta:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	players := sc.Players()
-	if len(players) == 0 {
-		t.Skip("這個盤面沒有玩家")
-	}
-	player := players[0]
-	at := 0
-	for _, p := range sc.Prefectures() {
-		if p.ID > 0 && p.Owned() && int(p.Owner) == player {
-			at = p.ID
-			break
-		}
-	}
-	if at == 0 {
-		t.Fatal("玩家沒有郡")
-	}
-	o.SetByte(addr(base+uint32(player*state.MasterRecordSize+15)), 1)
-	// 君主那一類要**君主本人是這一郡的主事者**（`0x1c7d2`：主事者身分 ≠ 0
-	// 就印「…才能用此功能」）；對拍的開局玩家是新君主槽，君主欄指著人物表
-	// 的填充筆（身分 12、勢力與所在都是 0xFF，`docs/re/08` §6），把那一筆
-	// 寫成活著的君主搬進來當主事者（人物記錄 offset 17 身分、18 勢力、
-	// 19 所在郡；州郡記錄 offset 0x20 主事者）。
-	roster := 0
-	for _, x := range sc.Generals() {
-		if int(x.Location) == at && int(x.Faction) == player && x.Status <= 3 {
-			roster++
-		}
-	}
-	// 君主是諸侯記錄 offset 2 指的那一位。
-	lord := int(binary.LittleEndian.Uint16(live[player*state.MasterRecordSize+2:]))
-	if lord < 0 || lord >= len(sc.Generals()) {
-		t.Fatalf("玩家的君主欄是 %d", lord)
-	}
-	x := sc.Generals()[lord]
-	if int(x.Location) != at || x.Status != state.StatusLord || int(x.Faction) != player {
-		rec := base + uint32(nMas+nSta+lord*state.GeneralRecordSize)
-		o.SetByte(addr(rec+17), 0)
-		o.SetByte(addr(rec+18), uint8(player))
-		o.SetByte(addr(rec+19), uint8(at))
-		roster++
-	}
-	o.SetWord(addr(base+uint32(nMas+at*state.PrefectureRecordSize+0x20)), uint16(lord))
-
+	at, roster := plantLordCommandBoard(t, o, base, 15)
 	var seq []string
 	mark := func(at uint32, name string) {
 		o.OnCall(addr(at), func(*oracle.Oracle) { seq = append(seq, name) })
@@ -137,4 +88,65 @@ func TestZZCardTimingsMatchTheOriginal(t *testing.T) {
 	press("請按任一鍵 查看物品表", " ", true, "物品表 問2-5")
 	press("那一樣 兵書", "2\r", false, "寶物圖 道謝 卡 "+one)
 	t.Logf("兩條路的順序：%v", seq)
+}
+
+// plantLordCommandBoard 把 `bootToGame` 的盤面擺成君主那一類下得了令：
+// 玩家的第一個郡、君主本人當主事者，`treasures` 列的諸侯記錄位移
+// （15 兵書、16 寶刀、17 美女、18 駿馬）各寫一件。回郡與駐紮人數。
+//
+// 對拍的開局是新君主在南海（一位將領），寶庫是空的——賞賜物品那一條
+// 要有東西可送。
+func plantLordCommandBoard(t *testing.T, o *oracle.Oracle, base uint32,
+	treasures ...int) (at, roster int) {
+	t.Helper()
+	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize
+	live := o.Bytes(addr(base), nMas+nSta+nGen)
+	sc, err := state.DecodeTables(state.Slot("001"), live[:nMas], live[nMas:nMas+nSta], live[nMas+nSta:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	players := sc.Players()
+	if len(players) == 0 {
+		t.Fatal("這個盤面沒有玩家")
+	}
+	player := players[0]
+	at = 0
+	for _, p := range sc.Prefectures() {
+		if p.ID > 0 && p.Owned() && int(p.Owner) == player {
+			at = p.ID
+			break
+		}
+	}
+	if at == 0 {
+		t.Fatal("玩家沒有郡")
+	}
+	for _, off := range treasures {
+		o.SetByte(addr(base+uint32(player*state.MasterRecordSize+off)), 1)
+	}
+	// 君主那一類要**君主本人是這一郡的主事者**（`0x1c7d2`：主事者身分 ≠ 0
+	// 就印「…才能用此功能」）；對拍的開局玩家是新君主槽，君主欄指著人物表
+	// 的填充筆（身分 12、勢力與所在都是 0xFF，`docs/re/08` §6），把那一筆
+	// 寫成活著的君主搬進來當主事者（人物記錄 offset 17 身分、18 勢力、
+	// 19 所在郡；州郡記錄 offset 0x20 主事者）。
+	roster = 0
+	for _, x := range sc.Generals() {
+		if int(x.Location) == at && int(x.Faction) == player && x.Status <= 3 {
+			roster++
+		}
+	}
+	// 君主是諸侯記錄 offset 2 指的那一位。
+	lord := int(binary.LittleEndian.Uint16(live[player*state.MasterRecordSize+2:]))
+	if lord < 0 || lord >= len(sc.Generals()) {
+		t.Fatalf("玩家的君主欄是 %d", lord)
+	}
+	x := sc.Generals()[lord]
+	if int(x.Location) != at || x.Status != state.StatusLord || int(x.Faction) != player {
+		rec := base + uint32(nMas+nSta+lord*state.GeneralRecordSize)
+		o.SetByte(addr(rec+17), 0)
+		o.SetByte(addr(rec+18), uint8(player))
+		o.SetByte(addr(rec+19), uint8(at))
+		roster++
+	}
+	o.SetWord(addr(base+uint32(nMas+at*state.PrefectureRecordSize+0x20)), uint16(lord))
+	return at, roster
 }
