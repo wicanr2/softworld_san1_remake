@@ -18,6 +18,8 @@ func TestDosboxXCursorIsACurFrame(t *testing.T) {
 	}{
 		{"存檔(1-6) rec17#20", "../../workplace/rec17/frames/020-2Return.png", CursorMain, 472, 316},
 		{"存檔(1-6) rec17#20b", "../../workplace/rec17/frames/020-2Return.b.png", CursorMain, 472, 316},
+		{"查看卡片「請按任一鍵」 rec11#22", "../../workplace/rec11/frames/022-1Return.png", CursorMain, 504, 300},
+		{"查看卡片「請按任一鍵」 rec11#22b", "../../workplace/rec11/frames/022-1Return.b.png", CursorMain, 504, 300},
 		{"人數 rec7#9", "../../workplace/rec7/frames/009-1.png", CursorSetup, 576, 340},
 		{"人數 rec7#9b", "../../workplace/rec7/frames/009-1.b.png", CursorSetup, 576, 340},
 	} {
