@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -74,6 +75,26 @@ type Bubble struct {
 	// （`0xf874`，`docs/spec/005` §9.2）：不畫泡泡與字，X1…Y2 不用。
 	// 賜物做完、受賜者道謝之後原版再畫一次他的卡（`0x1d4d1`）。
 	Card bool
+
+	// Scene 不是 0 時這一格是一張場景圖 `SCG%02d` 拉進 (X1, Y1)
+	// （`0x32dfa`，`docs/spec/010`）：Style 是進去擲的 `RND(4)`，四種
+	// 拉幕方向；Speaker、Text 不用。
+	Scene, Style int
+}
+
+// sceneEvent 是「一張場景圖拉進 (x, y)」的那一格：style 是那一刻擲出來的
+// `RND(4)`。prefecture 超出範圍就寫 0。
+func (g *State) sceneEvent(prefecture, scene, style, x, y int) Event {
+	if prefecture < 1 || prefecture > len(g.prefectures) {
+		prefecture = 0
+	}
+	return Event{Prefecture: prefecture,
+		Bubble: &Bubble{X1: x, Y1: y, X2: x + assets.SceneW - 1, Y2: y + assets.SceneH - 1, Scene: scene, Style: style}}
+}
+
+// showScene 把一張場景圖排進 pending（玩家命令的畫面用）。
+func (g *State) showScene(prefecture, scene, style, x, y int) {
+	g.pending = append(g.pending, g.sceneEvent(prefecture, scene, style, x, y))
 }
 
 // 尋訪找到的那一位亮肖像的位置（`0x1bb76`／`0x1bb7a`）。
@@ -351,11 +372,12 @@ func (g *State) spring() []Event {
 		// `RND(4)`）；之後的處置常式 `0x14792` 不分身分都印一則對白
 		// （`0x14848`／`0x14a38` → `0x3273e`，`RND(8)`），槽 96（周瑜）再多
 		// 一則（`0x14893`）。
+		out = append(out, Event{Prefecture: x.Location, Text: tf("ev.death", personName(x.Name))})
 		if x.Status == state.StatusChief || x.Status == state.StatusGovernor ||
 			x.Status == state.StatusOfficer {
-			g.Roll(EffectVariants, int(Spring), x.Index, 47)
+			style := g.Roll(EffectVariants, int(Spring), x.Index, 47)
+			out = append(out, g.sceneEvent(int(x.Location), assets.SceneDeath, style, assets.SceneMainX, assets.SceneMainY))
 		}
-		out = append(out, Event{Prefecture: x.Location, Text: tf("ev.death", personName(x.Name))})
 		if x.Status != state.StatusLord {
 			// 君主那一則在繼承常式裡（`SucceedLord`）。下格、肖像在右
 			// （`0x14848`：(424,180)–(615,275)，side 0）。
@@ -420,7 +442,8 @@ func (g *State) spring() []Event {
 		id := g.Roll(state.PrefectureCount, int(Spring), 0, 11) + 1
 		if p := g.Prefecture(id); p != nil {
 			// 印字、特效一次（`0x1633b` → `0x32dfa`，`RND(4)`）。
-			g.Roll(EffectVariants, int(Spring), id, 9)
+			quake := g.sceneEvent(id, assets.SceneQuake, g.Roll(EffectVariants, int(Spring), id, 9),
+				assets.SceneMainX, assets.SceneMainY)
 			// 四份保留率各擲一次，**不是同一個百分比套四次**：人口、金、米
 			// （`0x1638b`／`0x163d5`／`0x1640e`），然後**郡裡每一位人物的兵**
 			// （`0x16444`–`0x1649c`：人物表順序、所在郡等於那個郡的，各擲一次
@@ -443,7 +466,7 @@ func (g *State) spring() []Event {
 					g.Roll(QuakeSoldiersKeep.Spread, int(Spring), x.Index, 23))
 			}
 			g.RefreshGarrison(id)
-			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.quake", placeName(p.Name))})
+			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.quake", placeName(p.Name))}, quake)
 		}
 	}
 	return out
@@ -606,8 +629,8 @@ func (g *State) debut(x *General) []Event {
 		// 印字、特效一次（`0x16152` → `0x32dfa`，`RND(4)`）；牽絆對象不是
 		// 君主再一則對白（`0x161c4` → `0x3273e`，`RND(8)`），然後一定一則
 		// （`0x16270`）。忠誠寫成牽絆對象的九成（`0x1629e`–`0x162b4`）。
-		g.Roll(EffectVariants, int(Spring), x.Index, 47)
-		var bubbles []Event
+		bubbles := []Event{g.sceneEvent(at, assets.SceneDebut,
+			g.Roll(EffectVariants, int(Spring), x.Index, 47), assets.SceneMainX, assets.SceneMainY)}
 		if b.Status != state.StatusLord {
 			// 上格、肖像在右，說話的是牽絆對象（`0x161c4`）。
 			bubbles = append(bubbles, g.bubbleEvent(b, true, false,
@@ -799,10 +822,12 @@ func (g *State) summer() []Event {
 		}
 		flooded = append(flooded, id)
 	}
+	var floodScene []Event
 	if len(flooded) > 0 {
 		// 有郡淹了才印字、放一次特效（`0x165f6` 叫 `0x32dfa`，進去就擲
 		// `RND(4)` 挑動畫，`docs/re/05` §12.2）——整個夏天一次，不是每郡一次。
-		g.roll(int(Summer), 0, 8)
+		floodScene = []Event{g.sceneEvent(flooded[0], assets.SceneFlood,
+			g.roll(int(Summer), 0, 8)%EffectVariants, assets.SceneMainX, assets.SceneMainY)}
 	}
 	for _, id := range flooded {
 		p := g.Prefecture(id)
@@ -834,6 +859,7 @@ func (g *State) summer() []Event {
 		g.RefreshGarrison(id)
 		out = append(out, Event{Prefecture: p.ID, Text: tf("ev.flood", placeName(p.Name))})
 	}
+	out = append(out, floodScene...)
 	// **瘟疫每年只挑一個郡**（`RND(42) + 1`，`0x167df`），不逐郡掃、也
 	// **不看所屬**。兩道門一道一道擲：忠誠那一道沒過就不擲土地那一道
 	// （`0x16814` 直接跳到結尾）。
@@ -844,8 +870,9 @@ func (g *State) summer() []Event {
 		if p != nil && int(p.PublicLoyalty) < loyaltyRoll+PlagueLoyaltyFloor &&
 			PlagueStrikes(int(p.PublicLoyalty), int(p.LandValue), loyaltyRoll,
 				g.roll(int(Summer), id, 7)%PlagueLandSpread) {
-			g.plague(p)
-			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.plague", placeName(p.Name))})
+			style := g.plague(p)
+			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.plague", placeName(p.Name))},
+				g.sceneEvent(p.ID, assets.ScenePlague, style, assets.SceneMainX, assets.SceneMainY))
 		}
 	}
 	return out
@@ -857,10 +884,10 @@ func (g *State) summer() []Event {
 // 的，不看在不在職——各擲兩次：兵 `RND(20)+40`%、體能 `RND(10)+70`%
 // （都截尾）。最後重整那個郡的守將清單（`0x1949e`），存的兵士跟著變成
 // Σ兵力 ÷ 100。手冊 p.36 的「將領體能下降」出處在這裡。
-func (g *State) plague(p *Prefecture) {
+func (g *State) plague(p *Prefecture) (style int) {
 	id := p.ID
 	// 印字、特效一次（`0x16871` 叫 `0x32dfa`，`RND(4)` 挑動畫）。
-	g.roll(int(Summer), id, 8)
+	style = g.roll(int(Summer), id, 8) % EffectVariants
 	p.Population = keepPopulation(p.Population, PlaguePopKeep,
 		g.roll(int(Summer), id, 20)%PlaguePopKeep.Spread)
 	if p.Population < QuakePopFloor {
@@ -875,6 +902,7 @@ func (g *State) plague(p *Prefecture) {
 		x.Stamina = uint8(PlagueStaminaKeep.Apply(int(x.Stamina), g.roll(int(Summer), id, 400+i)%PlagueStaminaKeep.Spread))
 	}
 	g.RefreshGarrison(id)
+	return style
 }
 
 // 年度事件落在哪一個月。
@@ -990,7 +1018,8 @@ func (g *State) autumn() []Event {
 		if p != nil && int(p.PublicLoyalty) < loyaltyRoll+LocustLoyaltyFloor &&
 			LocustStrikes(int(p.PublicLoyalty), int(p.LandValue), loyaltyRoll,
 				g.roll(int(Autumn), id, 14)%LocustLandSpread) {
-			g.roll(int(Autumn), id, 8) // 特效 `RND(4)`
+			locust := g.sceneEvent(id, assets.SceneLocust, g.roll(int(Autumn), id, 8)%EffectVariants,
+				assets.SceneMainX, assets.SceneMainY) // 特效 `RND(4)`（`0x16c5b`）
 			p.Rice = LocustRiceKeep.Apply(p.Rice,
 				g.roll(int(Autumn), id, 20)%LocustRiceKeep.Spread)
 			// ⚠ **蝗害的土地價值保留率是 80–169%**（`0x16cfa`：`RND(90) + 80`），
@@ -1001,7 +1030,7 @@ func (g *State) autumn() []Event {
 				g.roll(int(Autumn), id, 21)%LocustLandKeep.Spread))
 			// 之後重整那個郡的守將清單（`0x16d2e` → `0x1949e`），與水災、瘟疫同。
 			g.RefreshGarrison(id)
-			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.locust", placeName(p.Name))})
+			out = append(out, Event{Prefecture: p.ID, Text: tf("ev.locust", placeName(p.Name))}, locust)
 		}
 	}
 	// **人望的年度調整**（`0x16d4f`–`0x16e6a`，`L0`）：蝗害之後、

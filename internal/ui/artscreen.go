@@ -53,6 +53,10 @@ type ArtScreen struct {
 
 	// pickBox 是選君主那一格下方提示框的拼件（`SIDEA`）。
 	pickBox assets.SideFrame
+
+	// scenes 是 `SCG30`／`SCG31` 所在的容器（`DATA1`）；`SCG01`–`29` 與肖像
+	// 同在 `DATA3`（`docs/formats/04`）。
+	scenes *assets.Container
 }
 
 // NewArtScreen 拼出主畫面的底圖，順便留著容器好取肖像。
@@ -64,7 +68,7 @@ func NewArtScreen(data3, data1 *assets.Container) (*ArtScreen, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &ArtScreen{base: bg, faces: data3}
+	a := &ArtScreen{base: bg, faces: data3, scenes: data1}
 	if data1 != nil {
 		if f, err := assets.FillPatterns(data1); err == nil {
 			a.fills = &f
@@ -109,6 +113,27 @@ func (a *ArtScreen) Portrait(n int) *assets.Image {
 		return nil
 	}
 	return im
+}
+
+// Scene 取一張場景圖 `SCG%02d.IMG`（176×96，`docs/formats/07` §3）；
+// 1–29 在 `DATA3`、30–31 在 `DATA1`。沒有就回 nil。
+func (a *ArtScreen) Scene(n int) *assets.Image {
+	name := fmt.Sprintf("SCG%02d.IMG", n)
+	for _, c := range []*assets.Container{a.faces, a.scenes} {
+		if c == nil {
+			continue
+		}
+		i, ok := c.ByName(name)
+		if !ok {
+			continue
+		}
+		im, err := assets.DecodeImage(c.Data(i))
+		if err != nil {
+			return nil
+		}
+		return im
+	}
+	return nil
 }
 
 // 原版畫面上的位置（像素），量自 `workplace/shots/orig-main.png`

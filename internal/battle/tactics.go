@@ -3,6 +3,8 @@ package battle
 import (
 	"fmt"
 	"math/big"
+
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 )
 
 // 單挑與六種計謀（說明書 p.30–34）。
@@ -67,7 +69,7 @@ func (b *Battle) duelLeaders(ca, ct *Leader, sa, st Side, answer func() bool, se
 	boxT, leftT := duelBox(st)
 	sayA := func(key string, a ...any) { b.say(ca, boxA, leftA, key, a...) }
 	sayT := func(key string, a ...any) { b.say(ct, boxT, leftT, key, a...) }
-	b.fx()
+	b.scene(assets.SceneDuel) // `0x30b40`
 	// 挑戰（`0x30be6`：「X 出來與我決一死戰」）；第二句是空的（`0x30c2e`，
 	// 只亮應戰者那一格），remake 不畫。
 	sayA("bub.duelChallenge", pn(ct.Name))
@@ -147,7 +149,7 @@ func (b *Battle) duelLeaders(ca, ct *Leader, sa, st Side, answer func() bool, se
 	}
 	if ca.Stamina > 0 && ct.Stamina > 0 {
 		// 平手（`0x3197c`／`0x319d3`）：「賊將 他日再戰」「逆賊 改日再戰」。
-		b.fx()
+		b.scene(assets.SceneDuel) // `0x3190f`
 		sayT("bub.duelLater1")
 		sayA("bub.duelLater2")
 		b.note("blog.draw", pn(ca.Name), pn(ct.Name))
@@ -356,7 +358,11 @@ func (b *Battle) defeatInDuel(loser, winner *Leader, sl, sw Side, seized func(*L
 	// 「X 快下馬受縛」／「X 受死吧」，敗者「哇 呀」／「啊」。
 	boxL, leftL := duelBox(sl)
 	boxW, leftW := duelBox(sw)
-	b.fx()
+	if kills {
+		b.scene(assets.SceneDuelDeath) // `0x31c96`／`0x31fba`
+	} else {
+		b.scene(assets.SceneDuelCapture) // `0x31b51`／`0x31e66`
+	}
 	if !kills {
 		b.say(winner, boxW, leftW, "bub.duelSeize", pn(loser.Name))
 		b.say(loser, boxL, leftL, "bub.duelSeized")
@@ -673,14 +679,14 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 
 	switch s {
 	case Fire:
-		b.sayUnit(u, "bub.fire") // `0x2ae6b`
-		b.fx()
+		b.sayUnit(u, "bub.fire")  // `0x2ae6b`
+		b.scene(assets.SceneFire) // `0x2aeab`
 		r := FireRatio(terrain, ci, b.roll(StratagemRollSpread))
 		loss := b.scorch(u.Side, t, r)
 		b.note("blog.fire", u.Name(), t.Name(), loss, terrain.Label(), int(r*100))
 	case Flood:
-		b.sayUnit(u, "bub.flood") // `0x2b1d9`
-		b.fx()
+		b.sayUnit(u, "bub.flood")        // `0x2b1d9`
+		b.scene(assets.SceneFloodTactic) // `0x2b219`
 		r := FloodRatio(terrain, ci, b.roll(StratagemRollSpread))
 		loss := b.scorch(u.Side, t, r)
 		b.note("blog.flood", u.Name(), t.Name(), loss, terrain.Label(), int(r*100))
@@ -707,8 +713,8 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		b.note("blog.trap", u.Name(), t.Name(), t.Trapped)
 	case Burn:
 		// 兩條路各擲一次，不是兩擲都擲（`0x2ba6b`–`0x2ba9b`）。
-		b.sayUnit(u, "bub.burn") // `0x2b911`
-		b.fx()
+		b.sayUnit(u, "bub.burn")  // `0x2b911`
+		b.scene(assets.SceneFire) // `0x2b951`
 		side := t.Side
 		genius, plain := 0, 0
 		if ci >= StratagemGeniusIntel {

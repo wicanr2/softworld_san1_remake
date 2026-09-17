@@ -81,6 +81,11 @@ func BubbleLines(b *game.Bubble) [2]string {
 // DrawBubble 在畫布上畫一格訊息框。肖像從 `a` 取；`a` 為 nil（沒有
 // 原版素材）時只畫名字、泡泡與字。
 func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
+	if b.Scene > 0 {
+		// 場景圖那一格：整張拉進 (X1, Y1)（`docs/spec/010`）。
+		DrawScene(c, a, b.Scene, WipeKind(b.Style), b.X1, b.Y1, sceneAllSteps)
+		return
+	}
 	if b.Card {
 		// 人物資料卡那一格：整塊右側面板換成說話者的卡（§9.2）。
 		DrawPersonCard(c, a, g, b.Speaker)
@@ -179,10 +184,20 @@ func DrawBubbleAs(c *Canvas, a *ArtScreen, b *game.Bubble, name string, portrait
 // （`docs/spec/005` §9.7）。那一塊在哪隨版面走（寬版面在下、窄版面在右）。
 // 肖像從 `a` 取（`a` 可為 nil）。
 func DrawBattleSpeech(c *Canvas, a *ArtScreen, g *game.State, b *battle.Battle, sp *battle.Speech) {
+	if sp.Scene > 0 {
+		DrawBattleScene(c, a, sp, sceneAllSteps)
+		return
+	}
 	x1, y1, x2, y2 := assets.BattleLayoutFor(b.Field.Narrow()).Panel(sp.Box.Panel())
 	c.FillRect(x1, y1, x2+1, y2+1, assets.EGAPalette[1])
 	DrawBubble(c, a, g, &game.Bubble{X1: x1, Y1: y1, X2: x2, Y2: y2, Left: sp.Left,
 		Speaker: sp.Speaker, Color: sp.Color, Text: sp.Text})
+}
+
+// DrawBattleScene 把戰場上的場景圖那一格拉進第三塊面板 (448,268) 走到第
+// step 步（`0x2a8ab` 先把面板填藍，場景圖 176×96 剛好蓋滿）。回傳總步數。
+func DrawBattleScene(c *Canvas, a *ArtScreen, sp *battle.Speech, step int) int {
+	return DrawScene(c, a, sp.Scene, WipeKind(sp.Style), assets.SceneBattleX, assets.SceneBattleY, step)
 }
 
 // ClearPanel 照原版的 `0x1058:0x27e8(x1, y1, x2, y2, 色)` 清一塊面板的

@@ -174,8 +174,8 @@ func (s *Session) PopBubble() {
 // 「名字：對白」），佇列清空。
 func (s *Session) FlushBubbles() {
 	for _, b := range s.Bubbles {
-		if b.FaceOnly || b.Card {
-			continue // 只亮肖像／只有資料卡的那一格沒有字
+		if b.FaceOnly || b.Card || b.Scene > 0 {
+			continue // 只亮肖像／資料卡／場景圖的那一格沒有字
 		}
 		name := ""
 		if x := s.G.General(b.Speaker); x != nil {

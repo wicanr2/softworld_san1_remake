@@ -7,6 +7,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -1178,7 +1179,22 @@ func TestBubbleEventsCarryTheSpeaker(t *testing.T) {
 	if len(bubbles) == 0 {
 		t.Fatal("三年裡一則對白都沒有——出頭與老死至少該有一種")
 	}
+	scenes := 0
+	defer func() {
+		if scenes == 0 {
+			t.Error("三年裡一張場景圖都沒有——老死、出頭、天災至少該有一種")
+		}
+	}()
 	for _, b := range bubbles {
+		if b.Scene > 0 {
+			// 場景圖那一格（老死、出頭、天災）：落在右側面板 (432,80)，
+			// 拉幕方向是 RND(4)。
+			scenes++
+			if b.X1 != assets.SceneMainX || b.Y1 != assets.SceneMainY || b.Style < 0 || b.Style > 3 {
+				t.Errorf("場景圖 SCG%02d 落在 (%d,%d) 方向 %d", b.Scene, b.X1, b.Y1, b.Style)
+			}
+			continue
+		}
 		x := g.General(b.Speaker)
 		if x == nil || x.Name == "" {
 			t.Errorf("對白的說話者 %d 不是人", b.Speaker)

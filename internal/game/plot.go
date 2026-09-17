@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -135,6 +136,16 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 	}
 	g.endTurn(src)
 
+	// **先播一段場景圖，再判定**（`0x2c8de`／`0x2cd6e`／`0x2d338`／`0x2d879`：
+	// 填藍、載 `SCG##`、`0x32dfa` 進去擲 `RND(4)`、延遲，然後才 `0x2dd66`）。
+	// 那一擲不看成敗，**一定要擲**——不擲的話整條亂數序列從這裡錯開。
+	// 判定本身沒有擲骰。畫面只給玩家自己的命令排。
+	scene, x, y := plotScene(p)
+	style := g.Roll(EffectVariants, from, target, int(p))
+	if g.playerCommand(by) && scene > 0 {
+		g.showScene(from, scene, style, x, y)
+	}
+
 	// **成敗照原版的分數對決**（`PlotScore`，`0x2dd66`）：兩邊各取
 	// 「軍師與君主裡謀略較高的那位」，我方再依人望與使者魅力扣分。
 	// 這一段沒有擲骰——原版就是硬碰硬。
@@ -160,20 +171,24 @@ func (g *State) UsePlotPlan(from int, p Plot, plan PlotPlan, by state.FactionID)
 			return true, err
 		}
 	}
-	// **計謀得手會多擲一次 `RND(4)`**（`0x32e4f`）。那一支（`0x32e40`）
-	// 是**畫面轉場**：四選一，四個方向的拉幕（`docs/spec/010`）。
-	// 抽出來的數字就是方向，畫面那一端交給 `ui.Wipe`；**抽樣一定要擲**
-	// ——不擲的話整條亂數序列從這裡開始錯開。
-	//
-	// 量法：把 `RND(n)` 的入口攔起來記呼叫端（攔 `rand()` 只會拿到
-	// `RND` 內部那一道，36 次全部一樣）。計略那一段的四個擲點是
-	// 等級 5 的 `RND(5)` ×28、等級 4 的 `RND(8)` ×4、挑目標 ×2，
-	// 以及這一支 ×2——而那個月剛好有 2 次計謀得手。
-	//
-	// ⚠ **只驗過「得手」這一條**：那個月兩次計謀都成功，所以「失敗時
-	// 會不會也轉場」沒有樣本。失敗那條路徑先不擲。
-	g.PendingWipe = g.Roll(4, from, target, int(p))
 	return true, nil
+}
+
+// plotScene 是四種帶使者的計謀各自的場景圖與落點（`docs/spec/010` §1）：
+// 遠交近攻 `SCG18`、驅虎吞狼 `SCG23` 在 (432,80)，離間君臣 `SCG13`、
+// 策反人民 `SCG22` 在 (432,120)。聯合出兵沒有。
+func plotScene(p Plot) (scene, x, y int) {
+	switch p {
+	case PlotFarNear:
+		return assets.ScenePlotFarNear, assets.SceneMainX, assets.SceneMainY
+	case PlotTigerWolf:
+		return assets.ScenePlotTiger, assets.SceneMainX, assets.SceneMainY
+	case PlotForgery:
+		return assets.ScenePlotSow, assets.ScenePlotX, assets.ScenePlotY
+	case PlotIncite:
+		return assets.ScenePlotRevolt, assets.ScenePlotX, assets.ScenePlotY
+	}
+	return 0, 0, 0
 }
 
 // jointAttack 是「聯合出兵」（原版 `0x2d88c`）。

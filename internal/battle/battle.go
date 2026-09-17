@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"sort"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 )
 
@@ -901,7 +902,7 @@ func (b *Battle) capture(captor Side, u *Unit, x *Leader) {
 			return
 		case Jailed:
 			b.say(x, BoxThird, false, "bub.captiveJailed") // `0x26178`
-			b.fx()
+			b.scene(assets.SceneJail)                      // `0x261a1`
 			x.Fate = Jailed
 			b.note("blog.jailed", pn(x.Name))
 			return
@@ -912,7 +913,7 @@ func (b *Battle) capture(captor Side, u *Unit, x *Leader) {
 				continue
 			}
 			b.say(x, BoxThird, false, "bub.captiveYield") // `0x25c82`
-			b.fx()
+			b.scene(assets.SceneJoin)                     // `0x25cae`
 			x.Fate = Defected
 			x.Loyalty = c
 			b.enlist(captor, x, c, 0)
@@ -1219,8 +1220,8 @@ func (b *Battle) archery(a *Unit, target Hex, n int) error {
 		if !t.Alive() {
 			break
 		}
-		b.sayUnit(a, "bub.arrows") // `0x2a88e`
-		b.fx()
+		b.sayUnit(a, "bub.arrows")  // `0x2a88e`
+		b.scene(assets.SceneArrows) // `0x2a8c8`
 		d := MeleeDamage(ArrowTerrainValue(b.Field.At(a.At)),
 			s16(a.Soldiers()), a.Quality, 1, b.arrowScale())
 		r := MeleeRatio(d, s16(t.Soldiers()))
@@ -1287,7 +1288,7 @@ func (b *Battle) Retreat(u *Unit) error {
 			b.roll(len(b.Escapes[u.Side]))
 		}
 	}
-	b.fx()
+	b.scene(assets.SceneRetreat) // `0x24395`
 	// **軍力的錢糧不動**：退兵常式（`0x23dd4`–`0x24460`）一個字都沒碰
 	// 軍力記錄的 offset 6／8（`L0`；盤面乙量到守方退了一支之後照樣
 	// 用得起 400 金的誘敵）。說明書 p.34 的「原先擁有的錢糧都會損失」

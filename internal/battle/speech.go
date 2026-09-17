@@ -38,6 +38,11 @@ type Speech struct {
 	Color   int
 	Text    string
 	Units   [2]*Unit
+
+	// Scene 不是 0 時這一格不是對白，是一張場景圖 `SCG%02d` 拉進第三塊
+	// 面板 (448,268)（`0x32dfa`，`docs/spec/010`）：Style 是 `RND(4)` 挑的
+	// 拉幕方向。
+	Scene, Style int
 }
 
 // Panel 是這一塊在版面裡的面板編號：攻方 0、守方 1、指令列（第三塊）2，
@@ -50,6 +55,12 @@ func (b SpeechBox) Panel() int {
 		return 1
 	}
 	return 2
+}
+
+// scene 播一段特效：擲拉幕那一擲（與 `fx` 同一擲），把場景圖排進 Speeches。
+func (b *Battle) scene(n int) {
+	style := b.fx()
+	b.Speeches = append(b.Speeches, Speech{Box: BoxThird, Scene: n, Style: style})
 }
 
 // say 印一句對白：擲字色那一擲（與 `msg` 同一擲），排進 Speeches。

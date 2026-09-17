@@ -67,8 +67,10 @@ type app struct {
 	// sfx 是 PC 喇叭的音效與語音（`docs/spec/008`）；放不出聲音就是 nil。
 	sfx *voicebox
 
-	// wipe 非 nil 表示正在跑一段畫面轉場（`docs/spec/010`）。
-	wipe *ui.Wipe
+	// wipe 非 nil 表示正在把一張場景圖拉進畫面（`docs/spec/010`）；
+	// scenePlayed 是拉過（或正在拉）的那一格，同一格不重播。
+	wipe        *ui.Wipe
+	scenePlayed any
 
 	// credits 非 nil 表示正在播製作群（`docs/spec/012`）；
 	// creditsDone 記住這一局播過了，不要每一幀重播。
@@ -155,6 +157,10 @@ func (a *app) Update() error {
 		if a.art == nil {
 			a.s.FlushBubbles()
 			a.dirty = true
+			return nil
+		}
+		if b := a.s.Bubble(); b.Scene > 0 && a.scenePlayed != b {
+			// 場景圖那一格先拉進來（Draw 那一層起頭），拉完才收鍵。
 			return nil
 		}
 		if anyKeyPressed() {
@@ -978,9 +984,9 @@ func commandName(k byte) string {
 }
 
 func (a *app) Draw(dst *ebiten.Image) {
-	// **轉場要在 Draw 這一層起頭，不能在 Update。** 規則層設好
-	// `PendingWipe` 的那一幀，畫布上還是**上一幀畫的舊畫面**；等到下一次
-	// Update 才去拿，畫布早就被重畫成新的，兩張圖一樣，轉場等於沒跑。
+	// **拉幕要在 Draw 這一層起頭，不能在 Update。** 場景圖那一格排進來
+	// 的那一幀，畫布上還是**上一幀畫的舊畫面**；先照沒有它的樣子畫一次
+	// 當底，再從那張底把場景圖一步一步拉進來。
 	if a.wipe == nil {
 		a.startWipe()
 	}
@@ -1020,7 +1026,8 @@ func (a *app) paint() {
 			if a.artBattle != nil {
 				ui.DrawArtBattle(a.canvas, a.artBattle, a.fight.pending.Battle(),
 					a.fight.view, a.battleInfo())
-				if sp := a.fight.speech(true); sp != nil {
+				if sp := a.fight.speech(true); sp != nil && (sp.Scene == 0 || a.scenePlayed == sp) {
+					// 還沒拉過的場景圖先不畫：Draw 那一層要拿這張當拉幕的底。
 					ui.DrawBattleSpeech(a.canvas, a.art, a.s.G, a.fight.pending.Battle(), sp)
 				}
 			} else {
@@ -1041,10 +1048,14 @@ func (a *app) paint() {
 			a.view.Over = a.s.Over
 			if a.art != nil {
 				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, a.view)
-				if b := a.s.Bubble(); b != nil {
+				if b := a.s.Bubble(); b != nil && (b.Scene == 0 || a.scenePlayed == b) {
 					// 原版在對白之前把右側面板的內部清成藍色（`0x1058:0x27e8`，
-					// 外框留著）。
-					ui.ClearPanel(a.canvas, 408, 36, 631, 291, assets.EGAPalette[1])
+					// 外框留著）；場景圖那一格不清（`0x2c8be` 也清藍，但整張
+					// 176×96 蓋滿那一塊）。還沒拉過的場景圖先不畫：Draw 那一層
+					// 要拿這張當拉幕的底。
+					if b.Scene == 0 {
+						ui.ClearPanel(a.canvas, 408, 36, 631, 291, assets.EGAPalette[1])
+					}
 					ui.DrawBubble(a.canvas, a.art, a.s.G, b)
 				}
 			} else {
@@ -1062,7 +1073,10 @@ func (a *app) updateBattle() error {
 	defer func() { a.dirty = true }()
 	// 戰場對白（肖像＋泡泡）一次一格，按任意鍵收掉——與主畫面的訊息框
 	// 同一個做法（remake 差異：原版走延遲設定）。
-	if a.fight.speech(a.artBattle != nil) != nil {
+	if sp := a.fight.speech(a.artBattle != nil); sp != nil {
+		if sp.Scene > 0 && a.scenePlayed != sp {
+			return nil // 場景圖先拉進來（Draw 那一層起頭），拉完才收鍵
+		}
 		if anyKeyPressed() {
 			a.fight.speeches = a.fight.speeches[1:]
 		}
@@ -1323,30 +1337,40 @@ func die(err error) {
 // **每一步送一聲 PC 喇叭的音效**——音效在這一款不是事件音，是動畫的
 // 節拍聲（`docs/spec/008` §4）。
 
-// startWipe 看規則層有沒有留下待播的轉場，有就起一段。
-//
-// 拉幕要「舊畫面」與「新畫面」兩張：舊的是現在畫布上的，新的是
-// **照現在的狀態再畫一次**。所以這裡畫一次、複製走、再把畫布還原。
+// currentScene 是現在輪到畫的那一格如果是場景圖：主畫面的訊息框佇列
+// 或戰場的對白佇列的頭一格。key 用來認「同一格」。
+func (a *app) currentScene() (key any, scene int, kind ui.WipeKind, x, y int, ok bool) {
+	if a.art == nil || a.titlePic != nil || a.poem != nil || a.menuScreen != nil {
+		return nil, 0, 0, 0, 0, false
+	}
+	if a.fight != nil {
+		if sp := a.fight.speech(a.artBattle != nil); sp != nil && sp.Scene > 0 {
+			return sp, sp.Scene, ui.WipeKind(sp.Style), assets.SceneBattleX, assets.SceneBattleY, true
+		}
+		return nil, 0, 0, 0, 0, false
+	}
+	if a.s != nil {
+		if b := a.s.Bubble(); b != nil && b.Scene > 0 {
+			return b, b.Scene, ui.WipeKind(b.Style), b.X1, b.Y1, true
+		}
+	}
+	return nil, 0, 0, 0, 0, false
+}
+
+// startWipe 看輪到的那一格是不是還沒拉過的場景圖，是就起一段：先照
+// **沒有它**的樣子畫一次當底（paint 看到 scenePlayed 不是它就跳過那一格），
+// 再從那張底把場景圖拉進來。
 func (a *app) startWipe() {
-	if a.wipe != nil || a.s == nil || a.s.G == nil {
+	if a.wipe != nil {
 		return
 	}
-	k := a.s.G.TakeWipe()
-	if k == game.NoWipe {
+	key, scene, kind, x, y, ok := a.currentScene()
+	if !ok || a.scenePlayed == key {
 		return
 	}
-	// 沒有原版素材時退回文字版面，那個版面的訊息面板不在同一個位置
-	// ——**寧可不轉場，也不要在錯的地方拉幕**。同理，只有主畫面那一層
-	// 有那塊面板：標題、開場詞、戰場都不是。
-	if a.art == nil || a.titlePic != nil || a.poem != nil ||
-		a.menuScreen != nil || a.fight != nil {
-		return
-	}
-	from := cloneCanvas(a.canvas.Img)
 	a.paint()
-	to := cloneCanvas(a.canvas.Img)
-	copy(a.canvas.Img.Pix, from.Pix)
-	a.wipe = &ui.Wipe{Kind: ui.WipeKind(k), Rect: ui.WipeRect, From: from, To: to}
+	a.wipe = ui.NewSceneWipe(a.canvas, a.art.Scene(scene), kind, x, y)
+	a.scenePlayed = key
 	a.dirty = true
 }
 
