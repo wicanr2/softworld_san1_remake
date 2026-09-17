@@ -258,7 +258,7 @@ func (a *app) Update() error {
 	if a.s != nil && a.menu == 0 && a.pick == nil && a.num == nil && a.s.Waiting() == 0 && !a.s.Over {
 		if at := a.s.AdvanceToHuman(0); at != 0 {
 			a.view.Sel, a.view.Status = at, true
-			a.view.Prompt = tf("msg.prefTurn", lordName(a.s.G, a.s.Player), prefName(a.s.G, at))
+			a.mainAsk(at)
 		}
 		a.dirty = true
 		return nil
@@ -437,6 +437,20 @@ func (a *app) cycle(d int) {
 	// 換了郡就要看得到那一郡：上面板換成郡的資料（`docs/spec/014` §3.1）。
 	a.view.Status = true
 	a.dirty = true
+}
+
+// mainAsk 是輪到玩家那一郡時的主提示（`DS:0x685e`，`L0`）：下面板
+// 「%s主公,請對(%d)\n%s下您的命令:」——君主姓名欄、郡編號、郡名——接著數字輸入 0–9
+// （`0x115e`，打的數字回顯在提示後面，Enter 確定）。範圍字樣不另外接（`askBare`）。
+func (a *app) mainAsk(at int) {
+	g := a.s.G
+	lord := ""
+	if l := g.Lord(a.s.Player); l != nil {
+		lord = ui.NameField(i18n.PersonName(l.Name))
+	}
+	a.askBare(tf("ask.main", lord, at, prefName(g, at)), 0, 9, func(n int) {
+		a.press(byte('0' + n))
+	})
 }
 
 func (a *app) press(k byte) {
@@ -1367,71 +1381,6 @@ func (a *app) pickFrom(title string, items []pickItem) {
 	for i, it := range items {
 		a.view.Items = append(a.view.Items, ui.Command{Key: byte('1' + i), Name: it.label})
 	}
-}
-
-// askGeneral 讓玩家從當地自己的將領裡挑一位。
-func (a *app) askGeneral(title string, then func(int)) {
-	var items []pickItem
-	for _, x := range a.s.G.Garrison(a.view.Sel) {
-		if x.Faction != a.s.Player {
-			continue
-		}
-		items = append(items, pickItem{x.Name, x.Index, then})
-	}
-	a.pickFrom(title, items)
-}
-
-// askAnyGeneral 讓玩家從當地的現役將領裡挑一位，不分勢力（查看用）。
-func (a *app) askAnyGeneral(title string, then func(int)) {
-	var items []pickItem
-	for _, x := range a.s.G.Garrison(a.view.Sel) {
-		items = append(items, pickItem{x.Name, x.Index, then})
-	}
-	a.pickFrom(title, items)
-}
-
-// askFree 讓玩家從當地在野將領裡挑一位。
-func (a *app) askFree(title string, then func(int)) {
-	var items []pickItem
-	for _, x := range a.s.G.Free(a.view.Sel) {
-		items = append(items, pickItem{x.Name, x.Index, then})
-	}
-	a.pickFrom(title, items)
-}
-
-// askNeighbour 讓玩家挑一個鄰郡。own 為真時只列自己的。
-func (a *app) askNeighbour(title string, own bool, then func(int)) {
-	var items []pickItem
-	p := a.s.G.Prefecture(a.view.Sel)
-	if p == nil {
-		a.view.Prompt = t("msg.noSuchPref")
-		return
-	}
-	for _, n := range p.Neighbours {
-		q := a.s.G.Prefecture(n)
-		if q == nil {
-			continue
-		}
-		mine := q.Owned() && q.Owner == a.s.Player
-		if own != mine {
-			continue
-		}
-		items = append(items, pickItem{fmt.Sprintf("%d %s", q.ID, q.Name), n, then})
-	}
-	a.pickFrom(title, items)
-}
-
-// askOwn 讓玩家挑一個自己的郡（不限相鄰）。
-func (a *app) askOwn(title string, then func(int)) {
-	var items []pickItem
-	for _, id := range a.s.PlayerTerritory() {
-		if id == a.view.Sel {
-			continue
-		}
-		q := a.s.G.Prefecture(id)
-		items = append(items, pickItem{fmt.Sprintf("%d %s", q.ID, q.Name), id, then})
-	}
-	a.pickFrom(title, items)
 }
 
 // t／tf 取一句介面文字。語系與畫面同一份（`internal/ui`）。

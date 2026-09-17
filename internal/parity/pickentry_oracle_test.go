@@ -1540,3 +1540,44 @@ func TestZZFortSpotMatchesTheOriginal(t *testing.T) {
 		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
 	}
 }
+
+// TestZZMainPromptMatchesTheOriginal 輪到玩家那一郡的主提示（Issue #95）：下面板
+// 「%s主公,請對(%d)／%s下您的命令:」與游標 (544,316) 和原版相同；打「4」之後回顯那一格也相同。
+func TestZZMainPromptMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	if ask := (*b.asks)[len(*b.asks)-1]; ask != [2]int{0, 9} {
+		t.Fatalf("開機停在的那一問是 %v，主命令該是 0-9", ask)
+	}
+	waitCursorShown(t, b.o, b.tr, "主提示")
+	shot, tr := append([]uint8(nil), b.o.IndexedEGASize(scrW, scrH)...), *b.tr
+	dumpScreen(t, b.o, "mainprompt")
+	g := b.game(t)
+	lord := ""
+	if l := g.Lord(b.me); l != nil {
+		lord = ui.NameField(i18n.PersonName(l.Name))
+	}
+	prompt := i18n.Sf("ask.main", lord, b.at, ui.PlaceName(g.Prefecture(b.at).Name))
+	render := func(p string, in ui.InputCursor) *ui.Canvas {
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Status: true, Prompt: p, Input: in})
+		return cv
+	}
+	if tr.X != 544 || tr.Y != 316 {
+		t.Errorf("原版的游標在 (%d,%d)，`docs/spec/014` §4.1 記的是 (544,316)", tr.X, tr.Y)
+	}
+	compareLower(t, "主提示", shot, render(prompt, tr.input()), render(prompt, ui.InputCursor{}), tr)
+
+	b.o.Drain()
+	b.o.TypeBoth("4")
+	waitCursorShown(t, b.o, b.tr, "回顯")
+	if err := b.o.Run(2_000_000); err != nil {
+		t.Fatal(err)
+	}
+	waitCursorShown(t, b.o, b.tr, "回顯")
+	echo, trEcho := append([]uint8(nil), b.o.IndexedEGASize(scrW, scrH)...), *b.tr
+	if trEcho.X != tr.X+8 || trEcho.Y != tr.Y {
+		t.Errorf("打「4」之後原版的游標在 (%d,%d)，該在 (%d,%d)", trEcho.X, trEcho.Y, tr.X+8, tr.Y)
+	}
+	compareLower(t, "回顯 4", echo, render(prompt+"4", trEcho.input()), render(prompt+"4", ui.InputCursor{}), trEcho)
+}

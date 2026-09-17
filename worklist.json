@@ -2039,6 +2039,30 @@
       }
     },
     {
+      "id": "main-prompt",
+      "title": "主命令提示照原版「%s主公,請對(%d)／%s下您的命令:」＋數字輸入 0–9",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014"
+      ],
+      "note": "`TestZZMainPromptMatchesTheOriginal` 下面板與游標 (544,316)、打 4 的回顯相同。子選單那一層 remake 還是按一鍵（登記在 §4 差異表）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZMainPromptMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",
