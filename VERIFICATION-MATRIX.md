@@ -75,9 +75,10 @@
 | 畫面 | 狀態 | 證據 |
 |---|---|---|
 | 設難度 | 接上 | 原版留在選君主那一頁：選中那一位印玩家序號（灰 7 黑邊兩倍寬，(x+16, y+73)）、提示框換「請設定難度(1-10)」。`TestZZDifficultyScreenMatchesTheOriginal` 框外逐像素相同、提示框兩邊有墨、序號外框重合（`docs/spec/005` §9.4，Issue #67）|
+| 音樂欣賞 | 接上 | 原版不換畫面：直牌換「音樂欣賞」、按鈕換五個曲名加一條空白；選第 k 首是 `0x4fb:0x12a(k−1)` 然後回主選單。`TestZZMusicPickMatchesTheOriginal` 124 個字格墨相同、其餘 258,742 點逐格相同，反對照差 38 格，送「3」原版參數 2；DOSBox-X `rec16` 只差小飾框（`docs/spec/005` §6.6，Issue #70）|
 | 載入進度 | 接上 | 原版不換畫面：直牌換「載入進度」（字色 15）、六個按鈕是 `SAVENAME.SVP` 六筆原樣，造字碼位畫那一份進度的字模。`TestZZLoadPickMatchesTheOriginal` 124 個字格墨相同、其餘 255,603 點逐格相同，反對照差 36 格；DOSBox-X `rec16` 只差小飾框（`docs/spec/005` §6.5，Issue #69）|
 | 選擇年代 | 接上 | 原版不換畫面：直牌換「選擇年代」（字色 15）、六個按鈕換原版字串（字 14、底 3、逐字排）。`TestZZScenarioPickMatchesTheOriginal` 124 個字格墨相同、其餘 257,757 點逐格相同，反對照差 16 格（`docs/spec/005` §6.4，Issue #66）|
-| 主選單的六個項目 | 接上行為 | 片頭 → 主選單 → 選年代／幾人玩／選君主／設難度／載入／音樂欣賞／離開；選年代、幾人玩、選君主、設難度、載入照原版畫，音樂欣賞的版面仍是 remake 自排（Issue #70），字型兩項只說明一句（Issue #71）|
+| 主選單的六個項目 | 接上行為 | 片頭 → 主選單 → 選年代／幾人玩／選君主／設難度／載入／音樂欣賞／離開；選年代、幾人玩、選君主、設難度、載入、音樂欣賞照原版畫，字型兩項只說明一句（Issue #71）|
 | 主選單 | 接上 | 五張圖全部就位：`MENU0A`(40,27)／`MENU0B`(320,27) 各 **100%**、`MENU1`(56,215) 95.3%、`MENU2` 六格（x ∈ {152,376}、y ∈ {215,267,320}）93–97%、`MENU3`(576,320) 91%——不足的都是字寫在上面。字的落點也照原版量（中文字距 24、直牌四個字橫向拉兩倍寬）：**扣掉字與小飾框那格動畫之後 245,170 點逐點相同**。基準畫面另拿 DOSBox-X 交叉驗證過，兩個實作逐點相同（`docs/playtest/03`）|
 | 遊戲主畫面 | 接上 | 八張 `MAINMAP*` 的底圖：上方與**下方**花邊、最右直條各 **100%**，左直條 94.7%、地圖區 70.8%（差的是後來蓋上去的）；肖像 `F###.FAC` 在 (536,116) **100%**、肖像框 `FBRD` 四塊各 **100%**。右側兩塊面板的花邊外框是 `SIDE*` 拼件平鋪（`SIDEB`／`SIDED`），與原版 **12,544 點逐點相同**；面板上每一列的位置與字色也是量的（`docs/spec/005` §2.1）|
 | 主戰場的地形 | 接上 | 78 格裡 **73 格逐像素全中**，差的五格是五支部隊站的位置 |
@@ -405,6 +406,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 人物資料卡、尋訪找到人、選君主與新君主的肖像畫面 | 完成 | L1 | base | `TestZZPersonCardMatchesTheOriginal`、`TestZZSearchFaceMatchesTheOriginal`、`TestZZLordPickScreenMatchesTheOriginal`、`TestZZCustomLordScreenMatchesTheOriginal` | 2026-09-17（Issue #54）：`0xf7b4` 九個呼叫端裡主畫面這一層的四種畫面接上——查看→武將畫人物資料卡（`0xf874`：灰底、`SIDEC` 外框、`FBRC` 框、名字 32×32、八行資料），玩家尋訪找到人先亮那一位的肖像 (488,88) 再由尋訪者報結果（`Bubble{FaceOnly}`），開新局選君主是一頁六位的肖像、空心框、勢力色塊與編號（`0x124ca`），新君主分配能力畫肖像加框、名字與六行（`0x12df4`）。四張都對原版逐像素比（字模除外），選君主那一格另拿 DOSBox-X 的畫面交叉驗（只差游標）。順手量到：面板清底 `0x27e8` 只清外框裡面；`0x262c` 用樣式 mod 5 挑 `SIDEA`–`E`；文字常式 `0x1d4e` 的「背景」是描邊色；新君主開局的起始值是 18／80／50／50／50（與 spec/013 的範本不同，規則層另開 Issue）。（`docs/spec/005`、`docs/spec/013`） |
 | 設難度留在選君主那一頁、印玩家序號（0x122ea） | 完成 | L1 | base | present：cmd/san1/title.go 的「title.difficultyPrompt」 | `TestZZDifficultyScreenMatchesTheOriginal` 框外逐像素相同、提示框兩邊有墨、序號外框重合。新君主欄那條路照原版先問難度再分配能力（#68 對齊，§9.5）。（`docs/spec/005`） |
 | 載入進度照原版換直牌與六個按鈕（0x13fb6） | 完成 | L1 | base | present：internal/menu/menu.go 的「func LoadLine」 | `TestZZLoadPickMatchesTheOriginal` 124 個字格墨相同、其餘逐像素相同、反對照差 36 格；DOSBox-X rec16 只差小飾框。空槽只寫「n.」是 remake 差異。（`docs/spec/005`） |
+| 音樂欣賞照原版換直牌與五個曲名，選了播並回主選單（0x145ca） | 完成 | L1 | base | present：internal/menu/menu.go 的「MusicTracks = 5」 | `TestZZMusicPickMatchesTheOriginal` 124 個字格墨相同、其餘逐像素相同、反對照差 38 格；送「3」原版 `0x4fb:0x12a(2)` 後回主選單。DOSBox-X rec16 只差小飾框。（`docs/spec/005`、`docs/formats/06`） |
 | 選擇年代那一層照原版換字（0x11c7e） | 完成 | L1 | base | present：cmd/san1/title.go 的「DrawTitleLayer」 | 直牌「選擇年代」字色 15、按鈕原版字串逐字排；`TestZZScenarioPickMatchesTheOriginal` 字格墨相同、其餘逐格相同。英日版直牌留白。（`docs/spec/005`） |
 
 ### 多語系

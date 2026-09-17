@@ -120,12 +120,17 @@ func TestFontNote(t *testing.T) {
 	}
 }
 
-// TestMusicPicksATrack 釘住音樂欣賞選得到曲子，而且只回報一次。
+// TestMusicPicksATrack 釘住音樂欣賞照原版：六格（五個曲名＋一條空白）、選了
+// 就播而且回主選單、只回報一次；空白那一格不收。
 func TestMusicPicksATrack(t *testing.T) {
 	s := newScreen(t)
 	s.Confirm(4)
-	if s.Stage() != Music || len(s.Items()) != 6 {
-		t.Fatalf("音樂欣賞有 %d 項（stage %d）", len(s.Items()), s.Stage())
+	if s.Stage() != Music || len(s.Items()) != 6 || s.Title() != i18n.S("title.musicPlate") {
+		t.Fatalf("音樂欣賞有 %d 項、直牌 %q（stage %d）", len(s.Items()), s.Title(), s.Stage())
+	}
+	s.Confirm(5)
+	if s.Stage() != Music || s.Track() != -1 {
+		t.Errorf("空白那一格被收了：stage %d", s.Stage())
 	}
 	s.Confirm(2)
 	if got := s.Track(); got != 2 {
@@ -133,6 +138,9 @@ func TestMusicPicksATrack(t *testing.T) {
 	}
 	if got := s.Track(); got != -1 {
 		t.Errorf("同一次選擇回報了兩次：%d", got)
+	}
+	if s.Stage() != Menu {
+		t.Errorf("選完曲子沒回主選單（stage %d）", s.Stage())
 	}
 }
 

@@ -1642,6 +1642,28 @@
       }
     },
     {
+      "id": "title-music",
+      "title": "音樂欣賞照原版換直牌與五個曲名，選了播並回主選單（0x145ca）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/formats/06"
+      ],
+      "note": "`TestZZMusicPickMatchesTheOriginal` 124 個字格墨相同、其餘逐像素相同、反對照差 38 格；送「3」原版 `0x4fb:0x12a(2)` 後回主選單。DOSBox-X rec16 只差小飾框。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/menu/menu.go"
+        ],
+        "pattern": "MusicTracks = 5"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

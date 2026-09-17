@@ -68,15 +68,16 @@ func TestZZScenarioPickMatchesTheOriginal(t *testing.T) {
 		items[k] = i18n.S(fmt.Sprintf("title.scenario%d", k+1))
 	}
 	mainItems := ui.TitleItems()
-	compareTitleLayer(t, "選擇年代", orig, ts, face, i18n.S("title.pickScenario"), items, "主選擇單", mainItems[:])
+	compareTitleLayer(t, "選擇年代", orig, ts, face, i18n.S("title.pickScenario"), items, "主選擇單", mainItems[:], 62)
 }
 
 // compareTitleLayer 拿原版停在主選單某一層的畫面 orig 與 remake 的
 // `ui.DrawTitleLayer(label, items)` 比：直牌四格與六條按鈕的每一個半形格
 // 比有沒有墨，其餘像素逐格相同（扣掉小飾框與最上面兩個角落）；反對照拿
-// negLabel／negItems 畫的那一層比按鈕的墨，必須對不上。
+// negLabel／negItems 畫的那一層比按鈕的墨，必須對不上。minInk 是原版至少要有墨的
+// 字格數（停錯地方的正對照：直牌 4 格加上按鈕字的格數）。
 func compareTitleLayer(t *testing.T, name string, orig []uint8, ts *ui.TitleScreen, face *font.Face,
-	label string, items []string, negLabel string, negItems []string) {
+	label string, items []string, negLabel string, negItems []string, minInk int) {
 	t.Helper()
 	c := ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
 	ui.DrawTitleLayer(c, ts, -1, label, ui.ScenarioLabelInk, items, -1)
@@ -162,7 +163,7 @@ func compareTitleLayer(t *testing.T, name string, orig []uint8, ts *ui.TitleScre
 	if inkBad != 0 || bad != 0 {
 		t.Fatalf("%s：字格有墨不同 %d／%d，其餘像素不同 %d／%d", name, inkBad, inkN, bad, n)
 	}
-	if inked < 40 {
+	if inked < minInk {
 		t.Fatalf("%s：原版只有 %d 個字格有墨——停的地方不對", name, inked)
 	}
 	// 反對照：同一套比法拿主選單那一層的字去比，必須對不上。
@@ -243,5 +244,77 @@ func TestZZLoadPickMatchesTheOriginal(t *testing.T) {
 	for k := range scen {
 		scen[k] = i18n.S(fmt.Sprintf("title.scenario%d", k+1))
 	}
-	compareTitleLayer(t, "載入進度", orig, ts, face, i18n.S("title.loadPlate"), items, i18n.S("title.pickScenario"), scen)
+	compareTitleLayer(t, "載入進度", orig, ts, face, i18n.S("title.loadPlate"), items, i18n.S("title.pickScenario"), scen, 94)
+}
+
+// TestZZMusicPickMatchesTheOriginal 對拍主選單按「5」之後的音樂欣賞那一層
+// （Issue #70）：原版停在 `0x1468b` 讀鍵存畫面，remake 畫同一層比；接著送「3」，
+// 原版要以 2 呼叫 `0x4fb:0x12a`（播第 3 首）並回到主選單讀鍵
+// （`docs/spec/005` §6.6）。
+func TestZZMusicPickMatchesTheOriginal(t *testing.T) {
+	root := origRoot(t)
+	c1 := openContainer(t, filepath.Join(root, "DATA1"))
+	c3 := openContainer(t, filepath.Join(root, "DATA3"))
+	ts, err := ui.NewTitleScreen(c3, c1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fh, err := os.Open("../../fonts/unifont.hex.gz")
+	if err != nil {
+		t.Skipf("沒有字型檔：%v", err)
+	}
+	face, err := font.ParseHexGz(fh, 16)
+	fh.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	const musicCaller = 0x1468e // `0x1468b` call 0x113a4 的返回位址
+	asks, menuAsks := 0, 0
+	o.OnCall(addr(bootASCInputFn), func(o *oracle.Oracle) {
+		switch o.Caller().Linear() {
+		case musicCaller:
+			asks++
+		case 0x11b77: // 主選單那一支的返回位址（`bootMainMenuCaller`）
+			menuAsks++
+		}
+	})
+	var played []int
+	o.OnCall(oracle.Addr{Seg: 0x4fb, Off: 0x12a}, func(o *oracle.Oracle) {
+		played = append(played, int(int16(o.Arg(0))))
+	})
+	bootToMenu(t, o)
+	o.Drain()
+	o.PressScan("5")
+	waitBoot(t, o, "音樂欣賞輸入", 200_000_000, func() bool { return asks > 0 })
+	waitBootScan(t, o, "音樂欣賞", 5_000_000)
+	orig := screenOf(o)
+	dumpScreen(t, o, "music-pick-orig")
+
+	i18n.Current = i18n.ZhHant
+	var items []string
+	for k := 1; k <= menu.MusicTracks; k++ {
+		items = append(items, i18n.S(fmt.Sprintf("title.song%d", k)))
+	}
+	items = append(items, "")
+	scen := make([]string, 6)
+	for k := range scen {
+		scen[k] = i18n.S(fmt.Sprintf("title.scenario%d", k+1))
+	}
+	compareTitleLayer(t, "音樂欣賞", orig, ts, face, i18n.S("title.musicPlate"), items, i18n.S("title.pickScenario"), scen, 34)
+
+	// 開機到主選單時原版已經以 0 叫過一次（主選單的配樂），只看送鍵之後的。
+	before, boot := menuAsks, len(played)
+	o.Drain()
+	o.PressScan("3")
+	waitBoot(t, o, "選曲之後回主選單", 200_000_000, func() bool { return menuAsks > before })
+	if got := played[boot:]; len(got) != 1 || got[0] != 2 {
+		t.Fatalf("送「3」之後 `0x4fb:0x12a` 的參數是 %v（開機時 %v），想要 [2]", got, played[:boot])
+	}
+	t.Logf("開機時 `0x4fb:0x12a%v`；送「3」之後 `0x4fb:0x12a(%d)`，接著回到主選單讀鍵", played[:boot], played[boot])
 }

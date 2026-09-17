@@ -28,6 +28,9 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
+// MusicTracks 是音樂欣賞列的曲數（原版收 `1`–`5`，`0x1469e`）。
+const MusicTracks = 5
+
 // Stage 是停在哪一層。
 type Stage int
 
@@ -210,9 +213,15 @@ func (s *Screen) Confirm(i int) *session.Session {
 	case Load:
 		return s.load(i)
 	case Music:
+		// `1`–`5` 先停掉、播第 k 首（`0x4fb:0x12a(k−1)`，即 `MUS.GRP` 第 2(k−1)、
+		// 2(k−1)+1 項），然後直接回主選單；第六格是空白，原版不收那個鍵。
+		if i < 0 || i >= MusicTracks {
+			return nil
+		}
 		if i < s.tracks {
 			s.track = i
 		}
+		s.Back()
 	case Note:
 		s.Back()
 	}
@@ -235,15 +244,15 @@ func (s *Screen) menuPick(i int) {
 	case 2, 3:
 		s.note(i18n.S("title.font"), i18n.S("title.fontNote"))
 	case 4:
+		// 音樂欣賞：原版不換畫面，直牌換「音樂欣賞」、六個按鈕換五個曲名與一條空白
+		// （`0x145ca`，`docs/spec/005` §6.6）。沒有配樂照樣列出來，選了不出聲。
 		s.stage, s.pick = Music, 0
-		s.title = i18n.S("title.music")
+		s.title = i18n.S("title.musicPlate")
 		s.items = nil
-		for k := 0; k < s.tracks; k++ {
-			s.items = append(s.items, i18n.Sf("title.track", k+1))
+		for k := 1; k <= MusicTracks; k++ {
+			s.items = append(s.items, i18n.S(fmt.Sprintf("title.song%d", k)))
 		}
-		if s.tracks == 0 {
-			s.note(i18n.S("title.music"), i18n.S("title.noMusic"))
-		}
+		s.items = append(s.items, "")
 	case 5:
 		s.quit = true
 	}
