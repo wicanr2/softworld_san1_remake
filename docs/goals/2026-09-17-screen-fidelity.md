@@ -55,3 +55,28 @@ repo 的 `CLAUDE.md`／`CONTEXT.md` 全部適用。
 
 #58、#35、#56、#34 關閉並附收據；普查連續兩輪開不出新的 agent-ready；剩下的 open 只有 #33、#2 與 needs-human。
 最終回覆列：已關 Issue 與證據、新的 needs-human 待答問題、dosgolem-san 未推 commit、Docker 與工作樹狀態。
+
+---
+
+## 6. 收尾（2026-09-18）
+
+§5 的完成條件逐條對照：
+
+| 條件 | 狀態 |
+|---|---|
+| #58、#35、#56、#34 關閉並附收據 | 四條都在 2026-09-17 關閉（`0d5a3ed` 場景圖拉幕兩個 commit、`d3f8a3f` 被擒處置與中途紮寨、`c9e89af` 對戰子畫面、`R72` 商標畫面）。核實訊號留著：`ui.NewSceneWipe`／`TestZZSceneEffectMatchesTheOriginal`、`battle.PlayerSkirmish`＋`internal/ui/skirmish.go`、`TestZZTrademarkMatchesTheOriginal`；`PendingWipe`／`TakeWipe` 已刪（grep 0 處）|
+| 普查連續兩輪開不出新的 agent-ready | 第 16、17 輪都沒有。第 16 輪查的是剩下的自編字串（九類子選單都齊、「還沒實作」到不了、「沒有這個選項」是子選單按一鍵那個既有差異的配套）；第 17 輪掃 `docs/spec` 的「沒量」，剩下的都不是畫面一致性（配樂重播、西曆那一行、製作人員、讀檔停在回合中途）|
+| 剩下的 open 只有 #33、#2 與 needs-human | open：#84、#82、#71、#65、#64、#33（needs-human）＋ #2（blocked）|
+
+普查第 5–15 輪開出並關閉的（全部照 §3 範本、`<!-- goal:2026-09-17 -->`）：
+#77–#81（挑人清單、數字輸入、賞賜物品迴圈、輸入游標、人物卡提示）、#82／#84 轉 needs-human、
+#83（計略的問法）、#85（登用他國人才）、#86（AI 計略對拍紅燈）、#87（郡縣自冶）、#88（君主物品表）、
+#89（指定太守）、#90（指定軍師）、#91（商業三項）、#92＋#94（建關寨與挑位置）、#93（賞賜金帛迴圈）、
+#95（主命令提示）、#96（DOSBox-X 交叉四格）、#97（不耗回合的命令重印提示）。
+
+三個順手修掉的規則差異：指定太守原本一定被規則層擋下（#89）、賣米零頭（R84）、
+賞賜金帛的公式與迴圈（R85）。A／B／C 三軌全程沒開新的。
+
+⚠ **#96 沒照 issue 指定的測試做**：`TestZZDosgolemMatchesDosbox` 的驅動配方走不完含防拷密碼的路
+（`rec18` 第 12 步起只剩 27–63% 相同），改用 `rec11` 的做法（DOSBox 畫格對 remake 算圖，盤面從劇本重建）。
+關寨的金閘門與挑位置畫面 DOSBox 這側錄不到，原因記在 `docs/playtest/03`。
