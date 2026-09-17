@@ -116,8 +116,8 @@ func TestGenerals(t *testing.T) {
 				if gs[i].IsPerson {
 					t.Errorf("第 %d 槽是填充槽，不該判成人物（%q）", i, gs[i].Name)
 				}
-				if gs[i].Name == "" {
-					t.Errorf("第 %d 槽應該有標點文字，Name 卻是空的", i)
+				if gs[i].Name != ShippedGlyphText {
+					t.Errorf("第 %d 槽的姓名欄是造字碼位，顯示應該是 %q，卻是 %q", i, ShippedGlyphText, gs[i].Name)
 				}
 			}
 		})

@@ -499,7 +499,10 @@ func DecodeTables(slot Slot, mas, sta, gen []byte) (*Scenario, error) {
 		field := strings.Trim(string(rec[:6]), " \x00")
 		if field != "" {
 			if name, err := decodeBig5([]byte(field)); err == nil {
-				g.Name = name
+				// 造字碼位（自創君主與四個範本槽）換成字模畫的字，給畫面用
+				//（`ShowCustomGlyphs`）；**是不是人物照原始碼位判**——範本槽的
+				// 姓名欄是標點，不是人（`TestSlot001`）。寫回檔案用 Raw，不經過 Name。
+				g.Name = ShowCustomGlyphs(name)
 				g.IsPerson = allHan(name)
 			}
 			// **解不出來不當錯誤。** 原版可能有造字（Big5 使用者造字區）。

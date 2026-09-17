@@ -112,11 +112,21 @@ remake 開自創君主的局時，把**原版出貨的那一份 `BASEPRE`** 帶�
 **一般君主的局不帶**：那一局沒有造字要畫，存檔那一層會沿用上一次寫出去
 的——存讀一輪不該把別人畫好的字洗掉。
 
+### R5 畫面上的名字是字模畫的字，不是標點（Issue #72）
+
+原版畫 `A141`–`A14C` 時用的是造字區裡載入的字模，所以自創君主在每一個畫面上
+都叫「新君主」。remake 不內嵌字模（`CLAUDE.md` §3.3），人物表解碼時用
+`state.ShowCustomGlyphs` 把這十二個碼位換成出貨字模畫的字（每三格一組「新君主」），
+`General.Name` 因此是「新君主」；**`IsPerson` 仍照原始碼位判**（四個範本槽不是人），
+寫回檔案走 `Raw`，碼位不變（`TestOriginalCustomLord` 驗人物表 346 的姓名欄仍是
+`A141 A142 A143`）。載入進度那一層的 `SAVENAME` 也過同一支（`docs/spec/005` §6.5）。
+
 ## 6. 驗收
 
 | 項 | 怎麼驗 |
 |---|---|
 | 劇本 001 有兩個新君主欄 | `internal/state` 的 `TestCustomLordSlotsMatchTheManual` |
+| 名字在畫面上是「新君主」（R5）| `TestShowCustomGlyphsMapsTheShippedName`、`internal/menu` 的 `TestPicksACustomLord`；`TestZZNewLordBornMatchesTheOriginal` 名字那一格有墨直欄原版 39、remake 45，畫成「，、。」的反對照只有 10 |
 | 六個劇本的新君主欄各對上君主槽 ≥ 346 的那幾格 | `TestCustomLordSlotsAcrossScenarios`、`internal/menu` 的 `TestNewLordSlotsInScenarioThree` |
 | 範本的初始值 | `TestCustomLordStatsStartFromTheTemplate` |
 | 點數、空白郡、姓名的檢查 | `TestCustomLordValidate` |

@@ -153,8 +153,17 @@ func TestOriginalCustomLord(t *testing.T) {
 	if lord.Index != 346 {
 		t.Errorf("君主是人物槽 %d，想要 346", lord.Index)
 	}
-	if lord.Name != "，、。" {
-		t.Errorf("君主的姓名是 %q，想要三個造字碼位 A141–A143", lord.Name)
+	// 顯示用的姓名換成字模畫的字（`state.ShowCustomGlyphs`）；人物表裡仍是
+	// 三個造字碼位，寫回原版進度時不變。
+	if lord.Name != "新君主" {
+		t.Errorf("君主的姓名是 %q，想要字模畫的「新君主」", lord.Name)
+	}
+	_, _, gen, err := g.Tables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := gen[346*state.GeneralRecordSize:]; rec[0] != 0xA1 || rec[1] != 0x41 || rec[2] != 0xA1 || rec[3] != 0x42 || rec[4] != 0xA1 || rec[5] != 0x43 {
+		t.Errorf("人物表 346 的姓名欄是 % x，想要 A141 A142 A143", rec[:6])
 	}
 	// 第 1 格的 BASEPRO 游標指到玩家郡 41。原版接回月內迴圈時先重整
 	// 守將清單再顯示主命令，所以檔案裡的 0／0 到畫面時已成為 5／1。

@@ -306,8 +306,52 @@ func TestZZNewLordBornMatchesTheOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// 名字從局面裡取（人物表裡是造字碼位，`state.ShowCustomGlyphs` 換成字模畫的字，
+	// Issue #72），不是寫死的字串——畫面拿到的就是遊戲裡那一條路。
+	who := g.Lord(state.FactionID(customs[0]))
+	if who == nil {
+		t.Fatal("新君主沒有上盤面")
+	}
 	cv := ui.NewCanvasPx(scrW, scrH, loadFace(t))
-	ui.DrawNewLordBorn(cv, art, g, state.CustomLordPortrait[0], "新君主", colour, 0)
+	ui.DrawNewLordBorn(cv, art, g, state.CustomLordPortrait[0], who.Name, colour, 0)
+	// 名字那一格比「有墨的直欄數」：原版的字模與 remake 的字庫形狀不同，但三個
+	// 全形字各占滿一格；畫成標點「，、。」的只有左下角幾欄。反對照必須對不上。
+	punct := ui.NewCanvasPx(scrW, scrH, loadFace(t))
+	ui.DrawNewLordBorn(punct, art, g, state.CustomLordPortrait[0], "，、。", colour, 0)
+	nameBox := [4]int{game.BubbleX2 - 55, 66 + 80, game.BubbleX2 - 8, 66 + 95}
+	inkCols := func(pix func(x, y int) int) int {
+		n := 0
+		for x := nameBox[0]; x <= nameBox[2]; x++ {
+			for y := nameBox[1]; y <= nameBox[3]; y++ {
+				if pix(x, y) != 0 {
+					n++
+					break
+				}
+			}
+		}
+		return n
+	}
+	canvasIdx := func(c *ui.Canvas) func(x, y int) int {
+		return func(x, y int) int {
+			p := c.Img.RGBAAt(x, y)
+			for i, q := range assets.EGAPalette {
+				if q == p {
+					return i
+				}
+			}
+			return -1
+		}
+	}
+	oc := inkCols(func(x, y int) int { return int(orig[y*scrW+x] & 15) })
+	mc, pc := inkCols(canvasIdx(cv)), inkCols(canvasIdx(punct))
+	t.Logf("名字 %q：有墨的直欄 原版 %d、remake %d、標點反對照 %d（共 %d 欄）", who.Name, oc, mc, pc, nameBox[2]-nameBox[0]+1)
+	near := func(a, b int) bool { return a*4 >= b*3 && b*4 >= a*3 }
+	if !near(oc, mc) {
+		t.Errorf("名字的有墨直欄 原版 %d、remake %d，差超過四分之一", oc, mc)
+	}
+	if near(oc, pc) {
+		t.Errorf("反對照：畫成「，、。」也有 %d 欄，這個比法分不出來", pc)
+	}
 	if dir := os.Getenv("SAN1_SHOTS"); dir != "" {
 		savePNG(t, filepath.Join(dir, "remake-newlord-born.png"), cv)
 	}

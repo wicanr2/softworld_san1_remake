@@ -304,6 +304,10 @@ func TestPicksACustomLord(t *testing.T) {
 	if lord == nil {
 		t.Fatal("盤面上沒有新君主")
 	}
+	// 人物表裡是造字碼位，畫面拿到的名字是字模畫的字（Issue #72）。
+	if lord.Name != state.ShippedGlyphText {
+		t.Errorf("新君主的名字是 %q，想要 %q", lord.Name, state.ShippedGlyphText)
+	}
 	if int(lord.Age) != state.CustomLordAge {
 		t.Errorf("年齡 %d，範本是 %d", lord.Age, state.CustomLordAge)
 	}

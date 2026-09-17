@@ -1664,6 +1664,27 @@
       }
     },
     {
+      "id": "custom-lord-glyph-name",
+      "title": "自創君主的名字畫成字模的「新君主」，不是標點（A141–A14C）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/013"
+      ],
+      "note": "`state.ShowCustomGlyphs` 在人物表解碼時換字、IsPerson 照原始碼位判；`TestZZNewLordBornMatchesTheOriginal` 名字有墨直欄原版 39／remake 45／標點反對照 10；`TestOriginalCustomLord` 驗碼位寫回不變。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/state/scenario.go"
+        ],
+        "pattern": "g.Name = ShowCustomGlyphs\\(name\\)"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",
