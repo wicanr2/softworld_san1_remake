@@ -403,12 +403,31 @@ func (o SearchOrder) Describe(g *State) string {
 	return tf("log.search", prefName(g, o.At), byWhom(g, o.General))
 }
 
-type RewardOrder struct{ At, Target, Gold int }
+// RewardOrder 是賞賜金帛的一位。Round 非 nil 時是玩家一道命令裡的一位（`OpenReward`）：
+// 同一道命令裡賞過的擋下（「%s已賞賜過了」），不看每月旗標，也不結束回合——等 CloseGift。
+type RewardOrder struct {
+	At, Target, Gold int
+	Round            *GiftRound
+}
 
 func (o RewardOrder) Prefecture() int { return o.At }
+
+// KeepsTurn 為真時 `session.Do` 不把這一道當成郡回合的結束。
+func (o RewardOrder) KeepsTurn() bool { return o.Round != nil }
+
 func (o RewardOrder) Apply(g *State, by state.FactionID) error {
+	if r := o.Round; r != nil {
+		if r.given[o.Target] {
+			return ErrAlreadyGifted
+		}
+		// 名單上點到就記下（`0x1c35f` 在問金額之前）。
+		r.given[o.Target] = true
+	}
 	g.commandScene(o.At, assets.SceneReward, by) // `0x1c501`
-	err := g.Reward(o.At, o.Target, o.Gold, by)
+	err := g.reward(o.At, o.Target, o.Gold, by, o.Round == nil)
+	if err == nil && o.Round != nil {
+		o.Round.Gave = true
+	}
 	if err == nil && g.playerCommand(by) {
 		g.say(g.General(o.Target), false, false, t_("bub.rewardThanks"), o.At, 0x1c547) // `0x1c547`
 	}

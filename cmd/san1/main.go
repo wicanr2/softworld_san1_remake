@@ -799,16 +799,8 @@ func (a *app) begin(cat, item byte) {
 	case cat == '6' && item == '2':
 		a.askRoster(t("ask.recruit"), sel, game.PickFree, game.PickByIntel, func(gi int) { a.run(game.RecruitOrder{At: sel, Target: gi}) }, nil)
 	case cat == '6' && item == '3':
-		a.askRoster(t("ask.reward"), sel, game.PickSubject, game.PickByLoyalty, func(gi int) {
-			// 原版問的是「賞賜%s多少金」，上限 100（手冊 p.23）。
-			max := game.MaxReward
-			if p := g.Prefecture(sel); p != nil && p.Gold < max {
-				max = p.Gold
-			}
-			a.askNumber(t("ask.rewardGold"), t("hint.reward"), max, func(n int) {
-				a.run(game.RewardOrder{At: sel, Target: gi, Gold: n})
-			})
-		}, nil)
+		closeMenu()
+		a.withAdvice(game.AdviceReward, sel, game.AdviceTarget{}, func() { a.reward(sel) })
 	case cat == '6' && item == '4':
 		a.askRoster(t("ask.dismiss"), sel, game.PickOfficerOnly, game.PickByLoyalty, func(gi int) { a.run(game.DismissOrder{At: sel, Target: gi}) }, nil)
 
@@ -853,6 +845,62 @@ func (a *app) begin(cat, item byte) {
 	if len(a.pick) == 0 && a.num == nil {
 		closeMenu()
 	}
+}
+
+// reward 是人事→3.賞賜金帛（`0x1c1d2`）：金是 0 印「抱歉, 您沒有金」退出；「<賞賜金帛>／賞賜那一位
+// 將軍」（模式 5、鍵 4）→ 這一道命令裡賞過的印「%s已賞賜過了」回到名單 → 「賞賜%s多少金／(0-%d):」
+// （上限 min(金, 100)）→ 賞完回到名單。名單取消、金額打 0 或取消（印「取消」）都收掉命令；賞出過一位
+// 就結束這個郡的回合（`GiftRound`，與賞賜物品共用）。
+func (a *app) reward(sel int) {
+	g := a.s.G
+	p := g.Prefecture(sel)
+	if p == nil {
+		return
+	}
+	if p.Gold <= 0 {
+		a.view.Prompt = t("msg.noGold")
+		return
+	}
+	r, err := g.OpenReward(sel, a.s.Player)
+	if err != nil {
+		a.view.Prompt = game.ErrorText(err)
+		return
+	}
+	done := func() {
+		if a.s.CloseGift(r) {
+			a.view.Prompt = ""
+		}
+	}
+	var who func()
+	who = func() {
+		a.askRoster(t("ask.reward"), sel, game.PickSubject, game.PickByLoyalty, func(gi int) {
+			x := g.General(gi)
+			if x == nil {
+				return
+			}
+			name := ui.NameField(i18n.PersonName(x.Name))
+			if r.Gifted(gi) {
+				a.view.Prompt = tf("msg.gifted", i18n.PersonName(x.Name))
+				who()
+				return
+			}
+			most := min(p.Gold, game.MaxReward)
+			a.askBare(tf("ask.rewardGold", name, most), 0, most, func(n int) {
+				if n <= 0 {
+					a.view.Prompt = t("msg.cancel")
+					done()
+					return
+				}
+				a.apply(game.RewardOrder{At: sel, Target: gi, Gold: n, Round: r})
+				a.afterBubbles = who
+			})
+			a.cancel = func() {
+				a.view.Prompt = t("msg.cancel")
+				done()
+			}
+		}, done)
+	}
+	who()
 }
 
 // buyRice 是商業→1.買入米糧（`0x1b1b2`）：沒有金印「抱歉, 您沒有金」；一金換 (100 − 物價) ÷ 10 米，

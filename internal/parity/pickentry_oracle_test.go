@@ -1293,3 +1293,139 @@ func TestZZCommerceAskMatchesTheOriginal(t *testing.T) {
 		})
 	}
 }
+
+// TestZZRewardLoopMatchesTheOriginal 人事→3.賞賜金帛的迴圈（Issue #93）：賞 A 50 金 → 回名單 → 再點 A
+// 被擋（已賞賜過了）→ 賞 B 30 金 → 名單空 Enter 收掉。「多少金」那一格範圍、下面板、游標相同；
+// 每一步之後原版回到名單；收掉之後三張表在結束回合那一刻逐位元組相同。
+func TestZZRewardLoopMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	pref := b.base + uint32(nMas+b.at*state.PrefectureRecordSize)
+	b.o.SetWord(addr(pref+18), 1000)
+	lord := int(b.o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
+	var two []int
+	for _, i := range b.people {
+		if i != lord && len(two) < 2 {
+			two = append(two, i)
+			b.o.SetByte(addr(b.base+uint32(nMas+nSta+i*state.GeneralRecordSize+16)), uint8(20+10*len(two)))
+		}
+	}
+	A, B := two[0], two[1]
+	total := nMas + nSta + state.GeneralTableSize
+	done, again := 0, 0
+	var after []byte
+	b.o.OnCall(addr(mainAskAgainAt), func(*oracle.Oracle) { again++ })
+	b.o.OnCall(addr(mainTurnDoneAt), func(o *oracle.Oracle) {
+		if done++; after == nil {
+			after = o.Bytes(addr(b.base), total)
+		}
+	})
+	// step 送一段鍵，對白要鍵就補空白，直到原版下一次問數字（或結束回合）。
+	step := func(name, keys string) [2]int {
+		t.Helper()
+		asks := len(*b.asks)
+		b.o.Drain()
+		b.o.TypeBoth(keys)
+		// 空白鍵在名單裡是翻頁，所以要等原版真的停在讀鍵（對白）才補，不能一律補。
+		for i := 0; i < 60 && len(*b.asks) == asks && done == 0; i++ {
+			if err := b.o.Run(20_000_000); err != nil {
+				t.Fatal(err)
+			}
+			if len(*b.asks) == asks && done == 0 && i >= 4 {
+				b.o.Drain()
+				b.o.TypeBoth(" ")
+			}
+		}
+		if len(*b.asks) == asks {
+			return [2]int{-1, -1}
+		}
+		waitCursorShown(t, b.o, b.tr, name)
+		return (*b.asks)[len(*b.asks)-1]
+	}
+	// 名單記得頁數（`DS:0x66b2`），一頁 12 列：要點的人不在目前那一頁就先按空白翻頁。
+	rowOf := func(who int) string {
+		for i, x := range b.game(t).PickRoster(b.at, game.PickSubject, game.PickByLoyalty) {
+			if x.Index != who {
+				continue
+			}
+			for k := 0; k < 4; k++ {
+				if cur := (*b.asks)[len(*b.asks)-1]; i+1 >= cur[0] && i+1 <= cur[1] {
+					break
+				}
+				asks := len(*b.asks)
+				b.o.Drain()
+				b.o.TypeBoth(" ")
+				waitBoot(t, b.o, "翻頁", 100_000_000, func() bool { return len(*b.asks) > asks })
+				waitCursorShown(t, b.o, b.tr, "翻頁")
+			}
+			return fmt.Sprintf("%d\r", i+1)
+		}
+		t.Fatalf("名單裡沒有槽號 %d", who)
+		return ""
+	}
+	isRoster := func(ask [2]int) bool { return ask[0] >= 1 }
+	before := b.o.Bytes(addr(b.base), total)
+	g := b.game(t)
+	b.press(t, "人事", "6\r")
+	b.press(t, "賞賜金帛", "3\r")
+	if ask := step("賞 A 多少金", rowOf(A)); ask != [2]int{0, 100} {
+		t.Fatalf("「多少金」原版問 %v，remake 0-100", ask)
+	}
+	shot, tr := append([]uint8(nil), b.o.IndexedEGASize(scrW, scrH)...), *b.tr
+	x := g.General(A)
+	prompt := i18n.Sf("ask.rewardGold", ui.NameField(i18n.PersonName(x.Name)), 100)
+	render := func(in ui.InputCursor) *ui.Canvas {
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: prompt, Input: in})
+		return cv
+	}
+	compareLower(t, "賞賜多少金", shot, render(tr.input()), render(ui.InputCursor{}), tr)
+	if ask := step("賞完回名單", "50\r"); !isRoster(ask) {
+		t.Fatalf("賞完 A 原版問 %v，該回到名單", ask)
+	}
+	if ask := step("再點 A", rowOf(A)); !isRoster(ask) {
+		t.Fatalf("再點 A 原版問 %v，該擋下並回到名單", ask)
+	}
+	if ask := step("賞 B", rowOf(B)); ask != [2]int{0, 100} {
+		t.Fatalf("點 B 原版問 %v", ask)
+	}
+	if ask := step("賞完 B 回名單", "30\r"); !isRoster(ask) {
+		t.Fatalf("賞完 B 原版問 %v，該回到名單", ask)
+	}
+	step("名單空 Enter", "\r")
+	if after == nil || again != 0 {
+		t.Fatalf("收掉之後原版結束回合 %d 次、回主選單 %d 次；賞出過就該結束回合", done, again)
+	}
+
+	r, err := g.OpenReward(b.at, b.me)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range []game.RewardOrder{{At: b.at, Target: A, Gold: 50, Round: r}, {At: b.at, Target: B, Gold: 30, Round: r}} {
+		if err := o.Apply(g, b.me); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := (game.RewardOrder{At: b.at, Target: A, Gold: 10, Round: r}).Apply(g, b.me); err != game.ErrAlreadyGifted {
+		t.Errorf("同一道命令再賞 A 回 %v", err)
+	}
+	if !g.CloseGift(r) {
+		t.Fatal("賞出過兩位，收掉時不算下過令")
+	}
+	rm, rs, rg, err := g.Tables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := append(append(append([]byte{}, rm...), rs...), rg...)
+	t.Logf("原版動到的記錄：%s", changedRecords(before, after, nMas, nSta))
+	gov := g.Governor(b.at)
+	for _, w := range []struct{ who, gold int }{{A, 50}, {B, 30}} {
+		off := nMas + nSta + w.who*state.GeneralRecordSize
+		t.Logf("槽號 %d（謀略 %d 戰力 %d）賞 %d 金：忠誠 %d → 原版 %d、remake %d；主事者 %d 魅力 %d", w.who,
+			before[off+9], before[off+10], w.gold, before[off+16], after[off+16], got[off+16], gov.Index, gov.Charm)
+	}
+	if n := diffCount(after, got); n != 0 {
+		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
+	}
+}

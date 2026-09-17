@@ -313,6 +313,12 @@ func (g *State) recruitDifficulty(t *General, prefectureID int, by state.Faction
 // Reward 是「賞賜金帛」（說明書 p.23）：賞金上限 100，
 // **各郡每月可賞每人一次**。
 func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) error {
+	return g.reward(prefectureID, targetIndex, gold, by, true)
+}
+
+// reward 是賞賜金帛的本體。monthly 為假時不看也不寫「這個月領過了」旗標——玩家的一道
+// 賞賜金帛（`GiftRound`）只擋同一道命令裡的同一位（`es:0x31c2`，`0x1c2ca` 進命令時重設）。
+func (g *State) reward(prefectureID, targetIndex, gold int, by state.FactionID, monthly bool) error {
 	p := g.Prefecture(prefectureID)
 	if p == nil || !p.Owned() || p.Owner != by {
 		return ErrNotYours
@@ -345,7 +351,7 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 	// 差別在會移動的人身上看得到：郡 4 的名單裡 81 號原本站在郡 6，
 	// 隨著移防搬過來，在郡 6 已經領過一次；原版在郡 4 照樣給他一份
 	// （量到原版擲 8 次 ＝ 名單裡的非君主人數，remake 擲 7 次）。
-	if t.Rewarded && !g.byComputer(by) {
+	if monthly && t.Rewarded && !g.byComputer(by) {
 		return ErrAlreadyPaid
 	}
 	if p.Gold < gold {
@@ -356,14 +362,13 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 		charm = int(gov.Charm)
 	}
 	// 旗標只給玩家那一條用；電腦那一條不讀也不寫。
-	if !g.byComputer(by) {
+	if monthly && !g.byComputer(by) {
 		t.Rewarded = true
 	}
 	// **兩條路完全分開。** 電腦那條擲一次骰、照加成算效果、再照實際增幅
 	// 反算花費（`0xd374`／`0xd3ed`，六個等級對拍過 605 次）；玩家那條
-	// **不擲骰、沒有加成、照打進去的數字付**——增幅是
-	// `魅力 × 0.64 × 金 ÷ 100`，兩串掃描各十點逐點相同
-	//（`RewardGainPlayer`，`docs/playtest/04`）。
+	// **不擲骰、沒有加成、照打進去的數字付**——新忠誠是
+	// `忠誠 ＋ 魅力 ÷ max(謀略, 戰力) × 金 × 0.5`（`RewardLoyaltyPlayer`，`0x1c458`）。
 	//
 	// 少了這個分岔，玩家那邊會多消耗一次亂數，之後每一格都跟著岔開。
 	if g.byComputer(by) {
@@ -382,8 +387,7 @@ func (g *State) Reward(prefectureID, targetIndex, gold int, by state.FactionID) 
 			gold = RewardCost(effect, int(t.Loyalty)-was)
 		}
 	} else if t.HasLoyalty() {
-		t.Loyalty = uint8(clampTo(
-			int(t.Loyalty)+RewardGainPlayer(charm, gold), 100))
+		t.Loyalty = uint8(clampTo(RewardLoyaltyPlayer(int(t.Loyalty), charm, max(int(int8(t.Intel)), int(int8(t.War))), gold), 100))
 	}
 	if gold > p.Gold {
 		gold = p.Gold

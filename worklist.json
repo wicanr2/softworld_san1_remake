@@ -2040,6 +2040,32 @@
       }
     },
     {
+      "id": "reward-loop",
+      "title": "人事→賞賜金帛是一道命令賞好幾位的迴圈；玩家增幅 魅力 ÷ max(謀略, 戰力) × 金 × 0.5",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/20",
+        "docs/spec/014",
+        "docs/playtest/04"
+      ],
+      "note": "`TestZZRewardLoopMatchesTheOriginal`：賞 A 50、擋重複、賞 B 30、收掉，三張表在結束回合那一刻逐位元組相同；公式從 `0x1c458` 讀出（R85）。軍師評價在原版是命令一開始，remake 也在開頭走 `withAdvice`；對白、場景圖沒有逐格比。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZRewardLoopMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

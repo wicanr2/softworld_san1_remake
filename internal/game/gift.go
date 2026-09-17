@@ -42,6 +42,16 @@ func (g *State) OpenGift(at int, by state.FactionID) (*GiftRound, error) {
 	return &GiftRound{At: at, by: by, given: map[int]bool{}}, nil
 }
 
+// OpenReward 開一道人事→3.賞賜金帛（`0x1c1d2`，`L0`、`[base]`）。與賞賜物品共用「賞過了」
+// 那一張表（`es:0x31c2`，進命令時重設），回傳值的規則也相同：賞出一位就結束這個郡的回合，
+// 一位都沒賞回主選單。這一類不必君主在場。
+func (g *State) OpenReward(at int, by state.FactionID) (*GiftRound, error) {
+	if _, err := g.canOrder(at, by); err != nil {
+		return nil, err
+	}
+	return &GiftRound{At: at, by: by, given: map[int]bool{}}, nil
+}
+
 // GiftPrefectureOK 是挑郡那一問的清單（`es:0x2102`）：主人與下令的郡相同。
 func (g *State) GiftPrefectureOK(r *GiftRound, pref int) bool {
 	p, home := g.Prefecture(pref), g.Prefecture(r.At)

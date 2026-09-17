@@ -642,32 +642,23 @@ func RewardEffect(governorCharm, bonus, roll int) int {
 // RewardGain 是賞 gold 金換到的忠誠（還沒夾上限）。
 func RewardGain(effect, gold int) int { return effect * gold / 100 }
 
-// RewardGainPlayer 是**玩家**賞賜換到的忠誠（`L1`）。
+// RewardLoyaltyPlayer 是**玩家**賞賜金帛之後的忠誠（`0x1c458`–`0x1c483`，`L0`＋`L1`、`[base]`），
+// 還沒夾上限。原版用 8087 模擬中斷算浮點：
 //
-// 電腦那條是 `RND(加成 ÷ 2) ＋ 魅力 ÷ 3 ＋ 加成`（`0xd374`，六個等級對拍
-// 過 605 次）；玩家那條**不擲骰、也沒有加成**，量出來是
+//	fild  主事者魅力        ; DF 46 F0
+//	fidiv max(謀略, 戰力)   ; DE 76 F8（受賞者 offset 9／10 取大）
+//	fimul 金                ; DE 4E FC
+//	fmul  0.5               ; DC 0E [0xa7d2]
+//	fiadd 忠誠              ; DE 46 EE
+//	_ftol                   ; 截斷
 //
-//	增幅 ＝ 魅力 × 0.64 × 金 ÷ 100
-//
-// 兩串掃描各十點逐點相同（`docs/playtest/04`）：魅力 6..99 固定賞 100 金
-// 得 3 7 15 19 27 32 38 48 57 63；魅力 99 掃金 10..100 得
-// 6 12 19 25 31 38 44 50 57 63。
-//
-// **乘完才截斷。** 先把效果截成整數 63 再乘金的話，金 30／60／90 會算出
-// 18／37／56，實測是 19／38／57。這裡用整數乘除照做，避免浮點的進位。
-//
-// 二十四個點沒有任何散布，所以玩家那條不消耗亂數——這件事對長序列的
-// 對拍有影響：多抽一次，之後每一格都會岔開。
-//
-// ⚠ **係數本身還沒解出來，只夾出區間。** 魅力 89 賞 100 金給 57
-// （所以係數 ≥ 57/89 ＝ 0.6405），魅力 14 給 8（所以 < 9/14 ＝ 0.6429）。
-// 這個區間裡沒有分母小的分數，`0.64` 也在區間外——它在魅力 89 上會算成
-// 56。下面用 641/1000，二十四個量到的點全部重現；要把常數定死得讀
-// 反組譯，那時這裡改成 `L0`。
-const rewardCoeffNum, rewardCoeffDen = 641, 1000
-
-func RewardGainPlayer(governorCharm, gold int) int {
-	return governorCharm * rewardCoeffNum * gold / (rewardCoeffDen * 100)
+// **不擲骰、沒有加成。** `docs/playtest/04` 那兩串掃描（魅力 6..99 賞 100 金、魅力 99 掃金）的
+// 受賞者 max(謀略, 戰力) 是 78 時二十四點全部重現——先前把 0.5 ÷ 78 × 100 量成「係數 0.641」。
+func RewardLoyaltyPlayer(loyalty, governorCharm, maxStat, gold int) int {
+	if maxStat <= 0 {
+		maxStat = 1
+	}
+	return int(float64(governorCharm)/float64(maxStat)*float64(gold)*0.5 + float64(loyalty))
 }
 
 // RewardCost 是照實際增幅反算回來的花費（`0xd3dc`–`0xd3f0`，加強版

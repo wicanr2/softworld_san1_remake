@@ -9,6 +9,9 @@ import "testing"
 // （`docs/playtest/04`）。**這一支不需要原版素材**，所以每次 `go test`
 // 都會跑到——公式被改壞時當場紅，不必等對拍那一輪。
 
+// sweepMaxStat 是掃描那一位的 max(謀略, 戰力)：公式 `0x1c458` 的除數，二十四點都重現。
+const sweepMaxStat = 78
+
 func TestRewardGainPlayerMatchesTheMeasurements(t *testing.T) {
 	// 賞 100 金，掃主事者的魅力。
 	for _, c := range []struct{ charm, want int }{
@@ -16,7 +19,7 @@ func TestRewardGainPlayerMatchesTheMeasurements(t *testing.T) {
 		{42, 26}, {43, 27}, {51, 32}, {60, 38}, {75, 48},
 		{89, 57}, {90, 57}, {99, 63},
 	} {
-		if got := RewardGainPlayer(c.charm, 100); got != c.want {
+		if got := RewardLoyaltyPlayer(10, c.charm, sweepMaxStat, 100) - 10; got != c.want {
 			t.Errorf("魅力 %d 賞 100 金：原版 %d，remake %d", c.charm, c.want, got)
 		}
 	}
@@ -26,7 +29,7 @@ func TestRewardGainPlayerMatchesTheMeasurements(t *testing.T) {
 		{10, 6}, {20, 12}, {30, 19}, {40, 25}, {50, 31},
 		{60, 38}, {70, 44}, {80, 50}, {90, 57}, {100, 63},
 	} {
-		if got := RewardGainPlayer(99, c.gold); got != c.want {
+		if got := RewardLoyaltyPlayer(10, 99, sweepMaxStat, c.gold) - 10; got != c.want {
 			t.Errorf("魅力 99 賞 %d 金：原版 %d，remake %d", c.gold, c.want, got)
 		}
 	}
