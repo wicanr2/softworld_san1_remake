@@ -17,6 +17,7 @@ package menu
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
@@ -366,27 +367,49 @@ func (s *Screen) pickDifficulty() {
 	}
 }
 
-// pickSave 列出可以讀的進度。
+// pickSave 是「載入進度」那一層：原版不換畫面，直牌寫「載入進度」、六個按鈕
+// 固定是六個進度的名稱（`0x13fb6`，`docs/spec/005` §6.5）。
 func (s *Screen) pickSave() {
 	s.stage, s.pick = Load, 0
-	s.title = i18n.S("title.pickSave")
+	s.title = i18n.S("title.loadPlate")
 	s.items, s.saves = nil, nil
+	var infos []save.Info
 	if s.saveDir != "" {
-		for _, info := range session.Saves(s.saveDir) {
-			if !info.Exists {
-				continue
-			}
-			s.items = append(s.items, fmt.Sprintf("%d. %s", len(s.saves)+1, info.Describe()))
-			s.saves = append(s.saves, info)
-		}
+		infos = session.Saves(s.saveDir)
 	}
-	if len(s.items) == 0 {
-		s.note(i18n.S("title.pickSave"), i18n.S("title.noSave"))
+	for k := 1; k <= save.Slots; k++ {
+		info := save.Info{Slot: k}
+		if k-1 < len(infos) {
+			info = infos[k-1]
+		}
+		s.items = append(s.items, LoadLine(info))
+		s.saves = append(s.saves, info)
 	}
 }
 
+// LoadLine 是載入那一層第 slot 格按鈕上的字。原版畫的是 `SAVENAME.SVP` 那一筆
+// 原樣（開頭自帶「n.」，存檔時由 `0x1e5b2` 組成「n.」＋君主姓名欄＋「在」＋郡名
+// ＋備註）；remake 自己存的名稱沒有「n.」就補上。空的槽只寫「n.」（remake 差異：
+// 原版的名稱表六筆一直都在）。造字碼位換成字模畫的字（原版每一格先載那一份
+// 進度的 `BASEPRE` 再畫，`state.ShowCustomGlyphs`）。
+func LoadLine(info save.Info) string {
+	prefix := fmt.Sprintf("%d.", info.Slot)
+	if !info.Exists {
+		return prefix
+	}
+	name := state.ShowCustomGlyphs(info.Name)
+	if strings.HasPrefix(name, prefix) {
+		return name
+	}
+	return prefix + " " + name
+}
+
 func (s *Screen) load(i int) *session.Session {
-	if i >= len(s.saves) {
+	if i < 0 || i >= len(s.saves) {
+		return nil
+	}
+	if !s.saves[i].Exists {
+		s.note(i18n.S("title.pickSave"), i18n.S("title.noSave"))
 		return nil
 	}
 	ss, err := session.Load(s.saveDir, s.saves[i].Slot, s.mode)

@@ -3,6 +3,8 @@ package state
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
+	"sync"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 )
@@ -314,3 +316,37 @@ func LoadSaveNames(c *assets.Container) ([]string, error) {
 	}
 	return DecodeSaveNames(b)
 }
+
+// ShippedGlyphText 是出貨的 `BASEPRE` 字模畫出來的三個字（十二格是「新君主」
+// 重複四次，`docs/re/08` §3）。
+const ShippedGlyphText = "新君主"
+
+// ShowCustomGlyphs 把字串裡的造字碼位（`A141`–`A14C`，解碼後是全形標點）換成
+// 出貨字模畫的字，給畫面用：原版畫這幾個碼位時用的是進度自己的字模，remake 不
+// 內嵌字模，照 `CLAUDE.md` §3.3 對回 Unicode 由自己的字庫畫。**只給畫面用**，
+// 寫回檔案要用原本的字串，否則碼位就換掉了。
+func ShowCustomGlyphs(s string) string {
+	glyphRunesOnce.Do(func() {
+		glyphRunes = map[rune]rune{}
+		text := []rune(ShippedGlyphText)
+		for i := 0; i < CustomLords*CustomLordNameChars; i++ {
+			code := CustomGlyphBase + i
+			if r, err := decodeBig5([]byte{byte(code >> 8), byte(code)}); err == nil {
+				if rs := []rune(r); len(rs) == 1 {
+					glyphRunes[rs[0]] = text[i%len(text)]
+				}
+			}
+		}
+	})
+	return strings.Map(func(r rune) rune {
+		if g, ok := glyphRunes[r]; ok {
+			return g
+		}
+		return r
+	}, s)
+}
+
+var (
+	glyphRunesOnce sync.Once
+	glyphRunes     map[rune]rune
+)

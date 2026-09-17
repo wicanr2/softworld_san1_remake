@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+	"github.com/wicanr2/softworld_san1_remake/internal/save"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
@@ -147,12 +149,38 @@ func TestMoveWraps(t *testing.T) {
 	}
 }
 
-// TestNoSavesSaysSo 釘住沒有進度時說一句而不是給空清單。
+// TestNoSavesSaysSo 釘住載入那一層固定六格（原版六個按鈕一直都在），
+// 沒有進度的槽只寫「n.」，選下去說一句而不是開局。
 func TestNoSavesSaysSo(t *testing.T) {
 	s := newScreen(t)
 	s.Confirm(1)
-	if s.Stage() != Note || len(s.Items()) != 1 {
-		t.Errorf("沒有進度時 stage %d、%d 項", s.Stage(), len(s.Items()))
+	if s.Stage() != Load || len(s.Items()) != 6 || s.Title() != i18n.S("title.loadPlate") {
+		t.Fatalf("載入那一層 stage %d、%d 項、直牌 %q", s.Stage(), len(s.Items()), s.Title())
+	}
+	for k, it := range s.Items() {
+		if want := fmt.Sprintf("%d.", k+1); it != want {
+			t.Errorf("第 %d 格是 %q，沒有進度時想要 %q", k+1, it, want)
+		}
+	}
+	if ss := s.Confirm(2); ss != nil || s.Stage() != Note {
+		t.Errorf("選了空的槽：開局 %v、stage %d", ss != nil, s.Stage())
+	}
+}
+
+// TestLoadLineKeepsTheOriginalNumber 釘住原版名稱表自帶的「n.」不重複補。
+func TestLoadLineKeepsTheOriginalNumber(t *testing.T) {
+	for _, c := range []struct {
+		info save.Info
+		want string
+	}{
+		{save.Info{Slot: 3, Exists: true, Name: "3. 劉備 在南陽 Y201"}, "3. 劉備 在南陽 Y201"},
+		{save.Info{Slot: 2, Exists: true, Name: "曹操"}, "2. 曹操"},
+		{save.Info{Slot: 6}, "6."},
+		{save.Info{Slot: 1, Exists: true, Name: "1.，、。在南海      "}, "1.新君主在南海      "},
+	} {
+		if got := LoadLine(c.info); got != c.want {
+			t.Errorf("LoadLine(%+v) ＝ %q，想要 %q", c.info, got, c.want)
+		}
 	}
 }
 

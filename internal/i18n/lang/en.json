@@ -623,6 +623,7 @@
   "title.difficultyPrompt": "Difficulty (1-%d): ",
   "title.font": "Typeface",
   "title.fontNote": "This remake ships its own font; no original glyphs are embedded",
+  "title.loadPlate": "Load",
   "title.lordLine": "%d. %s (%d pref.)",
   "title.lordPrompt": "Player %d, pick (1-%d):",
   "title.music": "Music",

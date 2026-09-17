@@ -12,6 +12,9 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+	"github.com/wicanr2/softworld_san1_remake/internal/menu"
+	"github.com/wicanr2/softworld_san1_remake/internal/save"
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
 
@@ -64,9 +67,22 @@ func TestZZScenarioPickMatchesTheOriginal(t *testing.T) {
 	for k := range items {
 		items[k] = i18n.S(fmt.Sprintf("title.scenario%d", k+1))
 	}
-	c := ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
-	ui.DrawTitleLayer(c, ts, -1, i18n.S("title.pickScenario"), ui.ScenarioLabelInk, items, -1)
+	mainItems := ui.TitleItems()
+	compareTitleLayer(t, "選擇年代", orig, ts, face, i18n.S("title.pickScenario"), items, "主選擇單", mainItems[:])
+}
 
+// compareTitleLayer 拿原版停在主選單某一層的畫面 orig 與 remake 的
+// `ui.DrawTitleLayer(label, items)` 比：直牌四格與六條按鈕的每一個半形格
+// 比有沒有墨，其餘像素逐格相同（扣掉小飾框與最上面兩個角落）；反對照拿
+// negLabel／negItems 畫的那一層比按鈕的墨，必須對不上。
+func compareTitleLayer(t *testing.T, name string, orig []uint8, ts *ui.TitleScreen, face *font.Face,
+	label string, items []string, negLabel string, negItems []string) {
+	t.Helper()
+	c := ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
+	ui.DrawTitleLayer(c, ts, -1, label, ui.ScenarioLabelInk, items, -1)
+	if dir := os.Getenv("SAN1_SHOTS"); dir != "" {
+		savePNG(t, filepath.Join(dir, "remake-"+name+".png"), c)
+	}
 	pal := assets.EGAPalette
 	remake := func(x, y int) byte {
 		p := c.Img.RGBAAt(x, y)
@@ -144,15 +160,14 @@ func TestZZScenarioPickMatchesTheOriginal(t *testing.T) {
 		}
 	}
 	if inkBad != 0 || bad != 0 {
-		t.Fatalf("字格有墨不同 %d／%d，其餘像素不同 %d／%d", inkBad, inkN, bad, n)
+		t.Fatalf("%s：字格有墨不同 %d／%d，其餘像素不同 %d／%d", name, inkBad, inkN, bad, n)
 	}
 	if inked < 40 {
-		t.Fatalf("原版只有 %d 個字格有墨——停的地方不是選擇年代", inked)
+		t.Fatalf("%s：原版只有 %d 個字格有墨——停的地方不對", name, inked)
 	}
 	// 反對照：同一套比法拿主選單那一層的字去比，必須對不上。
 	c2 := ui.NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
-	mainItems := ui.TitleItems()
-	ui.DrawTitleLayer(c2, ts, -1, "主選擇單", ui.ScenarioLabelInk, mainItems[:], -1)
+	ui.DrawTitleLayer(c2, ts, -1, negLabel, ui.ScenarioLabelInk, negItems, -1)
 	neg := 0
 	for _, ce := range cellsText {
 		o, r := false, false
@@ -167,7 +182,66 @@ func TestZZScenarioPickMatchesTheOriginal(t *testing.T) {
 		}
 	}
 	if neg == 0 {
-		t.Fatal("反對照：主選單的字也比得過——這個比法分不出兩層")
+		t.Fatalf("%s：反對照的字也比得過——這個比法分不出兩層", name)
 	}
-	t.Logf("選擇年代：%d 個字格（%d 格有墨）墨相同，其餘 %d 個像素逐格相同；反對照差 %d 格", inkN, inked, n, neg)
+	t.Logf("%s：%d 個字格（%d 格有墨）墨相同，其餘 %d 個像素逐格相同；反對照差 %d 格", name, inkN, inked, n, neg)
+}
+
+// TestZZLoadPickMatchesTheOriginal 對拍主選單按「2」之後的載入進度那一層
+// （Issue #69）：原版停在 `0x14218` 讀鍵存畫面，remake 用原版 `DATA2` 的
+// `SAVENAME.SVP` 六筆當按鈕字畫同一層（`docs/spec/005` §6.5）。
+func TestZZLoadPickMatchesTheOriginal(t *testing.T) {
+	root := origRoot(t)
+	c1 := openContainer(t, filepath.Join(root, "DATA1"))
+	c2 := openContainer(t, filepath.Join(root, "DATA2"))
+	c3 := openContainer(t, filepath.Join(root, "DATA3"))
+	ts, err := ui.NewTitleScreen(c3, c1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names, err := state.LoadSaveNames(c2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fh, err := os.Open("../../fonts/unifont.hex.gz")
+	if err != nil {
+		t.Skipf("沒有字型檔：%v", err)
+	}
+	face, err := font.ParseHexGz(fh, 16)
+	fh.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer o.Close()
+	const loadCaller = 0x1421b // `0x14218` call 0x113a4 的返回位址
+	asks := 0
+	o.OnCall(addr(bootASCInputFn), func(o *oracle.Oracle) {
+		if o.Caller().Linear() == loadCaller {
+			asks++
+		}
+	})
+	bootToMenu(t, o)
+	o.Drain()
+	o.PressScan("2")
+	waitBoot(t, o, "載入進度輸入", 200_000_000, func() bool { return asks > 0 })
+	waitBootScan(t, o, "載入進度", 5_000_000)
+	orig := screenOf(o)
+	dumpScreen(t, o, "load-pick-orig")
+
+	i18n.Current = i18n.ZhHant
+	items := make([]string, len(names))
+	for k, n := range names {
+		items[k] = menu.LoadLine(save.Info{Slot: k + 1, Exists: true, Name: n})
+	}
+	t.Logf("原版的六筆名稱：%q", items)
+	scen := make([]string, 6)
+	for k := range scen {
+		scen[k] = i18n.S(fmt.Sprintf("title.scenario%d", k+1))
+	}
+	compareTitleLayer(t, "載入進度", orig, ts, face, i18n.S("title.loadPlate"), items, i18n.S("title.pickScenario"), scen)
 }

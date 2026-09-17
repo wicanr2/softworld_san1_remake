@@ -179,3 +179,20 @@ func TestShippedSaveNames(t *testing.T) {
 		}
 	}
 }
+
+// TestShowCustomGlyphsMapsTheShippedName 釘住造字碼位 A141–A14C 畫成出貨字模的
+// 「新君主」（每三格一組），其他字不動。
+func TestShowCustomGlyphsMapsTheShippedName(t *testing.T) {
+	var raw []byte
+	for i := 0; i < CustomLords*CustomLordNameChars; i++ {
+		code := CustomGlyphBase + i
+		raw = append(raw, byte(code>>8), byte(code))
+	}
+	s, err := decodeBig5(append(raw, []byte("\xa6\x62")...)) // 結尾加一個「在」
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := ShowCustomGlyphs(s), "新君主新君主新君主新君主在"; got != want {
+		t.Errorf("ShowCustomGlyphs(%q) ＝ %q，想要 %q", s, got, want)
+	}
+}

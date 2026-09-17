@@ -623,6 +623,7 @@
   "title.difficultyPrompt": "請設定難度(1-%d):",
   "title.font": "字型",
   "title.fontNote": "remake 用自己的字庫，不內嵌原版字模",
+  "title.loadPlate": "載入進度",
   "title.lordLine": "%d. %s（%d 郡）",
   "title.lordPrompt": "第%d位,請選擇(1-%d):",
   "title.music": "音樂欣賞",

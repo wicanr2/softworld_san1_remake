@@ -70,8 +70,8 @@ func (a *app) drawTitle() {
 		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPage(m.Lords(), at), -1, prompt, a.view.Calendar)
 		return
 	}
-	// 選擇年代：原版不換畫面，直牌與六個按鈕換字（`docs/spec/005` §6.4）。
-	if m.Stage() == menu.Scenario {
+	// 選擇年代與載入進度：原版不換畫面，直牌與六個按鈕換字（`docs/spec/005` §6.4／§6.5）。
+	if m.Stage() == menu.Scenario || m.Stage() == menu.Load {
 		ui.DrawTitleLayer(a.canvas, a.titleArt, a.titleAnimFrame, m.Title(), ui.ScenarioLabelInk, m.Items(), m.Sel())
 		return
 	}

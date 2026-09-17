@@ -1621,6 +1621,27 @@
       }
     },
     {
+      "id": "title-load",
+      "title": "載入進度照原版換直牌與六個按鈕（0x13fb6）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005"
+      ],
+      "note": "`TestZZLoadPickMatchesTheOriginal` 124 個字格墨相同、其餘逐像素相同、反對照差 36 格；DOSBox-X rec16 只差小飾框。空槽只寫「n.」是 remake 差異。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/menu/menu.go"
+        ],
+        "pattern": "func LoadLine"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

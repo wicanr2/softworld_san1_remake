@@ -623,6 +623,7 @@
   "title.difficultyPrompt": "難易度を設定(1-%d):",
   "title.font": "書体",
   "title.fontNote": "このリメイクは独自のフォントを使い、原版の字形は同梱しません",
+  "title.loadPlate": "ロード",
   "title.lordLine": "%d. %s（%d 郡）",
   "title.lordPrompt": "%d人目,選択(1-%d):",
   "title.music": "音楽鑑賞",
