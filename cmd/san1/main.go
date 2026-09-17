@@ -782,7 +782,8 @@ func (a *app) begin(cat, item byte) {
 	case cat == '4' && item == '2':
 		a.askRoster(t("ask.flood"), sel, game.PickServing, game.PickByIntel, func(gi int) { a.run(game.FloodControlOrder{At: sel, General: gi}) }, nil)
 	case cat == '4' && item == '3':
-		a.askRoster(t("ask.fort"), sel, game.PickWise, game.PickByIntel, func(gi int) { a.run(game.BuildFortOrder{At: sel, General: gi}) }, nil)
+		closeMenu()
+		a.buildFort(sel)
 	case cat == '4' && item == '4':
 		a.run(game.RestOrder{At: sel})
 
@@ -854,6 +855,35 @@ func (a *app) begin(cat, item byte) {
 	if len(a.pick) == 0 && a.num == nil {
 		closeMenu()
 	}
+}
+
+// buildFort 是內政→3.建築關寨（`0x1aa7e`）：關寨已有 5 個印「本郡已有%d個關寨／不能再建了」、
+// 金不到 100 × 物價印「建關寨須%d金／您的金不夠」，都退出；提示「<建築關寨>須用%d金／且須一位謀略
+// 大於79／的將軍,那一位去」後面直接接範圍，清單模式 3、鍵 1，取消收掉命令。建完下面板
+// 「%s現有%d個關寨／剩餘金:%d」（`DS:0x70b3`）。挑位置的游標畫面（`0x1acba`）remake 還是自己挑。
+func (a *app) buildFort(sel int) {
+	g := a.s.G
+	p := g.Prefecture(sel)
+	if p == nil {
+		return
+	}
+	cost := game.FortCost(p.PriceLevel)
+	switch {
+	case p.Forts >= game.MaxForts:
+		a.view.Prompt = tf("msg.fortFull", p.Forts)
+		return
+	case cost > p.Gold:
+		a.view.Prompt = tf("msg.fortGold", cost)
+		return
+	}
+	a.askRoster(tf("ask.fort", cost), sel, game.PickWise, game.PickByIntel, func(gi int) {
+		before := p.Forts
+		a.run(game.BuildFortOrder{At: sel, General: gi})
+		if p.Forts > before {
+			msg := tf("msg.fortBuilt", p.Name, p.Forts, p.Gold)
+			a.afterBubbles = func() { a.view.Prompt = msg }
+		}
+	}, nil)
 }
 
 // appointGovernor 是君主→2.指定太守（`0x1caea`）：「指定那一郡的太守」收自己的其他郡

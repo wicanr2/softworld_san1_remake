@@ -1127,3 +1127,74 @@ func TestZZAppointChiefMatchesTheOriginal(t *testing.T) {
 		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
 	}
 }
+
+// TestZZBuildFortAskMatchesTheOriginal 內政→3.建築關寨（Issue #92）：關寨已有 5 個、金不夠兩道閘門的訊息，
+// 以及「<建築關寨>須用%d金／且須一位謀略大於79／的將軍,那一位去」清單（模式 3、鍵 1）那一格，下面板
+// （與清單的右側面板、游標）相同。
+func TestZZBuildFortAskMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	pref := b.base + uint32(nMas+b.at*state.PrefectureRecordSize)
+	lord := int(b.o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
+	for _, i := range b.people {
+		if i != lord {
+			b.o.SetByte(addr(b.base+uint32(nMas+nSta+i*state.GeneralRecordSize+9)), 90)
+			break
+		}
+	}
+	waits := 0
+	b.o.OnCall(oracle.Addr{Seg: 0x1058, Off: 0x0e80}, func(*oracle.Oracle) { waits++ })
+	render := func(g *game.State, prompt string) *ui.Canvas {
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: prompt})
+		return cv
+	}
+	gate := func(name string, prompt func(p *game.Prefecture) string) {
+		t.Helper()
+		g := b.game(t)
+		b.press(t, "內政 "+name, "4\r")
+		before := waits
+		b.o.Drain()
+		b.o.TypeBoth("3\r")
+		waitBoot(t, b.o, name, 100_000_000, func() bool { return waits > before })
+		shot := append([]uint8(nil), b.o.IndexedEGASize(scrW, scrH)...)
+		dumpScreen(t, b.o, "fort-"+name)
+		p := prompt(g.Prefecture(b.at))
+		quiet := *b.tr
+		quiet.Shown = false
+		compareLower(t, name, shot, render(g, p), render(g, p), quiet)
+		// 訊息之後原版不等鍵，直接回主選單再問。
+		asks := len(*b.asks)
+		waitBoot(t, b.o, name+"之後回主選單", 200_000_000, func() bool { return len(*b.asks) > asks })
+		waitCursorShown(t, b.o, b.tr, name+"之後回主選單")
+	}
+	forts := b.o.Byte(addr(pref + 25))
+	b.o.SetByte(addr(pref+25), uint8(game.MaxForts))
+	gate("關寨已滿", func(p *game.Prefecture) string { return i18n.Sf("msg.fortFull", p.Forts) })
+	b.o.SetByte(addr(pref+25), forts)
+	gold := b.o.Word(addr(pref + 18))
+	b.o.SetWord(addr(pref+18), 1)
+	gate("金不夠", func(p *game.Prefecture) string { return i18n.Sf("msg.fortGold", game.FortCost(p.PriceLevel)) })
+	b.o.SetWord(addr(pref+18), max(gold, 9000)) // 盤面原本的金只有個位數，費用是 100 × 物價
+
+	g := b.game(t)
+	b.press(t, "內政", "4\r")
+	ask, shot, tr := b.press(t, "建築關寨", "3\r")
+	var idx []int
+	for _, x := range g.PickRoster(b.at, game.PickWise, game.PickByIntel) {
+		idx = append(idx, x.Index)
+	}
+	rp := &ui.RosterPick{List: idx, Key: game.PickByIntel}
+	if lo, hi := ui.RosterRange(rp); ask != [2]int{lo, hi} {
+		t.Fatalf("名單：原版問 %v，remake %d-%d", ask, lo, hi)
+	}
+	p := g.Prefecture(b.at)
+	v := ui.View{Sel: b.at, Roster: rp, Prompt: i18n.Sf("ask.fort", game.FortCost(p.PriceLevel)) + i18n.Sf("pick.range", 1, len(idx)), Input: tr.input()}
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, v)
+	v.Input = ui.InputCursor{}
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, v)
+	comparePanels(t, "那一位去", shot, cv, plain, tr, 1)
+}
