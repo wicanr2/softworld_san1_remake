@@ -128,8 +128,8 @@ func (m *March) Step() bool {
 	marchCopy(m.Page1, m.Page1, marchSaveX, marchSaveY, marchSaveX+l.W-1, marchSaveY+l.H-1, l.X, l.Y)
 	// 攻方的位置：x ＝ trunc(攻X − 8 ＋ 天 × (守X − 攻X)/32 ＋ 80)（每一項都是 1/32 的倍數，
 	// 單精度加起來沒有誤差）。
-	ax := marchTrunc(float64(l.AX-8)+float64(moved*(l.DX-l.AX))/32+80)
-	ay := marchTrunc(float64(l.AY-24)+float64(moved*(l.DY-l.AY))/32+44)
+	ax := marchTrunc(float64(l.AX-8) + float64(moved*(l.DX-l.AX))/32 + 80)
+	ay := marchTrunc(float64(l.AY-24) + float64(moved*(l.DY-l.AY))/32 + 44)
 	dx, dy := l.DX+72, l.DY+20
 	att := func() {
 		marchPut(m.Page1, m.Art[l.AttMask+f], ax, ay, 5)
