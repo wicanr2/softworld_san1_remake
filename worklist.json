@@ -1729,6 +1729,28 @@
       }
     },
     {
+      "id": "save-screen",
+      "title": "儲存進度照原版：右側面板六筆名稱、組「n.姓名欄在郡名＋備註」（0x1e440）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/08"
+      ],
+      "note": "`TestZZSaveScreenMatchesTheOriginal` 面板逐像素＋名稱墨相同，寫檔前那一筆 21 byte 相同；DOSBox-X rec17 只差游標。Esc 取消是 remake 差異。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/session/save.go"
+        ],
+        "pattern": "func \\(s \\*Session\\) SaveName"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

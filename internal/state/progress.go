@@ -317,6 +317,19 @@ func LoadSaveNames(c *assets.Container) ([]string, error) {
 	return DecodeSaveNames(b)
 }
 
+// NameField 把人物表的 6 byte 姓名欄照原樣解成字串（保留補齊的空白，造字碼位
+// 不換字）。寫回原版檔案（`SAVENAME.SVP`）要用它，畫面用 `General.Name`。
+func NameField(b []byte) string {
+	if i := indexByte(b, 0); i >= 0 {
+		b = b[:i]
+	}
+	s, err := decodeBig5(b)
+	if err != nil {
+		return "      "
+	}
+	return s
+}
+
 // ShippedGlyphText 是出貨的 `BASEPRE` 字模畫出來的三個字（十二格是「新君主」
 // 重複四次，`docs/re/08` §3）。
 const ShippedGlyphText = "新君主"

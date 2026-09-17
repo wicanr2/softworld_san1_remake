@@ -5,6 +5,7 @@ import (
 	"unicode"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
+	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -232,5 +233,33 @@ func TestSaveKeepsEveryPlayer(t *testing.T) {
 	}
 	if at := t2.AdvanceToHuman(0); at == 0 || !t2.G.IsHuman(t2.G.Prefecture(at).Owner) {
 		t.Errorf("讀回來之後停在郡 %d", at)
+	}
+}
+
+// TestSaveNameFollowsTheOriginalLayout 釘住存檔名稱照原版組（`0x1e5b2`）：
+// 「n.」＋姓名欄 6 byte（兩字名前後補空白）＋「在」＋郡名＋6 格備註，共 20 格；
+// 寫出去再讀回來名稱原樣。
+func TestSaveNameFollowsTheOriginalLayout(t *testing.T) {
+	s := newSession(t, ai.ModeBase, 0) // 劉備
+	own := s.G.Territory(0)
+	if len(own) == 0 {
+		t.Fatal("劉備沒有郡")
+	}
+	at := own[0]
+	p := s.G.Prefecture(at)
+	name := s.SaveName(3, at, "Y201")
+	want := "3. 劉備 在" + p.Name + "Y201  "
+	if name != want {
+		t.Fatalf("SaveName ＝ %q，想要 %q", name, want)
+	}
+	if w := cells.Width(name); w != 20 {
+		t.Errorf("名稱 %d 格，原版一筆是 20 格", w)
+	}
+	dir := t.TempDir()
+	if err := s.Save(dir, 3, name); err != nil {
+		t.Fatal(err)
+	}
+	if got := Saves(dir)[2].Name; got != name {
+		t.Errorf("讀回來的名稱 %q，存的是 %q", got, name)
 	}
 }

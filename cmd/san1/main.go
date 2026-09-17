@@ -109,6 +109,10 @@ type app struct {
 	// lure 是播放中的誘敵特效（主戰場對白佇列裡的那一格）。
 	lure lurePlay
 
+	// saving 非 nil 表示停在存檔那一格；saveMemo 是正在打的備註。
+	saving   *ui.SaveScreen
+	saveMemo string
+
 	// bubbleFrames 是示範模式裡目前這一格訊息框停了幾幀。
 	bubbleFrames int
 
@@ -219,6 +223,11 @@ func (a *app) Update() error {
 			a.confirm, a.view.Prompt = nil, ""
 			a.dirty = true
 		}
+		return nil
+	}
+	// 存檔那一格：先問 1–6，再打備註（`docs/spec/005` §9.9）。
+	if a.saving != nil {
+		a.updateSaving()
 		return nil
 	}
 	// 0 人的電腦自動示範模式：一幀推一格，按任意鍵回主選單（`docs/spec/019` §2）。
@@ -472,9 +481,8 @@ func (a *app) begin(cat, item byte) {
 	switch {
 	// ---- 9. 其他 ----
 	case cat == '9' && item == '2':
-		a.askSlot(t("ask.saveSlot"), true, func(slot int) {
-			_ = a.s.Save(a.saveDir, slot, "")
-		})
+		a.startSaving()
+		closeMenu()
 	case cat == '9' && item == '3':
 		a.view.Prompt = g.Options.ToggleMusic()
 		// 開關要真的動到聲音——按下去什麼都不會變的選項，
@@ -1007,29 +1015,6 @@ func (a *app) askOwn(title string, then func(int)) {
 	a.pickFrom(title, items)
 }
 
-// askSlot 讓玩家挑一個存檔槽。
-//
-// 空槽也列出來，而且**寫得出是空的**——原版的儲存畫面就是六格，
-// 看得到哪幾格可以蓋、哪幾格會被蓋掉。
-func (a *app) askSlot(title string, forSaving bool, then func(int)) {
-	if a.saveDir == "" {
-		a.view.Prompt = t("msg.noSaveDir")
-		return
-	}
-	var items []pickItem
-	for _, info := range session.Saves(a.saveDir) {
-		if !forSaving && !info.Exists {
-			continue
-		}
-		items = append(items, pickItem{info.Describe(), info.Slot, then})
-	}
-	if len(items) == 0 {
-		a.view.Prompt = t("msg.noSaves")
-		return
-	}
-	a.pickFrom(title, items)
-}
-
 // t／tf 取一句介面文字。語系與畫面同一份（`internal/ui`）。
 func t(key string) string            { return i18n.S(key) }
 func tf(key string, a ...any) string { return i18n.Sf(key, a...) }
@@ -1433,6 +1418,82 @@ func main() {
 	if err := ebiten.RunGame(a); err != nil {
 		die(err)
 	}
+}
+
+// startSaving 開存檔那一格（原版「其他 → 儲存進度」，`0x1e440`）：右側面板列六筆
+// 名稱，提示「儲存進度\n(1-6):」。沒有存檔目錄照舊說一句。
+func (a *app) startSaving() {
+	if a.saveDir == "" {
+		a.view.Prompt = t("msg.noSaveDir")
+		return
+	}
+	sv := &ui.SaveScreen{}
+	for k, info := range session.Saves(a.saveDir) {
+		if k < len(sv.Names) {
+			sv.Names[k] = menu.LoadLine(info)
+		}
+	}
+	a.saving, a.saveMemo = sv, ""
+	a.view.Save, a.view.Page, a.view.HasCard = sv, nil, false
+	a.view.Prompt = t("ask.saveOrig")
+	a.dirty = true
+}
+
+// updateSaving 收存檔那一格的鍵。原版 `0x33d8:0x115e(1, 6)` 收 1–6，其他答案印
+// 「取消儲存」退出；選好之後那一筆換成新名稱，`0x33d8:0x20b8` 從第 14 格起收 6 個
+// 字元的備註：只收 0x20–0x5A（空白到大寫 Z，小寫字母不收）、Backspace 刪一格、
+// Enter 寫檔（`0x35e9e`–`0x35f43`）。Esc 取消是 remake 加的。
+func (a *app) updateSaving() {
+	sv := a.saving
+	enter := inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)
+	at := a.s.Waiting()
+	if at == 0 {
+		at = a.view.Sel
+	}
+	if sv.Slot == 0 {
+		for k := ebiten.Key1; k <= ebiten.Key6; k++ {
+			if inpututil.IsKeyJustPressed(k) {
+				sv.Slot = int(k-ebiten.Key1) + 1
+				sv.Names[sv.Slot-1] = a.s.SaveName(sv.Slot, at, "")
+				a.dirty = true
+				return
+			}
+		}
+		if anyKeyPressed() {
+			a.stopSaving(t("msg.saveCancel"))
+		}
+		return
+	}
+	switch {
+	case inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+		a.stopSaving(t("msg.saveCancel"))
+		return
+	case inpututil.IsKeyJustPressed(ebiten.KeyBackspace):
+		if r := []rune(a.saveMemo); len(r) > 0 {
+			a.saveMemo = string(r[:len(r)-1])
+		}
+	case enter:
+		name := a.s.SaveName(sv.Slot, at, a.saveMemo)
+		slot := sv.Slot
+		a.stopSaving("")
+		_ = a.s.Save(a.saveDir, slot, name)
+		return
+	}
+	for _, r := range ebiten.AppendInputChars(nil) {
+		if r >= 0x20 && r <= 0x5a && len(a.saveMemo) < 6 {
+			a.saveMemo += string(r)
+		}
+	}
+	sv.Names[sv.Slot-1] = a.s.SaveName(sv.Slot, at, a.saveMemo)
+	a.dirty = true
+}
+
+// stopSaving 收掉存檔那一格；prompt 不是空字串就留一句。
+func (a *app) stopSaving(prompt string) {
+	a.saving, a.saveMemo = nil, ""
+	a.view.Save = nil
+	a.view.Prompt = prompt
+	a.dirty = true
 }
 
 // demoBubbleFrames 是示範模式裡一格訊息框停幾幀（約一秒）。

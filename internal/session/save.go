@@ -5,6 +5,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/save"
@@ -34,6 +35,28 @@ func (s *Session) Save(dir string, slot int, name string) error {
 	}
 	s.say("sess.saved", slot, name)
 	return nil
+}
+
+// SaveName 組原版存檔時寫進 `SAVENAME.SVP` 的那一條（`0x1e5b2`）：
+// 「n.」＋ at 那一郡主人的君主姓名欄（6 byte：兩字名前後各補一個空白）＋「在」
+// ＋郡名 ＋ 6 格備註（`0x33d8:0x20b8` 從第 14 格起打，沒打的是空白）。
+// 「在」是原版資料的一部分，不隨語系換。
+func (s *Session) SaveName(slot, at int, memo string) string {
+	// 姓名欄照人物表那 6 byte 原樣（兩字名前後各補一個空白；自創君主是造字
+	// 碼位，不能用顯示用的 Name——那是換過字的）。
+	field := "      "
+	place := ""
+	if p := s.G.Prefecture(at); p != nil {
+		place = p.Name
+		if lord := s.G.Lord(p.Owner); lord != nil && p.Owned() {
+			if _, _, gen, err := s.G.Tables(); err == nil && (lord.Index+1)*state.GeneralRecordSize <= len(gen) {
+				field = state.NameField(gen[lord.Index*state.GeneralRecordSize : lord.Index*state.GeneralRecordSize+6])
+			} else {
+				field = cells.Pad(lord.Name, 6)
+			}
+		}
+	}
+	return fmt.Sprintf("%d.%s在%s%s", slot, field, place, cells.Pad(cells.Truncate(memo, 6), 6))
 }
 
 // Load 讀一個進度，回傳一個新的 Session。

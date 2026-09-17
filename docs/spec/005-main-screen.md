@@ -556,6 +556,27 @@ remake：`ui.DrawArtAtlas`（底紋、花邊、`FieldEdges`、`BlitField`、
 畫面上開這一頁，任意鍵收。驗證 `TestZZAtlasMatchesTheOriginal`（開到主畫面
 按 1、5，從第二頁讀原版那一張——dosgolem 為此多了 `IndexedEGAFrom`）：
 底紋、花邊、場地、面板、肖像、泡泡逐像素相同，通道號與對白只比有沒有墨。
+### 9.9 儲存進度（「其他 → 2」，`0x1e440`–`0x1e668`，`L0`＋`L1`、`[base]`、Issue #74）
+
+| 步驟 | 原版 |
+|---|---|
+| 面板 | 右側 (408,36)–(631,291) 外框裡清成藍（`0x1058:0x27e8(…, 1)`），外框重拼樣式 2（`0x262c`，`(2＋500) mod 5` → `SIDEC`）|
+| 六筆名稱 | 造字區先備份；每一筆先載那一份的 `BASEPRE` 字模，再 `0x33d8:0x104e(424, 52＋16k, SAVENAME 第 k 筆, 14, 1)`；畫完還原字模 |
+| 問槽 | 訊息常式寫「儲存進度\n(1-6):」（`DS:0x772d`），`0x33d8:0x115e(1, 6)`（返回位址 `0x1e581`）；超出範圍清訊息、印「取消儲存」（`DS:0x773d`）、延遲後退出 |
+| 組名稱 | `sprintf(第 k 筆＋2, "%s在%s      ", 當下那一郡（`es:0x30fc`）主人的君主姓名欄, 郡名)`：「n.」兩格留著，姓名欄是人物表那 6 byte 原樣（兩字名前後補空白、自創君主是造字碼位）；重畫那一筆（字 15、底 1）|
+| 備註 | `0x33d8:0x20b8(536, 同一列, 第 k 筆＋14, 15, 1, 6)`：鍵從 `0x1058:0xe24` 讀，**只收 0x20–0x5A**（空白到大寫 Z）、Backspace 刪、Enter 收（`0x35e9e`–`0x35f43`）|
+| 寫檔 | `SAVENAME.SVP` 整份寫回（`0x1e668`），接著 `BASEPRO`／`BASEPRE`／`BASEMAS`… |
+
+remake：`ui.SaveScreen`／`DrawSaveScreen`（`View.Save`），`cmd/san1` 的 `startSaving`／`updateSaving`；
+名稱由 `session.SaveName(槽, 郡, 備註)` 組，姓名欄取人物表原樣（`state.NameField`）。當下那一郡是
+輪流下令停著的郡（`Session.Waiting`），沒停著時用選取的郡。remake 差異：Esc 取消。
+
+驗證 `TestZZSaveScreenMatchesTheOriginal`：讀出貨進度、主命令送「9」「2」，停在 (1-6) 存畫面——右側面板
+名稱以外逐像素相同、名稱 120 格（90 格有墨）墨相同；接著選 2、打「12」、Enter，寫檔之前讀原版那一筆
+21 byte，與 `SaveName(2, 41, "12")` 編回 Big5 **逐位元組相同**（`2.，、。在南海12    `）。
+DOSBox-X `workplace/rec17` 第 20 步（開新局走到同一格）右側兩塊面板與 dosgolem 那一張只差 60／62 點，
+全在提示後面閃爍的游標。單元 `TestSaveNameFollowsTheOriginalLayout`。
+
 ## 6. 主選單畫面
 
 原版開機的最後一張是主選單：標題牌 ＋ 六個選項。

@@ -302,6 +302,9 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	if v.HasCard {
 		DrawPersonCard(c, a, g, v.Card)
 	}
+	if v.Save != nil {
+		DrawSaveScreen(c, a, v.Save)
+	}
 	if len(v.Page) > 0 {
 		drawArtOverlay(c, v.PageTitle, v.Page, t("hint.page"), v.PageTop)
 	}
