@@ -123,6 +123,18 @@ type Battle struct {
 	// （`SkirmishAnswer`）；nil 就當接受。
 	PlayerDuelAnswer SkirmishAnswer
 
+	// PlayerCaptive 是玩家捕獲時的「1.斬首 2.囚禁 3.釋放 4.招降」
+	// （`0x25af0`，`docs/spec/018` R1）：回四種處置之一，被拒絕（君主不能
+	// 囚禁、在野滿 50、招降不從）就再問一次。nil 時玩家捕獲的人留
+	// `FateNone`，戰後由戰略層處理。
+	PlayerCaptive func(captor Side, x *Leader) Fate
+	// PlayerCamp 是玩家那一方的空部隊收到第一位將領時問紮在哪
+	// （`0x2731a`）；回的格子紮不了就再問。nil 時由 `spotNear` 擺。
+	PlayerCamp func(u *Unit) Hex
+	// Host 給被擒處置問戰場郡的兩件事（`CaptiveHost`）；nil 時在野永遠有
+	// 空位、釋放沒有去處。
+	Host CaptiveHost
+
 	// inSkirmish 是正在跑的對戰子畫面（`Skirmish.Run` 期間），對白要記
 	// 那兩支部隊（`Speech.Units`）。
 	inSkirmish *Skirmish
@@ -863,64 +875,121 @@ const (
 	SurrenderSpread = 3
 )
 
-// capture 是一位將領被 `captor` 這一方擒住之後的處置（`0x259fe`）。
+// CaptiveHost 是被擒處置要問戰場那一郡的兩件事（`docs/spec/018` R2）。
+// 戰術層不知道州郡表，由 `game.Pending` 實作。
+type CaptiveHost interface {
+	// IdleRoom 回報戰場那一郡的在野數還不到 50（州郡 offset 23，
+	// `0x26118`／`0x262d7`），含這一場已經囚禁或釋放進去的人。
+	IdleRoom() bool
+	// AddIdle 記一位進了戰場那一郡的在野（`0x26267`／`0x264fc`）。
+	AddIdle()
+	// ReleaseTo 是釋放的去處（`0x265ac`）：他勢力裡現役未滿 50 的郡，
+	// 沒有就無主的郡，扣掉戰場郡，`roll(清單長)` 挑一個；清單空回 −1、
+	// 不擲。
+	ReleaseTo(general int, roll func(int) int) int
+}
+
+// Capture 是 `capture` 的公開入口：對拍直接呼叫原版的 `0x259fe` 時，
+// remake 這一邊從這裡進同一段處置。
+func (b *Battle) Capture(captor Side, u *Unit, x *Leader) {
+	x.Captured = true
+	b.capture(captor, u, x)
+}
+
+// capture 是一位將領被 `captor` 這一方擒住之後的處置（`0x259fe`，
+// `docs/spec/018` §1）。
 //
-// **玩家捕獲的這裡不處置**：原版當場出「1.斬首 2.囚禁 3.釋放 4.招降」
-// 問人，remake 把它留到戰後由戰略層問（`Fate` 留 `FateNone`）——
-// registered remake 差異，見 `docs/mechanics/40` §4.5。
-//
-// **電腦捕獲的當場決定**（`0x25a87`–`0x25b78`，`L0`）：
+// **電腦捕獲**（`0x25a87`–`0x25ae8`，`L0`）：
 //
 //	RND(10) < 2 → 斬首，否則囚禁
 //	招降判定（surrenderChance）> 0 → 招降
 //	被擒的是君主 → 斬首
-//	招降常式（0x25b94）再判定一次：不過就印「不從」回頭重來（RND(10) 起）
 //
-// 每一條路各印一句對白（`RND(8)`）；囚禁與招降成功多播一段特效
-// （`RND(4)`）。
+// **玩家捕獲**問 `PlayerCaptive`；沒有就留給戰略層。四種處置各自可能
+// 拒絕（`dispose` 回 false），拒絕就從頭再決定一次——電腦重擲 `RND(10)`，
+// 玩家再問一次。
 func (b *Battle) capture(captor Side, u *Unit, x *Leader) {
 	x.CapturedBy = captor
-	if !b.Computer[captor] {
+	human := !b.Computer[captor]
+	if human && b.PlayerCaptive == nil {
 		return
 	}
 	for {
-		fate := Jailed
-		if b.roll(CaptiveExecuteRange) < CaptiveExecuteBelow {
-			fate = Executed
-		}
-		if b.surrenderChance(captor, x) > 0 {
-			fate = Defected
-		}
-		if x.Lord {
-			fate = Executed
-		}
-		switch fate {
-		case Executed:
-			b.say(x, BoxThird, false, "bub.captiveDie") // `0x25fcb`
-			x.Fate = Executed
-			b.note("blog.executed", pn(x.Name))
-			return
-		case Jailed:
-			b.say(x, BoxThird, false, "bub.captiveJailed") // `0x26178`
-			b.scene(assets.SceneJail)                      // `0x261a1`
-			x.Fate = Jailed
-			b.note("blog.jailed", pn(x.Name))
-			return
-		case Defected:
-			c := b.surrenderChance(captor, x)
-			if c <= 0 {
-				b.say(x, BoxThird, false, "bub.captiveRefuse", pn(x.Name)) // `0x25c0e`
-				continue
+		var fate Fate
+		if human {
+			fate = b.PlayerCaptive(captor, x)
+		} else {
+			fate = Jailed
+			if b.roll(CaptiveExecuteRange) < CaptiveExecuteBelow {
+				fate = Executed
 			}
-			b.say(x, BoxThird, false, "bub.captiveYield") // `0x25c82`
-			b.scene(assets.SceneJoin)                     // `0x25cae`
-			x.Fate = Defected
-			x.Loyalty = c
-			b.enlist(captor, x, c, 0)
-			b.note("blog.defected", pn(x.Name), captor.Label())
+			if b.surrenderChance(captor, x) > 0 {
+				fate = Defected
+			}
+			if x.Lord {
+				fate = Executed
+			}
+		}
+		if b.dispose(captor, x, fate) {
 			return
 		}
 	}
+}
+
+// dispose 執行一種處置（`docs/spec/018` §2）；回 false 表示原版回 −1、
+// 要重新決定。
+func (b *Battle) dispose(captor Side, x *Leader, fate Fate) bool {
+	idleRoom := b.Host == nil || b.Host.IdleRoom()
+	switch fate {
+	case Executed:
+		b.say(x, BoxThird, false, "bub.captiveDie") // `0x25fcb`
+		x.Fate = Executed
+		b.note("blog.executed", pn(x.Name))
+		return true
+	case Jailed:
+		// 君主不能囚禁、戰場郡在野滿 50 也不行（`0x260f4`／`0x26118`）。
+		if x.Lord || !idleRoom {
+			return false
+		}
+		b.say(x, BoxThird, false, "bub.captiveJailed") // `0x26178`
+		b.scene(assets.SceneJail)                      // `0x261a1`
+		x.Fate = Jailed
+		if b.Host != nil {
+			b.Host.AddIdle()
+		}
+		b.note("blog.jailed", pn(x.Name))
+		return true
+	case Released:
+		if !idleRoom {
+			return false // `0x262d7`
+		}
+		to := -1
+		if b.Host != nil {
+			to = b.Host.ReleaseTo(x.Index, b.roll) // `0x265ac`，對白之前擲
+		}
+		b.say(x, BoxThird, false, "bub.captiveRelease") // `0x2635a`
+		b.scene(assets.SceneDismiss)                    // `0x26383`
+		x.Fate, x.ReleasedTo = Released, to
+		if to < 0 && b.Host != nil {
+			b.Host.AddIdle()
+		}
+		b.note("blog.released", pn(x.Name))
+		return true
+	case Defected:
+		c := b.surrenderChance(captor, x)
+		if c <= 0 {
+			b.say(x, BoxThird, false, "bub.captiveRefuse", pn(x.Name)) // `0x25c0e`
+			return false
+		}
+		b.say(x, BoxThird, false, "bub.captiveYield") // `0x25c82`
+		b.scene(assets.SceneJoin)                     // `0x25cae`
+		x.Fate = Defected
+		x.Loyalty = c
+		b.enlist(captor, x, c, 0)
+		b.note("blog.defected", pn(x.Name), captor.Label())
+		return true
+	}
+	return false
 }
 
 // surrenderChance 是招降判定（`0x25e50`，`L0`）：回 0 表示不招降，
@@ -1004,6 +1073,16 @@ func (b *Battle) enlist(captor Side, x *Leader, loyalty, soldiers int) {
 	}
 	into.Leaders = append(into.Leaders, y)
 	if into.LeaderCount() == 1 {
+		// 空部隊收到第一位：紮寨（`0x2731a`）。玩家那一方問 `PlayerCamp`，
+		// 挑到紮得下的格子為止；電腦那一方新生的照 `spotNear`（R5）。
+		if !b.Computer[captor] && b.PlayerCamp != nil {
+			for {
+				if at := b.PlayerCamp(into); b.CampArea(into, at) {
+					into.At, into.Unplaced = at, false
+					break
+				}
+			}
+		}
 		into.Wiped, into.Retreated = false, false
 		b.RefreshQuality(into)
 		into.Cap = into.MovePoints()

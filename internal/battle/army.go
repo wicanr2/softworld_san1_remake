@@ -113,10 +113,14 @@ type Leader struct {
 	Loyalty  int
 	BondAlly bool
 
-	// Fate 是電腦捕獲方當場做的處置，CapturedBy 是哪一方抓的。玩家
-	// 捕獲的留給戰略層問（`Fate == FateNone`）。
+	// Fate 是被擒之後當場做的處置，CapturedBy 是哪一方抓的
+	// （`docs/spec/018`）。玩家捕獲而沒有 `Battle.PlayerCaptive` 時留
+	// `FateNone`，給戰略層問。
 	Fate       Fate
 	CapturedBy Side
+	// ReleasedTo 是釋放之後逃去的郡（`0x265ac`）；−1 表示沒有去處，留在
+	// 戰場那一郡當在野。只有 `Fate == Released` 時有意義。
+	ReleasedTo int
 
 	// Deserted 表示這一位在自己的回合結束時投奔了敵軍（`0x27604`）：
 	// 這一格只是佔位，人（帶著兵）已經在對方的部隊裡，`Fate` 是 Defected。

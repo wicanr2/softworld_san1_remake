@@ -1540,6 +1540,27 @@
       }
     },
     {
+      "id": "battle-captive-disposal",
+      "title": "戰場上的被擒處置與中途紮寨（玩家當場四選一）",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/018",
+        "docs/mechanics/40",
+        "docs/re/05"
+      ],
+      "note": "玩家親自指揮時抓到人當場出「1.斬首 2.囚禁 3.釋放 4.招降」，拒絕就再問，招降進空部隊當場紮寨（`docs/spec/018`）。直接呼叫原版 `0x259fe` 走六種鍵序，擲骰序列、人物三格、去處主事者、紮寨位置全部相同。順帶對回：囚禁是身分 10；釋放回自己勢力的郡、所屬不變。\n\n⚠ 不是玩家指揮的戰役裡玩家那一方的捕獲仍不處置；電腦的中途紮寨 `0x2020:0x293a` 沒讀（`docs/spec/018` §7）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/battle",
+        "run": "TestPlayerCaptiveAsksAgainAfterARefusal|TestPlayerReleaseRollsTheDestinationFirst|TestPlayerJailNeedsIdleRoom|TestPlayerCampAsksUntilTheCellFits"
+      }
+    },
+    {
       "id": "shared-roster-buffer",
       "title": "把 es:[0x58c] 當成跨表共用、會被就地重排的清單",
       "group": "規則層",

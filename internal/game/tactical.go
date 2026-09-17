@@ -555,8 +555,73 @@ func (g *State) prepare(from, to int, att, def []*General, by state.FactionID, s
 		setup.Escapes[battle.MainDefender] = g.escapesFor(dst, dst.Owner, aid.Attacker)
 		setup.Escapes[battle.AidDefender] = setup.Escapes[battle.MainDefender]
 	}
-	return &Pending{B: battle.New(setup), from: from, to: to, by: by,
+	pb := &Pending{B: battle.New(setup), from: from, to: to, by: by,
 		att: att, def: def, aidAtt: aidAtt, aidDef: aidDef, aid: aid, result: r, factions: factions}
+	pb.B.Host = &captiveHost{g: g, at: to}
+	return pb
+}
+
+// CaptiveHost 是 `at` 那一郡當戰場時的 `battle.CaptiveHost`。對拍直接呼叫
+// 原版的處置常式時，remake 這一邊從這裡拿同一份。
+func (g *State) CaptiveHost(at int) battle.CaptiveHost { return &captiveHost{g: g, at: at} }
+
+// ApplyCaptiveFate 把一位被擒將領的處置（`battle.Leader.Fate`）寫回人物表，
+// 戰場是 `at`、捕獲方是 `captor`。收尾的 `settle` 走同一段。
+func (g *State) ApplyCaptiveFate(at int, l battle.Leader, captor state.FactionID) {
+	if x := g.General(l.Index); x != nil {
+		g.applyFate(&Pending{to: at}, x, l, captor)
+	}
+}
+
+// captiveHost 是 `battle.CaptiveHost`（`docs/spec/018` R2）：戰場那一郡的
+// 在野數與釋放的去處。這一場裡囚禁或釋放進去的人另外計，人物表要到
+// 收尾才寫回。
+type captiveHost struct {
+	g     *State
+	at    int
+	idle  int
+	moved map[int]int // 釋放到各郡的人數（現役數要算進去）
+}
+
+// CaptiveIdleCap 是一郡在野數的上限（`0x26118`／`0x262d7`：`>= 0x32` 就拒絕）。
+const CaptiveIdleCap = 50
+
+func (h *captiveHost) IdleRoom() bool { return h.g.FreeGenerals(h.at)+h.idle < CaptiveIdleCap }
+func (h *captiveHost) AddIdle()       { h.idle++ }
+
+// ReleaseTo 是 `0x265ac`：先列被釋放者的勢力裡現役未滿 50 的郡，沒有就列
+// 無主的郡，兩張都扣掉戰場郡；清單不空才擲。
+func (h *captiveHost) ReleaseTo(general int, roll func(int) int) int {
+	x := h.g.General(general)
+	if x == nil {
+		return -1
+	}
+	var list []int
+	for id := 1; id <= len(h.g.prefectures); id++ {
+		q := h.g.Prefecture(id)
+		if q == nil || id == h.at || q.Owner != x.Faction { // 在野者的勢力 0xFF 也照比（`cbw` 之後 −1 對 −1）
+			continue
+		}
+		if h.g.ActiveGenerals(id)+h.moved[id] < MaxGeneralsPerPrefecture {
+			list = append(list, id)
+		}
+	}
+	if len(list) == 0 {
+		for id := 1; id <= len(h.g.prefectures); id++ {
+			if q := h.g.Prefecture(id); q != nil && id != h.at && !q.Owned() {
+				list = append(list, id)
+			}
+		}
+	}
+	if len(list) == 0 {
+		return -1
+	}
+	to := list[roll(len(list))]
+	if h.moved == nil {
+		h.moved = map[int]int{}
+	}
+	h.moved[to]++
+	return to
 }
 
 // sideFactions 是四種軍力各屬哪個勢力：主攻是出兵的諸侯，主守是戰場
@@ -685,8 +750,13 @@ func (g *State) settle(p *Pending) *BattleResult {
 			case l.Dead:
 				g.retireBy(x, "battle")
 			case l.Captured && l.Fate != battle.FateNone:
-				// 電腦捕獲的在戰場上已經處置完（`battle.capture`），
-				// 這裡只把下場搬回人物表。
+				// 在戰場上已經處置完（`battle.capture`），這裡只把下場搬回
+				// 人物表。玩家當場處置的照樣列進被擒名單，君主與他的勢力先
+				// 記下來——斬首之後就查不出他曾是誰的君主（`seizeTreasures`）。
+				if !b.Computer[l.CapturedBy] {
+					r.Captives = append(r.Captives, Captive{General: l.Index, Name: l.Name,
+						Lord: x.Status == state.StatusLord, Faction: x.Faction, Fate: l.Fate})
+				}
 				g.applyFate(p, x, l, factions[l.CapturedBy])
 			case l.Captured:
 				r.Captives = append(r.Captives, Captive{General: l.Index, Name: l.Name})
@@ -809,29 +879,46 @@ func (g *State) FinishAttack(p *Pending) *BattleResult {
 	return g.settle(p)
 }
 
-// applyFate 把電腦捕獲方在戰場上當場做的處置（`battle.capture`，
-// `0x259fe`）搬回人物表。
+// applyFate 把戰場上當場做的處置（`battle.capture`，`docs/spec/018` §2）
+// 搬回人物表。
 //
 //   - 斬首（`0x25f6a`）：退場
-//   - 囚禁（`0x260dc`）：成為戰場那一郡的在野
+//   - 囚禁（`0x260dc`）：身分 10、所屬 `0xFF`、所在是戰場；軍師先清軍師欄
+//   - 釋放（`0x262b8`）：有去處就搬去、**所屬不變**，去處沒有現役就當主事者；
+//     沒有去處是身分 8、所屬 `0xFF`、所在是戰場；軍師先清軍師欄
 //   - 招降（`0x25b94` → `0x25cd2`）：忠誠 ＝ 判定算出來的值、身分部下、
 //     所屬換成捕獲方、所在郡是戰場；原本是軍師的話舊主的軍師欄清空
 //
-// 囚禁與招降的**人物欄位**照 `DisposeCaptive` 的寫法；招降的忠誠是
-// 戰術層算好帶回來的（`Leader.Loyalty`），不是 `DisposeCaptive` 的 50。
+// 囚禁與釋放不寫忠誠與兵（原版那幾支只寫身分、所屬、所在三格）。
 func (g *State) applyFate(p *Pending, x *General, l battle.Leader, captor state.FactionID) {
 	at := p.to
-	switch l.Fate {
-	case battle.Executed:
-		g.retireBy(x, "beheaded")
-	case battle.Jailed:
-		_ = g.DisposeCaptive(at, x.Index, Imprison, captor)
-	case battle.Defected:
+	dropChief := func() {
 		if x.Status == state.StatusChief {
 			if f := g.Faction(x.Faction); f != nil && f.Chief == x.Index {
 				f.Chief = -1
 			}
 		}
+	}
+	switch l.Fate {
+	case battle.Executed:
+		g.retireBy(x, "beheaded")
+	case battle.Jailed:
+		dropChief()
+		x.Status, x.Faction, x.Location = state.StatusStranded, state.NoFaction, at
+	case battle.Released:
+		if to := g.Prefecture(l.ReleasedTo); to != nil {
+			if g.ActiveGenerals(to.ID) == 0 {
+				to.governor = x.Index
+			}
+			x.Location = to.ID
+			// 去處重整守將清單（`0x26442` → `0x1949e`）：君主回去就接主事者。
+			g.RefreshGarrison(to.ID)
+			break
+		}
+		dropChief()
+		x.Status, x.Faction, x.Location = state.StatusAvailable, state.NoFaction, at
+	case battle.Defected:
+		dropChief()
 		_ = g.DisposeCaptive(at, x.Index, Enlist, captor)
 		x.Loyalty = uint8(l.Loyalty)
 		// 招降來的兵是 0，陣前投敵的把兵一起帶過去（`0x25cd2`）。
@@ -851,10 +938,17 @@ func (g *State) seizeTreasures(r *BattleResult, by, defender state.FactionID) {
 	}
 	for _, c := range r.Captives {
 		x := g.General(c.General)
-		if x == nil || x.Status != state.StatusLord {
+		if x == nil {
 			continue
 		}
-		loser := g.Faction(x.Faction)
+		faction := x.Faction
+		switch {
+		case c.Lord:
+			faction = c.Faction // 當場處置過了，身分與勢力已經改掉
+		case c.Fate != battle.FateNone || x.Status != state.StatusLord:
+			continue
+		}
+		loser := g.Faction(faction)
 		if loser == nil || loser == winner {
 			continue
 		}

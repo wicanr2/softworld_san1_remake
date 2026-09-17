@@ -12,6 +12,7 @@ package main
 
 import (
 	"fmt"
+	"iter"
 	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
@@ -45,6 +46,108 @@ type fight struct {
 	ending bool
 
 	view ui.BattleView
+
+	// 戰術層協程（`docs/spec/018` R4）。戰術層是同步的：被擒處置與中途
+	// 紮寨要在它跑到一半時問玩家。每一次會推進戰術層的操作都包在
+	// `iter.Pull` 裡（`inEngine`），回呼把問題 yield 出來；UI 收到答案再
+	// `resumeEngine`。兩邊一次只有一方在跑。
+	next   func() (engineAsk, bool)
+	stop   func()
+	yield  func(engineAsk) bool
+	asking *engineAsk
+	// saved 是問之前的選單與提示，答完還原。
+	saved ui.BattleView
+	// answerFate／answerAt 是玩家剛答的處置與紮寨格。
+	answerFate battle.Fate
+	answerAt   battle.Hex
+}
+
+// engineAsk 是戰術層停下來問玩家的一件事：被擒的那一位，或要紮寨的部隊。
+type engineAsk struct {
+	captive *battle.Leader
+	camp    *battle.Unit
+}
+
+// inEngine 在協程裡跑 body。body 裡的戰術層呼叫可能停下來問玩家；
+// 沒問就一路跑完。
+func (a *app) inEngine(body func()) {
+	f := a.fight
+	if f == nil {
+		return
+	}
+	if f.next != nil {
+		body() // 已經在協程裡（body 裡又走到會推進戰術層的路）
+		return
+	}
+	f.next, f.stop = iter.Pull(func(yield func(engineAsk) bool) {
+		f.yield = yield
+		body()
+	})
+	a.resumeEngine(f)
+}
+
+// resumeEngine 讓協程跑到下一個問題或跑完。
+func (a *app) resumeEngine(f *fight) {
+	q, ok := f.next()
+	if !ok {
+		f.stop()
+		f.next, f.stop, f.yield, f.asking = nil, nil, nil, nil
+		return
+	}
+	f.asking = &q
+	f.saved = f.view
+	switch {
+	case q.captive != nil:
+		f.view.Menu = t("bat.captive")
+		f.view.Items = strings.Split(t("bat.captiveLines"), "|")
+		f.view.Prompt = tf("bat.captiveWho", q.captive.Name)
+	case q.camp != nil:
+		f.view.Acting = q.camp
+		f.view.Cursor = ui.Hexer{At: q.camp.At, Shown: true}
+		f.view.Menu, f.view.Items = t("bat.camp"), []string{t("bat.arrowKeys"), t("bat.place")}
+		f.view.Prompt = tf("bat.campMid", q.camp.Name())
+	}
+}
+
+// answerEngine 收玩家對 `asking` 的回答：被擒是 1–4，紮寨是 0（游標那一格）。
+// 其他鍵不理（原版讀鍵迴圈也是，`0x25af0`）。
+func (a *app) answerEngine(k byte) {
+	f := a.fight
+	q := f.asking
+	switch {
+	case q.captive != nil:
+		fates := map[byte]battle.Fate{'1': battle.Executed, '2': battle.Jailed, '3': battle.Released, '4': battle.Defected}
+		fate, ok := fates[k]
+		if !ok {
+			return
+		}
+		f.answerFate = fate
+	case q.camp != nil:
+		if k != '0' {
+			return
+		}
+		f.answerAt = f.view.Cursor.At
+	}
+	cursor := f.view.Cursor
+	f.view = f.saved
+	if q.camp != nil {
+		f.view.Cursor = cursor
+	}
+	f.asking = nil
+	a.resumeEngine(f)
+}
+
+// hookEngine 把兩個回呼接到這一場的戰術層上。
+func (f *fight) hookEngine() {
+	b := f.pending.Battle()
+	b.PlayerCaptive = func(_ battle.Side, x *battle.Leader) battle.Fate {
+		f.yield(engineAsk{captive: x})
+		return f.answerFate
+	}
+	b.PlayerCamp = func(u *battle.Unit) battle.Hex {
+		f.yield(engineAsk{camp: u})
+		return f.answerAt
+	}
 }
 
 // speech 是現在該畫的那一句戰場對白；沒有就是 nil。文字版面（沒有原版
@@ -86,13 +189,14 @@ func (a *app) startBattle(from, to int, force []int, sup game.Supply) {
 		return s.Attacking()
 	})
 	a.fight = f
+	f.hookEngine()
 	// 開戰前逐隊紮營（原版 `(%2d%s)%s之%s請%s將軍紮寨`）。
 	for _, u := range p.Battle().Units {
 		if u.Side.Attacking() && u.Alive() {
 			f.camping = append(f.camping, u)
 		}
 	}
-	a.nextCamp()
+	a.inEngine(a.nextCamp)
 }
 
 // nextCamp 問下一支部隊要紮在哪裡；紮完就開打。
@@ -149,8 +253,22 @@ func (a *app) endBattle() {
 	a.view.Prompt = t("bat.finished")
 }
 
-// battleKey 收戰場上的一個按鍵。
+// battleKey 收戰場上的一個按鍵。戰術層停著問玩家時交給 `answerEngine`，
+// 否則在協程裡處理（`battleKeyStep`）。
 func (a *app) battleKey(k byte) {
+	f := a.fight
+	if f == nil {
+		return
+	}
+	if f.asking != nil {
+		a.answerEngine(k)
+		return
+	}
+	a.inEngine(func() { a.battleKeyStep(k) })
+}
+
+// battleKeyStep 是一個按鍵對戰術層做的事。
+func (a *app) battleKeyStep(k byte) {
 	f := a.fight
 	if f == nil || f.acting == nil {
 		return

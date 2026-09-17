@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
@@ -46,6 +47,11 @@ const (
 type Captive struct {
 	General int
 	Name    string
+	// Fate 是玩家在戰場上當場做的處置（`docs/spec/018`）；FateNone 表示還沒
+	// 處置。Lord／Faction 是被擒那一刻他是不是君主、屬哪個勢力。
+	Fate    battle.Fate
+	Lord    bool
+	Faction state.FactionID
 }
 
 // BattleResult 是一場戰役的結果。

@@ -2322,9 +2322,10 @@ RND(5) != 0 → 下一位                                  ; 0x276a3
 ```
 
 實跑只走到「君主被擒 → `RND(10)` → 斬首 → 對白」（`10@25a98 8@32d52`，
-盤面甲乙丙戊各一次）；其餘分支是 `L0`。remake：`battle.capture`／
-`surrenderChance`／`enlist`，玩家捕獲的不在戰場上處置（留給戰略層問，
-registered remake 差異）。
+盤面甲乙丙戊各一次）。玩家那一條（四選一、每種處置的拒絕條件、釋放的
+去處 `0x265ac`、中途紮寨 `0x2731a`）逐行讀在 `docs/spec/018`，六種鍵序直接
+呼叫 `0x259fe` 對過（`TestZZPlayerCaptiveMatchesTheOriginal`，`L1`）。
+remake：`battle.capture`／`dispose`／`surrenderChance`／`enlist`。
 
 ### 12.5 加強版的九支與後果常式（`L0` ＋ `L1`、`[plus]`；Issue #28，2026-09-16）
 
