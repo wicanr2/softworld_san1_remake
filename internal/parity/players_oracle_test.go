@@ -150,17 +150,23 @@ func TestZZTwoPlayersMatchTheOriginal(t *testing.T) {
 	}
 	defer o.Close()
 	board := armPlayersBoard(o)
+	tr := trackCursor(o)
 	d := bootToPlayerCount(t, o)
+	waitCursorShown(t, o, tr, "人數")
 	count := append([]uint8(nil), o.IndexedEGASize(scrW, scrH)...)
+	countCursor := *tr
 	dumpScreen(t, o, "players-count")
 	o.Drain()
 	o.TypeBoth("2\r")
 	d.waitNum("第1位君主輸入", 1, 6)
+	waitCursorShown(t, o, tr, "第1位")
 	first := append([]uint8(nil), o.IndexedEGASize(scrW, scrH)...)
 	o.Drain()
 	o.TypeBoth(fmt.Sprintf("%d\r", caoCaoPick))
 	d.waitNum("第2位君主輸入", 1, 6)
+	waitCursorShown(t, o, tr, "第2位")
 	second := append([]uint8(nil), o.IndexedEGASize(scrW, scrH)...)
+	secondCursor := *tr
 	dumpScreen(t, o, "players-second")
 	o.Drain()
 	since := len(d.nums)
@@ -188,7 +194,7 @@ func TestZZTwoPlayersMatchTheOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	render := func(mark int, prompt, ask string) *ui.Canvas {
+	render := func(mark int, prompt, ask string, in ui.InputCursor) *ui.Canvas {
 		var slots []ui.LordPickSlot
 		for f := 0; f < ui.LordPickPerPage; f++ {
 			s := ui.LordPickSlot{Number: f + 1, Faction: f, Lord: g.Lord(state.FactionID(f))}
@@ -199,8 +205,10 @@ func TestZZTwoPlayersMatchTheOriginal(t *testing.T) {
 		}
 		cv := ui.NewCanvasPx(scrW, scrH, face)
 		ui.DrawLordPick(cv, art, g, slots, -1, prompt, 0)
+		ui.DrawLordPickCursor(cv, art, prompt, in)
 		if ask != "" {
 			ui.DrawLordPickAsk(cv, ask)
+			ui.DrawLordPickAskCursor(cv, art, ask, in)
 		}
 		return cv
 	}
@@ -285,11 +293,20 @@ func TestZZTwoPlayersMatchTheOriginal(t *testing.T) {
 		}
 		t.Logf("%s：框外逐像素相同；提示墨 原版 %d remake %d；序號 原版 %+v remake %+v", name, po, pm, ob, mb)
 	}
-	cvCount := render(-1, "", "請問有幾人玩(0-16):")
+	cvCount := render(-1, "", "請問有幾人玩(0-16):", countCursor.input())
 	compare("人數", count, cvCount, box{423, 331, 624, 360}, 13, box{}, nil, nil)
+	// 提示後面的輸入游標（開新局設定那一組 `CURD`）逐像素比，反對照是不畫游標的同一張。
+	pix := func(cv *ui.Canvas) func(x, y int) int {
+		return func(x, y int) int { return idx(cv.Img.RGBAAt(x, y)) }
+	}
+	shot := func(b []uint8) func(x, y int) int { return func(x, y int) int { return int(b[y*scrW+x] & 15) } }
+	compareCursorCell(t, "人數", countCursor, 3, shot(count), pix(cvCount),
+		pix(render(-1, "", "請問有幾人玩(0-16):", ui.InputCursor{})))
 
-	noMark := render(-1, "第2位,請選擇(1-16):", "")
-	cvSecond := render(caoCaoPick-1, "第2位,請選擇(1-16):", "")
+	noMark := render(-1, "第2位,請選擇(1-16):", "", secondCursor.input())
+	cvSecond := render(caoCaoPick-1, "第2位,請選擇(1-16):", "", secondCursor.input())
+	compareCursorCell(t, "第2位", secondCursor, 3, shot(second), pix(cvSecond),
+		pix(render(caoCaoPick-1, "第2位,請選擇(1-16):", "", ui.InputCursor{})))
 	markBox := box{420 + 68 + 15, 56 + 72, 420 + 68 + 16 + 64, 56 + 90}
 	compare("第2位", second, cvSecond, box{423, 331, 624, 348}, 10, markBox, first, noMark)
 	if dir := os.Getenv("SAN1_SHOTS"); dir != "" {

@@ -93,6 +93,9 @@ type View struct {
 	// Save 非 nil 時右側面板是存檔那一格（`DrawSaveScreen`）。
 	Save *SaveScreen
 
+	// Input 是下面板提示後面的輸入游標（`docs/spec/014` §4.1）。
+	Input InputCursor
+
 	// Atlas 不是 0 時，原版素材畫面整張換成那個郡的地理誌（場地圖與
 	// 通道編號，`DrawArtAtlas`），按任意鍵回來；AtlasBubble 是主事者那一句。
 	Atlas       int

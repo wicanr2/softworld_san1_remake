@@ -95,6 +95,8 @@ type app struct {
 	titleArt   *ui.TitleScreen
 	// titleAnimTick／Frame 驅動主選單 `CURA0`～`CURA5` 的六格循環。
 	titleAnimTick, titleAnimFrame int
+	// cursorTick 驅動提示後面輸入游標的六格（`ui.CursorFrameAt`）。
+	cursorTick int
 
 	// c2 是 `DATA2`：主選單要重讀劇本，得留著。
 	c2 *assets.Container
@@ -141,6 +143,9 @@ func (a *app) Update() error {
 	if a.wipe != nil {
 		a.stepWipe()
 		return nil
+	}
+	if a.cursorTick++; a.cursorTick%ui.CursorTicksPerFrame == 0 && (a.s != nil || a.menuScreen != nil) {
+		a.dirty = true
 	}
 	// 統一之後播製作群。**要在其他輸入之前**：那一段自己收按鍵。
 	if a.s != nil && a.s.Over {
@@ -1153,9 +1158,12 @@ func (a *app) paint() {
 			a.drawTitle()
 		case a.fight != nil:
 			if a.artBattle != nil {
-				ui.DrawArtBattle(a.canvas, a.artBattle, a.fight.pending.Battle(),
-					a.fight.view, a.battleInfo())
-				if sp := a.fight.speech(true); sp != nil && sp.LureFlash {
+				bv := a.fight.view
+				sp := a.fight.speech(true)
+				// 文字視窗在等鍵：最後一行後面畫游標（對白播著的時候原版在延遲，不讀鍵）。
+				bv.Input = ui.InputCursor{On: bv.Window != "" && sp == nil, Frame: ui.CursorFrameAt(a.cursorTick)}
+				ui.DrawArtBattle(a.canvas, a.artBattle, a.fight.pending.Battle(), bv, a.battleInfo())
+				if sp != nil && sp.LureFlash {
 					if l := a.lure; l.of == sp && l.step >= 0 {
 						ui.DrawLureFlash(a.canvas, a.artBattle, sp.At, ui.LureFlashSteps()[l.step].Tile)
 					}
@@ -1181,6 +1189,9 @@ func (a *app) paint() {
 			a.view.Over = a.s.Over
 			if a.art != nil {
 				v := a.view
+				// 等玩家輸入時下面板最後一行後面畫游標；對白與示範模式不讀鍵，不畫。
+				v.Input = ui.InputCursor{On: a.s.Bubble() == nil && !a.s.Over && len(a.s.G.Players) > 0,
+					Frame: ui.CursorFrameAt(a.cursorTick)}
 				if b := a.s.Bubble(); b != nil && b.Panel != 0 {
 					// 示範模式月底的鏡頭：右側面板畫那一郡的資料（`0x32fb:0x70`）。
 					v.Status, v.Sel, v.HasCard, v.Page = true, b.Panel, false, nil

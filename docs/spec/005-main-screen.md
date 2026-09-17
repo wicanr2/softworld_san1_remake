@@ -362,7 +362,7 @@ remake：`ui.DrawLordPick`（`internal/ui/lordpick.go`）；原版素材畫面�
 的數字輸入）：地圖、外框、六張肖像、空心框、色塊逐像素相同，名字／編號／
 提示只比有沒有墨。DOSBox-X 交叉驗證：`workplace/rec7` 第 10 步
 （`010-1Return.png`）與 dosgolem 的畫面只差 55–59 個像素，全在提示後面
-閃爍的游標上。
+的輸入游標（兩個執行器截到不同畫格；游標本身見 `docs/spec/014` §4.1）。
 
 remake 的人數那一層畫同一頁、提示用 `ui.DrawLordPickAsk`（洋紅 13，從 (424,340)），
 方向鍵選的數字接在後面、數字鍵 0–9 直接收（remake 差異同設難度）；逐位選君主時
@@ -580,7 +580,7 @@ remake：`ui.SaveScreen`／`DrawSaveScreen`（`View.Save`），`cmd/san1` 的 `s
 名稱以外逐像素相同、名稱 120 格（90 格有墨）墨相同；接著選 2、打「12」、Enter，寫檔之前讀原版那一筆
 21 byte，與 `SaveName(2, 41, "12")` 編回 Big5 **逐位元組相同**（`2.，、。在南海12    `）。
 DOSBox-X `workplace/rec17` 第 20 步（開新局走到同一格）右側兩塊面板與 dosgolem 那一張只差 60／62 點，
-全在提示後面閃爍的游標。單元 `TestSaveNameFollowsTheOriginalLayout`。
+全在提示後面的輸入游標（兩邊畫格不同；remake 照原版畫，`docs/spec/014` §4.1）。單元 `TestSaveNameFollowsTheOriginalLayout`。
 
 ## 6. 主選單畫面
 
@@ -608,7 +608,8 @@ DOSBox-X `workplace/rec17` 第 20 步（開新局走到同一格）右側兩塊�
 **成因還沒解**（`L1`；remake 照抄行為）。
 
 `MENU3` 是右下角的小飾框，裡面那一格（`x 592..599, y 329..343`）
-使用 `DATA1` 的 `CURA0.IMG`～`CURA5.IMG` 與同名 `M` 遮罩播放動畫。
+使用 `DATA1` 的 `CURA0.IMG`～`CURA5.IMG` 與同名 `M` 遮罩播放動畫——它是主選單
+「請下命令」提示的**輸入游標**（回呼槽 0、組 `CURA`，`docs/spec/014` §4.1）。
 
 ### 6.1 小飾框動畫（`CONFORMED`）
 

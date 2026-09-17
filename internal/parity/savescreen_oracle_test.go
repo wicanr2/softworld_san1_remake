@@ -66,6 +66,7 @@ func TestZZSaveScreenMatchesTheOriginal(t *testing.T) {
 		}
 	})
 
+	tr := trackCursor(o)
 	base, s := bootToMainState(t, o, seedMas)
 	before := subAsks
 	o.Drain()
@@ -80,7 +81,9 @@ func TestZZSaveScreenMatchesTheOriginal(t *testing.T) {
 		t.Fatalf("送「9」「2」之後沒問 (1-6)：%v", err)
 	}
 	waitBootScan(t, o, "儲存進度", 5_000_000)
+	waitCursorShown(t, o, tr, "儲存進度")
 	orig := append([]uint8(nil), o.IndexedEGASize(scrW, scrH)...)
+	saveCursor := *tr
 	dumpScreen(t, o, "save-screen-orig")
 	_ = s
 
@@ -110,7 +113,7 @@ func TestZZSaveScreenMatchesTheOriginal(t *testing.T) {
 		sv.Names[k] = menu.LoadLine(save.Info{Slot: k + 1, Exists: true, Name: n})
 	}
 	cv := ui.NewCanvasPx(scrW, scrH, loadFace(t))
-	ui.DrawArtSession(cv, art, g, nil, ui.View{Save: sv, Prompt: i18n.S("ask.saveOrig")})
+	ui.DrawArtSession(cv, art, g, nil, ui.View{Save: sv, Prompt: i18n.S("ask.saveOrig"), Input: saveCursor.input()})
 	if dir := os.Getenv("SAN1_SHOTS"); dir != "" {
 		savePNG(t, filepath.Join(dir, "remake-save-screen.png"), cv)
 	}
@@ -163,6 +166,27 @@ func TestZZSaveScreenMatchesTheOriginal(t *testing.T) {
 				}
 			}
 		}
+	}
+	// 「(1-6):」後面的輸入游標（主畫面那一組 `CURB`）：接著再等五格，六格都比，
+	// 而且一格接一格——畫格的順序也是原版的。
+	plainCv := ui.NewCanvasPx(scrW, scrH, loadFace(t))
+	ui.DrawArtSession(plainCv, art, g, nil, ui.View{Save: sv, Prompt: i18n.S("ask.saveOrig")})
+	plain := func(x, y int) int { return paletteIndex(plainCv.Img.RGBAAt(x, y)) }
+	compareCursorCell(t, "儲存進度(1-6)", saveCursor, 1, org, idx, plain)
+	prev := saveCursor.Kind
+	for n := 0; n < 5; n++ {
+		waitCursorShown(t, o, tr, "儲存進度")
+		shot := append([]uint8(nil), o.IndexedEGASize(scrW, scrH)...)
+		cur := *tr
+		if cur.Kind != (prev+1)%6 {
+			t.Errorf("游標第 %d 格之後原版畫的是第 %d 格", prev, cur.Kind)
+		}
+		prev = cur.Kind
+		cv2 := ui.NewCanvasPx(scrW, scrH, loadFace(t))
+		ui.DrawArtSession(cv2, art, g, nil, ui.View{Save: sv, Prompt: i18n.S("ask.saveOrig"), Input: cur.input()})
+		compareCursorCell(t, "儲存進度(1-6)", cur, 1,
+			func(x, y int) int { return int(shot[y*scrW+x] & 15) },
+			func(x, y int) int { return paletteIndex(cv2.Img.RGBAAt(x, y)) }, plain)
 	}
 	if bad != 0 || cellsBad != 0 {
 		t.Errorf("存檔面板：名稱以外 %d 點不同（第一個 %s），名稱 120 格有墨不同 %d", bad, first, cellsBad)

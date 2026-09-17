@@ -233,6 +233,20 @@ func DrawNewLordBorn(c *Canvas, a *ArtScreen, g *game.State, portrait int, name 
 		Color: colour, Text: t("bub.newLord")}, name, portrait)
 }
 
+// DrawLordPickCursor 在選君主那一格提示（(424,332)，`DrawLordPick` 的 prompt）
+// 後面畫輸入游標（`CURD`）。
+func DrawLordPickCursor(c *Canvas, a *ArtScreen, prompt string, in InputCursor) {
+	if prompt == "" {
+		return
+	}
+	drawInputCursor(c, a.setupCursor, in, lordPickPromptX+cells.Width(cells.Truncate(prompt, 25))*CellW, lordPickPromptY)
+}
+
+// DrawLordPickAskCursor 在「請問有幾人玩」那一行（y 340）後面畫輸入游標。
+func DrawLordPickAskCursor(c *Canvas, a *ArtScreen, prompt string, in InputCursor) {
+	drawInputCursor(c, a.setupCursor, in, lordPickPromptX+cells.Width(cells.Truncate(prompt, 25))*CellW, 340)
+}
+
 // DrawLordPickAsk 寫「請問有幾人玩(0-%d):」那一行：原版不走訊息列，直接在
 // (424, 340) 以洋紅 13 寫（`0x120da`，`docs/spec/019` §1）。
 func DrawLordPickAsk(c *Canvas, prompt string) {

@@ -1795,6 +1795,28 @@
       }
     },
     {
+      "id": "input-cursor",
+      "title": "提示後面的輸入游標：回呼槽 0 的六格合成，主選單／主畫面／主戰場／開新局設定四組（0x10d7a）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/re/10"
+      ],
+      "note": "存檔六格、戰場四格、人數與選君主兩格逐像素相同（相位取原版剛畫好那一格）；DOSBox-X rec17／rec7 是合法 CURB／CURD 畫格。人物資料卡的「請按任一鍵」、自創君主的兩行提示還沒接。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/ui/cursor.go"
+        ],
+        "pattern": "func drawInputCursor"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",
@@ -2084,24 +2106,23 @@
       "id": "anim-menu-ornament",
       "title": "主選單小飾框那六格動畫的圖從哪來",
       "group": "畫面",
-      "layer": "feature",
+      "layer": "evidence",
       "milestone": "M6",
-      "status": "open",
+      "status": "done",
       "level": "L1",
       "edition": "base",
       "docs": [
         "docs/re/10",
-        "docs/spec/005"
+        "docs/spec/005",
+        "docs/spec/014"
       ],
-      "note": "量到了：**六格**，一輪約 1,400 萬道指令（`TestZZMenuOrnamentFrames`）。先前只知道「連拍兩張會不同」。\n\n還沒解的是**畫格從哪個素材來**——`MENU3.IMG` 是靜態外框，六格的圖不在裡面。在那之前 remake 不畫，那一塊也不參加逐點比對（`internal/assets` 的 `menuAnim`）。\n\n順序也還沒定：取樣間隔（200 萬）與一格的長度（約 230 萬）太接近，量到的序列有別名，要更密的取樣。\n\n存圖看出來六格長什麼樣：**兩顆珠子在動**，一紫一綠，上下換位置，其中一格只看得到一顆；青色外框六格都一樣。三個候選還沒排除——一張比 17 高的小圖每格取不同的 y、程式自己畫兩個橢圓、或色盤循環。",
-      "acceptance": "六格的圖找得到來源，且播放順序與週期用更密的取樣定下來",
+      "note": "`DATA1` 的 `CURA0`–`CURA5` 加同名 `M` 遮罩，`(底 AND 遮罩) OR 圖`；它是主選單提示的輸入游標（回呼槽 0 `0x10d7a`，`docs/spec/014` §4.1）。`TestZZMenuOrnamentFrames` 1,000 次取樣定出順序與週期，`TestDosgolemMenuMatchesDosboxX` 兩個執行器各自是合法畫格。",
       "verify": {
         "kind": "present",
         "paths": [
-          "internal/assets/dosboxx_test.go"
+          "internal/assets/mainscreen.go"
         ],
-        "pattern": "不參加逐點比對",
-        "include_tests": true
+        "pattern": "func CursorFrames"
       }
     },
     {

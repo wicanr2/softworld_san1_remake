@@ -41,7 +41,10 @@ func TestZZBattleWindowsMatchTheOriginal(t *testing.T) {
 		return string(out)
 	}
 	var campArmy, campTeam int
+	var tr *cursorTrack
+	var campCursor cursorTrack
 	s := newBattlePanelSceneWith(t, func(o *oracle.Oracle) {
+		tr = trackCursor(o)
 		o.OnCall(addr(0x22af4), func(o *oracle.Oracle) { // 紮寨那一句 sprintf 回來
 			if campText == "" {
 				campText = readText(o)
@@ -54,6 +57,7 @@ func TestZZBattleWindowsMatchTheOriginal(t *testing.T) {
 		o.OnCall(addr(0x21d52), func(o *oracle.Oracle) { // 紮寨那一格讀鍵之前
 			if campShot == nil {
 				campShot = append([]byte(nil), o.IndexedEGASize(scrW, scrH)...)
+				campCursor = *tr
 			}
 		})
 	})
@@ -61,26 +65,25 @@ func TestZZBattleWindowsMatchTheOriginal(t *testing.T) {
 	o.OnCall(addr(0x27a3e), func(o *oracle.Oracle) { orderText = readText(o) })
 	reads := 0
 	o.OnCall(addr(uint32(captiveKeyFn.Seg)*16+uint32(captiveKeyFn.Off)), func(*oracle.Oracle) { reads++ })
-	step := func(name, k string) []byte {
+	step := func(name, k string) ([]byte, cursorTrack) {
 		before := reads
 		o.Drain()
 		o.PressScan(k)
 		if err := o.RunUntil(oracle.NewCond(name, func(*oracle.Oracle) bool { return reads > before }), oracle.Budget(100_000_000)); err != nil {
 			t.Fatalf("%s：%v", name, err)
 		}
-		// 讀鍵常式剛進去；讓它跑到真的在等鍵再存畫面、送下一個鍵。
-		if err := o.Run(3_000_000); err != nil {
-			t.Fatalf("%s：%v", name, err)
-		}
+		// 讀鍵常式剛進去；讓它跑到游標剛畫好一格再存畫面、送下一個鍵。
+		waitCursorShown(t, o, tr, name)
 		dumpScreen(t, o, "battlewin-"+name)
-		return append([]byte(nil), o.IndexedEGASize(scrW, scrH)...)
+		return append([]byte(nil), o.IndexedEGASize(scrW, scrH)...), *tr
 	}
-	restShot := append([]byte(nil), o.IndexedEGASize(scrW, scrH)...)
-	commandShot := step("command", "N")
+	waitCursorShown(t, o, tr, "休息確認")
+	restShot, restCursor := append([]byte(nil), o.IndexedEGASize(scrW, scrH)...), *tr
+	commandShot, commandCursor := step("command", "N")
 	snap := o.Save()
-	plotShot := step("plotdir", "6")
+	plotShot, plotCursor := step("plotdir", "6")
 	o.Restore(snap)
-	moveShot := step("move", "1")
+	moveShot, moveCursor := step("move", "1")
 
 	// 原版那一支部隊（命令提示的參數：軍力、隊伍在 `0x27a40` 的 [bp+6]／[bp+8]）
 	// 用主攻軍帥隊——rig 裡玩家只有那一支，第 0 槽是陳就。
@@ -125,12 +128,13 @@ func TestZZBattleWindowsMatchTheOriginal(t *testing.T) {
 		name   string
 		shot   []byte
 		window string
+		cursor cursorTrack
 	}{
-		{"紮寨", campShot, mineCamp},
-		{"休息確認", restShot, i18n.S("bat.win.restYN")},
-		{"命令", commandShot, mineOrder},
-		{"設計那一軍", plotShot, i18n.S("bat.win.plotDir")},
-		{"移動方向", moveShot, ui.BattleDirWindow(battle.CmdMove, unit)},
+		{"紮寨", campShot, mineCamp, campCursor},
+		{"休息確認", restShot, i18n.S("bat.win.restYN"), restCursor},
+		{"命令", commandShot, mineOrder, commandCursor},
+		{"設計那一軍", plotShot, i18n.S("bat.win.plotDir"), plotCursor},
+		{"移動方向", moveShot, ui.BattleDirWindow(battle.CmdMove, unit), moveCursor},
 	} {
 		cv := ui.NewCanvasPx(scrW, scrH, s.face)
 		for y := 0; y < scrH; y++ {
@@ -139,18 +143,25 @@ func TestZZBattleWindowsMatchTheOriginal(t *testing.T) {
 			}
 		}
 		b := battle.New(battle.Setup{Field: s.fld, Seed: 1})
-		ui.DrawArtBattle(cv, s.ab, b, ui.BattleView{Window: c.window},
+		ui.DrawArtBattle(cv, s.ab, b, ui.BattleView{Window: c.window, Input: c.cursor.input()},
 			ui.ArtBattleInfo{Field: s.pref.BattleField, Portrait: [2]int{-1, -1}})
 		if dir := os.Getenv("SAN1_SHOTS"); dir != "" {
 			savePNG(t, filepath.Join(dir, "remake-battlewin-"+c.name+".png"), cv)
 		}
 		compareBattleWindow(t, c.name, c.shot, cv)
+		plain := ui.NewCanvasPx(scrW, scrH, s.face)
+		ui.DrawArtBattle(plain, s.ab, b, ui.BattleView{Window: c.window},
+			ui.ArtBattleInfo{Field: s.pref.BattleField, Portrait: [2]int{-1, -1}})
+		compareCursorCell(t, c.name, c.cursor, 2,
+			func(x, y int) int { return int(c.shot[y*scrW+x] & 15) },
+			func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) },
+			func(x, y int) int { return paletteIndex(plain.Img.RGBAAt(x, y)) })
 	}
 }
 
 // compareBattleWindow 比第三塊面板 (448,268)–(623,363) 的 22×6 個 8×16 字格有沒有
-// 墨（青 3 以外都算，字模不接原版）。原版在提示後面畫一個閃爍的游標：remake
-// 那一列最後一個有墨的格子之後、原版多出來的兩格以內不算錯。
+// 墨（青 3 以外都算，字模不接原版）。提示後面的輸入游標 remake 照原版的相位畫，
+// 那一格和字一樣算（逐像素另外由 `compareCursorCell` 比）。
 func compareBattleWindow(t *testing.T, name string, orig []byte, cv *ui.Canvas) {
 	t.Helper()
 	x0, y0, _, _ := assets.BattleWide.Panel(2)
@@ -168,19 +179,10 @@ func compareBattleWindow(t *testing.T, name string, orig []byte, cv *ui.Canvas) 
 	mine := func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) }
 	bad, inked := 0, 0
 	for row := 0; row < ui.BattleWindowRows; row++ {
-		last := -1
-		for col := 0; col < ui.BattleWindowCols; col++ {
-			if cellInk(mine, col, row) {
-				last = col
-			}
-		}
 		for col := 0; col < ui.BattleWindowCols; col++ {
 			o, m := cellInk(org, col, row), cellInk(mine, col, row)
 			if o {
 				inked++
-			}
-			if o && !m && col > last && col <= last+2 {
-				continue // 游標
 			}
 			if o != m {
 				bad++

@@ -314,35 +314,42 @@ const (
 	MenuOrnamentFrameCount = 6
 )
 
-// MenuScreenFrames 依原版遮罩合成主選單小飾框的六個畫格。
-//
-//	目的像素 = (MENU3 背景 AND CURAnM) OR CURAn
-//
-// `CURA*` 與 `CURA*M` 都是 DATA1 的 8×16 四平面 IMG；遮罩只能含 0／15。
-// 播放順序與週期的動態證據見 `docs/spec/005` §6.1。
-func MenuScreenFrames(data1, data3 *Container) ([MenuOrnamentFrameCount]*Image, error) {
-	var out [MenuOrnamentFrameCount]*Image
-	base, err := MenuScreen(data3)
-	if err != nil {
-		return out, err
+// CursorFrame 是輸入游標的一格：8×16 的圖與同名 `M` 遮罩（遮罩只含 0／15）。
+type CursorFrame struct {
+	Sprite, Mask *Image
+}
+
+// CursorStyle 是游標的組別，原版 `0x10c02(n)` 設（`docs/spec/014` §4.1）：
+// 主選單 A、主畫面 B、主戰場 C、開新局設定 D。
+type CursorStyle int
+
+const (
+	CursorMenu   CursorStyle = 0 // `CURA`：主選單（小飾框那一格就是它）
+	CursorMain   CursorStyle = 1 // `CURB`：月迴圈 `0x15750`
+	CursorBattle CursorStyle = 2 // `CURC`：主戰場 `0x20211`／`0x2057b`
+	CursorSetup  CursorStyle = 3 // `CURD`：開新局設定（人數、選君主、難度）`0x11b90`
+)
+
+// CursorFrames 讀一組游標的六格（`0x114de`：`CUR%c%c.IMG`，'A'＋組、'0'＋格）。
+func CursorFrames(data1 *Container, style CursorStyle) ([MenuOrnamentFrameCount]CursorFrame, error) {
+	var out [MenuOrnamentFrameCount]CursorFrame
+	load := func(name string) (*Image, error) {
+		i, ok := data1.ByName(name)
+		if !ok {
+			return nil, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
+		}
+		im, err := DecodeImage(data1.Data(i))
+		if err != nil {
+			return nil, fmt.Errorf("assets: 解 %s：%w", name, err)
+		}
+		if im.W != 8 || im.H != 16 {
+			return nil, fmt.Errorf("assets: %s 是 %d×%d，應為 8×16", name, im.W, im.H)
+		}
+		return im, nil
 	}
 	for frame := range out {
-		load := func(name string) (*Image, error) {
-			i, ok := data1.ByName(name)
-			if !ok {
-				return nil, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
-			}
-			im, err := DecodeImage(data1.Data(i))
-			if err != nil {
-				return nil, fmt.Errorf("assets: 解 %s：%w", name, err)
-			}
-			if im.W != 8 || im.H != 16 {
-				return nil, fmt.Errorf("assets: %s 是 %d×%d，應為 8×16", name, im.W, im.H)
-			}
-			return im, nil
-		}
-		name := fmt.Sprintf("CURA%d.IMG", frame)
-		maskName := fmt.Sprintf("CURA%dM.IMG", frame)
+		name := fmt.Sprintf("CUR%c%d.IMG", 'A'+rune(style), frame)
+		maskName := fmt.Sprintf("CUR%c%dM.IMG", 'A'+rune(style), frame)
 		sprite, err := load(name)
 		if err != nil {
 			return out, err
@@ -351,19 +358,48 @@ func MenuScreenFrames(data1, data3 *Container) ([MenuOrnamentFrameCount]*Image, 
 		if err != nil {
 			return out, err
 		}
-		im := base.Clone()
-		for y := 0; y < sprite.H; y++ {
-			for x := 0; x < sprite.W; x++ {
-				m := mask.At(x, y)
-				if m != 0 && m != 15 {
+		for y := 0; y < mask.H; y++ {
+			for x := 0; x < mask.W; x++ {
+				if m := mask.At(x, y); m != 0 && m != 15 {
 					return out, fmt.Errorf("assets: %s 在 (%d,%d) 的遮罩色號是 %d，應為 0 或 15",
 						maskName, x, y, m)
 				}
-				old := im.At(MenuOrnamentX+x, MenuOrnamentY+y)
-				im.Set(MenuOrnamentX+x, MenuOrnamentY+y, (old&m)|sprite.At(x, y))
 			}
 		}
-		out[frame] = im
+		out[frame] = CursorFrame{Sprite: sprite, Mask: mask}
+	}
+	return out, nil
+}
+
+// Over 把這一格游標合成到色號 old 上：`(底 AND 遮罩) OR 圖`。
+func (f CursorFrame) Over(x, y int, old byte) byte {
+	return (old & f.Mask.At(x, y)) | f.Sprite.At(x, y)
+}
+
+// MenuScreenFrames 依原版遮罩合成主選單小飾框的六個畫格。
+//
+//	目的像素 = (MENU3 背景 AND CURAnM) OR CURAn
+//
+// 小飾框就是主選單提示的輸入游標（組 A，`CursorFrames`）。
+// 播放順序與週期的動態證據見 `docs/spec/005` §6.1。
+func MenuScreenFrames(data1, data3 *Container) ([MenuOrnamentFrameCount]*Image, error) {
+	var out [MenuOrnamentFrameCount]*Image
+	base, err := MenuScreen(data3)
+	if err != nil {
+		return out, err
+	}
+	frames, err := CursorFrames(data1, CursorMenu)
+	if err != nil {
+		return out, err
+	}
+	for k, f := range frames {
+		im := base.Clone()
+		for y := 0; y < f.Sprite.H; y++ {
+			for x := 0; x < f.Sprite.W; x++ {
+				im.Set(MenuOrnamentX+x, MenuOrnamentY+y, f.Over(x, y, im.At(MenuOrnamentX+x, MenuOrnamentY+y)))
+			}
+		}
+		out[k] = im
 	}
 	return out, nil
 }

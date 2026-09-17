@@ -437,13 +437,21 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 			for k, s := range lines {
 				c.DrawTextPx(ordX, ordY+k*CellH, s, ink)
 			}
+			// 游標接在最後一行字後面（休息確認之後是 (568,268)）。
+			if x, y, ok := cursorAfterLines(ordX, ordY, CellH, lines); ok {
+				drawInputCursor(c, ab.cursor, v.Input, x, y)
+			}
 		} else if small := BattleWindowLines(v.Window, assets.BattlePanelW/SmallW, 1<<16); len(small) <= assets.BattlePanelH/SmallH {
 			for k, s := range small {
 				c.DrawSmallTextPx(ordX, ordY+k*SmallH, s, ink)
 			}
 		} else {
-			for k, s := range BattleWindowLines(v.Window, BattleWindowCols, BattleWindowRows) {
+			rows := BattleWindowLines(v.Window, BattleWindowCols, BattleWindowRows)
+			for k, s := range rows {
 				c.DrawTextPx(ordX, ordY+k*CellH, s, ink)
+			}
+			if x, y, ok := cursorAfterLines(ordX, ordY, CellH, rows); ok {
+				drawInputCursor(c, ab.cursor, v.Input, x, y)
 			}
 		}
 		if len(v.Page) > 0 {

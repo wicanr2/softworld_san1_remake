@@ -31,20 +31,24 @@ func (a *app) drawTitle() {
 	}
 	// 選君主：有原版素材就照原版畫——主畫面的地圖加右側一頁六位君主的
 	// 肖像（`docs/spec/005` §9.4）；沒有素材退回文字清單。
+	in := ui.InputCursor{On: true, Frame: ui.CursorFrameAt(a.cursorTick)}
 	if m.Stage() == menu.Lord && a.art != nil && m.Game() != nil {
 		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPickPage(), m.Sel()%ui.LordPickPerPage,
 			m.Title(), a.view.Calendar)
+		ui.DrawLordPickCursor(a.canvas, a.art, m.Title(), in)
 		return
 	}
 	// 幾人玩：選君主那一頁，提示框裡問人數（`0x120a5`，`docs/spec/019` §1）。
 	if m.Stage() == menu.PlayerCount && a.art != nil && m.Game() != nil {
 		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPage(m.Lords(), 0), -1, "", a.view.Calendar)
 		ui.DrawLordPickAsk(a.canvas, m.Title()+m.Items()[m.Sel()])
+		ui.DrawLordPickAskCursor(a.canvas, a.art, m.Title()+m.Items()[m.Sel()], in)
 		return
 	}
 	// 0 人：「電腦自動示範模式」，等一個鍵。
 	if m.Stage() == menu.Demo && a.art != nil && m.Game() != nil {
 		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPage(m.Lords(), 0), -1, m.Title(), a.view.Calendar)
+		ui.DrawLordPickCursor(a.canvas, a.art, m.Title(), in)
 		return
 	}
 	// 新君主：同一塊面板，肖像加框、名字、六行能力（`docs/spec/005` §9.5）。
@@ -68,6 +72,7 @@ func (a *app) drawTitle() {
 		}
 		prompt := tf("title.difficultyPrompt", len(m.Items())) + m.Items()[m.Sel()]
 		ui.DrawLordPick(a.canvas, a.art, m.Game(), a.lordPage(m.Lords(), at), -1, prompt, a.view.Calendar)
+		ui.DrawLordPickCursor(a.canvas, a.art, prompt, in)
 		return
 	}
 	// 選擇年代、載入進度、音樂欣賞：原版不換畫面，直牌與六個按鈕換字

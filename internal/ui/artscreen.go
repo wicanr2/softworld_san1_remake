@@ -57,6 +57,10 @@ type ArtScreen struct {
 	// scenes 是 `SCG30`／`SCG31` 所在的容器（`DATA1`）；`SCG01`–`29` 與肖像
 	// 同在 `DATA3`（`docs/formats/04`）。
 	scenes *assets.Container
+
+	// cursor 是主畫面的輸入游標（`CURB`，`docs/spec/014` §4.1）；setupCursor 是
+	// 開新局設定那幾問的（`CURD`，`0x11b90`）。沒有 `DATA1` 就是 nil。
+	cursor, setupCursor *[assets.MenuOrnamentFrameCount]assets.CursorFrame
 }
 
 // NewArtScreen 拼出主畫面的底圖，順便留著容器好取肖像。
@@ -97,6 +101,12 @@ func NewArtScreen(data3, data1 *assets.Container) (*ArtScreen, error) {
 			a.havePanel = false
 		} else {
 			a.pickBox = f
+		}
+		if f, err := assets.CursorFrames(data1, assets.CursorMain); err == nil {
+			a.cursor = &f
+		}
+		if f, err := assets.CursorFrames(data1, assets.CursorSetup); err == nil {
+			a.setupCursor = &f
 		}
 	}
 	return a, nil
@@ -286,7 +296,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 
 	// **下面板先畫**：清單寬到要蓋整個內容區時，覆蓋頁要蓋在它上面，
 	// 不能讓提示字浮在覆蓋頁上。
-	drawArtLower(c, log, v, subLower)
+	drawArtLower(c, log, v, subLower, a.cursor)
 	switch upper {
 	case artUpperStatus:
 		drawArtStatus(c, g, p, sel)
@@ -523,7 +533,8 @@ func commandLines(items []Command) []string {
 
 // drawArtLower 畫下面板：類別子選單照原版斷行，其餘時候放提示或最後一則
 // 訊息，最多四行（`docs/spec/014` §3.2）。
-func drawArtLower(c *Canvas, log []string, v View, subLower bool) {
+func drawArtLower(c *Canvas, log []string, v View, subLower bool,
+	cursor *[assets.MenuOrnamentFrameCount]assets.CursorFrame) {
 	w := (artRightR - artMsgX) / CellW
 	var lines []string
 	k := subMenuKey(v.Menu)
@@ -554,11 +565,15 @@ func drawArtLower(c *Canvas, log []string, v View, subLower bool) {
 			lines = append(lines, cells.Wrap(msg, w)...)
 		}
 	}
+	if len(lines) > artLowerRows {
+		lines = lines[:artLowerRows]
+	}
 	for i, line := range lines {
-		if i >= artLowerRows {
-			break
-		}
 		c.DrawTextPx(artMsgX, artMsgY+i*artMsgDY, line, artInkMsg)
+	}
+	// 游標接在最後一行字後面（主命令「南海下您的命令:」之後是 (544,316)）。
+	if x, y, ok := cursorAfterLines(artMsgX, artMsgY, artMsgDY, lines); ok {
+		drawInputCursor(c, cursor, v.Input, x, y)
 	}
 }
 
@@ -869,6 +884,8 @@ type ArtBattle struct {
 	weather [3]*assets.Image
 	faces   *assets.Container
 	bottom  *assets.Image
+	// cursor 是主戰場的輸入游標（`CURC`，`docs/spec/014` §4.1）。
+	cursor *[assets.MenuOrnamentFrameCount]assets.CursorFrame
 }
 
 // NewArtBattle 解出三十六張地形圖塊與上下兩條花邊。data3 可以是 nil，
@@ -883,6 +900,9 @@ func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 		return nil, err
 	}
 	ab := &ArtBattle{tiles: tiles, flags: flags}
+	if f, err := assets.CursorFrames(data1, assets.CursorBattle); err == nil {
+		ab.cursor = &f
+	}
 	if ab.bg, err = assets.BattleBackground(data1); err != nil {
 		return nil, err
 	}

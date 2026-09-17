@@ -64,6 +64,8 @@ type BattleView struct {
 	// 常式（`0x33d8:0xcc0`）逐字排——換行字元換行、滿 22 格折行、超過 6 列
 	// 往上捲——字色一律黃 14（`docs/spec/014` §7.1）。這時 Menu／Items／Prompt 不畫。
 	Window string
+	// Input 是文字視窗最後一行後面的輸入游標（`docs/spec/014` §4.1）。
+	Input InputCursor
 
 	// Menu 是展開中的指令選單標題；空字串表示還沒選指令。
 	Menu  string
