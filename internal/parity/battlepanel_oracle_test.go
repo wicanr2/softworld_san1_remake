@@ -82,6 +82,13 @@ type battlePanelScene struct {
 
 func newBattlePanelScene(t *testing.T) *battlePanelScene {
 	t.Helper()
+	return newBattlePanelSceneWith(t, nil)
+}
+
+// newBattlePanelSceneWith 同 newBattlePanelScene，pre 在開機之後、走進戰場之前
+// 掛鉤子（紮寨那幾格在 rig 裡面就走過了）。
+func newBattlePanelSceneWith(t *testing.T, pre func(*oracle.Oracle)) *battlePanelScene {
+	t.Helper()
 	root := origRoot(t)
 	c2 := openContainer(t, filepath.Join(root, "DATA2"))
 	sc0, err := state.LoadScenario(c2, state.Slot("001"))
@@ -94,6 +101,9 @@ func newBattlePanelScene(t *testing.T) *battlePanelScene {
 		t.Fatal(err)
 	}
 	t.Cleanup(o.Close)
+	if pre != nil {
+		pre(o)
+	}
 	base, dgroup := battlePanelRig(t, o, seedMas)
 
 	nMas, nSta, nGen := state.MasterTableSize, state.PrefectureTableSize, state.GeneralTableSize

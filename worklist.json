@@ -1751,6 +1751,28 @@
       }
     },
     {
+      "id": "battle-text-window",
+      "title": "主戰場第三塊面板的文字視窗：紮寨、命令、休息／退兵確認、方向、策略照原版字串與順序",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/re/05"
+      ],
+      "note": "`TestZZBattleWindowsMatchTheOriginal` 紮寨與命令兩句逐字相同、五格字格墨相同；計謀清單那一格未實拍。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/ui/battlewindow.go"
+        ],
+        "pattern": "func BattleCommandWindow"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

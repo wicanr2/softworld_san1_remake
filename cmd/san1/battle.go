@@ -33,8 +33,8 @@ type fight struct {
 	// cmd 是已經選好、正在等方向或目標的指令。
 	cmd battle.Command
 
-	// engage 為真表示在單位層（原版的「對戰」）。
-	engage bool
+	// plotAt 是「設計那一軍」選好的目標格（相鄰那一格）。
+	plotAt battle.Hex
 
 	// camping 是還沒紮完營的部隊（開戰前逐隊指定位置）。
 	camping []*battle.Unit
@@ -121,6 +121,9 @@ func (a *app) resumeEngine(f *fight) {
 	}
 	f.asking = &q
 	f.saved = f.view
+	// 戰術層問的這幾格還是選單＋提示的畫法（被擒處置、中途紮寨、子畫面）；
+	// 文字視窗在答完、還原 saved 時回來。
+	f.view.Window = ""
 	switch {
 	case q.captive != nil:
 		f.view.Menu = t("bat.captive")
@@ -296,12 +299,19 @@ func (f *fight) speech(art bool) *battle.Speech {
 type waitFor int
 
 const (
-	waitCommand waitFor = iota // 等部隊層的指令
-	waitDir                    // 等方向
-	waitPlot                   // 等計謀編號
-	waitEngage                 // 等單位層的指令
-	waitCamp                   // 開戰前紮營
+	waitCommand   waitFor = iota // 等部隊層的指令
+	waitDir                      // 等方向
+	waitPlotDir                  // 用計：等「設計那一軍」的方向
+	waitPlot                     // 等計謀編號
+	waitRestYN                   // 「休息 確認(Y/N)」
+	waitRetreatYN                // 「退兵 確認(Y/N)」
+	waitCamp                     // 開戰前紮營
 )
+
+// takesYN 回報這一格收不收 Y／N／Enter。
+func (w waitFor) takesYN() bool {
+	return w == waitRestYN || w == waitRetreatYN || w == waitPlotDir || w == waitPlot
+}
 
 // startBattle 開一場由玩家指揮的戰役。
 func (a *app) startBattle(from, to int, force []int, sup game.Supply) {
@@ -347,9 +357,40 @@ func (a *app) nextCamp() {
 	f.waiting = waitCamp
 	f.view.Acting = u
 	f.view.Cursor = ui.Hexer{At: u.At, Shown: true}
-	f.view.Menu, f.view.Items = t("bat.camp"),
-		[]string{t("bat.arrowKeys"), t("bat.place"), t("bat.autoAll")}
-	f.view.Prompt = tf("bat.campWho", u.Name(), len(f.camping))
+	f.view.Menu, f.view.Items, f.view.Prompt = "", nil, ""
+	f.view.Window = a.campWindow(u)
+}
+
+// campWindow 是紮寨那一格的文字視窗（`ui.BattleCampWindow`）。
+func (a *app) campWindow(u *battle.Unit) string {
+	id := a.fight.pending.SidePrefecture(u.Side)
+	name := ""
+	if p := a.s.G.Prefecture(id); p != nil {
+		name = p.Name
+	}
+	return ui.BattleCampWindow(id, name, u.Side, u.Formation, leaderName(u))
+}
+
+// commandWindow 是每天命令提示的文字視窗（`ui.BattleCommandWindow`）：君主是
+// 帶隊那一位所屬勢力的君主。
+func (a *app) commandWindow(u *battle.Unit) string {
+	lord := ""
+	if len(u.Leaders) > 0 {
+		if x := a.s.G.General(u.Leaders[0].Index); x != nil {
+			if l := a.s.G.Lord(x.Faction); l != nil {
+				lord = l.Name
+			}
+		}
+	}
+	return ui.BattleCommandWindow(lord, u.Formation, u.Move, leaderName(u))
+}
+
+// leaderName 是部隊第 0 槽那一位的名字（原版部隊記錄 offset 38 那一格）。
+func leaderName(u *battle.Unit) string {
+	if len(u.Leaders) == 0 {
+		return ""
+	}
+	return u.Leaders[0].Name
 }
 
 // nextActor 推進到下一支要玩家下令的部隊；沒有就收尾——打完先讓助軍
@@ -357,7 +398,7 @@ func (a *app) nextCamp() {
 func (a *app) nextActor() {
 	f := a.fight
 	f.acting = f.runner.Next()
-	f.engage, f.waiting = false, waitCommand
+	f.waiting = waitCommand
 	if f.acting == nil {
 		f.pending.Battle().SayHelperReturn()
 		if a.fight.speech(a.artBattle != nil) != nil {
@@ -369,8 +410,8 @@ func (a *app) nextActor() {
 	}
 	f.view.Acting = f.acting
 	f.view.Cursor = ui.Hexer{At: f.acting.At, Shown: true}
-	f.view.Menu, f.view.Items = t("page.command"), ui.BattleCommandLines()
-	f.view.Prompt = tf("bat.unitMoves", f.acting.Name(), f.acting.Move)
+	f.view.Menu, f.view.Items, f.view.Prompt = "", nil, ""
+	f.view.Window = a.commandWindow(f.acting)
 	f.view.ClosePage()
 }
 
@@ -406,18 +447,25 @@ func (a *app) battleKeyStep(k byte) {
 		return
 	}
 	b := f.pending.Battle()
-	say := func(format string, v ...any) { f.view.Prompt = fmt.Sprintf(format, v...) }
+	// say 在文字視窗裡印一句（原版的訊息常式接著寫在視窗裡）。
+	say := func(format string, v ...any) { f.view.Window = fmt.Sprintf(format, v...) }
+	// backToCommand 回到每天的命令提示；msg 不是空字串就先印它再印選單。
+	backToCommand := func(msg string) {
+		f.waiting = waitCommand
+		f.view.Window = a.commandWindow(f.acting)
+		if msg != "" {
+			f.view.Window = msg + "\n" + f.view.Window
+		}
+	}
 	done := func(err error) {
 		if err != nil {
-			say("%s", game.ErrorText(err))
-			f.waiting = waitCommand
-			f.view.Menu, f.view.Items = t("page.command"), ui.BattleCommandLines()
+			backToCommand(game.ErrorText(err))
 			return
 		}
 		// 一支部隊一天可以做好幾件事；移動之後還有餘步就繼續。
 		if f.acting.Alive() && f.acting.Move > 0 && f.cmd == battle.CmdMove {
 			f.waiting = waitDir
-			say(tf("bat.dirMore", f.acting.Move))
+			f.view.Window = ui.BattleDirWindow(battle.CmdMove, f.acting)
 			return
 		}
 		f.runner.Done()
@@ -433,18 +481,49 @@ func (a *app) battleKeyStep(k byte) {
 			a.nextCamp()
 		case '0':
 			if err := b.Camp(f.acting, f.view.Cursor.At); err != nil {
-				say("%s", game.ErrorText(err))
+				say("%s\n%s", game.ErrorText(err), a.campWindow(f.acting))
 				return
 			}
 			f.camping = f.camping[1:]
 			a.nextCamp()
 		default:
-			say(t("bat.campHint"))
+			// 原版 1–6 移游標（`0x21d57`）；方向鍵也可以（remake 加的）。
+			if d, ok := dirFromKey(k); ok {
+				a.battleMove(d)
+			}
 		}
 	case waitCommand:
 		a.battleCommand(k, done, say)
-	case waitEngage:
-		a.battleEngage(k, done, say)
+	case waitRestYN, waitRetreatYN:
+		switch k {
+		case 'Y':
+			if f.waiting == waitRestYN {
+				done(b.Rest(f.acting))
+			} else {
+				done(b.Retreat(f.acting))
+			}
+		case 'N', '\r':
+			backToCommand("")
+		}
+	case waitPlotDir:
+		// 「設計那一軍」：方向鍵指相鄰那一格，那一格沒有敵軍就取消回命令提示
+		// （`0x28d7a` 回 0xFFFF，`docs/re/05` §4）。Enter 取消。
+		if k == '\r' {
+			backToCommand("")
+			return
+		}
+		d, ok := dirFromKey(k)
+		if !ok {
+			return
+		}
+		at := f.acting.At.Step(d)
+		if u := b.UnitAt(at); u == nil || u.Side.Attacking() == f.acting.Side.Attacking() {
+			backToCommand("")
+			return
+		}
+		f.plotAt = at
+		f.waiting = waitPlot
+		f.view.Window = t("bat.win.plotList")
 	case waitDir:
 		if k == '0' {
 			f.runner.Done()
@@ -453,22 +532,19 @@ func (a *app) battleKeyStep(k byte) {
 		}
 		d, ok := dirFromKey(k)
 		if !ok {
-			say(t("bat.dirBad"))
-			return
+			return // 原版不是 1–6 就重讀
 		}
 		done(a.applyDir(d))
 	case waitPlot:
+		if k == '\r' {
+			backToCommand("")
+			return
+		}
 		s := battle.Stratagem(k - '0')
 		if s < battle.Fire || s > battle.Siege {
-			say(t("bat.plotBad"))
-			return
+			return // 原版不在 1–6 就重讀
 		}
-		target := b.UnitAt(f.view.Cursor.At)
-		if target == nil {
-			say(t("bat.noTarget"))
-			return
-		}
-		err := b.UseStratagem(f.acting, s, target.At)
+		err := b.UseStratagem(f.acting, s, f.plotAt)
 		// 三道門各一句（`0x28cd5`，第三塊面板，第 0 槽那一位）——說完回到
 		// 指令提示，回合不算用掉。
 		b.SayPlotGate(f.acting, err)
@@ -483,20 +559,14 @@ func (a *app) battleCommand(k byte, done func(error), say func(string, ...any)) 
 	f.cmd = battle.Command(k - '0')
 	switch f.cmd {
 	case battle.CmdRest:
-		done(b.Rest(f.acting))
-	case battle.CmdMove, battle.CmdQuick, battle.CmdDeath, battle.CmdArchery:
+		f.waiting = waitRestYN
+		f.view.Window = t("bat.win.restYN")
+	case battle.CmdMove, battle.CmdQuick, battle.CmdDeath, battle.CmdArchery, battle.CmdEngage:
 		f.waiting = waitDir
-		f.view.Menu, f.view.Items = ui.CommandName(f.cmd), []string{"4 5 6", "1 2 3"}
-		say(t("bat.dir"))
-	case battle.CmdEngage:
-		f.engage = true
-		f.waiting = waitEngage
-		f.view.Menu, f.view.Items = ui.CommandName(battle.CmdEngage), ui.BattleEngageLines()
-		say(tf("bat.engageHint", strings.Join(ui.BattleEngageLines(), " ")))
+		f.view.Window = ui.BattleDirWindow(f.cmd, f.acting)
 	case battle.CmdPlot:
-		f.waiting = waitPlot
-		f.view.Menu, f.view.Items = ui.CommandName(battle.CmdPlot), ui.BattleStratagemLines()
-		say(t("bat.plotWho"))
+		f.waiting = waitPlotDir
+		f.view.Window = t("bat.win.plotDir")
 	case battle.CmdInspect:
 		u, err := b.Inspect(f.acting, f.view.Cursor.At)
 		if err != nil {
@@ -507,42 +577,8 @@ func (a *app) battleCommand(k byte, done func(error), say func(string, ...any)) 
 		f.view.Inspecting = u
 		say(t("bat.close"))
 	case battle.CmdRetreat:
-		done(b.Retreat(f.acting))
-	default:
-		say(t("bat.cmdBad"))
-	}
-}
-
-// battleEngage 是單位層（原版的「對戰」）：行軍／單挑／攻擊。
-func (a *app) battleEngage(k byte, done func(error), say func(string, ...any)) {
-	f := a.fight
-	b := f.pending.Battle()
-	switch k {
-	case '0':
-		done(b.Rest(f.acting))
-	case '1':
-		f.cmd = battle.CmdMove
-		f.waiting = waitDir
-		say(tf("bat.marchDir", f.acting.Move))
-	case '2':
-		f.cmd = battle.CmdEngage
-		f.waiting = waitDir
-		say(t("bat.duelDir"))
-	case '3':
-		f.cmd = battle.CmdQuick
-		f.waiting = waitDir
-		say(t("bat.strikeDir"))
-	case '7':
-		u, err := b.Inspect(f.acting, f.view.Cursor.At)
-		if err != nil {
-			say("%s", game.ErrorText(err))
-			return
-		}
-		f.view.SetPage(ui.BattleUnitPage(u))
-		f.view.Inspecting = u
-		say(t("bat.close"))
-	default:
-		say(t("bat.engageBad"))
+		f.waiting = waitRetreatYN
+		f.view.Window = t("bat.win.retreatYN")
 	}
 }
 

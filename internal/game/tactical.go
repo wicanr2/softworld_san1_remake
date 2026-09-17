@@ -102,6 +102,23 @@ func (p *Pending) Battle() *battle.Battle { return p.B }
 func (p *Pending) Where() int { return p.to }
 func (p *Pending) From() int  { return p.from }
 
+// SidePrefecture 是某一種軍力從哪一郡來（原版軍團記錄的 `0x1770`，紮寨提示
+// 「(%2d%s)」那一格）：主攻軍是出兵郡、主守軍是戰場那一郡、兩支援軍是各自的
+// 來源郡；沒有那支軍力回 0。
+func (p *Pending) SidePrefecture(s battle.Side) int {
+	switch s {
+	case battle.MainAttacker:
+		return p.from
+	case battle.MainDefender:
+		return p.to
+	case battle.AidAttacker:
+		return p.aid.Attacker
+	case battle.AidDefender:
+		return p.aid.Defender
+	}
+	return 0
+}
+
 // Chiefs 是攻方與守方的統帥；沒有就是 nil。
 //
 // 取的是各方名單的排頭——原版的統帥就是編隊時排在最前面的那一位

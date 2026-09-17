@@ -60,6 +60,11 @@ type BattleView struct {
 	Cursor Hexer
 	Acting *battle.Unit
 
+	// Window 不是空字串時第三塊面板是原版的**文字視窗**：清成青 3，照原版訊息
+	// 常式（`0x33d8:0xcc0`）逐字排——換行字元換行、滿 22 格折行、超過 6 列
+	// 往上捲——字色一律黃 14（`docs/spec/014` §7.1）。這時 Menu／Items／Prompt 不畫。
+	Window string
+
 	// Menu 是展開中的指令選單標題；空字串表示還沒選指令。
 	Menu  string
 	Items []string

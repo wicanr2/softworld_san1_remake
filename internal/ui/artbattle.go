@@ -427,6 +427,31 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	// 只畫選單標題，六種計謀、交戰方式都看不到，玩家只能照手冊背編號
 	// （`docs/spec/014` §7）。
 	ordX, ordY := l.PanelX[2], l.PanelY[2]
+	if v.Window != "" {
+		// 原版的文字視窗：面板清成青 3，逐列寫（`BattleWindowLines`）。英日文排不進
+		// 6 列就改小字（一行 28 字、8 列，remake 差異同下面的選單）。
+		c.FillRect(ordX, ordY, ordX+assets.BattlePanelW, ordY+assets.BattlePanelH, assets.EGAPalette[battleWindowPaper])
+		ink := assets.EGAPalette[battleWindowInk]
+		lines := BattleWindowLines(v.Window, BattleWindowCols, 1<<16)
+		if len(lines) <= BattleWindowRows {
+			for k, s := range lines {
+				c.DrawTextPx(ordX, ordY+k*CellH, s, ink)
+			}
+		} else if small := BattleWindowLines(v.Window, assets.BattlePanelW/SmallW, 1<<16); len(small) <= assets.BattlePanelH/SmallH {
+			for k, s := range small {
+				c.DrawSmallTextPx(ordX, ordY+k*SmallH, s, ink)
+			}
+		} else {
+			for k, s := range BattleWindowLines(v.Window, BattleWindowCols, BattleWindowRows) {
+				c.DrawTextPx(ordX, ordY+k*CellH, s, ink)
+			}
+		}
+		if len(v.Page) > 0 {
+			drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
+				v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+		}
+		return
+	}
 	ord := assets.EGAPalette[assets.BattleOrderInk]
 	w := assets.BattlePanelW / CellW
 	opts := BattleCommandLines()

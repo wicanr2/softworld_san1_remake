@@ -1159,6 +1159,10 @@ func (a *app) updateBattle() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		a.fight.view.ClosePage()
+		// 查看收起之後回到命令提示的文字視窗。
+		if f := a.fight; f.acting != nil && f.waiting == waitCommand && f.asking == nil {
+			f.view.Window = a.commandWindow(f.acting)
+		}
 		return nil
 	}
 	// 分頁（查看部隊）打開時方向鍵捲動，不移游標。
@@ -1187,7 +1191,7 @@ func (a *app) updateBattle() error {
 	}
 	// 子畫面的休息確認、叫陣的接受與行軍結束要 Y／N／Enter（`docs/re/05` §10.6）。
 	for key, k := range map[ebiten.Key]byte{ebiten.KeyY: 'Y', ebiten.KeyN: 'N', ebiten.KeyEnter: '\r'} {
-		if inpututil.IsKeyJustPressed(key) && a.fight.asking != nil {
+		if inpututil.IsKeyJustPressed(key) && (a.fight.asking != nil || a.fight.waiting.takesYN()) {
 			a.battleKey(k)
 			return nil
 		}
