@@ -64,7 +64,7 @@ repo 的 `CLAUDE.md`／`CONTEXT.md` 全部適用。
 
 | 條件 | 狀態 |
 |---|---|
-| #58、#35、#56、#34 關閉並附收據 | 四條都在 2026-09-17 關閉（`0d5a3ed` 場景圖拉幕兩個 commit、`d3f8a3f` 被擒處置與中途紮寨、`c9e89af` 對戰子畫面、`R72` 商標畫面）。核實訊號留著：`ui.NewSceneWipe`／`TestZZSceneEffectMatchesTheOriginal`、`battle.PlayerSkirmish`＋`internal/ui/skirmish.go`、`TestZZTrademarkMatchesTheOriginal`；`PendingWipe`／`TakeWipe` 已刪（grep 0 處）|
+| #58、#35、#56、#34 關閉並附收據 | 四條都在 2026-09-17 關閉（`5112de3`＋`13e2fb3` 場景圖拉幕兩個 commit、`4e87ccb` 被擒處置與中途紮寨、`c9e89af` 對戰子畫面、`7f138c3` 商標畫面）。核實訊號留著：`ui.NewSceneWipe`／`TestZZSceneEffectMatchesTheOriginal`、`battle.PlayerSkirmish`＋`internal/ui/skirmish.go`、`TestZZTrademarkMatchesTheOriginal`；`PendingWipe`／`TakeWipe` 已刪（grep 0 處）|
 | 普查連續兩輪開不出新的 agent-ready | 第 16、17 輪都沒有。第 16 輪查的是剩下的自編字串（九類子選單都齊、「還沒實作」到不了、「沒有這個選項」是子選單按一鍵那個既有差異的配套）；第 17 輪掃 `docs/spec` 的「沒量」，剩下的都不是畫面一致性（配樂重播、西曆那一行、製作人員、讀檔停在回合中途）|
 | 剩下的 open 只有 #33、#2 與 needs-human | open：#84、#82、#71、#65、#64、#33（needs-human）＋ #2（blocked）|
 
