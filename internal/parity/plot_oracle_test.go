@@ -89,16 +89,26 @@ func TestAIPlotMatchesTheOriginal(t *testing.T) {
 	// 把在職者的忠誠壓到 20–39（**跳過 0xFF 那個哨兵**，那是在野者的
 	// 「沒有忠誠」，改掉會讓別的常式把他們當成在職）。留一段跨度是為了
 	// 讓乘法的截斷有機會出現不同的餘數。
-	lowered := 0
-	for i := 0; i < 350; i++ {
-		at := addr(genBase + uint32(i*30+16))
-		if o.Byte(at) == 0xFF {
-			continue
+	//
+	// **開局壓一次不夠，效果常式入口還要再壓一次。** 等級 5 的電腦每個月
+	// 都賞賜金帛（`0xd409` 寫回忠誠，`docs/mechanics/20` §4.3，加成 40），
+	// 一個月就把 20–39 賞回 90–100。偽書使疑哪個月得手取決於開機停點之後的
+	// 亂數路徑：停點一換（`1418b51`），得手從第一個月移到第二個月，中間正好
+	// 隔一次賞賜，效果常式就一個人都動不到（Issue #86）。入口那一刻名單還沒建、
+	// 忠誠還沒讀，在這裡擺盤不影響要驗的那條乘法。
+	lower := func() int {
+		n := 0
+		for i := 0; i < 350; i++ {
+			at := addr(genBase + uint32(i*30+16))
+			if o.Byte(at) == 0xFF {
+				continue
+			}
+			o.SetByte(at, uint8(20+i%20))
+			n++
 		}
-		o.SetByte(at, uint8(20+i%20))
-		lowered++
+		return n
 	}
-	t.Logf("把 %d 個在職者的忠誠壓到 20–39", lowered)
+	t.Logf("把 %d 個在職者的忠誠壓到 20–39", lower())
 
 	rnd := 0
 	o.OnCall(addr(0x1058*16+0x058c), func(*oracle.Oracle) { rnd++ })
@@ -120,6 +130,7 @@ func TestAIPlotMatchesTheOriginal(t *testing.T) {
 	o.OnCall(addr(0x2d1fa), func(o *oracle.Oracle) {
 		target, charm = int(o.Arg(0)), int(o.Arg(1))
 		calls++
+		lower()
 	})
 
 	// 寫回忠誠的那一刻：`AL` 是新值，舊值還在 `genBase + SI + 16`。
