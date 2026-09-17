@@ -594,6 +594,17 @@ func (g *State) installGovernor(prefectureID int, t *General, by state.FactionID
 }
 
 // SetAutonomy 是「郡縣自治」（說明書 p.23–24）。不耗指令。
+// AutonomyTarget 是玩家「授權自冶那一郡」收得下的郡（`0x1cdb1`）：與下令那一郡同一個主人，
+// 而且主事者不是君主本人（身分 0 不收）。君主所在、自己主事的郡因此永遠不在清單裡。
+func (g *State) AutonomyTarget(at, pref int) bool {
+	home, p := g.Prefecture(at), g.Prefecture(pref)
+	if home == nil || p == nil || !p.Owned() || p.Owner != home.Owner {
+		return false
+	}
+	gov := g.Governor(pref)
+	return gov != nil && gov.Status != state.StatusLord
+}
+
 func (g *State) SetAutonomy(prefectureID int, mode Autonomy, by state.FactionID) error {
 	p := g.Prefecture(prefectureID)
 	if p == nil || !p.Owned() || p.Owner != by {

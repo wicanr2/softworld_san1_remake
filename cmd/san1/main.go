@@ -478,7 +478,9 @@ type numEntry struct {
 	// typed 為假表示還沒打任何數字：原版空欄位按 Enter 是取消（`0x35026` 回 0xFFFF）。
 	typed  bool
 	digits string
-	then   func(int)
+	// bare 為真時範圍字樣已經寫在提示裡（「那一種:」「那一樣(2-5):」），不再接「(下限-上限):」。
+	bare bool
+	then func(int)
 }
 
 // askNumber 開一個數字輸入。0 也是合法的答案。
@@ -497,6 +499,13 @@ func (a *app) askRange(title string, lo, hi int, then func(int)) {
 	a.showNumber()
 }
 
+// askBare 是提示自己帶範圍字樣的數字輸入。
+func (a *app) askBare(title string, lo, hi int, then func(int)) {
+	a.askRange(title, lo, hi, then)
+	a.num.bare = true
+	a.showNumber()
+}
+
 // showNumber 把目前輸入的數字畫到選單欄上。
 func (a *app) showNumber() {
 	n := a.num
@@ -507,7 +516,10 @@ func (a *app) showNumber() {
 		// 原版：下面板寫提示，數字接在「(下限-上限):」後面回顯（`0x34ede`，
 		// `docs/spec/014` §4.3）。remake 的說明字（hint）在這個版面不畫。
 		a.view.Menu, a.view.Items = "", nil
-		a.view.Prompt = n.title + tf("pick.range", n.lo, n.max)
+		a.view.Prompt = n.title
+		if !n.bare {
+			a.view.Prompt += tf("pick.range", n.lo, n.max)
+		}
 		a.view.Prompt += n.digits
 		return
 	}
@@ -703,7 +715,7 @@ func (a *app) begin(cat, item byte) {
 							})
 						})
 				})
-		}, func() { a.view.Prompt = t("msg.giftCancel") })
+		}, func() { a.view.Prompt = t("msg.cancel") })
 	case cat == '2' && item == '3':
 		a.transport()
 
@@ -792,12 +804,8 @@ func (a *app) begin(cat, item byte) {
 	case cat == '7' && item == '2':
 		a.askRoster(t("ask.governor"), sel, game.PickServing, game.PickByCharm, func(gi int) { a.run(game.AppointGovernorOrder{At: sel, Target: gi}) }, nil)
 	case cat == '7' && item == '3':
-		a.pickFrom(t("ask.autonomy"), []pickItem{
-			{t("auto.normal"), int(game.AutoNormal), a.setAutonomy},
-			{t("auto.civil"), int(game.AutoCivil), a.setAutonomy},
-			{t("auto.military"), int(game.AutoMilitary), a.setAutonomy},
-			{t("auto.self"), int(game.AutoSelf), a.setAutonomy},
-		})
+		closeMenu()
+		a.autonomy(sel)
 	case cat == '7' && item == '4':
 		// 原版（`0x1cfd6`）是兩層迴圈：那一郡 → 那一位 → 物品 → 再問那一位；
 		// 空 Enter 回那一郡，再空 Enter 收掉（`docs/spec/005` §9.2）。
@@ -823,8 +831,32 @@ func (a *app) begin(cat, item byte) {
 	}
 }
 
-func (a *app) setAutonomy(mode int) {
-	a.run(game.AutonomyOrder{At: a.view.Sel, Mode: game.Autonomy(mode)})
+// autonomy 是君主→3.郡縣自冶（`0x1cd68`）：「授權自冶那一郡」收同一主人、主事者不是君主的郡
+// （`game.AutonomyTarget`），取消收掉命令；挑到之後地圖與右側面板換成那一郡（`0x1ce2d`），
+// 下面板「授權某郡／1.正常 2.內政／3.軍事 4.自冶／那一種:」——範圍字樣在提示裡、不另接
+// 「(1-4):」——`0x115e(1, 4)` 讀一位數，取消印「取消」收掉命令（`0x1ceb2`）；設定完、兩格
+// 對白講完回到挑郡再問（`0x1cfd3`）。整道命令不耗回合（`game.AutonomyOrder`）。
+func (a *app) autonomy(sel int) {
+	g := a.s.G
+	done := func() { a.view.Sel = sel }
+	var ask func()
+	ask = func() {
+		done()
+		a.askPref(t("ask.autonomyPref"), func(id int) bool { return g.AutonomyTarget(sel, id) }, func(pref int) {
+			p := g.Prefecture(pref)
+			a.view.Sel = pref
+			a.askBare(tf("ask.autonomy", p.Name, t("autoMode.normal"), t("autoMode.civil"),
+				t("autoMode.military"), t("autoMode.self")), 1, 4, func(n int) {
+				a.apply(game.AutonomyOrder{At: sel, Pref: pref, Mode: game.Autonomy(n - 1)})
+				a.afterBubbles = ask
+			})
+			a.cancel = func() {
+				done()
+				a.view.Prompt = t("msg.cancel")
+			}
+		}, done)
+	}
+	ask()
 }
 
 // giftPref 是「賞賜那一郡的將軍」（`0x1d4ec`：數字 1–42，不在清單裡就
@@ -850,7 +882,7 @@ func (a *app) giftPref(r *game.GiftRound) {
 func (a *app) giftWho(r *game.GiftRound, pref int) {
 	g := a.s.G
 	back := func() {
-		a.view.Prompt = t("msg.giftCancel")
+		a.view.Prompt = t("msg.cancel")
 		a.giftPref(r)
 	}
 	a.askRoster(t("ask.giftTo"), pref, game.PickServing, game.PickByLoyalty, func(gi int) {
@@ -891,7 +923,7 @@ func (a *app) giftPick(r *game.GiftRound, pref, gi int) {
 		{t("tre.horse"), int(game.TreasureHorse), then},
 	})
 	a.cancel = func() {
-		a.view.Prompt = t("msg.giftCancel")
+		a.view.Prompt = t("msg.cancel")
 		again()
 	}
 }
@@ -1835,7 +1867,7 @@ func (a *app) plotFlow(sel int, plot game.Plot) {
 		}
 		return false
 	}
-	cancel := func() { a.view.Prompt = t("msg.giftCancel") }
+	cancel := func() { a.view.Prompt = t("msg.cancel") }
 	envoy := func(prompt string, plan game.PlotPlan) {
 		a.askRoster(prompt, sel, game.PickServing, game.PickByCharm, func(gi int) {
 			plan.Envoy = gi

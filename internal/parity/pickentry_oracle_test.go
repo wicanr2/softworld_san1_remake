@@ -210,6 +210,37 @@ func comparePanels(t *testing.T, name string, orig []uint8, cv, plain *ui.Canvas
 		func(x, y int) int { return paletteIndex(plain.Img.RGBAAt(x, y)) })
 }
 
+// comparePrefColors 逐郡比挑郡清單那一格第一個有墨點的顏色：收得下的郡是黃 14、其餘棕 6（`0x1d4ec`）。
+// comparePanels 只比有沒有墨，字色要另外比。
+func comparePrefColors(t *testing.T, name string, shot []uint8, cv *ui.Canvas) {
+	t.Helper()
+	bad := 0
+	for id := 1; id <= 42; id++ {
+		x0, y0 := 432+(id-1)/14*64, 60+(id-1)%14*16
+		ink := func(pix func(x, y int) int) int {
+			for y := y0; y < y0+16; y++ {
+				for x := x0; x < x0+48; x++ {
+					if v := pix(x, y); v != 1 {
+						return v
+					}
+				}
+			}
+			return -1
+		}
+		if o, m := ink(func(x, y int) int { return int(shot[y*scrW+x] & 15) }), ink(func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) }); o != m {
+			bad++
+			if bad <= 4 {
+				t.Logf("%s：郡 %d 原版字色 %d、remake %d", name, id, o, m)
+			}
+		}
+	}
+	if bad != 0 {
+		t.Errorf("%s：%d 郡的字色不同", name, bad)
+	} else {
+		t.Logf("%s：42 郡字色逐郡相同", name)
+	}
+}
+
 // TestZZPickListMatchesTheOriginal 走內政→土地開墾（模式 2、鍵 1 謀略）：清單兩頁的右側面板
 // 與下面板、名單順序與原版相同。
 func TestZZPickListMatchesTheOriginal(t *testing.T) {
@@ -553,30 +584,7 @@ func TestZZPrefPickMatchesTheOriginal(t *testing.T) {
 			savePNG(t, filepath.Join(dir, "remake-pref-"+name+".png"), cv)
 		}
 		comparePanels(t, name, shot, cv, plain, tr, 1, prefText...)
-		// 收得下的郡是黃 14、其餘棕 6：逐郡比那一格的第一個有墨點的顏色。
-		bad := 0
-		for id := 1; id <= 42; id++ {
-			x0, y0 := 432+(id-1)/14*64, 60+(id-1)%14*16
-			ink := func(pix func(x, y int) int) int {
-				for y := y0; y < y0+16; y++ {
-					for x := x0; x < x0+48; x++ {
-						if v := pix(x, y); v != 1 {
-							return v
-						}
-					}
-				}
-				return -1
-			}
-			if o, m := ink(func(x, y int) int { return int(shot[y*scrW+x] & 15) }), ink(func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) }); o != m {
-				bad++
-				if bad <= 4 {
-					t.Logf("%s：郡 %d 原版字色 %d、remake %d", name, id, o, m)
-				}
-			}
-		}
-		if bad != 0 {
-			t.Errorf("%s：%d 郡的字色不同", name, bad)
-		}
+		comparePrefColors(t, name, shot, cv)
 	}
 	b.press(t, "查看", "1\r")
 	ask, shot, tr := b.press(t, "查看那一郡", "1\r")
@@ -640,29 +648,7 @@ func TestZZPlotPickMatchesTheOriginal(t *testing.T) {
 		plain := ui.NewCanvasPx(scrW, scrH, face)
 		ui.DrawArtSession(plain, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp})
 		comparePanels(t, name, shot, cv, plain, tr, 1, prefText...)
-		bad := 0
-		for id := 1; id <= 42; id++ {
-			x0, y0 := 432+(id-1)/14*64, 60+(id-1)%14*16
-			first := func(pix func(x, y int) int) int {
-				for y := y0; y < y0+16; y++ {
-					for x := x0; x < x0+48; x++ {
-						if v := pix(x, y); v != 1 {
-							return v
-						}
-					}
-				}
-				return -1
-			}
-			if first(func(x, y int) int { return int(shot[y*scrW+x] & 15) }) != first(func(x, y int) int { return paletteIndex(cv.Img.RGBAAt(x, y)) }) {
-				bad++
-				if bad <= 4 {
-					t.Logf("%s：郡 %d 字色不同", name, id)
-				}
-			}
-		}
-		if bad != 0 {
-			t.Errorf("%s：%d 郡的字色不同", name, bad)
-		}
+		comparePrefColors(t, name, shot, cv)
 	}
 	pick := func(valid func(int) bool) int {
 		for id := 1; id <= 42; id++ {
@@ -726,7 +712,7 @@ func TestZZPlotPickMatchesTheOriginal(t *testing.T) {
 
 // TestZZHeadhuntPickMatchesTheOriginal 君主→5.登用他國人才（Issue #85）：「登用那一郡的將軍」
 // 收任何別人的郡（不限相鄰）、「<登用他國將軍>登用那一位將軍」是那一郡的挑人清單（模式 5、鍵 0）。
-// 兩問的面板、字色逐郡、下面板與游標相同。
+// 兩問的面板、字色逐郡（`comparePrefColors`）、下面板與游標相同。
 func TestZZHeadhuntPickMatchesTheOriginal(t *testing.T) {
 	b := newPickBoard(t)
 	face := loadFace(t)
@@ -747,6 +733,7 @@ func TestZZHeadhuntPickMatchesTheOriginal(t *testing.T) {
 	plain := ui.NewCanvasPx(scrW, scrH, face)
 	ui.DrawArtSession(plain, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp})
 	comparePanels(t, "登用那一郡的將軍", shot, cv, plain, tr, 1, prefText...)
+	comparePrefColors(t, "登用那一郡的將軍", shot, cv)
 	// 挑一個不相鄰、而且有模式 5 對象的別人的郡——remake 先前只列鄰郡，這一格擋得住退回。
 	target := 0
 	for id := 1; id <= 42 && target == 0; id++ {
@@ -773,4 +760,94 @@ func TestZZHeadhuntPickMatchesTheOriginal(t *testing.T) {
 	plain = ui.NewCanvasPx(scrW, scrH, face)
 	ui.DrawArtSession(plain, b.art, g, nil, v)
 	comparePanels(t, "登用那一位將軍", shot, cv, plain, tr, 1)
+}
+
+// TestZZAutonomyAskMatchesTheOriginal 君主→3.郡縣自冶（Issue #87）：「授權自冶那一郡」收同一主人、主事者不是
+// 君主的郡（字色逐郡）；挑到之後下面板「授權某郡／1.正常 2.內政／3.軍事 4.自冶／那一種:」、`0x115e(1, 4)`
+// 讀一位數，下面板與游標相同；打「3」之後那一郡 offset 12 是 2（選項減一），接著回到挑郡再問。
+func TestZZAutonomyAskMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	// 玩家只有一個郡，而且君主主事——清單會是空的。把一個鄰郡擺成自己的，派一位部將去主事。
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	lord := int(b.o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
+	who := b.people[len(b.people)-1]
+	if who == lord {
+		who = b.people[0]
+	}
+	nb := b.game(t).Prefecture(b.at).Neighbours[0]
+	b.o.SetByte(addr(b.base+uint32(nMas+nSta+who*state.GeneralRecordSize+19)), uint8(nb))
+	b.o.SetByte(addr(b.base+uint32(nMas+nb*state.PrefectureRecordSize+30)), uint8(b.me))
+	b.o.SetWord(addr(b.base+uint32(nMas+nb*state.PrefectureRecordSize+32)), uint16(who))
+	g := b.game(t)
+	b.press(t, "君主", "7\r")
+	ask, shot, tr := b.press(t, "授權自冶那一郡", "3\r")
+	if ask != [2]int{1, 42} {
+		t.Fatalf("郡縣自冶先問的不是挑郡：%v", ask)
+	}
+	pp := &ui.PrefPick{}
+	target := 0
+	for id := 1; id <= 42; id++ {
+		pp.Valid[id] = g.AutonomyTarget(b.at, id)
+		if pp.Valid[id] && target == 0 {
+			target = id
+		}
+	}
+	if pp.Valid[b.at] {
+		t.Error("君主主事的郡不該收")
+	}
+	if target == 0 {
+		t.Fatal("盤面上沒有主事者不是君主的自己的郡")
+	}
+	p := i18n.S("ask.autonomyPref") + i18n.Sf("pick.range", 1, 42)
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp, Input: tr.input()})
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp})
+	comparePanels(t, "授權自冶那一郡", shot, cv, plain, tr, 1, prefText...)
+	comparePrefColors(t, "授權自冶那一郡", shot, cv)
+
+	// 君主主事的郡不收：打進去原版重問。
+	if again, _, _ := b.press(t, "君主的郡重問", fmt.Sprintf("%d\r", b.at)); again != [2]int{1, 42} {
+		t.Errorf("打君主的郡 %d 之後原版問 %v", b.at, again)
+	}
+	ask, shot, tr = b.press(t, "那一種", fmt.Sprintf("%d\r", target))
+	if ask != [2]int{1, 4} {
+		t.Errorf("「那一種」原版問 %v，remake 1-4", ask)
+	}
+	q := g.Prefecture(target)
+	prompt := i18n.Sf("ask.autonomy", q.Name, i18n.S("autoMode.normal"), i18n.S("autoMode.civil"),
+		i18n.S("autoMode.military"), i18n.S("autoMode.self"))
+	render := func(in ui.InputCursor) *ui.Canvas {
+		cv := ui.NewCanvasPx(scrW, scrH, face)
+		ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: target, Prompt: prompt, Input: in})
+		return cv
+	}
+	compareLower(t, "那一種", shot, render(tr.input()), render(ui.InputCursor{}), tr)
+
+	at := addr(b.base + uint32(state.MasterTableSize+target*state.PrefectureRecordSize+12))
+	before := len(*b.asks)
+	b.o.Drain()
+	b.o.TypeBoth("3\r")
+	waitBoot(t, b.o, "寫回自冶型態", 50_000_000, func() bool { return b.o.Word(at) == 2 })
+	for i := 0; i < 20 && len(*b.asks) == before; i++ {
+		b.o.Drain()
+		b.o.TypeBoth(" ")
+		if err := b.o.Run(20_000_000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(*b.asks) == before || (*b.asks)[len(*b.asks)-1] != [2]int{1, 42} {
+		t.Errorf("設定完原版沒有回到挑郡：%v", (*b.asks)[before:])
+	}
+	o := game.AutonomyOrder{At: b.at, Pref: target, Mode: game.Autonomy(3 - 1)}
+	if err := o.Apply(g, b.me); err != nil {
+		t.Fatal(err)
+	}
+	if !o.KeepsTurn() {
+		t.Error("郡縣自冶不耗回合")
+	}
+	if got, want := int(g.Prefecture(target).Autonomy), int(b.o.Word(at)); got != want {
+		t.Errorf("型態：原版 %d，remake %d", want, got)
+	}
 }

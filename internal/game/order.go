@@ -487,25 +487,36 @@ func (o AppointGovernorOrder) Describe(g *State) string {
 	return tf("log.governor", prefName(g, o.At), byWhom(g, o.Target))
 }
 
+// AutonomyOrder 是君主→3.郡縣自冶的一次設定：At 是下令的郡，Pref 是被授權的郡
+// （`AutonomyTarget`）。**不耗回合**：君主選單的派工器（`0x1c7a2`）把回傳值預設成
+// 0xFFFF，自冶那一支（`0x1c835`）的回傳直接丟掉，主命令迴圈照舊回到選單。
 type AutonomyOrder struct {
 	At   int
+	Pref int
 	Mode Autonomy
 }
 
 func (o AutonomyOrder) Prefecture() int { return o.At }
+
+// KeepsTurn 見 AutonomyOrder。
+func (o AutonomyOrder) KeepsTurn() bool { return true }
+
 func (o AutonomyOrder) Apply(g *State, by state.FactionID) error {
-	err := g.SetAutonomy(o.At, o.Mode, by)
+	if !g.AutonomyTarget(o.At, o.Pref) {
+		return ErrNotYours
+	}
+	err := g.SetAutonomy(o.Pref, o.Mode, by)
 	if err == nil && g.playerCommand(by) {
 		// `0x1cf7d`／`0x1cfc6`：君主在上格把郡交給主事者，主事者在下格領命。
-		if gov := g.Governor(o.At); gov != nil {
-			g.say(g.Lord(by), true, false, tf("bub.autonomyOrder", personName(gov.Name)), o.At, 0x1cf7d)
-			g.say(gov, false, true, tf("bub.autonomyReply", personName(gov.Name)), o.At, 0x1cfc6)
+		if gov := g.Governor(o.Pref); gov != nil {
+			g.say(g.Lord(by), true, false, tf("bub.autonomyOrder", personName(gov.Name)), o.Pref, 0x1cf7d)
+			g.say(gov, false, true, tf("bub.autonomyReply", personName(gov.Name)), o.Pref, 0x1cfc6)
 		}
 	}
 	return err
 }
 func (o AutonomyOrder) Describe(g *State) string {
-	return tf("log.autonomy", prefName(g, o.At), AutonomyName(o.Mode))
+	return tf("log.autonomy", prefName(g, o.Pref), AutonomyName(o.Mode))
 }
 
 type GiftOrder struct {

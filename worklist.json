@@ -1905,6 +1905,29 @@
       }
     },
     {
+      "id": "autonomy-questions",
+      "title": "君主→郡縣自冶的問法：授權別的郡（同一主人、主事者不是君主）→ 下面板「那一種:」一位數 → 回到挑郡；不耗回合",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/20",
+        "docs/mechanics/10"
+      ],
+      "note": "`TestZZAutonomyAskMatchesTheOriginal` 挑郡一格（字色逐郡）、君主的郡重問、「那一種」下面板與游標相同、打 3 寫回 2 並回到挑郡；`TestAutonomyOrderTargetsAnotherPrefecture`。設定之後兩格對白的畫面沒有從這條路對拍。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/game/personnel.go"
+        ],
+        "pattern": "func \\(g \\*State\\) AutonomyTarget"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

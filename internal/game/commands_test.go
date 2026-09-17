@@ -841,3 +841,35 @@ func TestBuildFortAcceptsHillsAndWoods(t *testing.T) {
 		t.Errorf("關寨數是 %d", p.Forts)
 	}
 }
+
+// TestAutonomyOrderTargetsAnotherPrefecture：郡縣自冶收同一主人、主事者不是君主的郡，
+// 君主主事的郡不收；設定在被授權的郡上，而且不耗回合（`0x1cdb1`、`0x1c835`）。
+func TestAutonomyOrderTargetsAnotherPrefecture(t *testing.T) {
+	g := newGame(t)
+	at := g.Lord(5).Location
+	if g.AutonomyTarget(at, at) {
+		t.Error("君主主事的郡不該收")
+	}
+	other := 0
+	for id := 1; id <= state.PrefectureCount && other == 0; id++ {
+		if id != at && g.AutonomyTarget(at, id) {
+			other = id
+		}
+	}
+	if other == 0 {
+		t.Fatal("董卓沒有主事者不是君主的郡")
+	}
+	o := AutonomyOrder{At: at, Pref: other, Mode: AutoSelf}
+	if !o.KeepsTurn() || o.Prefecture() != at {
+		t.Errorf("回合記在 %d、KeepsTurn %v；應該記在下令的郡 %d 而且不耗回合", o.Prefecture(), o.KeepsTurn(), at)
+	}
+	if err := o.Apply(g, 5); err != nil {
+		t.Fatal(err)
+	}
+	if g.Prefecture(other).Autonomy != AutoSelf || g.Prefecture(at).Autonomy != AutoNormal {
+		t.Errorf("設定落在 %d／%d，應該只動被授權的郡", g.Prefecture(at).Autonomy, g.Prefecture(other).Autonomy)
+	}
+	if err := (AutonomyOrder{At: at, Pref: at, Mode: AutoSelf}).Apply(g, 5); err == nil {
+		t.Error("授權君主主事的郡應該被擋")
+	}
+}
