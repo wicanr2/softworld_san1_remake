@@ -106,6 +106,8 @@ type app struct {
 	marchArt *[ui.MarchArtCount]*assets.Image
 	// mapBattle 是播放中的那一場大地圖戰役動畫。
 	mapBattle *mapBattlePlay
+	// lure 是播放中的誘敵特效（主戰場對白佇列裡的那一格）。
+	lure lurePlay
 
 	// opening 非 nil 表示正在播開機片頭（`docs/spec/005`「片頭」），
 	// 播完才到主選單。
@@ -1035,7 +1037,11 @@ func (a *app) paint() {
 			if a.artBattle != nil {
 				ui.DrawArtBattle(a.canvas, a.artBattle, a.fight.pending.Battle(),
 					a.fight.view, a.battleInfo())
-				if sp := a.fight.speech(true); sp != nil && (sp.Scene == 0 || a.scenePlayed == sp) {
+				if sp := a.fight.speech(true); sp != nil && sp.LureFlash {
+					if l := a.lure; l.of == sp && l.step >= 0 {
+						ui.DrawLureFlash(a.canvas, a.artBattle, sp.At, ui.LureFlashSteps()[l.step].Tile)
+					}
+				} else if sp != nil && (sp.Scene == 0 || a.scenePlayed == sp) {
 					// 還沒拉過的場景圖先不畫：Draw 那一層要拿這張當拉幕的底。
 					ui.DrawBattleSpeech(a.canvas, a.art, a.s.G, a.fight.pending.Battle(), sp)
 				}
@@ -1093,6 +1099,13 @@ func (a *app) updateBattle() error {
 	// 戰場對白（肖像＋泡泡）一次一格，按任意鍵收掉——與主畫面的訊息框
 	// 同一個做法（remake 差異：原版走延遲設定）。
 	if sp := a.fight.speech(a.artBattle != nil); sp != nil {
+		if sp.LureFlash {
+			// 誘敵的特效自己播完就收，不等鍵（原版不收鍵）。
+			if a.updateLureFlash(sp) {
+				a.fight.speeches = a.fight.speeches[1:]
+			}
+			return nil
+		}
 		if sp.Scene > 0 && a.scenePlayed != sp {
 			return nil // 場景圖先拉進來（Draw 那一層起頭），拉完才收鍵
 		}

@@ -3,6 +3,7 @@ package main
 import (
 	"math"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/speaker"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
@@ -87,4 +88,34 @@ func (a *app) speak(speed int) {
 		return
 	}
 	a.sfx.mx.Play(speaker.SFXSlot, speakDivisor(speed, a.sfx.sfxDiv))
+}
+
+// lurePlay 是誘敵特效的播放狀態：of 是哪一格對白、step 是貼到第幾步（−1 還沒開始）。
+type lurePlay struct {
+	of   *battle.Speech
+	step int
+	left int
+}
+
+// updateLureFlash 每幀叫一次；二十二步播完回 true。每一步停那一聲的長度。
+func (a *app) updateLureFlash(sp *battle.Speech) bool {
+	l := &a.lure
+	if l.of != sp {
+		*l = lurePlay{of: sp, step: -1}
+	}
+	if l.left > 0 {
+		l.left--
+		return false
+	}
+	steps := ui.LureFlashSteps()
+	if l.step+1 >= len(steps) {
+		*l = lurePlay{}
+		a.dirty = true
+		return true
+	}
+	l.step++
+	a.speak(steps[l.step].Speed)
+	l.left = speakFrames(steps[l.step].Speed)
+	a.dirty = true
+	return false
 }

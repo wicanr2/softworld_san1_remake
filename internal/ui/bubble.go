@@ -188,6 +188,9 @@ func DrawBattleSpeech(c *Canvas, a *ArtScreen, g *game.State, b *battle.Battle, 
 		DrawBattleScene(c, a, sp, sceneAllSteps)
 		return
 	}
+	if sp.LureFlash {
+		return // 閃爍那一格由 DrawLureFlash 畫
+	}
 	x1, y1, x2, y2 := assets.BattleLayoutFor(b.Field.Narrow()).Panel(sp.Box.Panel())
 	c.FillRect(x1, y1, x2+1, y2+1, assets.EGAPalette[1])
 	DrawBubble(c, a, g, &game.Bubble{X1: x1, Y1: y1, X2: x2, Y2: y2, Left: sp.Left,

@@ -23,3 +23,20 @@ func TestMarchLayoutFollowsTheOriginal(t *testing.T) {
 		}
 	}
 }
+
+// TestLureFlashSteps 釘住誘敵特效的二十二步（`0x2b783`–`0x2b7f4`）。
+func TestLureFlashSteps(t *testing.T) {
+	s := LureFlashSteps()
+	if len(s) != 22 {
+		t.Fatalf("%d 步", len(s))
+	}
+	want := []LureStep{{32, 440}, {33, 440}, {34, 300}, {35, 252}, {34, 300}}
+	for i, w := range want {
+		if s[i] != w {
+			t.Errorf("第 %d 步 %+v，應該 %+v", i, s[i], w)
+		}
+	}
+	if s[21] != (LureStep{35, 252}) {
+		t.Errorf("最後一步 %+v", s[21])
+	}
+}

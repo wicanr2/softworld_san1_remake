@@ -729,3 +729,32 @@ func TestHelperReturnSpeaks(t *testing.T) {
 		t.Error("沒有助守軍不該說")
 	}
 }
+
+// TestLureFlashFollowsTheLureSpeech 釘住誘敵成功那一刻的順序（`0x2b6aa`）：
+// 施法者那一句對白 → 施法者那一格的特效 → 交戰結算；特效不擲骰。
+func TestLureFlashFollowsTheLureSpeech(t *testing.T) {
+	b, u, e := plotting(Plain, Clear, 99, 5000)
+	b.UseRoll(func(n int) int { return 0 })
+	if err := b.UseStratagem(u, Lure, e.At); err != nil {
+		t.Fatalf("誘敵沒有成：%v", err)
+	}
+	sp := b.TakeSpeeches()
+	at := -1
+	for i, s := range sp {
+		if s.LureFlash {
+			if at >= 0 {
+				t.Fatalf("排了兩格特效：%+v", sp)
+			}
+			at = i
+		}
+	}
+	if at < 1 {
+		t.Fatalf("沒有排特效，或排在第一格：%+v", sp)
+	}
+	if prev := sp[at-1]; prev.Speaker != u.Head().Index && !strings.Contains(prev.Text, "誘") {
+		t.Errorf("特效前一格不是施法者那一句：%+v", prev)
+	}
+	if sp[at].At != u.At || sp[at].Box != BoxThird {
+		t.Errorf("特效在 %+v，施法者在 %+v", sp[at], u.At)
+	}
+}

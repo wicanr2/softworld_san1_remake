@@ -699,6 +699,8 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 		// 划不划算看的是「目標的攻擊力 vs 施法者的防禦力」——引一支弱的
 		// 部隊來撞自己的硬點才是這一招的用法。
 		b.sayUnit(u, "bub.lure") // `0x2b72d`
+		// 對白之後在施法者那一格閃二十二步（`0x2b783`），不擲骰。
+		b.Speeches = append(b.Speeches, Speech{Box: BoxThird, LureFlash: true, At: u.At})
 		lost, back := b.exchange(t, u, LureStrike)
 		b.note("blog.lure", u.Name(), t.Name(), u.Name(), back, t.Name(), lost)
 	case Trap:

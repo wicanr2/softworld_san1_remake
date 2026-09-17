@@ -43,6 +43,11 @@ type Speech struct {
 	// 面板 (448,268)（`0x32dfa`，`docs/spec/010`）：Style 是 `RND(4)` 挑的
 	// 拉幕方向。
 	Scene, Style int
+
+	// LureFlash 為真時這一格是誘敵成功、對白之後在施法者那一格閃的特效
+	// （`0x2b783`，`docs/spec/005` §8「誘敵的特效」）：At 是那一格。不擲骰。
+	LureFlash bool
+	At        Hex
 }
 
 // Panel 是這一塊在版面裡的面板編號：攻方 0、守方 1、指令列（第三塊）2，

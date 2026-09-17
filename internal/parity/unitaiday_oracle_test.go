@@ -10,9 +10,11 @@ import (
 
 	"github.com/wicanr2/dosgolem/oracle"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
+	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
 
 // TestZZUnitAIDayParity 對拍原版部隊 AI 的九支判斷式（Issue #22）：玩家
@@ -137,6 +139,8 @@ type dayRig struct {
 	// 玩家答了 N 原版才走到它，答 Y 直接進打鬥——用來從骰序回推玩家
 	// 在「接受嗎(Y/N)」的答案（`duelAnswerFrom`）。
 	braveRet string
+	// lure 是誘敵常式的入口（特效在它裡面）；0 ＝ 這一版不比特效。
+	lure uint32
 }
 
 // baseDayRig 是原版的路標（`docs/re/05` §12、`docs/re/03` §1.45）。
@@ -207,6 +211,7 @@ func baseDayRig() dayRig {
 		workSegPtr: battleWorkSeg, unitBase: battleUnitBase,
 		day: 0x2100, difficulty: 0x30fe, occ: 0x2532,
 		colTable: 0x7c6a, rowTable: 0x7c82,
+		lure: 0x2b6aa,
 	}
 }
 
@@ -464,6 +469,15 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 			nth++
 		}
 	}
+
+	lureChecked, lureBad := checkLureFlash(t, o, rig, root)
+	defer func() {
+		if *lureBad != "" {
+			t.Errorf("誘敵特效：%s", *lureBad)
+		} else if *lureChecked > 0 {
+			t.Logf("誘敵特效 %d 次，每一次二十二步那一格 48×32 與圖塊逐格相同、速度序列相同", *lureChecked)
+		}
+	}()
 
 	var dgroup uint16
 	o.OnCall(addr(rig.enter), func(o *oracle.Oracle) {
@@ -1233,4 +1247,62 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 	}
 	t.Logf("不重拍：%d 條鏈，骰岔開 %d 次、狀態不同 %d 次、決策不同 %d 次", len(decisions), diverged, stateBad, decideBad)
 	return byOpt
+}
+
+// checkLureFlash 攔誘敵常式（`0x2b6aa`）：讀施法者那一支的格子，每一聲
+// `speak`（`0x5b80`，呼叫端在特效那一段）時比那一格與 `ui.LureFlashSteps`
+// 那一步的圖塊逐格相同、速度相同（Issue #63）。回傳比完幾次、第一個錯誤。
+func checkLureFlash(t *testing.T, o *oracle.Oracle, rig dayRig, root string) (*int, *string) {
+	done, bad := new(int), new(string)
+	if rig.lure == 0 {
+		return done, bad
+	}
+	tiles, err := assets.BattleTiles(openContainer(t, filepath.Join(root, "DATA1")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := ui.LureFlashSteps()
+	var at battle.Hex
+	step := -1
+	o.OnCall(addr(rig.lure), func(oo *oracle.Oracle) {
+		ds := uint32(oo.DSReg()) * 16
+		seg := uint32(oo.Word(addr(ds + 0xa984)))
+		rec := seg*16 + uint32(0x3502+(int(oo.Arg(0))*10+int(oo.Arg(1)))*42)
+		at = battle.FromOffset(int(int16(oo.Word(addr(rec+22)))), int(int16(oo.Word(addr(rec+24)))))
+		step = 0
+	})
+	o.OnCall(addr(0x5b80), func(oo *oracle.Oracle) {
+		if step < 0 || *bad != "" {
+			return
+		}
+		if c := oo.Caller().Linear(); c < 0x2b783 || c >= 0x2b7f6 {
+			return
+		}
+		if step >= len(steps) {
+			*bad = fmt.Sprintf("原版第 %d 步還在閃，remake 只有 %d 步", step+1, len(steps))
+			return
+		}
+		want := steps[step]
+		if got := int(oo.Arg(1)); got != want.Speed {
+			*bad = fmt.Sprintf("第 %d 步速度原版 %d remake %d", step, got, want.Speed)
+			return
+		}
+		x, y, w, h := ui.LureFlashCell(at)
+		scr := oo.IndexedEGASize(scrW, scrH)
+		im := tiles[want.Tile]
+		for yy := 0; yy < h; yy++ {
+			for xx := 0; xx < w; xx++ {
+				if g, r := scr[(y+yy)*scrW+x+xx]&15, im.Pix[yy*im.W+xx]&15; g != r {
+					*bad = fmt.Sprintf("第 %d 步 (%d,%d) 那一格的 (%d,%d) 原版 %d remake 圖塊 %d 是 %d", step, x, y, xx, yy, g, want.Tile, r)
+					return
+				}
+			}
+		}
+		step++
+		if step == len(steps) {
+			*done++
+			step = -1
+		}
+	})
+	return done, bad
 }

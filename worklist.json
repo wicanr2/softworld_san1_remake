@@ -1600,6 +1600,27 @@
       }
     },
     {
+      "id": "battle-lure-flash",
+      "title": "主戰場誘敵的特效（0x2b783）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "both",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/05",
+        "docs/re/10"
+      ],
+      "note": "對白之後在施法者那一格閃 `EICON.GRP` 第 32–35 張二十二步；盤面辛 6 次每步逐格相同、速度相同（`TestZZUnitAIDayParity`，原版）。加強版 `0x28a4f` 讀碼同形（`L0`）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/ui",
+        "run": "TestLureFlashSteps"
+      }
+    },
+    {
       "id": "map-battle-animation",
       "title": "大地圖上的戰役動畫（電腦對電腦，0x1ecfc）",
       "group": "畫面",
