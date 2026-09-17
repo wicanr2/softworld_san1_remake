@@ -1581,6 +1581,25 @@
       }
     },
     {
+      "id": "opening-trademark",
+      "title": "開場第一幕的智冠商標畫面",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005"
+      ],
+      "note": "`CMARKL`／`CMARKR` 是 `AA.EXE` 開機第一幕（y 64），dosgolem 與 DOSBox-X 兩邊整張逐點相同；remake 開場第一幕放它。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/assets",
+        "run": "TestTrademarkMatchesDosboxX"
+      }
+    },
+    {
       "id": "shared-roster-buffer",
       "title": "把 es:[0x58c] 當成跨表共用、會被就地重排的清單",
       "group": "規則層",

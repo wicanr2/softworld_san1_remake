@@ -100,6 +100,9 @@ type app struct {
 	// quit 為真表示玩家選了「回作業系統」。
 	quit bool
 
+	// trademark 非 nil 表示停在開場第一幕的智冠商標畫面（`CMARKL`／`CMARKR`，
+	// `docs/spec/005` §「商標畫面」），按任意鍵進三英圖。
+	trademark *assets.Image
 	// titlePic 非 nil 表示停在開場的三英圖，按任意鍵進開場詞。
 	titlePic *assets.Image
 
@@ -127,6 +130,13 @@ func (a *app) Update() error {
 		a.startCredits()
 	}
 	if a.updateCredits() {
+		return nil
+	}
+	if a.trademark != nil {
+		if anyKeyPressed() {
+			a.trademark = nil
+			a.dirty = true
+		}
 		return nil
 	}
 	if a.titlePic != nil {
@@ -1017,6 +1027,8 @@ func (a *app) paint() {
 			ui.DrawCreditHall(a.canvas, a.credits.art)
 		case a.credits != nil:
 			ui.DrawCredits(a.canvas, a.credits.art, a.credits.scroll)
+		case a.trademark != nil:
+			ui.DrawImage(a.canvas, a.trademark)
 		case a.titlePic != nil:
 			ui.DrawImage(a.canvas, a.titlePic)
 		case a.poem != nil:
@@ -1243,7 +1255,7 @@ func main() {
 	var artBattle *ui.ArtBattle
 	var titleScreen *ui.TitleScreen
 	var poem *assets.Image
-	var titlePic *assets.Image
+	var titlePic, trademark *assets.Image
 	if *useArt {
 		if c3, err := openContainer(*root, "DATA3"); err == nil {
 			// `DATA1` 給的是小飾框動畫、州郡填色圖樣與主戰場素材。
@@ -1267,6 +1279,9 @@ func main() {
 				}
 				if titlePic, err = assets.TitleArt(c1); err != nil {
 					titlePic = nil
+				}
+				if trademark, err = assets.TrademarkScreen(c1); err != nil {
+					trademark = nil
 				}
 			}
 		} else {
@@ -1314,6 +1329,7 @@ func main() {
 		a.startTitle(titleScreen, menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len()))
 		a.poem = poem
 		a.titlePic = titlePic
+		a.trademark = trademark
 	}
 	if *calendar == "西曆" {
 		g.Options.Calendar = game.Western
@@ -1354,7 +1370,7 @@ func die(err error) {
 // currentScene 是現在輪到畫的那一格如果要拉幕：主畫面的訊息框佇列
 // 或戰場的對白佇列的頭一格。key 用來認「同一格」，pic 是拉進來的那張。
 func (a *app) currentScene() (key any, pic *assets.Image, kind ui.WipeKind, x, y int, ok bool) {
-	if a.art == nil || a.titlePic != nil || a.poem != nil || a.menuScreen != nil {
+	if a.art == nil || a.trademark != nil || a.titlePic != nil || a.poem != nil || a.menuScreen != nil {
 		return nil, nil, 0, 0, 0, false
 	}
 	if a.fight != nil {

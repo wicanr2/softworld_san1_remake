@@ -99,3 +99,36 @@ func openShot(t *testing.T, path, how string) image.Image {
 	}
 	return im
 }
+
+// dosboxxTrademarkPath 是 DOSBox-X 開機第一幕，由
+// `SAN1_DOSBOX_MODE=trademark SAN1_DOSBOX_OUT=workplace/shots/dosboxx-trademark tools/dosboxx.sh` 產。
+const dosboxxTrademarkPath = "../../workplace/shots/dosboxx-trademark/trademark-00.png"
+
+// TestTrademarkMatchesDosboxX 拿 DOSBox-X 驗商標畫面（Issue #34）：
+// dosgolem 那一邊是 `TestZZTrademarkMatchesTheOriginal`，這一支是獨立的
+// 第二個實作，整張 640×408 與 `TrademarkScreen` 逐點相同才算數。
+func TestTrademarkMatchesDosboxX(t *testing.T) {
+	dbx := openShot(t, dosboxxTrademarkPath, "跑 SAN1_DOSBOX_MODE=trademark tools/dosboxx.sh 產")
+	want, err := TrademarkScreen(container(t, "DATA1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rgba := want.RGBA()
+	bad := 0
+	for y := 0; y < ScreenH; y++ {
+		for x := 0; x < ScreenW; x++ {
+			a := color.RGBAModel.Convert(dbx.At(x, y)).(color.RGBA)
+			b := color.RGBAModel.Convert(rgba.At(x, y)).(color.RGBA)
+			if a != b {
+				if bad < 5 {
+					t.Errorf("(%d,%d) DOSBox-X %v remake %v", x, y, a, b)
+				}
+				bad++
+			}
+		}
+	}
+	if bad != 0 {
+		t.Fatalf("商標畫面與 DOSBox-X 差 %d 點", bad)
+	}
+	t.Logf("商標畫面與 DOSBox-X 整張 %d×%d 逐點相同", ScreenW, ScreenH)
+}

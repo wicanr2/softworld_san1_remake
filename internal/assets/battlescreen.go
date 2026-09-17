@@ -355,6 +355,36 @@ func PoemScreen(data1 *Container) (*Image, error) {
 	return im, nil
 }
 
+// 智冠的商標畫面是 `DATA1` 的 `CMARKL`／`CMARKR` 兩半，各 320×290，
+// 原版 `AA.EXE` 開機問完三個裝置之後的第一幕（`docs/spec/005` §「商標畫面」）。
+// 底是黑的，兩半並排在 y ＝ TrademarkY。
+const (
+	TrademarkPieceW = 320
+	TrademarkPieceH = 290
+	TrademarkY      = 64
+)
+
+// TrademarkScreen 拼出商標畫面。
+func TrademarkScreen(data1 *Container) (*Image, error) {
+	im := &Image{W: ScreenW, H: ScreenH, Pix: make([]byte, ScreenW*ScreenH)}
+	for i, name := range []string{"CMARKL.IMG", "CMARKR.IMG"} {
+		j, ok := data1.ByName(name)
+		if !ok {
+			return nil, fmt.Errorf("assets: DATA1 裡沒有 %s", name)
+		}
+		p, err := DecodeImage(data1.Data(j))
+		if err != nil {
+			return nil, err
+		}
+		if p.W != TrademarkPieceW || p.H != TrademarkPieceH {
+			return nil, fmt.Errorf("assets: %s 是 %d×%d，商標畫面的一半應該是 %d×%d",
+				name, p.W, p.H, TrademarkPieceW, TrademarkPieceH)
+		}
+		im.Blit(p, i*TrademarkPieceW, TrademarkY)
+	}
+	return im, nil
+}
+
 // 開場的三英圖是 `DATA1` 的 `TITL0`–`TITL3` 四塊，各 160×400。
 //
 // 四塊**並排**：`TITL<i>` 放在 x ＝ 160i，縱向從第 0 列取到第 349 列，

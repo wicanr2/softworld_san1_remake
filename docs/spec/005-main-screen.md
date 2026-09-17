@@ -1021,6 +1021,22 @@ go run ./cmd/san1dump -root path/to/三國演義 -screen artfield -sel 25 -png f
 
 `-art=false` 可以退回 remake 自己的文字版面（沒有原版素材時的樣子）。
 
+## 商標畫面（`L1`、`[base]`、Issue #34）
+
+原版 `AA.EXE` 問完音樂、繪圖、磁碟三個裝置之後的**第一幕**：`DATA1` 的
+`CMARKL`／`CMARKR`（各 320×290）並排在 x ＝ 0／320、**y ＝ 64**，其餘是黑。
+`TestZZTrademarkMatchesTheOriginal` 在開機第 10,008,907 條指令抓到這一幕，整張
+640×408 與 `assets.TrademarkScreen` 逐格相同；DOSBox-X 開機第一幕同樣整張
+逐點相同（`internal/assets` 的 `TestTrademarkMatchesDosboxX`，截圖由
+`SAN1_DOSBOX_MODE=trademark tools/dosboxx.sh` 產）。原版是計時換下一幕，
+remake 按任意鍵（remake 差異，與三英圖、開場詞同一套）。
+
+原版開機到主選單出現過的畫面依序是（`TestZZBootScreensCensus`，每一百萬條
+指令取一次、畫面變了才存）：商標 → 製作人員（「企劃程式 陳則孝」三行）→
+海景與船隊的動畫 → 海景上的〈臨江仙〉（等鍵）→ 黑底逐字寫開場詞 → 三英圖
+（等鍵）→「程式載入中 請稍待」→ 主選單。remake 目前是商標 → 三英圖 →
+開場詞 → 主選單。
+
 ## 開場的三英圖
 
 `DATA1` 的 `TITL0`–`TITL3`，各 160×400，**並排**放在 x ＝ 0／160／320／480，

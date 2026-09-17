@@ -7,6 +7,9 @@
 #
 #   tools/dosboxx.sh                     # 存到 workplace/shots/dosboxx/
 #   SAN1_DOSBOX_IMAGE=... tools/dosboxx.sh
+#   SAN1_DOSBOX_MODE=trademark tools/dosboxx.sh
+#       # 答完三個裝置問題就每半秒抓一張、抓十秒，存 trademark-NN.png
+#       #（開機第一幕的智冠商標畫面，Issue #34）
 #
 # 容器要有 dosbox-x、Xvfb、xdotool 與 ImageMagick。
 # ⚠ 本儲存庫不含任何原版檔案；讀的是 `org_game/` 底下玩家自己那一份，
@@ -62,7 +65,13 @@ WIN=$(xdotool search --name 'DOSBox-X' | tail -1)
 xdotool windowfocus --sync "$WIN"
 sleep 1
 key() { xdotool key --clearmodifiers "$1"; sleep "${2:-1}"; }
-key 1; key 2; key 2 2          # 音效／繪圖／磁碟三題（int 21h AH=08）
+key 1; key 2; key 2 0.2        # 音效／繪圖／磁碟三題（int 21h AH=08）
+if [[ "${MODE:-}" == trademark ]]; then
+  for i in $(seq -w 0 19); do import -window "$WIN" /out/trademark-$i.png; sleep 0.5; done
+  kill $DBX 2>/dev/null || true
+  exit 0
+fi
+sleep 1.8
 # 開場動畫一路按 Enter 續行。主選單只收 1–6，Enter 在那裡沒有作用，
 # 所以按過頭是安全的；方向鍵不是（會走進「載入進度」那一層）。
 for i in $(seq 1 30); do xdotool key --clearmodifiers Return; sleep 2; done
@@ -81,7 +90,7 @@ timeout "${SAN1_DOSBOX_TIMEOUT:-300}" docker run --rm --network none \
   --memory 2g --cpus 2 --pids-limit 128 \
   --log-opt max-size=10m --log-opt max-file=3 \
   -u "$(id -u):$(id -g)" \
-  -v "$GAME:/orig:ro" -v "$OUT:/out" \
+  -v "$GAME:/orig:ro" -v "$OUT:/out" -e MODE="${SAN1_DOSBOX_MODE:-}" \
   "$IMAGE" bash /out/.run.sh 2>&1 | grep -v XGetInputFocus || true
 
 rm -f "$OUT/.run.sh"
