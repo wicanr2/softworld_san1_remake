@@ -74,7 +74,7 @@
 
 | 畫面 | 狀態 | 證據 |
 |---|---|---|
-| 主選單的六個項目 | 接上行為 | 開場詞 → 主選單 → 選年代／選君主／選難度／載入／音樂欣賞／離開（版面 remake 自排，內容是原版資料）|
+| 主選單的六個項目 | 接上行為 | 片頭 → 主選單 → 選年代／選君主／選難度／載入／音樂欣賞／離開（版面 remake 自排，內容是原版資料）|
 | 主選單 | 接上 | 五張圖全部就位：`MENU0A`(40,27)／`MENU0B`(320,27) 各 **100%**、`MENU1`(56,215) 95.3%、`MENU2` 六格（x ∈ {152,376}、y ∈ {215,267,320}）93–97%、`MENU3`(576,320) 91%——不足的都是字寫在上面。字的落點也照原版量（中文字距 24、直牌四個字橫向拉兩倍寬）：**扣掉字與小飾框那格動畫之後 245,170 點逐點相同**。基準畫面另拿 DOSBox-X 交叉驗證過，兩個實作逐點相同（`docs/playtest/03`）|
 | 遊戲主畫面 | 接上 | 八張 `MAINMAP*` 的底圖：上方與**下方**花邊、最右直條各 **100%**，左直條 94.7%、地圖區 70.8%（差的是後來蓋上去的）；肖像 `F###.FAC` 在 (536,116) **100%**、肖像框 `FBRD` 四塊各 **100%**。右側兩塊面板的花邊外框是 `SIDE*` 拼件平鋪（`SIDEB`／`SIDED`），與原版 **12,544 點逐點相同**；面板上每一列的位置與字色也是量的（`docs/spec/005` §2.1）|
 | 主戰場的地形 | 接上 | 78 格裡 **73 格逐像素全中**，差的五格是五支部隊站的位置 |
@@ -99,9 +99,10 @@
 | 主戰場面板裡的字 | 接上 | 郡名 32×32 在 (8,52)／(8,84)、統帥名 32×32 直排（攻 144、守 320）、五行資料在攻 176／守 256 的 y 268＋16k，字色攻 12 守 10，全部從 `0x22c94`／`0x22fd4`／`0x2181d` 與 `DS:0x7b8c` 的表讀出；45 個文字格對基準畫面**格內有墨、格外那一圈沒有不屬於任何一格的墨**（`TestArtBattleTextCellsMatchTheOriginal`，Issue #48）。字模是 remake 的字庫 |
 | 場地四周的階梯邊框 | 接上 | `0x21ee2`／`0x220f0` 的十六條線逐條抄；整片場地（含邊框與空隙）**121560 格逐格相同**，只挖掉五支部隊站的格子 |
 | 城門圖示（每組旗的第六張）| 原版不畫 | `WFLAG?5.IMG` 是 16×15 的城門圖，載進槽 25／31／37／43 之後沒有呼叫端畫它——槽號的式子只有 `0x21c06` 一處而隊伍永遠 0–4；實跑一場含對戰子畫面，四個槽畫 0 次（`TestZZCityGateIconNeverDrawn`，`docs/re/05` §2.5）。remake 不畫 |
-| 開場詞 | 接上 | `SANTL`(0,49)／`SANTR`(320,49) 兩張各 **94400 格全中**（基準是還沒寫字的那一格）；詞的欄距 42、列距 24、淺青配黑影，都量自前後兩格相減 |
+| 片頭 | 接上 | `internal/opening` 照原版 `DATA0` overlay 的兩頁畫面逐拍重做：商標 → 標題字 → 製作人員 → 海景船隊 22 格 → 逐列寫詞 → 調色盤淡出 → 頭像橫幅 920 步 → 三英圖捲入 80 步 → 等鍵 → 程式載入中。`TestZZOpeningMatchesTheOriginal` **1,308 拍每一拍顯示頁 640×408 逐格相同、調色盤相同**（詞那一層用 `TZUE`）；DOSBox-X 三張整張逐點相同（`TestOpeningMatchesDosboxX`）；remake 字庫的詞 62 個字框與 `TZUE` 比字格的墨（`docs/spec/005`「片頭」，Issue #61）|
+| 開場詞 | 接上 | `SANTL`(0,49)／`SANTR`(320,49) 兩張各 **94400 格全中**；詞的字框量自 `TZUE`（詩十欄 x 90＋42k、「詞曰」524、列距 24），淺青配黑影 |
 | 開場的三英圖 | 接上 | `TITL0`–`3` 四塊並排成 640×400，畫面 408 列（底下 8 列是黑），**261,120 格全中**（`assets.TitleArt`）|
-| 商標畫面 | 接上 | `CMARKL`／`CMARKR` 是 `AA.EXE` 開機的第一幕（y 64）：dosgolem（`TestZZTrademarkMatchesTheOriginal`）與 DOSBox-X（`TestTrademarkMatchesDosboxX`）兩個實作都與 `assets.TrademarkScreen` 整張逐點相同；remake 開場第一幕放它（`docs/spec/005`「商標畫面」，Issue #34）|
+| 商標畫面 | 接上 | `CMARKL`／`CMARKR` 是 `AA.EXE` 開機的第一幕（y 64）：dosgolem（`TestZZTrademarkMatchesTheOriginal`）與 DOSBox-X（`TestTrademarkMatchesDosboxX`）兩個實作都與 `assets.TrademarkScreen` 整張逐點相同；remake 片頭第一幕放它（`docs/spec/005`「片頭」，Issue #34）|
 | 州郡的填色 | 接上 | `EGAFILL.PAL` ＝ 16 個勢力各一塊 8×8 圖樣，執行期勢力槽對檔案區塊是 0／2 互換其餘同號；拿原版剛載完第一個進度的畫面逐格比，35 個有主的郡 **全中**、42 郡依序合成 0 像素差（`TestPrefectureFillsMatchTheOriginal`，Issue #12）|
 
 **字型不接原版**：remake 自建字庫，不內嵌任何原版字模（`CLAUDE.md` §3.3）。
@@ -390,6 +391,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 訊息框：肖像＋對白泡泡（元月與繼承的六處） | 完成 | L1 | base | `TestZZBubbleMatchesTheOriginal` | 2026-09-16（Issue #49）：原版每一則對白都由訊息常式 `0x3273e` 畫肖像、名字、白泡泡與 16×32 的兩行字，字色是進去就擲的 `RND(8)`。remake：`game.Bubble` 掛在事件上、`ui.DrawBubble`、`session.Bubbles` 佇列、主畫面按任意鍵收一格。對拍直接呼叫原版的常式畫上格（肖像在右）與下格（肖像在左），肖像、泡泡、尾巴、名字的黑底逐像素相同。接上的是元月與繼承的六個呼叫端；其餘呼叫端在 #51、#52、#60 接上（防拷那一張的六處不做）。片語表 350–499 抽出在 `docs/re/12`。（`docs/spec/005`、`docs/re/12`） |
 | 訊息常式剩下的五組呼叫端：新君主出現、用計三道門、戰役結束回郡、郡地理誌、計略的成敗回話 | 完成 | L1 | base | `TestZZNewLordBornMatchesTheOriginal`、`TestZZAtlasMatchesTheOriginal`、`TestZZBattleSpeechMatchesTheOriginal` | 2026-09-17（Issue #60）：`0x133f2` 自創君主收工——點數用完送 0 才收（`0x13826`／`0x1381e`），印「新君主出現!!」、還原面板、上格往上挪成 (424,66)–(615,161) 說 498，那一郡已歸新君主；`0x28d48` 用計三道門（金／謀略／地點）在第三塊面板說 479／480／481；`0x256fa` 戰役結束援軍統帥說 478 回郡（兩側都還有將才說）；`0x18663` 查看 5 的郡地理誌整張畫在顯示記憶體第二頁（合成常式旗標 −1、通道格疊鄰郡號、主事者說 356）；計略四種的成敗回話 482／483 在上格右（聯合出兵沒有）。remake：`menu.LordBorn` ＋ `ui.DrawNewLordBorn`、`Battle.SayPlotGate`／`SayHelperReturn`、`ui.DrawArtAtlas` ＋ `game.AtlasBubble`、`PlotOrder.Apply`。dosgolem 為第二頁多了 `IndexedEGAFrom`。（`docs/spec/005`、`docs/re/12`） |
 | 開新局：自創君主做好了，多人還沒 | 完成 | L1 | base | `TestPicksACustomLord`、`TestOrdinaryLordDoesNotCarryCustomState` | **自創君主做好了**（`docs/spec/013`）：選角色那一層列出新君主欄，四項能力用 100 點分配、領地在空白郡之間換，寫進劇本之後開局。  資料是原版的：劇本 001 的槽 14／15 君主欄指向填充筆且沒有領地，與手冊「16（含 2 個新君主欄）」對得上；初始值取 `AA.EXE` `0x3e44c` 的四筆範本（年齡 20、90／60／80／90、肖像各異）。  ⚠ 三件沒做：**年齡與姓名照範本不給改**（原版怎麼收沒解）、**點數怎麼花是 `L3`**（手冊只說 100 點）、**多人還沒做**（見 `multiplayer`）。字模見 `custom-lord-glyphs`。（`docs/spec/013`） |
+| 開機片頭整段（船隊、寫詞、淡出、頭像橫幅、三英圖捲入） | 完成 | L1 | base | `TestBeatsFollowTheOriginalSequence` | `internal/opening` 照 `DATA0` overlay 的兩頁畫面逐拍重做；dosgolem 1,308 拍每一拍顯示頁逐格相同、調色盤相同，DOSBox-X 三張逐點相同；remake 字庫的詞與 `TZUE` 比字格的墨。加強版未驗。（`docs/spec/005`、`docs/re/13`） |
 | 開場第一幕的智冠商標畫面 | 完成 | L1 | base | `TestTrademarkMatchesDosboxX` | `CMARKL`／`CMARKR` 是 `AA.EXE` 開機第一幕（y 64），dosgolem 與 DOSBox-X 兩邊整張逐點相同；remake 開場第一幕放它。（`docs/spec/005`） |
 | 分頁捲得動、長句折行不截字 | 完成 | — | both | `TestPageScrollsToTheEnd`、`TestTacticalReportsAreTranslatedAndFit` | 分頁先前沒有捲動（只放得下十九行，三十天的戰報、一郡五十位將軍讀不到後面），而且把超出寬度的部分截掉——戰報長句截掉的正好是句尾的傷亡數字。改成 ↑↓／PgUp／PgDn 捲動、長句折行（`PageLines`），標題帶位置。（`docs/spec/014`） |
 | 人物資料卡的五個呼叫端：查看的迴圈與 Y/N 門、賞賜物品前後兩張、示範模式與除錯陷阱不做 | 完成 | L1 | base | `TestZZCardTimingsMatchTheOriginal` | 2026-09-17（Issue #59）：`0xf874` 的呼叫端是 `0x17ccb`（查看→3：別人的郡先問「此郡非我軍所有 確定查看(Y/N)」，名單不分勢力，卡片任意鍵之後回到「檢視那位」）、`0x1d183`／`0x1d4d1`（君主→4 賞賜物品：卡 → 「請按任一鍵 查看物品表」→ 物品表 → 那一樣(2-5) → `SCG24.IMG` → 道謝 405 → 再一次卡，`0x1058:0xe80` 延遲或按鍵）、`0x1e336`（示範模式月底的鏡頭：偶數月標郡、奇數月畫隨機一位的卡）、`0xc55d`（調整兵力份額為負的除錯陷阱）。remake：`inspectGeneral` 的 Y/N 門、不分勢力的名單與迴圈；賞賜物品先卡片與提示、任意鍵後物品表分頁、送完 `GiftOrder.Apply` 排道謝＋卡（`game.Bubble.Card`）。沒接：寶物圖 `SCG24.IMG`（場景圖格式未解）、賞完的迴圈、示範模式。（`docs/spec/005`、`docs/re/06`） |

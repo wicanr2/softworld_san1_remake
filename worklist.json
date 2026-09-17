@@ -1600,6 +1600,26 @@
       }
     },
     {
+      "id": "opening-sequence",
+      "title": "開機片頭整段（船隊、寫詞、淡出、頭像橫幅、三英圖捲入）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/13"
+      ],
+      "note": "`internal/opening` 照 `DATA0` overlay 的兩頁畫面逐拍重做；dosgolem 1,308 拍每一拍顯示頁逐格相同、調色盤相同，DOSBox-X 三張逐點相同；remake 字庫的詞與 `TZUE` 比字格的墨。加強版未驗。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/opening",
+        "run": "TestBeatsFollowTheOriginalSequence"
+      }
+    },
+    {
       "id": "shared-roster-buffer",
       "title": "把 es:[0x58c] 當成跨表共用、會被就地重排的清單",
       "group": "規則層",

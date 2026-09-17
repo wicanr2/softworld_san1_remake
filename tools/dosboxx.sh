@@ -10,6 +10,9 @@
 #   SAN1_DOSBOX_MODE=trademark tools/dosboxx.sh
 #       # 答完三個裝置問題就每半秒抓一張、抓十秒，存 trademark-NN.png
 #       #（開機第一幕的智冠商標畫面，Issue #34）
+#   SAN1_DOSBOX_MODE=opening tools/dosboxx.sh
+#       # 片頭連拍：不按鍵拍到〈臨江仙〉等鍵、Enter、拍到三英圖、Enter、
+#       # 拍到主選單，存 opening-{a,b,c}-NNN.png（Issue #61）
 #
 # 容器要有 dosbox-x、Xvfb、xdotool 與 ImageMagick。
 # ⚠ 本儲存庫不含任何原版檔案；讀的是 `org_game/` 底下玩家自己那一份，
@@ -66,6 +69,16 @@ xdotool windowfocus --sync "$WIN"
 sleep 1
 key() { xdotool key --clearmodifiers "$1"; sleep "${2:-1}"; }
 key 1; key 2; key 2 0.2        # 音效／繪圖／磁碟三題（int 21h AH=08）
+if [[ "${MODE:-}" == opening ]]; then
+  # 片頭（Issue #61）：不按鍵連拍到等鍵，按一次 Enter 再連拍到三英圖，
+  # 再按一次連拍到主選單。每張檔名帶段號與序號。
+  shoot() { for i in $(seq -w 0 "$2"); do import -window "$WIN" "/out/opening-$1-$i.png"; sleep "${3:-0.3}"; done; }
+  shoot a 119; key Return 0.1
+  shoot b 99; key Return 0.1
+  shoot c 19
+  kill $DBX 2>/dev/null || true
+  exit 0
+fi
 if [[ "${MODE:-}" == trademark ]]; then
   for i in $(seq -w 0 19); do import -window "$WIN" /out/trademark-$i.png; sleep 0.5; done
   kill $DBX 2>/dev/null || true

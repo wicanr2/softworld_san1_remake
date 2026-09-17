@@ -32,6 +32,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/menu"
+	"github.com/wicanr2/softworld_san1_remake/internal/opening"
 	"github.com/wicanr2/softworld_san1_remake/internal/session"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
@@ -100,14 +101,9 @@ type app struct {
 	// quit 為真表示玩家選了「回作業系統」。
 	quit bool
 
-	// trademark 非 nil 表示停在開場第一幕的智冠商標畫面（`CMARKL`／`CMARKR`，
-	// `docs/spec/005` §「商標畫面」），按任意鍵進三英圖。
-	trademark *assets.Image
-	// titlePic 非 nil 表示停在開場的三英圖，按任意鍵進開場詞。
-	titlePic *assets.Image
-
-	// poem 非 nil 表示停在開場詞那一張，按任意鍵進主選單。
-	poem *assets.Image
+	// opening 非 nil 表示正在播開機片頭（`docs/spec/005`「片頭」），
+	// 播完才到主選單。
+	opening *openingPlayer
 }
 
 // uiReliefGold 是介面上「開倉賑民」一次撥出去的金。**remake 自選**：
@@ -132,23 +128,13 @@ func (a *app) Update() error {
 	if a.updateCredits() {
 		return nil
 	}
-	if a.trademark != nil {
-		if anyKeyPressed() {
-			a.trademark = nil
-			a.dirty = true
+	if a.opening != nil {
+		changed, done := a.opening.update(anyKeyPressed())
+		if done {
+			a.opening.stop()
+			a.opening = nil
 		}
-		return nil
-	}
-	if a.titlePic != nil {
-		if anyKeyPressed() {
-			a.titlePic = nil
-			a.dirty = true
-		}
-		return nil
-	}
-	if a.poem != nil {
-		if anyKeyPressed() {
-			a.poem = nil
+		if changed || done {
 			a.dirty = true
 		}
 		return nil
@@ -1027,12 +1013,8 @@ func (a *app) paint() {
 			ui.DrawCreditHall(a.canvas, a.credits.art)
 		case a.credits != nil:
 			ui.DrawCredits(a.canvas, a.credits.art, a.credits.scroll)
-		case a.trademark != nil:
-			ui.DrawImage(a.canvas, a.trademark)
-		case a.titlePic != nil:
-			ui.DrawImage(a.canvas, a.titlePic)
-		case a.poem != nil:
-			ui.DrawPoem(a.canvas, a.poem)
+		case a.opening != nil:
+			ui.DrawPages(a.canvas, a.opening.beat.Pages)
 		case a.menuScreen != nil:
 			a.drawTitle()
 		case a.fight != nil:
@@ -1254,8 +1236,7 @@ func main() {
 	var art *ui.ArtScreen
 	var artBattle *ui.ArtBattle
 	var titleScreen *ui.TitleScreen
-	var poem *assets.Image
-	var titlePic, trademark *assets.Image
+	var openArt *opening.Art
 	if *useArt {
 		if c3, err := openContainer(*root, "DATA3"); err == nil {
 			// `DATA1` 給的是小飾框動畫、州郡填色圖樣與主戰場素材。
@@ -1274,14 +1255,12 @@ func main() {
 					fmt.Fprintln(os.Stderr, "san1：主戰場的素材讀不進來：", err)
 					artBattle = nil
 				}
-				if poem, err = assets.PoemScreen(c1); err != nil {
-					poem = nil
-				}
-				if titlePic, err = assets.TitleArt(c1); err != nil {
-					titlePic = nil
-				}
-				if trademark, err = assets.TrademarkScreen(c1); err != nil {
-					trademark = nil
+				// 片頭的圖讀不到就不播，直接到主選單。
+				if openArt, err = opening.LoadArt(c1); err != nil {
+					fmt.Fprintln(os.Stderr, "san1：片頭的素材讀不進來：", err)
+					openArt = nil
+				} else {
+					openArt.PoemInk, openArt.PoemMask = opening.FontPoem(face)
 				}
 			}
 		} else {
@@ -1322,14 +1301,14 @@ func main() {
 		// 開場就把選項接上：載進來的存檔可能本來就關著音效。
 		a.sfx.SetGates(g.Options.SoundOff, g.Options.VoiceOff)
 	}
-	// 開場詞 → 主選單 → 遊戲。**指定了劇本以外的東西就直接進遊戲**：
+	// 片頭 → 主選單 → 遊戲。**指定了劇本以外的東西就直接進遊戲**：
 	// `-load`／`-orig-load` 是「我要那一局」，中間再問一次沒有道理，
 	// 而 `-title=false` 是給截圖與腳本用的。
 	if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
 		a.startTitle(titleScreen, menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len()))
-		a.poem = poem
-		a.titlePic = titlePic
-		a.trademark = trademark
+		if openArt != nil {
+			a.opening = newOpeningPlayer(openArt)
+		}
 	}
 	if *calendar == "西曆" {
 		g.Options.Calendar = game.Western
@@ -1370,7 +1349,7 @@ func die(err error) {
 // currentScene 是現在輪到畫的那一格如果要拉幕：主畫面的訊息框佇列
 // 或戰場的對白佇列的頭一格。key 用來認「同一格」，pic 是拉進來的那張。
 func (a *app) currentScene() (key any, pic *assets.Image, kind ui.WipeKind, x, y int, ok bool) {
-	if a.art == nil || a.trademark != nil || a.titlePic != nil || a.poem != nil || a.menuScreen != nil {
+	if a.art == nil || a.opening != nil || a.menuScreen != nil {
 		return nil, nil, 0, 0, 0, false
 	}
 	if a.fight != nil {

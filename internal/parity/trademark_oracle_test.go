@@ -14,8 +14,12 @@ import (
 
 // 智冠的商標畫面 `CMARKL`／`CMARKR`（Issue #34）：原版 `AA.EXE` 開機時讀進
 // 這兩張（`docs/formats/01` §2 的 seek），這一支照 `bootToMenu` 的步驟開機，
-// 途中每一百萬條指令看一次畫面，畫面變了就存一張，列出開機時實際出現過的
-// 每一幕。
+// 途中每一百萬條指令看一次畫面，畫面變了就存一張。
+//
+// ⚠ **它只讀第 0 頁。** 片頭在兩頁之間切顯示頁（`docs/spec/005`「片頭」），
+// 所以存下來的不一定是顯示中的畫面——標題字那一幕畫在第 1 頁、這裡看不到，
+// 頭像橫幅那一段看到的是拼圖用的工作區。片頭逐拍的對拍是
+// `TestZZOpeningMatchesTheOriginal`。
 func TestZZBootScreensCensus(t *testing.T) {
 	root := origRoot(t)
 	o, err := oracle.Load(filepath.Join(root, "AA.EXE"), root)

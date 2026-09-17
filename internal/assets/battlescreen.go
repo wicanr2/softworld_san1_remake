@@ -356,7 +356,7 @@ func PoemScreen(data1 *Container) (*Image, error) {
 }
 
 // 智冠的商標畫面是 `DATA1` 的 `CMARKL`／`CMARKR` 兩半，各 320×290，
-// 原版 `AA.EXE` 開機問完三個裝置之後的第一幕（`docs/spec/005` §「商標畫面」）。
+// 原版 `AA.EXE` 開機問完三個裝置之後的第一幕（`docs/spec/005`「片頭」）。
 // 底是黑的，兩半並排在 y ＝ TrademarkY。
 const (
 	TrademarkPieceW = 320
