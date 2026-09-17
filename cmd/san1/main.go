@@ -809,7 +809,7 @@ func (a *app) begin(cat, item byte) {
 		closeMenu()
 		a.giftPref(r)
 	case cat == '7' && item == '5':
-		a.askEnemyGeneral(t("ask.headhunt"), func(gi int) { a.run(game.HeadhuntOrder{At: sel, Target: gi}) })
+		a.headhunt(sel)
 
 	// ---- 8. 謀略 ----
 	case cat == '8':
@@ -1075,29 +1075,6 @@ func (a *app) askFree(title string, then func(int)) {
 	var items []pickItem
 	for _, x := range a.s.G.Free(a.view.Sel) {
 		items = append(items, pickItem{x.Name, x.Index, then})
-	}
-	a.pickFrom(title, items)
-}
-
-// askEnemyGeneral 讓玩家從鄰郡的敵方現役將領裡挑一位。
-func (a *app) askEnemyGeneral(title string, then func(int)) {
-	var items []pickItem
-	p := a.s.G.Prefecture(a.view.Sel)
-	if p == nil {
-		a.view.Prompt = t("msg.noSuchPref")
-		return
-	}
-	for _, n := range p.Neighbours {
-		q := a.s.G.Prefecture(n)
-		if q == nil || !q.Owned() || q.Owner == a.s.Player {
-			continue
-		}
-		for _, x := range a.s.G.Garrison(n) {
-			if x.Faction == q.Owner && x.Status != state.StatusLord {
-				items = append(items, pickItem{
-					fmt.Sprintf("%s（%s）", x.Name, q.Name), x.Index, then})
-			}
-		}
 	}
 	a.pickFrom(title, items)
 }
@@ -1908,4 +1885,35 @@ func (a *app) plotFlow(sel int, plot game.Plot) {
 				}, cancel)
 		}, cancel)
 	}
+}
+
+// headhunt 是君主→5.登用他國人才（`0x1d7b0`）：本郡現役將已達 50 或金不到 100 印訊息退出；
+// 「登用那一郡的將軍」收任何別人的郡（不限相鄰，`0x1d8a1`），取消收掉這道命令；
+// 「登用那一位將軍」是那一郡的挑人清單（模式 5、鍵 0），取消回到挑郡（`0x1da15`）。
+func (a *app) headhunt(sel int) {
+	g := a.s.G
+	home := g.Prefecture(sel)
+	if home == nil {
+		return
+	}
+	switch {
+	case g.StoredActiveGenerals(sel) >= game.MaxGeneralsPerPrefecture:
+		a.view.Prompt = t("msg.headhuntFull")
+		return
+	case home.Gold < game.CostHeadhunt:
+		a.view.Prompt = t("msg.headhuntGold")
+		return
+	}
+	var ask func()
+	ask = func() {
+		a.askPref(t("ask.headhuntPref"), func(id int) bool {
+			q := g.Prefecture(id)
+			return q != nil && q.Owned() && q.Owner != home.Owner
+		}, func(pref int) {
+			a.askRoster(t("ask.headhunt"), pref, game.PickSubject, game.PickByStatus, func(gi int) {
+				a.run(game.HeadhuntOrder{At: sel, Target: gi})
+			}, ask)
+		}, nil)
+	}
+	ask()
 }

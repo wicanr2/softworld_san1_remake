@@ -723,3 +723,54 @@ func TestZZPlotPickMatchesTheOriginal(t *testing.T) {
 	_, shot, tr = b.press(t, "聯合攻打", fmt.Sprintf("%d\r", st))
 	pref("聯合我方那一郡", i18n.S("plot.far.ours"), ours, shot, tr)
 }
+
+// TestZZHeadhuntPickMatchesTheOriginal 君主→5.登用他國人才（Issue #85）：「登用那一郡的將軍」
+// 收任何別人的郡（不限相鄰）、「<登用他國將軍>登用那一位將軍」是那一郡的挑人清單（模式 5、鍵 0）。
+// 兩問的面板、字色逐郡、下面板與游標相同。
+func TestZZHeadhuntPickMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	nMas := state.MasterTableSize
+	b.o.SetWord(addr(b.base+uint32(nMas+b.at*state.PrefectureRecordSize+18)), 9000) // 金要有 100
+	g := b.game(t)
+	home := g.Prefecture(b.at)
+	enemy := func(id int) bool { q := g.Prefecture(id); return q != nil && q.Owned() && q.Owner != home.Owner }
+	b.press(t, "君主", "7\r")
+	_, shot, tr := b.press(t, "登用他國人才", "5\r")
+	pp := &ui.PrefPick{}
+	for id := 1; id <= 42; id++ {
+		pp.Valid[id] = enemy(id)
+	}
+	p := i18n.S("ask.headhuntPref") + i18n.Sf("pick.range", 1, 42)
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp, Input: tr.input()})
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp})
+	comparePanels(t, "登用那一郡的將軍", shot, cv, plain, tr, 1, prefText...)
+	// 挑一個不相鄰、而且有模式 5 對象的別人的郡——remake 先前只列鄰郡，這一格擋得住退回。
+	target := 0
+	for id := 1; id <= 42 && target == 0; id++ {
+		if enemy(id) && !g.Adjacent(b.at, id) && len(g.PickRoster(id, game.PickSubject, game.PickByStatus)) > 0 {
+			target = id
+		}
+	}
+	if target == 0 {
+		t.Fatal("找不到不相鄰、有部將的別人的郡")
+	}
+	ask, shot, tr := b.press(t, "登用那一郡", fmt.Sprintf("%d\r", target))
+	var idx []int
+	for _, x := range g.PickRoster(target, game.PickSubject, game.PickByStatus) {
+		idx = append(idx, x.Index)
+	}
+	rp := &ui.RosterPick{List: idx, Key: game.PickByStatus}
+	if lo, hi := ui.RosterRange(rp); ask != [2]int{lo, hi} {
+		t.Errorf("郡 %d 的名單：原版問 %v，remake %d-%d", target, ask, lo, hi)
+	}
+	v := ui.View{Sel: b.at, Roster: rp, Prompt: i18n.S("ask.headhunt") + i18n.Sf("pick.range", 1, len(idx)), Input: tr.input()}
+	cv = ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, v)
+	v.Input = ui.InputCursor{}
+	plain = ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, v)
+	comparePanels(t, "登用那一位將軍", shot, cv, plain, tr, 1)
+}

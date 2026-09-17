@@ -1883,6 +1883,28 @@
       }
     },
     {
+      "id": "headhunt-questions",
+      "title": "君主→登用他國人才的問法：兩道閘門（50 人、100 金）→ 挑郡（任何別人的郡）→ 那一郡的挑人清單（模式 5）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/20"
+      ],
+      "note": "`TestZZHeadhuntPickMatchesTheOriginal` 挑郡一格（字色逐郡）與不相鄰那一郡的清單一格，面板字格以外逐像素、下面板與游標相同；兩道閘門的訊息照碼寫，沒有實拍。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "cmd/san1/main.go"
+        ],
+        "pattern": "func \\(a \\*app\\) headhunt"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",
