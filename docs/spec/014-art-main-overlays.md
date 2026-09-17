@@ -355,6 +355,7 @@ sprintf `DS:0x755a`「授權%s\n1.%s 2.%s\n3.%s 4.%s\n那一種:」，四個型�
 `View.Treasury`、`giftPick` 用 `askBare`；文字版面仍用 `TreasuryList` 分頁。
 `TestZZGiftItemAskMatchesTheOriginal`：「那一樣」與查看物品兩格，右側面板字格以外逐像素、字格有墨（74／64 格）、
 標題 13 與五列 14 的字色、下面板與游標相同；把 remake 的物品表拿掉時這支會紅（反向對照）。
+DOSBox-X 交叉：`rec18` 025（`docs/playtest/03`「挑選畫面的交叉驗證」）。
 
 指定太守（Issue #89，`0x1caea`）：挑郡取消收掉命令；挑到之後地圖選到那一郡，sprintf `DS:0x751a`「<指定太守>指定那一位\n」
 → `0x18024(提示, 鍵 3, 郡, 模式 2)` 列**那一郡**的人，取消收掉命令；選到之後舊主事者身分 2→3、新人 3→2、州郡 offset 32
