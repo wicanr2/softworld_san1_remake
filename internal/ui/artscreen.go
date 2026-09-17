@@ -308,6 +308,9 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	default:
 		drawArtCommands(c)
 	}
+	if v.Roster != nil {
+		DrawRosterPick(c, a, g, v.Roster)
+	}
 	// 人物資料卡蓋掉右側整塊面板（原版畫卡之前先清 (408,36)–(631,291)）。
 	if v.HasCard {
 		DrawPersonCard(c, a, g, v.Card)

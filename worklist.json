@@ -1817,6 +1817,28 @@
       }
     },
     {
+      "id": "pick-list-number-entry",
+      "title": "挑一位將軍的清單（0x18024）與數字輸入（0x34ede）照原版：右側面板十二列、下面板回顯、欄寬與取消",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/re/07"
+      ],
+      "note": "`TestZZPickListMatchesTheOriginal` 名單順序、兩頁面板與下面板相同；`TestZZNumberEntryMatchesTheOriginal` 徵兵提示與回顯相同；DOSBox-X rec11 第 18 步面板相同。調動軍隊的挑人、攻打與計略的目標郡、挖角對象仍是 remake 的上面板清單；運送錢糧的來源郡只收下令的郡。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/game/pick.go"
+        ],
+        "pattern": "func \\(g \\*State\\) PickRoster"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

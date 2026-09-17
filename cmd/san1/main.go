@@ -21,6 +21,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -97,6 +99,10 @@ type app struct {
 	titleAnimTick, titleAnimFrame int
 	// cursorTick 驅動提示後面輸入游標的六格（`ui.CursorFrameAt`）。
 	cursorTick int
+	// roster 非 nil 表示正在「挑一位將軍」（`0x18024`）；rosterPage 是原版
+	// `DS:0x66b2` 那一格：上一次停在第幾頁，下一次開清單接著用。
+	roster     *rosterEntry
+	rosterPage int
 
 	// c2 是 `DATA2`：主選單要重讀劇本，得留著。
 	c2 *assets.Container
@@ -259,6 +265,10 @@ func (a *app) Update() error {
 	}
 	// 人物資料卡（原版素材畫面的「查看→武將」）：按任意鍵收掉，
 	// 右側面板回到原樣。郡地理誌同一個做法（原版畫在第二頁，等鍵切回）。
+	if a.roster != nil {
+		a.updateRoster()
+		return nil
+	}
 	if a.view.HasCard || a.view.Atlas != 0 {
 		if anyKeyPressed() {
 			a.view.HasCard, a.view.Atlas, a.view.AtlasBubble = false, 0, nil
@@ -290,7 +300,11 @@ func (a *app) Update() error {
 	}
 	if a.num != nil {
 		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
-			a.num.value /= 10
+			if d := a.num.digits; d != "" {
+				a.num.digits = d[:len(d)-1]
+			}
+			a.num.value, _ = strconv.Atoi(a.num.digits)
+			a.num.typed = a.num.digits != ""
 			a.showNumber()
 			a.dirty = true
 			return nil
@@ -298,9 +312,23 @@ func (a *app) Update() error {
 		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 			inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
 			n := a.num
+			cancel := a.cancel
 			a.num, a.cancel = nil, nil
 			a.menu, a.view.Menu, a.view.Items = 0, "", nil
-			n.then(n.value)
+			switch {
+			case !n.typed && cancel != nil:
+				cancel()
+			case !n.typed:
+				// 空欄位 Enter 是取消（原版回 0xFFFF），不是 0。
+				a.view.Prompt = ""
+			case n.value < n.lo || n.value > n.max:
+				// 超出範圍原版重問（`0x35046`／`0x35051`）。
+				n.value, n.typed, n.digits = 0, false, ""
+				a.num, a.cancel = n, cancel
+				a.showNumber()
+			default:
+				n.then(n.value)
+			}
 			a.dirty = true
 			return nil
 		}
@@ -443,9 +471,13 @@ func (a *app) press(k byte) {
 type numEntry struct {
 	title string
 	hint  string
+	lo    int
 	max   int
 	value int
-	then  func(int)
+	// typed 為假表示還沒打任何數字：原版空欄位按 Enter 是取消（`0x35026` 回 0xFFFF）。
+	typed  bool
+	digits string
+	then   func(int)
 }
 
 // askNumber 開一個數字輸入。0 也是合法的答案。
@@ -457,13 +489,28 @@ func (a *app) askNumber(title, hint string, max int, then func(int)) {
 	a.showNumber()
 }
 
+// askRange 是下限不是 0 的數字輸入（挑郡 1–42）。
+func (a *app) askRange(title string, lo, hi int, then func(int)) {
+	a.askNumber(title, "", hi, then)
+	a.num.lo = lo
+	a.showNumber()
+}
+
 // showNumber 把目前輸入的數字畫到選單欄上。
 func (a *app) showNumber() {
 	n := a.num
 	if n == nil {
 		return
 	}
-	a.view.Menu = n.title
+	if a.art != nil {
+		// 原版：下面板寫提示，數字接在「(下限-上限):」後面回顯（`0x34ede`，
+		// `docs/spec/014` §4.3）。remake 的說明字（hint）在這個版面不畫。
+		a.view.Menu, a.view.Items = "", nil
+		a.view.Prompt = n.title + tf("pick.range", n.lo, n.max)
+		a.view.Prompt += n.digits
+		return
+	}
+	a.view.Menu = strings.ReplaceAll(n.title, "\n", " ")
 	a.view.Items = []ui.Command{
 		{Key: '=', Name: fmt.Sprintf("%d", n.value)},
 		{Key: ' ', Name: tf("fld.max", n.max)},
@@ -474,13 +521,13 @@ func (a *app) showNumber() {
 // numberKey 收數字輸入的一個按鍵。
 func (a *app) numberKey(k byte) {
 	n := a.num
-	v := n.value*10 + int(k-'0')
-	// **超過上限就停在上限**，不要讓它捲成一個小數字：
-	// 玩家多按一位卻換來「只徵了三個兵」是最難查的那種意外。
-	if v > n.max {
-		v = n.max
+	// 欄寬是上限的位數，滿了再打的數字丟掉（`0x34ff5`）；超過上限要等 Enter 才重問。
+	if len(n.digits) >= len(strconv.Itoa(n.max)) {
+		return
 	}
-	n.value = v
+	n.digits += string(rune(k))
+	n.value, _ = strconv.Atoi(n.digits)
+	n.typed = true
 	a.showNumber()
 }
 
@@ -654,17 +701,7 @@ func (a *app) begin(cat, item byte) {
 				})
 		})
 	case cat == '2' && item == '3':
-		a.askOwn(t("ask.sendTo"), func(to int) {
-			p := g.Prefecture(sel)
-			a.askNumber(t("ask.sendGold"), tf("hint.gold", p.Gold), p.Gold,
-				func(gold int) {
-					a.askNumber(t("ask.sendRice"), tf("hint.rice", p.Rice), p.Rice,
-						func(rice int) {
-							a.run(game.TransportOrder{At: sel, To: to,
-								Gold: gold, Rice: rice})
-						})
-				})
-		})
+		a.transport()
 
 	// ---- 3. 兵士 ----
 	case cat == '3' && item == '1':
@@ -672,7 +709,7 @@ func (a *app) begin(cat, item byte) {
 		// 所以這裡不再問「訓練誰」。
 		a.run(game.TrainOrder{At: sel})
 	case cat == '3' && item == '2':
-		a.askGeneral(t("ask.conscript"), func(gi int) {
+		a.askRoster(t("ask.conscript"), sel, game.PickServing, game.PickBySoldiers, func(gi int) {
 			x := g.General(gi)
 			cap := 0
 			if x != nil {
@@ -685,16 +722,20 @@ func (a *app) begin(cat, item byte) {
 			if cap > room {
 				cap = room
 			}
-			a.askNumber(t("ask.conscriptN"),
+			soldiers, name := 0, ""
+			if x != nil {
+				soldiers, name = int(x.Soldiers), ui.NameField(i18n.PersonName(x.Name))
+			}
+			a.askNumber(tf("ask.conscriptN", name, soldiers),
 				tf("hint.conscript", g.Prefecture(sel).Population),
 				cap, func(n int) {
 					a.run(game.ConscriptOrder{At: sel, General: gi, Count: n})
 				})
-		})
+		}, nil)
 	case cat == '3' && item == '3':
-		a.askGeneral(t("ask.arms"), func(gi int) {
+		a.askRoster(t("ask.arms"), sel, game.PickServing, game.PickByArms, func(gi int) {
 			a.run(game.ArmsOrder{At: sel, General: gi, Units: 500})
-		})
+		}, nil)
 	case cat == '3' && item == '4':
 		var all []int
 		for _, x := range g.Garrison(sel) {
@@ -706,11 +747,11 @@ func (a *app) begin(cat, item byte) {
 
 	// ---- 4. 內政 ----
 	case cat == '4' && item == '1':
-		a.askGeneral(t("ask.reclaim"), func(gi int) { a.run(game.ReclaimOrder{At: sel, General: gi}) })
+		a.askRoster(t("ask.reclaim"), sel, game.PickServing, game.PickByIntel, func(gi int) { a.run(game.ReclaimOrder{At: sel, General: gi}) }, nil)
 	case cat == '4' && item == '2':
-		a.askGeneral(t("ask.flood"), func(gi int) { a.run(game.FloodControlOrder{At: sel, General: gi}) })
+		a.askRoster(t("ask.flood"), sel, game.PickServing, game.PickByIntel, func(gi int) { a.run(game.FloodControlOrder{At: sel, General: gi}) }, nil)
 	case cat == '4' && item == '3':
-		a.askGeneral(t("ask.fort"), func(gi int) { a.run(game.BuildFortOrder{At: sel, General: gi}) })
+		a.askRoster(t("ask.fort"), sel, game.PickWise, game.PickByIntel, func(gi int) { a.run(game.BuildFortOrder{At: sel, General: gi}) }, nil)
 	case cat == '4' && item == '4':
 		a.run(game.RestOrder{At: sel})
 
@@ -724,11 +765,11 @@ func (a *app) begin(cat, item byte) {
 
 	// ---- 6. 人事 ----
 	case cat == '6' && item == '1':
-		a.askGeneral(t("ask.search"), func(gi int) { a.run(game.SearchOrder{At: sel, General: gi}) })
+		a.askRoster(t("ask.search"), sel, game.PickServing, game.PickByIntel, func(gi int) { a.run(game.SearchOrder{At: sel, General: gi}) }, nil)
 	case cat == '6' && item == '2':
-		a.askFree(t("ask.recruit"), func(gi int) { a.run(game.RecruitOrder{At: sel, Target: gi}) })
+		a.askRoster(t("ask.recruit"), sel, game.PickFree, game.PickByIntel, func(gi int) { a.run(game.RecruitOrder{At: sel, Target: gi}) }, nil)
 	case cat == '6' && item == '3':
-		a.askGeneral(t("ask.reward"), func(gi int) {
+		a.askRoster(t("ask.reward"), sel, game.PickSubject, game.PickByLoyalty, func(gi int) {
 			// 原版問的是「賞賜%s多少金」，上限 100（手冊 p.23）。
 			max := game.MaxReward
 			if p := g.Prefecture(sel); p != nil && p.Gold < max {
@@ -737,15 +778,15 @@ func (a *app) begin(cat, item byte) {
 			a.askNumber(t("ask.rewardGold"), t("hint.reward"), max, func(n int) {
 				a.run(game.RewardOrder{At: sel, Target: gi, Gold: n})
 			})
-		})
+		}, nil)
 	case cat == '6' && item == '4':
-		a.askGeneral(t("ask.dismiss"), func(gi int) { a.run(game.DismissOrder{At: sel, Target: gi}) })
+		a.askRoster(t("ask.dismiss"), sel, game.PickOfficerOnly, game.PickByLoyalty, func(gi int) { a.run(game.DismissOrder{At: sel, Target: gi}) }, nil)
 
 	// ---- 7. 君主 ----
 	case cat == '7' && item == '1':
-		a.askGeneral(t("ask.chief"), func(gi int) { a.run(game.AppointChiefOrder{At: sel, Target: gi}) })
+		a.askRoster(t("ask.chief"), sel, game.PickWiseSub, game.PickByIntel, func(gi int) { a.run(game.AppointChiefOrder{At: sel, Target: gi}) }, nil)
 	case cat == '7' && item == '2':
-		a.askGeneral(t("ask.governor"), func(gi int) { a.run(game.AppointGovernorOrder{At: sel, Target: gi}) })
+		a.askRoster(t("ask.governor"), sel, game.PickServing, game.PickByCharm, func(gi int) { a.run(game.AppointGovernorOrder{At: sel, Target: gi}) }, nil)
 	case cat == '7' && item == '3':
 		a.pickFrom(t("ask.autonomy"), []pickItem{
 			{t("auto.normal"), int(game.AutoNormal), a.setAutonomy},
@@ -769,11 +810,11 @@ func (a *app) begin(cat, item byte) {
 	// ---- 8. 謀略 ----
 	case cat == '8':
 		plot := game.Plot(item - '0')
-		a.askGeneral(t("ask.envoy"), func(gi int) {
+		a.askRoster(t("ask.envoy"), sel, game.PickServing, game.PickByCharm, func(gi int) {
 			a.askNeighbour(t("ask.plotAt"), false, func(to int) {
 				a.run(game.PlotOrder{At: sel, To: to, What: plot, Envoy: gi})
 			})
-		})
+		}, nil)
 
 	default:
 		a.view.Prompt = t("msg.noSuchItem")
@@ -798,19 +839,11 @@ func (a *app) giftPref(r *game.GiftRound) {
 			a.view.Prompt = ""
 		}
 	}
-	a.askNumber(t("ask.giftPref"), "", state.PrefectureCount, func(pref int) {
-		if pref == 0 {
-			done()
-			return
-		}
-		if !a.s.G.GiftPrefectureOK(r, pref) {
-			a.giftPref(r)
-			return
-		}
-		a.view.Sel = pref
-		a.giftWho(r, pref)
-	})
-	a.cancel = done
+	a.askPref(t("ask.giftPref"), func(pref int) bool { return a.s.G.GiftPrefectureOK(r, pref) },
+		func(pref int) {
+			a.view.Sel = pref
+			a.giftWho(r, pref)
+		}, done)
 }
 
 // giftWho 是「賞賜那一位」（`0x1d0b0`）：挑到人畫他的卡、等鍵看物品表；
@@ -821,30 +854,20 @@ func (a *app) giftWho(r *game.GiftRound, pref int) {
 		a.view.Prompt = t("msg.giftCancel")
 		a.giftPref(r)
 	}
-	var items []pickItem
-	for _, x := range g.GiftCandidates(pref) {
-		items = append(items, pickItem{x.Name, x.Index, func(gi int) {
-			if r.Gifted(gi) {
-				a.view.Prompt = tf("msg.gifted", i18n.PersonName(g.General(gi).Name))
-				a.giftWho(r, pref)
-				return
-			}
-			if a.art == nil {
-				a.giftPick(r, pref, gi)
-				return
-			}
-			a.view.Card, a.view.HasCard = gi, true
-			a.view.Prompt = t("ask.giftItems")
-			a.afterCard = func() { a.giftPick(r, pref, gi) }
-		}})
-	}
-	if len(items) == 0 {
-		a.view.Prompt = t("msg.noTargets")
-		a.giftPref(r)
-		return
-	}
-	a.pickFrom(t("ask.giftTo"), items)
-	a.cancel = back
+	a.askRoster(t("ask.giftTo"), pref, game.PickServing, game.PickByLoyalty, func(gi int) {
+		if r.Gifted(gi) {
+			a.view.Prompt = tf("msg.gifted", i18n.PersonName(g.General(gi).Name))
+			a.giftWho(r, pref)
+			return
+		}
+		if a.art == nil {
+			a.giftPick(r, pref, gi)
+			return
+		}
+		a.view.Card, a.view.HasCard = gi, true
+		a.view.Prompt = t("ask.giftItems")
+		a.afterCard = func() { a.giftPick(r, pref, gi) }
+	}, back)
 }
 
 // giftPick 列出君主物品表、問賞哪一件（`0x1d1e5`：2–5，沒有那一件重問）。
@@ -881,14 +904,14 @@ func (a *app) giftPick(r *game.GiftRound, pref, gi int) {
 func (a *app) inspectGeneral(sel int) {
 	var ask func()
 	ask = func() {
-		a.askAnyGeneral(t("ask.inspect"), func(gi int) {
+		a.askRoster(t("ask.inspect"), sel, game.PickAny, game.PickByStatus, func(gi int) {
 			if a.art == nil {
 				a.view.SetPage(ui.GeneralPage(a.s.G, gi))
 				return
 			}
 			a.view.Card, a.view.HasCard = gi, true
 			a.afterCard = ask
-		})
+		}, nil)
 	}
 	if p := a.s.G.Prefecture(sel); p != nil && p.Owned() && p.Owner != a.s.Player {
 		a.askYN(t("ask.inspectForeign"), ask)
@@ -1724,4 +1747,35 @@ func loadSmallFace(bigFont string) *font.Face {
 		return nil
 	}
 	return f
+}
+
+// transport 是運送錢糧（`0x1904a`）：「從那一郡送出」→「送到那一郡」自己的其他郡 →
+// 「金(0-%d)」→「米(0-%d)」；每一格取消都回到「從那一郡送出」，那一格再取消才收掉。
+//
+// ⚠ 原版「從那一郡」收的是任何自己的郡（`0x1905c`：主人等於下令那一郡的主人），
+// remake 的規則層（`game.Transport`）還是「下令的郡送出」，所以這裡只收下令的郡
+// ——規則沒改之前不讓畫面答應做不到的事（`docs/spec/014` §4.3）。
+func (a *app) transport() {
+	g, me, at := a.s.G, a.s.Player, a.view.Sel
+	own := func(pref int) bool {
+		p := g.Prefecture(pref)
+		return p != nil && p.Owned() && p.Owner == me
+	}
+	var from func()
+	from = func() {
+		a.askPref(t("ask.sendFrom"), func(pref int) bool { return pref == at }, func(src int) {
+			a.view.Sel = src
+			a.askPref(t("ask.sendTo"), func(to int) bool { return to != src && own(to) }, func(to int) {
+				p := g.Prefecture(src)
+				a.askNumber(t("ask.sendGold"), tf("hint.gold", p.Gold), p.Gold, func(gold int) {
+					a.askNumber(t("ask.sendRice"), tf("hint.rice", p.Rice), p.Rice, func(rice int) {
+						a.run(game.TransportOrder{At: src, To: to, Gold: gold, Rice: rice})
+					})
+					a.cancel = from
+				})
+				a.cancel = from
+			}, from)
+		}, nil)
+	}
+	from()
 }
