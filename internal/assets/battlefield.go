@@ -106,6 +106,15 @@ func BattleField(tiles []*Image, field []byte, bg byte) *Image {
 // 所以邊框在錯開的欄位那裡會被圖塊蓋掉一半。反過來畫的話下緣那兩列
 // 白線會壓在地形上，與原版差五百多格。
 func (im *Image) BlitField(tiles []*Image, field []byte) {
+	im.BlitFieldUpTo(tiles, field, MaxTerrain)
+}
+
+// SkirmishMaxTerrain 是對戰子畫面會畫出圖塊的最大地形碼：子地圖只跳過 15
+// （`0x2e769`），城池與關寨版型的 11–14（城內、牆）都畫。
+const SkirmishMaxTerrain = 14
+
+// BlitFieldUpTo 同 BlitField，地形碼上限由呼叫端給。
+func (im *Image) BlitFieldUpTo(tiles []*Image, field []byte, max int) {
 	// **順序有差**：奇數欄往下錯開 16，而圖塊高 32——後畫的會蓋掉
 	// 先畫的一半。原版逐欄畫（`0x22704` 的兩層迴圈外層是欄），
 	// 照列畫出來的疊法不一樣，格子邊緣就會對不上。
@@ -117,7 +126,7 @@ func (im *Image) BlitField(tiles []*Image, field []byte) {
 				continue
 			}
 			t := int(b & 0x0F)
-			if t > MaxTerrain || t >= len(tiles) || tiles[t] == nil {
+			if t > max || t >= len(tiles) || tiles[t] == nil {
 				continue
 			}
 			x, y := FieldCell(col, row)

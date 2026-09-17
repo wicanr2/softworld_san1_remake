@@ -59,6 +59,10 @@ type ArtBattleInfo struct {
 
 	// Inspect 不是 nil 時，第三塊面板改畫**查看**那一位將領（`0x284a2`）。
 	Inspect *InspectPanel
+
+	// Skirmish 不是 nil 時場地改畫對戰子畫面的子地圖與將領標記
+	// （`0x2e700`／`0x2e796`），左欄的時刻照子畫面的時刻。
+	Skirmish *battle.Skirmish
 }
 
 // UnitPanel 是對戰子畫面裡一塊部隊面板要的東西（`0x320a6(軍力, 隊伍)`，
@@ -133,7 +137,14 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 	l := assets.BattleLayoutFor(b.Field.Narrow())
 	im.FieldEdges(l)
 	im.BlitField(ab.tiles, info.Field)
-	ab.drawUnits(im, b, v)
+	if s := info.Skirmish; s != nil {
+		// 子地圖蓋在主戰場上：地形碼 15 的格不畫，露出底下原來那一張
+		// （`0x2e76c`）；旗幟不畫，換成將領標記。
+		im.BlitFieldUpTo(ab.tiles, skirmishFieldBytes(s), assets.SkirmishMaxTerrain)
+		drawSkirmishMarkers(im, s, v)
+	} else {
+		ab.drawUnits(im, b, v)
+	}
 
 	// 左欄、場地左右緣的線與三個面板：先塗底色再畫下凹的外框。
 	// 查看那一塊（`0x284a2`）把第三塊面板清成藍再畫，與軍力面板同色。
@@ -249,7 +260,11 @@ func (ab *ArtBattle) drawPlates(c *Canvas, b *battle.Battle, v BattleView) {
 // drawText 把字疊上去。**分成兩趟**：圖層都是索引色，字是 RGBA，
 // 混在一起畫會讓「哪一層蓋哪一層」變得不好講。
 func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info ArtBattleInfo) {
-	ab.drawPlates(c, b, v)
+	if info.Skirmish != nil {
+		drawSkirmishMarkerText(c, info.Skirmish, v)
+	} else {
+		ab.drawPlates(c, b, v)
+	}
 	drawBattleDate(c, info.Date, info.Calendar)
 
 	// 左欄：郡名一個字一列（原版 32×32 的雙倍字，`0x2181d`）、州名、日數、天氣。
@@ -273,7 +288,11 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		assets.EGAPalette[13])
 	y0, _ := assets.BattleLeftBox(2)
 	c.DrawTextPx(assets.BattleNameX, y0, WeatherName(b.Weather), assets.EGAPalette[15])
-	drawBattleDayBox(c, b.Day)
+	hour := battle.SkirmishFirstHour
+	if info.Skirmish != nil {
+		hour = info.Skirmish.Hour
+	}
+	drawBattleDayBox(c, b.Day, hour)
 
 	// 兩個軍力面板（`0x22c94`，位置在 `assets.BattleLayout.NameX`／`TextX`）；
 	// 對戰子畫面裡換成兩支部隊的面板（`0x320a6`）。
@@ -450,7 +469,12 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		}
 	}
 	row := battleOptRows
-	if v.Menu != "" {
+	if v.SkirmishActing != nil && len(opts) < battleOptRows {
+		// 子畫面的選單（`0x2fb14`）：兩行選項之後緊接著「名字(餘步/移動力)」
+		// 那一行，沒有標題。
+		row = len(opts)
+	}
+	if v.Menu != "" && v.SkirmishActing == nil {
 		c.DrawTextPx(ordX, ordY+row*CellH,
 			cells.Truncate(v.Menu, assets.BattlePanelW/CellW), ord)
 		row++
@@ -526,9 +550,8 @@ func battleDayNumerals(day int) [3]string {
 }
 
 // drawBattleDayBox 畫左欄第四框：日數、「日」、時辰、「時」、時數。
-func drawBattleDayBox(c *Canvas, day int) {
+func drawBattleDayBox(c *Canvas, day, hour int) {
 	white, cyan := assets.EGAPalette[15], assets.EGAPalette[11]
-	hour := battle.SkirmishFirstHour
 	if sign := t("bat.daySign"); artAllWide(sign) {
 		for k, r := range battleDayNumerals(day) {
 			if r != "" {

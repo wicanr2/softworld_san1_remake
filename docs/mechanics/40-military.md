@@ -594,8 +594,10 @@ remake：`battle.defections`／`EndTurn`。
 ——被擒 6/7 ≈ 86%、戰死 1/7 ≈ 14%。回合用完雙方都還有體能就是平手。
 
 remake：`internal/battle/skirmish.go`。電腦對電腦的步驟自動；玩家那一方
-的將領走 `SkirmishPlayer` 介面（每一位輪到時問一道命令），目前的 CLI
-還沒接介面，玩家的將領照電腦的判斷式走（registered remake 差異）。
+的將領走 `SkirmishPlayer` 介面（每一位輪到時問一道命令）：`cmd/san1` 在
+子畫面裡出原版的選單（行軍、單挑、攻擊、查看、休息），被叫陣時問接不接受
+（`docs/spec/005` §8「對戰子畫面」）。沒有介面的時候（無頭、對拍）照電腦的
+判斷式走。
 加強版的這一層還沒對回 `ASV.EXE`（`docs/re/05` §10.9）。
 
 ## 7. 決勝與處置
@@ -649,7 +651,8 @@ remake：`internal/battle/skirmish.go`。電腦對電腦的步驟自動；玩家
   `es:[0x31c0]` 是完成旗標。九支的門檻與順序都是 `AIBase` 的契約
   （§4.5）；`enhanced` 那一套才是自主設計（`docs/design/02`）。
 - **對戰子畫面**（§6）：兩版的走法與骰序對上了（原版盤面丁整場、
-  加強版六張盤面）；還差 CLI 的玩家介面。
+  加強版六張盤面），原版的畫面對上了（`TestZZSkirmishScreenMatchesTheOriginal`）；
+  加強版的子畫面畫法沒比過。
 - **不是玩家指揮的戰役裡玩家那一方捕獲的人**：原版照樣問，remake 沒有
   介面、留著不處置（`docs/spec/018` §7）。
 - **電腦那一方的中途紮寨**（`0x2020:0x293a`）：remake 用 `spotNear`。

@@ -1561,6 +1561,26 @@
       }
     },
     {
+      "id": "battle-skirmish-screen",
+      "title": "對戰子畫面的畫面與玩家選單",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/005",
+        "docs/re/05"
+      ],
+      "note": "子地圖、將領標記、左欄時刻、輪到的人反白、第三塊面板的選單照 `0x2deb0` 畫；玩家在子畫面裡下令。標記以外的場地與原版逐像素相同，字格底色與墨、部隊面板、選單、左欄時刻相同。\n\n⚠ 加強版的子畫面畫法沒比過；DOSBox-X 交叉驗證沒做（`docs/spec/005` §8）。",
+      "verify": {
+        "kind": "cmd",
+        "cmd": "grep -q 'Skirmish \\*battle.Skirmish' internal/ui/artbattle.go && grep -q 'b.PlayerSkirmish = func' cmd/san1/battle.go",
+        "expect": "pass"
+      }
+    },
+    {
       "id": "shared-roster-buffer",
       "title": "把 es:[0x58c] 當成跨表共用、會被就地重排的清單",
       "group": "規則層",

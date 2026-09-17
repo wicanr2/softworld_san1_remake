@@ -169,6 +169,18 @@ func (im *Image) Complement() *Image {
 	return out
 }
 
+// XorRect 把一塊矩形的每一格顏色 XOR v（原版的反白是 `^15`）。
+func (im *Image) XorRect(x, y, w, h int, v byte) {
+	for dy := 0; dy < h; dy++ {
+		for dx := 0; dx < w; dx++ {
+			xx, yy := x+dx, y+dy
+			if xx >= 0 && xx < im.W && yy >= 0 && yy < im.H {
+				im.Pix[yy*im.W+xx] ^= v
+			}
+		}
+	}
+}
+
 // SubImage 取一塊矩形，給比對用。
 func (im *Image) SubImage(r image.Rectangle) *Image {
 	r = r.Intersect(image.Rect(0, 0, im.W, im.H))

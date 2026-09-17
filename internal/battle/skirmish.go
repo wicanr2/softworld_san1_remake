@@ -351,6 +351,10 @@ func (s *Skirmish) log(format string, a ...any) {
 }
 
 // Run 把一場對戰從頭走到尾（`0x2e498`–`0x2e688`）。
+// InSkirmish 是正在跑的對戰子畫面；沒有就是 nil。畫面那一端在子畫面
+// 停下來問玩家時拿它畫子地圖（`docs/spec/005` §8「對戰子畫面」）。
+func (b *Battle) InSkirmish() *Skirmish { return b.inSkirmish }
+
 func (s *Skirmish) Run() {
 	b := s.b
 	b.inSkirmish = s

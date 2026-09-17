@@ -708,7 +708,7 @@ func TestBattleDayBoxStaysInTheColumn(t *testing.T) {
 		i18n.Current = loc
 		for _, day := range []int{1, 24, 30} {
 			c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
-			drawBattleDayBox(c, day)
+			drawBattleDayBox(c, day, battle.SkirmishFirstHour)
 			ink, stray := 0, 0
 			for y := 0; y < assets.ScreenH; y++ {
 				for x := 0; x < assets.ScreenW; x++ {

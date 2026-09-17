@@ -75,6 +75,11 @@ type BattleView struct {
 	// Inspecting 是查看中的那支部隊；原版素材的畫面把第三塊面板換成
 	// 它第 0 槽那一位的肖像與資料（`ArtBattleInfo.Inspect`）。
 	Inspecting *battle.Unit
+
+	// SkirmishActing 是對戰子畫面裡輪到的那一位；Blink 為真時他那一格
+	// 反白（原版每 512 個時脈切換一次，`0x1538:0x58ac`）。
+	SkirmishActing *battle.SkirmishGeneral
+	Blink          bool
 }
 
 // SetPage 打開一頁，捲回最上面。

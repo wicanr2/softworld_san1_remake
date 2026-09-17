@@ -71,6 +71,7 @@ func battlePanelRig(t *testing.T, o *oracle.Oracle, seedMas []byte) (base uint32
 // 素材與畫布。
 type battlePanelScene struct {
 	o      *oracle.Oracle
+	base   uint32
 	dgroup uint16
 	sc     *state.Scenario
 	ab     *ui.ArtBattle
@@ -123,7 +124,7 @@ func newBattlePanelScene(t *testing.T) *battlePanelScene {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &battlePanelScene{o: o, dgroup: dgroup, sc: sc, ab: ab, pref: pref, fld: fld, face: face}
+	return &battlePanelScene{o: o, base: base, dgroup: dgroup, sc: sc, ab: ab, pref: pref, fld: fld, face: face}
 }
 
 // unitRecord 讀工作區裡一支部隊的記錄：第 0 槽的人物、將數、兵數。

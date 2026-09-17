@@ -1072,6 +1072,12 @@ func (a *app) paint() {
 // Esc 收起覆蓋頁——**Esc 不會離開戰役**：出兵是不能反悔的。
 func (a *app) updateBattle() error {
 	defer func() { a.dirty = true }()
+	if f := a.fight; f.view.SkirmishActing != nil {
+		f.blinkTick++
+		if f.blinkTick%blinkFrames == 0 {
+			f.view.Blink = !f.view.Blink
+		}
+	}
 	// 戰場對白（肖像＋泡泡）一次一格，按任意鍵收掉——與主畫面的訊息框
 	// 同一個做法（remake 差異：原版走延遲設定）。
 	if sp := a.fight.speech(a.artBattle != nil); sp != nil {
@@ -1112,6 +1118,13 @@ func (a *app) updateBattle() error {
 	for k := ebiten.Key0; k <= ebiten.Key9; k++ {
 		if inpututil.IsKeyJustPressed(k) {
 			a.battleKey(byte('0' + (k - ebiten.Key0)))
+			return nil
+		}
+	}
+	// 子畫面的休息確認、叫陣的接受與行軍結束要 Y／N／Enter（`docs/re/05` §10.6）。
+	for key, k := range map[ebiten.Key]byte{ebiten.KeyY: 'Y', ebiten.KeyN: 'N', ebiten.KeyEnter: '\r'} {
+		if inpututil.IsKeyJustPressed(key) && a.fight.asking != nil {
+			a.battleKey(k)
 			return nil
 		}
 	}

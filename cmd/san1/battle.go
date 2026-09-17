@@ -60,13 +60,38 @@ type fight struct {
 	// answerFate／answerAt 是玩家剛答的處置與紮寨格。
 	answerFate battle.Fate
 	answerAt   battle.Hex
+	// answerCmd／answerYes 是子畫面的一道命令與叫陣的答案；skm 是子畫面
+	// 選單的子狀態。
+	answerCmd battle.SkirmishCommand
+	answerYes bool
+	skm       byte
+	// blinkTick 數幀：子畫面裡輪到的那一格每 blinkFrames 幀反白切換一次
+	// （原版是計時器，`0x1538:0x58ac`；remake 差異：速度不同）。
+	blinkTick int
 }
 
-// engineAsk 是戰術層停下來問玩家的一件事：被擒的那一位，或要紮寨的部隊。
+const blinkFrames = 20
+
+// engineAsk 是戰術層停下來問玩家的一件事：被擒的那一位、要紮寨的部隊、
+// 對戰子畫面裡輪到的將領，或被叫陣的將領。
 type engineAsk struct {
 	captive *battle.Leader
 	camp    *battle.Unit
+	// skirmish 是子畫面裡輪到的玩家將領（`0x2fb14` 的選單）。
+	skirmish *battle.SkirmishGeneral
+	// challenged 是子畫面裡被叫陣的玩家將領，challenger 是叫陣的人
+	// （「接受嗎(Y/N)」，`0x30d06`）。
+	challenged, challenger *battle.SkirmishGeneral
 }
+
+// 子畫面選單的子狀態：選單本身、休息確認、行軍中、等單挑或攻擊的方向。
+const (
+	skmMenu byte = iota
+	skmRest
+	skmMarch
+	skmDuel
+	skmAttack
+)
 
 // inEngine 在協程裡跑 body。body 裡的戰術層呼叫可能停下來問玩家；
 // 沒問就一路跑完。
@@ -106,7 +131,89 @@ func (a *app) resumeEngine(f *fight) {
 		f.view.Cursor = ui.Hexer{At: q.camp.At, Shown: true}
 		f.view.Menu, f.view.Items = t("bat.camp"), []string{t("bat.arrowKeys"), t("bat.place")}
 		f.view.Prompt = tf("bat.campMid", q.camp.Name())
+	case q.skirmish != nil:
+		f.skm = skmMenu
+		f.skirmishPrompt(q.skirmish)
+	case q.challenged != nil:
+		f.view.SkirmishActing = q.challenged
+		f.view.Menu, f.view.Items = t("bat.duel"), nil
+		f.view.Prompt = tf("skm.accept", q.challenger.Leader.Name)
 	}
+}
+
+// skirmishPrompt 是子畫面選單（`0x2fb14`）：「1.行軍 2.單挑 3.攻擊 /
+// 7.查看 0.休息」，下一行「名字(餘步/移動力)(0-4):」。
+func (f *fight) skirmishPrompt(g *battle.SkirmishGeneral) {
+	f.view.SkirmishActing = g
+	f.view.Menu = ""
+	f.view.Items = strings.Split(t("skm.menu"), "|")
+	switch f.skm {
+	case skmRest:
+		f.view.Prompt = t("skm.restConfirm")
+	case skmMarch:
+		f.view.Prompt = tf("bat.marchDir", g.Left)
+	case skmDuel:
+		f.view.Prompt = t("bat.duelDir")
+	case skmAttack:
+		f.view.Prompt = t("bat.strikeDir")
+	default:
+		f.view.Prompt = tf("skm.prompt", g.Leader.Name, g.Left, g.MoveCap)
+	}
+}
+
+// answerSkirmish 收子畫面裡的一個鍵（`docs/re/05` §10.6）。回 true 表示
+// 已經有一道命令，要交回戰術層。
+func (f *fight) answerSkirmish(g *battle.SkirmishGeneral, k byte) bool {
+	dir := func() (battle.Dir, bool) {
+		if k >= '1' && k <= '6' {
+			return battle.Dir(k - '0'), true
+		}
+		return 0, false
+	}
+	switch f.skm {
+	case skmRest:
+		f.skm = skmMenu
+		if k == 'Y' {
+			f.answerCmd = battle.SkirmishCommand{Kind: battle.SkirmishRest}
+			return true
+		}
+	case skmMarch:
+		if k == '\r' {
+			f.answerCmd = battle.SkirmishCommand{Kind: battle.SkirmishMarchDone}
+			f.skm = skmMenu
+			return true
+		}
+		if d, ok := dir(); ok {
+			f.answerCmd = battle.SkirmishCommand{Kind: battle.SkirmishMarch, Dir: d}
+			return true
+		}
+	case skmDuel, skmAttack:
+		kind := battle.SkirmishDuel
+		if f.skm == skmAttack {
+			kind = battle.SkirmishAttack
+		}
+		f.skm = skmMenu
+		if d, ok := dir(); ok {
+			f.answerCmd = battle.SkirmishCommand{Kind: kind, Dir: d}
+			return true
+		}
+	default:
+		switch k {
+		case '0':
+			f.skm = skmRest
+		case '1':
+			f.skm = skmMarch
+		case '2':
+			f.skm = skmDuel
+		case '3':
+			f.skm = skmAttack
+		case '7':
+			f.view.SetPage(ui.BattleUnitPage(g.Unit))
+			f.view.Inspecting = g.Unit
+		}
+	}
+	f.skirmishPrompt(g)
+	return false
 }
 
 // answerEngine 收玩家對 `asking` 的回答：被擒是 1–4，紮寨是 0（游標那一格）。
@@ -127,6 +234,19 @@ func (a *app) answerEngine(k byte) {
 			return
 		}
 		f.answerAt = f.view.Cursor.At
+	case q.skirmish != nil:
+		if !f.answerSkirmish(q.skirmish, k) {
+			return
+		}
+	case q.challenged != nil:
+		switch k {
+		case 'Y':
+			f.answerYes = true
+		case 'N':
+			f.answerYes = false
+		default:
+			return
+		}
 	}
 	cursor := f.view.Cursor
 	f.view = f.saved
@@ -147,6 +267,14 @@ func (f *fight) hookEngine() {
 	b.PlayerCamp = func(u *battle.Unit) battle.Hex {
 		f.yield(engineAsk{camp: u})
 		return f.answerAt
+	}
+	b.PlayerSkirmish = func(_ *battle.Skirmish, g *battle.SkirmishGeneral) battle.SkirmishCommand {
+		f.yield(engineAsk{skirmish: g})
+		return f.answerCmd
+	}
+	b.PlayerDuelAnswer = func(_ *battle.Skirmish, g, t *battle.SkirmishGeneral) bool {
+		f.yield(engineAsk{challenger: g, challenged: t})
+		return f.answerYes
 	}
 }
 
@@ -432,7 +560,7 @@ func (a *app) applyDir(d battle.Dir) error {
 	case battle.CmdEngage:
 		// 對戰子畫面（原版 `0x2deb0`）。玩家那一方的將領還沒有介面，
 		// 先照電腦的判斷式走（`docs/mechanics/40` §8）。
-		_, err := b.Engage(f.acting, d, nil)
+		_, err := b.Engage(f.acting, d, b.PlayerSkirmish)
 		return err
 	case battle.CmdArchery:
 		// 「相間一格」：同一方向連走兩步。
@@ -472,6 +600,26 @@ func (a *app) battleMove(d battle.Dir) {
 	}
 }
 
+// unitPanels 是兩支部隊的部隊面板（攻方陣營、守方陣營）。
+func (a *app) unitPanels(units [2]*battle.Unit) *[2]ui.UnitPanel {
+	var panels [2]ui.UnitPanel
+	for i, u := range units {
+		panels[i] = ui.UnitPanel{Unit: u, Portrait: -1}
+		if u == nil {
+			continue
+		}
+		if head := u.Head(); head != nil {
+			if x := a.s.G.General(head.Index); x != nil {
+				panels[i].Portrait = int(x.Portrait)
+				if lord := a.s.G.Lord(x.Faction); lord != nil {
+					panels[i].Lord = lord.Name
+				}
+			}
+		}
+	}
+	return &panels
+}
+
 // battleInfo 是主戰場畫面上那些戰術層自己不知道的東西：郡名、州名、
 // 郡編號、兩軍統帥的姓名與肖像。
 func (a *app) battleInfo() ui.ArtBattleInfo {
@@ -502,22 +650,23 @@ func (a *app) battleInfo() ui.ArtBattleInfo {
 	// 對戰子畫面裡的對白：那時兩塊軍力面板是子畫面裡那兩支部隊的面板
 	// （`docs/spec/005` §8「部隊面板」）。
 	if sp := a.fight.speech(a.artBattle != nil); sp != nil && (sp.Units[0] != nil || sp.Units[1] != nil) {
-		var panels [2]ui.UnitPanel
-		for i, u := range sp.Units {
-			panels[i] = ui.UnitPanel{Unit: u, Portrait: -1}
-			if u == nil {
-				continue
-			}
-			if head := u.Head(); head != nil {
-				if x := a.s.G.General(head.Index); x != nil {
-					panels[i].Portrait = int(x.Portrait)
-					if lord := a.s.G.Lord(x.Faction); lord != nil {
-						panels[i].Lord = lord.Name
-					}
+		info.Units = a.unitPanels(sp.Units)
+	}
+	// 對戰子畫面停下來問玩家的時候畫子畫面：子地圖、將領標記、那兩支
+	// 部隊的面板（`docs/spec/005` §8「對戰子畫面」）。
+	if sk := a.fight.pending.Battle().InSkirmish(); sk != nil {
+		info.Skirmish = sk
+		if info.Units == nil {
+			var pair [2]*battle.Unit
+			for _, u := range sk.Units {
+				if u.Side.Attacking() {
+					pair[0] = u
+				} else {
+					pair[1] = u
 				}
 			}
+			info.Units = a.unitPanels(pair)
 		}
-		info.Units = &panels
 	}
 	// 查看：第三塊面板換成那支部隊第 0 槽那一位（`docs/spec/005` §8「查看」）。
 	if u := a.fight.view.Inspecting; u != nil {
