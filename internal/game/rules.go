@@ -26,6 +26,9 @@ const (
 	MaxRice = 30000
 )
 
+// MaxReliefRice 是玩家開倉賑民一次最多給的米（`0x1b73e`：`cmp ax, 5000`）。
+const MaxReliefRice = 5000
+
 // MinPopulationToConscript 是徵兵需要的人口下限（說明書 p.20、p.37）：
 // 「少於 3000 人就無法徵兵」。
 const MinPopulationToConscript = 3000

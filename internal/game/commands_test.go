@@ -664,15 +664,15 @@ func TestRiceTradeIsSymmetric(t *testing.T) {
 	if p.Gold != 1000 || p.Rice != 1000 {
 		t.Errorf("賣回去之後 金 %d 米 %d，應該回到 1000／1000", p.Gold, p.Rice)
 	}
-	// 換不到一金的零頭留在倉裡。
+	// 換不到一金的零頭被整數除法吃掉：米整份扣掉，金一毛不加（`0x1b5d4`）。
 	g.EndMonth()
 	p.PriceLevel = 50
 	if err := g.SellRice(8, rate-1, 0); err != nil {
 		t.Fatal(err)
 	}
-	if p.Gold != 1000 || p.Rice != 1000 {
-		t.Errorf("賣 %d 米之後 金 %d 米 %d，零頭不該換到錢",
-			rate-1, p.Gold, p.Rice)
+	if p.Gold != 1000 || p.Rice != 1000-(rate-1) {
+		t.Errorf("賣 %d 米之後 金 %d 米 %d，應該是 1000／%d",
+			rate-1, p.Gold, p.Rice, 1000-(rate-1))
 	}
 }
 

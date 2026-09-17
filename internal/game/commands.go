@@ -574,9 +574,10 @@ func (g *State) SellRice(prefectureID, units int, by state.FactionID) error {
 		return ErrNoRice
 	}
 	rate := RicePerGold(p.PriceLevel)
-	gold := units / rate
-	p.Rice -= gold * rate // 換不到一金的零頭留在倉裡
-	p.Gold = clampTo(p.Gold+gold, MaxGold)
+	// 打進去的米整份扣掉，換到的金是整數除法——零頭被吃掉（`0x1b5d4`：`sub es:[郡+0x494], 數量`
+	// 之後 `idiv 換率` 加到金，`L1`：`TestZZCommerceAskMatchesTheOriginal` 賣 123 米）。
+	p.Rice -= units
+	p.Gold = clampTo(p.Gold+units/rate, MaxGold)
 	g.endTurn(p)
 	return nil
 }

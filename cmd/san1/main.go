@@ -138,11 +138,6 @@ type app struct {
 	opening *openingPlayer
 }
 
-// uiReliefGold 是介面上「開倉賑民」一次撥出去的金。**remake 自選**：
-// 原版的量由電腦諸侯的回合預算決定，玩家那一邊的取值還沒讀
-// （`docs/mechanics/70-ai` §2.13.3）。
-const uiReliefGold = 100
-
 func (a *app) Update() error {
 	if a.quit {
 		return ebiten.Termination
@@ -789,11 +784,14 @@ func (a *app) begin(cat, item byte) {
 
 	// ---- 5. 商業 ----
 	case cat == '5' && item == '1':
-		a.run(game.BuyRiceOrder{At: sel, Units: 1000})
+		closeMenu()
+		a.buyRice(sel)
 	case cat == '5' && item == '2':
-		a.run(game.SellRiceOrder{At: sel, Units: 1000})
+		closeMenu()
+		a.sellRice(sel)
 	case cat == '5' && item == '3':
-		a.run(game.ReliefOrder{At: sel, Gold: uiReliefGold})
+		closeMenu()
+		a.relief(sel)
 
 	// ---- 6. 人事 ----
 	case cat == '6' && item == '1':
@@ -855,6 +853,98 @@ func (a *app) begin(cat, item byte) {
 	if len(a.pick) == 0 && a.num == nil {
 		closeMenu()
 	}
+}
+
+// buyRice 是商業→1.買入米糧（`0x1b1b2`）：沒有金印「抱歉, 您沒有金」；一金換 (100 − 物價) ÷ 10 米，
+// 上限 min(金, (30000 − 米) ÷ 換率)，是 0 印「抱歉, 您的糧倉已滿／裝不下了」；問「1 金 = %d 米／您想買
+// 多少金／的米(0-%d):」，0 或取消回選單；買完「%s現有／金:%d 米:%d 」（`DS:0x71ef`）。
+func (a *app) buyRice(sel int) {
+	p := a.s.G.Prefecture(sel)
+	if p == nil {
+		return
+	}
+	if p.Gold <= 0 {
+		a.view.Prompt = t("msg.noGold")
+		return
+	}
+	rate := game.RicePerGold(p.PriceLevel)
+	most := min(p.Gold, (game.MaxRice-p.Rice)/max(rate, 1))
+	if most <= 0 {
+		a.view.Prompt = t("msg.granaryFull")
+		return
+	}
+	a.askBare(tf("ask.buyRice", rate, most), 0, most, func(n int) {
+		if n <= 0 {
+			a.view.Prompt = ""
+			return
+		}
+		a.commerceDone(sel, game.BuyRiceOrder{At: sel, Units: n * rate}, "msg.riceNow")
+	})
+}
+
+// sellRice 是商業→2.賣出米糧（`0x1b442`）：沒有米印「抱歉, 您沒有米」；換率同買入，上限是米與金庫
+// 裝得下的量取小，是 0 印「抱歉, 您的金庫已滿／不能再賣了」；問「%d 米 = 1 金／您想賣多少米／(0-%d):」。
+func (a *app) sellRice(sel int) {
+	p := a.s.G.Prefecture(sel)
+	if p == nil {
+		return
+	}
+	if p.Rice <= 0 {
+		a.view.Prompt = t("msg.noRice")
+		return
+	}
+	rate := game.RicePerGold(p.PriceLevel)
+	most := min(p.Rice, (game.MaxGold-p.Gold)*rate)
+	if most <= 0 {
+		a.view.Prompt = t("msg.treasuryFull")
+		return
+	}
+	a.askBare(tf("ask.sellRice", rate, most), 0, most, func(n int) {
+		if n <= 0 {
+			a.view.Prompt = ""
+			return
+		}
+		a.commerceDone(sel, game.SellRiceOrder{At: sel, Units: n}, "msg.riceNow")
+	})
+}
+
+// relief 是商業→3.開倉賑民（`0x1b6f6`）：沒有米印「抱歉,您沒有米」；上限 min(米, 5000)，問「您給多少米
+// ／(0-%d):」；發完「%s現有%d米／人民忠心:%d 」（`DS:0x72bb`）。
+func (a *app) relief(sel int) {
+	p := a.s.G.Prefecture(sel)
+	if p == nil {
+		return
+	}
+	if p.Rice <= 0 {
+		a.view.Prompt = t("msg.noRiceRelief")
+		return
+	}
+	most := min(p.Rice, game.MaxReliefRice)
+	a.askBare(tf("ask.relief", most), 0, most, func(n int) {
+		if n <= 0 {
+			a.view.Prompt = ""
+			return
+		}
+		a.commerceDone(sel, game.ReliefOrder{At: sel, Gold: n}, "msg.reliefNow")
+	})
+}
+
+// commerceDone 下令，成功之後在對白講完時印「現有」那一句。
+func (a *app) commerceDone(sel int, o game.Order, key string) {
+	g := a.s.G
+	p := g.Prefecture(sel)
+	gold, rice := p.Gold, p.Rice
+	a.run(o)
+	if p.Gold == gold && p.Rice == rice {
+		return // 沒有成交（勸諫後取消或規則層擋下）
+	}
+	var msg string
+	if key == "msg.reliefNow" {
+		msg = tf(key, p.Name, p.Rice, p.PublicLoyalty)
+	} else {
+		msg = tf(key, p.Name, p.Gold, p.Rice)
+	}
+	a.afterBubbles = func() { a.view.Prompt = msg }
 }
 
 // buildFort 是內政→3.建築關寨（`0x1aa7e`）：關寨已有 5 個印「本郡已有%d個關寨／不能再建了」、

@@ -1198,3 +1198,98 @@ func TestZZBuildFortAskMatchesTheOriginal(t *testing.T) {
 	ui.DrawArtSession(plain, b.art, g, nil, v)
 	comparePanels(t, "那一位去", shot, cv, plain, tr, 1)
 }
+
+// TestZZCommerceAskMatchesTheOriginal 商業三項（Issue #91）：買入、賣出、賑民各自在一個新盤面上問數字，
+// 範圍與原版相同、下面板與游標相同；打一個數字之後三張表在結束回合那一刻逐位元組相同。
+func TestZZCommerceAskMatchesTheOriginal(t *testing.T) {
+	cases := []struct {
+		name, key  string
+		gold, rice int
+		prompt     func(p *game.Prefecture, most int) string
+		most       func(p *game.Prefecture) int
+		order      func(at, n int, p *game.Prefecture) game.Order
+		typed      int
+	}{
+		{"買入米糧", "1\r", 1000, 2000,
+			func(p *game.Prefecture, most int) string {
+				return i18n.Sf("ask.buyRice", game.RicePerGold(p.PriceLevel), most)
+			},
+			func(p *game.Prefecture) int {
+				return min(p.Gold, (game.MaxRice-p.Rice)/game.RicePerGold(p.PriceLevel))
+			},
+			func(at, n int, p *game.Prefecture) game.Order {
+				return game.BuyRiceOrder{At: at, Units: n * game.RicePerGold(p.PriceLevel)}
+			}, 123},
+		{"賣出米糧", "2\r", 1000, 2000,
+			func(p *game.Prefecture, most int) string {
+				return i18n.Sf("ask.sellRice", game.RicePerGold(p.PriceLevel), most)
+			},
+			func(p *game.Prefecture) int { return min(p.Rice, (game.MaxGold-p.Gold)*game.RicePerGold(p.PriceLevel)) },
+			func(at, n int, p *game.Prefecture) game.Order { return game.SellRiceOrder{At: at, Units: n} }, 123},
+		{"開倉賑民", "3\r", 1000, 2000,
+			func(p *game.Prefecture, most int) string { return i18n.Sf("ask.relief", most) },
+			func(p *game.Prefecture) int { return min(p.Rice, game.MaxReliefRice) },
+			func(at, n int, p *game.Prefecture) game.Order { return game.ReliefOrder{At: at, Gold: n} }, 123},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b := newPickBoard(t)
+			face := loadFace(t)
+			nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+			pref := b.base + uint32(nMas+b.at*state.PrefectureRecordSize)
+			b.o.SetWord(addr(pref+18), uint16(c.gold))
+			b.o.SetWord(addr(pref+20), uint16(c.rice))
+			total := nMas + nSta + state.GeneralTableSize
+			done := 0
+			var after []byte
+			b.o.OnCall(addr(mainTurnDoneAt), func(o *oracle.Oracle) {
+				if done++; after == nil {
+					after = o.Bytes(addr(b.base), total)
+				}
+			})
+			g := b.game(t)
+			p := g.Prefecture(b.at)
+			b.press(t, "商業", "5\r")
+			ask, shot, tr := b.press(t, c.name, c.key)
+			most := c.most(p)
+			if ask != [2]int{0, most} {
+				t.Fatalf("原版問 %v，remake 0-%d（金 %d 米 %d 物價 %d）", ask, most, p.Gold, p.Rice, p.PriceLevel)
+			}
+			prompt := c.prompt(p, most)
+			render := func(in ui.InputCursor) *ui.Canvas {
+				cv := ui.NewCanvasPx(scrW, scrH, face)
+				ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: prompt, Input: in})
+				return cv
+			}
+			compareLower(t, c.name, shot, render(tr.input()), render(ui.InputCursor{}), tr)
+
+			before := b.o.Bytes(addr(b.base), total)
+			b.o.Drain()
+			b.o.TypeBoth(fmt.Sprintf("%d\r", c.typed))
+			for i := 0; i < 40 && done == 0; i++ {
+				if err := b.o.Run(20_000_000); err != nil {
+					t.Fatal(err)
+				}
+				if done == 0 {
+					b.o.Drain()
+					b.o.TypeBoth(" ")
+				}
+			}
+			if after == nil {
+				t.Fatal("打了數字之後原版沒有結束回合")
+			}
+			if err := c.order(b.at, c.typed, p).Apply(g, b.me); err != nil {
+				t.Fatal(err)
+			}
+			rm, rs, rg, err := g.Tables()
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := append(append(append([]byte{}, rm...), rs...), rg...)
+			t.Logf("原版動到的記錄：%s", changedRecords(before, after, nMas, nSta))
+			if n := diffCount(after, got); n != 0 {
+				t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
+			}
+		})
+	}
+}

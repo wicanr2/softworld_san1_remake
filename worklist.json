@@ -2015,6 +2015,31 @@
       }
     },
     {
+      "id": "commerce-questions",
+      "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/60"
+      ],
+      "note": "`TestZZCommerceAskMatchesTheOriginal` 三項的範圍、下面板、游標與成交後三張表相同；賣米改成整份扣米（R84）。軍師評價在原版是問數字之前、remake 在之後；閘門與成交訊息照碼寫沒有實拍。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/parity",
+        "run": "TestZZCommerceAskMatchesTheOriginal",
+        "tags": "oracle",
+        "needs": [
+          "org_game",
+          "dosgolem-san"
+        ]
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",
