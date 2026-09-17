@@ -262,6 +262,12 @@ func (g *State) BuyArms(prefectureID, generalIndex, units int, by state.FactionI
 // EndMonth 把時間推到下個月，清掉每月一次的旗標，然後跑季節事件。
 // 回傳這個月發生了什麼（`events.go`）。
 func (g *State) EndMonth() []Event {
+	// 電腦自動示範模式（沒有玩家）月底先跑鏡頭，再結算（`0x15828`）。
+	var camera []Event
+	if len(g.Players) == 0 {
+		camera = g.RunDemoCamera()
+		g.markPhase("鏡頭")
+	}
 	g.Date = g.Date.Next()
 	for i := range g.prefectures {
 		g.prefectures[i].Commanded = false
@@ -305,5 +311,5 @@ func (g *State) EndMonth() []Event {
 	g.markPhase("洗牌")
 	out := g.RunSeason()
 	g.markPhase("四季")
-	return out
+	return append(camera, out...)
 }

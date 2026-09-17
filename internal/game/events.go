@@ -86,6 +86,10 @@ type Bubble struct {
 	// （尋訪找到人，`0x1bb2c`–`0x1bbb9`）。
 	WipeIn bool
 
+	// Panel 不是 0 時這一格是右側面板畫那一郡的資料（`0x32fb:0x70`，主畫面
+	// 「郡的資料」那一塊）：示範模式月底的鏡頭用（`0x1e1fc`）。其餘欄位不用。
+	Panel int
+
 	// MapBattle 非 nil 時這一格是大地圖上的戰役動畫（`0x1ecfc`，
 	// `docs/spec/005`「大地圖上的戰役」）：其餘欄位不用。
 	MapBattle *MapBattle

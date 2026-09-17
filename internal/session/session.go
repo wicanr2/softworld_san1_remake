@@ -180,7 +180,7 @@ func (s *Session) PopBubble() {
 // 「名字：對白」），佇列清空。
 func (s *Session) FlushBubbles() {
 	for _, b := range s.Bubbles {
-		if b.FaceOnly || b.Card || b.Scene > 0 || b.MapBattle != nil {
+		if b.FaceOnly || b.Card || b.Scene > 0 || b.Panel != 0 || b.MapBattle != nil {
 			continue // 只亮肖像／資料卡／場景圖的那一格沒有字
 		}
 		name := ""

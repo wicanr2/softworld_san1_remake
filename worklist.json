@@ -1706,6 +1706,29 @@
       }
     },
     {
+      "id": "demo-camera",
+      "title": "示範模式月底的鏡頭：換被看的郡與人、偶數月郡資料面板、奇數月人物卡（0x1e1fc）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/06",
+        "docs/spec/005",
+        "docs/spec/019"
+      ],
+      "note": "`TestZZDemoCameraMatchesTheOriginal` 1–4 月換到的郡／人、排的那一格、之後的亂數狀態相同，右側面板畫面對上；開發期的金米檢查不做。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/game/democamera.go"
+        ],
+        "pattern": "func \\(g \\*State\\) RunDemoCamera"
+      }
+    },
+    {
       "id": "players-0-16",
       "title": "玩家人數 0–16：逐位選君主、照郡順序輪流下令、示範模式（0x12072／0x15763）",
       "group": "規則層",

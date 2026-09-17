@@ -377,6 +377,10 @@ type State struct {
 	// 不是 session 的暫存。
 	turnOrder []int
 
+	// demoPref／demoPerson 是示範模式鏡頭被看的郡與人（`DS:0x771c`／`0x771e`，
+	// `democamera.go`）。原版不存進度。
+	demoPref, demoPerson int
+
 	// randSeed 是原版那條 LCG 的狀態（`MSCRand`）。`randOn` 為真時
 	// `roll`／`Roll` 改抽這一條，抽幾次記在 `randDraws`。
 	//
@@ -576,7 +580,8 @@ func newAt(sc *state.Scenario, players []state.FactionID, difficulty int,
 
 	g := &State{Slot: sc.Slot, Date: start, Player: state.NoFaction,
 		Players: append([]state.FactionID(nil), players...),
-		Edition: ed, Difficulty: difficulty}
+		Edition: ed, Difficulty: difficulty,
+		demoPref: DemoCameraPrefecture, demoPerson: DemoCameraPerson}
 	if len(players) > 0 {
 		g.Player = players[0]
 	}

@@ -109,6 +109,9 @@ type app struct {
 	// lure 是播放中的誘敵特效（主戰場對白佇列裡的那一格）。
 	lure lurePlay
 
+	// bubbleFrames 是示範模式裡目前這一格訊息框停了幾幀。
+	bubbleFrames int
+
 	// newMenu 開一份新的主選單（示範模式按鍵回主選單用）；沒有主選單是 nil。
 	newMenu func() *menu.Screen
 
@@ -161,6 +164,10 @@ func (a *app) Update() error {
 	// （`docs/spec/005` §9）；remake 用按鍵收，登記為 remake 差異。
 	// 沒有原版素材的文字版面畫不出肖像，直接把它們寫進訊息列。
 	if a.s != nil && a.s.Bubble() != nil {
+		demo := len(a.s.G.Players) == 0
+		if demo && anyKeyPressed() && a.endDemo() {
+			return nil
+		}
 		if a.art == nil {
 			a.s.FlushBubbles()
 			a.dirty = true
@@ -176,6 +183,16 @@ func (a *app) Update() error {
 		}
 		if b := a.s.Bubble(); b.Wiped() && a.scenePlayed != b {
 			// 場景圖那一格先拉進來（Draw 那一層起頭），拉完才收鍵。
+			return nil
+		}
+		// 示範模式沒有人按鍵：原版把延遲壓到 2（`es:0x2f72`）自己往下走；
+		// remake 每一格停 demoBubbleFrames 幀（remake 差異），按鍵是結束示範。
+		if demo {
+			if a.bubbleFrames++; a.bubbleFrames >= demoBubbleFrames {
+				a.bubbleFrames = 0
+				a.s.PopBubble()
+				a.dirty = true
+			}
 			return nil
 		}
 		if anyKeyPressed() {
@@ -206,10 +223,7 @@ func (a *app) Update() error {
 	}
 	// 0 人的電腦自動示範模式：一幀推一格，按任意鍵回主選單（`docs/spec/019` §2）。
 	if a.s != nil && len(a.s.G.Players) == 0 {
-		if anyKeyPressed() && a.newMenu != nil {
-			a.s = nil
-			a.view = ui.View{}
-			a.startTitle(a.titleArt, a.newMenu())
+		if anyKeyPressed() && a.endDemo() {
 			return nil
 		}
 		a.s.AdvanceToHuman(1)
@@ -1095,8 +1109,15 @@ func (a *app) paint() {
 		default:
 			a.view.Over = a.s.Over
 			if a.art != nil {
-				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, a.view)
-				if b := a.s.Bubble(); b != nil && b.MapBattle != nil {
+				v := a.view
+				if b := a.s.Bubble(); b != nil && b.Panel != 0 {
+					// 示範模式月底的鏡頭：右側面板畫那一郡的資料（`0x32fb:0x70`）。
+					v.Status, v.Sel, v.HasCard, v.Page = true, b.Panel, false, nil
+				}
+				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, v)
+				if b := a.s.Bubble(); b != nil && b.Panel != 0 {
+					// 面板就是這一格，不畫泡泡。
+				} else if b != nil && b.MapBattle != nil {
 					if p := a.mapBattle; p != nil && p.b == b {
 						ui.DrawMarch(a.canvas, p.m)
 					}
@@ -1412,6 +1433,21 @@ func main() {
 	if err := ebiten.RunGame(a); err != nil {
 		die(err)
 	}
+}
+
+// demoBubbleFrames 是示範模式裡一格訊息框停幾幀（約一秒）。
+const demoBubbleFrames = 60
+
+// endDemo 結束示範模式回主選單；沒有主選單可回就回 false。
+func (a *app) endDemo() bool {
+	if a.newMenu == nil {
+		return false
+	}
+	a.s = nil
+	a.view = ui.View{}
+	a.bubbleFrames = 0
+	a.startTitle(a.titleArt, a.newMenu())
+	return true
 }
 
 // lordName 是一個勢力的君主名字（沒有君主用「勢力 N」）。
