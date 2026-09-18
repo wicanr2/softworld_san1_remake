@@ -712,47 +712,17 @@ func (a *app) begin(cat, item byte) {
 	case cat == '2' && item == '1':
 		a.moveTroops(sel)
 	case cat == '2' && item == '2':
-		// 攻打那一郡（`0x18a42`）：相鄰、有主、主人不同；取消印「取消」。
-		a.askPref(t("ask.attack"), func(to int) bool {
-			q, p := g.Prefecture(to), g.Prefecture(sel)
-			return q != nil && p != nil && g.Adjacent(sel, to) && q.Owned() && q.Owner != p.Owner
-		}, func(to int) {
-			var force []int
-			var keep *game.General
-			for _, x := range g.Garrison(sel) {
-				if x.Faction != s.Player {
-					continue
-				}
-				if keep == nil {
-					keep = x
-					continue
-				}
-				force = append(force, x.Index)
-			}
-			// **玩家親自指揮**：先問攜帶的錢糧（原版 `攜帶多少金`／
-			// `攜帶多少米`，而且把三十天要多少米算給你看），
-			// 再進主戰場。電腦諸侯的戰役還是走 AttackOrder → Auto。
-			closeMenu()
-			p := g.Prefecture(sel)
-			men := g.CampaignForce(force)
-			need := game.RiceForCampaign(men)
-			a.askNumber(t("ask.gold"), tf("hint.gold", p.Gold), p.Gold,
-				func(gold int) {
-					a.askNumber(t("ask.rice"),
-						tf("hint.campaign", p.Rice, men, need), p.Rice,
-						func(rice int) {
-							// 軍師勸諫（`0x18b08`）之後先播 `SCG06`（`0x18b82`），再是兩句
-							// 宣戰（`0x202e1`／`0x20322`），對白收完才進主戰場。
-							a.withAdvice(game.AdviceAttack, sel, game.AdviceTarget{To: to}, func() {
-								a.s.Queue(g.WarScene(sel, s.Player))
-								a.s.Queue(g.WarDeclaration(sel, to, s.Player))
-								a.afterBubbles = func() {
-									a.startBattle(sel, to, force, game.Supply{Gold: gold, Rice: rice})
-								}
-							})
-						})
-				})
-		}, func() { a.view.Prompt = t("msg.cancel") })
+		// 從那一郡攻打（`0x18998`，主事者是君主才問）→ 攻打那一郡（`0x18a42`）：
+		// 相鄰、有主、主人不同；取消印「取消」。
+		closeMenu()
+		a.askSource(sel, t("ask.attackFrom"), func(src int) {
+			a.askPref(t("ask.attack"), func(to int) bool {
+				q, p := g.Prefecture(to), g.Prefecture(src)
+				return q != nil && p != nil && g.Adjacent(src, to) && q.Owned() && q.Owner != p.Owner
+			}, func(to int) {
+				a.attackFrom(sel, src, to)
+			}, func() { a.view.Sel = sel })
+		})
 	case cat == '2' && item == '3':
 		a.transport()
 
@@ -2039,23 +2009,78 @@ func (a *app) transport() {
 			a.askNumber(head, tf("hint.gold", goldMax), goldMax, func(gold int) {
 				riceHead := head + tf("pick.range", 0, goldMax) + strconv.Itoa(gold) + t("ask.sendRice")
 				a.askNumber(riceHead, tf("hint.rice", riceMax), riceMax, func(rice int) {
-					a.run(game.TransportOrder{At: src, To: to, Gold: gold, Rice: rice})
+					a.run(game.TransportOrder{At: at, From: src, To: to, Gold: gold, Rice: rice})
 				})
 			})
 		}, nil)
 	}
-	// 主事者是君主本人才問「從那一郡送出」（`0x19019`）；否則來源就是這一郡。
-	if gov := g.Governor(at); gov != nil && gov.Status == state.StatusLord {
-		a.askPref(t("ask.sendFrom"), func(pref int) bool { return pref == at }, to, nil)
-		return
-	}
-	to(at)
+	a.askSource(at, t("ask.sendFrom"), to)
 }
 
 // moveTroops 是調動軍隊（`0x18bc8`）：主事者是君主時先問「從那一郡移出」（remake 只收
 // 下令的郡，Issue #82）→「調到那一郡」（相鄰、無主或同一個主人）→ 多選「調動那一位」
 // （模式 2、第三欄兵士，最多 50 − 目標郡的現役將數）→「\n共調%d位將軍」接「\n金(0-%d):」
 // →「\n米(0-%d):」；任何一格取消都收掉這道命令。
+// attackFrom 是發動戰役選完來源與目標之後那一段（`0x18a9c` 起）：問攜帶的金米、
+// 軍師勸諫、宣戰對白，然後進主戰場。**回合記在下令的郡 at，出兵的是 src**（Issue #82）。
+func (a *app) attackFrom(at, src, to int) {
+	g, s := a.s.G, a.s
+	var force []int
+	var keep *game.General
+	for _, x := range g.Garrison(src) {
+		if x.Faction != s.Player {
+			continue
+		}
+		if keep == nil {
+			keep = x
+			continue
+		}
+		force = append(force, x.Index)
+	}
+	// **玩家親自指揮**：先問攜帶的錢糧（原版 `攜帶多少金`／`攜帶多少米`，而且把
+	// 三十天要多少米算給你看），再進主戰場。電腦諸侯的戰役還是走 AttackOrder → Auto。
+	p := g.Prefecture(src)
+	men := g.CampaignForce(force)
+	need := game.RiceForCampaign(men)
+	a.askNumber(t("ask.gold"), tf("hint.gold", p.Gold), p.Gold, func(gold int) {
+		a.askNumber(t("ask.rice"), tf("hint.campaign", p.Rice, men, need), p.Rice, func(rice int) {
+			// 軍師勸諫（`0x18b08`）之後先播 `SCG06`（`0x18b82`），再是兩句
+			// 宣戰（`0x202e1`／`0x20322`），對白收完才進主戰場。
+			a.withAdvice(game.AdviceAttack, src, game.AdviceTarget{To: to}, func() {
+				s.Queue(g.WarScene(src, s.Player))
+				s.Queue(g.WarDeclaration(src, to, s.Player))
+				a.afterBubbles = func() {
+					a.startBattle(at, src, to, force, game.Supply{Gold: gold, Rice: rice})
+				}
+			})
+		})
+	})
+}
+
+// askSource 是「從那一郡攻打／移出／送出」（`0x18998`／`0x18c6d`／`0x19092`，Issue #82）：
+// **只在下令那一郡的主事者是君主本人時才問**（`0x18bf4`／`0x18ff9`），收的是任何自己的郡，
+// 不限下令的那一郡；挑到之後地圖與右側面板換成來源郡（`0x18c8d`）。回合仍記在下令的郡——
+// 郡回合入口 `0x1746e` 沒有「這個月下過令」的旗標，來源郡自己那一次還在。
+func (a *app) askSource(sel int, prompt string, then func(src int)) {
+	g := a.s.G
+	home := g.Prefecture(sel)
+	if home == nil {
+		return
+	}
+	gov := g.Governor(sel)
+	if gov == nil || gov.Status != state.StatusLord {
+		then(sel)
+		return
+	}
+	a.askPref(prompt, func(id int) bool {
+		q := g.Prefecture(id)
+		return q != nil && q.Owned() && q.Owner == home.Owner
+	}, func(src int) {
+		a.view.Sel = src
+		then(src)
+	}, func() { a.view.Sel = sel })
+}
+
 func (a *app) moveTroops(sel int) {
 	g := a.s.G
 	next := func(src int) {
@@ -2071,17 +2096,13 @@ func (a *app) moveTroops(sel int) {
 				a.askNumber(head, "", gold, func(gd int) {
 					riceHead := head + tf("pick.range", 0, gold) + strconv.Itoa(gd) + t("ask.sendRice")
 					a.askNumber(riceHead, "", rice, func(rc int) {
-						a.run(game.MoveOrder{At: src, To: to, Generals: list, Gold: gd, Rice: rc})
+						a.run(game.MoveOrder{At: sel, From: src, To: to, Generals: list, Gold: gd, Rice: rc})
 					})
 				})
 			}, nil)
 		}, nil)
 	}
-	if gov := g.Governor(sel); gov != nil && gov.Status == state.StatusLord {
-		a.askPref(t("ask.moveFrom"), func(pref int) bool { return pref == sel }, next, nil)
-		return
-	}
-	next(sel)
+	a.askSource(sel, t("ask.moveFrom"), next)
 }
 
 // plotFlow 是計略（類別 8）的問法（`docs/spec/014` §4.4）：每一種先用挑郡清單問郡、有的問兩三個，

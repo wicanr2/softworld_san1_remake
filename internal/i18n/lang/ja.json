@@ -5,6 +5,7 @@
   "ask.aiOrders": "コンピュータの命令数",
   "ask.arms": "誰が武具を買いますか",
   "ask.attack": "どの州郡を攻めますか\n",
+  "ask.attackFrom": "どの州郡から攻めますか\n",
   "ask.autonomy": "%sの統治\n1.%s 2.%s\n3.%s 4.%s\nどれ:",
   "ask.autonomyPref": "どの州郡に自治を許しますか\n",
   "ask.buyRice": "1金 = %d米\n何金分の米を\n買いますか(0-%d):",

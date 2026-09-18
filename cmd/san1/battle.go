@@ -314,8 +314,10 @@ func (w waitFor) takesYN() bool {
 }
 
 // startBattle 開一場由玩家指揮的戰役。
-func (a *app) startBattle(from, to int, force []int, sup game.Supply) {
-	if w := a.s.Waiting(); w != 0 && from != w {
+// startBattle 開一場玩家親自指揮的戰役。**at 是下令的郡（回合記在它身上），from 是出兵的郡**
+// ——原版「從那一郡攻打」收任何自己的郡（Issue #82）。
+func (a *app) startBattle(at, from, to int, force []int, sup game.Supply) {
+	if w := a.s.Waiting(); w != 0 && at != w {
 		a.view.Prompt = tf("msg.notThisPref", prefName(a.s.G, w))
 		return
 	}

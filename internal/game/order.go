@@ -165,9 +165,13 @@ func (o RecruitOrder) Describe(g *State) string {
 //
 // **結果不在 Describe 裡**：`Apply` 之後要拿結果的呼叫端應該直接用
 // `State.Attack`。命令層只保證「這一步做了什麼」。
+// AttackOrder 是發動戰役。**At 是下令的郡（回合記在它身上），From 是出兵的郡**——
+// 原版「從那一郡攻打」（`0x18998`）收任何自己的郡，`From` 是 0 就與 At 相同。
+// 郡回合入口 `0x1746e` 只擋無主與非玩家控制，**沒有「這個月下過令」的旗標**，
+// 所以來源郡自己那一次回合還在（月順序是洗過的，`0x1740a`；Issue #82）。
 type AttackOrder struct {
-	At, To int
-	Force  []int
+	At, From, To int
+	Force        []int
 
 	// Keep 非 nil 時 Force 不用：出征的名單由戰役入口的整編決定
 	// （原版電腦出兵的路，`ComputerAttack`），這個函式給的是整編那一刻
@@ -176,16 +180,25 @@ type AttackOrder struct {
 }
 
 func (o AttackOrder) Prefecture() int { return o.At }
+
+// src 是出兵的郡：沒指定就是下令的郡。
+func (o AttackOrder) src() int {
+	if o.From != 0 {
+		return o.From
+	}
+	return o.At
+}
+
 func (o AttackOrder) Apply(g *State, by state.FactionID) error {
 	if o.Keep != nil {
-		_, err := g.ComputerAttack(o.At, o.To, by, o.Keep)
+		_, err := g.ComputerAttack(o.src(), o.To, by, o.Keep)
 		return err
 	}
-	_, err := g.Attack(o.At, o.To, o.Force, by)
+	_, err := g.Attack(o.src(), o.To, o.Force, by)
 	return err
 }
 func (o AttackOrder) Describe(g *State) string {
-	return tf("log.attack", prefName(g, o.At), prefName(g, o.To))
+	return tf("log.attack", prefName(g, o.src()), prefName(g, o.To))
 }
 
 func byWhom(g *State, index int) string {
@@ -270,16 +283,27 @@ func (g *State) ApplyAll(orders []Order, by state.FactionID) (int, error) {
 // ---- 其餘的命令型別 ------------------------------------------------------
 
 // MoveOrder 是玩家的「調動軍隊」：Generals 是多選清單挑的那一份（`game.Move`）。
+// MoveOrder 是調動軍隊。**At 是下令的郡，From 是移出的郡**（`0x18c6d`「從那一郡移出」
+// 收任何自己的郡；Issue #82）。From 是 0 就與 At 相同。
 type MoveOrder struct {
-	At, To     int
-	Generals   []int
-	Gold, Rice int
+	At, From, To int
+	Generals     []int
+	Gold, Rice   int
 }
 
 func (o MoveOrder) Prefecture() int { return o.At }
+
+// src 是移出的郡：沒指定就是下令的郡。
+func (o MoveOrder) src() int {
+	if o.From != 0 {
+		return o.From
+	}
+	return o.At
+}
+
 func (o MoveOrder) Apply(g *State, by state.FactionID) error {
-	g.commandScene(o.At, assets.SceneMove, by) // `0x18f99`
-	return g.Move(o.At, o.To, o.Generals, o.Gold, o.Rice, by)
+	g.commandScene(o.src(), assets.SceneMove, by) // `0x18f99`
+	return g.Move(o.src(), o.To, o.Generals, o.Gold, o.Rice, by)
 }
 func (o MoveOrder) Describe(g *State) string {
 	lead := -1
@@ -317,19 +341,30 @@ func (o RelocateOrder) Describe(g *State) string {
 		prefName(g, o.At), prefName(g, o.To))
 }
 
+// TransportOrder 是運送錢糧。**At 是下令的郡，From 是送出的郡**（`0x19092`「從那一郡送出」
+// 收任何自己的郡；Issue #82）。From 是 0 就與 At 相同。
 type TransportOrder struct {
-	At, To     int
-	Gold, Rice int
+	At, From, To int
+	Gold, Rice   int
 }
 
 func (o TransportOrder) Prefecture() int { return o.At }
+
+// src 是送出的郡：沒指定就是下令的郡。
+func (o TransportOrder) src() int {
+	if o.From != 0 {
+		return o.From
+	}
+	return o.At
+}
+
 func (o TransportOrder) Apply(g *State, by state.FactionID) error {
-	g.commandScene(o.At, assets.SceneMove, by) // `0x19273`
-	return g.Transport(o.At, o.To, o.Gold, o.Rice, by)
+	g.commandScene(o.src(), assets.SceneMove, by) // `0x19273`
+	return g.Transport(o.src(), o.To, o.Gold, o.Rice, by)
 }
 func (o TransportOrder) Describe(g *State) string {
 	return tf("log.transport",
-		prefName(g, o.At), prefName(g, o.To), o.Gold, o.Rice)
+		prefName(g, o.src()), prefName(g, o.To), o.Gold, o.Rice)
 }
 
 type RedistributeOrder struct {

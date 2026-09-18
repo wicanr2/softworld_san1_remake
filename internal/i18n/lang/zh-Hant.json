@@ -5,6 +5,7 @@
   "ask.aiOrders": "電腦一次幾道指令",
   "ask.arms": "那一位將軍要買武器\n",
   "ask.attack": "攻打那一郡\n",
+  "ask.attackFrom": "從那一郡攻打\n",
   "ask.autonomy": "授權%s\n1.%s 2.%s\n3.%s 4.%s\n那一種:",
   "ask.autonomyPref": "授權自冶那一郡\n",
   "ask.buyRice": "1 金 = %d 米\n您想買多少金\n的米(0-%d):",

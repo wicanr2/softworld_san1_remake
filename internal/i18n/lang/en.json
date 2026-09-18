@@ -5,6 +5,7 @@
   "ask.aiOrders": "Orders per prefecture",
   "ask.arms": "Who buys arms?",
   "ask.attack": "Attack which prefecture?\n",
+  "ask.attackFrom": "Attack from which prefecture?\n",
   "ask.autonomy": "Delegate %s\n1.%s 2.%s\n3.%s 4.%s\nWhich:",
   "ask.autonomyPref": "Delegate which prefecture?\n",
   "ask.buyRice": "1 gold = %d rice\nHow much gold\nto spend (0-%d):",

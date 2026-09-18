@@ -1597,3 +1597,144 @@ func TestZZMainPromptMatchesTheOriginal(t *testing.T) {
 	again, trAgain := append([]uint8(nil), b.o.IndexedEGASize(scrW, scrH)...), *b.tr
 	compareLower(t, "取消之後的主提示", again, render(prompt, trAgain.input()), render(prompt, ui.InputCursor{}), trAgain)
 }
+
+// TestZZMoveFromAnotherPrefectureMatchesTheOriginal 調動軍隊的「從那一郡移出」（Issue #82）：
+// 清單收**任何自己的郡**（字色逐郡），從別的郡搬完之後三張表逐位元組相同，
+// 而且回合記在**下令的那一郡**（結束回合一次、月份不變）。
+func TestZZMoveFromAnotherPrefectureMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	lord := int(b.o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
+	// 三位：來源郡的主事者、要搬的那一位、目的地的主事者。
+	var movers []int
+	for i := len(b.people) - 1; i >= 0 && len(movers) < 3; i-- {
+		if b.people[i] != lord {
+			movers = append(movers, b.people[i])
+		}
+	}
+	if len(movers) < 3 {
+		t.Fatalf("盤面上只有 %d 位可以擺", len(movers))
+	}
+	// 來源郡的編號要比下令的郡大，月迴圈才還沒走過它；目的地是來源的鄰郡。
+	g0 := b.game(t)
+	src := 0
+	for id := b.at + 1; id <= state.PrefectureCount && src == 0; id++ {
+		if len(g0.Prefecture(id).Neighbours) > 0 {
+			src = id
+		}
+	}
+	if src == 0 {
+		t.Fatalf("郡 %d 後面沒有郡可以當來源", b.at)
+	}
+	dest := g0.Prefecture(src).Neighbours[0]
+	gen := func(i int) uint32 { return b.base + uint32(nMas+nSta+i*state.GeneralRecordSize) }
+	pref := func(id int) uint32 { return b.base + uint32(nMas+id*state.PrefectureRecordSize) }
+	for _, i := range movers[:2] {
+		b.o.SetByte(addr(gen(i)+19), uint8(src))
+	}
+	b.o.SetByte(addr(gen(movers[0])+17), uint8(state.StatusGovernor))
+	b.o.SetByte(addr(pref(src)+30), uint8(b.me))
+	b.o.SetWord(addr(pref(src)+32), uint16(movers[0]))
+	// **目的地也要先有主事者**：搬進無主（或沒有主事者）的郡等於佔領，
+	// 原版接著問「選擇新任太守」（那是 #84 的範圍，這一支要避開）。
+	b.o.SetByte(addr(gen(movers[2])+19), uint8(dest))
+	b.o.SetByte(addr(gen(movers[2])+17), uint8(state.StatusGovernor))
+	b.o.SetByte(addr(pref(dest)+30), uint8(b.me))
+	b.o.SetWord(addr(pref(dest)+32), uint16(movers[2]))
+	g := b.game(t)
+	total := nMas + nSta + state.GeneralTableSize
+	done := 0
+	var after []byte
+	b.o.OnCall(addr(mainTurnDoneAt), func(o *oracle.Oracle) {
+		if done++; after == nil {
+			after = o.Bytes(addr(b.base), total)
+		}
+	})
+	ds := uint32(b.o.DSReg()) * 16
+	month := func() (int, int) {
+		seg := uint32(b.o.Word(addr(ds + 0xa72e)))
+		return int(b.o.Word(addr(seg*16 + 0x3140))), int(b.o.Word(addr(seg*16 + 0x3f08)))
+	}
+	y0, m0 := month()
+
+	b.press(t, "軍事", "2\r")
+	ask, shot, tr := b.press(t, "調動軍隊", "1\r")
+	if ask != [2]int{1, 42} {
+		t.Fatalf("第一問是 %v，該是「從那一郡移出」(1-42)", ask)
+	}
+	home := g.Prefecture(b.at)
+	pp := &ui.PrefPick{}
+	mine := 0
+	for id := 1; id <= 42; id++ {
+		q := g.Prefecture(id)
+		pp.Valid[id] = q != nil && q.Owned() && q.Owner == home.Owner
+		if pp.Valid[id] {
+			mine++
+		}
+	}
+	if !pp.Valid[src] || !pp.Valid[b.at] || mine < 2 {
+		t.Fatalf("清單：來源 %d %v、下令的郡 %d %v，自己的郡 %d 個", src, pp.Valid[src], b.at, pp.Valid[b.at], mine)
+	}
+	p := i18n.S("ask.moveFrom") + i18n.Sf("pick.range", 1, 42)
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp, Input: tr.input()})
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, ui.View{Sel: b.at, Prompt: p, PrefPick: pp})
+	comparePanels(t, "從那一郡移出", shot, cv, plain, tr, 1, prefText...)
+	comparePrefColors(t, "從那一郡移出", shot, cv)
+
+	b.press(t, "來源郡", fmt.Sprintf("%d\r", src))
+	b.press(t, "調到那一郡", fmt.Sprintf("%d\r", dest))
+	// **不要搬走主事者**，否則接著要答「選擇新任太守」（那是 #84）。
+	row := 0
+	for i, x := range g.PickRoster(src, game.PickServing, game.PickByStatus) {
+		if x.Index == movers[1] {
+			row = i + 1
+		}
+	}
+	if row == 0 {
+		t.Fatalf("來源郡的名單裡沒有 %d", movers[1])
+	}
+	// 原版自己的名單（`0x18272`：段 `DS:[0xa79c]` 的 `0x58c`，筆數段 `DS:[0xa7a0]` 的 `0x0c`）。
+	lst, cnt := b.o.Word(addr(ds+0xa79c)), b.o.Word(addr(ds+0xa7a0))
+	var orig []int
+	for i := 0; i < int(b.o.Word(oracle.Addr{Seg: cnt, Off: 0x0c})); i++ {
+		orig = append(orig, int(b.o.Word(oracle.Addr{Seg: lst, Off: uint16(0x58c + 2*i)})))
+	}
+	t.Logf("主事者 %d、要搬的 %d；原版名單 %v，remake 算的第 %d 列", movers[0], movers[1], orig, row)
+	b.press(t, "挑一位", fmt.Sprintf("%d\r", row))
+	b.press(t, "交出名單", "\r")
+	b.press(t, "金", "0\r")
+	before := b.o.Bytes(addr(b.base), total)
+	b.o.Drain()
+	b.o.TypeBoth("0\r")
+	for i := 0; i < 40 && done == 0; i++ {
+		if err := b.o.Run(20_000_000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if after == nil {
+		t.Fatalf("米 0 之後原版沒有結束回合；這一段的提問串 %v", (*b.asks)[len(*b.asks)-3:])
+	}
+	if y1, m1 := month(); y1 != y0 || m1 != m0 {
+		t.Fatalf("結束回合那一刻已經換月（%d/%d → %d/%d），量不到回合記在誰身上", y0, m0, y1, m1)
+	}
+	o := game.MoveOrder{At: b.at, From: src, To: dest, Generals: []int{movers[1]}}
+	if o.Prefecture() != b.at {
+		t.Errorf("回合記在 %d，該記在下令的郡 %d", o.Prefecture(), b.at)
+	}
+	if err := o.Apply(g, b.me); err != nil {
+		t.Fatal(err)
+	}
+	rm, rs, rg, err := g.Tables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := append(append(append([]byte{}, rm...), rs...), rg...)
+	t.Logf("下令的郡 %d、來源 %d、目的地 %d；原版動到的記錄：%s", b.at, src, dest,
+		changedRecords(before, after, nMas, nSta))
+	if n := diffCount(after, got); n != 0 {
+		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
+	}
+}

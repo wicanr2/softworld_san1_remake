@@ -2088,6 +2088,28 @@
       }
     },
     {
+      "id": "source-prefecture",
+      "title": "發動戰役／調動軍隊／運送錢糧的「從那一郡」收任何自己的郡；回合記在下令的郡",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/40"
+      ],
+      "note": "`TestZZMoveFromAnotherPrefectureMatchesTheOriginal` 來源清單與字色相同、從別的郡搬完三張表逐位元組相同、結束回合一次且月份不變。量到原版沒有「這個月下過令」的旗標（`0x1746e`），月順序是洗過的（`0x1740a`），所以來源郡自己的回合還在。運送與發動戰役共用 `askSource`，那兩條沒有各自的對拍。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "cmd/san1/main.go"
+        ],
+        "pattern": "func \\(a \\*app\\) askSource"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",
