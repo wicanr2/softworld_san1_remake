@@ -614,8 +614,13 @@ func (a *app) battleKeyStep(k byte) {
 		case 'Y':
 			if f.waiting == waitRestYN {
 				done(b.Rest(f.acting))
+			} else if err := b.Retreat(f.acting); battle.RetreatCancelled(err) {
+				// 玩家在「逃向那一郡」挑了取消（原版空欄位 Enter，
+				// `0x2416a`）：那一支留在戰場、回到命令提示，
+				// **不印錯誤**——取消不是失敗。
+				backToCommand("")
 			} else {
-				done(b.Retreat(f.acting))
+				done(err)
 			}
 		case 'N', '\r':
 			backToCommand("")
