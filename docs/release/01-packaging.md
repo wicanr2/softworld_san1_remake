@@ -36,7 +36,11 @@ dosgolem，所以那一段要 `GOWORK=off`——而關掉之後就吃 `go.sum` �
 
 ```
 san1[.exe]        引擎（**三個平台同名**，平台後綴只在建置目錄裡）
-fonts/unifont.hex.gz  點陣字型（自由授權，不是原版字模）
+fonts/*.hex.gz        四套點陣字型（自由授權，不是原版字模）
+                      unifont（預設）、ascii6x10（小字級）、
+                      kai／li（主選單「使用楷書字／使用隸書字」，Issue #71）
+fonts/LICENSE-*.txt   四套各自的授權；kai／li 是 **GPL v2、沒有字型例外**，
+                      `LICENSE-wangfonts.txt` 少了就是散布違反條款
 LICENSE           RRSAL-1.0
 README.md
 如何開始.txt

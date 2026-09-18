@@ -59,6 +59,12 @@ type Screen struct {
 	saveDir string
 	tracks  int
 
+	// OnFont 是「使用楷書字／使用隸書字」按下去要做的事（Issue #65 的鄰居
+	// Issue #71）：0 ＝ 楷書、1 ＝ 隸書。原版換完字型**直接重畫主選單、
+	// 不印任何訊息**（`0x11bb4`／`0x11bc2` → `0x33d8:0x15a`），所以這裡
+	// 也不換層。nil 表示呼叫端沒接（字型換不了），那時退回說明一句。
+	OnFont func(kind int)
+
 	stage Stage
 	sel   int // 主選單反白的項目
 	pick  int // 子清單反白的項目
@@ -242,7 +248,11 @@ func (s *Screen) menuPick(i int) {
 	case 1:
 		s.pickSave()
 	case 2, 3:
-		s.note(i18n.S("title.font"), i18n.S("title.fontNote"))
+		if s.OnFont == nil {
+			s.note(i18n.S("title.font"), i18n.S("title.fontNote"))
+			return
+		}
+		s.OnFont(i - 2)
 	case 4:
 		// 音樂欣賞：原版不換畫面，直牌換「音樂欣賞」、六個按鈕換五個曲名與一條空白
 		// （`0x145ca`，`docs/spec/005` §6.6）。沒有配樂照樣列出來，選了不出聲。

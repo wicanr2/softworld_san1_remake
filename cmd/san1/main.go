@@ -98,6 +98,13 @@ type app struct {
 	// menuScreen 非 nil 表示停在主選單那一層（開場詞按完就到這裡）；
 	// titleArt 是那一張的底圖。
 	menuScreen *menu.Screen
+
+	// fontDir 是字型檔放哪（`-font` 的目錄）；fontKind 是現在用哪一套
+	// （`game.FontKai`／`FontLi`，Issue #71）。fontCache 收已經讀進來的，
+	// 換回上一套不必重讀（一份 1.7 MB）。
+	fontDir   string
+	fontKind  int
+	fontCache map[int]*font.Face
 	titleArt   *ui.TitleScreen
 	// titleAnimTick／Frame 驅動主選單 `CURA0`～`CURA5` 的六格循環。
 	titleAnimTick, titleAnimFrame int
@@ -1773,6 +1780,11 @@ func main() {
 		art:     art,
 	}
 	a.canvas.SetSmallFace(small)
+	// 主選單那兩項字型（Issue #71）與存檔裡記的那一套。
+	a.fontDir = filepath.Dir(*fontPath)
+	if s != nil {
+		a.setFont(s.G.Options.Font)
+	}
 	a.artBattle = artBattle
 	a.marchArt = marchArt
 	a.c2 = c
@@ -1799,7 +1811,11 @@ func main() {
 	// `-load`／`-orig-load` 是「我要那一局」，中間再問一次沒有道理，
 	// 而 `-title=false` 是給截圖與腳本用的。
 	if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
-		a.newMenu = func() *menu.Screen { return menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len()) }
+		a.newMenu = func() *menu.Screen {
+			m := menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len())
+			m.OnFont = a.setFont
+			return m
+		}
 		a.startTitle(titleScreen, a.newMenu())
 		if openArt != nil {
 			a.opening = newOpeningPlayer(openArt)
@@ -2019,6 +2035,42 @@ func cloneCanvas(src *image.RGBA) *image.RGBA {
 // loadSmallFace 讀小字級（與大字型同一個目錄的 `ascii6x10.hex.gz`）。
 // **讀不到不是錯誤**：沒有小字級只是英文在原版版面放不下的地方照原尺寸
 // 退回別的排法（`docs/spec/014` §3.2），不該擋著開遊戲。
+// setFont 換主選單那兩項指定的字模（Issue #71）：原版換完**直接重畫、
+// 不印訊息**（`0x11bb4`／`0x11bc2`）。讀不到就留著現在這一套並說一句
+// ——悄悄不換的話，玩家看到的是「這個選項沒作用」。
+func (a *app) setFont(kind int) {
+	if kind == a.fontKind {
+		a.dirty = true
+		return
+	}
+	name := game.FontFile(kind)
+	if name == "" {
+		return
+	}
+	f := a.fontCache[kind]
+	if f == nil {
+		fh, err := os.Open(filepath.Join(a.fontDir, name))
+		if err == nil {
+			f, err = font.ParseHexGz(fh, 16)
+			fh.Close()
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "san1: %s 讀不進來，字型不換：%v\n", name, err)
+			return
+		}
+		if a.fontCache == nil {
+			a.fontCache = map[int]*font.Face{}
+		}
+		a.fontCache[kind] = f
+	}
+	a.fontKind = kind
+	a.canvas.SetFace(f)
+	if a.s != nil {
+		a.s.G.Options.Font = kind
+	}
+	a.dirty = true
+}
+
 func loadSmallFace(bigFont string) *font.Face {
 	p := filepath.Join(filepath.Dir(bigFont), "ascii6x10.hex.gz")
 	fh, err := os.Open(p)

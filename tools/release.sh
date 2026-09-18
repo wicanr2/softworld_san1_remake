@@ -42,11 +42,15 @@ stage() {
   cp "$ROOT/LICENSE" "$d/"
   cp "$ROOT/README.md" "$d/"
   mkdir -p "$d/fonts"
-  # 兩套字型與**它們各自的授權**一起帶：unifont 是 GPL v2 ＋ 字型例外，
+  # 四套字型與**它們各自的授權**一起帶：unifont 是 GPL v2 ＋ 字型例外，
   # 授權文字要跟著字型走（先前只帶了字型本身）。ascii6x10 是英文在原版
-  # 版面放不下時的小字級（docs/spec/014 §3.2）。
+  # 版面放不下時的小字級（docs/spec/014 §3.2）。kai／li 是主選單那兩項
+  # 切換的楷書與隸書（Issue #71），**GPL v2、沒有字型例外**，所以
+  # `LICENSE-wangfonts.txt` 一定要在包裡——少了它就是散布違反條款。
   cp "$ROOT/fonts/unifont.hex.gz" "$ROOT/fonts/ascii6x10.hex.gz" \
-     "$ROOT/fonts/LICENSE-unifont.txt" "$ROOT/fonts/LICENSE-x11-misc-fixed.txt" "$d/fonts/"
+     "$ROOT/fonts/kai.hex.gz" "$ROOT/fonts/li.hex.gz" \
+     "$ROOT/fonts/LICENSE-unifont.txt" "$ROOT/fonts/LICENSE-x11-misc-fixed.txt" \
+     "$ROOT/fonts/LICENSE-wangfonts.txt" "$d/fonts/"
   cat > "$d/如何開始.txt" <<'TXT'
 三國演義 remake
 

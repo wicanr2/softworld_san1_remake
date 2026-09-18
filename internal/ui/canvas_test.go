@@ -34,6 +34,22 @@ func testFace(t *testing.T) *font.Face {
 	return f
 }
 
+// namedFace 讀 `fonts/` 底下指定的一份 16×16 點陣字型（主選單那兩套，
+// Issue #71）。
+func namedFace(t *testing.T, name string) *font.Face {
+	t.Helper()
+	fh, err := os.Open("../../fonts/" + name)
+	if err != nil {
+		t.Skipf("沒有 %s：%v", name, err)
+	}
+	defer fh.Close()
+	f, err := font.ParseHexGz(fh, 16)
+	if err != nil {
+		t.Fatalf("%s 載入失敗：%v", name, err)
+	}
+	return f
+}
+
 // testSmallFace 讀小字級（6×10）。
 func testSmallFace(t *testing.T) *font.Face {
 	t.Helper()

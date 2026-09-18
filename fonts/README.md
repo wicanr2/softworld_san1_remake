@@ -8,8 +8,29 @@
 
 | 檔 | 來源 | 授權 | 用途 |
 |---|---|---|---|
-| `unifont.hex.gz` | GNU Unifont 16×16 點陣 | GPL v2 ＋ 字型例外，見 `LICENSE-unifont.txt` | 繁中、日文漢字 |
+| `unifont.hex.gz` | GNU Unifont 16×16 點陣 | GPL v2 ＋ 字型例外，見 `LICENSE-unifont.txt` | 繁中、日文漢字（預設）|
 | `ascii6x10.hex.gz` | X11 misc-fixed 6×10 | 公有領域，見 `LICENSE-x11-misc-fixed.txt` | 原尺寸放不下的地方的小字級 |
+| `kai.hex.gz` | 王漢宗顏楷體繁（`wt064.ttf`）點陣化 | **GPL v2**（沒有字型例外），見 `LICENSE-wangfonts.txt` | 主選單「3 使用楷書字」|
+| `li.hex.gz` | 王漢宗中隸書繁（`wt021.ttf`）點陣化 | **GPL v2**（沒有字型例外），見 `LICENSE-wangfonts.txt` | 主選單「4 使用隸書字」|
+
+## 可切換的兩套（Issue #71）
+
+原版主選單的第三、四項換的是 `ZHONG.PAT`／`YING.PAT`（`0x11bb4`／`0x11bc2`
+→ `0x33d8:0x15a`）。remake 不內嵌原版字模，改成兩套自由授權字型：
+
+- 來源在 `~/cht/cht_fonts/wangfonts-1.3.0`，用 `tools/mkhexfont` 點陣化成 16×16。
+- **碼位與字寬照 `unifont.hex.gz`**：少一個碼位在畫面上是空白，
+  而空白看起來像排版問題；字寬變了整個版面跟著跑
+  （`TestSwitchableFontsCoverTheSameRunes`）。TTF 裡沒有的碼位沿用 unifont
+  的字模（兩套各有約 11.2 萬個碼位是這樣來的，Big5 範圍的 1.3 萬個才是新畫的）。
+- **點陣化要超取樣**：楷書與隸書是毛筆字，一筆在 16 像素高的框裡只有一個
+  像素寬。直接用 16 點渲染，反鋸齒會把同一筆切成一段一段——看起來像雜訊
+  不像字。`mkhexfont` 先用 3 倍字級畫再按覆蓋率（0.35）降取樣。
+- **這兩套是 GPL v2，而且沒有字型例外**。程式只在執行時讀檔，不內嵌
+  （`cmd/san1` 的 `-font` 指目錄），發行包把 `LICENSE-wangfonts.txt`
+  一起帶著。remake 自己的程式碼仍是 RRSAL-1.0。
+- 16×16 的毛筆字必然比原版字模粗糙，這是尺寸的限制不是取捨錯誤；
+  要更好看只能加大字級，而字級是原版版面定的。
 
 ## 格式
 

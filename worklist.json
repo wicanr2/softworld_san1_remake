@@ -2175,6 +2175,26 @@
       }
     },
     {
+      "id": "switchable-fonts",
+      "title": "主選單「使用楷書字／使用隸書字」真的換字型（0x11bb4／0x11bc2）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "fonts/README.md"
+      ],
+      "note": "原版換完字型直接重畫主選單、不印訊息。remake 不內嵌原版字模，改用王漢宗顏楷體與中隸書（GPL v2，**沒有字型例外**）點陣化的兩套 16×16；`tools/mkhexfont` 照 unifont 的碼位與字寬產生，TTF 沒有的碼位沿用 unifont。點陣化要先用 3 倍字級畫再按覆蓋率降取樣——毛筆字直接用 16 點渲染會被反鋸齒切成一段一段。設定記在 `Options.Font` 並進存檔；`FontDefault` 是「沒挑過」，因為原版開機用哪一套沒量過。發行包要帶 `LICENSE-wangfonts.txt`。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/font",
+        "run": "TestSwitchableFontsCoverTheSameRunes|TestSwitchableFontsAreNotUnifont"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",

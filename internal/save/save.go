@@ -85,6 +85,9 @@ type optMeta struct {
 	// PlayerDefends 是「電腦來攻時親自守城」（Issue #64）。舊存檔沒有這個鍵，
 	// 零值就是預設的自動打完。
 	PlayerDefends bool `json:"player_defends,omitempty"`
+
+	// Font 是主選單挑的字型（Issue #71）。零值是楷書，也就是預設。
+	Font int `json:"font,omitempty"`
 }
 
 type prefMeta struct {
@@ -169,7 +172,7 @@ func Write(root string, slot int, g *game.State, name string) error {
 		VoiceOff: e.Options.VoiceOff, SkipAIWar: e.Options.SkipAIWar,
 		Calendar: int(e.Options.Calendar), Delay: e.Options.Delay(),
 		AIMode: e.Options.AIMode, AIOrders: e.Options.AIOrders(),
-		PlayerDefends: e.Options.PlayerDefends,
+		PlayerDefends: e.Options.PlayerDefends, Font: e.Options.Font,
 	}
 	for id, f := range e.Factions {
 		m.Factions[fmt.Sprint(id)] = factMeta{f.Alive, f.Chief,
@@ -347,6 +350,7 @@ func Read(root string, slot int) (*game.State, error) {
 		AIMode:   m.Options.AIMode,
 
 		PlayerDefends: m.Options.PlayerDefends,
+		Font:          m.Options.Font,
 	}
 	if err := e.Options.SetDelay(m.Options.Delay); err != nil {
 		return nil, fmt.Errorf("save: 存檔 %d 的延時：%w", slot, err)

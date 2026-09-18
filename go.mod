@@ -7,6 +7,7 @@ go 1.24.0
 require (
 	github.com/ebitengine/oto/v3 v3.4.0
 	github.com/hajimehoshi/ebiten/v2 v2.9.9
+	golang.org/x/image v0.31.0
 	golang.org/x/text v0.29.0
 )
 

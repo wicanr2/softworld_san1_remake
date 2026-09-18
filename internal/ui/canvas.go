@@ -50,6 +50,17 @@ type Canvas struct {
 	Clipped int
 }
 
+// SetFace 換一份字模（主選單的「使用楷書字／使用隸書字」，Issue #71）。
+//
+// **只換字模，不換格寬。** 版面是按格算的（`internal/cells`），
+// 兩份字型的字寬必須一樣，否則整個畫面跟著跑掉。nil 不換。
+func (c *Canvas) SetFace(f *font.Face) {
+	if f == nil {
+		return
+	}
+	c.face = f
+}
+
 // NewCanvas 開一張 cols × rows 格的畫布。
 func NewCanvas(cols, rows int, face *font.Face) *Canvas {
 	return NewCanvasPx(cols*CellW, rows*CellH, face)

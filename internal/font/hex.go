@@ -52,6 +52,18 @@ func (f *Face) Glyph(r rune) (Glyph, bool) {
 // Len 是收了幾個字。
 func (f *Face) Len() int { return len(f.glyphs) }
 
+// Runes 是這一份收了哪些碼位（順序不定）。
+//
+// 用途是「照著另一份的碼位做一份」（`tools/mkhexfont`，Issue #71）：
+// 兩套字型的涵蓋率要逐個相同，少一個在畫面上是空白。
+func (f *Face) Runes() []rune {
+	out := make([]rune, 0, len(f.glyphs))
+	for r := range f.glyphs {
+		out = append(out, r)
+	}
+	return out
+}
+
 // Covers 回傳這串文字裡**沒有**字模的字元。
 //
 // 用途是在測試裡擋掉「譯文用了字型沒有的字」——那在畫面上是空白，

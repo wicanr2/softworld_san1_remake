@@ -164,6 +164,23 @@ remake 在「其他」加了三項（`docs/design/02` §5、Issue #64），前�
 `TestLoadKeepsPlayerDefence`（存讀檔）；關著那一邊的骰序由既有的
 `TestZZMonthParity`／`TestZZUnitAIDayParity` 守著。
 
+### 3.4.1 主選單的「使用楷書字／使用隸書字」（Issue #71）
+
+原版分派到 `0x11bb4`／`0x11bc2`：呼叫 `0x33d8:0x15a(0)`／`(1)` 換字型之後
+**直接重畫主選單，不印任何訊息**（字型檔 `ZHONG.PAT`／`YING.PAT`）。
+
+remake 照同一個形狀做，字模換成兩套自由授權的點陣字型（王漢宗顏楷體與
+中隸書，點陣化與授權見 `fonts/README.md`）：`menu.Screen.OnFont` →
+`cmd/san1` 的 `setFont` → `ui.Canvas.SetFace`，挑過哪一套記在
+`Options.Font`（`FontDefault`／`FontKai`／`FontLi`）並進存檔。
+**`FontDefault` 是「沒挑過」**——那時用的是 `-font` 指的那一份
+（預設 `fonts/unifont.hex.gz`）。原版開機時用哪一套沒有量過，所以不假裝知道。
+
+驗證：`TestMenuItemLayoutMatchesTheOriginal` 與 `TestTitleScreenMatchesTheOriginal`
+三套字型各跑一次（字的落點與字以外的像素都不因為換字模而變）、
+`TestSwitchableFontsCoverTheSameRunes`（碼位與字寬與 unifont 逐個相同）、
+`TestSwitchableFontsAreNotUnifont`（反向對照：真的換到了字模）。
+
 ### 3.5 英文的年月轉 90° 排
 
 原版在左側直條上直排七個全形字。英文逐字母一列直排讀不下去（「Zhongping

@@ -26,6 +26,12 @@ type Options struct {
 	SkipAIWar  bool
 	Calendar   Calendar
 
+	// Font 是主選單「使用楷書字／使用隸書字」挑過哪一套（Issue #71）。
+	// 零值 `FontDefault` 是「沒挑過」——那時用的是 `-font` 指的那一份
+	// （預設 `fonts/unifont.hex.gz`）。**原版開機時用哪一套沒有量過**，
+	// 所以不假裝知道：沒挑就是 remake 自己的預設。
+	Font int
+
 	// PlayerDefends 是「電腦來攻時玩家親自指揮守方」（Issue #64）。
 	//
 	// **這一項是 remake 加的開關，不是 remake 加的玩法**：原版被打的時候
@@ -109,6 +115,27 @@ func (o *Options) SetDelay(v int) error {
 	}
 	o.delaySet, o.delayValue = true, v
 	return nil
+}
+
+// 主選單那兩項字型（`0x11bb4` → `0x33d8:0x15a(0)`、`0x11bc2` → `(1)`，
+// 原版是 `ZHONG.PAT`／`YING.PAT`）。remake 不內嵌原版字模（`CLAUDE.md` §3.3），
+// 兩套改用自由授權的點陣字型，檔名在 `FontFile`。
+const (
+	FontDefault = 0 // 沒挑過：`-font` 指的那一份
+	FontKai     = 1 // 楷書（主選單第三項）
+	FontLi      = 2 // 隸書（主選單第四項）
+)
+
+// FontFile 是這一套字型的檔名（放在 `-font` 指的那個目錄底下）；
+// 沒挑過回空字串。
+func FontFile(kind int) string {
+	switch kind {
+	case FontKai:
+		return "kai.hex.gz"
+	case FontLi:
+		return "li.hex.gz"
+	}
+	return ""
 }
 
 // onOff 是原版的兩個字。

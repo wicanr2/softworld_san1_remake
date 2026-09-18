@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/font"
 )
 
 // 原版主選單上每一行字佔的字格，量自 `workplace/shots/open/open-06.png`
@@ -64,7 +65,16 @@ func inkBox(c *Canvas, want color.RGBA) (x0, y0, x1, y1 int, n int) {
 // （`assets.MenuTextCJKPitch` ＝ 24），照 16 排會擠在按鈕左半邊——
 // 那種錯誤畫面上看得出來，但沒有測試會紅。
 func TestMenuItemLayoutMatchesTheOriginal(t *testing.T) {
-	f := testFace(t)
+	// **三套字型都要排在同一格上**（Issue #71）：主選單的第三、四項
+	// 會把字模換成楷書與隸書，換完原版還是照原樣重畫——字形可以不同，
+	// 落點不能動。字寬變了整個版面跟著跑，而畫面上不會報錯。
+	for _, name := range []string{"unifont.hex.gz", "kai.hex.gz", "li.hex.gz"} {
+		t.Run(name, func(t *testing.T) { menuItemLayout(t, namedFace(t, name)) })
+	}
+}
+
+func menuItemLayout(t *testing.T, f *font.Face) {
+	t.Helper()
 	items := TitleItems()
 	for i, want := range originalMenuInk {
 		if items[i] != want.name {
@@ -119,6 +129,14 @@ func TestMenuLabelIsDoubleWidth(t *testing.T) {
 // 對不上的只准是**字的形狀**（remake 自建字庫，`CLAUDE.md` §3.3）；
 // 框、牌子、底色與右下角動畫畫格都要逐點相同。
 func TestTitleScreenMatchesTheOriginal(t *testing.T) {
+	// 三套字型各對一張（Issue #71）：換字模之後**字以外**還是要逐點相同。
+	for _, name := range []string{"unifont.hex.gz", "kai.hex.gz", "li.hex.gz"} {
+		t.Run(name, func(t *testing.T) { titleScreenMatches(t, namedFace(t, name)) })
+	}
+}
+
+func titleScreenMatches(t *testing.T, face *font.Face) {
+	t.Helper()
 	fh, err := os.Open("../../workplace/shots/open/open-06.png")
 	if err != nil {
 		t.Skipf("沒有主選單的基準畫面：%v", err)
@@ -133,7 +151,7 @@ func TestTitleScreenMatchesTheOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := NewCanvasPx(assets.ScreenW, assets.ScreenH, testFace(t))
+	c := NewCanvasPx(assets.ScreenW, assets.ScreenH, face)
 	// 這張原版收據停在 CURA5；其他五格由 ornament oracle 逐格驗。
 	DrawTitleFrame(c, ts, -1, 5)
 	inText := func(x, y int) bool {
