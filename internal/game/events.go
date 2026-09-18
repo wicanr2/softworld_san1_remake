@@ -201,6 +201,22 @@ func (g *State) bubbleEvent(x *General, upper, left bool, text string, salt ...i
 	return Event{Prefecture: at, Bubble: b}
 }
 
+// bubbleAt 是「字色已經擲好了」的那一版 `bubbleEvent`：繼承那一則對白要
+// 在原版擲骰的那一刻擲、等玩家挑完才排進佇列，兩件事得拆開。
+func (g *State) bubbleAt(x *General, upper, left bool, text string, color int) Event {
+	b := &Bubble{X1: BubbleX1, X2: BubbleX2, Left: left, Speaker: x.Index, Text: text, Color: color}
+	if upper {
+		b.Y1, b.Y2 = BubbleUpperY1, BubbleUpperY2
+	} else {
+		b.Y1, b.Y2 = BubbleLowerY1, BubbleLowerY2
+	}
+	at := x.Location
+	if at < 1 || at > len(g.prefectures) {
+		at = 0
+	}
+	return Event{Prefecture: at, Bubble: b}
+}
+
 // playerCommand 回報這一道命令是不是玩家自己下的（有畫面的那一條）：
 // 玩家的勢力、而且不是電腦代操。
 func (g *State) playerCommand(by state.FactionID) bool {
@@ -1510,43 +1526,47 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 	} else {
 		g.Roll(MessageLines, int(id), 0x14a38)
 	}
-	var heir *General
-	for i := range g.generals {
-		x := &g.generals[i]
-		if x.Faction != id || !x.Employed() {
-			continue
-		}
-		if heir == nil || x.Charm > heir.Charm {
-			heir = x
-		}
+	list := g.HeirCandidates(id)
+	if len(list) == 0 {
+		return nil
 	}
+	heir := g.General(list[0])
 	if heir == nil {
 		return nil
 	}
-	f.Prestige = SuccessionPrestige(int(heir.Charm), f.Prestige)
-	if f.Chief == heir.Index {
-		f.Chief = -1
-	}
-	// 繼承者：職位 ← 0、兵種 ← 6、身分 ← 君主（`0x14cce`–`0x14cda`）；他所在
-	// 的郡：自治 ← 0、原本的太守降成一般武將、主事者 ← 他（`0x14cf1`–`0x14d36`）。
-	heir.Rank = state.RankLord
-	heir.Troop = state.TroopType(6)
-	heir.Status = state.StatusLord
-	f.Lord = heir.Index
+	// 換人要用的那幾格先記下來（`heirAsk`）：玩家挑了別人時照原樣復原。
+	prestige, chief := f.Prestige, f.Chief
+	rank, troop, status := heir.Rank, heir.Troop, heir.Status
+	at, governor, autonomy, demoted := 0, -1, AutoNormal, -1
 	if p := g.Prefecture(heir.Location); p != nil {
-		p.Autonomy = AutoNormal
-		if old := g.General(p.governor); old != nil && old.Status == state.StatusGovernor {
-			old.Status = state.StatusOfficer
+		at, governor, autonomy = heir.Location, p.governor, p.Autonomy
+		// **繼承者自己就是那一郡的太守時不算「被降的人」**：他的身分由
+		// 上面那三格復原，記進 `Demoted` 會讓復原多寫一次（現在剛好寫成
+		// 同一個值，但那是巧合不是設計）。
+		if old := g.General(p.governor); old != nil && old.Index != heir.Index &&
+			old.Status == state.StatusGovernor {
+			demoted = old.Index
 		}
-		p.governor = heir.Index
 	}
+	g.applySuccession(f, heir, f.Prestige)
 	// 找到繼承者：先印一行（`0x14d61`／`0x14d71`，不擲），再一則對白
 	// （原版 `0x14dd2`、加強版 `0x13fa7` → 對白常式，`RND(8)`，`[both]`；
 	// 片語 465「主公寬心  某必光大主公之霸業」，下格、肖像在左，說話的是
 	// 繼承者 `es:0x1eda`）。兩版的碼逐字相同；加強版七月視窗量到過，
 	// 原版的視窗還沒剛好死過君主。
-	g.pending = append(g.pending, g.bubbleEvent(heir, false, true,
-		tf("bub.succeed", personName(heir.Name)), int(id), 0x14dd2))
+	//
+	// **操縱方是玩家就停下來讓他自己挑**（`0x14c24`：諸侯 offset 0 等於 2
+	// ＝ 電腦，才直接取排頭）。remake 先扶排頭上去、把這一次排進佇列，
+	// 對白的字色在這裡擲（骰序照原版），對白本身等 `AssignHeir` 才排——
+	// 玩家挑了別人時說話的要是新的那一位。
+	color := g.Roll(MessageLines, int(id), 0x14dd2)
+	if g.IsHuman(id) {
+		g.askHeir(id, list, heir, prestige, chief, rank, troop, status,
+			at, governor, autonomy, demoted, color)
+		return heir
+	}
+	g.pending = append(g.pending, g.bubbleAt(heir, false, true,
+		tf("bub.succeed", personName(heir.Name)), color))
 	return heir
 }
 

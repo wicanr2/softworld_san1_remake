@@ -279,9 +279,16 @@ func (a *app) Update() error {
 		a.updateFortSpot()
 		return nil
 	}
-	// 主事者離開之後由玩家挑新任太守（`0x1d6ed`，Issue #84）。對白播完才問。
+	// 君主死掉之後由玩家挑繼承人（`0x14f7c`，Issue #65），以及主事者離開之後
+	// 挑新任太守（`0x1d6ed`，Issue #84）。兩者都等對白播完才問——原版是
+	// 死亡對白 → 問 → 繼承對白，這個順序靠「佇列空了才問」達成。
 	if a.s != nil && a.roster == nil && a.num == nil && len(a.pick) == 0 &&
 		!a.view.HasCard && a.s.Bubble() == nil {
+		if _, list := a.s.G.NeedsHeir(); len(list) > 0 {
+			a.askHeir(list)
+			a.dirty = true
+			return nil
+		}
 		if at := a.s.G.NeedsGovernor(); at != 0 {
 			a.askNewGovernor(at)
 			a.dirty = true
@@ -2075,6 +2082,20 @@ func (a *app) askNewGovernor(at int) {
 			a.view.Prompt = game.ErrorText(err)
 		}
 	}, func() { a.askNewGovernor(at) })
+}
+
+// askHeir 是「請選擇繼任的將軍」（`0x14f7c`，`DS:0x65dd`，Issue #65）：君主死掉時
+// 候選是**整個勢力**依魅力排好的名單（不限死者那一郡），第三欄是魅力。
+// **不能取消**——原版收到 −1 或空白鍵換頁都只是跳回去重畫（`0x15110`）。
+func (a *app) askHeir(list []int) {
+	a.askRosterList(tf("ask.heir", len(list)), list, game.PickByCharm, func(gi int) {
+		if err := a.s.G.AssignHeir(gi); err != nil {
+			a.view.Prompt = game.ErrorText(err)
+			return
+		}
+		// 繼承那一則對白到這裡才排進佇列（說話的是玩家挑的那一位）。
+		a.s.Queue(a.s.G.PendingEvents())
+	}, func() { a.askHeir(list) })
 }
 
 // askSource 是「從那一郡攻打／移出／送出」（`0x18998`／`0x18c6d`／`0x19092`，Issue #82）：

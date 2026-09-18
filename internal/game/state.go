@@ -339,6 +339,8 @@ type State struct {
 	Players []state.FactionID
 	// governorAsks 是還沒讓玩家挑新主事者的郡（`askGovernor`）。
 	governorAsks []int
+	// heirAsks 是還沒讓玩家挑繼承人的那幾次繼承（`askHeir`，Issue #65）。
+	heirAsks []heirAsk
 	// Player 是第一位玩家（Players[0]）；沒有玩家時是 NoFaction。只有一位
 	// 玩家的呼叫端用它；規則裡「是不是玩家」一律問 IsHuman。
 	Player state.FactionID

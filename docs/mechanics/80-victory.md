@@ -70,8 +70,8 @@ remake 照這條寫：`Session.PlayerAlive` 問的是「這個勢力還有沒有
 候選是空的 → 「無人繼承」（DS:0x657a），勢力 offset 0 ← 0xFFFF
              手上有玉璽的話一併釋出（offset 14 ← 0）
 否則：
-    電腦操縱 → 取排頭（魅力最高）
-    玩家操縱 → 開清單自己挑（0x14f7c）
+    電腦操縱（諸侯 offset 0 ＝ 2，0x14c24）→ 取排頭（魅力最高）
+    其餘 → 開清單自己挑（0x14f7c，不能取消）
     勢力人望 ← 四捨五入(繼承者魅力 × 原人望 ÷ 100)
     繼承者原本是軍師 → 軍師欄 ← 0xFFFF
     諸侯記錄的君主欄 ← 繼承者
@@ -87,8 +87,18 @@ remake 照這條寫：`Session.PlayerAlive` 問的是「這個勢力還有沒有
 
 「只有在繼承君主時才會改變等級」（說明書 p.18）講的是這一刻。
 
-remake 這一邊是 `State.SucceedLord`／`SuccessionPrestige`；玩家自己挑
-那一段還沒接上介面，目前兩邊都取魅力最高的（登記在案的 remake 差異）。
+**「依魅力排序」是交換排序，不是穩定排序**（`0x14ad5`–`0x14b41`：外圈 i、
+內圈 j＞i，`魅力[j] > 魅力[i]` 才互換）。魅力相同的兩位誰排前面由被換走的
+那一位決定，所以 remake 照抄那兩層迴圈（`State.HeirCandidates`），
+不用 `sort.SliceStable`。
+
+remake 這一邊是 `State.SucceedLord`／`HeirCandidates`／`SuccessionPrestige`；
+**玩家操縱的勢力照原版停下來問**（`NeedsHeir`／`AssignHeir`，`cmd/san1` 的
+`askHeir`，清單版面見 `docs/spec/014` §4.4 末段）。規則層不能停著等鍵，
+所以先把排頭扶上去、再把這一次排進佇列，玩家答了才復原改套——人望用
+**繼承之前**的值重算，不是拿上一位折過的值再折一次。
+`TestZZHeirMatchesTheOriginal`：玩家的君主老死，清單與原版相同，
+挑第三位之後三張表逐位元組相同。
 
 **無人繼承之後**（`L0`＋`L1`，`[base]`，`TestZZNoHeirReleasesTerritory`）：
 原版只寫兩件事——操縱方 ← `0xFFFF`（`0x14ba3`）、手上有玉璽就釋出

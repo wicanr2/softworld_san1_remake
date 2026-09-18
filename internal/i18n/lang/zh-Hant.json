@@ -27,6 +27,7 @@
   "ask.governorPref": "指定那一郡的太守\n",
   "ask.headhunt": "\u003c登用他國將軍\u003e\n登用那一位將軍\n",
   "ask.headhuntPref": "登用那一郡的將軍\n",
+  "ask.heir": "請選擇繼任的將軍\n(1-%d):",
   "ask.inspect": "檢視那位",
   "ask.inspectForeign": "此郡非我軍所有\n確定查看(Y/N):",
   "ask.loadSlot": "讀哪一個進度",

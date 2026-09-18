@@ -2131,6 +2131,28 @@
       }
     },
     {
+      "id": "heir-pick",
+      "title": "玩家的君主死掉由玩家自己挑繼承人（0x14f7c），不能取消",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014",
+        "docs/mechanics/80"
+      ],
+      "note": "`TestZZHeirMatchesTheOriginal`：玩家的君主老死，那一份清單與原版相同，挑第三位（不是預設的排頭）之後三張表逐位元組相同。候選是整個勢力、照原版的交換排序排（不是穩定排序）；規則層先扶排頭上去再讓玩家覆蓋，人望用繼承之前的值重算。原版「死亡對白 → 問 → 繼承對白」的順序靠佇列空了才問達成，同月還有別人死掉時那幾則會插在這一問之前。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/game/succession.go"
+        ],
+        "pattern": "func \\(g \\*State\\) AssignHeir"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",

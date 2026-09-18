@@ -27,6 +27,7 @@
   "ask.governorPref": "どの州郡の太守を\n任じますか\n",
   "ask.headhunt": "誰を引き抜きますか",
   "ask.headhuntPref": "どの州郡の将軍を引き抜きますか\n",
+  "ask.heir": "跡を継ぐ将を選んでください\n(1-%d):",
   "ask.inspect": "誰を見ますか",
   "ask.inspectForeign": "この郡は我が軍のものではない\n確認する(Y/N):",
   "ask.loadSlot": "どのスロットをロードしますか",

@@ -27,6 +27,7 @@
   "ask.governorPref": "Appoint a governor for\nwhich prefecture?\n",
   "ask.headhunt": "Recruit whom from abroad?",
   "ask.headhuntPref": "Recruit from which prefecture?\n",
+  "ask.heir": "Choose the successor\n(1-%d):",
   "ask.inspect": "Inspect whom?",
   "ask.inspectForeign": "This prefecture is not ours.\nInspect anyway (Y/N):",
   "ask.loadSlot": "Load which slot?",

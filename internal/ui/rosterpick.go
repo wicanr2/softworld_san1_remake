@@ -20,6 +20,10 @@ type RosterPick struct {
 	// 在 (424, 84＋16i) 印白 15 的「*」（`0x18453`）。
 	Multi  bool
 	Marked []bool
+
+	// Succession 為真是繼承人清單（`0x14f7c`，Issue #65）：外框同多選的 `SIDEE`
+	// （`0x14fa4`：樣式 9），但只挑一位、沒有「*」。
+	Succession bool
 }
 
 // RosterPageRows 是一頁幾列（`0x181d3`：`cmp $0xc`）。
@@ -54,7 +58,7 @@ func DrawRosterPick(c *Canvas, a *ArtScreen, g *game.State, p *RosterPick) {
 	c.FillRect(rosterX0, rosterY0, rosterX1+1, rosterY1+1, bg)
 	if a != nil && a.havePanel {
 		box := a.pickBox
-		if p.Multi {
+		if p.Multi || p.Succession {
 			box = a.multiBox
 		}
 		drawSideFrame(c, box, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1)

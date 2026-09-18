@@ -22,6 +22,35 @@ type rosterEntry struct {
 	// thenMulti 非 nil 是多選清單（`0x18286`）：max 是最多幾位。
 	thenMulti func(list []int)
 	max       int
+
+	// bare 為真表示提示字串自己就帶了範圍（繼承人清單的
+	// `DS:0x65dd`「請選擇繼任的將軍\n(1-%d):」），下面板不要再接一次。
+	// noPage 為真表示這一份不記頁數——原版那一支的頁首是區域變數，
+	// 不是共用的 `DS:0x66b2`。
+	bare, noPage bool
+}
+
+// askRosterList 開一份**呼叫端自己給名單**的清單（繼承人清單 `0x14f7c`，
+// Issue #65）：版面與 §4.2 同一套，差在外框樣式 9、提示自帶範圍、頁數不外記。
+func (a *app) askRosterList(prompt string, list []int, key game.PickKey,
+	then func(gi int), cancel func()) {
+	if a.art == nil {
+		var items []pickItem
+		for _, gi := range list {
+			if x := a.s.G.General(gi); x != nil {
+				items = append(items, pickItem{x.Name, gi, then})
+			}
+		}
+		a.pickFrom(prompt, items)
+		a.cancel = cancel
+		return
+	}
+	r := &rosterEntry{prompt: prompt, then: then, cancel: cancel, bare: true, noPage: true}
+	r.pick.Key, r.pick.Succession = key, true
+	r.pick.List = append(r.pick.List, list...)
+	a.pick, a.num, a.menu, a.view.Menu, a.view.Items = nil, nil, 0, "", nil
+	a.roster = r
+	a.showRoster()
 }
 
 // askRoster 開一份原版的挑人清單：那一郡（mode 決定收誰、key 決定第三欄與排序），
@@ -79,6 +108,10 @@ func (a *app) showRoster() {
 	a.view.Roster = &r.pick
 	if len(r.pick.List) == 0 {
 		a.view.Prompt = r.prompt + t("pick.anyKey")
+		return
+	}
+	if r.bare {
+		a.view.Prompt = r.prompt + r.typed
 		return
 	}
 	a.view.Prompt = r.prompt + tf("pick.range", 1, len(r.pick.List)) + r.typed
@@ -169,7 +202,9 @@ func (a *app) updateRoster() {
 			a.showRoster()
 			return
 		}
-		a.rosterPage = r.pick.Page
+		if !r.noPage {
+			a.rosterPage = r.pick.Page
+		}
 		gi := r.pick.List[n-1]
 		a.closeRoster()
 		r.then(gi)
