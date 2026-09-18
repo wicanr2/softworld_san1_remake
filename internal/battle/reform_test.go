@@ -131,3 +131,32 @@ func TestArmyNumbersMatchTheOriginal(t *testing.T) {
 		}
 	}
 }
+
+// TestNoInterfaceCaptiveCounterFires 是上面那個量測的**正對照**
+// （Issue #100）：先證明計數器數得到，`internal/session` 量到的 0 才有意義。
+//
+// 沒有這一段的話，0 相容於兩個世界：真的沒發生，或者計數器根本沒接上。
+func TestNoInterfaceCaptiveCounterFires(t *testing.T) {
+	ResetNoInterfaceCaptives()
+	b := arena(flat(Plain))
+	b.Computer[MainAttacker] = false // 玩家那一方
+	b.PlayerCaptive = nil            // 沒有介面
+	x := lead("被擒", 50, 50, 100)
+	x.Index = 7
+	u := &Unit{Side: MainDefender, Formation: Centre, Leaders: []Leader{x}}
+	b.Units = append(b.Units, u)
+	b.capture(MainAttacker, u, &u.Leaders[0])
+	if got := NoInterfaceCaptives(); got != 1 {
+		t.Errorf("數到 %d 次，應該是 1 次——計數器沒接上", got)
+	}
+	if u.Leaders[0].Fate != FateNone {
+		t.Errorf("處置是 %v，現況應該是留著不處置", u.Leaders[0].Fate)
+	}
+	// 有介面時不算：那一條是玩家自己答。
+	ResetNoInterfaceCaptives()
+	b.PlayerCaptive = func(Side, *Leader) Fate { return Executed }
+	b.capture(MainAttacker, u, &u.Leaders[0])
+	if got := NoInterfaceCaptives(); got != 0 {
+		t.Errorf("有介面卻數了 %d 次", got)
+	}
+}

@@ -1003,6 +1003,10 @@ func runUnitAIDayParity(t *testing.T, rig dayRig, bd dayBoard) map[int]int {
 		}
 	}
 	t.Logf("決策 %d 次，原版各選項定案：%v，不同 %d 次", len(decisions), byOpt, bad)
+	// 量給 Issue #100 用：這個盤面有沒有走到「玩家那一方抓到人、
+	// 卻沒有介面可問」。**0 要配正對照才有意義**
+	// （`battle.TestNoInterfaceCaptiveCounterFires`）。
+	t.Logf("玩家捕獲而沒有介面：%d 次", battle.NoInterfaceCaptives())
 	if len(decisions) < 10 && !bd.short {
 		t.Errorf("只比到 %d 次決策——樣本太少", len(decisions))
 	}

@@ -912,6 +912,16 @@ func (b *Battle) wipeCheck(u *Unit) {
 	}
 }
 
+// noInterfaceCaptives 數「玩家那一方抓到人、而沒有介面可問」的次數
+// （Issue #100）。**只為了量**：改用電腦的判斷式會多擲一次 `RND(10)`，
+// 先數清楚哪些盤面真的會走到這裡，再決定動不動
+// （`~/diagnosis-notes/docs/03-silence-is-not-success`：沒有紅不等於沒影響）。
+var noInterfaceCaptives int
+
+// NoInterfaceCaptives 是目前數到幾次；ResetNoInterfaceCaptives 歸零。
+func NoInterfaceCaptives() int      { return noInterfaceCaptives }
+func ResetNoInterfaceCaptives()     { noInterfaceCaptives = 0 }
+
 // 被擒處置（`0x259fe`，`L0`；`docs/re/05` §12.2）裡的常數。
 const (
 	// CaptiveExecuteRange／CaptiveExecuteBelow：電腦捕獲方先擲 `RND(10)`，
@@ -965,6 +975,9 @@ func (b *Battle) capture(captor Side, u *Unit, x *Leader) {
 	x.CapturedBy = captor
 	human := !b.Computer[captor]
 	if human && b.PlayerCaptive == nil {
+		// **先量再改**（Issue #100）：改用電腦的判斷式會多擲一次
+		// `RND(10)`，先數清楚現有對拍的盤面到底會不會走到這裡。
+		noInterfaceCaptives++
 		return
 	}
 	for {

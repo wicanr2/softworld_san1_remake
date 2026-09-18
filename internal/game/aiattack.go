@@ -82,8 +82,9 @@ func (g *State) ComputerAttack(from, to int, by state.FactionID, keep KeepFunc) 
 		Gold: BattleShare(src.Gold, g.Troops(from), going),
 		Rice: BattleShare(src.Rice, g.Troops(from), going),
 	}
-	// 主守軍：郡裡的每一位（不比對勢力）。玩家守的話原版是逐位問，
-	// 這裡不替玩家排。
+	// 主守軍：郡裡的每一位（不比對勢力）。玩家守的話原版逐位問整編，
+	// remake 在 `cmd/san1` 的 `startDefence` 問（Issue #98）——這裡只收人，
+	// 不排序：排序是電腦那一條的事（`sortForFormation`）。
 	def := g.Garrison(to)
 	if g.Edition != state.EditionPlus {
 		def = g.ActorRoster(to)

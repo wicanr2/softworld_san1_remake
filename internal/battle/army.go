@@ -180,7 +180,8 @@ type Unit struct {
 	Wiped     bool
 
 	// Unplaced 標記這支是戰役中途才生出來的（招降或投敵的人進了空的槽位，
-	// `enlist`），位置是 remake 先擺的；原版問玩家紮在哪。
+	// `enlist`）：位置先用 `spotNear` 擺著，玩家那一方接著問 `PlayerCamp`
+	// 紮在哪（Issue #35）；沒有介面時就留在先擺的那一格。
 	Unplaced bool
 
 	// Started 是開戰時的兵力。自動作戰用它判斷「敗到該退兵了」——
