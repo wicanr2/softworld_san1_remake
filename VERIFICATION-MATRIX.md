@@ -439,6 +439,7 @@ python3 -c "import json;print(len(json.load(open('internal/i18n/lang/en.json')))
 | 音樂欣賞照原版換直牌與五個曲名，選了播並回主選單（0x145ca） | 完成 | L1 | base | present：internal/menu/menu.go 的「MusicTracks = 5」 | `TestZZMusicPickMatchesTheOriginal` 124 個字格墨相同、其餘逐像素相同、反對照差 38 格；送「3」原版 `0x4fb:0x12a(2)` 後回主選單。DOSBox-X rec16 只差小飾框。（`docs/spec/005`、`docs/formats/06`） |
 | 選擇年代那一層照原版換字（0x11c7e） | 完成 | L1 | base | present：cmd/san1/title.go 的「DrawTitleLayer」 | 直牌「選擇年代」字色 15、按鈕原版字串逐字排；`TestZZScenarioPickMatchesTheOriginal` 字格墨相同、其餘逐格相同。英日版直牌留白。（`docs/spec/005`） |
 | 君主物品表（0x14de6）畫在右側面板；賞賜物品的「那一樣(2-5):」與查看→物品照原版 | 完成 | L1 | base | present：internal/ui/treasury.go 的「func DrawTreasuryPanel」 | `TestZZGiftItemAskMatchesTheOriginal` 「那一樣」與查看物品兩格：面板字格以外逐像素、字格有墨、標題與列的字色、下面板與游標相同；拿掉 remake 物品表的反向對照會紅。得到玉璽事件（`0x15181`）那一條沒接。（`docs/spec/014`、`docs/mechanics/20`） |
+| 英日語系照播原版的中文語音（不靜音、不另配） | 完成 | L1 | both | `TestVoicePlaysInEveryLocale` | 裁定（2026-09-18）是沿用原版片段。語音出不出聲只看「音效」與「語音」兩個開關，**不看語系**——多一道語系閘門，英日文玩家聽到的是一片安靜，而安靜與「沒有音效卡」長得一樣。語音是原版素材，發行包一段都不帶。`R499` 的語意仍未解（沒有逐段聽辨證據不得命名），但沿用原版不需要先知道它是什麼聲音。（`docs/spec/008`、`docs/release/01-packaging.md`） |
 
 ### 多語系
 

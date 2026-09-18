@@ -2195,6 +2195,26 @@
       }
     },
     {
+      "id": "voice-every-locale",
+      "title": "英日語系照播原版的中文語音（不靜音、不另配）",
+      "group": "畫面",
+      "layer": "verification",
+      "milestone": "M7",
+      "status": "done",
+      "level": "L1",
+      "edition": "both",
+      "docs": [
+        "docs/spec/008",
+        "docs/release/01-packaging.md"
+      ],
+      "note": "裁定（2026-09-18）是沿用原版片段。語音出不出聲只看「音效」與「語音」兩個開關，**不看語系**——多一道語系閘門，英日文玩家聽到的是一片安靜，而安靜與「沒有音效卡」長得一樣。語音是原版素材，發行包一段都不帶。`R499` 的語意仍未解（沒有逐段聽辨證據不得命名），但沿用原版不需要先知道它是什麼聲音。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/speaker",
+        "run": "TestVoicePlaysInEveryLocale"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",
