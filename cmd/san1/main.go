@@ -268,6 +268,13 @@ func (a *app) Update() error {
 		a.dirty = true
 		return nil
 	}
+	// 電腦聯合出兵打過來、要問玩家求不求援（Issue #99）：問完才打。
+	if a.s != nil && a.fight == nil && a.s.G.PendingAid() != nil &&
+		a.num == nil && a.view.PrefPick == nil {
+		a.askDefenderAid()
+		a.dirty = true
+		return nil
+	}
 	// 電腦打過來、玩家要親自守的那一場（Issue #64）：接過指揮權。
 	if a.s != nil && a.fight == nil && a.s.G.PendingDefence() != nil {
 		a.startDefence()
@@ -277,6 +284,13 @@ func (a *app) Update() error {
 	// 輪流下令：沒停在玩家的郡就照這個月的順序往下跑，停在下一個玩家的郡。
 	if a.s != nil && a.menu == 0 && a.pick == nil && a.num == nil && a.s.Waiting() == 0 && !a.s.Over {
 		at := a.s.AdvanceToHuman(0)
+		// 停下來的理由也可能是「聯合出兵要問求不求援」（Issue #99）。
+		if a.s.G.PendingAid() != nil {
+			a.view.Sel, a.view.Status = at, false
+			a.askDefenderAid()
+			a.dirty = true
+			return nil
+		}
 		// 停下來的理由可能是「電腦打過來要玩家守」而不是「輪到玩家下令」
 		// （Issue #64）：那一條不印主提示，直接接指揮權。
 		if a.s.G.PendingDefence() != nil {
@@ -2191,7 +2205,41 @@ func (a *app) askNewGovernor(at int) {
 	}, func() { a.askNewGovernor(at) })
 }
 
-// askHeir 是「請選擇繼任的將軍」（`0x14f7c`，`DS:0x65dd`，Issue #65）：君主死掉時
+// askDefenderAid 是「<聯合出兵>聯合守方那一郡合守」（`0x2dd14`，`DS:0x8588`，
+// Issue #99）：電腦聯合出兵打過來、而守方求得到援軍時，**守方是玩家就自己挑**
+// （`0x2dd0c` 看諸侯 offset 0 == 1；電腦那一邊取掃到的最後一個）。
+//
+// **可以取消**：原版空欄位 Enter 回 `0xFFFF`，印「不聯合守方」（`DS:0x85a6`）
+// ——那就是不求援，戰役照打。
+func (a *app) askDefenderAid() {
+	ask := a.s.G.PendingAid()
+	if ask == nil {
+		return
+	}
+	list := ask.AidTargets()
+	ok := func(id int) bool {
+		for _, n := range list {
+			if n == id {
+				return true
+			}
+		}
+		return false
+	}
+	a.view.Sel = ask.Strikes()
+	done := func(at int) {
+		a.view.PrefPick = nil
+		if at == 0 {
+			a.view.Prompt = t("msg.noJointDefence")
+		}
+		if err := a.s.FinishAid(at); err != nil {
+			a.view.Prompt = game.ErrorText(err)
+		}
+		a.dirty = true
+	}
+	a.askPref(t("ask.aidPref"), ok, func(at int) { done(at) }, func() { done(0) })
+}
+
+// askHeir 是「請選擇繼任的將軍」// askHeir 是「請選擇繼任的將軍」（`0x14f7c`，`DS:0x65dd`，Issue #65）：君主死掉時
 // 候選是**整個勢力**依魅力排好的名單（不限死者那一郡），第三欄是魅力。
 // **不能取消**——原版收到 −1 或空白鍵換頁都只是跳回去重畫（`0x15110`）。
 func (a *app) askHeir(list []int) {

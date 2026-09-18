@@ -2238,6 +2238,25 @@
       }
     },
     {
+      "id": "defender-aid-pick",
+      "title": "聯合出兵打過來時玩家自己挑助守軍那一郡（0x2dd14），可以不求援",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/mechanics/30"
+      ],
+      "note": "候選是守方郡的同勢力鄰郡；守方的諸侯 offset 0 == 1（玩家）才開挑郡清單（`0x2dd14`，提示 `DS:0x8588`），取消印「不聯合守方」就是不求援。電腦那一條仍取掃到的最後一個（`0x2dd24`）。月流程停在那一格（`PendingAid`），`session.FinishAid` 收尾；順帶補上聯合出兵那一條先前不看「守城」開關、一律自動打完的洞。沒有介面的路照電腦那一條。`TestJointAttackStopsToAskThePlayer`（含守方是電腦的反向對照）、`TestAnswerDefenderAidLaunches`（求援／不求援／不在候選裡被擋）、`TestDefenderAidAsksThePlayer`。盤面自己擺——劇本一的劉備只有一個郡，等它湊出來的話測試會永遠 skip。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/game",
+        "run": "TestJointAttackStopsToAskThePlayer|TestAnswerDefenderAidLaunches"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",

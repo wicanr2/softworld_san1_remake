@@ -220,6 +220,15 @@ func (g *State) jointAttack(plan PlotPlan, by state.FactionID) (bool, error) {
 	}
 	aid := Aid{Attacker: plan.OursAid}
 	if !g.outwitsDefender(by, plan.Strike) {
+		// **守方是玩家就讓他自己挑**（`0x2dd0c`：諸侯 offset 0 == 1 才開
+		// 挑郡清單，Issue #99）。規則層不能停著等鍵，所以把這一問排進
+		// 佇列、戰役先不打——`cmd/san1` 答完再叫 `AnswerDefenderAid`。
+		if list := g.DefenderAidTargets(plan.Strike); len(list) > 0 &&
+			g.IsHuman(g.Prefecture(plan.Strike).Owner) {
+			g.aidAsk = &aidAsk{Ours: plan.Ours, Strike: plan.Strike,
+				Attacker: plan.OursAid, List: list}
+			return true, nil
+		}
 		aid.Defender = g.DefenderAid(plan.Strike)
 	}
 	if _, err := g.launchCampaign(plan.Ours, plan.Strike, aid); err != nil {

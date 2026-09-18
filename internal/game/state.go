@@ -344,6 +344,10 @@ type State struct {
 
 	// defence 是電腦打過來、等玩家親自指揮的那一場（`PendingDefence`，Issue #64）。
 	defence *Pending
+
+	// aidAsk 是電腦聯合出兵打過來、還沒問玩家要不要求援的那一場
+	// （`PendingAid`，Issue #99）。
+	aidAsk *aidAsk
 	// Player 是第一位玩家（Players[0]）；沒有玩家時是 NoFaction。只有一位
 	// 玩家的呼叫端用它；規則裡「是不是玩家」一律問 IsHuman。
 	Player state.FactionID

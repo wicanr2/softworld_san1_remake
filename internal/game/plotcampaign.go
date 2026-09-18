@@ -168,24 +168,35 @@ func (g *State) adjacentToFaction(prefectureID int, by state.FactionID) bool {
 	return false
 }
 
-// DefenderAid 是守方求得到的援軍郡（原版 `0x2dc6e`）：
+// DefenderAidTargets 是守方求得到的援軍候選（原版 `0x2dc96`–`0x2dceb`）：
 //
 //	守方郡的鄰郡裡，與守方同一勢力的那些
 //
-// 原版電腦取掃到的**最後一個**；那個勢力若由玩家操縱，原版會讓玩家
-// 自己挑（`<聯合出兵>聯合守方那一郡合守`）。0 ＝ 求不到援。
-func (g *State) DefenderAid(strike int) int {
+// 原版把它們標進一張 43 格的候選表（`es:[bx+0x2102]` ＝ 0 可選、
+// `0xFFFF` 不可選），再交給挑郡清單（`0x1538:0x816c` ＝ `0x1d4ec`）。
+func (g *State) DefenderAidTargets(strike int) []int {
 	dst := g.Prefecture(strike)
 	if dst == nil || !dst.Owned() {
-		return 0
+		return nil
 	}
-	last := 0
+	var out []int
 	for _, n := range dst.Neighbours {
 		if q := g.Prefecture(n); q != nil && q.Owned() && q.Owner == dst.Owner {
-			last = n
+			out = append(out, n)
 		}
 	}
-	return last
+	return out
+}
+
+// DefenderAid 是**電腦**守方求到的援軍郡：掃到的最後一個（`0x2dd24`）。
+// 0 ＝ 求不到援。玩家操縱的守方原版另外問「<聯合出兵>聯合守方那一郡合守」
+// （`0x2dd0c` 看諸侯 offset 0 == 1），走 `DefenderAidTargets` ＋ `aidAsk`。
+func (g *State) DefenderAid(strike int) int {
+	list := g.DefenderAidTargets(strike)
+	if len(list) == 0 {
+		return 0
+	}
+	return list[len(list)-1]
 }
 
 // launchCampaign 照原版的四個郡發動一場戰役。
@@ -206,6 +217,14 @@ func (g *State) launchCampaign(from, to int, aid Aid) (*BattleResult, error) {
 	}
 	def := g.garrisonOf(to)
 	p := g.prepare(from, to, att, def, src.Owner, HalfSupply(), aid)
+	// 「守城」開著而被打的是玩家：把戰役交出去讓他自己指揮（Issue #64 的
+	// 機制，Issue #99 一起接上）——先前聯合出兵這一條一律自動打完，
+	// 那個開關對它沒有作用。
+	if g.Options.PlayerDefends && g.IsHuman(dst.Owner) {
+		p.Player = true
+		g.defence = p
+		return nil, nil
+	}
 	p.B.Auto()
 	return g.settle(p), nil
 }
@@ -259,4 +278,48 @@ func (g *State) JointAttackAidTargets(strike, from int, by state.FactionID) []in
 		}
 	}
 	return out
+}
+
+// aidAsk 是一場「電腦聯合出兵打玩家、還沒問玩家要不要求援」的戰役
+// （Issue #99）。原版在這一刻停下來開挑郡清單（`0x2dd14`）。
+type aidAsk struct {
+	Ours     int   // 主攻郡
+	Strike   int   // 被打的郡（玩家的）
+	Attacker int   // 助攻郡
+	List     []int // 可以求援的郡（守方的同勢力鄰郡）
+}
+
+// PendingAid 是還沒問玩家的那一次求援；沒有就是 nil。
+// 月流程看到它就停下來，等 `AnswerDefenderAid`。
+func (g *State) PendingAid() *aidAsk { return g.aidAsk }
+
+// AidTargets 是那一問的候選郡。
+func (a *aidAsk) AidTargets() []int { return a.List }
+
+// Strikes 是被打的那一郡。
+func (a *aidAsk) Strikes() int { return a.Strike }
+
+// AnswerDefenderAid 是玩家挑完之後那一步：`at` 是求援的郡，
+// **0 表示不求援**（原版空欄位 Enter 回 `0xFFFF`，印「不聯合守方」）。
+// 挑完就把那一場打下去；「守城」開著的話戰役會再交給 `PendingDefence`。
+func (g *State) AnswerDefenderAid(at int) error {
+	a := g.aidAsk
+	if a == nil {
+		return ErrUnknownUnit
+	}
+	if at != 0 {
+		ok := false
+		for _, n := range a.List {
+			if n == at {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return ErrNotYours
+		}
+	}
+	g.aidAsk = nil
+	_, err := g.launchCampaign(a.Ours, a.Strike, Aid{Attacker: a.Attacker, Defender: at})
+	return err
 }

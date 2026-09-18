@@ -304,10 +304,11 @@ func (s *Session) turnCell(stopAtHuman bool) (at int, stop bool) {
 		}
 		s.done[id] += n
 	}
-	// 電腦打過來、玩家要親自守的那一場（Issue #64）：回合停在這裡，
-	// `cmd/san1` 打完叫 `FinishDefence` 再往下走。**游標留在原地**——
-	// 這一格已經 `FinishTurn` 過了，推游標的是 `FinishDefence`。
-	if s.G.PendingDefence() != nil {
+	// 電腦打過來、玩家要親自守的那一場（Issue #64），或是聯合出兵打過來、
+	// 還沒問玩家要不要求援（Issue #99）：回合停在這裡，`cmd/san1` 答完／
+	// 打完叫 `FinishDefence` 再往下走。**游標留在原地**——這一格已經
+	// `FinishTurn` 過了，推游標的是 `FinishDefence`。
+	if s.G.PendingDefence() != nil || s.G.PendingAid() != nil {
 		return at, true
 	}
 	s.nextCell()
@@ -380,6 +381,23 @@ func (s *Session) FinishDefence() {
 	s.nextCell()
 }
 
+// FinishAid 是玩家答完「聯合守方那一郡合守」之後那一步（Issue #99）：
+// `at` 是求援的郡，**0 表示不求援**。答完戰役就打下去——「守城」開著的話
+// 那一場會再交給 `PendingDefence`，這裡就不推游標，等 `FinishDefence`。
+func (s *Session) FinishAid(at int) error {
+	if s.G.PendingAid() == nil {
+		return nil
+	}
+	if err := s.G.AnswerDefenderAid(at); err != nil {
+		return err
+	}
+	s.drainBattles()
+	if s.G.PendingDefence() == nil {
+		s.nextCell()
+	}
+	return nil
+}
+
 // EndTurn 結束現在停著的那個玩家郡的回合（下完令或休息），游標往下走。
 func (s *Session) EndTurn() {
 	if s.MonthCursor < len(s.MonthOrder) {
@@ -419,12 +437,22 @@ func (s *Session) EndMonth() {
 	// 而月份照樣往前推——**剩下的郡整個月沒跑**，而且不會報錯。
 	for {
 		s.runPrefectureTurns()
-		if s.G.PendingDefence() == nil {
-			break
+		switch {
+		case s.G.PendingAid() != nil:
+			// 沒有人可以挑求援的郡：照電腦那一條取掃到的最後一個
+			// （`0x2dd24`），戰役接著打完。
+			a := s.G.PendingAid()
+			if err := s.G.AnswerDefenderAid(s.G.DefenderAid(a.Strikes())); err != nil {
+				s.say("sess.blocked", prefectureName(s.G, a.Strikes()), err)
+				s.G.AnswerDefenderAid(0)
+			}
+		case s.G.PendingDefence() != nil:
+			s.FinishDefence()
+		default:
+			s.finishMonth()
+			return
 		}
-		s.FinishDefence()
 	}
-	s.finishMonth()
 }
 
 // finishMonth 是月底結算到開月（游標跑完之後）。
