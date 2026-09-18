@@ -1,7 +1,7 @@
 {
   "schema": "san1-worklist/1",
   "note": "完成度與未完成項的單一真相（`rulebook/61`）。**verify 回答的是「這一條的 status 還成立嗎」，不是「這一項好不好」**——`done` 項驗證據還在，`open`／`blocked` 項驗未完成的訊號還在；任一邊翻面就是清單長出了過期斷言。跑法與四種結果的意思見 tools/worklist.py。VERIFICATION-MATRIX.md 的資料段由 `tools/worklist.py render` 產生，不要手改。",
-  "updated": "2026-09-17",
+  "updated": "2026-09-19",
   "items": [
     {
       "id": "parity-rand-lcg",
@@ -2273,6 +2273,27 @@
         "kind": "test",
         "pkg": "./internal/battle",
         "run": "TestNoInterfaceCaptiveCounterFires|TestCaptiveDiceForComputerCaptor"
+      }
+    },
+    {
+      "id": "retreat-destination",
+      "title": "退兵問玩家「逃向那一郡」、電腦照判斷式，兩邊都把去處記下來（0x23dd4）",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L0",
+      "edition": "base",
+      "docs": [
+        "docs/re/05",
+        "docs/mechanics/40",
+        "docs/spec/014"
+      ],
+      "note": "按 8 退兵時原版問玩家「%s逃向那一郡」（`0x2408e`，收郡編號 `0x115e(1,42)`），電腦照判斷式（主守軍以外、出兵郡現役＋本隊將領 ≤ 50 就回出兵郡，否則 `RND(鄰郡數)`）。remake 先前玩家那一邊連問都沒問、去處也沒人讀。現在玩家那一邊出候選清單，空 Enter（清單的 `0`）取消整個退兵、那一支留在戰場（`0x2416a`）。⚠ **去處不決定那些人戰後在哪一郡**：整支退兵常式（`0x23dd4`–`0x24460`）一個字都沒寫人物記錄 offset 19，挑到的郡只拿去決定從哪一格走出去（`0x241be`）；戰後的郡歸屬由戰後安置（`0x1fb26`）重排，退掉的部隊也在那一輪裡。**所以這一條不動三張表**——這是讀出來的，不是對拍量的（使用者裁定 2026-09-19：答案在 RE 文件裡，不必另開對拍）。「無郡可逃」（鄰郡的問題，`0x23f03`）與「被完全包圍」（格子的問題）兩條訊息分開。remake 差異：原版收郡編號，戰場面板只讀單鍵，所以列成清單按序號選（`docs/spec/014` §7.2）；沒有介面的路取候選第一個、不擲，理由與 #64／#98／#99／#100 同一個。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/battle",
+        "run": "TestPlayerRetreatAsksWhichPrefecture|TestPlayerRetreatCancelKeepsTheUnitOnTheField|TestNoEscapeIsNotTheSameAsSurrounded|TestComputerRetreatIgnoresThePlayerHook"
       }
     },
     {

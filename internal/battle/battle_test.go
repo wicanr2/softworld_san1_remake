@@ -358,6 +358,10 @@ func TestRetreatKeepsSuppliesAndNeedsAWayOut(t *testing.T) {
 	b := arena(f)
 	u := place(b, MainAttacker, Centre, spot, lead("甲", 50, 50, 1000))
 	b.Gold[MainAttacker], b.Rice[MainAttacker] = 900, 800
+	// 逃得去的郡要有一個：沒有的話原版印「無郡可逃」、退不了
+	// （`0x23f03`，Issue #101）——那是鄰郡的問題，不是這支測試要驗的
+	// 「被地形封死」。
+	b.Escapes[MainAttacker] = []Escape{{Prefecture: 9}}
 	// 五個方向封死、留一個活路。
 	for i, d := range Dirs() {
 		if i == 0 {
@@ -393,6 +397,9 @@ func TestRetreatOfLastUnitEndsBattle(t *testing.T) {
 	b := arena(flat(Plain))
 	u := place(b, MainAttacker, Centre, FromOffset(3, 3), lead("攻", 50, 50, 1000))
 	place(b, MainDefender, Centre, FromOffset(15, 10), lead("守", 50, 50, 1000))
+	// **要有逃得去的郡**：候選表空的時候原版印「無郡可逃」、退不了
+	// （`0x23f03`，Issue #101）。這與「被完全包圍」是兩件事。
+	b.Escapes[MainAttacker] = []Escape{{Prefecture: 9}}
 	if err := b.Retreat(u); err != nil {
 		t.Fatalf("退兵失敗：%v", err)
 	}

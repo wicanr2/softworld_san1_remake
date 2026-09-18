@@ -220,6 +220,12 @@ func TestAutoUsesTheWholeRepertoire(t *testing.T) {
 				s.Field = Generate(params(id))
 				s.Weather = w
 				s.FromGate = params(id).Neighbours[0]
+				// **退兵要有逃得去的郡**（Issue #101）：候選表空的時候
+				// 原版印「無郡可逃」、退不了，這一批盤面就永遠看不到
+				// 「撤退」——而那看起來會像「這一招沒被用到」。
+				for _, side := range SideDeployOrder() {
+					s.Escapes[side] = []Escape{{Prefecture: params(id).Neighbours[0]}}
+				}
 				// 「猛將帶寡兵」（0.1 倍）正面打不贏，但對方不會應戰——
 				// 原版的接受判定裡兵力比看的是**挑戰者**的兵（÷2 與 ÷5，
 				// `DuelAccepted`），所以最後一組是「猛將帶大軍」：兵五倍

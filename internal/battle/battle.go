@@ -126,6 +126,12 @@ type Battle struct {
 	// （`SkirmishAnswer`）；nil 就當接受。
 	PlayerDuelAnswer SkirmishAnswer
 
+	// PlayerRetreat 是玩家退兵時「%s逃向那一郡」那一問（`0x2408e`，
+	// Issue #101）：回逃去的郡編號，**0 ＝ 取消整個退兵**（原版空欄位
+	// Enter 回 `0xFFFF`，那一支留在戰場，`0x2416a`）。nil 表示沒有介面，
+	// 那時照電腦那一套挑。
+	PlayerRetreat func(u *Unit, cands []Escape) int
+
 	// PlayerCaptive 是玩家捕獲時的「1.斬首 2.囚禁 3.釋放 4.招降」
 	// （`0x25af0`，`docs/spec/018` R1）：回四種處置之一，被拒絕（君主不能
 	// 囚禁、在野滿 50、招降不從）就再問一次。nil 時玩家捕獲的人留
@@ -918,6 +924,13 @@ func (b *Battle) wipeCheck(u *Unit) {
 // （`~/diagnosis-notes/docs/03-silence-is-not-success`：沒有紅不等於沒影響）。
 var noInterfaceCaptives int
 
+// retreats 數退兵發生幾次（Issue #101 的先量再改）。
+var retreats int
+
+// Retreats 是目前數到幾次退兵；ResetRetreats 歸零。
+func Retreats() int   { return retreats }
+func ResetRetreats()  { retreats = 0 }
+
 // NoInterfaceCaptives 是目前數到幾次；ResetNoInterfaceCaptives 歸零。
 func NoInterfaceCaptives() int      { return noInterfaceCaptives }
 func ResetNoInterfaceCaptives()     { noInterfaceCaptives = 0 }
@@ -1407,6 +1420,13 @@ func lineMid(a, target Hex) (Hex, bool) {
 	return Hex{}, false
 }
 
+// errRetreatCancelled 是玩家在「逃向那一郡」按空 Enter：整個退兵取消，
+// 那一支留在戰場（`0x2416a`）。呼叫端不把它當錯誤印出來。
+var errRetreatCancelled = fmt.Errorf("battle: 取消退兵")
+
+// RetreatCancelled 回報這個錯誤是不是「玩家取消了退兵」。
+func RetreatCancelled(err error) bool { return err == errRetreatCancelled }
+
 // Retreat 是「退兵」：逃至鄰郡（說明書 p.34）。
 //
 // 「若被地形和敵軍完全包圍則逃不掉」「若退兵成功，原先擁有的錢糧都會損失」。
@@ -1425,6 +1445,13 @@ func (b *Battle) Retreat(u *Unit) error {
 	if !free {
 		return fmt.Errorf("battle: 被完全包圍，逃不掉")
 	}
+	// **「無郡可逃」與「被完全包圍」是兩件事**（Issue #101）：前者是
+	// 鄰郡的問題（`0x23f03`：候選表空的就印 `DS:0x7ca4`「無郡可逃」、
+	// 回 −1），後者是格子的問題。訊息混在一起的話，玩家看到的理由
+	// 與實際擋住他的條件不同。
+	if len(b.Escapes[u.Side]) == 0 {
+		return fmt.Errorf("battle: 無郡可逃")
+	}
 	// 骰序（`0x23dd4`，`L0`）：列完逃得去的鄰郡先印一句對白（`0x23fa1` →
 	// `RND(8)`）；電腦的部隊接著挑去處——主守軍以外的軍力，原郡還裝得下
 	// （現役 ＋ 本隊將領 ≤ 50）就直接回原郡，否則 `RND(鄰郡數)` 挑一郡
@@ -1434,18 +1461,52 @@ func (b *Battle) Retreat(u *Unit) error {
 	// 原版是挑完去處才找路，找不到印「逃不掉」回頭重挑；remake 先查
 	// 有沒有路，查不到在擲骰之前就回錯——只有退不成的那一趟骰數不同。
 	b.sayUnit(u, "bub.retreat") // `0x23fa1`
-	if b.Computer[u.Side] {
+	to := 0
+	switch {
+	case b.Computer[u.Side]:
+		// 電腦挑去處（`0x23fb5`–`0x24030`）：主守軍以外、出兵郡還裝得下
+		// （現役 ＋ 本隊將領 ≤ 50）就直接回出兵郡，**不擲**；否則
+		// `RND(鄰郡數)` 從候選表挑一郡（`0x2401b`）。
 		home := b.Origin[u.Side]
 		if u.Side == MainDefender || home.Prefecture == 0 || u.LeaderCount()+home.Active > baseEscapeRoom {
-			b.roll(len(b.Escapes[u.Side]))
+			to = b.Escapes[u.Side][b.roll(len(b.Escapes[u.Side]))].Prefecture
+		} else {
+			to = home.Prefecture
 		}
+	case b.PlayerRetreat != nil:
+		// 玩家那一問（`0x2408e`「%s逃向那一郡」）：收的是**郡編號**
+		// 不是清單序號（`0x24147` 的 `0x115e(1, 42)`），空白鍵重問，
+		// **空 Enter 取消整個退兵**（`0x2416a`：那一支留在戰場）。
+		to = b.PlayerRetreat(u, b.Escapes[u.Side])
+		if to == 0 {
+			return errRetreatCancelled
+		}
+		ok := false
+		for _, e := range b.Escapes[u.Side] {
+			if e.Prefecture == to {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return fmt.Errorf("battle: 逃不到郡 %d", to)
+		}
+	default:
+		// 沒有介面（月度對拍、示範模式、批次跑）：照電腦那一套，
+		// 與 #64／#98／#99／#100 同一個理由——沒有人可以挑。
+		// **不擲骰**，那一擲是電腦分支的（骰序由 #24 對齊）。
+		to = b.Escapes[u.Side][0].Prefecture
 	}
+	u.RetreatTo = to
 	b.scene(assets.SceneRetreat) // `0x24395`
 	// **軍力的錢糧不動**：退兵常式（`0x23dd4`–`0x24460`）一個字都沒碰
 	// 軍力記錄的 offset 6／8（`L0`；盤面乙量到守方退了一支之後照樣
 	// 用得起 400 金的誘敵）。說明書 p.34 的「原先擁有的錢糧都會損失」
 	// 是整支軍力退光之後戰役結束時的事，在戰略層收尾。
 	u.Retreated = true
+	// 退兵次數的計數器（Issue #101 量對拍盤面時加的，留著當現場訊號）。
+	// **0 要配正對照才算數據**（`TestRetreatCounterFires`）。
+	retreats++
 	b.note("blog.retreat", u.Name())
 	b.checkOver()
 	return nil

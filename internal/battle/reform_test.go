@@ -160,3 +160,27 @@ func TestNoInterfaceCaptiveCounterFires(t *testing.T) {
 		t.Errorf("有介面卻數了 %d 次", got)
 	}
 }
+
+// TestRetreatCounterFires 是退兵量測的**正對照**（Issue #101）：
+// 先證明計數器數得到，對拍量到的數字才有意義。
+func TestRetreatCounterFires(t *testing.T) {
+	ResetRetreats()
+	b := arena(flat(Plain))
+	x := lead("退", 50, 50, 1000)
+	x.Index = 3
+	u := place(b, MainAttacker, Centre, FromOffset(4, 4), x)
+	b.Escapes[MainAttacker] = []Escape{{Prefecture: 7, Active: 0}}
+	if err := b.Retreat(u); err != nil {
+		t.Fatalf("退不了：%v", err)
+	}
+	if got := Retreats(); got != 1 {
+		t.Errorf("數到 %d 次，應該是 1 次——計數器沒接上", got)
+	}
+	if !u.Retreated {
+		t.Error("那一支沒有被標成退兵")
+	}
+	// 去處記在 `RetreatTo`（#101 補上；候選只有一個，沒有介面就取它）。
+	if u.RetreatTo != 7 {
+		t.Errorf("去處記成 %d，候選只有 7", u.RetreatTo)
+	}
+}

@@ -15,6 +15,7 @@ import (
 	"github.com/wicanr2/dosgolem/oracle"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -35,6 +36,8 @@ import (
 
 // TestZZMonthParity 原版走一個月，remake 走同一個月，逐欄位比。
 func TestZZMonthParity(t *testing.T) {
+	battle.ResetRetreats()
+	defer func() { t.Logf("退兵：%d 次（Issue #101 的量測；正對照見 battle.TestRetreatCounterFires）", battle.Retreats()) }()
 	root := origRoot(t)
 	c := openContainer(t, filepath.Join(root, "DATA2"))
 	sc0, err := state.LoadScenario(c, state.Slot("001"))

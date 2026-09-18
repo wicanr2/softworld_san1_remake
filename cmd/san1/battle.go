@@ -60,6 +60,8 @@ type fight struct {
 	// answerFate／answerAt 是玩家剛答的處置與紮寨格。
 	answerFate battle.Fate
 	answerAt   battle.Hex
+	// answerPref 是玩家剛答的郡編號（退兵的去處；0 ＝ 取消）。
+	answerPref int
 	// answerCmd／answerYes 是子畫面的一道命令與叫陣的答案；skm 是子畫面
 	// 選單的子狀態。
 	answerCmd battle.SkirmishCommand
@@ -82,6 +84,9 @@ type engineAsk struct {
 	// challenged 是子畫面裡被叫陣的玩家將領，challenger 是叫陣的人
 	// （「接受嗎(Y/N)」，`0x30d06`）。
 	challenged, challenger *battle.SkirmishGeneral
+	// retreat 是正在退兵的部隊，escapes 是逃得去的郡（`0x2408e`）。
+	retreat *battle.Unit
+	escapes []battle.Escape
 }
 
 // 子畫面選單的子狀態：選單本身、休息確認、行軍中、等單挑或攻擊的方向。
@@ -141,6 +146,10 @@ func (a *app) resumeEngine(f *fight) {
 		f.view.SkirmishActing = q.challenged
 		f.view.Menu, f.view.Items = t("bat.duel"), nil
 		f.view.Prompt = tf("skm.accept", q.challenger.Leader.Name)
+	case q.retreat != nil:
+		f.view.Acting = q.retreat
+		f.view.Menu, f.view.Items = t("bat.retreatTo"), retreatItems(a.s.G, q.escapes)
+		f.view.Prompt = tf("bat.retreatWho", q.retreat.Name())
 	}
 }
 
@@ -250,6 +259,17 @@ func (a *app) answerEngine(k byte) {
 		default:
 			return
 		}
+	case q.retreat != nil:
+		// `0` ＝ 取消整個退兵（原版是空欄位 Enter，`0x2416a`）。
+		if k == '0' {
+			f.answerPref = 0
+			break
+		}
+		i := int(k - '1')
+		if i < 0 || i >= len(q.escapes) {
+			return
+		}
+		f.answerPref = q.escapes[i].Prefecture
 	}
 	cursor := f.view.Cursor
 	f.view = f.saved
@@ -278,6 +298,11 @@ func (f *fight) hookEngine() {
 	b.PlayerDuelAnswer = func(_ *battle.Skirmish, g, t *battle.SkirmishGeneral) bool {
 		f.yield(engineAsk{challenger: g, challenged: t})
 		return f.answerYes
+	}
+	// 「%s逃向那一郡」（`0x2408e`，Issue #101）：收郡編號，0 ＝ 取消退兵。
+	b.PlayerRetreat = func(u *battle.Unit, cands []battle.Escape) int {
+		f.yield(engineAsk{retreat: u, escapes: cands})
+		return f.answerPref
 	}
 }
 
@@ -408,6 +433,20 @@ func (a *app) defendWith(p *game.Pending, groups []int) {
 		}
 	}
 	a.inEngine(a.nextCamp)
+}
+
+// retreatItems 把逃得去的郡列成選單（Issue #101）。
+//
+// **remake 差異**：原版收的是**郡編號**（`0x24147` 的 `0x115e(1, 42)`，
+// 螢幕上另外列出候選郡名）；主戰場這一層沒有數字欄位，只收一個鍵
+// （`docs/re/05` §7.0），所以這裡列成 1–n 的清單，`0` 取消。
+// 收到的郡是同一組，差的是打法。
+func retreatItems(g *game.State, cands []battle.Escape) []string {
+	out := make([]string, 0, len(cands)+1)
+	for i, e := range cands {
+		out = append(out, fmt.Sprintf("%d.%s", i+1, prefName(g, e.Prefecture)))
+	}
+	return append(out, t("bat.retreatStay"))
 }
 
 // nextCamp 問下一支部隊要紮在哪裡；紮完就開打。
