@@ -18,7 +18,18 @@
 原版主選單的第三、四項換的是 `ZHONG.PAT`／`YING.PAT`（`0x11bb4`／`0x11bc2`
 → `0x33d8:0x15a`）。remake 不內嵌原版字模，改成兩套自由授權字型：
 
-- 來源在 `~/cht/cht_fonts/wangfonts-1.3.0`，用 `tools/mkhexfont` 點陣化成 16×16。
+- 來源在 `~/cht/cht_fonts/wangfonts-1.3.0/wangfonts`（`wt064.ttf` 顏楷、
+  `wt021.ttf` 中隸書），用 `tools/mkhexfont` 點陣化成 16×16。重跑的話：
+
+  ```sh
+  mkdir -p workplace/fontsrc                       # workplace/ 是 gitignore
+  cp ~/cht/cht_fonts/wangfonts-1.3.0/wangfonts/wt064.ttf \
+     ~/cht/cht_fonts/wangfonts-1.3.0/wangfonts/wt021.ttf workplace/fontsrc/
+  tools/go.sh run ./tools/mkhexfont -ttf workplace/fontsrc/wt064.ttf -out fonts/kai.hex.gz
+  tools/go.sh run ./tools/mkhexfont -ttf workplace/fontsrc/wt021.ttf -out fonts/li.hex.gz
+  ```
+
+  `-show 三國` 只把幾個字印成 ASCII 圖，用來看字級與基線擺對了沒有。
 - **碼位與字寬照 `unifont.hex.gz`**：少一個碼位在畫面上是空白，
   而空白看起來像排版問題；字寬變了整個版面跟著跑
   （`TestSwitchableFontsCoverTheSameRunes`）。TTF 裡沒有的碼位沿用 unifont
