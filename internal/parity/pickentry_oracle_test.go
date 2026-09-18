@@ -1738,3 +1738,117 @@ func TestZZMoveFromAnotherPrefectureMatchesTheOriginal(t *testing.T) {
 		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
 	}
 }
+
+// TestZZNewGovernorMatchesTheOriginal 主事者被調走之後的「選擇新任太守」（Issue #84，`0x1d6ed`）：
+// 把君主從下令的郡調到隔壁，原版停下來問（模式 2、鍵 3），畫面與 remake 相同；挑一位**不是預設**的
+// 人之後三張表逐位元組相同。
+func TestZZNewGovernorMatchesTheOriginal(t *testing.T) {
+	b := newPickBoard(t)
+	face := loadFace(t)
+	nMas, nSta := state.MasterTableSize, state.PrefectureTableSize
+	lord := int(b.o.Word(addr(b.base + uint32(int(b.me)*state.MasterRecordSize+2))))
+	gen := func(i int) uint32 { return b.base + uint32(nMas+nSta+i*state.GeneralRecordSize) }
+	pref := func(id int) uint32 { return b.base + uint32(nMas+id*state.PrefectureRecordSize) }
+	g0 := b.game(t)
+	dest := g0.Prefecture(b.at).Neighbours[0]
+	// 目的地先擺成自己的、而且**已經有主事者**，搬進去才不會多問一次（那是佔領那一條）。
+	var host int
+	for i := len(b.people) - 1; i >= 0; i-- {
+		if b.people[i] != lord {
+			host = b.people[i]
+			break
+		}
+	}
+	b.o.SetByte(addr(gen(host)+19), uint8(dest))
+	b.o.SetByte(addr(gen(host)+17), uint8(state.StatusGovernor))
+	b.o.SetByte(addr(pref(dest)+30), uint8(b.me))
+	b.o.SetWord(addr(pref(dest)+32), uint16(host))
+	g := b.game(t)
+	total := nMas + nSta + state.GeneralTableSize
+	done := 0
+	var after []byte
+	b.o.OnCall(addr(mainTurnDoneAt), func(o *oracle.Oracle) {
+		if done++; after == nil {
+			after = o.Bytes(addr(b.base), total)
+		}
+	})
+	succ := 0
+	b.o.OnCall(addr(0x1d6ed), func(*oracle.Oracle) { succ++ })
+
+	b.press(t, "軍事", "2\r")
+	b.press(t, "調動軍隊", "1\r")
+	b.press(t, "從那一郡移出", fmt.Sprintf("%d\r", b.at))
+	b.press(t, "調到那一郡", fmt.Sprintf("%d\r", dest))
+	// 多選清單裡挑君主本人：主事者被調走，原版才會問新任太守。
+	row := 0
+	for i, x := range g.PickRoster(b.at, game.PickServing, game.PickByStatus) {
+		if x.Index == lord {
+			row = i + 1
+		}
+	}
+	if row == 0 {
+		t.Fatalf("名單裡沒有君主 %d", lord)
+	}
+	b.press(t, "挑君主", fmt.Sprintf("%d\r", row))
+	b.press(t, "交出名單", "\r")
+	b.press(t, "金", "0\r")
+	before := b.o.Bytes(addr(b.base), total)
+	ask, shot, tr := b.press(t, "選擇新任太守", "0\r")
+	if succ == 0 {
+		t.Fatalf("`0x1d6ed` 一次都沒攔到；這一問是 %v", ask)
+	}
+	// remake 這一邊：先把調動套上去，剩下的人就是原版問的那一份名單。
+	if err := (game.MoveOrder{At: b.at, From: b.at, To: dest, Generals: []int{lord}}).Apply(g, b.me); err != nil {
+		t.Fatal(err)
+	}
+	if at := g.NeedsGovernor(); at != b.at {
+		t.Fatalf("remake 要問的是郡 %d，原版問的是 %d", at, b.at)
+	}
+	var idx []int
+	for _, x := range g.PickRoster(b.at, game.PickServing, game.PickByCharm) {
+		idx = append(idx, x.Index)
+	}
+	rp := &ui.RosterPick{List: idx, Key: game.PickByCharm}
+	if lo, hi := ui.RosterRange(rp); ask != [2]int{lo, hi} {
+		t.Errorf("原版問 %v，remake %d-%d", ask, lo, hi)
+	}
+	v := ui.View{Sel: b.at, Roster: rp,
+		Prompt: i18n.S("ask.newGovernor") + i18n.Sf("pick.range", 1, len(idx)), Input: tr.input()}
+	cv := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(cv, b.art, g, nil, v)
+	v.Input = ui.InputCursor{}
+	plain := ui.NewCanvasPx(scrW, scrH, face)
+	ui.DrawArtSession(plain, b.art, g, nil, v)
+	comparePanels(t, "選擇新任太守", shot, cv, plain, tr, 1)
+
+	// **挑第三位**（不是預設的第一位），才看得出玩家的選擇真的算數。
+	if len(idx) < 3 {
+		t.Fatalf("名單只有 %d 位，挑不到第三位", len(idx))
+	}
+	b.o.Drain()
+	b.o.TypeBoth("3\r")
+	for i := 0; i < 40 && done == 0; i++ {
+		if err := b.o.Run(20_000_000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if after == nil {
+		t.Fatalf("挑完之後原版沒有結束回合；提問串 %v", (*b.asks)[len(*b.asks)-2:])
+	}
+	if err := g.AssignGovernor(b.at, idx[2]); err != nil {
+		t.Fatal(err)
+	}
+	if g.NeedsGovernor() != 0 {
+		t.Error("答完之後 remake 還在等挑主事者")
+	}
+	rm, rs, rg, err := g.Tables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := append(append(append([]byte{}, rm...), rs...), rg...)
+	t.Logf("君主 %d 調到郡 %d；新任太守挑第 3 位（槽號 %d，預設是 %d）；原版動到的記錄：%s",
+		lord, dest, idx[2], idx[0], changedRecords(before, after, nMas, nSta))
+	if n := diffCount(after, got); n != 0 {
+		t.Errorf("三張表兩邊差 %d 個位元組：%s", n, changedRecords(after, got, nMas, nSta))
+	}
+}

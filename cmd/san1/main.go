@@ -279,6 +279,15 @@ func (a *app) Update() error {
 		a.updateFortSpot()
 		return nil
 	}
+	// 主事者離開之後由玩家挑新任太守（`0x1d6ed`，Issue #84）。對白播完才問。
+	if a.s != nil && a.roster == nil && a.num == nil && len(a.pick) == 0 &&
+		!a.view.HasCard && a.s.Bubble() == nil {
+		if at := a.s.G.NeedsGovernor(); at != 0 {
+			a.askNewGovernor(at)
+			a.dirty = true
+			return nil
+		}
+	}
 	if a.treasuryWait {
 		if anyKeyPressed() {
 			a.treasuryWait, a.view.Treasury, a.view.Prompt = false, nil, ""
@@ -2055,6 +2064,17 @@ func (a *app) attackFrom(at, src, to int) {
 			})
 		})
 	})
+}
+
+// askNewGovernor 是「選擇新任太守」（`0x1d6ed`，`DS:0x764e`）：模式 2、鍵 3 的挑人清單，
+// **不能取消**——原版回 −1 就再問一次（`0x1d6f8`）。
+func (a *app) askNewGovernor(at int) {
+	a.view.Sel = at
+	a.askRoster(t("ask.newGovernor"), at, game.PickServing, game.PickByCharm, func(gi int) {
+		if err := a.s.G.AssignGovernor(at, gi); err != nil {
+			a.view.Prompt = game.ErrorText(err)
+		}
+	}, func() { a.askNewGovernor(at) })
 }
 
 // askSource 是「從那一郡攻打／移出／送出」（`0x18998`／`0x18c6d`／`0x19092`，Issue #82）：

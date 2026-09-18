@@ -337,6 +337,8 @@ type State struct {
 	// Players 是玩家控制的勢力，照玩家序號排（第 1 位在前，`docs/spec/019`）。
 	// 空的是電腦自動示範模式。
 	Players []state.FactionID
+	// governorAsks 是還沒讓玩家挑新主事者的郡（`askGovernor`）。
+	governorAsks []int
 	// Player 是第一位玩家（Players[0]）；沒有玩家時是 NoFaction。只有一位
 	// 玩家的呼叫端用它；規則裡「是不是玩家」一律問 IsHuman。
 	Player state.FactionID
@@ -1038,6 +1040,10 @@ func (g *State) RefreshGarrison(prefectureID int) {
 		// 0x1d638：清單重建（建表常式收尾一律按行動者鍵排，`0xfe3e`／
 		// 加強版 `0xf872`）之後的第一位——智 ＋ 武 ＋ 加權表[身分]最大者。
 		gov = g.ActorRoster(prefectureID)[0].Index
+		// **玩家的郡由玩家自己挑**（`0x1d6ed`「選擇新任太守」，Issue #84）：
+		// 先填原版電腦那一條的預設值（沒有畫面的路照舊能跑），同時排進待答
+		// 佇列讓畫面層問；答完由 `AssignGovernor` 覆蓋。
+		g.askGovernor(prefectureID, sorted[0].Faction)
 	}
 	p.governor = gov
 	if x := g.General(gov); x != nil && x.Status == state.StatusOfficer {
@@ -1049,6 +1055,67 @@ func (g *State) RefreshGarrison(prefectureID int) {
 		}
 	}
 	p.troops = g.Soldiers(prefectureID) / 100
+}
+
+// askGovernor 把「這個郡要挑新主事者」排給畫面層（`0x1d638` → `0x1d6ed`
+// 「選擇新任太守」，Issue #84）。只有**人類控制的勢力**會問（`0x1d6c0`：諸侯記錄
+// 的控制旗標），而且原版那一問**不能取消**——取消會再問一次。
+//
+// 排進來之前規則層已經填了原版電腦那一條的預設值，所以沒有畫面的路（測試、
+// 存檔匯入、電腦的郡）照舊走得完；玩家答了才覆蓋。
+func (g *State) askGovernor(prefectureID int, owner state.FactionID) {
+	if !g.IsHuman(owner) {
+		return
+	}
+	for _, id := range g.governorAsks {
+		if id == prefectureID {
+			return
+		}
+	}
+	g.governorAsks = append(g.governorAsks, prefectureID)
+}
+
+// NeedsGovernor 回下一個要玩家挑主事者的郡；沒有就回 0。
+func (g *State) NeedsGovernor() int {
+	for len(g.governorAsks) > 0 {
+		id := g.governorAsks[0]
+		p := g.Prefecture(id)
+		// 排進來之後郡可能已經沒了（無主）或又換了主人。
+		if p != nil && p.Owned() && g.IsHuman(p.Owner) && len(g.ActorRoster(id)) > 0 {
+			return id
+		}
+		g.governorAsks = g.governorAsks[1:]
+	}
+	return 0
+}
+
+// AssignGovernor 是玩家挑完之後那一步（`0x1d709`–`0x1d727`）：寫州郡 offset 32、
+// 身分 3 升 2、同郡其他人的 2 降回 3。
+func (g *State) AssignGovernor(prefectureID, index int) error {
+	p := g.Prefecture(prefectureID)
+	if p == nil || !p.Owned() {
+		return ErrNotYours
+	}
+	x := g.General(index)
+	if x == nil || !x.Employed() || x.Location != prefectureID {
+		return ErrUnknownUnit
+	}
+	p.governor = index
+	if x.Status == state.StatusOfficer {
+		x.Status = state.StatusGovernor
+	}
+	for _, y := range g.Garrison(prefectureID) {
+		if y.Index != index && y.Status == state.StatusGovernor {
+			y.Status = state.StatusOfficer
+		}
+	}
+	for i, id := range g.governorAsks {
+		if id == prefectureID {
+			g.governorAsks = append(g.governorAsks[:i], g.governorAsks[i+1:]...)
+			break
+		}
+	}
+	return nil
 }
 
 // refreshGovernor 是 `0x1d638`（加強版 `0x1ba90`，`L0`＋`L1`）：整編把出征
@@ -1073,6 +1140,7 @@ func (g *State) refreshGovernor(prefectureID int) {
 		if roster[0].Status == state.StatusOfficer {
 			roster[0].Status = state.StatusGovernor
 		}
+		g.askGovernor(prefectureID, p.Owner)
 	}
 	p.activeGenerals = len(roster)
 	p.troops = g.Soldiers(prefectureID) / 100

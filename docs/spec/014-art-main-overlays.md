@@ -398,6 +398,17 @@ remake：`askSource`、`MoveOrder`／`TransportOrder`／`AttackOrder` 的 `From`
 `TestZZMoveFromAnotherPrefectureMatchesTheOriginal`：來源清單 285 格有墨與 42 郡字色相同；從郡 42 搬到 34
 （下令的是 41）之後三張表逐位元組相同，結束回合一次、月份不變。
 
+選擇新任太守（Issue #84，`0x1d638` → `0x1d6ed`）：重整守將清單時，記著的主事者不在那一郡了就要換人——
+名單空的話郡變無主（`0x1d66b`：offset 32 ＝ 0xFFFF、offset 30 ＝ 0xFF）；預設是行動者鍵排序的第一位；
+**人類控制的勢力才問玩家**（`0x1d6c0` 看諸侯記錄的控制旗標），而且預設那位是君主時不問（`0x1d6d4`）。
+提示 `DS:0x764e`「選擇新任太守\n」，清單模式 2、鍵 3；**不能取消**——回 −1 會再問一次（`0x1d6f8`）。
+挑完寫 offset 32、身分 3 升 2（`0x1d719`），同郡其他人的 2 降回 3。
+呼叫時機量到兩個：調動軍隊把主事者搬走、搬進沒有主事者的郡（佔領，`0x19567` 那一條）。
+remake：`game.NeedsGovernor`／`AssignGovernor`（規則層先填原版電腦那一條的預設值，玩家答了才覆蓋，
+所以沒有畫面的路照舊走得完）、`cmd/san1` 的 `askNewGovernor`。
+`TestZZNewGovernorMatchesTheOriginal`：把君主調到隔壁，那一格清單 163 格有墨與游標相同；**挑第三位**
+（不是預設的第一位）之後三張表逐位元組相同——換成挑預設那一位就差 3 個位元組（反向對照）。
+
 驗證：`TestZZPrefPickMatchesTheOriginal`（查看那一郡、攻打那一郡兩格：右側面板字格以外逐像素、283 格有墨、
 42 郡字色逐郡、下面板與游標相同）；`TestZZMovePickMatchesTheOriginal`（多選清單沒選／選了一位兩格、
 金那一問的四行下面板相同，選第 2、3 位搬完三張表逐位元組相同）。

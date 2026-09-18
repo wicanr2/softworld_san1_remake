@@ -2110,6 +2110,27 @@
       }
     },
     {
+      "id": "new-governor",
+      "title": "主事者被調走之後由玩家挑新任太守（0x1d6ed），不能取消",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/014"
+      ],
+      "note": "`TestZZNewGovernorMatchesTheOriginal`：清單那一格相同，挑第三位（不是預設）之後三張表逐位元組相同；挑預設那一位的反向對照差 3 個位元組。規則層先填預設值再讓玩家覆蓋，所以電腦與無畫面的路不變。戰役收尾、太守被挖角那幾條時機還沒各自對拍。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/game/state.go"
+        ],
+        "pattern": "func \\(g \\*State\\) AssignGovernor"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",
