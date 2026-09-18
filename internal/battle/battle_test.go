@@ -23,16 +23,27 @@ func TestFormUpSplitsEvenlyAndCaps(t *testing.T) {
 		}
 	}
 
-	// 超過 50 人時每組封頂 10 名。
+	// 滿編 50 位剛好每組 10 名——那是「每組最多 10 名將領」（說明書 p.27）
+	// 的邊界，也是一個郡的行動者上限（50）能湊出來的最大數。
+	//
+	// ⚠ **上限不是靠丟人達成的**：先前玩家那一條分到第 11 位就 `continue`，
+	// 那一位誰的隊伍都沒進，等於出征名單上有人憑空消失，而畫面上看不出來。
+	// 現在的分法（電腦那一套，`0x23789`）除得盡就不會超過。
 	b2 := arena(flat(Plain))
 	pool = nil
-	for i := 0; i < 70; i++ {
+	for i := 0; i < 50; i++ {
 		pool = append(pool, lead("將", uint8(i%100), 50, 100))
 	}
+	seen := 0
 	for _, u := range b2.formUp(MainAttacker, pool, FromOffset(2, 2)) {
-		if len(u.Leaders) > MaxLeaders {
-			t.Errorf("%s 有 %d 名將領，超過上限 %d", u.Formation, len(u.Leaders), MaxLeaders)
+		if len(u.Leaders) != MaxLeaders {
+			t.Errorf("%s 有 %d 名將領，50 位分 5 隊應該每隊 %d 名",
+				u.Formation, len(u.Leaders), MaxLeaders)
 		}
+		seen += len(u.Leaders)
+	}
+	if seen != 50 {
+		t.Errorf("編進去 %d 位，給的是 50 位——有人不見了", seen)
 	}
 
 	// 人少於五個就不開空隊伍——空隊伍在畫面上是一支不存在的軍。

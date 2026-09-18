@@ -13,6 +13,7 @@ import (
 
 	"github.com/wicanr2/dosgolem/oracle"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -256,13 +257,20 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 		{want: "發動戰役", keys: "2", kind: "數字", lo: 1, hi: 3},
 		{want: "從那一郡攻打", keys: fmt.Sprintf("%d", at), kind: "數字", lo: 1, hi: 42},
 		{want: "攻打那一郡", keys: fmt.Sprintf("%d", to), kind: "數字", lo: 1, hi: 42},
-		{want: "分到那一軍", keys: "1", kind: "數字", lo: 1, hi: 5},
-		{want: "分配那一位將軍", keys: "1", kind: "數字", lo: 1},
+		// **兩位分到不同的軍**（Issue #98）：只分一位的話，整編分到哪一軍
+		// 根本比不出來——五支部隊裡只有中軍有人，怎麼分都一樣。
+		{want: "分到那一軍", keys: "?", kind: "數字", lo: 1, hi: 5},
+		{want: "分配那一位將軍", keys: "?", kind: "數字", lo: 1},
 		{want: "分配完畢", keys: "Y"},
 		{want: "攜帶多少金", keys: "100", kind: "數字"},
 		{want: "攜帶多少米", keys: "100", kind: "數字"},
 	}
 
+	// plan 是這一輪整編要下的兩步：名單上的第幾位 → 第幾軍。
+	// **兩位分到不同的軍**，分隊才比得出來（Issue #98）。
+	// **兩位同一軍、一位另一軍**：分組才比得出來。只分一位或每位各一軍的話，
+	// 「誰跟誰同隊」永遠成立，測試對分隊不敏感。
+	plan := []struct{ who, army int }{{1, 2}, {2, 2}, {3, 4}}
 	// assigned ＝ 這一個軍團已經編進去幾位（「請按任一鍵…整編」時歸零）。
 	assigned := 0
 
@@ -291,11 +299,18 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 		// 會被退回重問（`0x214af: cmpw $0, es:0x3494(%bx)`）——所以一直
 		// 送同一個號碼就是無限迴圈，量到過上千次。
 		// 一個軍團只編一位：第一次送 `1`，之後送空的 Enter 收尾。
-		if strings.Contains(a.prompt, "分配那一位將軍") && assigned > 0 {
+		if strings.Contains(a.prompt, "分配那一位將軍") && assigned >= len(plan) {
 			return "", true
 		}
 		for _, r := range rules {
 			if fits(r) && strings.Contains(a.prompt, r.want) {
+				if r.keys == "?" {
+					// 整編那兩問的答案看現在編到第幾位（`plan`）。
+					if strings.Contains(r.want, "那一位將軍") {
+						return fmt.Sprintf("%d", plan[assigned].who), true
+					}
+					return fmt.Sprintf("%d", plan[assigned].army), true
+				}
 				return r.keys, true
 			}
 		}
@@ -472,12 +487,15 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 	// 陣營碼 2，所以是第 2 個軍團（`docs/re/05` §1、§3.3）。
 	const unitRecAt, unitRecSize, corpsUnits = 0x3502, 42, 10
 	var picked []int
+	// byUnit[u] 是原版第 u 支部隊裡的槽號（Issue #98：分到哪一軍要比得出來）。
+	byUnit := make([][]int, 5)
 	for u := 0; u < 5; u++ {
 		rec := uint16(unitRecAt + (2*corpsUnits+u)*unitRecSize)
 		for k := 0; k < 10; k++ {
 			v := o.Word(oracle.Addr{Seg: work, Off: rec + uint16(k*2)})
 			if v != 0xFFFF && int(v) < nGen/state.GeneralRecordSize {
 				picked = append(picked, int(v))
+				byUnit[u] = append(byUnit[u], int(v))
 			}
 		}
 	}
@@ -499,9 +517,54 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 		int(before[off18+2])|int(before[off18+3])<<8,
 		int(after[off18+2])|int(after[off18+3])<<8)
 	supply := game.Supply{Gold: corpsAt(6), Rice: corpsAt(8)}
-	if _, err := g.BeginAttack(at, to, picked, me, supply); err != nil {
+	// **整編：名單上的第幾號是誰，兩邊要是同一位**（Issue #98）。
+	// 送進去的鍵是「第 1 位 → 第 1 軍、第 2 位 → 第 5 軍」，remake 這一邊
+	// 的名單是 `ActorRoster`（`cmd/san1` 的 `attackFrom` 用的就是它）。
+	var pool []int
+	for _, x := range g.ActorRoster(at) {
+		pool = append(pool, x.Index)
+	}
+	if len(pool) < 3 {
+		t.Fatalf("郡 %d 只有 %d 位行動者，湊不出「兩位同一軍」", at, len(pool))
+	}
+	force := []int{pool[0], pool[1], pool[2]}
+	groups := []int{2, 2, 4}
+	t.Logf("remake 名單前 %d 位：槽 %v；原版編進去的：%v", len(force), force, picked)
+	p, err := g.BeginAttack(at, to, force, me, supply)
+	if err != nil {
 		t.Fatalf("remake 這一邊：%v", err)
 	}
+	if err := p.Battle().Reform(battle.MainAttacker, groups); err != nil {
+		t.Fatalf("remake 整編：%v", err)
+	}
+	// **比的是分組，不是「第幾支部隊」**：原版的部隊記錄索引是**分配的
+	// 順序**，不是軍別——量到的（Issue #98）：三位分別分到先鋒、左軍、
+	// 右軍，卻落在記錄 0、1、2。所以只能比「誰跟誰同一隊」。
+	//
+	// 軍號對到哪一支是另外量的，證據是原版自己印出來的軍名：
+	// 1 中軍、2 先鋒、3 左軍、4 右軍、5 後軍——與 `battle.DeployOrder`
+	// 逐項相同（`docs/re/05` §5.2）。
+	mine := make([][]int, 0, 5)
+	for _, u := range p.Battle().Units {
+		if u.Side != battle.MainAttacker {
+			continue
+		}
+		var slots []int
+		for _, l := range u.Leaders {
+			slots = append(slots, l.Index)
+		}
+		mine = append(mine, slots)
+	}
+	var orig [][]int
+	for _, g := range byUnit {
+		if len(g) > 0 {
+			orig = append(orig, g)
+		}
+	}
+	if !sameGroups(orig, mine) {
+		t.Errorf("分組對不上：原版 %v、remake %v", orig, mine)
+	}
+	t.Logf("分組：原版 %v；remake %v", orig, mine)
 	rm, rs, rg, err := g.Tables()
 	if err != nil {
 		t.Fatal(err)
@@ -547,6 +610,33 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 			}
 		}
 	}
+	// **反向對照**：兩位都塞進中軍，分隊就該對不上——不然這一段對
+	// 「分到哪一軍」根本不敏感。
+	g2, err := game.New(planted, me, 5, state.EditionBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2, err := g2.BeginAttack(at, to, force, me, supply)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p2.Battle().Reform(battle.MainAttacker, []int{1, 3, 5}); err != nil {
+		t.Fatal(err)
+	}
+	var other [][]int
+	for _, u := range p2.Battle().Units {
+		if u.Side != battle.MainAttacker {
+			continue
+		}
+		var slots []int
+		for _, l := range u.Leaders {
+			slots = append(slots, l.Index)
+		}
+		other = append(other, slots)
+	}
+	if sameGroups(orig, other) {
+		t.Error("三位各自一軍，分組卻與原版相同——這一段對分到哪一軍不敏感")
+	}
 	// 原版沒動過、兩邊卻不同的位元組，一定是 remake 自己多做的。
 	for i := range after {
 		if after[i] == got[i] || before[i] != after[i] {
@@ -554,4 +644,29 @@ func TestZZPlayerSortieDriven(t *testing.T) {
 		}
 		t.Logf("原版沒動過卻不同：位移 %d 原版 %d／remake %d", i, after[i], got[i])
 	}
+}
+
+// sameGroups 比兩份分組：**誰跟誰同一隊**相同就算相同，隊伍的先後不算
+// ——原版的部隊記錄是照分配順序擺的，remake 是照 `DeployOrder`。
+func sameGroups(a, b [][]int) bool {
+	key := func(gs [][]int) []string {
+		out := make([]string, 0, len(gs))
+		for _, g := range gs {
+			c := append([]int(nil), g...)
+			sort.Ints(c)
+			out = append(out, fmt.Sprint(c))
+		}
+		sort.Strings(out)
+		return out
+	}
+	ka, kb := key(a), key(b)
+	if len(ka) != len(kb) {
+		return false
+	}
+	for i := range ka {
+		if ka[i] != kb[i] {
+			return false
+		}
+	}
+	return true
 }

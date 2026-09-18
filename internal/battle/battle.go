@@ -3,7 +3,6 @@ package battle
 import (
 	"fmt"
 	"math/big"
-	"sort"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
@@ -88,6 +87,10 @@ type Battle struct {
 
 	// Escapes 是各方退兵時逃得去的鄰郡（`Escape`）。沒填就逃不了。
 	Escapes [sideCount][]Escape
+
+	// base 是各方編隊時的基準格（主攻軍是入口、守方是城池），
+	// 重編（`Reform`）要照同一個基準重排。
+	base [sideCount]Hex
 
 	// Commander 是四種軍力的統帥（人物槽號），−1 表示這一方沒出場。
 	//
@@ -221,6 +224,7 @@ func New(s Setup) *Battle {
 		if !side.Attacking() {
 			base = s.Field.CityAt
 		}
+		b.base[side] = base
 		b.Units = append(b.Units, b.formUp(side, pool, base)...)
 	}
 	if !s.FixedWeather {
@@ -345,50 +349,40 @@ func (b *Battle) defections(u *Unit) {
 // 的那一份，主守軍是郡的守將清單）。玩家那一方原版是逐位問「分到那一軍」，
 // remake 這裡照戰力排序再輪流分配，中軍先分到最強的。
 func (b *Battle) formUp(side Side, pool []Leader, base Hex) []*Unit {
-	sorted := append([]Leader(nil), pool...)
+	// **沒有介面的那一方照電腦的整編填**（Issue #98 的裁定）：月度對拍、
+	// 示範模式、批次跑都走這裡，沒有人可以逐位分配。原版在這一刻是問人，
+	// 所以這是登記在案的 remake 差異，不是「對回原版」。
+	n := len(pool)
+	per, rem := (n-1)/5, n-((n-1)/5)*5
 	var counts []int
-	if b.Computer[side] {
-		n := len(sorted)
-		per, rem := (n-1)/5, n-((n-1)/5)*5
-		for i := 0; i < int(formationCount); i++ {
-			c := per
-			if i < rem {
-				c++
-			}
-			if c > 0 {
-				counts = append(counts, c)
-			}
+	for i := 0; i < int(formationCount); i++ {
+		c := per
+		if i < rem {
+			c++
 		}
-	} else {
-		sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].War > sorted[j].War })
+		if c > 0 {
+			counts = append(counts, c)
+		}
 	}
+	groups := make([][]Leader, 0, len(counts))
+	k := 0
+	for _, c := range counts {
+		groups = append(groups, append([]Leader(nil), pool[k:k+c]...))
+		k += c
+	}
+	return b.buildUnits(side, groups, base)
+}
 
-	groups := int(formationCount)
-	if len(sorted) < groups {
-		groups = len(sorted)
-	}
-	if counts != nil {
-		groups = len(counts)
-	}
-	units := make([]*Unit, 0, groups)
+// buildUnits 把分好的隊伍變成部隊：依 `DeployOrder` 給番號、算箭、
+// 從基準格往外紮營、記下開戰時的兵力與綜合能力。空的隊伍不佔番號。
+func (b *Battle) buildUnits(side Side, groups [][]Leader, base Hex) []*Unit {
 	order := DeployOrder()
-	for i := 0; i < groups; i++ {
-		units = append(units, &Unit{Side: side, Formation: order[i]})
-	}
-	if counts != nil {
-		k := 0
-		for i, c := range counts {
-			units[i].Leaders = append(units[i].Leaders, sorted[k:k+c]...)
-			k += c
+	units := make([]*Unit, 0, len(groups))
+	for i, g := range groups {
+		if len(g) == 0 || i >= len(order) {
+			continue
 		}
-	} else {
-		for i, l := range sorted {
-			u := units[i%groups]
-			if len(u.Leaders) >= MaxLeaders {
-				continue
-			}
-			u.Leaders = append(u.Leaders, l)
-		}
+		units = append(units, &Unit{Side: side, Formation: order[i], Leaders: g})
 	}
 	for _, u := range units {
 		u.Arrows = ArrowCount(u.Leaders)
@@ -408,6 +402,65 @@ func (b *Battle) formUp(side Side, pool []Leader, base Hex) []*Unit {
 		spot = base.Step(Dirs()[i%6])
 	}
 	return units
+}
+
+// Reform 把一方的部隊照玩家的整編重編（原版 `0x20a30` 的
+// 「分配那一位將軍」→「將%s分到那一軍」迴圈，Issue #98）。
+//
+// groups 與這一方**現在的將領**一一對應（照部隊、部隊內的順序攤平），
+// 值 1–5 是要分到第幾軍（`DeployOrder` 的序），**0 表示不出征**——
+// 原版沒有被分配到的人留在家裡（`0x20c9a` 只把編進部隊的人的所在郡寫 0）。
+//
+// 只能在開戰前用：日迴圈跑起來之後重編等於憑空搬動部隊。
+func (b *Battle) Reform(side Side, groups []int) error {
+	if b.Day != 1 {
+		return fmt.Errorf("battle: 整編只在開戰前")
+	}
+	var pool []Leader
+	for _, u := range b.Units {
+		if u.Side == side {
+			pool = append(pool, u.Leaders...)
+		}
+	}
+	if len(groups) != len(pool) {
+		return fmt.Errorf("battle: 整編給了 %d 個位置，這一方有 %d 位將領",
+			len(groups), len(pool))
+	}
+	picked := make([][]Leader, int(formationCount))
+	count := 0
+	for i, g := range groups {
+		if g == 0 {
+			continue
+		}
+		if g < 1 || g > int(formationCount) {
+			return fmt.Errorf("battle: 第 %d 位分到第 %d 軍，只有 1–%d 軍",
+				i+1, g, formationCount)
+		}
+		if len(picked[g-1]) >= MaxLeaders {
+			return fmt.Errorf("battle: 第 %d 軍已經滿 %d 位", g, MaxLeaders)
+		}
+		picked[g-1] = append(picked[g-1], pool[i])
+		count++
+	}
+	if count == 0 {
+		return fmt.Errorf("battle: 一位都沒有分配")
+	}
+	kept := b.Units[:0]
+	for _, u := range b.Units {
+		if u.Side != side {
+			kept = append(kept, u)
+		}
+	}
+	b.Units = append(kept, b.buildUnits(side, picked, b.base[side])...)
+	// **統帥跟著換**：勝負判定拿 `Commander` 與「該方第一支部隊的第一位
+	// 將領」比（`0x24f8c`），對不上就當成統帥不在了。
+	for _, u := range b.Units {
+		if u.Side == side {
+			b.Commander[side] = u.Leaders[0].Index
+			break
+		}
+	}
+	return nil
 }
 
 // Camp 把一支部隊移到指定的格子上——**紮營，不是移動**：

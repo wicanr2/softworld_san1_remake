@@ -281,3 +281,28 @@ func GeneralPage(g *game.State, index int) (string, []string) {
 		tf("gen.cap", x.TroopCap(), RankName(x.Rank)),
 	}
 }
+
+// FormationPage 是整編時攤在上面板的名單（Issue #98）：編號、姓名、
+// 戰力、謀略、兵士，以及已經分到第幾軍。
+//
+// **原版的整編有自己的畫面**（`0x20a30`，還沒逐格讀出來），remake 用
+// 自己的表格頁——這是登記在案的差異（`docs/spec/014` §4）。但「誰是第幾號」
+// 一定要看得見：問「分配那一位將軍(1-n)」而畫面上沒有名單，玩家只能用猜的。
+func FormationPage(g *game.State, pool []int, groups []int) (string, []string) {
+	out := make([]string, 0, len(pool)+1)
+	out = append(out, t("form.head"))
+	for i, gi := range pool {
+		x := g.General(gi)
+		if x == nil {
+			continue
+		}
+		at := t("form.none")
+		if order := battle.DeployOrder(); i < len(groups) &&
+			groups[i] > 0 && groups[i] <= len(order) {
+			at = FormationName(order[groups[i]-1])
+		}
+		out = append(out, fmt.Sprintf("%2d. %-12s %3d %3d %6d  %s",
+			i+1, PersonName(x.Name), x.War, x.Intel, x.Soldiers, at))
+	}
+	return t("page.formation"), out
+}

@@ -56,6 +56,9 @@ type app struct {
 	// Y/N、宣戰對白之後開打）；confirm 是等著的 Y/N。
 	afterBubbles func()
 	confirm      *confirmEntry
+
+	// form 是正在進行的整編（`askAssign`，Issue #98）；沒有就是 nil。
+	form *formation
 	// afterCard 是人物資料卡按任意鍵收掉之後要接著做的事（查看再問
 	// 「檢視那位」、賜物接著列物品表）。
 	afterCard func()
@@ -241,7 +244,11 @@ func (a *app) Update() error {
 			then()
 			a.dirty = true
 		case inpututil.IsKeyJustPressed(ebiten.KeyN), inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+			no := a.confirm.no
 			a.confirm, a.view.Prompt = nil, ""
+			if no != nil {
+				no()
+			}
 			a.dirty = true
 		}
 		return nil
@@ -1286,12 +1293,23 @@ func (a *app) inspectGeneral(sel int) {
 	ask()
 }
 
-// confirmEntry 是等著的 Y/N；then 是按 Y 要做的事。
-type confirmEntry struct{ then func() }
+// confirmEntry 是等著的 Y/N；then 是按 Y 要做的事，
+// no 是按 N（或 Esc）要做的事——nil 就只是收掉這一問。
+//
+// **「分配完畢(Y/N)」的 N 不是取消**（`0x21475`，Issue #98）：它是
+// 「再分一位」，要回到整編的迴圈。沒有 no 這一格的話，N 會讓整編
+// 靜靜地結束，而畫面上看起來像命令被取消了。
+type confirmEntry struct{ then, no func() }
 
 // askYN 問一句 Y/N。
 func (a *app) askYN(prompt string, then func()) {
 	a.confirm = &confirmEntry{then: then}
+	a.view.Prompt = prompt
+}
+
+// askYNElse 是 N 也有事要做的那一種（「分配完畢(Y/N)」的 N ＝ 再分一位）。
+func (a *app) askYNElse(prompt string, then, no func()) {
+	a.confirm = &confirmEntry{then: then, no: no}
 	a.view.Prompt = prompt
 }
 
@@ -2123,19 +2141,24 @@ func (a *app) transport() {
 // attackFrom 是發動戰役選完來源與目標之後那一段（`0x18a9c` 起）：問攜帶的金米、
 // 軍師勸諫、宣戰對白，然後進主戰場。**回合記在下令的郡 at，出兵的是 src**（Issue #82）。
 func (a *app) attackFrom(at, src, to int) {
-	g, s := a.s.G, a.s
-	var force []int
-	var keep *game.General
-	for _, x := range g.Garrison(src) {
-		if x.Faction != s.Player {
-			continue
-		}
-		if keep == nil {
-			keep = x
-			continue
-		}
-		force = append(force, x.Index)
+	g := a.s.G
+	// **整編決定誰出征**（原版 `0x20a30`，Issue #98）：先前 remake 是
+	// 「留一位在家、其餘全部出征」，那既不是原版的規則也不是玩家的選擇。
+	var pool []int
+	for _, x := range g.ActorRoster(src) {
+		pool = append(pool, x.Index)
 	}
+	if len(pool) == 0 {
+		a.view.Prompt = t("msg.noTargets")
+		return
+	}
+	a.askAssign(&formation{pool: pool, groups: make([]int, len(pool)),
+		then: func(force []int, groups []int) { a.attackWith(at, src, to, force, groups) }})
+}
+
+// attackWith 是整編之後那一段：攜帶錢糧 → 勸諫 → 宣戰 → 主戰場。
+func (a *app) attackWith(at, src, to int, force []int, groups []int) {
+	g, s := a.s.G, a.s
 	// **玩家親自指揮**：先問攜帶的錢糧（原版 `攜帶多少金`／`攜帶多少米`，而且把
 	// 三十天要多少米算給你看），再進主戰場。電腦諸侯的戰役還是走 AttackOrder → Auto。
 	p := g.Prefecture(src)
@@ -2149,7 +2172,8 @@ func (a *app) attackFrom(at, src, to int) {
 				s.Queue(g.WarScene(src, s.Player))
 				s.Queue(g.WarDeclaration(src, to, s.Player))
 				a.afterBubbles = func() {
-					a.startBattle(at, src, to, force, game.Supply{Gold: gold, Rice: rice})
+					a.startBattle(at, src, to, force, groups,
+						game.Supply{Gold: gold, Rice: rice})
 				}
 			})
 		})
@@ -2179,6 +2203,119 @@ func (a *app) askHeir(list []int) {
 		// 繼承那一則對白到這裡才排進佇列（說話的是玩家挑的那一位）。
 		a.s.Queue(a.s.G.PendingEvents())
 	}, func() { a.askHeir(list) })
+}
+
+// formation 是一次整編的狀態（原版 `0x20a30` 的迴圈，Issue #98）。
+//
+// pool 的順序就是「分配那一位將軍(1-n)」的編號；groups 與它對齊，
+// 0 表示還沒分配，1–5 是第幾軍。**沒有被分配的人不出征**——原版的
+// 整編同時決定「誰去」與「分到哪一軍」（`0x20c9a` 只把編進部隊的人
+// 的所在郡寫 0）。
+type formation struct {
+	pool   []int
+	groups []int
+	then   func(force []int, groups []int)
+
+	// fillRest 為真時收工要把沒分到的人補進中軍：**主守軍必須派出所有
+	// 兵力**（說明書 p.27），守方沒有「留在家裡」這個選項。
+	fillRest bool
+}
+
+// count 是第 k 軍已經分了幾位。
+func (f *formation) count(k int) int {
+	n := 0
+	for _, g := range f.groups {
+		if g == k {
+			n++
+		}
+	}
+	return n
+}
+
+// askAssign 問整編的那一對問題，一位一位來。
+//
+// 原版的規則（`docs/re/05` §12）：「分配那一位將軍」→「將%s分到那一軍」
+// → 回頭再問將軍；**空欄位 Enter 取消才出「分配完畢(Y/N)」**
+// （`0x21493`），`N` 是再分一位、`Y` 收工。已經分配過的人再選一次會被
+// 退回重問（`0x214af`）。
+func (a *app) askAssign(f *formation) {
+	a.form = f
+	g := a.s.G
+	a.view.SetPage(ui.FormationPage(g, f.pool, f.groups))
+	a.askBare(tf("ask.assignWho", len(f.pool)), 1, len(f.pool), func(n int) {
+		i := n - 1
+		if i < 0 || i >= len(f.pool) {
+			a.askAssign(f)
+			return
+		}
+		if f.groups[i] != 0 {
+			// 原版退回重問，不是拒絕命令。
+			a.view.Prompt = tf("form.assigned", personName(g, f.pool[i]))
+			a.askAssign(f)
+			return
+		}
+		a.askBare(tf("ask.assignTo", personName(g, f.pool[i])), 1, 5, func(k int) {
+			// 一軍最多 10 位（說明書 p.27）。滿了就退回重問——擋在這裡，
+			// 不要等到 `Reform`：那時 `BeginAttack` 已經把主事者交接完了，
+			// 失敗回去等於留下一個改過一半的盤面。
+			if k >= 1 && k <= 5 && f.count(k) >= battle.MaxLeaders {
+				a.view.Prompt = tf("form.armyFull", ui.FormationName(battle.DeployOrder()[k-1]),
+					battle.MaxLeaders)
+				a.askAssign(f)
+				return
+			}
+			f.groups[i] = k
+			a.askAssign(f)
+		})
+		a.cancel = func() { a.askAssign(f) }
+	})
+	// 空欄位 Enter ＝ 取消 ＝ 問「分配完畢(Y/N)」。
+	a.cancel = func() { a.finishAssign(f) }
+}
+
+// finishAssign 是「分配完畢(Y/N)」：Y 收工，N（或任何不是 Y 的鍵）再分一位。
+// 一位都沒分配時不能收工——那樣等於沒有人出征。
+func (a *app) finishAssign(f *formation) {
+	a.askYNElse(t("ask.assignDone"), func() {
+		if f.fillRest {
+			// 沒分到的補進**人最少的那一軍**，不是一律塞中軍——十位就滿了
+			// （說明書 p.27），全部塞進去會讓 `Reform` 當場失敗，而那時
+			// 盤面已經動過了。
+			for i, k := range f.groups {
+				if k != 0 {
+					continue
+				}
+				least, n := 1, f.count(1)
+				for g := 2; g <= 5; g++ {
+					if c := f.count(g); c < n {
+						least, n = g, c
+					}
+				}
+				f.groups[i] = least
+			}
+		}
+		var force []int
+		for i, k := range f.groups {
+			if k > 0 {
+				force = append(force, f.pool[i])
+			}
+		}
+		if len(force) == 0 {
+			a.view.Prompt = t("form.needOne")
+			a.askAssign(f)
+			return
+		}
+		a.form, a.view.Page = nil, nil
+		f.then(force, f.groups)
+	}, func() { a.askAssign(f) })
+}
+
+// personName 取一位人物的譯名。
+func personName(g *game.State, index int) string {
+	if x := g.General(index); x != nil {
+		return ui.PersonName(x.Name)
+	}
+	return ""
 }
 
 // askSource 是「從那一郡攻打／移出／送出」（`0x18998`／`0x18c6d`／`0x19092`，Issue #82）：

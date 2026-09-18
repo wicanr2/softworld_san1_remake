@@ -316,7 +316,7 @@ func (w waitFor) takesYN() bool {
 // startBattle 開一場由玩家指揮的戰役。
 // startBattle 開一場玩家親自指揮的戰役。**at 是下令的郡（回合記在它身上），from 是出兵的郡**
 // ——原版「從那一郡攻打」收任何自己的郡（Issue #82）。
-func (a *app) startBattle(at, from, to int, force []int, sup game.Supply) {
+func (a *app) startBattle(at, from, to int, force []int, groups []int, sup game.Supply) {
 	if w := a.s.Waiting(); w != 0 && at != w {
 		a.view.Prompt = tf("msg.notThisPref", prefName(a.s.G, w))
 		return
@@ -325,6 +325,21 @@ func (a *app) startBattle(at, from, to int, force []int, sup game.Supply) {
 	if err != nil {
 		a.view.Prompt = tf("bat.attackFailed", err)
 		return
+	}
+	// 整編照玩家分的（Issue #98）：`BeginAttack` 建好的是預設分隊，
+	// 這裡按玩家的答案重編。**只挑出征的那幾位**，所以 groups 要先濾成
+	// 與 `force` 對齊的那一份。
+	if len(groups) > 0 {
+		var mine []int
+		for _, k := range groups {
+			if k > 0 {
+				mine = append(mine, k)
+			}
+		}
+		if err := p.Battle().Reform(battle.MainAttacker, mine); err != nil {
+			a.view.Prompt = tf("bat.attackFailed", err)
+			return
+		}
 	}
 	f := &fight{pending: p}
 	// 玩家指揮攻方；守方交給電腦。是玩家自己按下「發動戰役」才走到這裡，
@@ -350,6 +365,36 @@ func (a *app) startDefence() {
 	p := a.s.G.PendingDefence()
 	if p == nil {
 		return
+	}
+	// **守方也要整編**（原版 `0x20a30` 對四個軍團各跑一輪，Issue #98）。
+	// 差在主守軍**必須派出所有兵力**（說明書 p.27），所以每一位都得分到
+	// 某一軍，不能留在家裡——`askAssign` 收工時再補齊沒分到的那幾位。
+	var pool []int
+	for _, u := range p.Battle().Units {
+		if !u.Side.Attacking() && u.Alive() {
+			for _, l := range u.Leaders {
+				pool = append(pool, l.Index)
+			}
+		}
+	}
+	if a.form != nil {
+		return // 整編的問句正在進行中（`startDefence` 每一幀都會被叫到）
+	}
+	if len(pool) > 1 {
+		a.askAssign(&formation{pool: pool, groups: make([]int, len(pool)),
+			fillRest: true,
+			then:     func(_ []int, groups []int) { a.defendWith(p, groups) }})
+		return
+	}
+	a.defendWith(p, nil)
+}
+
+// defendWith 是守方整編之後那一段：重編、接指揮權、逐隊紮寨。
+func (a *app) defendWith(p *game.Pending, groups []int) {
+	if len(groups) > 0 {
+		if err := p.Battle().Reform(battle.MainDefender, groups); err != nil {
+			a.view.Prompt = tf("bat.attackFailed", err)
+		}
 	}
 	f := &fight{pending: p}
 	f.runner = battle.NewRunner(p.Battle(), func(s battle.Side) bool {

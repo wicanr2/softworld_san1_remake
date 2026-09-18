@@ -2215,6 +2215,29 @@
       }
     },
     {
+      "id": "player-formation",
+      "title": "軍團整編逐位問「分配那一位將軍」「分到那一軍」（0x21457／0x21509）",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/re/05",
+        "docs/mechanics/40",
+        "docs/spec/014"
+      ],
+      "note": "原版的整編**同時決定誰出征與分到哪一軍**；先前 remake 是「留一位在家、其餘全部出征」再按戰力輪流分配。現在照原版逐位問，沒分配到的留在家裡；主守軍必須派出所有兵力，所以守方收工時補齊。軍號 1–5 ＝ 中軍／先鋒／左軍／右軍／後軍，證據是原版自己印的軍名（`docs/re/05` §5.2）。⚠ 部隊記錄的索引是**分配順序**不是軍別，比對只能比「誰跟誰同一隊」。沒有介面的那一方（月度對拍、示範模式、批次跑）照電腦的整編填，那是登記在案的差異。`TestZZPlayerSortieDriven`：同一串按鍵之後分組與原版相同（[[13 29] [30]]），三位各自一軍的反向對照會紅。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/battle/battle.go"
+        ],
+        "pattern": "func \\(b \\*Battle\\) Reform"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",
