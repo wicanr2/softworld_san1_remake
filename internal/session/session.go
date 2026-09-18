@@ -412,7 +412,18 @@ const MaxBattles = 8
 // 順序是**先電腦後推進**：玩家已經在這個月下過令了，電腦要在同一個
 // 月份裡回應。推進之後才清掉各郡的下令旗標。
 func (s *Session) EndMonth() {
-	s.runPrefectureTurns()
+	// **這一條是無畫面的路**（測試、批次跑）：沒有人可以指揮守方，
+	// 所以「守城」開著時交出來的那一場就地自動打完再往下走
+	// （`FinishDefence` → `settle`，還沒打完的在那裡 `Auto()`）。
+	// 不接這一段的話 `runPrefectureTurns` 會在交出去那一格 break，
+	// 而月份照樣往前推——**剩下的郡整個月沒跑**，而且不會報錯。
+	for {
+		s.runPrefectureTurns()
+		if s.G.PendingDefence() == nil {
+			break
+		}
+		s.FinishDefence()
+	}
 	s.finishMonth()
 }
 

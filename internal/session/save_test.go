@@ -6,6 +6,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
@@ -296,5 +297,60 @@ func TestSaveNameFollowsTheOriginalLayout(t *testing.T) {
 	}
 	if got := Saves(dir)[2].Name; got != name {
 		t.Errorf("讀回來的名稱 %q，存的是 %q", got, name)
+	}
+}
+
+// TestEndMonthFinishesEvenWhenPlayerDefends 釘住「守城」開著時無畫面的
+// 月流程照樣走得完（Issue #64）。
+//
+// `ComputerAttack` 開著開關會把戰役交出來，月流程停在那一格等玩家；
+// 而 `EndMonth` 是**沒有人可以指揮**的那一條（測試、批次跑）。
+// 不就地打完的話，`runPrefectureTurns` 在那一格 break，月份照樣往前推——
+// **剩下的郡整個月沒跑**，而且不會報錯。
+//
+// **交出去那一步要自己擺**：等電腦剛好打過來的話，沒打過來時這支測試
+// 會安靜地變成空跑（`~/diagnosis-notes/docs/03-silence-is-not-success`）。
+func TestEndMonthFinishesEvenWhenPlayerDefends(t *testing.T) {
+	// **要有玩家**：`NoFaction` 的那一局 `IsHuman` 處處為假，
+	// 交不出戰役，這支測試會安靜地變成空跑。劇本一的 0 是劉備。
+	s := newSession(t, ai.ModeEnhanced, 0)
+	g := s.G
+	g.Options.PlayerDefends = true
+	// 找一對「電腦郡挨著玩家郡」，讓電腦打過來。
+	var from, to int
+	var by state.FactionID
+	for id := 1; id <= 42 && from == 0; id++ {
+		p := g.Prefecture(id)
+		if p == nil || !p.Owned() || !g.IsHuman(p.Owner) {
+			continue
+		}
+		for _, n := range p.Neighbours {
+			q := g.Prefecture(n)
+			if q != nil && q.Owned() && !g.IsHuman(q.Owner) && len(g.ActorRoster(n)) > 1 {
+				from, to, by = n, id, q.Owner
+				break
+			}
+		}
+	}
+	if from == 0 {
+		t.Fatal("劇本一裡找不到「電腦郡挨著玩家郡」的一對")
+	}
+	if _, err := g.ComputerAttack(from, to, by, func(*game.State, int) int { return 0 }); err != nil {
+		t.Fatal(err)
+	}
+	if g.PendingDefence() == nil {
+		t.Fatal("開關開著卻沒有把戰役交出來——這支測試什麼都沒驗到")
+	}
+
+	month := g.Date.Month
+	s.EndMonth()
+	if g.PendingDefence() != nil {
+		t.Error("月流程跑完還留著一場沒打完的守城")
+	}
+	if g.Date.Month == month {
+		t.Errorf("月份沒往前走，還是 %d 月", month)
+	}
+	if s.MonthCursor != 0 {
+		t.Errorf("月底的游標是 %d，應該是開月的 0", s.MonthCursor)
 	}
 }
