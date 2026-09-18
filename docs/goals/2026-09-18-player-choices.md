@@ -126,3 +126,27 @@ A／B／C 三軌仍然停開。
 `docs/mechanics/40`「remake 的重整守將清單目前是自動挑（另立 Issue）」（#84 做完了）、
 `internal/battle/skirmish.go` 與 `cmd/san1/battle.go`「玩家那一方的將領還沒有介面」
 （#56 接上了）、`docs/spec/014` 差異表的「其他第九、十項」與整編那一列的「沒量」。
+
+### 回歸（2026-09-18）
+
+單元測試 `./internal/... ./cmd/...` rc=0；對拍十支全 PASS：
+
+| 測試 | 秒 |
+|---|---:|
+| `TestZZHeirMatchesTheOriginal` | 114 |
+| `TestZZMonthParity`／`TestZZMonthParityPlus` | 48／27 |
+| `TestZZNoHeirReleasesTerritory` | 171 |
+| `TestZZNewGovernorMatchesTheOriginal` | 17 |
+| `TestPlayerCommandsMatchTheOriginal` | 393 |
+| `TestZZPlayerSortieDriven` | 27 |
+| `TestSuccessionMatchesTheOriginal` | 77 |
+| `TestZZUnitAIDayParity` | 2453 |
+| `TestZZUnitAIDayParityPlus` | 1380 |
+
+⚠ **第一次跑的時候 `TestZZUnitAIDayParityPlus` 沒有判決**：`-run` 給的
+`TestZZUnitAIDayParity` 是前綴，`…Plus` 一起被選中，而 60 分鐘的
+`SAN1_TIMEOUT` 在它跑到第二張盤面時把容器砍掉——log 停在
+`=== RUN …/乙`，**沒有 `--- PASS`、也沒有 `ok` 那一行**。
+`go test` 的 `-run` 是正則不是完整比對，所以「列了幾支」與「跑完幾支」
+是兩件事；判準只能是每一支自己的 `--- PASS` 與最後的 `ok`。
+單獨補跑之後才有上表那一列。
