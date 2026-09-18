@@ -168,8 +168,10 @@ const (
 )
 
 // SkirmishPlayer 是玩家那一方的介面：每一位將領輪到時被問一次（行軍
-// 模式裡走一格問一次），回一道命令。nil 表示沒有介面——那一方的將領
-// 照電腦的判斷式走（registered remake 差異，`docs/mechanics/40` §8）。
+// 模式裡走一格問一次），回一道命令。`cmd/san1` 接的是 `PlayerSkirmish`
+// （Issue #56）。nil 表示這一局沒有介面（無頭測試、示範模式）——
+// 那一方的將領照電腦的判斷式走（registered remake 差異，
+// `docs/mechanics/40` §8）。
 type SkirmishPlayer func(s *Skirmish, g *SkirmishGeneral) SkirmishCommand
 
 // SkirmishAnswer 是玩家那一方的將領 t 被 g 叫陣時接不接受。

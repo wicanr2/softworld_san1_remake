@@ -20,7 +20,7 @@
 
 **碼上沒有「主事者要有人接手」的閘門**：君主或太守一起走也照搬。來源郡的主事者由搬運之後
 的重整守將清單重選——玩家的郡會問「選擇新任太守」（`0x1d6ed`，挑人清單模式 2、鍵 3），
-remake 的重整守將清單目前是自動挑（另立 Issue）。
+remake 照做（`game.NeedsGovernor`／`AssignGovernor`，`docs/spec/014` §4.4）。
 
 驗證：`TestZZMovePickMatchesTheOriginal`（南海擺 14 位、鄰郡擺成無主，選第 2、3 位、金 1、米 10）
 搬完三張表逐位元組相同，清單、金米上限與畫面相同。單元 `TestMoveTakesTheWholeList`。

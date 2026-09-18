@@ -629,8 +629,9 @@ func (a *app) applyDir(d battle.Dir) error {
 	case battle.CmdDeath:
 		return b.DeathBattle(f.acting, d)
 	case battle.CmdEngage:
-		// 對戰子畫面（原版 `0x2deb0`）。玩家那一方的將領還沒有介面，
-		// 先照電腦的判斷式走（`docs/mechanics/40` §8）。
+		// 對戰子畫面（原版 `0x2deb0`）。玩家那一方的將領走 `PlayerSkirmish`
+		// 那個介面（Issue #56）；沒有介面的那一方才照電腦的判斷式
+		// （`docs/mechanics/40` §8）。
 		_, err := b.Engage(f.acting, d, b.PlayerSkirmish)
 		return err
 	case battle.CmdArchery:
