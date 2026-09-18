@@ -140,6 +140,41 @@ func TestLoadKeepsTheAIChosenInGame(t *testing.T) {
 	}
 }
 
+// TestLoadKeepsPlayerDefence 釘住「守城」那個開關進得了存檔（Issue #64）。
+//
+// **開關不進存檔與沒有這個開關是同一件事**：玩家開了親自守城，下一次
+// 讀檔又變回自動打完，而畫面上唯一的差別是電腦來攻時有沒有停下來。
+func TestLoadKeepsPlayerDefence(t *testing.T) {
+	s := newSession(t, ai.ModeEnhanced, state.NoFaction)
+	if s.G.Options.PlayerDefends {
+		t.Fatal("預設應該是自動打完")
+	}
+	s.G.Options.TogglePlayerDefend()
+	dir := t.TempDir()
+	if err := s.Save(dir, 1, "親自守"); err != nil {
+		t.Fatal(err)
+	}
+	back, err := Load(dir, 1, ai.ModeEnhanced)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !back.G.Options.PlayerDefends {
+		t.Error("讀回來變成自動打完了")
+	}
+	// 沒開過的那一局讀回來仍然是自動。
+	plain := newSession(t, ai.ModeEnhanced, state.NoFaction)
+	if err := plain.Save(dir, 2, "沒開"); err != nil {
+		t.Fatal(err)
+	}
+	b2, err := Load(dir, 2, ai.ModeEnhanced)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b2.G.Options.PlayerDefends {
+		t.Error("沒開過卻讀成親自守")
+	}
+}
+
 // TestSetBrainLeavesATrace 釘住換 AI 會在訊息紀錄裡留下痕跡。
 //
 // **AI 換了而畫面上沒有任何痕跡**，之後回頭問「這個諸侯為什麼突然

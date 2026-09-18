@@ -510,6 +510,8 @@
   "msg.unmoved": "%s was unmoved",
   "oth.ai": "AI",
   "oth.ai.state": "Computer AI: %s",
+  "oth.defend": "Defence",
+  "oth.defend.state": "Command the defence yourself: %s",
   "oth.delay": "Message Delay",
   "oth.delay.set": "Message delay set to %d",
   "oth.era": "Calendar",

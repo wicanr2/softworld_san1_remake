@@ -479,7 +479,7 @@ func SubMenu(key byte) (string, []Command) {
 		// 玩家的手指記得「9-3 是音樂」。
 		title, keys = "cmd.other", []string{"oth.quit", "oth.save", "oth.music",
 			"oth.sound", "oth.delay", "oth.war", "oth.era", "oth.voice",
-			"oth.ai", "oth.orders"}
+			"oth.ai", "oth.orders", "oth.defend"}
 	default:
 		return "", nil
 	}
@@ -545,6 +545,13 @@ func SubMenuLines(key byte, items []Command, cols, rows int) []string {
 // （`cmd/san1` 的 `press`），而 `byte('1'+i)` 到第十項會算出 `:`——
 // 那一項就永遠按不動，而且畫面上看起來完全正常。
 func MenuKey(i int) byte {
+	// 第十一項起沒有數字可以給了（1–9 用完、第十項是 `0`），改用字母。
+	// **鍵盤掃描要跟著加**（`cmd/san1` 的按鍵迴圈原本只掃 `Key0`–`Key9`）：
+	// 選單上印著 `A.` 而按下去沒反應，與「這個功能還沒做」在畫面上
+	// 長得一模一樣。
+	if i >= 10 {
+		return byte('A' + i - 10)
+	}
 	if i >= 9 {
 		return '0'
 	}

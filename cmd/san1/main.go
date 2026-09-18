@@ -254,9 +254,24 @@ func (a *app) Update() error {
 		a.dirty = true
 		return nil
 	}
+	// 電腦打過來、玩家要親自守的那一場（Issue #64）：接過指揮權。
+	if a.s != nil && a.fight == nil && a.s.G.PendingDefence() != nil {
+		a.startDefence()
+		a.dirty = true
+		return nil
+	}
 	// 輪流下令：沒停在玩家的郡就照這個月的順序往下跑，停在下一個玩家的郡。
 	if a.s != nil && a.menu == 0 && a.pick == nil && a.num == nil && a.s.Waiting() == 0 && !a.s.Over {
-		if at := a.s.AdvanceToHuman(0); at != 0 {
+		at := a.s.AdvanceToHuman(0)
+		// 停下來的理由可能是「電腦打過來要玩家守」而不是「輪到玩家下令」
+		// （Issue #64）：那一條不印主提示，直接接指揮權。
+		if a.s.G.PendingDefence() != nil {
+			a.view.Sel, a.view.Status = at, false
+			a.startDefence()
+			a.dirty = true
+			return nil
+		}
+		if at != 0 {
 			a.view.Sel, a.view.Status = at, true
 			a.mainAsk(at)
 		} else if at := a.s.Waiting(); at != 0 && a.view.Prompt == "" &&
@@ -421,6 +436,16 @@ func (a *app) Update() error {
 		if inpututil.IsKeyJustPressed(k) {
 			a.press(byte('0' + (k - ebiten.Key0)))
 			return nil
+		}
+	}
+	// 子選單開著時字母也算一個項目的鍵（`ui.MenuKey` 第十一項起用 `A`）。
+	// 只在子選單裡收，主選單按字母仍然什麼都不做。
+	if a.menu != 0 {
+		for k := ebiten.KeyA; k <= ebiten.KeyZ; k++ {
+			if inpututil.IsKeyJustPressed(k) {
+				a.press(byte('A' + (k - ebiten.KeyA)))
+				return nil
+			}
 		}
 	}
 	return nil
@@ -647,6 +672,12 @@ func (a *app) begin(cat, item byte) {
 		// 原版的 `查看電腦戰役%s` 是開關；順便把最近幾場列出來。
 		a.view.Prompt = g.Options.ToggleAIWar()
 		a.view.SetPage(ui.BattleList(g, s.Battles()))
+		closeMenu()
+	case cat == '9' && item == 'A':
+		// **remake 加的第十一項**：電腦來攻時誰指揮守方（Issue #64）。
+		// 原版一律由玩家自己守；這裡的預設是自動打完，理由見
+		// `game.Options.PlayerDefends`。
+		a.view.Prompt = g.Options.TogglePlayerDefend()
 		closeMenu()
 	case cat == '9' && item == '1':
 		// 「＊結束」在原版是回到主選單。這裡先提醒存檔——

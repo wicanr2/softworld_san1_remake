@@ -343,6 +343,28 @@ func (a *app) startBattle(at, from, to int, force []int, sup game.Supply) {
 	a.inEngine(a.nextCamp)
 }
 
+// startDefence 是「電腦來攻、玩家親自守」那一場（Issue #64）：整編已經在
+// `game.ComputerAttack` 做完了，這裡只把指揮權接過來。與 `startBattle`
+// 差兩處——這一側是守方，紮寨的也是守方。
+func (a *app) startDefence() {
+	p := a.s.G.PendingDefence()
+	if p == nil {
+		return
+	}
+	f := &fight{pending: p}
+	f.runner = battle.NewRunner(p.Battle(), func(s battle.Side) bool {
+		return !s.Attacking()
+	})
+	a.fight = f
+	f.hookEngine()
+	for _, u := range p.Battle().Units {
+		if !u.Side.Attacking() && u.Alive() {
+			f.camping = append(f.camping, u)
+		}
+	}
+	a.inEngine(a.nextCamp)
+}
+
 // nextCamp 問下一支部隊要紮在哪裡；紮完就開打。
 func (a *app) nextCamp() {
 	f := a.fight
@@ -419,6 +441,13 @@ func (a *app) nextActor() {
 
 // endBattle 把打完的戰役搬回局面，回到主畫面。
 func (a *app) endBattle() {
+	// 玩家自己守的那一場由 session 收尾（它還要把月游標往下推）。
+	if a.s.G.PendingDefence() == a.fight.pending {
+		a.fight = nil
+		a.s.FinishDefence()
+		a.view.Prompt = t("bat.finished")
+		return
+	}
 	r := a.s.G.FinishAttack(a.fight.pending)
 	a.fight = nil
 	a.s.Drain()

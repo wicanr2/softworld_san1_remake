@@ -202,7 +202,7 @@ func TestSubMenusMatchTheOriginal(t *testing.T) {
 		{'7', "君主", []string{"指定軍師", "指定太守", "郡縣自冶", "賞賜物品", "登用他國人才"}, nil},
 		{'8', "謀略", []string{"驅虎吞狼", "遠交近攻", "偽書使疑", "策反人民", "聯合出兵"}, nil},
 		{'9', "其他", []string{"結束", "儲存", "音樂", "音效", "延時", "戰役", "年號", "語音"},
-			[]string{"電腦AI", "電腦指令"}},
+			[]string{"電腦AI", "AI指令", "守城"}},
 	}
 	for _, c := range cases {
 		title, items := SubMenu(c.key)
@@ -246,6 +246,17 @@ func TestMenuKeyTenthIsZero(t *testing.T) {
 	}
 	if MenuKey(9) != '0' {
 		t.Errorf("第十項的鍵是 %q，應該是 '0'", MenuKey(9))
+	}
+	// 第十一項起沒有數字了，改用字母（Issue #64 的「守城」是第十一項）。
+	for i := 10; i < 14; i++ {
+		k := MenuKey(i)
+		if k < 'A' || k > 'Z' {
+			t.Errorf("第 %d 項的鍵是 %q，應該是字母", i+1, k)
+		}
+		if seen[k] {
+			t.Errorf("第 %d 項的鍵 %q 與前面某一項重複", i+1, k)
+		}
+		seen[k] = true
 	}
 }
 

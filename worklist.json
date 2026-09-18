@@ -2153,6 +2153,28 @@
       }
     },
     {
+      "id": "player-defence-option",
+      "title": "「其他 → 守城」：電腦來攻時玩家親自指揮守方（預設自動）",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "both",
+      "docs": [
+        "docs/spec/014",
+        "docs/design/02"
+      ],
+      "note": "原版被打時由玩家自己編隊、佈陣、指揮（說明書 p.26–28，`docs/reference/01` §B）；remake 做成開關，預設自動打完——無畫面的路（月度對拍、示範模式、批次跑）沒有人下令，預設親自守會停在戰場上等一個不會來的鍵。開了之後 `ComputerAttack` 整編完把戰役交給 `PendingDefence`，月流程停在那一格，`cmd/san1` 的 `startDefence` 接指揮權，`FinishDefence` 收尾並推游標。規則層不因開關而不同。「其他」因此從十項變十一項：第十一項的鍵改用字母 `A`，第十項的名稱縮成「AI指令」（下面板 4 列 × 24 格排不下）。驗證：`TestPlayerDefenceHandsOverTheBattle`、`TestLoadKeepsPlayerDefence`；關著那一邊的骰序由 `TestZZMonthParity`／`TestZZUnitAIDayParity` 守著。",
+      "verify": {
+        "kind": "present",
+        "paths": [
+          "internal/game/aiattack.go"
+        ],
+        "pattern": "func \\(g \\*State\\) FinishDefence"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",

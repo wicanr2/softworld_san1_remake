@@ -117,10 +117,32 @@ func (g *State) ComputerAttack(from, to int, by state.FactionID, keep KeepFunc) 
 				Bubble: &Bubble{MapBattle: &MapBattle{Attacker: from, Defender: to, Days: p.B.Day}}})
 		}
 		g.ravageBattlefield(to)
+	} else if g.Options.PlayerDefends && g.IsHuman(dst.Owner) {
+		// **玩家親自守城**（Issue #64）：原版被打的時候一律由玩家指揮
+		// 守方（`docs/re/05` §12.4）。規則層不能停著等鍵，所以把整編好的
+		// 戰役交出去、回合停在這裡；`cmd/san1` 打完再叫 `FinishDefence`。
+		// 攻方那一郡的收尾（`endTurn`、`refreshGovernor`）已經做過了。
+		p.Player = true
+		g.defence = p
+		return nil, nil
 	} else {
 		p.B.Auto()
 	}
 	return g.settle(p), nil
+}
+
+// PendingDefence 是還沒打的那一場「電腦來攻、玩家自己守」（Issue #64）；
+// 沒有就是 nil。月流程看到它就停下來，等 `FinishDefence`。
+func (g *State) PendingDefence() *Pending { return g.defence }
+
+// FinishDefence 把玩家守完的那一場搬回局面，回戰報。
+func (g *State) FinishDefence() *BattleResult {
+	p := g.defence
+	if p == nil {
+		return nil
+	}
+	g.defence = nil
+	return g.settle(p)
 }
 
 // formAttackers 是整編挑出征名單那一段（`0x23888`／加強版 `0x2133e`）。

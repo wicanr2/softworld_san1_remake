@@ -341,6 +341,9 @@ type State struct {
 	governorAsks []int
 	// heirAsks 是還沒讓玩家挑繼承人的那幾次繼承（`askHeir`，Issue #65）。
 	heirAsks []heirAsk
+
+	// defence 是電腦打過來、等玩家親自指揮的那一場（`PendingDefence`，Issue #64）。
+	defence *Pending
 	// Player 是第一位玩家（Players[0]）；沒有玩家時是 NoFaction。只有一位
 	// 玩家的呼叫端用它；規則裡「是不是玩家」一律問 IsHuman。
 	Player state.FactionID

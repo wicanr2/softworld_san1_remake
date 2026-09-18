@@ -304,6 +304,12 @@ func (s *Session) turnCell(stopAtHuman bool) (at int, stop bool) {
 		}
 		s.done[id] += n
 	}
+	// 電腦打過來、玩家要親自守的那一場（Issue #64）：回合停在這裡，
+	// `cmd/san1` 打完叫 `FinishDefence` 再往下走。**游標留在原地**——
+	// 這一格已經 `FinishTurn` 過了，推游標的是 `FinishDefence`。
+	if s.G.PendingDefence() != nil {
+		return at, true
+	}
 	s.nextCell()
 	return at, false
 }
@@ -358,6 +364,20 @@ func (s *Session) AdvanceToHuman(maxCells int) int {
 		}
 	}
 	return 0
+}
+
+// FinishDefence 把玩家守完的那一場搬回局面，游標往下走（Issue #64）。
+// 沒有那一場就什麼都不做。
+func (s *Session) FinishDefence() {
+	if s.G.PendingDefence() == nil {
+		return
+	}
+	if r := s.G.FinishDefence(); r != nil {
+		s.note("%s", r.Summary(s.G))
+		s.battles = append(s.battles, r)
+	}
+	s.drainBattles()
+	s.nextCell()
 }
 
 // EndTurn 結束現在停著的那個玩家郡的回合（下完令或休息），游標往下走。

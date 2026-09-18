@@ -81,6 +81,10 @@ type optMeta struct {
 	// 所以實際上只有 `ai_mode` 會被省略。
 	AIMode   string `json:"ai_mode,omitempty"`
 	AIOrders int    `json:"ai_orders,omitempty"`
+
+	// PlayerDefends 是「電腦來攻時親自守城」（Issue #64）。舊存檔沒有這個鍵，
+	// 零值就是預設的自動打完。
+	PlayerDefends bool `json:"player_defends,omitempty"`
 }
 
 type prefMeta struct {
@@ -165,6 +169,7 @@ func Write(root string, slot int, g *game.State, name string) error {
 		VoiceOff: e.Options.VoiceOff, SkipAIWar: e.Options.SkipAIWar,
 		Calendar: int(e.Options.Calendar), Delay: e.Options.Delay(),
 		AIMode: e.Options.AIMode, AIOrders: e.Options.AIOrders(),
+		PlayerDefends: e.Options.PlayerDefends,
 	}
 	for id, f := range e.Factions {
 		m.Factions[fmt.Sprint(id)] = factMeta{f.Alive, f.Chief,
@@ -340,6 +345,8 @@ func Read(root string, slot int) (*game.State, error) {
 		VoiceOff: m.Options.VoiceOff, SkipAIWar: m.Options.SkipAIWar,
 		Calendar: game.Calendar(m.Options.Calendar),
 		AIMode:   m.Options.AIMode,
+
+		PlayerDefends: m.Options.PlayerDefends,
 	}
 	if err := e.Options.SetDelay(m.Options.Delay); err != nil {
 		return nil, fmt.Errorf("save: 存檔 %d 的延時：%w", slot, err)

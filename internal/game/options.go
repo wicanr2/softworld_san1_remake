@@ -25,6 +25,15 @@ type Options struct {
 	VoiceOff   bool
 	SkipAIWar  bool
 	Calendar   Calendar
+
+	// PlayerDefends 是「電腦來攻時玩家親自指揮守方」（Issue #64）。
+	//
+	// **這一項是 remake 加的開關，不是 remake 加的玩法**：原版被打的時候
+	// 一律由玩家自己守（`docs/re/05` §12.4）。零值是自動打完，因為
+	// 無畫面的路（月度對拍、示範模式、批次跑）沒有人可以下令——
+	// 預設要親自守的話那幾條路會停在戰場上等一個永遠不會來的鍵。
+	// 玩家在「其他」裡開，設定進存檔。
+	PlayerDefends bool
 	delaySet   bool
 	delayValue int
 
@@ -132,6 +141,12 @@ func (o *Options) ToggleVoice() string {
 func (o *Options) ToggleAIWar() string {
 	o.SkipAIWar = !o.SkipAIWar
 	return tf("oth.war.state", onOff(!o.SkipAIWar))
+}
+
+// TogglePlayerDefend 切換「電腦來攻時親自守城」（Issue #64）。
+func (o *Options) TogglePlayerDefend() string {
+	o.PlayerDefends = !o.PlayerDefends
+	return tf("oth.defend.state", onOff(o.PlayerDefends))
 }
 
 // ToggleCalendar 切換年號的表示方式。
