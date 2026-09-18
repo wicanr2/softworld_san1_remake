@@ -129,7 +129,9 @@ func TestCaptiveDiceForComputerCaptor(t *testing.T) {
 		t.Errorf("新生的後軍該標 Unplaced、在場、移動力回滿（%+v）", rear)
 	}
 
-	// 玩家捕獲：不擲、不處置，留給戰略層。
+	// 玩家捕獲而**沒有介面**：照電腦的判斷式處置（Issue #100）。
+	// 先前是「不擲、不處置」，那一位留 `FateNone`——被抓了卻什麼都沒發生，
+	// 原版沒有這個狀態（它在同一刻是問人）。
 	b = arena(flat(Plain))
 	a = place(b, MainAttacker, Centre, FromOffset(6, 6), x)
 	place(b, MainDefender, Centre, FromOffset(6, 7), lead("守", 90, 90, 20000))
@@ -137,9 +139,23 @@ func TestCaptiveDiceForComputerCaptor(t *testing.T) {
 	if err := b.QuickBattle(a, dirBetween(t, b, a, FromOffset(6, 7))); err != nil {
 		t.Fatal(err)
 	}
-	wantAsked(t, "玩家捕獲", s, MessageLines)
-	if a.Leaders[0].Fate != FateNone || !a.Leaders[0].Captured {
-		t.Errorf("玩家捕獲的該只標被擒（Fate %v Captured %v）", a.Leaders[0].Fate, a.Leaders[0].Captured)
+	if !a.Leaders[0].Captured {
+		t.Error("被擒的旗標沒標上")
+	}
+	if f := a.Leaders[0].Fate; f != Executed && f != Jailed && f != Defected && f != Released {
+		t.Errorf("處置是 %v，沒有介面時該走電腦那一套的四種之一", f)
+	}
+	// 電腦那一套會多擲一次 `RND(10)`（`0x25a93`），那正是這一條與原版
+	// 的差異所在——原版在這一刻是問人、不擲。
+	saw := false
+	for _, n := range s.asked {
+		if n == CaptiveExecuteRange {
+			saw = true
+		}
+	}
+	if !saw {
+		t.Errorf("問的骰是 %v，沒有 RND(%d)——那是電腦判斷式的第一道門",
+			s.asked, CaptiveExecuteRange)
 	}
 }
 

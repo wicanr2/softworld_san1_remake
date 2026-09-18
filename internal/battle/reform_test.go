@@ -149,8 +149,8 @@ func TestNoInterfaceCaptiveCounterFires(t *testing.T) {
 	if got := NoInterfaceCaptives(); got != 1 {
 		t.Errorf("數到 %d 次，應該是 1 次——計數器沒接上", got)
 	}
-	if u.Leaders[0].Fate != FateNone {
-		t.Errorf("處置是 %v，現況應該是留著不處置", u.Leaders[0].Fate)
+	if u.Leaders[0].Fate == FateNone {
+		t.Error("沒有介面時仍該處置（走電腦那一套），不是留著不處置")
 	}
 	// 有介面時不算：那一條是玩家自己答。
 	ResetNoInterfaceCaptives()

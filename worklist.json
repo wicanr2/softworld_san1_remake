@@ -2257,6 +2257,25 @@
       }
     },
     {
+      "id": "no-interface-captive",
+      "title": "沒有介面時玩家那一方的捕獲照電腦的判斷式處置（不再留 FateNone）",
+      "group": "規則層",
+      "layer": "verification",
+      "milestone": "M6",
+      "status": "done",
+      "level": "L1",
+      "edition": "base",
+      "docs": [
+        "docs/spec/018"
+      ],
+      "note": "原版不管那一場由誰指揮，玩家那一方抓到人都當場出四選一（`0x259fe`）。remake 在沒有人可以答的路上（示範模式、月度對拍、批次跑、「守城」關著）先前留 `FateNone`——被抓了卻什麼都沒發生，原版沒有這個狀態，三張表會不一樣。改走電腦那一套。⚠ **這是差異不是還原**：會多擲一次 `RND(10)`，原版在那一刻問人不擲。**先量再改**：六張逐日對拍盤面與三十六個月的無畫面局一次都沒走到這一條，所以既有對拍的骰序不受影響；0 有意義是因為計數器有正對照（`TestNoInterfaceCaptiveCounterFires`）。",
+      "verify": {
+        "kind": "test",
+        "pkg": "./internal/battle",
+        "run": "TestNoInterfaceCaptiveCounterFires|TestCaptiveDiceForComputerCaptor"
+      }
+    },
+    {
       "id": "commerce-questions",
       "title": "商業三項照原版問數字（買多少金的米／賣多少米／給多少米）、閘門訊息與成交後「現有」那一句；賣米零頭被吃掉",
       "group": "畫面",

@@ -973,12 +973,19 @@ func (b *Battle) Capture(captor Side, u *Unit, x *Leader) {
 // 玩家再問一次。
 func (b *Battle) capture(captor Side, u *Unit, x *Leader) {
 	x.CapturedBy = captor
-	human := !b.Computer[captor]
-	if human && b.PlayerCaptive == nil {
-		// **先量再改**（Issue #100）：改用電腦的判斷式會多擲一次
-		// `RND(10)`，先數清楚現有對拍的盤面到底會不會走到這裡。
+	// **沒有介面時照電腦的判斷式處置**（Issue #100 的裁定）：示範模式、
+	// 月度對拍、批次跑，以及「守城」開關關著的那一條，都沒有人可以答。
+	// 先前那裡直接 `return`，那一位留 `FateNone`——被抓了卻什麼都沒發生，
+	// **原版沒有這個狀態**（它在同一刻是問人）。
+	//
+	// ⚠ 這是**登記在案的 remake 差異，不是「對回原版」**：原版問人、不擲骰，
+	// 這裡改用電腦那一套會多擲一次 `RND(10)`（`docs/spec/018` §R5）。
+	// 動之前量過：六張逐日對拍盤面與三十六個月的無畫面局都**一次都沒走到**
+	// 這一條（計數器 `noInterfaceCaptives`，正對照見
+	// `TestNoInterfaceCaptiveCounterFires`），所以既有對拍的骰序不受影響。
+	human := !b.Computer[captor] && b.PlayerCaptive != nil
+	if !b.Computer[captor] && b.PlayerCaptive == nil {
 		noInterfaceCaptives++
-		return
 	}
 	for {
 		var fate Fate
