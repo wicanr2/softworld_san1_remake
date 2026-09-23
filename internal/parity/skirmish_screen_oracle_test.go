@@ -114,7 +114,7 @@ func TestZZSkirmishScreenMatchesTheOriginal(t *testing.T) {
 		// 第三塊面板照 `cmd/san1` 問子畫面選單時擺的樣子（`0x2fb14`）。
 		v := ui.BattleView{SkirmishActing: g, Menu: "對戰",
 			Items:  []string{"1.行軍 2.單挑 3.攻擊", "7.查看 0.休息"},
-			Prompt: fmt.Sprintf("%s(%d/%d)(0-4):", g.Leader.Name, g.Left, g.MoveCap)}
+			Prompt: ui.SkirmishPrompt(g.Leader.Name, g.Left, g.MoveCap)}
 		ui.DrawArtBattle(cv, s.ab, b, v, info)
 		panic(stop{})
 	}

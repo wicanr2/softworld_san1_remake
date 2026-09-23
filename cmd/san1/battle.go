@@ -169,7 +169,7 @@ func (f *fight) skirmishPrompt(g *battle.SkirmishGeneral) {
 	case skmAttack:
 		f.view.Prompt = t("bat.strikeDir")
 	default:
-		f.view.Prompt = tf("skm.prompt", g.Leader.Name, g.Left, g.MoveCap)
+		f.view.Prompt = ui.SkirmishPrompt(g.Leader.Name, g.Left, g.MoveCap)
 	}
 }
 

@@ -216,6 +216,8 @@ func comparePanel(t *testing.T, name string, orig []byte, cv *ui.Canvas, x0, y0,
 	for r, want := range lines {
 		for k, w := range want {
 			ly0 := r[1] + k*16
+			compareTextLineStart(t, fmt.Sprintf("%s 第 %d 行", name, k+1), orig, cv,
+				r[0], ly0, r[2], min(ly0+15, r[3]), paper)
 			oi, mi := 0, 0
 			for y := ly0; y < ly0+16 && y <= r[3]; y++ {
 				for x := r[0]; x <= r[2]; x++ {

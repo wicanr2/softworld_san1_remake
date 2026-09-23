@@ -170,6 +170,17 @@ func TestZZPersonCardMatchesTheOriginal(t *testing.T) {
 				if (inkOrig[r.y] == 0) != (inkMine[r.y] == 0) {
 					t.Errorf("y %d 那一行：原版有墨 %d 點、remake %d 點——一邊沒字", r.y, inkOrig[r.y], inkMine[r.y])
 				}
+				if r.scale == 2 { // 32×32 字模的側邊留白不能當成文字原點。
+					continue
+				}
+				for y0 := r.y; y0 < r.y+r.h; y0 += 16 {
+					x1 := 623
+					if y0 < 156 {
+						x1 = 527 // 肖像另以逐像素檢查，不能算成文字。
+					}
+					compareTextLineStart(t, fmt.Sprintf("%s 文字列 y=%d", x.Name, y0), orig, cv,
+						424, y0, x1, y0+15, 7)
+				}
 			}
 			t.Logf("%s（身分 %d）：各行墨點 原版 %v remake %v", x.Name, x.Status, inkOrig, inkMine)
 		})

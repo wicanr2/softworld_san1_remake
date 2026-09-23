@@ -218,6 +218,8 @@ func TestZZBubbleMatchesTheOriginal(t *testing.T) {
 				if (inkOrig[i] == 0) != (inkMine[i] == 0) {
 					t.Errorf("第 %d 行：原版有墨 %d 點、remake %d 點——一邊沒字", i+1, inkOrig[i], inkMine[i])
 				}
+				compareTextLineStart(t, fmt.Sprintf("%s 對白第 %d 行", k.name, i+1), orig, cv,
+					textBox[i][0], textBox[i][1], textBox[i][2]-1, textBox[i][3]-1, 15)
 			}
 			t.Logf("%s：字色 %d，對白墨點 原版 %v remake %v", k.name, colour, inkOrig, inkMine)
 		})

@@ -2,6 +2,12 @@
 
 目前狀態以 [`CONTEXT.md`](CONTEXT.md) 為準；本檔按日期記錄已做的工作與驗證。
 
+## 2026-09-23：GitHub Issue 狀態與原版文字位置複驗
+
+- 先用主機 `gh auth status` 確認權限，讀回遠端 #102、#103、#2 的內文及留言。#102、#103 各補兩版戰後人物／州郡全表對拍收據後，以 completed 關閉；#2 補註目前是未簽本機包，保持開啟。遠端留言均註明對應程式提交尚未推送。
+- dosgolem 原版 `AA.EXE` 與同狀態 remake 重跑開局、清單、人物卡、郡資料、對白、部隊面板、戰術子畫面等現有畫面測試；新增 16×16 文字列的首字格比較。首次增強檢查抓到戰術子畫面第三行左移一個 8px 格；正式玩家路徑原來把去掉填充的兩字姓名直接送給提示，已改為 `ui.SkirmishPrompt` 使用人物表的 6 byte 姓名欄。另有三處 32×32 大字因字模側邊留白造成首墨格差異，按原有繪製座標與字區外逐像素判準核對，未改畫面座標。
+- 修正後 `TestZZMainPromptMatchesTheOriginal`、`TestZZSkirmishScreenMatchesTheOriginal`、`TestZZStatusPanelMatchesTheOriginal` 於 dosgolem 通過；其餘已跑的原版 UI 測試及限制列於 `docs/playtest/03`。本輪程式修正尚未重建進既有 `v.1.0.0-20260923` 封包，也未建立 tag 或公開 Release。
+
 ## 2026-09-23：玩家戰役結算與玉璽狀態收斂
 
 - 目標：釐清 GitHub Issues #102、#103 指出的玩家戰後安置、錢糧、援軍與寶物缺口，核對兩版原版程式碼，將已證實規則接入 remake。

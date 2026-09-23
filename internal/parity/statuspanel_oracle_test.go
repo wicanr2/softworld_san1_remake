@@ -145,6 +145,11 @@ func compareStatusPanel(t *testing.T, name string, orig []uint8, cv *ui.Canvas) 
 	rowsBad := 0
 	for _, b := range statusPanelText {
 		for y0 := b[1]; y0 <= b[3]; y0 += 16 {
+			// 32×32 字模的左右留白不同，首個有墨的 8px 格不是繪製原點。
+			if !(b[0] == 424 && b[1] == 52) && !(b[0] == 520 && b[1] == 212) {
+				compareTextLineStart(t, fmt.Sprintf("%s 文字列 y=%d", name, y0), orig, cv,
+					b[0], y0, b[2], min(y0+15, b[3]), 3)
+			}
 			inked := func(pix func(x, y int) int) bool {
 				for y := y0; y < y0+16; y++ {
 					for x := b[0]; x <= b[2]; x++ {

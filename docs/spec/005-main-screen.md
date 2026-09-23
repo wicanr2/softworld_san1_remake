@@ -1133,6 +1133,11 @@ remake：`ArtBattleInfo.Inspect`（將領、軍力、肖像編號）；查看的
 | 輪到的人 | 那一格 48×32 由計時器每 512 個時脈反白一次（`0x1538:0x586e` 設位置、`0x58ac` 反白、`0x1058:0x5b2`／`0x5f2` 掛拆）| `0x2e963`–`0x2eb7d` |
 | 玩家選單 | 第三塊面板：`1.行軍 2.單挑 3.攻擊`／`7.查看 0.休息`（`DS:0x871a`），第三行「名字(餘步/移動力)(0-4):」| `0x2fb14` |
 
+第三行的「名字」使用人物表原有的 6 byte 姓名欄：兩字名前後各一個半形空格。
+`TestZZSkirmishScreenMatchesTheOriginal` 在原版陳就的第三行量到首個有墨字格
+是面板左起第 1 格；remake 直接用已去掉填充的姓名時落在第 0 格。正式玩家路徑
+現在透過 `ui.SkirmishPrompt` 還原姓名欄，再由同一函式供對拍畫面使用（`L1`，`[base]`）。
+
 remake：`ui.ArtBattleInfo.Skirmish`（`assets.Image.BlitFieldUpTo` 畫子地圖、
 `drawSkirmishMarkers`／`drawSkirmishMarkerText` 畫標記）、`BattleView.SkirmishActing`／
 `Blink`（反白）；左欄時刻吃 `Skirmish.Hour`；子畫面時第三塊面板兩行選項後直接
@@ -1146,6 +1151,10 @@ remake：`ui.ArtBattleInfo.Skirmish`（`assets.Image.BlitFieldUpTo` 畫子地圖
 裡每一個字格（名字三格、攻守一格、兵四格）底色與有沒有墨相同、右緣直線逐像素
 相同；兩塊部隊面板字以外逐像素相同、六行有無相同；第三塊面板字以外逐像素相同、
 前三行有墨後三行沒有；左欄第四框六行有無相同。
+
+2026-09-23 再驗時，16×16 文字列另比首個有墨的 8px 字格；32×32
+中文字模左右留白與 remake 字庫不同，首墨格不能反推繪製原點，仍以本節
+已核對的座標、字區有無墨與字區外逐像素比較為判準。
 
 remake 差異：反白的速度用幀數（每 20 幀切一次），原版是計時器；DOSBox-X 的交叉
 驗證沒有做（要用按鍵腳本把原版開進主戰場、貼到敵軍旁邊再下「對戰」，現有的

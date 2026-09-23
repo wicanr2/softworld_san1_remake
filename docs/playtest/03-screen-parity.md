@@ -350,3 +350,29 @@ remake 這一側的閘門是 `internal/ui` 的 `TestMenuItemLayoutMatchesTheOrig
 | 選到的那一項畫白色 | 原版沒有選取記號（六項同一個黃，靠按數字鍵選）；remake 支援上下鍵移動，沒有記號看不出停在哪一項 |
 | 載入進度、音樂欣賞疊清單時直牌仍寫「主選擇單」 | 原版會換成那一層的名字（實測按下「載入舊進度」之後變成「載入進度」）；選擇年代已照原版換字（`docs/spec/005` §6.4），這兩層還是 remake 的清單 |
 | 最上面兩個角落 | 原版 (0,0) 與 (639,0) 是黑的（兩個實作一致），remake 那兩點畫底色 |
+
+## 2026-09-23：原版文字位置複驗
+
+以 dosgolem 工作副本 `dosgolem-san` 的 `san1-hercules-b0000` 分支執行
+原版 `AA.EXE`；remake 從同一份原版資料或當下執行期表格畫畫面。執行命令
+皆為 `SAN1_TIMEOUT=… tools/go.sh test ./internal/parity -tags oracle -count=1
+-run '…' -v`，原版素材唯讀掛載。這批比較使用 640×408 原始畫布；remake
+不內嵌原版字模，因此比文字所在的 8×16 字格、首字格、行距、字區邊界、
+游標及字區外像素，不以兩套字模的墨點數相等為條件。
+
+| 畫面與測試 | 結果與範圍 |
+|---|---|
+| 開局選劇本／讀檔／音樂、選君主／自創君主／難度 | `TestZZScenarioPick…`、`LoadPick…`、`MusicPick…`、`LordPickScreen…`、`CustomLordScreen…`、`DifficultyScreen…` 六支通過；選單字格與背景按各測試的範圍比較 |
+| 正常玩家主提示、挑人／挑郡、指令清單與存檔 | `TestZZMainPromptMatchesTheOriginal` 及 `StatusPanel`、`PickList`、`PrefPick`、`CardPrompt`、`PersonCard`、`SaveScreen`、`PlotPick`、`HeadhuntPick`、`MovePick` 九支通過；主提示的 34 個有墨字格與游標 `(544,316)`，輸入 4 後的 35 格與游標 `(552,316)` 均吻合 |
+| 郡資料、人物卡、對白與戰場面板 | 加入首字格比較後，37 個有主郡、人物卡三種身分、對白四種擺位、兩塊部隊面板與查看面板均通過；字區外逐像素比較仍有效 |
+| 戰術子畫面 | 首次加強檢查發現第三行兩字姓名從第 0 格開始，原版從第 1 格開始。正式玩家路徑少了人物表姓名欄的前置空白；`ui.SkirmishPrompt` 修正後 `TestZZSkirmishScreenMatchesTheOriginal` 通過，包含兩塊部隊面板、第三塊選單、標記與場地 |
+
+郡名及主事者的 32×32 大字曾在三個郡顯示首個有墨的 8px 格差一格；
+兩套字模的側邊留白不同，這不是繪製起點的可靠量測。這兩欄維持規格
+`docs/spec/005` 的座標，並比對字區有無墨與字區外像素。16×16 文字列
+才套用首字格斷言。難度畫面的一像素墨邊差異也屬字模差異，錨點仍相同。
+
+此收據涵蓋上述原版抽樣畫面；戰場部分有受控盤面及直接進入子畫面的
+驗證，不能取代從開局到戰術結束的完整正常玩家路徑。加強版 `ASV.EXE`
+的畫面沒有在本輪獨立重拍；英、日譯文採 remake 版面策略，不能要求
+與繁中 DOS 原版逐格相同。

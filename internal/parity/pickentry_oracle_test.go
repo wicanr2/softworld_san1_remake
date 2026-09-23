@@ -124,6 +124,33 @@ func (b *pickBoard) press(t *testing.T, name, keys string) ([2]int, []uint8, cur
 // textArea 是一塊 8×16 字格：左上角、欄列數、紙色（−1 表示取下面板的紙色）。
 type textArea struct{ x0, y0, cols, rows, bg int }
 
+// compareTextLineStart 用同一個 8 像素字格網格找原版與 remake 的首格。
+// 字模筆畫可不同，但整行水平挪一格不能再被「這行有字」掩蓋。
+// 範圍右下角皆包含在內；空行以 -1 表示。
+func compareTextLineStart(t *testing.T, name string, orig []uint8, cv *ui.Canvas,
+	x0, y0, x1, y1, paper int) {
+	t.Helper()
+	first := func(original bool) int {
+		for cx := x0; cx <= x1; cx += 8 {
+			for y := y0; y <= y1; y++ {
+				for x := cx; x <= min(cx+7, x1); x++ {
+					v := paletteIndex(cv.Img.RGBAAt(x, y))
+					if original {
+						v = int(orig[y*scrW+x] & 15)
+					}
+					if v != paper {
+						return (cx - x0) / 8
+					}
+				}
+			}
+		}
+		return -1
+	}
+	if o, r := first(true), first(false); o != r {
+		t.Errorf("%s：原版首字格 %d、remake %d（範圍 %d,%d–%d,%d）", name, o, r, x0, y0, x1, y1)
+	}
+}
+
 // rosterText 是挑人清單的字格：表頭、十二列、多選的「*」那一欄、下面板。
 var rosterText = []textArea{
 	{440, 62, 23, 1, 1},

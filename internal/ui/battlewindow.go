@@ -44,6 +44,12 @@ func BattleWindowLines(text string, cols, rows int) []string {
 // NameField 照原版人物表 6 byte 的姓名欄排名字：兩字名前後各補一個空白。
 func NameField(name string) string { return battlePaddedName(name) }
 
+// SkirmishPrompt 照 `0x2fb14` 把人物表 6 byte 姓名欄放在餘步之前。
+// 兩字姓名的前後空格也要留下，否則提示會比原版左移一格。
+func SkirmishPrompt(name string, left, moveCap int) string {
+	return tf("skm.prompt", NameField(PersonName(name)), left, moveCap)
+}
+
 // BattleCommandWindow 是每天的命令提示（`0x27a40`）：三行選單（`DS:0x7f22`）
 // 接「%s主公請下%s(%2d)%s的命令(0-8):」（`DS:0x7f02`）——君主姓名欄、隊伍名
 // （`DS:0x7860`）、剩下的移動力、帶隊那一位的姓名欄。
