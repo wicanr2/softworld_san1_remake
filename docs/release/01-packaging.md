@@ -31,12 +31,13 @@ tools/release.sh v.1.0.0-20260923
 ```text
 dist-all/<版本>/
 ├── patch/             四個可公開的引擎與合法字型封包
+├── full-local/        含玩家本機原版資料的私人完整版，禁止上傳
 ├── smoke/             封包清單、執行檔型別與 Linux 啟動紀錄
 └── SHA256SUMS.json    版號、來源 commit、image、輸入與封包 SHA-256
 ```
 
-每包僅有 `san1[.exe]`、`LICENSE`、`README.md`、`如何開始.txt`、
-四套點陣字型及其三份授權文件。`kai`／`li` 字型授權收在
+公開引擎包僅有 `san1[.exe]`、`LICENSE`、`README.md`、`如何開始.txt`、
+現行 remake 截圖、四套點陣字型及其三份授權文件。`kai`／`li` 字型授權收在
 `fonts/LICENSE-wangfonts.txt`。腳本解讀每一包的成員清單並逐項比對這份
 固定清單，也檢查 ZIP 的 CRC、GZIP 完整性及執行檔格式。
 
@@ -54,6 +55,15 @@ san1 -root /path/to/三國演義1加強版 -edition plus
 指向封包外各自的暫存目錄。測試使用 `xvfb-run`，`-version` 必須等於完整
 版號；進入遊戲後滿 25 秒才由 `timeout` 終止，逾時碼 124 才算通過。
 這只證明啟動與持續執行，不能替代正常玩家路徑驗收。
+
+公開引擎包驗收後，`tools/full-local.sh <完整版號>` 從四個公開引擎包建立
+`full-local/` 下四個本機專用封包。每包都含原版與加強版的實際遊戲檔，
+附兩版啟動腳本；腳本把存檔寫入封包內的 `saves/`，不改動原版資料。
+建置器逐檔比較原始輸入與四個封包內的 SHA-256，再從最終 Linux 封包
+解開，以內附的兩版資料各啟動八秒。`full-local/ORIGINAL-SHA256.json`
+保存原版輸入雜湊；最上層 `SHA256SUMS.json` 記錄四包大小與雜湊，
+權利分類為 `local_only_original_assets`。這些封包只供本機保存，
+不加入 Git，也不附上 GitHub Release。
 
 ## 版本、雜湊與未完成驗收
 

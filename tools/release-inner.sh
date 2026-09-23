@@ -57,13 +57,14 @@ case "$phase" in
     package() {
       local platform="$1" bin="$2" output="$3"
       local dir="$stage/packages/san1-$ver-$platform"
-      mkdir -p "$dir/fonts"
+      mkdir -p "$dir/fonts" "$dir/docs/images"
       if [[ "$platform" == windows-* ]]; then
         cp "$stage/bin/$bin" "$dir/san1.exe"
       else
         cp "$stage/bin/$bin" "$dir/san1"
       fi
       cp /src/LICENSE /src/README.md "$dir/"
+      cp /src/docs/images/remake-main.png "$dir/docs/images/"
       cp /src/fonts/unifont.hex.gz /src/fonts/ascii6x10.hex.gz \
          /src/fonts/kai.hex.gz /src/fonts/li.hex.gz \
          /src/fonts/LICENSE-unifont.txt /src/fonts/LICENSE-x11-misc-fixed.txt \
@@ -113,7 +114,8 @@ EOF
       contents="$stage/final/smoke/archive-contents-$platform.txt"
       printf '%s\n' \
         "$name" "$name/$bin_name" "$name/LICENSE" "$name/README.md" \
-        "$name/如何開始.txt" "$name/fonts" \
+        "$name/如何開始.txt" "$name/fonts" "$name/docs" "$name/docs/images" \
+        "$name/docs/images/remake-main.png" \
         "$name/fonts/unifont.hex.gz" "$name/fonts/ascii6x10.hex.gz" \
         "$name/fonts/kai.hex.gz" "$name/fonts/li.hex.gz" \
         "$name/fonts/LICENSE-unifont.txt" \
