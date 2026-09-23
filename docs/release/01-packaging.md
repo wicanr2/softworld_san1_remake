@@ -32,6 +32,7 @@ tools/release.sh v.1.0.0-20260923
 dist-all/<版本>/
 ├── patch/             四個可公開的引擎與合法字型封包
 ├── full-local/        含玩家本機原版資料的私人完整版，禁止上傳
+├── promo/             本機推廣片、抽樣幀、媒體探測與權利紀錄
 ├── smoke/             封包清單、執行檔型別與 Linux 啟動紀錄
 └── SHA256SUMS.json    版號、來源 commit、image、輸入與封包 SHA-256
 ```
@@ -64,6 +65,13 @@ san1 -root /path/to/三國演義1加強版 -edition plus
 保存原版輸入雜湊；最上層 `SHA256SUMS.json` 記錄四包大小與雜湊，
 權利分類為 `local_only_original_assets`。這些封包只供本機保存，
 不加入 Git，也不附上 GitHub Release。
+
+`tools/promo-local.sh <完整版號>` 會從現行 remake 程式重生六張畫面，
+以本機原版配樂「風雲」製作 42 秒的繁中推廣片，輸出到 `promo/`。
+影片只供本機保存；它使用原版美術與音樂，不附上公開 Release。
+`promo/` 同時保留六格接觸表、影片抽樣幀、FFprobe 資訊、音量、
+黑幀與凍結檢測紀錄、來源及輸出 SHA-256、權利說明。這些收據用來
+確認影片可播放、非靜音、畫面和字幕沒有明顯裁切。
 
 ## 版本、雜湊與未完成驗收
 

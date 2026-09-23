@@ -10,7 +10,7 @@ VER="$1"
 for d in "$ROOT" "$ROOT/org_game" "$ROOT/workplace" "$ROOT/dist-all/$VER"; do
   [[ -d "$d" ]] || { echo "缺少掛載目錄：$d" >&2; exit 1; }
 done
-[[ -f "$ROOT/workplace/audio/思古.wav" && -f "$ROOT/tools/promo-local-inner.sh" ]] || {
+[[ -f "$ROOT/workplace/audio/風雲.wav" && -f "$ROOT/tools/promo-local-inner.sh" ]] || {
   echo '缺少本機原版配樂或影片腳本' >&2; exit 1;
 }
 source_dir="$ROOT/workplace/promo-source/$VER"
