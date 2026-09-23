@@ -150,12 +150,19 @@ type app struct {
 
 	// opening 非 nil 表示正在播開機片頭（`docs/spec/005`「片頭」），
 	// 播完才到主選單。
-	opening *openingPlayer
+	opening    *openingPlayer
+	openingArt *opening.Art
 }
 
 func (a *app) Update() error {
 	if a.quit {
 		return ebiten.Termination
+	}
+	// iter.Pull 必須在之後呼叫 next 的執行緒狀態下建立。Ebiten 的主迴圈
+	// 會從初始化時的鎖定執行緒切到更新執行緒，因此在第一幀才啟動片頭。
+	if a.openingArt != nil {
+		a.opening = newOpeningPlayer(a.openingArt)
+		a.openingArt = nil
 	}
 	// 轉場進行中就只走轉場：原版那一段是**阻塞**的（`docs/re/09` §5），
 	// 期間不收輸入。24 步 ×一幀 ≈ 0.4 秒。
@@ -1858,7 +1865,7 @@ func main() {
 		}
 		a.startTitle(titleScreen, a.newMenu())
 		if openArt != nil {
-			a.opening = newOpeningPlayer(openArt)
+			a.openingArt = openArt
 		}
 	}
 	if *calendar == "西曆" {

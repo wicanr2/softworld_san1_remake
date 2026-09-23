@@ -26,3 +26,4 @@
 - 將舊 `tools/release.sh` 的主機建置、`workplace/release/` 路徑及非正式版號，改為主機僅控制 Docker 的入口；實際建置、封包與驗收由 `tools/release-inner.sh` 在無網路容器執行。四包須齊全，並逐包核對格式、檔案清單及壓縮完整性；Linux 用唯讀原版素材抽測兩版啟動。
 - 驗證：`tools/go.sh test ./... -count=1` 通過；`-tags oracle -run '^$'` 編譯全庫通過；發行腳本在容器內通過 `bash -n`。這些檢查尚不是正式封包或 Windows／macOS 原生啟動收據。
 - 首次四平台編譯完成後，封包清單驗收把 GNU tar 對中文檔名的跳脫顯示誤判為不同檔案；未建立 `dist-all/`。將 tar 清單改為原樣列名，並以已產生的 Linux 包確認成員名稱後，從乾淨輸入重建。
+- 第二次封包清單通過後，Linux 原版啟動在片頭 `iter.Pull` 崩潰：初始化建立協程時 Ebiten 鎖著主執行緒，第一幀更新卻在另一個未鎖執行緒呼叫 `next`。把片頭協程延到第一幀 `Update` 建立；全庫測試重跑通過，實際封包啟動仍須從乾淨輸入重驗。第二次也未建立 `dist-all/`。
