@@ -7,6 +7,8 @@
 - 先用主機 `gh auth status` 確認權限，讀回遠端 #102、#103、#2 的內文及留言。#102、#103 各補兩版戰後人物／州郡全表對拍收據後，以 completed 關閉；#2 補註目前是未簽本機包，保持開啟。遠端留言均註明對應程式提交尚未推送。
 - dosgolem 原版 `AA.EXE` 與同狀態 remake 重跑開局、清單、人物卡、郡資料、對白、部隊面板、戰術子畫面等現有畫面測試；新增 16×16 文字列的首字格比較。首次增強檢查抓到戰術子畫面第三行左移一個 8px 格；正式玩家路徑原來把去掉填充的兩字姓名直接送給提示，已改為 `ui.SkirmishPrompt` 使用人物表的 6 byte 姓名欄。另有三處 32×32 大字因字模側邊留白造成首墨格差異，按原有繪製座標與字區外逐像素判準核對，未改畫面座標。
 - 修正後 `TestZZMainPromptMatchesTheOriginal`、`TestZZSkirmishScreenMatchesTheOriginal`、`TestZZStatusPanelMatchesTheOriginal` 於 dosgolem 通過；其餘已跑的原版 UI 測試及限制列於 `docs/playtest/03`。本輪程式修正尚未重建進既有 `v.1.0.0-20260923` 封包，也未建立 tag 或公開 Release。
+- 首次 `v.1.0.1-20260923` 本機預產物的執行檔與 manifest 版號正確，但包內 README 仍宣稱 `v.1.0.0` 為現行版。驗出後只撤除這份尚未對外交付的預產物；README 改為從 `dist-all/<版本>/SHA256SUMS.json` 讀取版號，避免下次同樣過期。
+- 後續從乾淨提交 `d1ec266` 重建同日修正版 `dist-all/v.1.0.1-20260923/`，不覆寫舊包。完整 `tools/go.sh test ./... -count=1` 通過；四包 manifest、長度、SHA-256、內容、版號及包內 README 核對通過，Linux 封包前 base／plus 各啟動 25 秒，解開最終 Linux 包後各再啟動 8 秒。未推送程式提交、未建立 tag 或公開 Release。
 
 ## 2026-09-23：玩家戰役結算與玉璽狀態收斂
 

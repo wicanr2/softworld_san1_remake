@@ -76,3 +76,24 @@ image ID、主要輸入 SHA-256、每包長度與 SHA-256、權利分類及本�
 執行滿 25 秒，最終壓縮包解開後各再啟動 8 秒，`-version` 回傳相同完整版號。
 本輪沒有雙次建置的雜湊比較，也沒有 Windows／macOS 原生啟動、簽章、公證、
 Git tag 或公開 Release。
+
+## `v.1.0.1-20260923` 現行本機收據
+
+原版文字位置複驗發現戰術提示少了人物表兩字姓名欄前置空格；正式玩家路徑
+已修正，既有 `v.1.0.0-20260923` 不覆寫。同日修正版從乾淨提交
+`d1ec266e0d6b52526f844c600da49045831d8283` 建置，清單在
+[`SHA256SUMS.json`](../../dist-all/v.1.0.1-20260923/SHA256SUMS.json)。
+
+| 平台 | 封包 SHA-256 |
+|---|---|
+| Linux amd64 | `8750f1109b3e2f995b5c7a5f899a437eedefe4fe00a2ad257d52b538ee9fd015` |
+| Windows amd64 | `5a6459d25b4d480293d92f9c04f924ee4ed2833535db90326bd2dd9f2cc33f52` |
+| macOS amd64 | `7fe3fbbe9d20e4f0edda0d0322fb8a7d06f73b21e8adc6cd5adcea6e8d7b9782` |
+| macOS arm64 | `e6791137b3139228001a6c7b4395852641dc0c2f11276ea1e481cea33b79a179` |
+
+腳本逐包驗證成員清單、壓縮完整性、執行檔型別與來源權利分類；
+本輪另從唯讀容器獨立重算四包長度及 SHA-256，全部相同且沒有 root
+擁有的產物；包內 README 已改用清單作版號入口，沒有宣稱舊版為現行版。Linux `-version` 與完整版號相同，base／plus 以唯讀原版
+素材在封包前各持續執行 25 秒；最終 Linux 壓縮包解開後，base／plus
+另各持續執行 8 秒，`-version` 仍是同一版號。Windows／macOS 原生啟動、簽章、公證、雙次建置雜湊比較、
+Git tag、遠端推送與公開 Release 均未做。

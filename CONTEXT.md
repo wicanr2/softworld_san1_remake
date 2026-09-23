@@ -8,13 +8,15 @@
 |---|---|---|
 | remake 已實作 | 玩家戰役的敗軍強制退兵、勝方主軍／援軍安置、錢糧與戰場受損、退場君主四類寶物分贓已依 `docs/spec/020` 接入；玉璽現世旗標獨立於寶庫並通過存讀檔回歸 | `go test ./...` 已通過；原版正常玩家戰役的呼叫及數值收據見 `TestBattleFinishesWithPlayer` |
 | 原版 oracle 與限制 | `TestZZPlayerSettlementTables` 與 `TestZZPlayerSettlementTablesPlus` 已在兩版正常玩家戰役的結算入口擷取同一盤面與亂數狀態：入口三表一致，戰後整張州郡表 7,568 B、人物表 10,500 B 逐位元組相同。`docs/spec/020` 仍是 `READY`，**未達 `CONFORMED`** | 此切點的諸侯表未同狀態對齊：人望在入口前已更新，原版退場君主也已離開部隊；原版／加強版戰後諸侯表各差 12／2 B。玩家戰役從整編到結算的完整獨立對拍仍是限制 |
-| 發行與可選事項 | 本機交付 `dist-all/v.1.0.0-20260923/` 已從提交 `d74a735` 乾淨建置，四包 SHA-256、內容及兩版 Linux 啟動檢查通過；詳見 `docs/release/01` 與 `SHA256SUMS.json`。GitHub [#102](https://github.com/wicanr2/softworld_san1_remake/issues/102)、[#103](https://github.com/wicanr2/softworld_san1_remake/issues/103) 已附兩版全表收據並以 completed 關閉；[#2](https://github.com/wicanr2/softworld_san1_remake/issues/2) 仍開啟，已註明簽章限制 | dosgolem 原版文字座標複驗揭露戰術提示少一個姓名欄前置空格，程式已修；現有 `v.1.0.0-20260923` 四包建於修正之前，須重建才能包含本次修正。尚無 Git tag、遠端推送或公開 Release；Windows／macOS 原生啟動未驗 |
+| 發行與可選事項 | 現行本機交付 `dist-all/v.1.0.1-20260923/` 已從提交 `d1ec266` 乾淨建置，四包 SHA-256、內容及兩版 Linux 啟動檢查通過；詳見 `docs/release/01` 與 `SHA256SUMS.json`。GitHub [#102](https://github.com/wicanr2/softworld_san1_remake/issues/102)、[#103](https://github.com/wicanr2/softworld_san1_remake/issues/103) 已附兩版全表收據並以 completed 關閉；[#2](https://github.com/wicanr2/softworld_san1_remake/issues/2) 仍開啟，已註明簽章限制 | dosgolem 原版文字座標抽樣複驗通過；`v.1.0.0-20260923` 為先前本機包，未包含本次戰術提示修正。尚無 Git tag、遠端推送或公開 Release；Windows／macOS 原生啟動未驗 |
 
 2026-09-23 文字位置複驗：dosgolem 的開局選擇、主提示、挑人／挑郡、郡資料、人物卡、對白及戰場抽樣均已有同狀態畫面對拍；本輪另加入 16×16 文字列首字格斷言。原版戰術選單第三行的兩字姓名比 remake 右移一格，查明須保留人物表 6 byte 姓名欄的前置空格，正式玩家路徑與對拍共用 `ui.SkirmishPrompt` 修正。郡名／主事者的 32×32 字模墨點有側邊留白差異，不能以首墨格判座標；字區外仍逐像素核對。此收據限原版 `AA.EXE` 的抽樣畫面，不涵蓋所有文字、加強版獨立畫面或完整戰術玩家流程；詳見 `docs/playtest/03`。
 
 2026-09-23 使用者裁定：**正式發行前先完成玩家戰後整張人物／州郡表的同狀態逐格對拍**；排除先發未簽預覽包。此項驗證未通過前不建立現行 `dist-all/` 發行版。
 
 2026-09-23 使用者另裁定：下一個本機交付採 **`v.1.0.0-20260923`**，排除 `v.0.1.0-20260923`。此版號表示使用者願意把目前成果稱為 1.0；諸侯表與戰術全程的驗證限制仍須隨包揭露。版號決定不等於封包或公開發布已完成。
+
+同日文字位置複驗後修正正式戰術提示；既有 `v.1.0.0-20260923` 不覆寫，依同日修正契約另建 `v.1.0.1-20260923` 為現行本機交付。兩個版號都沒有建立 Git tag 或公開 Release。
 
 2026-09-14 曾裁定「本階段單人交付」。這項範圍後來被
 2026-09-17 的 0–16 人決定取代；已驗證的多人正常路徑在
