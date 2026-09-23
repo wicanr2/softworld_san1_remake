@@ -1,199 +1,68 @@
-# 發行包
+# 發行包與本機驗收
 
-`tools/release.sh` 打三個平台的包，產物在 `workplace/release/`（gitignore）。
+`tools/release.sh` 是建置入口。它在主機上只檢查 Git 狀態、輸入目錄及 Docker image，
+並以有界、無網路的容器執行 `tools/release-inner.sh`；建置、封包、檢查及寫入都在容器內。
+使用者需明確提供符合 `v.<主版>.<次版>.<修訂版>-YYYYMMDD` 的完整版號：
 
 ```sh
-tools/release.sh            # 版本字串取自 git describe
-tools/release.sh v0.1.0
+tools/release.sh v.1.0.0-20260923
 ```
 
-## 1. 三個平台的條件不一樣
+腳本要求所有受 Git 追蹤的檔案無差異，且 `dist-all/<版本>/` 尚不存在；
+已建立的交付不會覆寫。若建置失敗，`workplace/release-build/<版本>/`
+只保留可重建的中間產物。
 
-| 平台 | cgo | 工具鏈 | 狀態 |
-|---|---|---|---|
-| Windows amd64 | **不用** | 本機的 Go 容器 | 直接過 |
-| Linux amd64 | 要（X11／GL）| 本機的 Go 容器 | 直接過 |
-| macOS amd64／arm64 | 要（Objective-C）| osxcross 的 image | 過（`eob-remake-macos`）|
+## 平台與工具鏈
 
-**Windows 不用 cgo** 是 Ebiten 的性質：它在 Windows 走 syscall 不走 cgo，
-所以 `GOOS=windows CGO_ENABLED=0` 就交叉編得出來。Linux 與 macOS 都要 cgo，
-差別在 macOS 的工具鏈不在手邊。
-
-沒有 osxcross 的 image 時腳本會**跳過並說明**，不會假裝打包成功——
-一個安靜地少一個平台的發行流程，看起來與「三個平台都好了」一樣。
-備 image 的做法見 skill `osxcross-macos-cross-build`。
-
-### macOS 那條要關掉 workspace
-
-`go.work` 只給對拍測試用（它要接 `dosgolem`）。osxcross 的容器裡沒有
-dosgolem，所以那一段要 `GOWORK=off`——而關掉之後就吃 `go.sum` 不吃
-`go.work.sum`，`github.com/ebitengine/oto/v3` 要補進 `go.mod` 與 `go.sum`。
-
-⚠ **那個模組只有 macOS 這條路徑用得到**，所以 Linux 與 Windows 建得起來
-不代表 macOS 建得起來。三個平台都要真的建過一次才算數。
-
-## 2. 包裡有什麼
-
-```
-san1[.exe]        引擎（**三個平台同名**，平台後綴只在建置目錄裡）
-fonts/*.hex.gz        四套點陣字型（自由授權，不是原版字模）
-                      unifont（預設）、ascii6x10（小字級）、
-                      kai／li（主選單「使用楷書字／使用隸書字」，Issue #71）
-fonts/LICENSE-*.txt   四套各自的授權；kai／li 是 **GPL v2、沒有字型例外**，
-                      `LICENSE-wangfonts.txt` 少了就是散布違反條款
-LICENSE           RRSAL-1.0
-README.md
-如何開始.txt
-```
-
-## 3. `[HARD]` 包裡沒有原版檔案
-
-**不散布原版執行檔、資料檔、美術、音樂、字型，也不散布說明書掃描**
-（`CLAUDE.md` §1）。**語音（`R???.OKR`）也是原版素材**——英日語系照播的
-是玩家自己那一份（`docs/spec/008` §5.1），發行包裡一段都沒有。
-玩家要自備原版目錄：
-
-```
-san1 -root /path/to/三國演義
-```
-
-`tools/assets.sh` 轉出來的 PNG／JSON／OGG 也是玩家自己那一份的內容，
-**同樣不進發行包**。
-
-## 4. 實際建出來的
-
-`d6bb458` 這一版四個包都建過、解開驗過型別與內容（只有引擎、字型、
-LICENSE、README、`如何開始.txt`），Linux 那個包跑過冒煙測試：
-
-| 包 | 大小 | 執行檔 |
+| 封包 | 建置方式 | 本機驗收 |
 |---|---|---|
-| `windows-amd64.zip` | 4.9 MB | PE32+ x86-64 |
-| `linux-amd64.tar.gz` | 5.0 MB | ELF 64-bit x86-64（動態連結）|
-| `darwin-amd64.tar.gz` | 8.5 MB | Mach-O x86_64 |
-| `darwin-arm64.tar.gz` | 7.9 MB | Mach-O arm64 |
+| Linux amd64 | Go／cgo，`eob-remake-release:1.26.7-ebiten2.9.9-audio` | ELF 型別、封包內容；原版與加強版各執行 25 秒 |
+| Windows amd64 | Go，`CGO_ENABLED=0`，同上 image | PE32+ 型別與封包內容；尚未在 Windows 原生啟動 |
+| macOS amd64 | Go／osxcross，`eob-remake-macos:1.26.7-ebiten2.9.9-audio` | Mach-O 型別與封包內容；尚未在 macOS 原生啟動 |
+| macOS arm64 | Go／osxcross，同上 image | Mach-O 型別與封包內容；尚未在 macOS 原生啟動 |
 
-## 5. 校驗碼
+四個平台都必須成功編出；任何一個失敗就不建立現行交付。交叉編譯與檔案型別
+不能替代目標平台的原生啟動、Windows 簽章或 macOS 公證。
 
-腳本最後產 `SHA256SUMS`。發布時一併附上。
+## 交付內容與權利
 
-## 6. 還沒做的
+正式本機產物放在 `dist-all/<版本>/`：
 
-- **簽章**：管線寫好了（`tools/release.sh` 的「簽章」那一段），
-  缺的是憑證本身——那是要花錢申請的東西，不在這個 repo 裡。見下一節。
-- **AppImage**：`eob-remake-release` 的 image 裡有 appimage-tools，
-  還沒接進來。
-- **arm64 Linux**：沒有交叉工具鏈。
-
-## 簽章
-
-**憑證不進 repo 也不進容器**，一律走環境變數。沒設就跳過並在畫面上
-說明「這不是簽過」——與 macOS 交叉編譯那一段同一個原則：**不假裝成功**。
-
-### Windows
-
-```
-SAN1_WIN_PFX=/path/to/cert.pfx SAN1_WIN_PFX_PASS=… tools/release.sh
+```text
+dist-all/<版本>/
+├── patch/             四個可公開的引擎與合法字型封包
+├── smoke/             封包清單、執行檔型別與 Linux 啟動紀錄
+└── SHA256SUMS.json    版號、來源 commit、image、輸入與封包 SHA-256
 ```
 
-用 `osslsigncode`（Linux 上簽 PE 的標準做法）帶時戳簽 `san1.exe`。
-要的東西是一張 **code signing 憑證**（OV 或 EV）。沒有簽章的話
-SmartScreen 會擋，玩家要點「其他資訊 → 仍要執行」。
+每包僅有 `san1[.exe]`、`LICENSE`、`README.md`、`如何開始.txt`、
+四套點陣字型及其三份授權文件。`kai`／`li` 字型授權收在
+`fonts/LICENSE-wangfonts.txt`。腳本解讀每一包的成員清單並逐項比對這份
+固定清單，也檢查 ZIP 的 CRC、GZIP 完整性及執行檔格式。
 
-### macOS
+**公開封包不含原版執行檔、資料、美術、音樂、語音、字模或說明書掃描。**
+`tools/assets.sh` 從玩家素材轉出的檔案也不能加入公開包。玩家須自行提供
+合法持有的原版目錄：
 
-**codesign 與 notarytool 不能交叉執行**——osxcross 只負責編譯。
-所以 `release.sh` 只把待簽的執行檔列出來，實際三道指令要在真的
-macOS 上跑：
-
-```
-codesign --force --options runtime --timestamp \
-  --sign "Developer ID Application: <名字> (<TeamID>)" san1
-ditto -c -k --keepParent san1 san1.zip
-xcrun notarytool submit san1.zip --apple-id <帳號> \
-  --team-id <TeamID> --password <app-specific 密碼> --wait
+```sh
+san1 -root /path/to/三國演義 -edition base
+san1 -root /path/to/三國演義1加強版 -edition plus
 ```
 
-要的東西是 **Apple Developer Program 會籍**（年費）加上一張
-Developer ID Application 憑證。沒有 notarize 的話 Gatekeeper 會擋，
-玩家第一次開要在 Finder 裡右鍵「打開」。
+預設存檔位置是執行時工作目錄的 `saves/`，可用 `-saves` 指定其他位置；
+不會寫入 `-root`。兩版 Linux 冒煙測試都將原版素材唯讀掛載，並把 `-saves`
+指向封包外各自的暫存目錄。測試使用 `xvfb-run`，`-version` 必須等於完整
+版號；進入遊戲後滿 25 秒才由 `timeout` 終止，逾時碼 124 才算通過。
+這只證明啟動與持續執行，不能替代正常玩家路徑驗收。
 
-⚠ **單檔執行檔不能 `xcrun stapler staple`**——stapler 只認
-`.app`／`.dmg`／`.pkg`。單檔要嘛接受「第一次開要連線驗證」，
-要嘛包成 `.app` 再 staple。
+## 版本、雜湊與未完成驗收
 
-### Linux
+版號注入四支執行檔，並逐支檢查；檔名、目錄、`SHA256SUMS.json` 及
+Linux `-version` 均使用相同完整版號。清單記錄原始碼 commit、兩個 Docker
+image ID、主要輸入 SHA-256、每包長度與 SHA-256、權利分類及本機驗收結果。
+封包固定檔案時間、順序和擁有者；要主張逐位元組可重現，仍須用相同輸入
+與工具鏈重建兩次，再比對四包雜湊。
 
-沒有平台級的簽章慣例。發行走 `SHA256SUMS` ＋ GPG 分離簽章：
-
-```
-SAN1_GPG_KEY=<金鑰 ID> tools/release.sh
-```
-
-產出 `SHA256SUMS.asc`。公鑰要另外公布（README 或 release 頁）。
-
-## 可重現建置
-
-**四個包逐位元組可重現**：同一份原始碼建兩次，`SHA256SUMS` 的四行完全
-相同（2026-09-09 實測三次）。
-
-沒有憑證的時候，這是唯一能讓別人獨立驗證「這個包確實是這份原始碼建出
-來的」的東西——而它只有在「同一份內容每次壓出同一個位元組串」時才有
-意義。預設的 `tar`／`gzip`／`zip` 會把**修改時間、擁有者、檔案順序**
-寫進檔頭，於是同一份內容每次的雜湊都不一樣，而**看起來完全正常**。
-
-做法：
-
-| 環節 | 措施 |
-|---|---|
-| Go 建置 | `-trimpath`（拿掉建置路徑）|
-| 檔案時間 | 壓縮前一律 `touch -h -d @0`；`SOURCE_DATE_EPOCH` 可覆蓋 |
-| tar | `--sort=name --mtime --owner=0 --group=0 --numeric-owner` |
-| gzip | `-n`（不寫檔名與時戳）|
-| zip | `-X`（不寫額外屬性）＋ 檔案清單先 `LC_ALL=C sort` |
-
-驗證方式：建兩次、比 `SHA256SUMS`。**不能只看旗標加對了**——
-旗標加對但漏掉某一環的話，雜湊照樣每次不同。
-
-```
-tools/release.sh 0.0.0-check && cp workplace/release/SHA256SUMS /tmp/a
-tools/release.sh 0.0.0-check && diff /tmp/a workplace/release/SHA256SUMS
-```
-
-## 冒煙測試
-
-**建得出來不等於跑得起來。** Ebiten 在 package init 就開 GLFW，
-所以少一個共享函式庫、字型路徑寫錯、資產讀法改過——這些都不會讓
-`go build` 失敗，只會讓玩家一按下去就閃退。
-
-`tools/release.sh` 因此把 Linux 那個包解開來真的跑一次：先 `-h`
-確認起得來，再帶原版素材跑 25 秒。**跑滿 25 秒被 `timeout` 砍掉
-（退出碼 124）才是通過——自己結束反而是壞消息。**
-
-只驗 Linux：另外三個平台在這台機器上執行不了，硬要驗會變成假綠。
-Windows 與 macOS 的包目前只有型別檢查（`file` 認得出 PE／Mach-O）
-與可重現雜湊。
-
-⚠ **無顯示環境連 `san1 -h` 都會 panic**（`glfw: The GLFW library is
-not initialized`）。那是 Ebiten 的 package init 行為，不是 remake 的
-問題；容器裡要 `xvfb-run`。
-
-### 沒有音效卡也要開得起來
-
-冒煙測試的容器裡沒有音效裝置，所以它同時驗了這一條。**Ebiten 把音訊
-驅動開不起來當成致命錯誤**：`audio.Context` 一旦建立，驅動的錯誤就從
-遊戲迴圈的 hook 回傳（ebiten v2.9.9 `audio/audio.go` 的
-`AppendHookOnBeforeUpdate`），`RunGame` 直接結束——ALSA 找不到
-`default` 那一刻遊戲就關了。
-
-冒煙測試帶 `-music=false`，只關得掉配樂；PC 喇叭（`-sound`，預設開）
-照樣會建音訊環境，所以這條路一打開就會踩到。
-
-修法是**開之前先探測**（`cmd/san1/audioprobe.go`）：主程式用
-`san1 -probe-audio` 起一個子行程開一次 oto，開得起來才建 Ebiten 的
-音訊環境；開不起來就把配樂與音效都關掉、在 stderr 說一聲，照常開遊戲。
-**不能在同一個行程裡先試**：oto 一個行程只准開一個環境，而「開過了」
-的旗標在嘗試之前就立起來（oto v3.4.0 `context.go` 的 `contextCreated`），
-試一次就把 Ebiten 要用的那個名額用掉了。
-
-⚠ 探測通過之後裝置才壞掉（例如遊戲中拔掉耳機、音訊服務重啟）的那一條
-沒有處理，還是會走到 Ebiten 那個致命錯誤。
+目前腳本產出**未簽章的本機封包**。Windows 與 macOS 的原生啟動、
+相應平台的簽章／公證、玩家路徑驗收，以及公開 GitHub Release，
+都需另附實際收據；不得把本機交叉編譯寫成這些項目已完成。

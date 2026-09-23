@@ -41,6 +41,9 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
 
+// releaseVersion 由發行建置以 -ldflags 注入；一般開發版維持 dev。
+var releaseVersion = "dev"
+
 type app struct {
 	canvas *ui.Canvas
 	screen *ebiten.Image
@@ -108,7 +111,7 @@ type app struct {
 	fontDir   string
 	fontKind  int
 	fontCache map[int]*font.Face
-	titleArt   *ui.TitleScreen
+	titleArt  *ui.TitleScreen
 	// titleAnimTick／Frame 驅動主選單 `CURA0`～`CURA5` 的六格循環。
 	titleAnimTick, titleAnimFrame int
 	// cursorTick 驅動提示後面輸入游標的六格（`ui.CursorFrameAt`）。
@@ -1649,6 +1652,7 @@ func (a *app) Layout(int, int) (int, int) {
 }
 
 func main() {
+	showVersion := flag.Bool("version", false, "顯示完整發行版號並離開")
 	root := flag.String("root", "", "原版遊戲目錄（必填，玩家自備）")
 	saveDir := flag.String("saves", "saves", "存檔目錄（remake 自己的，不寫回原版）")
 	load := flag.Int("load", 0, "開場就讀第幾個進度（1..6）；0 ＝ 開新局")
@@ -1676,6 +1680,10 @@ func main() {
 	useArt := flag.Bool("art", true, "主畫面用原版素材（從玩家自己的 DATA3 讀）")
 	showTitle := flag.Bool("title", true, "先進開場詞與主選單；false ＝ 直接開局")
 	flag.Parse()
+	if *showVersion {
+		fmt.Println(releaseVersion)
+		return
+	}
 	if l, ok := i18n.Parse(*lang); ok {
 		i18n.Current = l
 	} else {

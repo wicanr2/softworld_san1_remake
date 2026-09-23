@@ -7,8 +7,12 @@
 | 類別 | 現況 | 下一個判準 |
 |---|---|---|
 | remake 已實作 | 玩家戰役的敗軍強制退兵、勝方主軍／援軍安置、錢糧與戰場受損、退場君主四類寶物分贓已依 `docs/spec/020` 接入；玉璽現世旗標獨立於寶庫並通過存讀檔回歸 | `go test ./...` 已通過；原版正常玩家戰役的呼叫及數值收據見 `TestBattleFinishesWithPlayer` |
-| 原版 oracle 尚未知 | 玩家戰後人物／州郡**整張表**的同狀態逐格比較未建立；加強版的正常玩家戰後收據也尚未建立。`docs/spec/020` 是 `READY`，**未達 `CONFORMED`** | 以同一初始盤面、固定兩側種子與等價輸入重生兩版玩家路徑，逐格比表；不能以單元測試或原版單側收據代替 |
-| 發行與可選事項 | GitHub 的 open Issues 仍是待辦權威；2026-09-23 回讀為 [#102](https://github.com/wicanr2/softworld_san1_remake/issues/102)、[#103](https://github.com/wicanr2/softworld_san1_remake/issues/103)、[#2](https://github.com/wicanr2/softworld_san1_remake/issues/2)。本輪未變更 Issue 狀態，`dist-all/` 尚無正式版 | #102 的全表驗收未完成；#103 的原版正向分贓收據與玉璽單獨測試已有，待按最新證據核對 Issue；#2 是平台簽章事項 |
+| 原版 oracle 與限制 | `TestZZPlayerSettlementTables` 與 `TestZZPlayerSettlementTablesPlus` 已在兩版正常玩家戰役的結算入口擷取同一盤面與亂數狀態：入口三表一致，戰後整張州郡表 7,568 B、人物表 10,500 B 逐位元組相同。`docs/spec/020` 仍是 `READY`，**未達 `CONFORMED`** | 此切點的諸侯表未同狀態對齊：人望在入口前已更新，原版退場君主也已離開部隊；原版／加強版戰後諸侯表各差 12／2 B。玩家戰役從整編到結算的完整獨立對拍仍是限制 |
+| 發行與可選事項 | GitHub 的 open Issues 仍是待辦權威；2026-09-23 回讀為 [#102](https://github.com/wicanr2/softworld_san1_remake/issues/102)、[#103](https://github.com/wicanr2/softworld_san1_remake/issues/103)、[#2](https://github.com/wicanr2/softworld_san1_remake/issues/2)。本輪未變更 Issue 狀態，`dist-all/` 尚無正式版 | 使用者指定的人物／州郡全表閘門已達成；下一步是修正發行腳本與封包驗收。#2 平台簽章在 M8 閘門之外 |
+
+2026-09-23 使用者裁定：**正式發行前先完成玩家戰後整張人物／州郡表的同狀態逐格對拍**；排除先發未簽預覽包。此項驗證未通過前不建立現行 `dist-all/` 發行版。
+
+2026-09-23 使用者另裁定：下一個本機交付採 **`v.1.0.0-20260923`**，排除 `v.0.1.0-20260923`。此版號表示使用者願意把目前成果稱為 1.0；諸侯表與戰術全程的驗證限制仍須隨包揭露。版號決定不等於封包或公開發布已完成。
 
 2026-09-14 曾裁定「本階段單人交付」。這項範圍後來被
 2026-09-17 的 0–16 人決定取代；已驗證的多人正常路徑在
