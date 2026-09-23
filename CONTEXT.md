@@ -8,7 +8,7 @@
 |---|---|---|
 | remake 已實作 | 玩家戰役的敗軍強制退兵、勝方主軍／援軍安置、錢糧與戰場受損、退場君主四類寶物分贓已依 `docs/spec/020` 接入；玉璽現世旗標獨立於寶庫並通過存讀檔回歸 | `go test ./...` 已通過；原版正常玩家戰役的呼叫及數值收據見 `TestBattleFinishesWithPlayer` |
 | 原版 oracle 與限制 | `TestZZPlayerSettlementTables` 與 `TestZZPlayerSettlementTablesPlus` 已在兩版正常玩家戰役的結算入口擷取同一盤面與亂數狀態：入口三表一致，戰後整張州郡表 7,568 B、人物表 10,500 B 逐位元組相同。`docs/spec/020` 仍是 `READY`，**未達 `CONFORMED`** | 此切點的諸侯表未同狀態對齊：人望在入口前已更新，原版退場君主也已離開部隊；原版／加強版戰後諸侯表各差 12／2 B。玩家戰役從整編到結算的完整獨立對拍仍是限制 |
-| 發行與可選事項 | GitHub 的 open Issues 仍是待辦權威；2026-09-23 回讀為 [#102](https://github.com/wicanr2/softworld_san1_remake/issues/102)、[#103](https://github.com/wicanr2/softworld_san1_remake/issues/103)、[#2](https://github.com/wicanr2/softworld_san1_remake/issues/2)。本輪未變更 Issue 狀態，`dist-all/` 尚無正式版 | 使用者指定的人物／州郡全表閘門已達成；下一步是修正發行腳本與封包驗收。#2 平台簽章在 M8 閘門之外 |
+| 發行與可選事項 | 本機交付 `dist-all/v.1.0.0-20260923/` 已從提交 `d74a735` 乾淨建置，四包 SHA-256、內容及兩版 Linux 啟動檢查通過；詳見 `docs/release/01` 與 `SHA256SUMS.json`。GitHub open Issues 2026-09-23 回讀為 [#102](https://github.com/wicanr2/softworld_san1_remake/issues/102)、[#103](https://github.com/wicanr2/softworld_san1_remake/issues/103)、[#2](https://github.com/wicanr2/softworld_san1_remake/issues/2)，本輪未改狀態 | 尚無 Git tag、遠端推送或公開 Release；Windows／macOS 原生啟動未驗，平台簽章未做。#2 簽章在 M8 出口條件之外 |
 
 2026-09-23 使用者裁定：**正式發行前先完成玩家戰後整張人物／州郡表的同狀態逐格對拍**；排除先發未簽預覽包。此項驗證未通過前不建立現行 `dist-all/` 發行版。
 
