@@ -115,3 +115,29 @@ Git tag 或公開 Release。
 素材在封包前各持續執行 25 秒；最終 Linux 壓縮包解開後，base／plus
 另各持續執行 8 秒，`-version` 仍是同一版號。Windows／macOS 原生啟動、簽章、公證、雙次建置雜湊比較、
 Git tag、遠端推送與公開 Release 均未做。
+
+## `v.1.0.3-20260924` 公開發行與本機完整版
+
+正式來源提交為 `8d89946357580a6a650b1e9a4bc0fea12dadcf3b`，同名 Git tag
+與[公開 Release](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.0.3-20260924)
+已回讀確認；儲存庫可見度為公開。Release 僅附 `patch/` 的 Linux amd64、
+Windows amd64、macOS amd64／arm64 四個引擎封包，以及
+`patch/SHA256SUMS-public.json`。遠端五個附件的檔名、大小與 SHA-256 已回讀；
+本機總清單 `dist-all/v.1.0.3-20260924/SHA256SUMS.json` 不公開，因為它也
+記錄私人完整版和推廣片。
+
+`full-local/` 的四個封包逐包包含原版與加強版共 66 個實際遊戲檔案，
+封包內的每個原版檔均與本機來源 SHA-256 相同。最終 Linux 完整版解開後，
+兩版各啟動八秒；Windows／macOS 完整版仍只完成封包、格式與內容核對。
+這四個封包只留在本機，沒有放進 GitHub Release。
+
+`promo/san1-v.1.0.3-20260924-promo-local.mp4` 是以現行 remake 重生六張畫面、
+搭配本機原版「風雲」資料製作的 42 秒影片。視訊為 1280×880 H.264，
+音訊為 AAC；平均音量 −38.5 dB，沒有連續 0.5 秒黑幀或 2 秒凍結，
+六格抽樣幀已目視核對字幕位置。影片 SHA-256 為
+`f5637cee38484cf156bc2a05dbd594f7579ac35d36cd1562d4ea273a3a3546c7`。
+原版美術與配樂的公開再散布授權尚未提供，因此影片只留在本機。
+
+四個公開引擎包都未簽章。Linux 在容器中的兩版啟動，不等於 Windows、
+macOS 原生啟動；後兩者以及簽章、公證仍待實測，見
+[GitHub Issue #2](https://github.com/wicanr2/softworld_san1_remake/issues/2)。

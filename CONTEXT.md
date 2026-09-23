@@ -2,13 +2,15 @@
 
 新 session 或對話被壓縮後，先讀這一份。規則在 `CLAUDE.md`，這裡是**現況**。
 
-## 最新收尾狀態（2026-09-23）
+## 最新收尾狀態（2026-09-24）
 
 | 類別 | 現況 | 下一個判準 |
 |---|---|---|
 | remake 已實作 | 玩家戰役的敗軍強制退兵、勝方主軍／援軍安置、錢糧與戰場受損、退場君主四類寶物分贓已依 `docs/spec/020` 接入；玉璽現世旗標獨立於寶庫並通過存讀檔回歸 | `go test ./...` 已通過；原版正常玩家戰役的呼叫及數值收據見 `TestBattleFinishesWithPlayer` |
 | 原版 oracle 與限制 | `TestZZPlayerSettlementTables` 與 `TestZZPlayerSettlementTablesPlus` 已在兩版正常玩家戰役的結算入口擷取同一盤面與亂數狀態：入口三表一致，戰後整張州郡表 7,568 B、人物表 10,500 B 逐位元組相同。`docs/spec/020` 仍是 `READY`，**未達 `CONFORMED`** | 此切點的諸侯表未同狀態對齊：人望在入口前已更新，原版退場君主也已離開部隊；原版／加強版戰後諸侯表各差 12／2 B。玩家戰役從整編到結算的完整獨立對拍仍是限制 |
-| 發行與可選事項 | 現行本機交付 `dist-all/v.1.0.1-20260923/` 已從提交 `d1ec266` 乾淨建置，四包 SHA-256、內容及兩版 Linux 啟動檢查通過；詳見 `docs/release/01` 與 `SHA256SUMS.json`。GitHub [#102](https://github.com/wicanr2/softworld_san1_remake/issues/102)、[#103](https://github.com/wicanr2/softworld_san1_remake/issues/103) 已附兩版全表收據並以 completed 關閉；[#2](https://github.com/wicanr2/softworld_san1_remake/issues/2) 仍開啟，已註明簽章限制 | dosgolem 原版文字座標抽樣複驗通過；`v.1.0.0-20260923` 為先前本機包，未包含本次戰術提示修正。尚無 Git tag、遠端推送或公開 Release；Windows／macOS 原生啟動未驗 |
+| 發行與可選事項 | [公開 Release `v.1.0.3-20260924`](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.0.3-20260924) 與同名 Git tag 指向 `8d89946`；儲存庫已公開。`dist-all/v.1.0.3-20260924/patch/` 有四平台未簽引擎包與公開雜湊清單；`full-local/` 的四平台包均含兩版 66 個原版檔案，只留本機；`promo/` 的 42 秒有聲推廣片也只留本機。完整收據見 `docs/release/01` 與版本 `SHA256SUMS.json`。GitHub #102、#103 已關閉；[#2](https://github.com/wicanr2/softworld_san1_remake/issues/2) 保持開啟 | 公開包不含原版資料；原版素材的公開再散布授權尚未提供。Windows／macOS 原生啟動與簽章／公證未驗；諸侯表及戰術全程的忠實度限制仍在 |
+
+2026-09-24 使用者要求公開儲存庫與 Release、含遊戲的完整版、推廣影片，以及只用現行 remake 畫面的 README。公開儲存庫與未簽引擎 Release 已完成；含原版資料的完整版和含原版美術／配樂的影片依既有權利邊界只留本機。README 只保留由現行程式重生的一張主畫面，先前六張舊圖已從目前版本移除。Git 歷史保留原有截圖提交，未改寫既有歷史。
 
 2026-09-23 文字位置複驗：dosgolem 的開局選擇、主提示、挑人／挑郡、郡資料、人物卡、對白及戰場抽樣均已有同狀態畫面對拍；本輪另加入 16×16 文字列首字格斷言。原版戰術選單第三行的兩字姓名比 remake 右移一格，查明須保留人物表 6 byte 姓名欄的前置空格，正式玩家路徑與對拍共用 `ui.SkirmishPrompt` 修正。郡名／主事者的 32×32 字模墨點有側邊留白差異，不能以首墨格判座標；字區外仍逐像素核對。此收據限原版 `AA.EXE` 的抽樣畫面，不涵蓋所有文字、加強版獨立畫面或完整戰術玩家流程；詳見 `docs/playtest/03`。
 
