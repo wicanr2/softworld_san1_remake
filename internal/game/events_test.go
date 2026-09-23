@@ -743,6 +743,7 @@ func TestSealAppearsAndBoostsPrestige(t *testing.T) {
 	for _, f := range g.Factions() {
 		g.Faction(f.ID).Treasury[TreasureSeal] = 0
 	}
+	g.sealAppeared = false
 	if g.SealFound() {
 		t.Fatal("清乾淨之後還是有人持玉璽")
 	}
@@ -783,6 +784,16 @@ func TestSealAppearsAndBoostsPrestige(t *testing.T) {
 	}
 	if n != 1 {
 		t.Errorf("玉璽變成 %d 件——現世之後不該再發", n)
+	}
+	// 絕嗣清掉寶庫時，原版的已現世旗標不會重設。
+	for _, f := range g.Factions() {
+		g.Faction(f.ID).Treasury[TreasureSeal] = 0
+	}
+	if !g.SealFound() {
+		t.Fatal("玉璽持有者消失後，已現世旗標不應倒退")
+	}
+	if got := g.sealEvent(); len(got) != 0 {
+		t.Fatalf("玉璽已現世後又產生 %d 則事件", len(got))
 	}
 }
 

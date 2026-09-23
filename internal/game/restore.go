@@ -24,6 +24,8 @@ type Extra struct {
 	Players    []state.FactionID
 	Edition    state.Edition
 	Difficulty int
+	// SealAppeared 記原版獨立的現世旗標；nil 表示舊補充存檔未記錄。
+	SealAppeared *bool
 
 	// Prefectures 依郡編號 1..42，索引 0 對應郡 1。
 	Prefectures []PrefectureExtra
@@ -64,12 +66,14 @@ type FactionExtra struct {
 
 // CaptureExtra 把目前局面裡三張表放不下的部分抄出來。
 func (g *State) CaptureExtra() Extra {
+	sealAppeared := g.sealAppeared
 	e := Extra{
 		Year: g.Date.Year, Month: g.Date.Month,
 		Player: g.Player, Players: append([]state.FactionID(nil), g.Players...),
 		Edition: g.Edition, Difficulty: g.Difficulty,
-		Options:  g.Options,
-		Factions: map[state.FactionID]FactionExtra{},
+		SealAppeared: &sealAppeared,
+		Options:      g.Options,
+		Factions:     map[state.FactionID]FactionExtra{},
 	}
 	for i := range g.prefectures {
 		p := &g.prefectures[i]
@@ -166,6 +170,18 @@ func Restore(sc *state.Scenario, e Extra) (*State, error) {
 			continue
 		}
 		f.Alive, f.Chief, f.Treasury = x.Alive, x.Chief, x.Treasury
+	}
+	if e.SealAppeared != nil {
+		g.sealAppeared = *e.SealAppeared
+	} else {
+		// 舊補充存檔沒有獨立旗標；只有當時寶庫可作相容推斷。
+		g.sealAppeared = false
+		for _, f := range g.factions {
+			if f.Treasury[TreasureSeal] > 0 {
+				g.sealAppeared = true
+				break
+			}
+		}
 	}
 	return g, nil
 }

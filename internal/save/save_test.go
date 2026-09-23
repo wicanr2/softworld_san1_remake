@@ -194,6 +194,33 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+// TestSealAppearedSurvivesLostHolderAndSave 釘住寶庫清空後原版旗標仍在。
+func TestSealAppearedSurvivesLostHolderAndSave(t *testing.T) {
+	g := newGame(t)
+	if !g.SealFound() {
+		t.Fatal("劇本 001 開局應有已現世玉璽")
+	}
+	for _, f := range g.Factions() {
+		g.Faction(f.ID).Treasury[game.TreasureSeal] = 0
+	}
+	root := t.TempDir()
+	if err := save.Write(root, 1, g, "玉璽旗標"); err != nil {
+		t.Fatal(err)
+	}
+	h, err := save.Read(root, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !h.SealFound() {
+		t.Fatal("寶庫玉璽消失後，存讀檔遺失已現世旗標")
+	}
+	for _, f := range h.Factions() {
+		if f.Treasury[game.TreasureSeal] != 0 {
+			t.Fatalf("存檔自行補出勢力 %d 的玉璽", f.ID)
+		}
+	}
+}
+
 // TestSoldiersSurviveRoundTrip 釘住兵力存得回來。
 //
 // ⚠ 原版的兵士欄存的是實際值 ÷ 100，所以**兵力只精確到百位**。

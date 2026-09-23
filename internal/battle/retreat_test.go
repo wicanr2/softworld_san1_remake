@@ -4,11 +4,8 @@ import "testing"
 
 // 這一支檔案釘住「退兵的去處」那一問（Issue #101，原版 `0x23dd4`–`0x24460`）。
 //
-// ⚠ **去處不決定那些人戰後在哪一郡**。原版的退兵常式一個字都沒寫人物記錄
-// offset 19；去處只決定從戰場的哪一格走出去（`0x241be`）。戰後的所在郡是
-// 戰後安置（`0x1fb26`）逐軍團逐部隊重排的，退掉的部隊也在那一輪裡
-// （`docs/re/05` §12.3）。所以這裡驗的是「有沒有問、問到的值有沒有被收下、
-// 取消有沒有留在場上」，不是盤面的郡歸屬。
+// 原版 `0x24318` 會把退去的郡寫入人物 offset 19。這裡驗選擇與
+// 強制退卻；戰略層寫回由 `internal/game` 的玩家結算測試驗。
 
 // retreatBoard 擺一支孤軍，給它三個逃得去的鄰郡。
 func retreatBoard(side Side) (*Battle, *Unit) {
@@ -75,6 +72,28 @@ func TestPlayerRetreatCancelKeepsTheUnitOnTheField(t *testing.T) {
 	}
 	if u.RetreatTo != 33 {
 		t.Errorf("第二次的去處是 %d，該是 33", u.RetreatTo)
+	}
+}
+
+// TestForcedRetreatAfterBattleCannotCancel 釘住 `0x258f2` 的第三參數
+// `0xffff`：戰役已結束仍要退，空 Enter 不能取消敗軍退卻。
+func TestForcedRetreatAfterBattleCannotCancel(t *testing.T) {
+	b, u := retreatBoard(MainAttacker)
+	b.Over = true
+	asks := 0
+	b.PlayerRetreat = func(*Unit, []Escape) int {
+		asks++
+		if asks == 1 {
+			return 0
+		}
+		return 22
+	}
+	if err := b.ForceRetreat(u); err != nil {
+		t.Fatalf("戰後強制退兵失敗：%v", err)
+	}
+	if asks != 2 || !u.Retreated || u.RetreatTo != 22 {
+		t.Errorf("強制退兵：詢問 %d 次，退兵 %v，去處 %d；應為 2／true／22",
+			asks, u.Retreated, u.RetreatTo)
 	}
 }
 

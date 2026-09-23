@@ -160,24 +160,33 @@ func TestEnhancedOrdersAreLegal(t *testing.T) {
 	}
 }
 
-// TestEnhancedRespectsOnePerMonth 釘住「每郡每月一個命令」。
+// TestEnhancedRespectsOnePerMonth 釘住「每郡每月一個耗令命令」。
+// 指定太守本來就不耗令，依 `ActPrefecture` 的規則可在同月補做。
 func TestEnhancedRespectsOnePerMonth(t *testing.T) {
 	b, _ := New(ModeEnhanced)
 	g := newGame(t, 5)
 	orders := b.Plan(g, 5)
 	seen := map[int]bool{}
 	for _, o := range orders {
+		if _, free := o.(game.AppointGovernorOrder); free {
+			continue
+		}
 		if seen[o.Prefecture()] {
-			t.Errorf("郡 %d 被下了兩個命令", o.Prefecture())
+			t.Errorf("郡 %d 被下了兩個耗令命令", o.Prefecture())
 		}
 		seen[o.Prefecture()] = true
 	}
 	if _, err := g.ApplyAll(orders, 5); err != nil {
 		t.Fatal(err)
 	}
-	// 套用之後再規劃一次，同一個月不該再有命令。
+	// 套用後重規劃可以挑指定太守，但不應再挑耗令命令。
 	if again := b.Plan(g, 5); len(again) != 0 {
-		t.Errorf("同一個月又規劃出 %d 個命令", len(again))
+		for _, o := range again {
+			if _, free := o.(game.AppointGovernorOrder); !free {
+				t.Errorf("同一個月又規劃出耗令命令：郡 %d，%q（%T）",
+					o.Prefecture(), o.Describe(g), o)
+			}
+		}
 	}
 }
 
@@ -764,9 +773,9 @@ func TestNextModeOnlyOffersCompatibleOnes(t *testing.T) {
 // TestEnhancedNeverGivesAwayAPrefecture 釘住「指定太守」不會把郡送人。
 //
 // ⚠ **這不是在驗原版錯了。** 原版的候選名單本來就限制在同一個郡
-//（`buildRoster` 模式 2：所在郡相同 ＋ 身分 0–3），只是不比對勢力
-//（`docs/re/07` §6，七個模式一個都沒有），而主事者換人郡就跟著改所屬
-//（`0xd74d`，`L0`）——那一整套是自洽的：郡的所屬每回合由駐軍重算，
+// （`buildRoster` 模式 2：所在郡相同 ＋ 身分 0–3），只是不比對勢力
+// （`docs/re/07` §6，七個模式一個都沒有），而主事者換人郡就跟著改所屬
+// （`0xd74d`，`L0`）——那一整套是自洽的：郡的所屬每回合由駐軍重算，
 // 混編是表得出來的盤面。
 //
 // 驗的是**強化 AI 自己多加的那一道**：它不想讓郡易主，所以只挑自己人。
@@ -854,7 +863,7 @@ func TestEnhancedRaisesTheHarvestLevers(t *testing.T) {
 // TestZZEnhancedCommandMix 跑三十六個月，量強化 AI 的命令分佈。
 //
 // **判準是「收入那一段走得到」**，用的是命中次數不是「有沒有實作」
-//（`CLAUDE.md` §7 第 21 條的同一個判準：一支從來沒被命中的路徑，
+// （`CLAUDE.md` §7 第 21 條的同一個判準：一支從來沒被命中的路徑，
 // 與沒寫在畫面上長得一樣）。
 //
 // ⚠ 「指定太守」開局那一輪是 0 次——**那不是沒接上**：劇本出貨的太守

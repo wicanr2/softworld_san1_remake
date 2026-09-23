@@ -62,11 +62,16 @@ func TestBattleFinishesWithPlayer(t *testing.T) {
 	o.OnCall(addr(0x24f8c), func(*oracle.Oracle) { chiefRuns++; snapBoard() })
 	o.OnCall(addr(0x250d4), func(*oracle.Oracle) { dayRuns++; snapBoard() })
 
+	const fixedSeed uint32 = 0x13579bdf
 	driveIntoBattle(t, o, at, to)
 	if dgroup == 0 {
 		t.Fatal("沒有進到主戰場")
 	}
+	o.SetWord(oracle.Addr{Seg: dgroup, Off: 0xa3ae}, uint16(fixedSeed&0xffff))
+	o.SetWord(oracle.Addr{Seg: dgroup, Off: 0xa3b0}, uint16(fixedSeed>>16))
+	t.Logf("原版進入主戰場後固定 MSC LCG seed %#x（DS:0xa3ae／0xa3b0）", fixedSeed)
 	work := o.Word(oracle.Addr{Seg: dgroup, Off: battleWorkSeg})
+	forceSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa8b6})
 	wonSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa89e})
 	occSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9ca})
 	colSeg := o.Word(oracle.Addr{Seg: dgroup, Off: 0xa9c8})
@@ -87,6 +92,49 @@ func TestBattleFinishesWithPlayer(t *testing.T) {
 		return battleUnitBase + (army*battleUnitPer+team)*battleUnitSize
 	}
 	day := func() int { return w16(0x2100) }
+	// 正常玩家戰役也必須實際跑進收尾常式；零次不能用來證明「沒有」。
+	var settleCalls [3]int
+	var beforePlace, afterPlace []byte
+	fallenLord := -1
+	winnerFaction := -1
+	var winnerTreasury, loserTreasury []byte
+	postSpoils := 0
+	spoilRollCalls := 0
+	province := addr(base + uint32(state.MasterTableSize+to*state.PrefectureRecordSize))
+	treasury := func(faction int) oracle.Addr { return addr(base + uint32(faction*72+14)) }
+	o.OnCall(addr(0x25652), func(o *oracle.Oracle) {
+		settleCalls[0]++
+		winnerFaction = int(o.Word(oracle.Addr{Seg: forceSeg, Off: uint16(0x176e + won()*22)}))
+	})
+	o.OnCall(addr(0x266a6), func(o *oracle.Oracle) {
+		settleCalls[1]++
+		beforePlace = o.Bytes(province, state.PrefectureRecordSize)
+	})
+	o.OnCall(addr(0x26c08), func(o *oracle.Oracle) {
+		settleCalls[2]++
+		afterPlace = o.Bytes(province, state.PrefectureRecordSize)
+		fallenLord = w16(0x20f0)
+		if fallenLord == 0xFFFF {
+			return
+		}
+		if winnerFaction < 0 || winnerFaction >= 16 || fallenLord < 0 || fallenLord >= 16 {
+			t.Fatalf("戰後讀到非法勢力：勝方 %d、敗方 %d", winnerFaction, fallenLord)
+		}
+	})
+	// 0x14968 繼承可能清掉退場勢力的玉璽。改在繼承返回後、
+	// 0x26c31 第一擲之前注入，才是單獨測 0x26c08 的分贓。
+	o.OnCall(addr(0x26c31), func(o *oracle.Oracle) {
+		spoilRollCalls++
+		o.SetBytes(treasury(fallenLord), []byte{1, 10, 9, 8, 7})
+		o.SetBytes(treasury(winnerFaction), []byte{2, 1, 1, 1, 1})
+	})
+	o.OnCall(addr(0x23d1d), func(o *oracle.Oracle) {
+		postSpoils++
+		if winnerFaction >= 0 {
+			winnerTreasury = o.Bytes(treasury(winnerFaction), 5)
+			loserTreasury = o.Bytes(treasury(fallenLord), 5)
+		}
+	})
 
 	snapBoard = func() {
 		for i := 0; i < 4; i++ {
@@ -179,7 +227,49 @@ func TestBattleFinishesWithPlayer(t *testing.T) {
 			}
 		}
 	}
+	// 勝負欄位在戰後對白前就寫好；繼承與分贓還會等玩家按鍵。
+	// 以呼叫後的 0x23d1d 為終點，不能在 won() != 0xffff 時提早讀庫存。
+	for i := 0; i < 24 && postSpoils == 0; i++ {
+		o.Drain()
+		o.PressScan("\r")
+		if err := o.Run(150_000_000); err != nil {
+			t.Fatalf("戰後對白第 %d 步：%v", i, err)
+		}
+	}
 	o.StopWatchingWrites()
+	t.Logf("玩家戰後：勝方援軍回郡 %d、戰場郡安置 %d、君主寶物收尾 %d；退場君主旗標 %d",
+		settleCalls[0], settleCalls[1], settleCalls[2], fallenLord)
+	if len(beforePlace) > 30 && len(afterPlace) > 30 {
+		t.Logf("戰場郡 %d 收尾前後：金 %d→%d、米 %d→%d、民忠 %d→%d、地力 %d→%d、洪水 %d→%d、物價 %d→%d、所屬 %d→%d",
+			to, int(beforePlace[18])|int(beforePlace[19])<<8, int(afterPlace[18])|int(afterPlace[19])<<8,
+			int(beforePlace[20])|int(beforePlace[21])<<8, int(afterPlace[20])|int(afterPlace[21])<<8,
+			beforePlace[26], afterPlace[26], beforePlace[27], afterPlace[27],
+			beforePlace[28], afterPlace[28], beforePlace[29], afterPlace[29],
+			beforePlace[30], afterPlace[30])
+	}
+	if settleCalls[1] == 0 || settleCalls[2] == 0 {
+		t.Fatalf("玩家戰後安置或君主寶物收尾沒有實際命中：%v", settleCalls)
+	}
+	if fallenLord == 0xFFFF || winnerFaction < 0 || spoilRollCalls == 0 || postSpoils == 0 {
+		t.Fatalf("這份固定盤面沒有完成君主退場分贓：旗標 %d、勝方 %d、分贓擲骰 %d、返回 %d", fallenLord, winnerFaction, spoilRollCalls, postSpoils)
+	}
+	if fallenLord != 0xFFFF {
+		if len(winnerTreasury) != 5 || len(loserTreasury) != 5 {
+			t.Fatal("結算後無法讀取兩側的寶物")
+		}
+		t.Logf("退場勢力 %d、勝方勢力 %d；五格寶物：勝方 %v，敗方 %v",
+			fallenLord, winnerFaction, winnerTreasury, loserTreasury)
+		if winnerTreasury[0] != 2 || loserTreasury[0] != 1 {
+			t.Fatal("原版玩家戰役的分贓改動了玉璽")
+		}
+		total := 0
+		for i := 1; i < 5; i++ {
+			total += int(winnerTreasury[i]) + int(loserTreasury[i])
+		}
+		if total != 40 { // 起始總數 4+10+9+8+7，再由 RND(4) 選一格 +2
+			t.Errorf("四件寶物總數 %d，原版應為 40", total)
+		}
+	}
 	t.Logf("打了 %d 輪，天數 %d；統帥條件跑 %d 次、三十天判定跑 %d 次；勝方欄位 %#x",
 		days, day(), chiefRuns, dayRuns, won())
 	seq := ""

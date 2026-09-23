@@ -233,57 +233,6 @@ func (g *State) DefencePower(prefectureID int) int {
 	return n
 }
 
-// takePrefecture 讓攻方接手一個郡：「若進攻順利，軍隊將駐進被攻下的
-// 州郡」（說明書 p.19）。
-func (g *State) takePrefecture(from, to int, att []*General, by state.FactionID) {
-	dst := g.Prefecture(to)
-	old := dst.Owner
-	// 守軍潰散：還活著的變成當地在野將領。
-	for _, x := range g.Garrison(to) {
-		if x.Faction != old {
-			continue
-		}
-		x.Faction = state.NoFaction
-		x.Status = state.StatusAvailable
-		x.Loyalty = state.NoValue
-		x.Soldiers = 0
-	}
-	dst.Owner = by
-	// **剛攻下的郡這個月不能再下令。** 不擋的話同一個月可以一路連鎖
-	// 進攻，而每郡每月一次的限制就形同虛設（說明書 p.17）。
-	dst.Commanded = true
-
-	// ⚠ **只有活著而且還效忠的人搬得進去。** 戰死或被擒的人已經被
-	// `retire` 或處置移出勢力了；把他們也算進來的話，剛攻下的郡會
-	// 掛著一個不存在的太守——而那件事在畫面上只看得出太守欄空了。
-	var alive []*General
-	for _, x := range att {
-		if x.Employed() && x.Faction == by {
-			alive = append(alive, x)
-		}
-	}
-	if len(alive) == 0 {
-		// 全軍覆沒卻「打贏了」：那個郡變成空白郡
-		//（「因任何事故所形成的空白郡均不屬任何諸侯」，說明書 p.19）。
-		dst.Owner = state.NoFaction
-		return
-	}
-	// 太守挑魅力最高的——「魅力高的人比較能勝任太守之職」（說明書 p.23）。
-	best := 0
-	for i, x := range alive {
-		x.Location = to
-		if x.Charm > alive[best].Charm {
-			best = i
-		}
-	}
-	if !alive[best].Status.Governs() {
-		alive[best].Status = state.StatusGovernor
-	}
-	// 舊主沒地了**不算退場**：原版「活著的勢力」看的是君主欄
-	// （`0x15cd4`），君主活著卻沒有領地的勢力還能靠麾下的武將翻身
-	// （`docs/mechanics/80` §1.1）。`Alive` 只在絕嗣時變假（`retire`）。
-}
-
 // DisposeCaptive 是決勝之後對被擒敵將的處置（說明書 p.35）。
 type Disposal int
 

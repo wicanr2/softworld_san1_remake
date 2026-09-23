@@ -333,6 +333,8 @@ type Faction struct {
 type State struct {
 	Slot state.Slot
 	Date Date
+	// sealAppeared 是原版 es:0x2f6c 的獨立旗標；持有者絕嗣後仍為真。
+	sealAppeared bool
 
 	// Players 是玩家控制的勢力，照玩家序號排（第 1 位在前，`docs/spec/019`）。
 	// 空的是電腦自動示範模式。
@@ -643,6 +645,9 @@ func newAt(sc *state.Scenario, players []state.FactionID, difficulty int,
 			if i < len(fa.Treasury) {
 				fa.Treasury[i] = n
 			}
+		}
+		if fa.Treasury[TreasureSeal] > 0 {
+			g.sealAppeared = true
 		}
 		// **軍師讀諸侯 offset 6 的存值，不從人物表重推**（`0xd7ae` 讀的
 		// 就是那一格）。掃 `Retinue` 找身分 1 會漏掉**別的勢力的軍師**

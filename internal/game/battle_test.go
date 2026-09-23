@@ -59,8 +59,8 @@ func TestAttackCannotLeaveNobody(t *testing.T) {
 	}
 }
 
-// TestAttackTakesPrefecture 釘住「進攻順利則軍隊駐進被攻下的州郡」
-// （說明書 p.19），以及守軍潰散成當地在野將領。
+// TestAttackTakesPrefecture 釘住勝方軍團駐進戰場郡；原版寫入端
+// `0x268d3`／`0x2695c`，見 `docs/spec/020`。
 func TestAttackTakesPrefecture(t *testing.T) {
 	g := newGame(t)
 	// 找一個有空白鄰郡、而且留得下人看家的郡：無主的郡沒有守軍，必勝。
@@ -111,6 +111,160 @@ func TestAttackTakesPrefecture(t *testing.T) {
 	}
 	if got := g.Soldiers(empty); got != sum {
 		t.Errorf("郡的總兵力 %d，駐軍加總 %d——兩個數字分家了", got, sum)
+	}
+}
+
+// TestPlayerBattleUsesArmyChiefAndReturnsAid 是 #102 的反向規則測試：
+// 故意讓統帥魅力低於同軍另一位，戰後太守必須仍是統帥；勝方援軍
+// 回來源郡，金米與戰場受損都按 `docs/spec/020` 寫回。
+func TestPlayerBattleUsesArmyChiefAndReturnsAid(t *testing.T) {
+	g := newGame(t)
+	from, to := 0, 0
+	var low, high *General
+	var owner state.FactionID
+	for id := 1; id <= state.PrefectureCount && from == 0; id++ {
+		src := g.Prefecture(id)
+		if !src.Owned() {
+			continue
+		}
+		var roster []*General
+		for _, x := range g.Garrison(id) {
+			if x.Faction == src.Owner {
+				roster = append(roster, x)
+			}
+		}
+		if len(roster) < 2 {
+			continue
+		}
+		for _, n := range src.Neighbours {
+			if q := g.Prefecture(n); q != nil && !q.Owned() && len(g.Garrison(n)) == 0 {
+				from, to, owner = id, n, src.Owner
+				low, high = roster[0], roster[1]
+				break
+			}
+		}
+	}
+	if from == 0 {
+		t.Fatal("劇本 001 找不到兩位將領可進駐的空白鄰郡")
+	}
+	var aid *General
+	for i := range g.generals {
+		x := &g.generals[i]
+		if x.Employed() && x.Faction == owner && x.Index != low.Index && x.Index != high.Index {
+			aid = x
+			break
+		}
+	}
+	if aid == nil {
+		t.Fatal("這個勢力沒有第三位可用作援軍的將領")
+	}
+	low.Status, high.Status, aid.Status = state.StatusOfficer, state.StatusOfficer, state.StatusOfficer
+	low.Charm, high.Charm = 10, 90
+	aid.Location = from
+	src, dst := g.Prefecture(from), g.Prefecture(to)
+	src.Gold, src.Rice = 300, 500
+	dst.Gold, dst.Rice = 0, 0
+	dst.PublicLoyalty, dst.LandValue, dst.FloodRate, dst.PriceLevel = 100, 100, 0, 40
+	leader := func(x *General) battle.Leader {
+		return battle.Leader{Index: x.Index, Name: x.Name, Soldiers: x.Soldiers, Stamina: x.Stamina}
+	}
+	b := &battle.Battle{Over: true, AttackerWon: true, Units: []*battle.Unit{
+		{Side: battle.MainAttacker, Leaders: []battle.Leader{leader(low), leader(high)}},
+		{Side: battle.AidAttacker, Leaders: []battle.Leader{leader(aid)}},
+	}}
+	b.Commander[battle.MainAttacker], b.Commander[battle.AidAttacker] = low.Index, aid.Index
+	b.Gold[battle.MainAttacker], b.Gold[battle.MainDefender] = 100, 200
+	b.Gold[battle.AidAttacker], b.Gold[battle.AidDefender] = 40, 30
+	b.Rice[battle.MainAttacker], b.Rice[battle.MainDefender] = 1000, 2000
+	b.Rice[battle.AidAttacker], b.Rice[battle.AidDefender] = 400, 300
+	p := &Pending{B: b, from: from, to: to, by: owner,
+		att: []*General{low, high}, aidAtt: []*General{aid},
+		aid: Aid{Attacker: from}, result: &BattleResult{From: from, To: to}}
+	for i := range p.factions {
+		p.factions[i] = state.NoFaction
+	}
+	p.factions[battle.MainAttacker], p.factions[battle.AidAttacker] = owner, owner
+	g.SeedRand(0x13579bdf)
+	r := g.settle(p)
+	if !r.PrefectureTook || dst.Owner != owner {
+		t.Fatalf("勝方未進駐戰場郡：戰報 %v、所屬 %d", r.PrefectureTook, dst.Owner)
+	}
+	if gov := g.Governor(to); gov == nil || gov.Index != low.Index {
+		t.Fatalf("太守應為低魅力統帥 %d，而非高魅力部將 %d；實際 %v", low.Index, high.Index, gov)
+	}
+	if low.Location != to || high.Location != to || aid.Location != from {
+		t.Errorf("戰後所在郡：主軍 %d／%d，援軍 %d；應為 %d／%d／%d",
+			low.Location, high.Location, aid.Location, to, to, from)
+	}
+	if dst.Gold != 330 || dst.Rice != 3300 || src.Gold != 340 || src.Rice != 900 {
+		t.Errorf("戰後金米：戰場 %d／%d、援郡 %d／%d；應為 330／3300、340／900",
+			dst.Gold, dst.Rice, src.Gold, src.Rice)
+	}
+	if dst.PublicLoyalty >= 100 || dst.LandValue >= 100 || dst.FloodRate <= 0 || dst.PriceLevel <= 40 {
+		t.Errorf("玩家戰役沒有打殘戰場郡：民忠 %d、地力 %d、洪水 %d、物價 %d",
+			dst.PublicLoyalty, dst.LandValue, dst.FloodRate, dst.PriceLevel)
+	}
+}
+
+// TestPlayerBattleWritesRetreatDestination 釘住 `0x24318` 的人物 offset 19：
+// 戰場上已退掉的部隊仍要把去處寫回戰略層，不能沿用出征中的 0。
+func TestPlayerBattleWritesRetreatDestination(t *testing.T) {
+	g := newGame(t)
+	from, to := 0, 0
+	var att, def *General
+	for id := 1; id <= state.PrefectureCount && from == 0; id++ {
+		src := g.Prefecture(id)
+		if !src.Owned() {
+			continue
+		}
+		for _, n := range src.Neighbours {
+			dst := g.Prefecture(n)
+			if dst == nil || !dst.Owned() || dst.Owner == src.Owner {
+				continue
+			}
+			att, def = nil, nil
+			for _, x := range g.Garrison(id) {
+				if x.Faction == src.Owner {
+					att = x
+					break
+				}
+			}
+			for _, x := range g.Garrison(n) {
+				if x.Faction == dst.Owner {
+					def = x
+					break
+				}
+			}
+			if att != nil && def != nil {
+				from, to = id, n
+				break
+			}
+		}
+	}
+	if from == 0 {
+		t.Fatal("劇本 001 找不到兩個相鄰的敵對州郡")
+	}
+	by, defender := att.Faction, def.Faction
+	att.Location = 0 // 原版整編 `0x20ce0` 先清掉出征者的所在郡
+	b := &battle.Battle{Over: true, AttackerWon: false, Units: []*battle.Unit{
+		{Side: battle.MainAttacker, Retreated: true, RetreatTo: from,
+			Leaders: []battle.Leader{{Index: att.Index, Name: att.Name,
+				Soldiers: att.Soldiers, Stamina: att.Stamina}}},
+		{Side: battle.MainDefender, Leaders: []battle.Leader{{Index: def.Index,
+			Name: def.Name, Soldiers: def.Soldiers, Stamina: def.Stamina}}},
+	}}
+	b.Commander[battle.MainDefender] = def.Index
+	p := &Pending{B: b, from: from, to: to, by: by,
+		att: []*General{att}, def: []*General{def},
+		result: &BattleResult{From: from, To: to}}
+	for i := range p.factions {
+		p.factions[i] = state.NoFaction
+	}
+	p.factions[battle.MainAttacker], p.factions[battle.MainDefender] = by, defender
+	g.SeedRand(0x13579bdf)
+	g.settle(p)
+	if att.Location != from {
+		t.Fatalf("退兵者所在郡 %d，原版應寫回目的郡 %d", att.Location, from)
 	}
 }
 
@@ -281,37 +435,76 @@ func TestBattleReportIsQueued(t *testing.T) {
 	}
 }
 
-// TestLordCaptureSeizesTreasures 釘住「獲勝軍若於戰後捉到敵軍君主，
-// 其寶物將全歸獲勝軍所有」（說明書 p.35）。
-func TestLordCaptureSeizesTreasures(t *testing.T) {
+// TestFallenLordSpoilsKeepSeal 釘住原版 0x26c08：四類寶物只分走
+// 一部分、四類總數因額外賞賜多 2，玉璽不在這一支裡。
+func TestFallenLordSpoilsKeepSeal(t *testing.T) {
 	g := newGame(t)
-	lord := g.Lord(13) // 孔融
-	if lord == nil {
-		t.Skip("找不到孔融")
+	const winnerID, loserID = 5, 13
+	g.SeedRand(0x13579bdf)
+	winner, loser := g.Faction(winnerID), g.Faction(loserID)
+	winner.Treasury = [5]int{2, 1, 1, 1, 1}
+	loser.Treasury = [5]int{1, 10, 9, 8, 7}
+	g.spoilsFromFallenLord(winnerID, loserID)
+	if winner.Treasury[TreasureSeal] != 2 || loser.Treasury[TreasureSeal] != 1 {
+		t.Fatalf("分贓常式改動玉璽：勝方 %d、敗方 %d", winner.Treasury[TreasureSeal], loser.Treasury[TreasureSeal])
 	}
-	loser, winner := g.Faction(lord.Faction), g.Faction(5)
-	if loser == nil || winner == nil {
-		t.Skip("勢力不齊")
+	total := 0
+	for i := TreasureBook; i < treasureCount; i++ {
+		total += winner.Treasury[i] + loser.Treasury[i]
+		if loser.Treasury[i] <= 0 {
+			t.Errorf("敗方第 %d 類被整批搬光；原版只拿一部分", i)
+		}
 	}
-	loser.Treasury[0] = 3
-	winner.Treasury[0] = 1
-
-	r := &BattleResult{From: 1, To: lord.Location, AttackerWon: true,
-		Captives: []Captive{{General: lord.Index, Name: lord.Name}}}
-	g.seizeTreasures(r, 5, lord.Faction)
-
-	if loser.Treasury[0] != 0 {
-		t.Errorf("敗方還留著 %d 件寶物，應該盡歸勝方", loser.Treasury[0])
-	}
-	if winner.Treasury[0] != 4 {
-		t.Errorf("勝方拿到 %d 件寶物，應該是 1+3=4", winner.Treasury[0])
-	}
-	if len(r.Log) == 0 {
-		t.Error("寶物易手卻沒有留下紀錄")
+	if total != 40 {
+		t.Errorf("四類總數 %d，原版固定先增加 2 件後應為 40", total)
 	}
 }
 
-// TestNonLordCaptureKeepsTreasures 釘住只有捉到**君主**才拿得到寶物。
+// TestPlayerBattleExecutedLordCallsSpoils 驗玩家戰役收尾本身會叫分贓，
+// 且呼叫端的正對照確實是原版第一擲 `0x26c31`。
+func TestPlayerBattleExecutedLordCallsSpoils(t *testing.T) {
+	g := newGame(t)
+	lord := g.Lord(13)
+	if lord == nil {
+		t.Fatal("劇本 001 缺少勢力 13 的君主")
+	}
+	winner, loser := g.Faction(5), g.Faction(lord.Faction)
+	winner.Treasury = [5]int{2, 1, 1, 1, 1}
+	loser.Treasury = [5]int{1, 10, 9, 8, 7}
+	g.SeedRand(0x13579bdf)
+	rolls := 0
+	g.TraceRolls(func(n, out int, salt []int) {
+		if len(salt) > 0 && salt[len(salt)-1] == 0x26c31 {
+			rolls++
+		}
+	})
+	b := &battle.Battle{Over: true, AttackerWon: true, Units: []*battle.Unit{{
+		Side: battle.MainDefender, Leaders: []battle.Leader{{
+			Index: lord.Index, Name: lord.Name, Captured: true,
+			Fate: battle.Executed, CapturedBy: battle.MainAttacker,
+		}},
+	}}}
+	p := &Pending{B: b, from: 15, to: lord.Location, by: 5,
+		def: []*General{lord}, result: &BattleResult{From: 15, To: lord.Location}}
+	p.factions[battle.MainAttacker] = 5
+	p.factions[battle.MainDefender] = lord.Faction
+	g.settle(p)
+	if rolls != 1 {
+		t.Fatalf("退場君主分贓第一擲 %d 次，應為 1", rolls)
+	}
+	if winner.Treasury[TreasureSeal] != 2 {
+		t.Fatalf("勝方玉璽被搬動：%d", winner.Treasury[TreasureSeal])
+	}
+	total := 0
+	for i := TreasureBook; i < treasureCount; i++ {
+		total += winner.Treasury[i] + loser.Treasury[i]
+	}
+	if total != 40 {
+		t.Errorf("四類總數 %d，應為 40", total)
+	}
+}
+
+// TestNonLordCaptureKeepsTreasures 釘住一般武將被俘不觸發退場君主分贓。
 func TestNonLordCaptureKeepsTreasures(t *testing.T) {
 	g := newGame(t)
 	var subordinate *General
@@ -329,20 +522,31 @@ func TestNonLordCaptureKeepsTreasures(t *testing.T) {
 	if loser == nil || winner == nil {
 		t.Skip("勢力不齊")
 	}
-	loser.Treasury[0] = 3
-	r := &BattleResult{From: 1, To: subordinate.Location, AttackerWon: true,
-		Captives: []Captive{{General: subordinate.Index, Name: subordinate.Name}}}
-	g.seizeTreasures(r, 5, subordinate.Faction)
-	if loser.Treasury[0] != 3 {
-		t.Error("捉到的是部將不是君主，寶物不該易手")
+	winner.Treasury = [5]int{2, 1, 1, 1, 1}
+	loser.Treasury = [5]int{1, 10, 9, 8, 7}
+	beforeWinner, beforeLoser := winner.Treasury, loser.Treasury
+	loserID := subordinate.Faction
+	b := &battle.Battle{Over: true, AttackerWon: true, Units: []*battle.Unit{{
+		Side: battle.MainDefender, Leaders: []battle.Leader{{
+			Index: subordinate.Index, Name: subordinate.Name, Captured: true,
+			Fate: battle.Jailed, CapturedBy: battle.MainAttacker,
+		}},
+	}}}
+	p := &Pending{B: b, from: 15, to: subordinate.Location, by: 5,
+		result: &BattleResult{From: 15, To: subordinate.Location}}
+	p.factions[battle.MainDefender] = loserID
+	g.settle(p)
+	if winner.Treasury != beforeWinner || loser.Treasury != beforeLoser {
+		t.Errorf("一般武將被擒卻搬寶庫：勝方 %v→%v，敗方 %v→%v",
+			beforeWinner, winner.Treasury, beforeLoser, loser.Treasury)
 	}
 }
 
 // TestBeginAttackDefersTheFight 釘住 BeginAttack 只擺陣不打，
 // FinishAttack 才把結果搬回局面。
 //
-// 玩家親自指揮時，開打與收尾之間隔著幾十次按鍵；這中間**局面不能先動**，
-// 否則畫面上的兵力與戰場上的兵力會是兩個數字。
+// 玩家親自指揮時，開打與收尾之間隔著幾十次按鍵。整編本身會把
+// 四軍團人物的所在郡清成 0，戰場郡暫無主；這不是戰後易主。
 func TestBeginAttackDefersTheFight(t *testing.T) {
 	g := newGame(t)
 	from, to := 0, 0
@@ -380,8 +584,10 @@ func TestBeginAttackDefersTheFight(t *testing.T) {
 	if p.Battle().Over {
 		t.Error("BeginAttack 不該把戰役打完")
 	}
-	if g.Prefecture(to).Owner != ownerBefore || g.Soldiers(to) != menBefore {
-		t.Error("還沒打就動到目標郡的局面")
+	if g.Prefecture(to).Owner != state.NoFaction || g.Soldiers(to) != 0 ||
+		p.factions[battle.MainDefender] != ownerBefore || menBefore <= 0 {
+		t.Errorf("整編後目標郡狀態錯誤：當前所屬 %d、駐兵 %d、原守方 %d（預期 %d）",
+			g.Prefecture(to).Owner, g.Soldiers(to), p.factions[battle.MainDefender], ownerBefore)
 	}
 	if len(g.Reports) != 0 {
 		t.Error("還沒收尾就有戰報")

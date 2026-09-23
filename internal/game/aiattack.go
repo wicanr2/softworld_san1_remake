@@ -92,20 +92,12 @@ func (g *State) ComputerAttack(from, to int, by state.FactionID, keep KeepFunc) 
 	if !g.IsHuman(dst.Owner) {
 		g.sortForFormation(def)
 	}
+	noPlayer := g.noPlayerIn(from, to)
+	defHuman := g.IsHuman(dst.Owner)
 	g.endTurn(src)
 	p := g.prepare(from, to, att, def, by, sup, Aid{})
-	// 出征的人離開之後郡重整一次（`0x1d638`）：主事者走了就換人。
-	g.refreshGovernor(from)
-	if g.noPlayerIn(from, to) {
+	if noPlayer {
 		p.autoAI = true
-		// 主守軍的整編也把每一位的所在郡清成 0（`0x23296` 對四個軍團
-		// 都做），然後 `0x1d638` 把空掉的戰場郡設成無主、主事者沒有——
-		// 收尾的重整（`placeAfterAIBattle`）從這個狀態重建。玩家在場的
-		// 戰役走另一條收尾，不清。
-		for _, x := range def {
-			x.Location = 0
-		}
-		g.refreshGovernor(to)
 		day := 0
 		p.B.AutoResolveAIWithRoll(func(n int) int {
 			day++
@@ -118,7 +110,7 @@ func (g *State) ComputerAttack(from, to int, by state.FactionID, keep KeepFunc) 
 				Bubble: &Bubble{MapBattle: &MapBattle{Attacker: from, Defender: to, Days: p.B.Day}}})
 		}
 		g.ravageBattlefield(to)
-	} else if g.Options.PlayerDefends && g.IsHuman(dst.Owner) {
+	} else if g.Options.PlayerDefends && defHuman {
 		// **玩家親自守城**（Issue #64）：原版被打的時候一律由玩家指揮
 		// 守方（`docs/re/05` §12.4）。規則層不能停著等鍵，所以把整編好的
 		// 戰役交出去、回合停在這裡；`cmd/san1` 打完再叫 `FinishDefence`。

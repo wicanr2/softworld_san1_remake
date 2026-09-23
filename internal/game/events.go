@@ -766,16 +766,10 @@ const (
 
 // SealFound 回報玉璽已經現世了沒有。
 //
-// 原版用一個全域旗標（`es:0x2f6c`，`0xFFFF` ＝ 還沒現世）；remake 從
-// 各家的寶庫推導，**因為滅亡勢力的寶物會被勝方接收**（`seizeTreasures`），
-// 玉璽不會憑空消失。少一個要存進存檔的欄位。
+// 原版用獨立旗標（`es:0x2f6c`，`0xFFFF` ＝ 還沒現世）；絕嗣只清
+// 寶庫的玉璽，不重設旗標，因此不能從當前持有數反推。
 func (g *State) SealFound() bool {
-	for i := range g.factions {
-		if g.factions[i].Treasury[TreasureSeal] > 0 {
-			return true
-		}
-	}
-	return false
+	return g.sealAppeared
 }
 
 // sealEvent 是春季的玉璽現世（`0x15cfd`–`0x1519a`，`L0`）。
@@ -800,6 +794,7 @@ func (g *State) sealEvent() []Event {
 	}
 	f := alive[g.roll(int(Spring), 0, 51)%len(alive)]
 	f.Treasury[TreasureSeal] = 1
+	g.sealAppeared = true
 	f.Prestige = clampTo(f.Prestige+
 		g.roll(int(Spring), int(f.ID), 52)%SealPrestigeSpread+SealPrestigeFloor, 100)
 	lord := g.Lord(f.ID)
@@ -1439,6 +1434,7 @@ func (g *State) retireBy(x *General, cause string) {
 		// 只寫操縱方與玉璽）。
 		if f := g.Faction(faction); f != nil {
 			f.Lord, f.Alive = -1, false
+			f.Treasury[TreasureSeal] = 0
 		}
 	} else if succ := g.successorFor(at, x.Index, faction); succ != nil {
 		succ.Status = state.StatusGovernor

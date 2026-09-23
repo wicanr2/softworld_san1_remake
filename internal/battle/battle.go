@@ -547,7 +547,7 @@ func (b *Battle) sideAlive(s Side) bool {
 }
 
 // Rest 是「休息」：在原地不動，**增加移動力 2、夾在 15**
-//（原版 `0x27c00`，`L0`）：
+// （原版 `0x27c00`，`L0`）：
 //
 //	addw $2, es:[bx+0x3526]        ; 部隊記錄 offset 36
 //	cmpw $0xf, es:[bx+0x3526]
@@ -556,7 +556,7 @@ func (b *Battle) sideAlive(s Side) bool {
 //
 // 說明書 p.29、p.30 的「每休息一次可增加移動力 2」只給了那個 2，
 // **上限 15 是碼裡才有的**——原版量到連休七天的部隊停在 15
-//（`TestBattleUnitsMatchTheOriginal`）。
+// （`TestBattleUnitsMatchTheOriginal`）。
 //
 // 玩家的休息印一句對白（`0x27cb0` → `RND(8)`）；電腦的休息（選項 9，
 // `0x29e2e`）不印，那一支在 `baseRest`。
@@ -698,7 +698,7 @@ func StrikeMultiplier(mode int) int {
 // **與 `terrainAttack`／`terrainDefence` 不是同一組。** 那兩張是對戰
 // 子畫面裡算單一將領戰力值用的（`0x2e01a`／`0x2e13a`）；主戰場的交戰
 // 結算查的是這兩張，而且乘的是**部隊的**綜合能力不是將領的戰力
-//（`docs/re/05` §3.6）。
+// （`docs/re/05` §3.6）。
 var (
 	meleeAttack = [terrainCount]int{
 		Hill: 30, Shallow: 15, Deep: 10, City: 40,
@@ -722,7 +722,7 @@ var (
 // `1e-6 × 100`，也就是模式 1 的倍率——兩邊同一個尺度。
 //
 // **兩個比例都要在扣兵之前算完**：原版先把雙方的殺傷都算出來
-//（`0x2a457`／`0x2a498`）再逐將領套，先扣一邊會讓先手佔便宜。
+// （`0x2a457`／`0x2a498`）再逐將領套，先扣一邊會讓先手佔便宜。
 //
 // **骰序**（`docs/re/05` §12.2，`L0`＋`L1`）：進來先印一句對白
 // （`0x2a2b6` → `RND(8)`），算完雙方的殺傷、逐將領扣完兵，最後把兩邊
@@ -801,7 +801,7 @@ func ArrowSurvivors(soldiers int, ratio float64) int {
 }
 
 // MeleeAttackValue／MeleeDefendValue 是交戰結算的地形值
-//（`DS:0x8162`／`DS:0x8182`）。
+// （`DS:0x8162`／`DS:0x8182`）。
 func MeleeAttackValue(t Terrain) int { return meleeAttack[t] }
 func MeleeDefendValue(t Terrain) int { return meleeDefend[t] }
 
@@ -834,7 +834,7 @@ func MeleeDamage(terrain, soldiers, ability, mult int, k float64) int {
 }
 
 // MeleeRatio 是傷亡比例。兵士數 ≤ 0 時原版取 `DS:0xa996` ＝ 0.0
-//（`0x2a4a0`）。
+// （`0x2a4a0`）。
 //
 // `fidivrs` 在 80 位元算完之後 `fstpl` 存成 **double**，所以比例本身
 // 是 `float64`——這一步的捨入是原版就有的。
@@ -928,12 +928,12 @@ var noInterfaceCaptives int
 var retreats int
 
 // Retreats 是目前數到幾次退兵；ResetRetreats 歸零。
-func Retreats() int   { return retreats }
-func ResetRetreats()  { retreats = 0 }
+func Retreats() int  { return retreats }
+func ResetRetreats() { retreats = 0 }
 
 // NoInterfaceCaptives 是目前數到幾次；ResetNoInterfaceCaptives 歸零。
-func NoInterfaceCaptives() int      { return noInterfaceCaptives }
-func ResetNoInterfaceCaptives()     { noInterfaceCaptives = 0 }
+func NoInterfaceCaptives() int  { return noInterfaceCaptives }
+func ResetNoInterfaceCaptives() { noInterfaceCaptives = 0 }
 
 // 被擒處置（`0x259fe`，`L0`；`docs/re/05` §12.2）裡的常數。
 const (
@@ -1282,7 +1282,7 @@ func (b *Battle) DeathBattle(a *Unit, d Dir) error {
 
 // meleeMode 是快戰／死戰加上交戰結算的模式（倍率格，`StrikeMultiplier`）：
 // 玩家的對戰傳 8（夾成 1），電腦的快戰傳 難度÷5＋1、死戰傳 難度÷5
-//（`0x29b13`／`0x29d33`）。
+// （`0x29b13`／`0x29d33`）。
 //
 // spend 為真才把移動力歸零：玩家的快戰與死戰、電腦的死戰會（`0x280e1`、
 // `0x28822`、`0x29dc7`），**電腦的快戰不會**（`0x29ade` 不碰 offset 36）
@@ -1434,6 +1434,20 @@ func (b *Battle) Retreat(u *Unit) error {
 	if err := b.canAct(u); err != nil {
 		return err
 	}
+	return b.retreat(u, false)
+}
+
+// ForceRetreat 是決勝之後敗方逐隊退兵（原版 `0x258f2` 傳第三參數
+// `0xffff` 給 `0x23dd4`；加強版 `0x2320a` → `0x21894`）。
+// 戰役此時已標 Over，且玩家不能以空 Enter 取消。
+func (b *Battle) ForceRetreat(u *Unit) error {
+	if u == nil || !u.Alive() {
+		return fmt.Errorf("battle: 這支部隊已經不在場上")
+	}
+	return b.retreat(u, true)
+}
+
+func (b *Battle) retreat(u *Unit, forced bool) error {
 	free := false
 	for _, d := range Dirs() {
 		h := u.At.Step(d)
@@ -1477,19 +1491,24 @@ func (b *Battle) Retreat(u *Unit) error {
 		// 玩家那一問（`0x2408e`「%s逃向那一郡」）：收的是**郡編號**
 		// 不是清單序號（`0x24147` 的 `0x115e(1, 42)`），空白鍵重問，
 		// **空 Enter 取消整個退兵**（`0x2416a`：那一支留在戰場）。
-		to = b.PlayerRetreat(u, b.Escapes[u.Side])
-		if to == 0 {
-			return errRetreatCancelled
-		}
-		ok := false
-		for _, e := range b.Escapes[u.Side] {
-			if e.Prefecture == to {
-				ok = true
+		for {
+			to = b.PlayerRetreat(u, b.Escapes[u.Side])
+			if to == 0 && !forced {
+				return errRetreatCancelled
+			}
+			valid := false
+			for _, e := range b.Escapes[u.Side] {
+				if e.Prefecture == to {
+					valid = true
+					break
+				}
+			}
+			if valid {
 				break
 			}
-		}
-		if !ok {
-			return fmt.Errorf("battle: 逃不到郡 %d", to)
+			if !forced && to != 0 {
+				return fmt.Errorf("battle: 逃不到郡 %d", to)
+			}
 		}
 	default:
 		// 沒有介面（月度對拍、示範模式、批次跑）：照電腦那一套，

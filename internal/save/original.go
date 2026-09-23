@@ -62,10 +62,17 @@ func buildProgress(e game.Extra, prev *state.Progress) *state.Progress {
 	}
 
 	p.Seal = -1
-	for id, f := range e.Factions {
-		if f.Treasury[game.TreasureSeal] > 0 {
-			p.Seal = int(id)
-			break
+	if e.SealAppeared != nil {
+		if *e.SealAppeared {
+			p.Seal = 0
+		}
+	} else {
+		// 舊補充存檔沒有這個旗標，依當時寶庫作相容推斷。
+		for _, f := range e.Factions {
+			if f.Treasury[game.TreasureSeal] > 0 {
+				p.Seal = 0
+				break
+			}
 		}
 	}
 	return p
@@ -74,12 +81,14 @@ func buildProgress(e game.Extra, prev *state.Progress) *state.Progress {
 // applyProgress 把 `BASEPRO` 的內容套回 Extra。
 //
 // **只覆蓋這張表真的裝得下的欄位**：其餘（精確人口、受賞、寶庫）留給
-// `REMAKE.JSON`。玉璽不套——那是寶庫的衍生值，兩個來源會打架。
+// `REMAKE.JSON`。玉璽的已現世旗標是獨立狀態，照原版欄位套用。
 func applyProgress(e *game.Extra, p *state.Progress) error {
 	if p.Month < 1 || p.Month > 12 {
 		return fmt.Errorf("save: BASEPRO 的月份是 %d", p.Month)
 	}
 	e.Year, e.Month = p.Year, p.Month
+	sealAppeared := p.Seal >= 0
+	e.SealAppeared = &sealAppeared
 	e.Difficulty = p.Difficulty
 	e.Options.MusicOff = p.MusicOff
 	e.Options.SoundOff = p.SoundOff

@@ -216,11 +216,12 @@ func (g *State) launchCampaign(from, to int, aid Aid) (*BattleResult, error) {
 		return nil, fmt.Errorf("game: %s 沒有可出征的將領", src.Name)
 	}
 	def := g.garrisonOf(to)
+	defHuman := g.IsHuman(dst.Owner)
 	p := g.prepare(from, to, att, def, src.Owner, HalfSupply(), aid)
 	// 「守城」開著而被打的是玩家：把戰役交出去讓他自己指揮（Issue #64 的
 	// 機制，Issue #99 一起接上）——先前聯合出兵這一條一律自動打完，
 	// 那個開關對它沒有作用。
-	if g.Options.PlayerDefends && g.IsHuman(dst.Owner) {
+	if g.Options.PlayerDefends && defHuman {
 		p.Player = true
 		g.defence = p
 		return nil, nil

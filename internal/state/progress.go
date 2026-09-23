@@ -47,7 +47,7 @@ const (
 	proVoice   = 0xBE // u16 → es:0x3148，語音狀態
 	proDelay   = 0xC0 // u16 → es:0x2f72，延遲時間
 	proCal     = 0xC2 // u16 → es:0x17c2，年號用中曆還是西曆
-	proSeal    = 0xC4 // u16 → es:0x2f6c，玉璽持有勢力（0xFFFF ＝ 未現世）
+	proSeal    = 0xC4 // u16 → es:0x2f6c，玉璽已現世旗標（0xFFFF ＝ 未現世）
 )
 
 // proSlots 是兩段陣列各有幾格。43 ＝ 州郡表的筆數（含第 0 筆啞元）。
@@ -77,7 +77,7 @@ type Progress struct {
 	// Calendar 0 ＝ 中曆、1 ＝ 西曆（`DS:0x690c`／`0x6911`）。
 	Calendar int
 
-	// Seal 是持有玉璽的勢力，−1 ＝ 還沒現世。
+	// Seal 是原版的玉璽已現世旗標：0 ＝ 已現世、−1 ＝ 未現世。
 	Seal int
 
 	// Unknown0AC 與 tail 是還沒解出用途的位元組。
