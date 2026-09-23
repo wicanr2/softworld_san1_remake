@@ -126,7 +126,7 @@ EOF
       else
         archive="$stage/final/patch/$name.tar.gz"
         gzip -t "$archive"
-        tar -tzf "$archive" | sed 's#/$##' | LC_ALL=C sort > "$contents"
+        tar --quoting-style=literal -tzf "$archive" | sed 's#/$##' | LC_ALL=C sort > "$contents"
       fi
       diff -u "$expected" "$contents"
     done
