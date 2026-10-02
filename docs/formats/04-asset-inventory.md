@@ -84,9 +84,10 @@
 | `CVSC00`–`CVSC23`／`MVM00`–`MVO03`.IMG | 32 | 516 | `L3` 動畫格 |
 | `R428`–`R499`.OKR | 47 | 2–3,101 | 與 `DATA2` 的 `.OKR` 同一個序列 |
 
-肖像固定 2,564 bytes。`2,564 = 4 + 2,560`，而 `2,560 = 64 × 80 ÷ 2`
-——`L2`：64×80 像素、每像素 4 位元（16 色）加四個位元組的表頭。
-原版畫面上的君主肖像目測就是這個比例。
+肖像固定 2,564 bytes。`L0`、`[both]`：兩版 DATA3 的 256 張與 DATA1 的
+50 張肖像全部解碼為 64×80，四個位元組表頭先存高、再存寬。F000 的表頭
+為 `50 00 40 00`。四個完整位元平面各佔 640 B，總長 `4 + 4 × 640 = 2,564`。
+完整盤點與來源雜湊見 §6，先前的 L2 目測推論已由逐張解碼取代。
 
 `.OKR` 橫跨 `DATA2` 與 `DATA3`，名稱是 `R000.OKR`–`R483.OKR` 加上
 `R498`、`R499`，共 465 項。
@@ -107,3 +108,72 @@
 
 `DATA2.GRP` 兩版**等長但內容不同**（`docs/formats/03`），
 所以定位一律用項目名不用絕對位移。
+
+## 6. HD 兩版盤點
+
+目前盤點由 [`cmd/san1assets/inventory.go`](../../cmd/san1assets/inventory.go) 產生。
+工具沿用正式容器、圖像、單平面遮罩、戰場圖塊及人物 parser，不另造解碼器。
+尺寸、數量、來源 bytes 與檔案位移為 `L0`、`[both]`；使用端指目前 remake，
+不代表每項都已經由原版 oracle 驗證。B 定版樣式與試作見 [spec/021](../spec/021-hd-art.md)。
+
+| 每版項目 | 數量 | 核對方式 |
+|---|---|---|
+| DATA1／DATA2／DATA3 容器項目 | 217／506／422 | NAM／IDX 與 GRP 末位移一致 |
+| 普通 IMG／FAC 圖片 | 613 | 全部解碼，分版匯出 PNG 並核對 manifest |
+| ENDO4 單平面遮罩 | 1 | 640×151，單平面長度及解碼核對 |
+| EICON 圖塊及特效 | 36 | 每張 48×32，原 container 子項再展開檔案區間 |
+| 視覺項目總數 | 650 | 613 + 1 + 36；包含快取、遮罩與文字圖，不等於生成張數 |
+| DATA3 獨立肖像 | 256 | F000–F255，64×80；256 個來源內容雜湊各不相同 |
+| DATA1 肖像快取 | 50 | 按同一 F### 鍵核對 DATA3，50 項來源 bytes 皆相同 |
+| 人物引用 | 2,100 | 六劇本各 350 槽，從 General.Portrait 的 record offset 27 讀取 |
+
+視覺分類如下。650 是含快取的物理項目數，首批只從已定版的 256 張肖像及
+31 張事件場景中取樣，不把文字、遮罩或未知用途算成可生成美術。
+
+| 分類 | 每版數量 | HD 處置與主要使用端 |
+|---|---|---|
+| 肖像 | 306 | 扣除 50 快取後 256 張；主畫面、人物卡、對白、選君主、自創君主、尋訪、戰場及片頭 |
+| 事件場景 | 31 | DATA3 的 SCG01–29；DATA2 的 SCG30／31；DrawScene 的三種落點與四向拉幕 |
+| 片頭美術 | 12 | 商標、海景、船、三英圖；opening/script.go，商標與文字另行保護 |
+| 大地圖及邊框 | 9 | assets.MainScreen；MAINMAP8 為戰場底框，拓樸與填色遮罩保持 |
+| 主選單底圖與按鈕 | 5 | assets.MenuScreen、ui.DrawTitleLayer；格位、文字與選取位置保持 |
+| 拼接邊框 | 48 | SIDE 與 FBR；四角、邊條、肖像框的接縫固定 |
+| 戰場旗幟 | 24 | WFLAG，assets.FlagName；陣型、陣營與兵力牌獨立 |
+| 戰場圖塊與特效 | 36 | EICON；BattleField、skirmish、lure；地形碼及步序保持 |
+| 天候圖示 | 3 | WEATHER；ui.NewArtBattle、DrawArtBattle |
+| 行軍圖及遮罩 | 24 | CVSC；ui.NewMarchLayout、MarchArt，配對遮罩及方向固定 |
+| 游標與配對遮罩 | 52 | CUR、MAPCUR、MNGCUR；已接入者依原版位置，未用者不外推用途 |
+| 底紋與遮罩 | 8 | 8x8PAT／AND；8×8 週期、AND 語意保持 |
+| 製作群背景與遮罩 | 9 | REC／ENDO；天空遮罩、字幕及分片接縫保持 |
+| 圖中字幕與文字 | 31 | PRV、UPR、TZUE、TITFONT、LOADS；不交給 AI 改字，UPR22／23 未由 LoadCredits 使用 |
+| 待定位 CP 圖塊 | 44 | 24×24，沒有目前直接使用端，用途 unknown，暫不替換 |
+| MVM／MVO 圖示 | 8 | 32×32，沒有目前直接使用端，用途 unknown，暫不替換 |
+
+六劇本的 346–349 自創君主範本使用 F011／F001／F015／F009。
+劇本 001 的 F228 由魏續、鮑忠、陳就共用，不按三個名字生成三張衝突圖。
+人物與槽位的完整對照由工具輸出，不憑三國人物知識手填。
+
+跨版 650 個視覺項目中，649 項來源 bytes 相同；唯一差異為 DATA2/ENDO2.IMG。
+該項原版來源 SHA-256 為 `83b0f9520f6a1c9fb3cb85fd80bc3983dbb906885c837a2d9ce6c72c0a8153dd`，
+加強版雜湊保存在完整清單。未取得原版與衍生圖的公開散布權，原始／解包／生成
+素材均留本機；工具與盤點中繼資料可加入 Git。
+
+重跑入口全部透過 Docker：
+
+```sh
+tools/go.sh run ./cmd/san1assets -root /orig/三國演義 -peer-root /orig/三國演義1加強版 -what inventory -out workplace/hd-inventory
+tools/go.sh run ./cmd/san1assets -root /orig/三國演義 -what img -out workplace/hd-inventory/base
+tools/go.sh run ./cmd/san1assets -root /orig/三國演義1加強版 -what img -out workplace/hd-inventory/plus
+tools/go.sh test ./cmd/san1assets -count=1
+```
+
+`workplace/hd-inventory/inventory.json` 記錄兩版所有頂層原始檔雜湊、工具來源雜湊、
+每個資源鍵／檔案區間、原尺寸、索引像素雜湊、使用端、幾何、合成方法、快取別名及
+跨版相同與否。左右鏡像、游標 AND／OR、CVSC 配對遮罩與 ENDO4 天空遮罩各自記錄，
+不把 palette 色號 0 一律轉成透明。
+
+驗證包括重複鍵、缺少 F127、肖像寬高互換、截斷圖、錯誤單平面遮罩，以及跨版相同／
+不同／缺項的正反對照。兩版各 613 張匯出 PNG 已逐檔核對來源與輸出雜湊；完整收據
+保存在既有 `workplace/`，沒有以單元測試綠色冒稱原版 parity。
+
+正式 HD 接入前仍須處理 SCG30／31 的容器路由及完整 408 列輸出；見 spec/021 §5。

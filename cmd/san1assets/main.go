@@ -29,14 +29,21 @@ import (
 func main() {
 	root := flag.String("root", "", "原版遊戲目錄（必填，玩家自備）")
 	out := flag.String("out", "workplace/assets", "輸出目錄")
-	what := flag.String("what", "all", "轉什麼：img／json／music／speech／all")
+	what := flag.String("what", "all", "轉什麼：img／json／music／speech／all／inventory")
+	peer := flag.String("peer-root", "", "inventory 的另一版本原版目錄，用於跨版雜湊比較")
 	flag.Parse()
 	if *root == "" {
 		fmt.Fprintln(os.Stderr, "san1assets: 要用 -root 指到原版目錄（本儲存庫不含原版檔案）")
 		flag.Usage()
 		os.Exit(2)
 	}
-	if err := run(*root, *out, *what); err != nil {
+	var err error
+	if *what == "inventory" {
+		err = exportInventory(*root, *peer, *out)
+	} else {
+		err = run(*root, *out, *what)
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "san1assets:", err)
 		os.Exit(1)
 	}

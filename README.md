@@ -111,9 +111,9 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 原版程式碼修正；原版與加強版的玩家戰後人物／州郡全表同狀態對拍已通過，範圍見
 [`020` 玩家戰後規格](docs/spec/020-player-battle-settlement.md)。
 
-AI HD 化已規劃為[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)：
-保留原版版面，高清化人物與美術。先盤點素材、比較同狀態樣圖，再確認畫風與解析度。
-正式高清素材及渲染尚未實作。
+AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104) 推進：
+保留原版版面，採 B 寫實手繪。已完成[兩版素材盤點](docs/formats/04-asset-inventory.md#6-hd-兩版盤點)
+及小量版面試作；[高清規格](docs/spec/021-hd-art.md) 仍是 DRAFT，正式渲染尚未接入。
 
 | 里程碑 | 狀態 |
 |---|---|
