@@ -52,7 +52,7 @@ type LordPickSlot struct {
 func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, sel int, prompt string, cal game.Calendar) {
 	im := a.Compose(g, 0)
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{}, draw.Src)
-	drawArtDate(c, g.Date.FormatWithSeason(cal))
+	drawArtDate(c, g.Date, cal)
 
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
 	if a.havePanel {
@@ -167,7 +167,7 @@ var customLineInk = [6]int{10, 13, 14, 14, 14, 12}
 func DrawCustomLord(c *Canvas, a *ArtScreen, g *game.State, faction, portrait int, name string, lines [6]string, sel int, prompt [2]string, cal game.Calendar) {
 	im := a.Compose(g, 0)
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{}, draw.Src)
-	drawArtDate(c, g.Date.FormatWithSeason(cal))
+	drawArtDate(c, g.Date, cal)
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
 	if a.havePanel {
 		drawSideFrame(c, a.panels[0], assets.MainPanelX, 36, assets.MainPanelW, 288)
@@ -221,7 +221,7 @@ const (
 func DrawNewLordBorn(c *Canvas, a *ArtScreen, g *game.State, portrait int, name string, colour int, cal game.Calendar) {
 	im := a.Compose(g, 0)
 	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{}, draw.Src)
-	drawArtDate(c, g.Date.FormatWithSeason(cal))
+	drawArtDate(c, g.Date, cal)
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
 	if a.havePanel {
 		drawSideFrame(c, a.panels[0], assets.MainPanelX, 36, assets.MainPanelW, 288)

@@ -376,3 +376,69 @@ remake 這一側的閘門是 `internal/ui` 的 `TestMenuItemLayoutMatchesTheOrig
 驗證，不能取代從開局到戰術結束的完整正常玩家路徑。加強版 `ASV.EXE`
 的畫面沒有在本輪獨立重拍；英、日譯文採 remake 版面策略，不能要求
 與繁中 DOS 原版逐格相同。
+
+## 2026-10-02：左側年月十槽與 README 截圖
+
+本次原版輸入為 `AA.EXE`，SHA-256
+`474780e5be697b3b4899da5e0dbadd2f327e0bbe7e56306ac3b732a15fc124ca`；
+dosgolem 工作副本為 `san1-hercules-b0000` 分支，提交
+`92f84f0eedf2f1c69ff64e8c33a6ac86d3e44f43`。Go 1.24.13，既有建置映像
+`rich2-go-ebiten:latest`，映像 ID
+`sha256:fd2bdff81a22f5c5b7c49bb0983e2e3e4e9e82df5c789831c525e1af4e22ec8a`。
+原版素材唯讀掛載，所有執行均在無網路、限資源的一次性 Docker 容器。
+remake 日期實作 `internal/ui/artscreen.go` 的 SHA-256 為
+`739b137b242445d40ce0cd0cc5ee6327924dc107ec77a5760b451735dbf28a31`；
+重生截圖 `docs/images/remake-main.png` 的 SHA-256 為
+`9c785a2c85137217273b044d2c99c46d3003add12c886067d7beeca3e8a27bc9`。
+
+`TestZZMainDateMatchesTheOriginal` 走正常新局：劇本 001、單人曹操、
+難度 5，停在第一個主命令。原版 `0x12720` 載入並繪製十張日期圖，
+實際落點為 `(24,65+28i)`、尺寸 24×24；開局依序為
+`CP146,151,171,134,171,139,171,169,140,142`，其中 `CP171` 是空白。
+完整原始定位、工具位址空間與圖片雜湊在 [re/03 §8.1](../re/03-main-program-code-map.md)，
+實作契約在 [005 §2.2](../spec/005-main-screen.md)。
+
+| 日期 | 來源／方法 | 結果 |
+|---|---|---|
+| 189/1，中平六年元月春 | 正常新局十次繪圖 | 座標、尺寸、七個有墨／三個空白槽吻合；字框外左側底圖差 0 |
+| 197/9，建安二年九月秋 | 還原同一新局快照，直接呼叫原版日期函式 | 十槽吻合；字框外差 0 |
+| 205/12，建安十年十二月冬 | 同上 | 單字「十」在槽 3、十二月在槽 6–7；字框外差 0 |
+| 206/12，建安十一年十二月冬 | 同上 | 年數在槽 3–4；字框外差 0 |
+| 216/12，建安二十一年十二月冬 | 同上 | 年數在槽 2–4；字框外差 0 |
+
+日期排版本身沒有亂數判定；四組直接呼叫皆還原同一快照，不改盤面，
+不挑選骰序。這四組只驗局部日期排版，不能替代正常玩家跨年。
+五組原版／remake 收據與測試輸出保留在 `workplace/shots/era/date-base-*`
+及 `workplace/date-parity.log`，沒有加入可散布素材。
+
+重生入口（在主機呼叫此腳本控制 Docker）：
+
+```sh
+SAN1_SHOTS=/src/workplace/shots/era tools/go.sh test -tags oracle \
+  ./internal/parity -count=1 -run '^TestZZMainDateMatchesTheOriginal$' -v
+tools/go.sh run ./cmd/san1dump -root /orig/三國演義 -screen art \
+  -faction 0 -png docs/images/remake-main.png
+```
+
+`go test ./... -count=1` 通過；`TestArtDateStaysInTheStrip` 涵蓋繁中、
+日文、英文與中曆／西曆的邊界。共用日期 helper 的選君主、自創君主、
+難度與正常主提示四支 dosgolem 畫面對拍也通過。
+README 的本機目標共 33 個（32 個連結加一張截圖），均存在，
+文件簡寫路徑均改為連結。
+
+額外重生 `TestOriginalEraAfterOneYear` 時，原版在第一次休息後等待下一個
+主命令即未能續行：step `1248769990`、停點 `0110:15EB`、畫面 SHA-256
+`c550158f094991945a991eb8315a92a247cd51e5e050d7c57174abff6405a453`。
+以 Go 檔案覆蓋映射（overlay）讀取 HEAD 的原封不動測試作對照，得到完全相同
+步數、停點與雜湊；可排除本輪新增日期 hook 與座標修正是失敗來源。
+因此本輪沒有正常十二個月跨年通過收據；舊測試的九格像素斷言已依實際
+十槽載圖名及座標訂正，但正常輸入流程的停點仍待另行定位。
+兩次原流程與原封不動對照都固定原版 seed `0x13579BDF`（寫入開局後
+`DS:0xA3AE`／`0xA3B0`）；remake 不參與這支原版限定的診斷。
+輸出在 `workplace/date-era-parity.log`、`date-era-control.log`，不算通過。
+
+範圍：`[base]` 的繪圖座標與槽位達 `CONFORMED`；remake 仍使用自建字庫，
+不比較原版日期字形像素。原版 dosgolem 正常主畫面日期區沒有可比黑色墨點，
+既有 DOSBox-X 輔助收據 `rec18/022` 的相同區域亦如此，不能把缺字畫面
+當成文字語意驗收。加強版日期座標未獨立重拍；英文旋轉與西曆譯文沿用既有
+remake 策略，不能宣稱繁中原版逐槽一致。此次沒有重建或更新既有 Release。

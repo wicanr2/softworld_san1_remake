@@ -3,7 +3,6 @@
 package parity
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -32,6 +31,7 @@ func TestOriginalEraAfterOneYear(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer o.Close()
+	dateCalls := watchMainDate(t, o, openContainer(t, filepath.Join(root, "DATA3")))
 
 	s := observeBoot(o)
 	settlements := 0
@@ -48,7 +48,7 @@ func TestOriginalEraAfterOneYear(t *testing.T) {
 		t.Fatalf("原版開局年月=%d/%d，預期 189/1", year, month)
 	}
 	// `1058:21A0`／`1058:23DC` 掃這 17 筆起始年，再由同索引的
-	// `DS:0x603A` 字碼對取年號兩字。190 的 0x96／0x97 在畫面上是
+	// `DS:0x603A` 字碼對取年號兩字。190 的 0x96／0x97 對應字圖
 	// 「初」「平」；189 使用前一筆 0x92／0x97「中」「平」。
 	wantStarts := [...]uint16{
 		184, 190, 194, 196, 220, 227, 233, 237, 240,
@@ -69,7 +69,10 @@ func TestOriginalEraAfterOneYear(t *testing.T) {
 	ds := uint32(dgroup) * 16
 	o.SetWord(addr(ds+0xa3ae), uint16(seed&0xffff))
 	o.SetWord(addr(ds+0xa3b0), uint16(seed>>16))
-	start := screenOf(o)
+	if len(*dateCalls) < 10 {
+		t.Fatalf("開局日期繪圖僅命中 %d 次，預期至少 10 次", len(*dateCalls))
+	}
+	startCalls := append([]dateImageCall(nil), (*dateCalls)[len(*dateCalls)-10:]...)
 	dumpScreen(t, o, "era-189-01")
 
 	for settlements < 12 {
@@ -95,7 +98,6 @@ func TestOriginalEraAfterOneYear(t *testing.T) {
 		t.Logf("月底結算 %d/12；目前主命令次數 %d", settlements, s.mainAsk)
 	}
 
-	end := screenOf(o)
 	dumpScreen(t, o, "era-190-01")
 	if settlements != 12 {
 		t.Fatalf("月底結算次數=%d，預期 12", settlements)
@@ -105,17 +107,25 @@ func TestOriginalEraAfterOneYear(t *testing.T) {
 		t.Fatalf("跨過十二次月底後原版年月=%d/%d，預期 190/1", year, month)
 	}
 
-	// `1058:21A0` 的直排位置由原始運算元直接讀出：x=24，y 從 64
-	// 起每字加 28，字框 24x23。放大兩張 oracle 收據人工讀值為
-	// 「中平六年元月春」→「初平元年元月春」；畫面差應只落在第一個
-	// 年號字與年數個位字，其餘七格完全相同。
-	for i := 0; i < 9; i++ {
-		a := screenRect(start, 24, 64+i*28, 24, 23)
-		b := screenRect(end, 24, 64+i*28, 24, 23)
+	// 最終畫面的日期區不能以黑色墨點讀值；比原版自己載入的 CP 圖號。
+	// 十槽的實際圖片落點為 (24,65+28i)，24×24（docs/spec/005 §2.2）。
+	if len(*dateCalls) < 20 {
+		t.Fatalf("跨年日期繪圖僅命中 %d 次，沒有第二組十槽", len(*dateCalls))
+	}
+	endCalls := (*dateCalls)[len(*dateCalls)-10:]
+	for i := 0; i < 10; i++ {
+		a, b := startCalls[i], endCalls[i]
 		wantSame := i != 0 && i != 3
-		if same := bytes.Equal(a, b); same != wantSame {
+		if same := a.name == b.name; same != wantSame {
 			t.Errorf("日期字格 %d 跨年前後相同=%v，預期 %v", i, same, wantSame)
 		}
+		if a.x != 24 || a.y != 65+28*i || a.w != 24 || a.h != 24 ||
+			b.x != a.x || b.y != a.y || b.w != a.w || b.h != a.h {
+			t.Errorf("日期字格 %d 座標／尺寸不符：開局 %+v，跨年 %+v", i, a, b)
+		}
+	}
+	if endCalls[0].name != "CP150.IMG" || endCalls[3].name != "CP169.IMG" {
+		t.Errorf("跨年沒有改成初平元年：%+v", endCalls)
 	}
 	t.Logf("固定亂數 seed=%#08x；已由正常玩家路徑跨過十二次月底結算", seed)
 }

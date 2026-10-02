@@ -162,7 +162,7 @@ func TestSubMenuLinesMatchTheOriginal(t *testing.T) {
 //
 // 使用者裁定（2026-09-11）：英文「文字允許縮小」，不縮短名稱、也不改畫到
 // 別的面板。所以判準是「每一類都在下面板」，而且**中文一律原尺寸**
-//（與原版相同）。英文常比中文長（`CLAUDE.md` §3.3），塞不下的時候不會
+// （與原版相同）。英文常比中文長（`CLAUDE.md` §3.3），塞不下的時候不會
 // 報錯——多出來的行被截掉，玩家看到的就是少了幾個選項。
 func TestSubMenusShowInFullInEveryLanguage(t *testing.T) {
 	c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
@@ -195,7 +195,7 @@ func TestSubMenusShowInFullInEveryLanguage(t *testing.T) {
 //
 // 字模是 remake 自己的，所以不逐像素比原版；比的是**墨水落在哪一格**：
 // 每一項的名稱在自己那一列（列頂 52、每列 +48、32 像素高）與那一欄
-//（左 424–504、右 536–616）裡，而且顏色偶數項黃、奇數項洋紅。
+// （左 424–504、右 536–616）裡，而且顏色偶數項黃、奇數項洋紅。
 func TestCommandMenuLayout(t *testing.T) {
 	face := testFace(t)
 	saved := i18n.Current
@@ -568,7 +568,7 @@ func TestDrawTextRotated(t *testing.T) {
 //
 // 英文先前是一個字母一列直排：「Zhongping 6, month 1, Spring」二十八個
 // 字元要 448 像素高，直條只有三百像素——下半截畫到花邊上。判準是幾何：
-// 直排每字 16 像素、轉 90° 排每個半形字 8 像素，加上起點不能過底。
+// 中文字框高 24、行距 28；轉 90° 排每個半形字 8 像素，加上起點不能過底。
 func TestArtDateStaysInTheStrip(t *testing.T) {
 	_, g := artSessionFixture(t)
 	saved := i18n.Current
@@ -582,11 +582,15 @@ func TestArtDateStaysInTheStrip(t *testing.T) {
 			if cal == game.ChineseEra {
 				date = g.Date.FormatWithSeason(cal)
 			}
-			h := len([]rune(date)) * CellH
+			d := game.Date{Year: 1999, Month: 12}
+			if cal == game.ChineseEra {
+				d = g.Date
+			}
+			h := (len(artDateCells(d, cal))-1)*artDateStep + artDateH
 			if artHasLatin(date) {
 				h = cells.Width(date) * CellW
 			}
-			if bottom := artDateRow*CellH + h; bottom > stripBottom {
+			if bottom := artDateY + h; bottom > stripBottom {
 				t.Errorf("%s 的年月 %q 畫到 y %d，直條的底是 %d", l, date, bottom, stripBottom)
 			}
 		}

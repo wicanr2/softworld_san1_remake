@@ -201,9 +201,13 @@ const (
 	artMsgY  = 300
 	artMsgDY = 16
 
-	// artDateCol 是左側直條上年月的位置（原版直排在那裡）。
-	artDateCol = 1
-	artDateRow = 4
+	// dosgolem 實際繪圖參數與 CP 圖片尺寸（docs/spec/005 §2.2）。
+	// 上層日期函式傳 y=64，圖片 helper 再加 1。
+	artDateX    = 24
+	artDateY    = 65
+	artDateStep = 28
+	artDateW    = 24
+	artDateH    = 24
 )
 
 // 面板上的字色，量自原版畫面。**每一格不同，是量的不是挑的**：
@@ -305,7 +309,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	// 英文逐字母一列直排讀不下去、按字折行又會把「Zhongping」切斷
 	//（直條內側只有 5 格寬），所以**有拉丁字母就整行轉 90° 排**，
 	// 像書脊一樣由上往下讀（`docs/spec/014` §3.5）。
-	drawArtDate(c, g.Date.FormatWithSeason(v.Calendar))
+	drawArtDate(c, g.Date, v.Calendar)
 
 	// **下面板先畫**：清單寬到要蓋整個內容區時，覆蓋頁要蓋在它上面，
 	// 不能讓提示字浮在覆蓋頁上。
@@ -343,15 +347,48 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 }
 
 // drawArtDate 把年月直排在左側直條上（選君主那一格也用）。
-func drawArtDate(c *Canvas, date string) {
+func drawArtDate(c *Canvas, d game.Date, cal game.Calendar) {
 	ink := color.RGBA{0x00, 0x00, 0x00, 0xFF}
+	date := d.FormatWithSeason(cal)
 	if artHasLatin(date) {
-		c.DrawTextRotatedPx(artDateCol*CellW, artDateRow*CellH, date, ink)
+		c.DrawTextRotatedPx(artDateX, artDateY, date, ink)
 		return
 	}
-	for i, r := range []rune(date) {
-		c.DrawText(artDateCol, artDateRow+i, string(r), ink)
+	for i, r := range artDateCells(d, cal) {
+		if r != 0 {
+			c.DrawRuneBoxDitherPx(artDateX, artDateY+i*artDateStep,
+				artDateW, artDateH, r, ink, ink)
+		}
 	}
+}
+
+// artDateCells 保留原版年數三槽、月份兩槽的空白；不能直接直排緊湊字串。
+// 西曆保留既有譯文；該分支的文字內容不屬本次原版對拍範圍。
+func artDateCells(d game.Date, cal game.Calendar) []rune {
+	name, nth, ok := game.EraOf(d.Year)
+	if cal == game.Western || !ok {
+		return []rune(d.FormatWithSeason(cal))
+	}
+	out := make([]rune, 10)
+	copy(out[:2], []rune(game.EraName(name)))
+	year := []rune(game.Chinese(nth))
+	if nth == 1 {
+		year = []rune(t("date.first"))
+	}
+	start := 3
+	if len(year) > 2 {
+		start = 2
+	}
+	copy(out[start:5], year)
+	out[5] = []rune(t("date.yearChar"))[0]
+	month := []rune(game.Chinese(d.Month))
+	if d.Month == 1 {
+		month = []rune(t("date.first"))
+	}
+	copy(out[8-len(month):8], month)
+	out[8] = []rune(t("date.monthChar"))[0]
+	out[9] = []rune(d.Season().Name())[0]
+	return out
 }
 
 // artUpper 是上面板放什麼（`docs/spec/014` §3.1）。

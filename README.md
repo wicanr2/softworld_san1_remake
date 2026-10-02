@@ -34,12 +34,12 @@
 戰術層是最多三十天的主戰場——六方向格子、九種地形、移動力與兵種適性、
 五種戰鬥隊伍、快戰死戰、弓箭、單挑、六種計謀與天氣限制、退兵、缺糧逃亡、
 卅天判定。戰場的地形版面是**原版的資料**——州郡記錄 offset 55–174 的 120 個位元組，
-12 欄 × 10 列，42 個郡 42 張沒有兩張相同（`docs/spec/003` §3.3）。
+12 欄 × 10 列，42 個郡 42 張沒有兩張相同（[劇本欄位規格](docs/spec/003-scenario-fields.md) §3.3）。
 
 存讀檔做了六個進度（說明書 p.25）。存出來的三張表**與原版的版面
-逐位元組相同**，還沒解出來的欄位原封不動帶著走（`docs/formats/05`）。
+逐位元組相同**，還沒解出來的欄位原封不動帶著走（[存檔格式](docs/formats/05-save-format.md)）。
 
-主程式的介面字串表已經抽出來（`docs/re/04`），選單文字、欄位標籤、
+主程式的介面字串表已經抽出來（[介面字串表](docs/re/04-program-strings.md)），選單文字、欄位標籤、
 計謀編號、每郡上限五十位將軍這些都以原版執行檔為準，不照手冊轉錄。
 年月依原版可切中曆年號或西曆（其他 → 年號）。
 
@@ -47,7 +47,7 @@
 死戰／弓箭／策略／查看／退兵／休息），方向鍵盤也照原版的 `4 5 6 / 1 2 3`。
 不想看的戰役交給電腦打完，逐日戰報留著隨時翻。
 
-原版的六首配樂已經解出來（`docs/formats/06`）：`MUS.GRP`／`MUSV.GRP`
+原版的六首配樂已經解出來（[配樂格式](docs/formats/06-music.md)）：`MUS.GRP`／`MUSV.GRP`
 是巢狀容器，偶數項是曲子、奇數項是它的 AdLib 音色庫；曲子是 MIDI 事件流，
 六首的事件數與表頭精準吻合。音色的 56 個位元組也解出來了——兩個運算子
 各十三項，用原版自己填進 OPL2 的暫存器值回頭驗過。
@@ -56,7 +56,7 @@
 AdLib 的聲部分配送進去邊播邊合成。音高也對過拍：原版播「思古」送出的
 F-number 與 remake 逐次相同。
 
-原版的點陣圖也解出來了（`docs/formats/07`）：613 張 `.IMG`／`.FAC`
+原版的點陣圖也解出來了（[點陣圖格式](docs/formats/07-images.md)）：613 張 `.IMG`／`.FAC`
 全部同一個格式，表頭是高與寬、本體是四個位元平面。平面與顏色的對應
 拿 dosgolem 跑出來的原版畫面逐像素比對確認——`F000.FAC` 與 `F005.FAC`
 在君主選擇畫面上 **100% 相符**。
@@ -72,7 +72,7 @@ JSON、配樂轉成 OGG。
 電腦諸侯的十八張分派表都已讀出，判斷式從碼讀出不是行為推測。
 內政那張表的六個等級**對拍過了**——讓原版自己跑四個月、13 個勢力、
 58 次內政，原版當場算出來的量與 remake 的公式逐次相同
-（`docs/playtest/02`）。
+（[規則層對拍紀錄](docs/playtest/02-rule-parity.md)）。
 
 對拍那一側，原版現在能在 dosgolem 裡從頭跑到主選單——`AA.EXE` →
 `DATA0.GRP` → `DATA5.GRP` 三層 chain-load、`DATA1`／`DATA2`／`DATA3`
@@ -96,12 +96,12 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 電腦 AI 有三個版本：`base`（三國演義原版還原）、`plus`（加強版還原）、
 `enhanced`（remake 強化）。前兩個只發已經從原版解出來的行為，
 沒解出來的一律不做——**不會拿一個「差不多的」策略頂著**，
-`Coverage()` 會把「十八張表解出幾張」講出來（`docs/design/01`）。
+`Coverage()` 會把「十八張表解出幾張」講出來（[三種 AI 的設計](docs/design/01-ai-three-modes.md)）。
 
 開局用 `-ai` 挑，遊戲中也換得掉：**「其他」的第九項「電腦AI」**在三個
 版本之間循環，**第十項「電腦指令」**調強化 AI 一個郡一個月下幾道令
 （1–5，預設 1）。原版的「其他」只有八項，這兩項是 remake 加的，
-記在 `docs/design/02` §5。
+記在[重製版自選數值](docs/design/02-remake-owned-values.md) §5。
 
 完成度的數字以 [`VERIFICATION-MATRIX.md`](VERIFICATION-MATRIX.md) 為準；
 目前的實際狀態在 [`CONTEXT.md`](CONTEXT.md)。玩家戰後結算已依
@@ -112,7 +112,7 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 |---|---|
 | M0 環境 ＋ 素材 | 完成 |
 | M1 dosgolem 跑得動 | 完成：原版開機到主選單 |
-| M2 容器格式 | 實質完成（`docs/formats/01`–`03`）|
+| M2 容器格式 | 實質完成（[容器](docs/formats/01-grp-idx-nam.md)、[郡名表](docs/formats/02-data2-prefecture-table.md)、[劇本三表](docs/formats/03-scenario-tables.md)）|
 | M3 文字與字型 | 完成：Big5 字串全抽出、CJK 畫布、字型涵蓋率有測試 |
 | M4 靜態資料 | 完成：劇本三表、地圖圖形、資產目錄 |
 | M5 規則層 | 完成：平時十類指令、四季事件、戰役決勝、勝負判定；電腦諸侯的十八張分派表逐位元組對齊。九份機制文件的「還缺什麼」欄全部結清 |
@@ -152,7 +152,7 @@ Windows 執行 `san1.exe`。存檔預設寫在執行時工作目錄的 `saves/`�
 | 蝗害的兩條損失 | `L1` | 16 次 |
 | 君主繼承的人望折損 | `L1` | 3 次（跨四捨五入兩側）|
 
-做法與踩過的坑寫在 [`docs/playtest/02`](docs/playtest/02-rule-parity.md)：
+做法與踩過的坑寫在[規則層對拍紀錄](docs/playtest/02-rule-parity.md)：
 掛在原版寫回去的那道指令上、盤面自己擺不等劇本剛好給、
 判準要列舉不要反推區間。
 
@@ -189,11 +189,13 @@ DOSBox-X 作為交叉驗證。
 | [`CLAUDE.md`](CLAUDE.md) | 專案規則與硬規則 |
 | [`CONTEXT.md`](CONTEXT.md) | 現況、已知事實、決策紀錄、worklist |
 | [`WORKLOG.md`](WORKLOG.md) | 逐輪工作歷程、驗證結果與清理狀態 |
-| `docs/re/` | 反組譯筆記（含主程式的介面字串表）|
-| `docs/formats/` | 檔案格式（含存檔、配樂、點陣圖）|
-| `docs/spec/` | 規格（只有 `READY` 能授權實作）|
-| `docs/mechanics/` | 遊戲機制（含中平六年開局的完整局面）|
-| `docs/playtest/` | 對拍紀錄 |
-| `docs/design/` | remake 自己的設計決策 |
-| `cmd/san1turndiff` | 讀兩份原版執行期盤面，說出中間那個月動了什麼 |
-| `docs/reference/` | 說明書整理、社群資料 |
+| [docs/INDEX.md](docs/INDEX.md) | 完整文件索引與查找入口 |
+| [docs/re/](docs/re/) | 反組譯筆記（含主程式的介面字串表）|
+| [docs/formats/](docs/formats/) | 檔案格式（含存檔、配樂、點陣圖）|
+| [docs/spec/](docs/spec/) | 規格（只有 `READY` 能授權實作）|
+| [docs/mechanics/](docs/mechanics/) | 遊戲機制（含中平六年開局的完整局面）|
+| [docs/playtest/](docs/playtest/) | 對拍紀錄 |
+| [docs/design/](docs/design/) | remake 自己的設計決策 |
+| [cmd/san1turndiff/](cmd/san1turndiff/) | 讀兩份原版執行期盤面，說出中間那個月動了什麼 |
+| [docs/reference/](docs/reference/) | 說明書整理、社群資料 |
+| [docs/release/](docs/release/) | 發行包與本機驗收 |
