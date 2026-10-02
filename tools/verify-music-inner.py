@@ -7,17 +7,23 @@ import math
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 import wave
 
 ROOT = Path('/src')
-OUT = ROOT / 'workplace/audio'
+HD = sys.argv[1:] == ['--hd']
+if sys.argv[1:] and not HD:
+    raise SystemExit('僅接受 --hd')
+OUT = ROOT / ('workplace/audio/hd-v4' if HD else 'workplace/audio')
+PACK = ROOT / 'workplace/hd-assets-portraits-v4'
 PREFIX = 'music-check'
 processes = []
 logs = []
 receipt = {'schema': 'san1-music-playback/1', 'method': '正式 GUI → Ebiten/oto → PulseAudio monitor',
            'audio_image': os.environ.get('SAN1_AUDIO_IMAGE_ID'), 'checks': [],
            'human_listening': False, 'platform': 'Linux amd64'}
+receipt['theme'] = 'B HD 4×' if HD else 'Original'
 
 
 def run(args, **kwargs):
@@ -73,6 +79,36 @@ def screenshot(wid, name):
          '-f', 'x11grab', '-video_size', f"{geometry['WIDTH']}x{geometry['HEIGHT']}",
          '-i', f":99+{geometry['X']},{geometry['Y']}", '-frames:v', '1',
          str(OUT / f'{PREFIX}-{name}.png')])
+    receipt.setdefault('captures', []).append({'name': name,
+        'dimensions': [int(geometry['WIDTH']), int(geometry['HEIGHT'])],
+        'sha256': hashlib.sha256((OUT / f'{PREFIX}-{name}.png').read_bytes()).hexdigest()})
+
+
+def hd_theme(wid):
+    keys(wid, 'Escape')
+    for y in [16, 68]:
+        run(['xdotool', 'mousemove', '--window', wid, '270', str(y)])
+        run(['xdotool', 'click', '1'])
+        time.sleep(.4)
+    keys(wid, 'Escape')
+    run(['xdotool', 'windowsize', wid, '2560', '1632'])
+    run(['xdotool', 'windowmove', wid, '0', '0'])
+    run(['xdotool', 'mousemove', '--window', wid, '320', '200'])
+    time.sleep(.5)
+
+
+def hd_portrait(wid, name):
+    screenshot(wid, name)
+    args = ['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error']
+    tail = ['-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', 'pipe:1']
+    shot = subprocess.run(args + ['-i', str(OUT / f'{PREFIX}-{name}.png'),
+                                 '-vf', 'crop=256:320:2144:464'] + tail,
+                          check=True, capture_output=True, timeout=15).stdout
+    master = subprocess.run(args + ['-i', str(PACK / 'F000.png')] + tail,
+                            check=True, capture_output=True, timeout=15).stdout
+    if shot != master:
+        raise RuntimeError(name + ' 尚未顯示原生高清曹操肖像')
+    receipt.setdefault('hd_portrait_checks', []).append({'name': name, 'passed': True})
 
 
 def wait_menu(wid):
@@ -128,14 +164,20 @@ def launch(edition, dirname):
     root = Path('/orig') / dirname
     receipt.setdefault('inputs', {})[edition] = {
         'DATA1.GRP': hashlib.sha256((root / 'DATA1.GRP').read_bytes()).hexdigest()}
-    proc = start([str(OUT / 'san1-music-check'), '-root', str(root), '-edition', edition,
+    args = [str(OUT / 'san1-music-check'), '-root', str(root), '-edition', edition,
                   '-ai', edition, '-scale', '1', '-sound=false',
-                  '-saves', '/tmp/san1-music-saves'], edition)
+                  '-saves', '/tmp/san1-music-saves']
+    if HD:
+        args.extend(['-hd-assets', str(PACK)])
+    proc = start(args, edition)
     wid = wait_for(['xdotool', 'search', '--onlyvisible', '--pid', str(proc.pid),
                     '--name', '三國演義 remake']).splitlines()[0]
     # Space 只續行／略過片頭；主選單不以 Space 選擇任何項目。
     wait_menu(wid)
     screenshot(wid, f'{edition}-menu')
+    if HD:
+        hd_theme(wid)
+        screenshot(wid, f'{edition}-menu-hd')
     if proc.poll() is not None:
         raise RuntimeError(f'{edition} 遊戲提早結束')
     return proc, wid
@@ -153,7 +195,7 @@ try:
     runtime.mkdir(mode=0o700)
     os.environ.update({'DISPLAY': ':99', 'LIBGL_ALWAYS_SOFTWARE': '1',
                        'XDG_RUNTIME_DIR': str(runtime), 'PULSE_SERVER': f'unix:{runtime}/native'})
-    start(['Xvfb', ':99', '-screen', '0', '1280x900x24', '-nolisten', 'tcp'], 'xvfb')
+    start(['Xvfb', ':99', '-screen', '0', '2800x1900x24' if HD else '1280x900x24', '-nolisten', 'tcp'], 'xvfb')
     start(['pulseaudio', '-n', '--daemonize=no', '--exit-idle-time=-1',
            '--load=module-null-sink sink_name=san1 rate=48000 channels=2',
            f'--load=module-native-protocol-unix socket={runtime}/native auth-anonymous=1'], 'pulse')
@@ -161,6 +203,8 @@ try:
     run(['pactl', 'set-default-sink', 'san1'])
     receipt['binary_sha256'] = hashlib.sha256((OUT / 'san1-music-check').read_bytes()).hexdigest()
     receipt['revision'] = run(['git', 'rev-parse', 'HEAD'], cwd=ROOT)
+    if HD:
+        receipt['pack_sha256'] = hashlib.sha256((PACK / 'manifest.json').read_bytes()).hexdigest()
     receipt['modified_sources'] = {
         name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         for name in ['internal/music/stream.go', 'tools/verify-music-inner.py', 'tools/verify-music.sh']}
@@ -178,7 +222,10 @@ try:
         capture(f'base-track-{i}-{name}')
     keys(wid, 'shift+Escape')
     new_game(wid)
-    screenshot(wid, 'base-main')
+    if HD:
+        hd_portrait(wid, 'base-main')
+    else:
+        screenshot(wid, 'base-main')
     capture('base-main')
     # 新局主提示以數字輸入收命令，Enter 確定後才進其他選單。
     keys(wid, '9', 'Return')
@@ -198,7 +245,10 @@ try:
     time.sleep(1)
     proc, wid = launch('plus', '三國演義1加強版')
     new_game(wid)
-    screenshot(wid, 'plus-main')
+    if HD:
+        hd_portrait(wid, 'plus-main')
+    else:
+        screenshot(wid, 'plus-main')
     capture('plus-main')
     receipt['passed'] = True
 finally:

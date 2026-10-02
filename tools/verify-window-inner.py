@@ -92,6 +92,36 @@ def choose(wid, field, row):
     time.sleep(.4)
 
 
+def choose_ready(wid, field, row):
+    """按住滑鼠直到下拉畫面回應；避免短按被軟體渲染的幀間隔漏掉。"""
+    x = [100, 270, 470][field]
+    probe_x = [10, 202, 378][field]
+    colors = [bytes([44, 52, 65]), bytes([44, 92, 112])]
+    action = len(receipt.setdefault('toolbar_actions', []))
+    receipt['toolbar_actions'].append({'field': field, 'row': row})
+
+    def click_until(opened, phase):
+        run(['xdotool', 'mousedown', '1'])
+        try:
+            deadline = time.monotonic() + 8
+            step = 0
+            while time.monotonic() < deadline:
+                scale = geo(wid)['WIDTH'] / 640
+                capture = shot(wid, f'toolbar-{action}-{phase}-{step}')
+                pixel = rgb(capture, f'1:1:{int(probe_x*scale)}:{int(34*scale)}')
+                if (pixel in colors) == opened:
+                    return
+                step += 1
+            raise RuntimeError(f'選項列 {field} 的 {phase} 畫面未回應')
+        finally:
+            run(['xdotool', 'mouseup', '1'])
+
+    move(wid, x, 16)
+    click_until(True, 'open')
+    move(wid, x, 32 + row * 24 + 12)
+    click_until(False, 'selected')
+
+
 def shot(wid, name):
     path = OUT / (name + '.png')
     g = geo(wid)

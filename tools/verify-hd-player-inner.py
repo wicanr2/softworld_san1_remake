@@ -18,8 +18,9 @@ scene_only = sys.argv[1:] == ['--scene-plus']
 custom_only = sys.argv[1:] == ['--custom']
 portraits_only = sys.argv[1:] == ['--portraits']
 lords_only = sys.argv[1:] == ['--lords']
-if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only):
-    raise SystemExit('僅接受 --scene-plus、--custom、--portraits 或 --lords')
+lords_all_only = sys.argv[1:] == ['--lords-all']
+if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only or lords_all_only):
+    raise SystemExit('僅接受 --scene-plus、--custom、--portraits、--lords 或 --lords-all')
 if scene_only:
     gui.OUT /= 'scene-plus'
 if custom_only:
@@ -28,7 +29,10 @@ if portraits_only:
     gui.OUT /= 'portraits-v2'
 if lords_only:
     gui.OUT /= 'lords-v3'
+if lords_all_only:
+    gui.OUT /= 'lords-v4'
 pack_dir = gui.ROOT / ('workplace/hd-assets-custom-v1' if custom_only else
+                       'workplace/hd-assets-portraits-v4' if lords_all_only else
                        'workplace/hd-assets-portraits-v3' if lords_only else
                        'workplace/hd-assets-portraits-v2' if portraits_only else 'workplace/hd-assets')
 gui.receipt['method'] = 'Linux Xvfb 正常片頭、新局、查看武將與休息換月；未注入人物、日期或事件'
@@ -82,7 +86,7 @@ def scene_rgb():
 
 def theme(wid, high):
     key(wid, 'Escape')
-    gui.choose(wid, 1, int(high))
+    gui.choose_ready(wid, 1, int(high))
     key(wid, 'Escape')
     run(['xdotool', 'windowsize', wid, '2560' if high else '640', '1632' if high else '408'])
     run(['xdotool', 'windowmove', wid, '0', '0'])
@@ -163,6 +167,35 @@ def portrait_cards(edition):
                                ('F077', '董卓', 14, 14, 1, True),
                                ('F041', '孫堅', 15, 31, 1, True)]),
                  ('004', '4', [('F008', '孫權', 56, sun_pref, 1, True)])]
+    if lords_all_only:
+        gui.receipt['method'] = 'Linux Xvfb 正常片頭、劇本 001–005、單人曹操、查看郡及檢視二十位君主'
+        gui.receipt['scenarios'] = ['001', '002', '003', '004', '005']
+        # 核對各版正式 session 第一次停點的清單，選實際君主本人。
+        # F128／F166 也供其他武將共用；不以較早郡的共用肖像代替君主。
+        early = [
+            ('F063', '公孫瓚', 35, 2, 1, True),
+            ('F117', '孔融', 32, 7, 1, True),
+            ('F114', '陶謙', 33, 10, 1, True),
+            ('F097', '李傕', 17, 16, 3, True),
+            ('F192', '馬騰', 34, 19, 1, True),
+            ('F166', '劉繇', 78, 21, 1, True),
+            ('F209', '王朗', 103, 23, 1, True),
+            ('F054', '袁術', 22, 27, 1, True),
+            ('F142', '劉焉', 12, 36, 1, True),
+            ('F237', '劉璋', 114, 36, 3, True)]
+        second = [
+            ('F128', '楊奉', 90, 5, 1, True),
+            ('F227', '張魯', 115, 18, 1, True),
+            ('F164', '孫策', 55, 22, 1, True),
+            ('F078', '劉度', 167, 28, 6, True),
+            ('F098', '趙範', 170, 33, 1, False)]
+        liu_biao = ('F081', '劉表', 44, 28, 1, True)
+        early.append(liu_biao)
+        plans = [('001', '1', early), ('002', '2', second),
+                 ('003', '3', [('F046', '韓玄', 160, 31, 5, True),
+                               ('F024', '金旋', 173, 32, 3, True)]),
+                 ('004', '4', [('F229', '曹丕', 135, 13, 3, False)]),
+                 ('005', '5', [('F119', '孟獲', 253, 40, 1, True)])]
     for scenario, button, cards in plans:
         tag = edition + '-' + scenario
         gui.receipt.setdefault('scenario_key_start', {})[tag] = len(gui.receipt.get('keys', []))
@@ -236,7 +269,7 @@ try:
         if custom_only:
             custom_rulers(edition)
             continue
-        if portraits_only or lords_only:
+        if portraits_only or lords_only or lords_all_only:
             portrait_cards(edition)
             continue
         proc, wid = gui.launch(edition)

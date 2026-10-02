@@ -1,6 +1,6 @@
 # 021：B 寫實手繪 HD 素材與渲染
 
-狀態：`READY`，授權視窗選項列、首批四張素材及 §6.7–6.10 已審查的肖像批次；其餘美術依 #108、#109 分批驗收。
+狀態：`READY`，授權視窗選項列、首批四張素材及 §6.7–6.11 已審查的肖像批次；其餘美術依 #108、#109 分批驗收。
 
 使用者於 2026-10-02 選定 B「寫實手繪」，並授權開始 HD 計畫。排除 A 原貌高清及 C 現代英武立繪。沿用 640×408 邏輯版面、人物資料、規則及存檔。
 
@@ -252,3 +252,78 @@ tools/go.sh run ./cmd/san1hdpack -root /orig/三國演義 -peer-root /orig/三�
 | `workplace/hd-lord-player-stop.json`，remake 清單診斷 | `d23ba8c9b1c279eda8bcd149d5d83dfd4fd16903aeb83bced494c5f608e34ee5` |
 
 正式引擎與 §6.7 相同。上述十九張肖像的正常 GUI 及清單診斷都不是原版 oracle 收據；模型／seed、使用者簽核、全批素材及跨平台限制照舊。
+
+### 6.11 六劇本君主肖像批次
+
+狀態：`READY`。由兩版六劇本的 typed 君主資料取剩餘二十個獨立 F###，各自以原版單張圖及定版 B 筆觸生成。DATA1 的相同肖像沿用對應槽，不另生成。
+
+| 槽 | 君主 | 採用版次 | 保留的原圖特徵 |
+|---|---|---|---|
+| F054 | 袁術 | v3 | 綠冠、短黑鬚、紅衣 |
+| F142 | 劉焉 | v2 | 藍冠、長白鬚、紫衣、左向 |
+| F192 | 馬騰 | v1 | 紫盔、黑鬚、正面 |
+| F081 | 劉表 | v2 | 黑髮、小金冠飾、黑鬚、藍衣 |
+| F114 | 陶謙 | v3 | 藍冠紅飾、長白鬚 |
+| F063 | 公孫瓚 | v1 | 金冠、短黑鬚、粉衣 |
+| F166 | 劉繇 | v1 | 藍巾、長黑鬚、單眼可見的左側面 |
+| F209 | 王朗 | v1 | 紅冠、白鬚、青衣 |
+| F117 | 孔融 | v1 | 灰冠、小粉紅飾、黑鬚、左向 |
+| F164 | 孫策 | v1 | 藍盔、無鬚、粉領、左向 |
+| F097 | 李傕 | v1 | 青盔紅飾、短黑鬚、藍甲 |
+| F237 | 劉璋 | v1 | 藍冠、黑鬚、青衣、左向 |
+| F227 | 張魯 | v1 | 暗冠與金粉額帶、長黑鬚 |
+| F128 | 楊奉 | v1 | 藍紫盔、紫色額飾、黑鬚、粉衣 |
+| F024 | 金旋 | v1 | 藍盔黑冠飾、短黑鬚、紅衣 |
+| F046 | 韓玄 | v1 | 藍花巾、白鬚、紫衣 |
+| F098 | 趙範 | v1 | 綠盔紅飾、短黑鬚、灰甲 |
+| F078 | 劉度 | v1 | 高藍冠粉飾、長黑鬚、紅衣、左向 |
+| F119 | 孟獲 | v1 | 青盔紅飾、黑鬚、藍衣 |
+| F229 | 曹丕 | v1 | 高灰冠青飾、粉紅額飾、無鬚、黑衣黃綠邊 |
+
+來源引用為 `L0`、`[both]`；B 圖為 remake 美術差異。年齡欄不改固定肖像，例如王朗白鬚及金旋、劉度黑鬚。二十張採用原圖皆為 1122×1402，保存於本機 `workplace/hd-b-F###-vN.png`。F054／F142／F081／F114 第一版及 F054／F114 第二版比例偏窄，保留退件與完整提示詞，不用程式拉寬人物。各候選的圖檔、工具、參考、尺寸、SHA-256 與 Codex 審查在 `workplace/hd-lords-v4-generation.json`；未回報的模型版本與 seed 明記未知，使用者逐張簽核仍未完成。
+
+累積包使用 `workplace/hd-assets-portraits-v4/`，含三十九張肖像及 SCG01，兩版各四十筆。`-master-revisions` 除既有五槽 v2，增加 F142／F081 的 v2 及 F054／F114 的 v3。前批包與收據保留。正常新局驗證須使用各版第一次玩家停點後的真實人物清單，不以生成圖或原始劇本表取代實際 GUI。
+
+| 本機產物 | SHA-256 |
+|---|---|
+| `workplace/hd-lords-v4-generation.json`，含採用及退件 | `2967919ccc693e81a3ed05499c584407ad44ef74eccfc0ecfaf04c889cac737e` |
+| `workplace/hd-assets-portraits-v4/manifest.json` | `5a702eacdce1b2757338671669f1883758594406ca0db896294a2ade5f46d212` |
+| `workplace/hd-assets-portraits-v4/preparation.json` | `1e5fa16bbe4d6a80c0e8dafee6c6643908c07c2d1c65570b9a1f90a79e6db6b0` |
+| `workplace/hd-lord-player-stop-v4.json`，第一次玩家停點診斷 | `a07f334e134866bfc78808f0d5b1d15fefefd139b767829efeeb4b6005f129e1` |
+| `workplace/hd-preview/lords-v4-contact.png`，原圖與高清圖比較頁 | `8f29d8556f8fe32300acb3870309398c7e157001f3e64364ea4912a4ac69b985` |
+
+重跑使用 `bash tools/verify-hd-player.sh --lords-all`。兩版均經正常片頭及單人曹操新局，劇本 001 抽驗十一張、002 五張、003 兩張、004 曹丕、005 孟獲；共四十張人物卡與十次啟動，130/130 通過。F128／F166 共用槽使用實際君主楊奉／劉繇，不用其他同槽武將代替。每張核對原生像素、素材外文字／框線及切回原貌。
+
+收據為 `workplace/hd-window/player/lords-v4/receipt.json`，SHA-256 `ddecb7771bdc7fec57670d6e696648e355a45cae06be1aeaa42907940a2c5aa9`，引擎與 §6.13 相同。當時工具另存 `lords-v4/tested-verify-hd-player.sh`、`tested-verify-hd-player-inner.py` 及 `tested-verify-window-inner.py`；其後 wrapper 只增加素材包唯讀掛載，未以新 wrapper 的雜湊替換原收據。
+
+初次批次外層期限不足及一次誤選張濟的收據分別保留於 `lords-v4/partial-before-batch-limit/` 與 `failed-before-path-fix/`。正式 GUI 的 `0` 為不耗回合的狀態命令；診斷先前多做一次休息，改以第一次玩家停點的實際清單後重跑。這些是驗證條件問題，不改規則或固定正式亂數，收據不升格為原版 oracle。
+
+### 6.12 全 256 槽的肖像稽核
+
+入口為 [`tools/hd-portrait-audit.py`](../../tools/hd-portrait-audit.py)，在 Docker 內執行。以兩版完整盤點為分母，逐槽核對包內來源與輸出雜湊、4× 尺寸、包內檔案路徑、準備紀錄、生成原圖比例、提示詞、工具及模型／seed 紀錄。重複鍵、未知槽、缺設定、損壞圖與越界檔案均列為技術問題。拒絕或缺少審查的圖不計入 Codex 審查，使用者簽核另列，不自動推定。
+
+`--pack` 指定累積包，重複 `--records` 指定各生成紀錄，`--reviews` 可補記逐張審查，`--out` 指定既有私人目錄下的收據。普通稽核可回報未完成的批次；`--require-complete` 在任何槽缺圖或未經 Codex 審查時回傳 3，技術錯誤回傳 1，輸入契約錯誤回傳 2。這項 gate 不代替正常 GUI、使用者簽核或權利驗收。
+
+實際 v3 包的 CLI 正反案例包含全量盤點缺項、重複登錄、錯來源／尺寸、PNG 損壞、絕對路徑、越界及符號連結、缺生成紀錄、拒絕的審查、原圖比例不符與不完整盤點。使用 Python `-O` 重跑，檢查不依賴可停用的 assert。收據留本機 `workplace/hd-audit-checks/receipt.json`，每例保存工具版本、命令、返回碼及報告雜湊。
+
+十六例均通過，收據 SHA-256 為 `9c35ec86f3ea760274bc739b17caf47bf27f9caf3296f09f066cbec02fe8694b`。最新 v4 稽核為 39/256 槽兩版均備妥、Codex 審查 39、使用者簽核 0、缺圖 217、技術問題 0；`--require-complete` 正確回傳 3。完整逐槽報告在 `workplace/hd-portrait-audit-v4.json`，SHA-256 為 `306279c54cd38a7459e723148f7692fba14873cfd2bab0daf890d9fb147bc8c1`。
+
+### 6.13 高清模式配樂驗證
+
+入口為 [`tools/verify-music.sh`](../../tools/verify-music.sh)，重跑使用 `bash tools/verify-music.sh --hd`。沿用 [009 §6.1](009-music.md#61-正式音訊串流契約) 的工具鏈及量測判準，另需本機 `workplace/hd-assets-portraits-v4/`。先從原貌正常片頭啟動，再以選項列切為 B 高清，走音樂欣賞、兩版曹操新局、靜音及恢復。五首曲子與主選單共六段、新局兩段、靜音與恢復各一段，共 10/10 通過；靜音的 16 位元樣本全零。兩版新局同時核對原生 256×320 曹操肖像。
+
+錄音及截圖另存 `workplace/audio/hd-v4/`，保留原貌收據。此項只核對 Linux 正式播放器的配樂輸出；未驗人耳聽辨、音效、語音或 Windows／macOS 原生音訊，不能代替 #110 的全部音畫驗收。原版配樂與含原版內容的產物只留本機。
+
+| 本機驗證產物 | SHA-256 |
+|---|---|
+| `workplace/audio/hd-v4/music-check-receipt.json`，10/10 | `8ebcba462f9b164e0cf2aedc347ed7a9b7ed56dc1780f865597aa3a88850b666` |
+| 配樂驗證使用的正式引擎 | `a42b688037b3fbe46153437d8cd7ed8aa02ad13f70c7306f2d0bb52d7f206340` |
+| `workplace/hd-assets-portraits-v4/manifest.json` | `5a702eacdce1b2757338671669f1883758594406ca0db896294a2ade5f46d212` |
+
+### 6.14 正常宣戰對白與鏡像
+
+入口為 [`tools/verify-hd-dialogue.sh`](../../tools/verify-hd-dialogue.sh)，重跑使用 `bash tools/verify-hd-dialogue.sh`，前置環境沿用 §6.5，另需 v4 素材包及完整本機盤點。兩版均從正常片頭開劇本 001、單人曹操、難度 5，由陳留出兵洛陽，將曹操分配到第一軍、攜帶金 0 與米 1000。沒有植入人物、部隊、事件或亂數。
+
+正常宣戰的曹操對白在 (552,80)，董卓對白在 (424,180)，後者水平鏡像。原生 4× 像素與包內肖像或其水平鏡像逐像素相同；其餘姓名、文字及框線不變，切回原貌恢復原面板。兩版共 14/14 通過，收據為 `workplace/hd-window/player/dialogue-v4/receipt.json`，SHA-256 `912cfa865d8a3e786952cea6113b3fe4740c494d099e1c0c94427a05224dadda`；引擎及素材包與 §6.13 相同。此項只補齊這條對白路徑，不涵蓋尚缺素材的 SCG06 高清動畫、尋訪或戰場 HUD。
+
+滑鼠測試按住至下拉畫面實際展開／收起，保存畫面後才放開。先前瞬間點擊漏收，造成縮回 640×408 的畫面仍是高清肖像；失敗收據及工具留在 `dialogue-v4/failed-before-path-fix/`。此為測試輸入同步問題，沒有修改正式遊戲或重試亂數。
