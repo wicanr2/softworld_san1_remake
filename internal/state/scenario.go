@@ -566,9 +566,9 @@ func (s *Scenario) Lord(faction int) (General, error) {
 // 有兩條判準，用哪一條看資料自己說得出多少。
 //
 // **操縱方（offset 0）填好了就用它。** 那一欄是 1 玩家／2 電腦／
-// `0xFFFF` 已滅亡，最直接。但**劇本檔裡它還沒填**——玩家人數是開局
-// 才問的，所以六個劇本的十六個槽沒有一個是 `0xFFFF`。看得到 `0xFFFF`
-// 就表示這份資料是一局玩過的（存檔），那時操縱方比什麼都準。
+// `0xFFFF` 未使用或已滅亡，最直接。後期劇本也已有未使用槽的
+// `0xFFFF`，不能據此宣稱只有存檔才填過。新君主取得領地時須把操縱方
+// 設為玩家，否則仍會被當成電腦控制的空範本。
 //
 // 沒填的時候退回「君主是不是人」加「有沒有領地」：沒在用的槽指向姓名
 // 是全形標點的填充筆（`docs/formats/03` §4）。這一條在存檔上會出兩種錯，
@@ -615,8 +615,7 @@ func (s *Scenario) ActiveFactions() []int {
 
 // controllersFilled 說操縱方那一欄有沒有被填過。
 //
-// 判準是「看得到至少一個 `0xFFFF`」：劇本檔一個都沒有，玩過一局的
-// 存檔一定有——十六個槽不可能全部都還在。
+// 判準是「看得到至少一個 `0xFFFF`」，包含後期劇本的未使用槽及存檔。
 func (s *Scenario) controllersFilled() bool {
 	for i := range s.masters {
 		if s.Controller(i) == ControlledByNobody {

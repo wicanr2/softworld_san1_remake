@@ -111,27 +111,28 @@ def rgb(path, crop=None):
                           check=True, capture_output=True, timeout=15).stdout
 
 
-def launch(edition, missing=False):
+def launch(edition, missing=False, hd_assets=None, tag=None):
     folder = '三國演義' if edition == 'base' else '三國演義1加強版'
+    tag = tag or edition
     t = time.monotonic()
     proc = start([str(OUT / 'san1-window-check'), '-root', '/orig/' + folder, '-edition', edition,
                   '-ai', edition, '-scale', '1', '-music=false', '-sound=false',
                   '-saves', str(OUT / ('saves-' + edition)),
-                  '-hd-assets', '/tmp/missing-hd' if missing else '/src/workplace/hd-assets'], edition)
+                  '-hd-assets', '/tmp/missing-hd' if missing else str(hd_assets or ROOT / 'workplace/hd-assets')], tag)
     wid = wait(['xdotool', 'search', '--onlyvisible', '--pid', str(proc.pid), '--name', '三國演義 remake']).splitlines()[0]
     move(wid, 320, 200)
     reference = rgb(OUT / 'title-reference.png', '568:160:40:27')
     deadline = time.monotonic() + 45
     while time.monotonic() < deadline:
-        path = shot(wid, edition + '-boot')
+        path = shot(wid, tag + '-boot')
         sample = rgb(path, '568:160:40:27')
         if len(sample) == len(reference) and sum(a != b for a, b in zip(sample, reference)) < len(reference) // 100:
             break
         key(wid, 'space')
     else:
         raise RuntimeError('片頭未進入正常主選單')
-    receipt.setdefault('launch_seconds', {})[edition] = round(time.monotonic() - t, 3)
-    dimensions(wid, edition + '-hidden-default', 640, 408)
+    receipt.setdefault('launch_seconds', {})[tag] = round(time.monotonic() - t, 3)
+    dimensions(wid, tag + '-hidden-default', 640, 408)
     return proc, wid
 
 

@@ -53,8 +53,28 @@
   30    所屬 ← faction      32    主事者 ← 那個人物槽
 ```
 
-**諸侯表不動**：君主欄本來就指著那一筆，其餘 70 個位元組還沒解
-（`docs/spec/003`），原封不動比填一個猜的值安全。
+諸侯表只把 offset 0 寫成 1，表示玩家操縱；君主欄與其餘欄位保留原值。
+原版選走的槽在能力設定完成後由 `0x123e5` 寫入玩家值，契約見
+[019 §1](019-players.md)。`WithCustomLord` 交出
+可用於 remake 開局的完整劇本，因此在這個準備步驟啟用勢力；設定與出現對白
+使用的預覽局面不宣稱與原版中途記憶體逐位元組相同。
+
+### 3.1 名額綁定與啟用
+
+狀態：`READY`。四名額的編號由諸侯的君主索引減去 346 決定，不能使用
+「尚未建立的新君主清單」的位置。姓名造字碼與肖像都沿用該固定名額。
+兩版六個劇本的原始 DATA2 各自讀回，範本依次指向 346–349；槽位及
+DATA2.GRP 雜湊收據在本機 `workplace/hd-window/player/custom-v1/source-slots.txt`。
+這是來源資料 `L0`、`[both]`，不是原版玩家流程對拍。
+
+原版玩家操縱方值 1 的行為依 019 的 `L0`／`L1`、`[base]` 證據。
+加強版這次驗收限定共用 remake 的正常新局與存讀檔，未新增加強版原版
+多人開局對拍。空白郡、能力值及其他原版差異維持既有契約。
+
+驗收從兩版六劇本的正常選單依次建立全部名額，核對每次設定與出現對白、
+正式人物肖像、玩家順序、一郡領地，及存讀後三張遊戲表不變。無效名額
+仍須拒絕，不把尚未建立的範本當成在用勢力。舊斷言的訂正集中在
+`CONTEXT.md` R90。
 
 ## 4. 點數（`L2` ＋ `L3`）
 
@@ -132,6 +152,7 @@ remake 開自創君主的局時，把**原版出貨的那一份 `BASEPRE`** 帶�
 | 點數、空白郡、姓名的檢查 | `TestCustomLordValidate` |
 | 寫進去讀得回來、原件不動 | `TestWithCustomLordWritesTheTables` |
 | 整條流程走得完 | `internal/menu` 的 `TestPicksACustomLord` |
+| 兩版六劇本的全部名額、固定肖像與存讀檔 | `internal/menu` 的 `TestAllCustomLordsStartAndSaveAcrossScenarios`；正常視窗由 `tools/verify-hd-player.sh --custom` 抽驗劇本 001／006 |
 | 字模帶得進去、存讀活得下來 | `TestCustomLordCarriesTheShippedGlyphs`、`internal/save` 的 `TestGlyphsSurviveASaveLoadRound` |
 
 ## 7. 還沒解的
@@ -141,4 +162,4 @@ remake 開自創君主的局時，把**原版出貨的那一份 `BASEPRE`** 帶�
 | 點數怎麼花、上限多少 | §4 的 `L3`；起始值 `0x12df4` 已讀（18、80、50／50／50、100 點），花法在 `0x13524` |
 | 年齡怎麼收 | R2 |
 | 姓名怎麼畫 | R2；名字固定「新君主」。要讓玩家改名就得自己產字模（從 remake 的字庫取），那一步還沒做 |
-| 玩家人數（多人）| 原版有，remake 沒做（`worklist.json` 的 `multiplayer`）|
+| 玩家人數（多人）| 已接入；目前契約及原版驗證範圍見 [019](019-players.md) |

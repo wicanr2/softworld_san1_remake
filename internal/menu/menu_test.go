@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,12 +18,19 @@ import (
 
 // newScreen 開一個接得到原版劇本的主選單；沒有素材就 skip。
 func newScreen(t *testing.T) *Screen {
+	return newScreenEdition(t, state.EditionBase)
+}
+
+func newScreenEdition(t *testing.T, edition state.Edition) *Screen {
 	t.Helper()
 	root := os.Getenv("SAN1_ORIG")
 	if root == "" {
 		t.Skip("沒設 SAN1_ORIG，跳過（本儲存庫不含原版檔案）")
 	}
 	dir := filepath.Join(root, "三國演義")
+	if edition == state.EditionPlus {
+		dir = filepath.Join(root, "三國演義1加強版")
+	}
 	read := func(ext string) []byte {
 		b, err := os.ReadFile(filepath.Join(dir, "DATA2."+ext))
 		if err != nil {
@@ -34,7 +42,7 @@ func newScreen(t *testing.T) *Screen {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return New(c, state.EditionBase, ai.ModeEnhanced, "", 6)
+	return New(c, edition, ai.ModeEnhanced, "", 6)
 }
 
 // toLord 走到「第1位,請選擇」：開始新遊戲 → 劇本 → 1 人。
@@ -310,6 +318,92 @@ func TestPicksACustomLord(t *testing.T) {
 	}
 	if int(lord.Age) != state.CustomLordAge {
 		t.Errorf("年齡 %d，範本是 %d", lord.Age, state.CustomLordAge)
+	}
+}
+
+// 全部名額須走得完設定與出現對白，肖像及玩家身份也須存讀得回來。
+func TestAllCustomLordsStartAndSaveAcrossScenarios(t *testing.T) {
+	for _, edition := range []state.Edition{state.EditionBase, state.EditionPlus} {
+		for scenario, count := range []int{2, 1, 4, 4, 2, 4} {
+			t.Run(fmt.Sprintf("%s/%03d", edition, scenario+1), func(t *testing.T) {
+				s := newScreenEdition(t, edition)
+				s.Confirm(0)
+				s.Confirm(scenario)
+				if len(s.customs) != count {
+					t.Fatalf("新君主名額 %v，預期 %d 位", s.customs, count)
+				}
+				selected := append([]int(nil), s.customs...)
+				s.Confirm(count)
+				for _, faction := range selected {
+					index := -1
+					for i, f := range s.lords {
+						if f == faction {
+							index = i
+							break
+						}
+					}
+					if index < 0 {
+						t.Fatal("候選缺少新君主", faction)
+					}
+					s.Confirm(index)
+				}
+				s.Confirm(4)
+				for nth, faction := range selected {
+					if s.Stage() != CustomLord || s.Custom().Portrait != state.CustomLordPortrait[nth] {
+						t.Fatalf("第 %d 位未進入正確設定：stage %d，%v", nth+1, s.Stage(), s.Custom())
+					}
+					s.Confirm(customRows - 1)
+					if s.Stage() != LordBorn {
+						t.Fatalf("第 %d 位完成後未出現：stage %d，%v", nth+1, s.Stage(), s.Items())
+					}
+					lord := s.Game().Lord(state.FactionID(faction))
+					if lord == nil || int(lord.Portrait) != state.CustomLordPortrait[nth] {
+						t.Fatalf("第 %d 位的正式人物肖像錯誤：%+v", nth+1, lord)
+					}
+					ss := s.Confirm(0)
+					if nth+1 != count {
+						if ss != nil {
+							t.Fatal("尚有新君主未設定卻已開局")
+						}
+						continue
+					}
+					if ss == nil {
+						t.Fatalf("完成所有新君主後未開局：%v", s.Items())
+					}
+					g := ss.G
+					a, b, c, err := g.Tables()
+					if err != nil {
+						t.Fatal(err)
+					}
+					dir := t.TempDir()
+					if err := save.Write(dir, 1, g, "自創君主驗收"); err != nil {
+						t.Fatal(err)
+					}
+					loaded, err := save.Read(dir, 1)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(loaded.Players) != count {
+						t.Fatalf("讀回玩家數 %d，預期 %d", len(loaded.Players), count)
+					}
+					for i, f := range selected {
+						id := state.FactionID(f)
+						p := loaded.Lord(id)
+						if loaded.Players[i] != id || !loaded.IsHuman(id) || p == nil ||
+							int(p.Portrait) != state.CustomLordPortrait[i] || len(loaded.Territory(id)) != 1 {
+							t.Fatalf("第 %d 位讀回身份、肖像或領地錯誤：%+v", i+1, p)
+						}
+					}
+					x, y, z, err := loaded.Tables()
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !bytes.Equal(a, x) || !bytes.Equal(b, y) || !bytes.Equal(c, z) {
+						t.Fatal("存讀後三張遊戲表不同")
+					}
+				}
+			})
+		}
 	}
 }
 

@@ -139,34 +139,37 @@ const CustomLordTemplateFrom = 346
 //	                                      身分 0（君主）、勢力、領地、忠誠 100
 //	州郡表那一郡：所屬 ← faction、主事者 ← 那個人物槽
 //
-// **諸侯表不動**：君主欄本來就指著那一筆，其餘 70 個位元組還沒解
-//（`docs/spec/003`），原封不動比填一個猜的值安全。
+// 諸侯 offset 0 寫成玩家 1，其餘欄位保留（`docs/spec/013` §3.1）。
 func (s *Scenario) WithCustomLord(faction int, c CustomLord) (*Scenario, error) {
 	if err := c.Validate(s); err != nil {
 		return nil, err
 	}
 	slots := s.CustomLordSlots()
-	nth := -1
-	for i, f := range slots {
+	available := false
+	for _, f := range slots {
 		if f == faction {
-			nth = i
+			available = true
 			break
 		}
 	}
-	if nth < 0 {
+	if !available {
 		return nil, fmt.Errorf("state: 諸侯槽 %d 不是空的新君主欄（空的是 %v）",
 			faction, slots)
 	}
-	if nth >= CustomLords {
-		return nil, fmt.Errorf("state: 第 %d 個新君主超過名額 %d", nth+1, CustomLords)
-	}
-
 	mas, sta, gen := s.Tables()
 	who := int(binary.LittleEndian.Uint16(mas[faction*masterSize+2:]))
 	if who < 0 || who >= genCount {
 		return nil, fmt.Errorf("state: 諸侯槽 %d 的君主欄是 %d，不是一個人物槽",
 			faction, who)
 	}
+	// 名額綁在原始範本，不隨前幾位取得領地後的可用清單縮短。
+	nth := who - CustomLordTemplateFrom
+	if nth < 0 || nth >= CustomLords {
+		return nil, fmt.Errorf("state: 人物槽 %d 不是四個新君主範本", who)
+	}
+	// 劇本三到六已有未使用槽的哨兵，ActiveFactions 會採操縱方。
+	// 交出的劇本須包含這位已建立的玩家（原版開局寫值見 spec/019）。
+	binary.LittleEndian.PutUint16(mas[faction*masterSize:], ControlledByPlayer)
 
 	rec := gen[who*generalSize : (who+1)*generalSize]
 	// 姓名：三個造字碼位，Big5 高位在前。

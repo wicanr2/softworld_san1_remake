@@ -174,6 +174,27 @@ loop:
 判準，會把自創君主漏掉**。`state.Scenario.ActiveFactions` 因此改成
 操縱方那一欄填好時就用它。
 
+### 6.1 各劇本的範本索引
+
+`L0`、`[both]`：兩版 DATA2 的六個 BASEMAS 劇本逐項讀回，空的新君主槽
+依次指向人物 346–349，操縱方原值皆為 2。劇本 001／005 有兩個名額，
+002 有一個，003／004／006 有四個。人物索引是諸侯記錄 offset 2 的
+little-endian word，操縱方是 offset 0；它們是資料欄位移，不是程式位址。
+名額、造字碼與肖像因此綁在人物索引，不能隨剩餘空槽重新編號。
+
+來源 DATA2.GRP SHA-256：原版
+`98a2a7139bb4ad796121b7ede6ea854c964c8588a0424ca67fc7555d382428a7`；加強版
+`97d5f9e5ab5cec3fb3aa4360844569ab210e19d69fc4f43beaf2013929755ec6`。
+Go 1.24.13 使用正式 `assets.OpenContainer`／`state.LoadScenario` 讀取；完整
+槽位收據為本機 `workplace/hd-window/player/custom-v1/source-slots.txt`，SHA-256
+`eaab4003779d70f03f3904f0d9e2450cdf7d20cf3dd5139832c8d5482268d91f`。
+
+原版被玩家選走的槽在能力設定完成後，由執行期線性位址 `0x123e5`
+寫諸侯 offset 0 為 1，已有 [019 §1](../spec/019-players.md) 的 `L0`、`[base]`
+證據及多人開局表格 `L1`。本次資料讀取沒有新增加強版該常式的證據。
+準備層契約見 [013 §3.1](../spec/013-custom-lord.md#31-名額綁定與啟用)，
+舊斷言及反例集中在 `CONTEXT.md` R90。
+
 ## 7. 未解
 
 - `0xAC`（`DS:0x5b00`）：讀檔寫進去、存檔讀出來，整個碼段 dump 裡沒有

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""首批四張素材：片頭、新局、選君主、查看人物及自然換年地震。"""
+"""高清素材的正常新局、人物卡、地震與自創君主路徑。"""
 import hashlib
 import ctypes
 import importlib.util
@@ -15,10 +15,22 @@ gui = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gui)
 gui.OUT = gui.ROOT / 'workplace/hd-window/player'
 scene_only = sys.argv[1:] == ['--scene-plus']
-if sys.argv[1:] and not scene_only:
-    raise SystemExit('僅接受 --scene-plus')
+custom_only = sys.argv[1:] == ['--custom']
+portraits_only = sys.argv[1:] == ['--portraits']
+lords_only = sys.argv[1:] == ['--lords']
+if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only):
+    raise SystemExit('僅接受 --scene-plus、--custom、--portraits 或 --lords')
 if scene_only:
     gui.OUT /= 'scene-plus'
+if custom_only:
+    gui.OUT /= 'custom-v1'
+if portraits_only:
+    gui.OUT /= 'portraits-v2'
+if lords_only:
+    gui.OUT /= 'lords-v3'
+pack_dir = gui.ROOT / ('workplace/hd-assets-custom-v1' if custom_only else
+                       'workplace/hd-assets-portraits-v3' if lords_only else
+                       'workplace/hd-assets-portraits-v2' if portraits_only else 'workplace/hd-assets')
 gui.receipt['method'] = 'Linux Xvfb 正常片頭、新局、查看武將與休息換月；未注入人物、日期或事件'
 gui.receipt['scenario'] = '001'
 gui.receipt['difficulty'] = 5
@@ -82,7 +94,7 @@ def portrait(wid, edition, tag, name, x, y):
     original = shot(wid, edition + '-' + tag + '-original')
     theme(wid, True)
     high = shot(wid, edition + '-' + tag + '-hd')
-    master = gui.ROOT / 'workplace/hd-assets' / (name + '.png')
+    master = pack_dir / (name + '.png')
     check(edition + '-' + tag + '-native-pixels', rgb(high, f'256:320:{x*4}:{y*4}') == rgb(master))
     # 右側資料面板的文字、外框及其他原圖，全部留在原座標。
     before = rgb(original, '224:256:408:36,scale=896:1024:flags=neighbor')
@@ -107,9 +119,69 @@ def inspect(wid, pref, index, foreign):
     key(wid, *str(index), 'Return')
 
 
+def custom_rulers(edition):
+    gui.receipt['method'] = 'Linux Xvfb 正常片頭、劇本 001／006、多人自創君主、設定、出現對白及主畫面'
+    gui.receipt['scenarios'] = ['001', '006']
+    plans = [('001', '1', '2', ['Right', 'Right', '3', '4'], ['F011', 'F001']),
+             ('006', '6', '4', ['5', '6', 'Right', '1', '2'], ['F011', 'F001', 'F015', 'F009'])]
+    for scenario, button, players, selections, faces in plans:
+        gui.receipt.setdefault('scenario_key_start', {})[edition + '-' + scenario] = len(gui.receipt.get('keys', []))
+        proc, wid = gui.launch(edition, hd_assets=pack_dir)
+        key(wid, '1', button, players, *selections, '5')
+        for name in faces:
+            tag = scenario + '-custom-' + name
+            portrait(wid, edition, tag + '-setting', name, 536, 64)
+            key(wid, '6')
+            portrait(wid, edition, tag + '-born', name, 552, 66)
+            key(wid, 'space')
+        key(wid, '0', 'Return')
+        portrait(wid, edition, scenario + '-custom-main', 'F011', 536, 116)
+        gui.stop(proc)
+
+
+def portrait_cards(edition):
+    gui.receipt['method'] = 'Linux Xvfb 正常片頭、劇本 001／004、單人曹操、查看郡及檢視將軍'
+    gui.receipt['scenarios'] = ['001', '004']
+    # 以兩版 DATA2 的 game.PickRoster(PickAny, PickByStatus) 分別核對。
+    # 諸葛亮與趙雲在 001 未出場，使用 004 的實際駐軍，不注入人物。
+    plans = [('001', '1', [
+        ('F228', '鮑忠', 296, 7, 2, True),
+        ('F005', '劉備', 0, 8, 1, True),
+        ('F002', '關羽', 1, 8, 2, True),
+        ('F012', '張飛', 2, 8, 3, True),
+        ('F236', '陳珪', 110, 9, 1, True),
+        ('F000', '曹操', 13, 11, 1, False),
+        ('F184', '夏侯惇', 29, 11, 2, False),
+        ('F006', '呂布', 23, 15, 2, True),
+        ('F020', '嚴顏', 217, 38, 2, True)]),
+        ('004', '4', [('F004', '諸葛亮', 6, 28, 2, True),
+                       ('F013', '趙雲', 3, 28, 3, True)])]
+    if lords_only:
+        # 正式還原 AI 在玩家第一次停點前已移動原版孫權；加強版留在 23。
+        sun_pref = 21 if edition == 'base' else 23
+        plans = [('001', '1', [('F053', '袁紹', 16, 3, 1, True),
+                               ('F077', '董卓', 14, 14, 1, True),
+                               ('F041', '孫堅', 15, 31, 1, True)]),
+                 ('004', '4', [('F008', '孫權', 56, sun_pref, 1, True)])]
+    for scenario, button, cards in plans:
+        tag = edition + '-' + scenario
+        gui.receipt.setdefault('scenario_key_start', {})[tag] = len(gui.receipt.get('keys', []))
+        proc, wid = gui.launch(edition, hd_assets=pack_dir, tag=tag)
+        key(wid, '1', button, '1', '2', '5', '0', 'Return')
+        for name, label, person, pref, choice, foreign in cards:
+            gui.receipt.setdefault('card_plan', []).append({
+                'edition': edition, 'scenario': scenario, 'key': name,
+                'name': label, 'general': person, 'prefecture': pref,
+                'choice': choice, 'foreign': foreign})
+            inspect(wid, pref, choice, foreign)
+            portrait(wid, edition, scenario + '-card-' + name, name, 536, 68)
+            key(wid, 'space', 'Return')
+        gui.stop(proc)
+
+
 def capture_quake(wid, edition):
     theme(wid, True)
-    target = rgb(gui.ROOT / 'workplace/hd-assets/SCG01.png')
+    target = rgb(pack_dir / 'SCG01.png')
     deadline = time.monotonic() + 220
     steps = 0
     while time.monotonic() < deadline:
@@ -151,7 +223,7 @@ try:
     gui.start(['Xvfb', ':99', '-screen', '0', '2800x1900x24', '-nolisten', 'tcp'], 'xvfb')
     gui.wait(['xdotool', 'getdisplaygeometry'])
     gui.receipt['binary_sha256'] = hashlib.sha256((gui.OUT / 'san1-window-check').read_bytes()).hexdigest()
-    gui.receipt['pack_sha256'] = hashlib.sha256((gui.ROOT / 'workplace/hd-assets/manifest.json').read_bytes()).hexdigest()
+    gui.receipt['pack_sha256'] = hashlib.sha256((pack_dir / 'manifest.json').read_bytes()).hexdigest()
     gui.receipt['tool_sha256'] = {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
         for path in [Path(__file__), Path(__file__).with_name('verify-window-inner.py'),
                      Path(__file__).with_name('verify-hd-player.sh')]}
@@ -161,6 +233,12 @@ try:
         for name in ['DATA1.GRP', 'DATA2.GRP', 'DATA3.GRP']}
     for edition in (['plus'] if scene_only else ['base', 'plus']):
         gui.receipt.setdefault('edition_key_start', {})[edition] = len(gui.receipt.get('keys', []))
+        if custom_only:
+            custom_rulers(edition)
+            continue
+        if portraits_only or lords_only:
+            portrait_cards(edition)
+            continue
         proc, wid = gui.launch(edition)
         if scene_only:
             gui.receipt['method'] = 'Linux Xvfb 正常片頭、劇本 001、單人董卓、休息換月及地震'
