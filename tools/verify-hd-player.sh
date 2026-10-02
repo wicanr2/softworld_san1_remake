@@ -10,7 +10,8 @@ case "${1:-}" in
   --portraits) target=workplace/hd-window/player/portraits-v2 ;;
   --lords) target=workplace/hd-window/player/lords-v3 ;;
   --lords-all) target=workplace/hd-window/player/lords-v4 ;;
-  *) echo "用法：bash tools/verify-hd-player.sh [--scene-plus|--custom|--portraits|--lords|--lords-all]" >&2; exit 2 ;;
+  --commanders) target=workplace/hd-window/player/commanders-v6 ;;
+  *) echo "用法：bash tools/verify-hd-player.sh [--scene-plus|--custom|--portraits|--lords|--lords-all|--commanders]" >&2; exit 2 ;;
 esac
 [[ $# -le 1 ]] || exit 2
 pack=workplace/hd-assets
@@ -19,6 +20,7 @@ case "${1:-}" in
   --portraits) pack=workplace/hd-assets-portraits-v2 ;;
   --lords) pack=workplace/hd-assets-portraits-v3 ;;
   --lords-all) pack=workplace/hd-assets-portraits-v4 ;;
+  --commanders) pack=workplace/hd-assets-portraits-v6 ;;
 esac
 for dir in "$ROOT" "$ORIG" "$ROOT/workplace/hd-window" "$ROOT/workplace/hd-assets" \
   "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
@@ -35,6 +37,9 @@ if [[ "${1:-}" == --lords ]]; then
 fi
 if [[ "${1:-}" == --lords-all ]]; then
   test -d "$ROOT/workplace/hd-assets-portraits-v4" || { echo '缺少本機肖像素材包 v4' >&2; exit 2; }
+fi
+if [[ "${1:-}" == --commanders ]]; then
+  test -d "$ROOT/workplace/hd-assets-portraits-v6" || { echo '缺少本機肖像素材包 v6' >&2; exit 2; }
 fi
 common=(--rm --network none --memory 3g --cpus 2 --pids-limit 256
   --log-opt max-size=10m --log-opt max-file=3 -u "$(id -u):$(id -g)"
@@ -56,9 +61,12 @@ timeout 3m docker run "${common[@]}" --name san1-hd-player-build \
     go build -trimpath -o "$target/san1-window-check" ./cmd/san1
     go run ./cmd/san1dump -root /orig/三國演義 -screen title -png "$target/title-reference.png" >/dev/null
     python3 -m py_compile tools/verify-window-inner.py tools/verify-hd-player-inner.py
+    cp tools/verify-hd-player.sh tools/verify-hd-player-inner.py tools/verify-window-inner.py "$target/"
   '
 gui_limit=12m
 # 四十張卡、十次新局及逐次選單畫面同步，仍設外層上限。
 if [[ "${1:-}" == --lords-all ]]; then gui_limit=28m; fi
+# 二十張卡、八次新局；十二分鐘批次在最後收尾時逾時。
+if [[ "${1:-}" == --commanders ]]; then gui_limit=18m; fi
 timeout "$gui_limit" docker run "${common[@]}" --name san1-hd-player-gui \
   --entrypoint python3 eob-audio-capture:20260922-r2 tools/verify-hd-player-inner.py "$@"

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import threading
 import time
 
 ROOT = Path('/src')
@@ -153,14 +154,42 @@ def launch(edition, missing=False, hd_assets=None, tag=None):
     move(wid, 320, 200)
     reference = rgb(OUT / 'title-reference.png', '568:160:40:27')
     deadline = time.monotonic() + 45
-    while time.monotonic() < deadline:
-        path = shot(wid, tag + '-boot')
-        sample = rgb(path, '568:160:40:27')
-        if len(sample) == len(reference) and sum(a != b for a, b in zip(sample, reference)) < len(reference) // 100:
-            break
-        key(wid, 'space')
-    else:
-        raise RuntimeError('片頭未進入正常主選單')
+    stop_input = threading.Event()
+    input_errors = []
+    receipt.setdefault('boot_input', {})[tag] = {'method': 'Space 按下／放開各 80 ms，與抓圖分開；主選單辨識後停止', 'count': 0}
+    run(['xdotool', 'windowfocus', '--sync', wid])
+
+    def input_stream():
+        try:
+            while not stop_input.is_set() and time.monotonic() < deadline:
+                run(['xdotool', 'keydown', '--clearmodifiers', 'space'])
+                time.sleep(.08)
+                run(['xdotool', 'keyup', 'space'])
+                receipt.setdefault('keys', []).append('space')
+                receipt['boot_input'][tag]['count'] += 1
+                stop_input.wait(.08)
+        except Exception as error:
+            input_errors.append(str(error))
+        finally:
+            run(['xdotool', 'keyup', 'space'])
+
+    worker = threading.Thread(target=input_stream, daemon=True)
+    worker.start()
+    try:
+        while time.monotonic() < deadline:
+            if input_errors:
+                raise RuntimeError('片頭輸入失敗：' + input_errors[0])
+            path = shot(wid, tag + '-boot')
+            sample = rgb(path, '568:160:40:27')
+            if len(sample) == len(reference) and sum(a != b for a, b in zip(sample, reference)) < len(reference) // 100:
+                break
+        else:
+            raise RuntimeError('片頭未進入正常主選單')
+    finally:
+        stop_input.set()
+        worker.join(timeout=5)
+        if worker.is_alive():
+            raise RuntimeError('片頭輸入程序未停止')
     receipt.setdefault('launch_seconds', {})[tag] = round(time.monotonic() - t, 3)
     dimensions(wid, tag + '-hidden-default', 640, 408)
     return proc, wid

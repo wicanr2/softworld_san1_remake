@@ -19,8 +19,9 @@ custom_only = sys.argv[1:] == ['--custom']
 portraits_only = sys.argv[1:] == ['--portraits']
 lords_only = sys.argv[1:] == ['--lords']
 lords_all_only = sys.argv[1:] == ['--lords-all']
-if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only or lords_all_only):
-    raise SystemExit('僅接受 --scene-plus、--custom、--portraits、--lords 或 --lords-all')
+commanders_only = sys.argv[1:] == ['--commanders']
+if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only or lords_all_only or commanders_only):
+    raise SystemExit('僅接受 --scene-plus、--custom、--portraits、--lords、--lords-all 或 --commanders')
 if scene_only:
     gui.OUT /= 'scene-plus'
 if custom_only:
@@ -31,7 +32,10 @@ if lords_only:
     gui.OUT /= 'lords-v3'
 if lords_all_only:
     gui.OUT /= 'lords-v4'
+if commanders_only:
+    gui.OUT /= 'commanders-v6'
 pack_dir = gui.ROOT / ('workplace/hd-assets-custom-v1' if custom_only else
+                       'workplace/hd-assets-portraits-v6' if commanders_only else
                        'workplace/hd-assets-portraits-v4' if lords_all_only else
                        'workplace/hd-assets-portraits-v3' if lords_only else
                        'workplace/hd-assets-portraits-v2' if portraits_only else 'workplace/hd-assets')
@@ -196,6 +200,20 @@ def portrait_cards(edition):
                                ('F024', '金旋', 173, 32, 3, True)]),
                  ('004', '4', [('F229', '曹丕', 135, 13, 3, False)]),
                  ('005', '5', [('F119', '孟獲', 253, 40, 1, True)])]
+    if commanders_only:
+        gui.receipt['method'] = 'Linux Xvfb 正常片頭、劇本 001–004、單人曹操、查看郡及檢視十位軍師／武將'
+        gui.receipt['scenarios'] = ['001', '002', '003', '004']
+        # 兩版正式新局第一次玩家停點的 PickAny／PickByStatus 清單相同。
+        plans = [('001', '1', [('F111', '逢紀', 48, 4, 6, True),
+                               ('F155', '夏侯淵', 30, 11, 3, False)]),
+                 ('002', '2', [('F210', '王楷', 313, 11, 7, True),
+                               ('F146', '典韋', 74, 15, 8, False),
+                               ('F014', '周瑜', 96, 22, 2, True)]),
+                 ('003', '3', [('F010', '司馬懿', 157, 13, 2, False),
+                               ('F156', '許褚', 88, 13, 9, False),
+                               ('F254', '陸遜', 152, 23, 1, True)]),
+                 ('004', '4', [('F007', '龐統', 7, 28, 6, True),
+                               ('F062', '黃忠', 5, 31, 2, True)])]
     for scenario, button, cards in plans:
         tag = edition + '-' + scenario
         gui.receipt.setdefault('scenario_key_start', {})[tag] = len(gui.receipt.get('keys', []))
@@ -269,7 +287,7 @@ try:
         if custom_only:
             custom_rulers(edition)
             continue
-        if portraits_only or lords_only or lords_all_only:
+        if portraits_only or lords_only or lords_all_only or commanders_only:
             portrait_cards(edition)
             continue
         proc, wid = gui.launch(edition)
