@@ -13,7 +13,7 @@ audio_image="${SAN1_AUDIO_IMAGE:-eob-audio-capture:20260922-r2}"
 docker image inspect "$build_image" "$audio_image" >/dev/null
 common=(--rm --network none --memory 3g --cpus 2 --pids-limit 256
   --log-opt max-size=10m --log-opt max-file=3 -u "$uid"
-  -v "$ROOT:/src" -v "$ORIG:/orig:ro" -w /src)
+  -v "$ROOT:/src" -v "$ORIG:/src/org_game:ro" -v "$ORIG:/orig:ro" -w /src)
 timeout 3m docker run "${common[@]}" --name san1-music-verify-build \
   -e GOCACHE=/src/workplace/gocache -e GOMODCACHE=/src/workplace/gomodcache \
   -e GOPROXY=file:///src/workplace/gomodcache/cache/download -e GOSUMDB=off -e GOWORK=off \

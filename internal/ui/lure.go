@@ -37,7 +37,7 @@ func DrawLureFlash(c *Canvas, ab *ArtBattle, at battle.Hex, tile int) {
 			if px < 0 || py < 0 || px >= c.Img.Bounds().Dx() || py >= c.Img.Bounds().Dy() {
 				continue
 			}
-			c.Img.SetRGBA(px, py, assets.EGAPalette[im.Pix[yy*im.W+xx]&15])
+			c.setClipped(px, py, assets.EGAPalette[im.Pix[yy*im.W+xx]&15])
 		}
 	}
 }

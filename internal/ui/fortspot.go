@@ -54,7 +54,7 @@ func DrawArtFortSpot(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field, 
 				if p == 0 || px >= c.Img.Rect.Dx() || py >= c.Img.Rect.Dy() {
 					continue
 				}
-				c.Img.SetRGBA(px, py, assets.EGAPalette[(egaIndexOf(c.Img.RGBAAt(px, py))^p)&15])
+				c.setClipped(px, py, assets.EGAPalette[(egaIndexOf(c.Img.RGBAAt(px, py))^p)&15])
 			}
 		}
 	}

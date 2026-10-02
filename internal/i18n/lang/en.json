@@ -712,6 +712,13 @@
   "title.loadPlate": "Load",
   "title.lordLine": "%d. %s (%d pref.)",
   "title.lordPrompt": "Player %d, pick (1-%d):",
+  "title.mainKai": "3. Kai font",
+  "title.mainLi": "4. Li font",
+  "title.mainLoad": "2. Load game",
+  "title.mainMusic": "5. Music",
+  "title.mainNew": "1. New game",
+  "title.mainPlate": "Menu",
+  "title.mainQuit": "6. Exit",
   "title.music": "Music",
   "title.musicPlate": "Music",
   "title.newLord": "New lord",
@@ -777,5 +784,13 @@
   "view.treasury": "Lord's Treasures",
   "weather.clear": "Clear",
   "weather.rainy": "Rain",
-  "weather.windy": "Windy"
+  "weather.windy": "Windy",
+  "window.ai": "AI",
+  "window.battle": "In battle",
+  "window.enhanced": "Enhanced %d",
+  "window.hd": "B HD 4x",
+  "window.hdMissing": "HD unavailable",
+  "window.language": "Language",
+  "window.original": "Original",
+  "window.theme": "Theme"
 }

@@ -712,6 +712,13 @@
   "title.loadPlate": "載入進度",
   "title.lordLine": "%d. %s（%d 郡）",
   "title.lordPrompt": "第%d位,請選擇(1-%d):",
+  "title.mainKai": "3. 使用楷書字",
+  "title.mainLi": "4. 使用隸書字",
+  "title.mainLoad": "2. 載入舊進度",
+  "title.mainMusic": "5. 音樂欣賞",
+  "title.mainNew": "1. 開始新遊戲",
+  "title.mainPlate": "主選擇單",
+  "title.mainQuit": "6. 回作業系統",
   "title.music": "音樂欣賞",
   "title.musicPlate": "音樂欣賞",
   "title.newLord": "新君主",
@@ -777,5 +784,13 @@
   "view.treasury": "君主物品",
   "weather.clear": "晴",
   "weather.rainy": "下雨",
-  "weather.windy": "刮風"
+  "weather.windy": "刮風",
+  "window.ai": "AI",
+  "window.battle": "戰役中",
+  "window.enhanced": "強化 %d",
+  "window.hd": "B 高清 4×",
+  "window.hdMissing": "尚無高清素材",
+  "window.language": "語言",
+  "window.original": "原貌",
+  "window.theme": "Theme"
 }

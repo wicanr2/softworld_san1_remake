@@ -16,7 +16,6 @@ import "image"
 // 差異的範圍」是**整個已蓋區**（第 5 步 y80–99，不是只有新增的 y96–99），
 // 逐條露出的話那個範圍只會是新增的那一條。
 
-
 // WipeKind 是四種方向。編號就是原版 `RND(4)` 的結果。
 type WipeKind int
 
@@ -49,7 +48,8 @@ type Wipe struct {
 	From *image.RGBA
 	To   *image.RGBA
 
-	n int // 已經走了幾步
+	n            int // 已經走了幾步
+	afterAdvance func(image.Rectangle, image.Rectangle)
 }
 
 // vertical 回「這個方向走的是列」。
@@ -79,7 +79,7 @@ func (w *Wipe) Done() bool { return w.n >= w.Steps() }
 // Reveal 是第 n 步（1 起算）要**寫進去**的那一塊。
 //
 // 分開成一個函式是為了測得到：**動畫在畫面上對不對，測試看不到**
-//（`CLAUDE.md` §7 第 13 條），但「第幾步動到哪一塊」量得出來——
+// （`CLAUDE.md` §7 第 13 條），但「第幾步動到哪一塊」量得出來——
 // 那正好是對拍量到的 bounding box。
 func (w *Wipe) Reveal(n int) image.Rectangle {
 	r := w.Rect
@@ -125,6 +125,10 @@ func (w *Wipe) Advance(dst *image.RGBA) bool {
 			}
 			dst.SetRGBA(x, y, w.To.RGBAAt(sx, sy))
 		}
+	}
+	if w.afterAdvance != nil {
+		sp := from.Min.Add(r.Min.Sub(to.Min))
+		w.afterAdvance(r, image.Rectangle{Min: sp, Max: sp.Add(r.Size())})
 	}
 	return true
 }

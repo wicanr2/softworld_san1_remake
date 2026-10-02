@@ -235,7 +235,7 @@ func DrawMarch(c *Canvas, m *March) {
 			if x < 0 || y < 0 || x >= c.Img.Bounds().Dx() || y >= c.Img.Bounds().Dy() {
 				continue
 			}
-			c.Img.SetRGBA(x, y, assets.EGAPalette[m.Screen.At(x, y)&15])
+			c.setClipped(x, y, assets.EGAPalette[m.Screen.At(x, y)&15])
 		}
 	}
 }

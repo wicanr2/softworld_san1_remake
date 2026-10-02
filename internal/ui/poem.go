@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image"
-	"image/draw"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/opening"
@@ -28,8 +27,8 @@ func DrawPoem(c *Canvas, im *assets.Image) {
 // DrawImage 把一整張 640×408 的圖貼滿畫布。開場的三英圖
 // （`assets.TitleArt`）就只是一張圖，沒有疊字。
 func DrawImage(c *Canvas, im *assets.Image) {
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{})
 }
 
 // DrawPages 畫片頭兩頁裡顯示中的那一頁，顏色照當時的屬性暫存器
@@ -42,7 +41,7 @@ func DrawPages(c *Canvas, p *opening.Pages) {
 	vis := p.Visible()
 	for y := 0; y < vis.H && y < c.Img.Bounds().Dy(); y++ {
 		for x := 0; x < vis.W && x < c.Img.Bounds().Dx(); x++ {
-			c.Img.SetRGBA(x, y, pal[vis.Pix[y*vis.W+x]&15])
+			c.setClipped(x, y, pal[vis.Pix[y*vis.W+x]&15])
 		}
 	}
 }

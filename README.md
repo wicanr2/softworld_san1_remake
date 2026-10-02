@@ -113,7 +113,16 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 
 AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104) 推進：
 保留原版版面，採 B 寫實手繪。已完成[兩版素材盤點](docs/formats/04-asset-inventory.md#6-hd-兩版盤點)
-及小量版面試作；[高清規格](docs/spec/021-hd-art.md) 仍是 DRAFT，正式渲染尚未接入。
+及首批三張肖像、一張場景的 4× 渲染接入；全批素材仍在製作中。
+
+每次啟動預設原貌，視窗上方的選項列預設隱藏。按 Esc 或把滑鼠移到上緣即可顯示，
+下方保留完整遊戲畫面。選項列可即時切換繁中／英文／日文、原貌／B 高清，以及
+同版本還原 AI／強化 AI 1–5。滑鼠展開後移開會收起；Esc 展開後再按 Esc 收起。
+遊戲內返回或取消使用 Shift＋Esc。AI 設定沿用既有存檔欄位，外觀每次啟動回到原貌。
+
+高清模式需提供符合[高清規格](docs/spec/021-hd-art.md)的素材包，以 `-hd-assets <目錄>`
+指定，或放在執行檔旁的 `hd-assets/`。缺包時仍可玩原貌；缺圖或錯誤素材逐項回退。
+素材準備與正式視窗驗證入口見[首批接入與驗收](docs/spec/021-hd-art.md#65-首批接入與驗收入口)。
 
 | 里程碑 | 狀態 |
 |---|---|

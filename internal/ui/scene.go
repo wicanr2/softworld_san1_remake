@@ -49,7 +49,7 @@ func SceneRect(x, y int) image.Rectangle {
 // NewSceneWipe 造「把場景圖拉進 (x, y)」的那一段拉幕：To 是一張與畫布
 // 同尺寸、只在那一塊放著場景圖的圖，其餘的像素不會被搬到（`Wipe.Advance`
 // 只搬 Rect 裡的）。scene 為 nil 回 nil。
-func NewSceneWipe(c *Canvas, scene *assets.Image, kind WipeKind, x, y int) *Wipe {
+func NewSceneWipe(c *Canvas, scene *assets.Image, kind WipeKind, x, y int, prepared ...*image.RGBA) *Wipe {
 	if scene == nil || c == nil {
 		return nil
 	}
@@ -61,7 +61,22 @@ func NewSceneWipe(c *Canvas, scene *assets.Image, kind WipeKind, x, y int) *Wipe
 			}
 		}
 	}
-	return &Wipe{Kind: kind, Rect: SceneRect(x, y).Intersect(to.Bounds()), From: c.Img, To: to}
+	w := &Wipe{Kind: kind, Rect: SceneRect(x, y).Intersect(to.Bounds()), From: c.Img, To: to}
+	if c.HD != nil {
+		high := c.HighImage(scene)
+		if len(prepared) > 0 && prepared[0] != nil {
+			high = prepared[0]
+		}
+		baseOps := append([]*highOp(nil), c.highOps...)
+		w.afterAdvance = func(dst, src image.Rectangle) {
+			c.highOps = baseOps
+			c.trackRect(dst)
+			if high != nil {
+				c.addHigh(high, dst, src.Min.Sub(image.Pt(x, y)).Mul(4))
+			}
+		}
+	}
+	return w
 }
 
 // DrawScene 把場景圖拉進 (x, y) 走到第 step 步（1 起算）的樣子畫在畫布上；

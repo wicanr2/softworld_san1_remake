@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image"
-	"image/draw"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 )
@@ -53,8 +52,8 @@ func DrawCredits(c *Canvas, cr *assets.Credits, scroll int) {
 			blitCreditLine(im, cr, ln, (assets.ScreenW-ln.W)/2, y)
 		}
 	}
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{})
 }
 
 // blitCreditLine 畫一條字幕：**色號 0 當透明**（字條是黑底彩字），
@@ -89,6 +88,6 @@ func DrawCreditHall(c *Canvas, cr *assets.Credits) {
 	if cr != nil && cr.Hall != nil {
 		im.Blit(cr.Hall, 0, CreditsTop)
 	}
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{})
 }

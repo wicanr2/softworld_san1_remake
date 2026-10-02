@@ -152,11 +152,17 @@ type app struct {
 	// 播完才到主選單。
 	opening    *openingPlayer
 	openingArt *opening.Art
+
+	windowBar *windowBar
+	hdTheme   bool
 }
 
 func (a *app) Update() error {
 	if a.quit {
 		return ebiten.Termination
+	}
+	if a.updateWindowBar() {
+		return nil
 	}
 	// iter.Pull 必須在之後呼叫 next 的執行緒狀態下建立。Ebiten 的主迴圈
 	// 會從初始化時的鎖定執行緒切到更新執行緒，因此在第一幀才啟動片頭。
@@ -1473,20 +1479,20 @@ func (a *app) Draw(dst *ebiten.Image) {
 	// **拉幕要在 Draw 這一層起頭，不能在 Update。** 場景圖那一格排進來
 	// 的那一幀，畫布上還是**上一幀畫的舊畫面**；先照沒有它的樣子畫一次
 	// 當底，再從那張底把場景圖一步一步拉進來。
-	if a.wipe == nil {
+	if a.wipe == nil && !a.barVisible() {
 		a.startWipe()
 	}
 	if a.wipe != nil {
-		a.screen.WritePixels(a.canvas.Img.Pix)
-		dst.DrawImage(a.screen, nil)
+		a.uploadGame()
+		a.drawWindow(dst)
 		return
 	}
 	if a.dirty {
 		a.paint()
-		a.screen.WritePixels(a.canvas.Img.Pix)
+		a.uploadGame()
 		a.dirty = false
 	}
-	dst.DrawImage(a.screen, nil)
+	a.drawWindow(dst)
 }
 
 // paint 把目前的狀態畫到畫布上。
@@ -1655,7 +1661,12 @@ func (a *app) updateBattle() error {
 }
 
 func (a *app) Layout(int, int) (int, int) {
-	return ui.Cols * ui.CellW, ui.Rows * ui.CellH
+	b := a.canvas.Img.Bounds()
+	h := b.Dy()
+	if a.barVisible() {
+		h += ui.WindowBarHeight
+	}
+	return b.Dx() * a.displayScale(), h * a.displayScale()
 }
 
 func main() {
@@ -1676,6 +1687,7 @@ func main() {
 	difficulty := flag.Int("difficulty", 5, "難度；上限看版本，原版 1..10、加強版 1..20")
 	scale := flag.Int("scale", 2, "視窗放大倍率（整數倍，不做非整數縮放）")
 	lang := flag.String("lang", "zh-Hant", "介面語言：zh-Hant／en／ja")
+	hdAssets := flag.String("hd-assets", "", "B 高清素材包目錄；預設原貌，由視窗選項列切換")
 	// 探測音訊裝置的子行程（`audioprobe.go`）。要在 `flag.Parse` 之前攔下來，
 	// 而且不能碰任何 Ebiten 的東西——那會把 oto 唯一的名額用掉。
 	if len(os.Args) == 2 && os.Args[1] == probeAudioArg {
@@ -1781,7 +1793,7 @@ func main() {
 				fmt.Fprintln(os.Stderr, "san1：主選單的素材讀不進來：", err)
 				titleScreen = nil
 			}
-			if art, err = ui.NewArtScreen(c3, c1); err != nil {
+			if art, err = ui.NewArtScreen(c3, c1, c); err != nil {
 				fmt.Fprintln(os.Stderr, "san1：原版素材讀不進來，改用文字版面：", err)
 				art = nil
 			}
@@ -1827,6 +1839,23 @@ func main() {
 		art:     art,
 	}
 	a.canvas.SetSmallFace(small)
+	if *hdAssets == "" {
+		if exe, err := os.Executable(); err == nil {
+			*hdAssets = filepath.Join(filepath.Dir(exe), "hd-assets")
+		}
+	}
+	if art != nil {
+		c3, _ := openContainer(*root, "DATA3")
+		pack, err := ui.LoadHDPack(*hdAssets, string(ed), map[string]*assets.Container{"DATA3": c3, "DATA2": c})
+		if err == nil {
+			a.canvas.HD = pack
+			for _, why := range pack.Warnings {
+				fmt.Fprintln(os.Stderr, "san1 HD:", why)
+			}
+		}
+	}
+	a.windowBar = newWindowBar(face, small)
+	a.windowBar.mode, a.windowBar.orders = brain.Mode(), g.Options.AIOrders()
 	// 主選單那兩項字型（Issue #71）與存檔裡記的那一套。
 	a.fontDir = filepath.Dir(*fontPath)
 	if s != nil {
@@ -1859,7 +1888,17 @@ func main() {
 	// 而 `-title=false` 是給截圖與腳本用的。
 	if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
 		a.newMenu = func() *menu.Screen {
-			m := menu.New(c, ed, ai.Mode(*aiMode), *saveDir, a.jb.Len())
+			mode := ai.Mode(*aiMode)
+			if a.s != nil {
+				mode = a.s.Brain.Mode()
+			}
+			if a.s == nil && a.windowBar != nil {
+				mode = a.windowBar.mode
+			}
+			m := menu.New(c, ed, mode, *saveDir, a.jb.Len())
+			if a.windowBar != nil && a.windowBar.aiExplicit {
+				_ = m.SetAI(mode, a.windowBar.orders)
+			}
 			m.OnFont = a.setFont
 			return m
 		}
@@ -1882,6 +1921,7 @@ func main() {
 		*scale = 1
 	}
 	ebiten.SetWindowSize(cw**scale, ch**scale)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	lord := g.Lord(state.FactionID(f))
 	title := "三國演義 remake"
 	if lord != nil {
@@ -2053,7 +2093,15 @@ func (a *app) startWipe() {
 		return
 	}
 	a.paint()
-	a.wipe = ui.NewSceneWipe(a.canvas, pic, kind, x, y)
+	var high *image.RGBA
+	if a.s != nil {
+		if b := a.s.Bubble(); b != nil && b.WipeIn {
+			if who := a.s.G.General(b.Speaker); who != nil {
+				high = a.canvas.SearchHighScene(a.art, int(who.Portrait))
+			}
+		}
+	}
+	a.wipe = ui.NewSceneWipe(a.canvas, pic, kind, x, y, high)
 	a.scenePlayed = key
 	a.dirty = true
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
@@ -51,7 +50,7 @@ type LordPickSlot struct {
 // 還沒被訊息常式清過（「請問有幾人玩」那一問，`0x12072`），內部留著底圖。
 func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, sel int, prompt string, cal game.Calendar) {
 	im := a.Compose(g, 0)
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{})
 	drawArtDate(c, g.Date, cal)
 
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
@@ -166,7 +165,7 @@ var customLineInk = [6]int{10, 13, 14, 14, 14, 12}
 // （原版靠數字鍵、沒有反白；remake 用方向鍵時把那一行畫成白色，remake 差異）。
 func DrawCustomLord(c *Canvas, a *ArtScreen, g *game.State, faction, portrait int, name string, lines [6]string, sel int, prompt [2]string, cal game.Calendar) {
 	im := a.Compose(g, 0)
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{})
 	drawArtDate(c, g.Date, cal)
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
 	if a.havePanel {
@@ -220,7 +219,7 @@ const (
 // DrawNewLordBorn 畫「新君主出現!!」那一格：面板框、提示、新君主的訊息框。
 func DrawNewLordBorn(c *Canvas, a *ArtScreen, g *game.State, portrait int, name string, colour int, cal game.Calendar) {
 	im := a.Compose(g, 0)
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{})
 	drawArtDate(c, g.Date, cal)
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
 	if a.havePanel {

@@ -48,6 +48,10 @@ type Canvas struct {
 	// 貼著右緣的那一欄（文字版的資料欄與指令欄）一溢出就是在這裡被丟掉，
 	// 累計起來才問得到「這一畫面有沒有字被截」。
 	Clipped int
+
+	HD         *HDPack
+	highOps    []*highOp
+	highOutput *image.RGBA
 }
 
 // SetFace 換一份字模（主選單的「使用楷書字／使用隸書字」，Issue #71）。
@@ -82,7 +86,7 @@ func NewCanvasPx(w, h int, face *font.Face) *Canvas {
 }
 
 // 小字級的尺寸：X11 misc-fixed 6×10，一字 6 像素寬、10 像素高
-//（HEX 裡存成 8 寬，右邊兩行是空的）。
+// （HEX 裡存成 8 寬，右邊兩行是空的）。
 const (
 	SmallW = 6
 	SmallH = 10
@@ -123,7 +127,7 @@ func (c *Canvas) DrawSmallTextPx(x, y int, s string, fg color.RGBA) int {
 				}
 				xx, yy := x+gx, y+gy
 				if xx >= b.Min.X && xx < b.Max.X && yy >= b.Min.Y && yy < b.Max.Y {
-					c.Img.SetRGBA(xx, yy, fg)
+					c.setClipped(xx, yy, fg)
 				}
 			}
 		}
@@ -137,7 +141,7 @@ func (c *Canvas) Fill(col color.RGBA) {
 	b := c.Img.Bounds()
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
-			c.Img.SetRGBA(x, y, col)
+			c.setClipped(x, y, col)
 		}
 	}
 }
@@ -291,7 +295,7 @@ func (c *Canvas) drawRuneScaledPx(px, py int, r rune, fg color.RGBA, sx, sy int)
 					if xx < 0 || xx >= c.Img.Bounds().Dx() {
 						continue
 					}
-					c.Img.SetRGBA(xx, yy, fg)
+					c.setClipped(xx, yy, fg)
 				}
 			}
 		}
@@ -330,7 +334,7 @@ func (c *Canvas) DrawTextRotatedPx(x, y int, s string, fg color.RGBA) int {
 				// 順時針 90°：字模的 (gx, gy) → 畫布的 (x + 列高−1−列, y + 行)。
 				xx, yy := x+CellH-1-(gy+off), y+gx
 				if xx >= b.Min.X && xx < b.Max.X && yy >= b.Min.Y && yy < b.Max.Y {
-					c.Img.SetRGBA(xx, yy, fg)
+					c.setClipped(xx, yy, fg)
 				}
 			}
 		}
@@ -361,6 +365,7 @@ func (c *Canvas) setClipped(x, y int, col color.RGBA) {
 		return
 	}
 	c.Img.SetRGBA(x, y, col)
+	c.trackPixel(x, y)
 }
 
 // InkAt 回傳這一格裡有幾個實心像素。
@@ -424,7 +429,7 @@ func (c *Canvas) DrawRuneBoxDitherPx(px, py, w, h int, r rune, a, b color.RGBA) 
 			if (xx+yy)%2 == 1 {
 				fg = a
 			}
-			c.Img.SetRGBA(xx, yy, fg)
+			c.setClipped(xx, yy, fg)
 		}
 	}
 }

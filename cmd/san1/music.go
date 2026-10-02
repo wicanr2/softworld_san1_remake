@@ -101,7 +101,13 @@ func (j *jukebox) SetSilent(v bool) {
 	if j == nil || j.stream == nil {
 		return
 	}
-	j.stream.SetSilent(v)
+	// 已合成的樣本仍在播放器緩衝裡，僅把來源設為零會留下尾音。
+	// 在混音端控制音量，來源照常推進，恢復時接續目前位置。
+	if v {
+		j.player.SetVolume(0)
+	} else {
+		j.player.SetVolume(1)
+	}
 }
 
 // Next 是下一首的編號。

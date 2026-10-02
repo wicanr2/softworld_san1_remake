@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
@@ -57,7 +56,7 @@ type ArtScreen struct {
 	// prefBox 是挑郡清單的外框（`0x1d4ec` 傳樣式 8 → `SIDED`）。
 	prefBox assets.SideFrame
 
-	// scenes 是 `SCG30`／`SCG31` 所在的容器（`DATA1`）；`SCG01`–`29` 與肖像
+	// scenes 是 `SCG30`／`SCG31` 所在的容器（`DATA2`）；`SCG01`–`29` 與肖像
 	// 同在 `DATA3`（`docs/formats/04`）。
 	scenes *assets.Container
 
@@ -70,12 +69,15 @@ type ArtScreen struct {
 //
 // data1 給的是州郡的填色圖樣（`EGAFILL.PAL`）；可以是 nil，那就退回
 // remake 自己的色號。
-func NewArtScreen(data3, data1 *assets.Container) (*ArtScreen, error) {
+func NewArtScreen(data3, data1 *assets.Container, data2 ...*assets.Container) (*ArtScreen, error) {
 	bg, err := assets.MainScreen(data3)
 	if err != nil {
 		return nil, err
 	}
-	a := &ArtScreen{base: bg, faces: data3, scenes: data1}
+	a := &ArtScreen{base: bg, faces: data3}
+	if len(data2) > 0 {
+		a.scenes = data2[0]
+	}
 	if data1 != nil {
 		if f, err := assets.FillPatterns(data1); err == nil {
 			a.fills = &f
@@ -139,7 +141,7 @@ func (a *ArtScreen) Portrait(n int) *assets.Image {
 }
 
 // Scene 取一張場景圖 `SCG%02d.IMG`（176×96，`docs/formats/07` §3）；
-// 1–29 在 `DATA3`、30–31 在 `DATA1`。沒有就回 nil。
+// 1–29 在 `DATA3`、30–31 在 `DATA2`。沒有就回 nil。
 func (a *ArtScreen) Scene(n int) *assets.Image {
 	name := fmt.Sprintf("SCG%02d.IMG", n)
 	for _, c := range []*assets.Container{a.faces, a.scenes} {
@@ -299,8 +301,13 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 			im.Blit(a.frame[3], artFrameX+72, artPortraitY) // 右
 		}
 	}
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{})
+	if upper == artUpperStatus {
+		if who := g.Governor(sel); who != nil {
+			c.drawHigh(a.Portrait(int(who.Portrait)), artPortraitX, artPortraitY)
+		}
+	}
 
 	// 年月直排在左側直條上，與原版一樣——**最後一格是季節**
 	// （原版寫「建安二年八月秋」，七個字）。
@@ -855,11 +862,11 @@ func NewTitleScreen(data3 *assets.Container, data1 ...*assets.Container) (*Title
 	return ts, nil
 }
 
-// TitleItems 是六個選項的原文。
+// TitleItems 是六個選項；繁中沿用原文，英日文保留相同按鈕與編號。
 func TitleItems() [6]string {
 	return [6]string{
-		"1. 開始新遊戲", "2. 載入舊進度", "3. 使用楷書字",
-		"4. 使用隸書字", "5. 音樂欣賞", "6. 回作業系統",
+		t("title.mainNew"), t("title.mainLoad"), t("title.mainKai"),
+		t("title.mainLi"), t("title.mainMusic"), t("title.mainQuit"),
 	}
 }
 
@@ -878,12 +885,12 @@ func DrawTitleFrame(c *Canvas, ts *TitleScreen, sel, frame int) {
 	if frame >= 0 && frame < len(ts.frames) && ts.frames[frame] != nil {
 		bg = ts.frames[frame]
 	}
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		bg.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		bg.RGBA(), image.Point{})
 	label := color.RGBA{0x55, 0xFF, 0xFF, 0xFF}
 	ink := color.RGBA{0xFF, 0xFF, 0x55, 0xFF}
 	hot := color.RGBA{0xFF, 0xFF, 0xFF, 0xFF}
-	DrawMenuLabel(c, "主選擇單", label)
+	DrawMenuLabel(c, t("title.mainPlate"), label)
 	for i, s := range TitleItems() {
 		b := assets.MenuButtons()[i]
 		col := ink
@@ -1053,8 +1060,8 @@ func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte,
 		plates = append(plates, plate{x, py,
 			assets.FlagPlateText(u.Soldiers()), ink})
 	}
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{})
 	for _, p := range plates {
 		c.DrawTextPx(p.x, p.y, p.text, assets.EGAPalette[p.col])
 	}
@@ -1145,8 +1152,8 @@ func DrawTitleLayer(c *Canvas, ts *TitleScreen, frame int, label string, labelIn
 	if frame >= 0 && frame < len(ts.frames) && ts.frames[frame] != nil {
 		bg = ts.frames[frame]
 	}
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		bg.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		bg.RGBA(), image.Point{})
 	if artAllWide(label) {
 		DrawMenuLabel(c, label, assets.EGAPalette[labelInk&15])
 	}

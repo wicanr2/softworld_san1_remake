@@ -77,7 +77,7 @@ def screenshot(wid, name):
 
 def wait_menu(wid):
     # 用正式渲染產生的主選單固定上圖確認狀態；排除下方動畫與選取反白。
-    # Layout 是 640×400，640×408 視窗的上下各有 4 像素留白。
+    # 原貌 Layout 保留完整 640×408；選項列預設隱藏。
     base = ['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error']
     tail = ['-frames:v', '1', '-pix_fmt', 'rgb24',
             '-f', 'rawvideo', 'pipe:1']
@@ -92,7 +92,7 @@ def wait_menu(wid):
         shot = subprocess.run(base + ['-f', 'x11grab', '-video_size',
                               f"{geo['WIDTH']}x{geo['HEIGHT']}",
                               '-i', f":99+{geo['X']},{geo['Y']}",
-                              '-vf', 'crop=568:160:40:31'] + tail,
+                              '-vf', 'crop=568:160:40:27'] + tail,
                               check=True, capture_output=True, timeout=15).stdout
         if len(shot) == len(reference) and sum(a != b for a, b in zip(shot, reference)) < len(reference) // 100:
             return
@@ -176,7 +176,7 @@ try:
         time.sleep(1)
         screenshot(wid, f'base-track-{i}')
         capture(f'base-track-{i}-{name}')
-    keys(wid, 'Escape')
+    keys(wid, 'shift+Escape')
     new_game(wid)
     screenshot(wid, 'base-main')
     capture('base-main')

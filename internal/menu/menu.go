@@ -53,11 +53,13 @@ const ItemCount = 6
 
 // Screen 是主選單的狀態。
 type Screen struct {
-	c2      *assets.Container
-	edition state.Edition
-	mode    ai.Mode
-	saveDir string
-	tracks  int
+	c2         *assets.Container
+	edition    state.Edition
+	mode       ai.Mode
+	aiOrders   int
+	aiExplicit bool
+	saveDir    string
+	tracks     int
 
 	// OnFont 是「使用楷書字／使用隸書字」按下去要做的事（Issue #65 的鄰居
 	// Issue #71）：0 ＝ 楷書、1 ＝ 隸書。原版換完字型**直接重畫主選單、
@@ -108,7 +110,36 @@ func New(c2 *assets.Container, ed state.Edition, mode ai.Mode, saveDir string, t
 }
 
 // Stage／Title／Items／Sel 是畫面要的東西。
-func (s *Screen) Stage() Stage    { return s.stage }
+func (s *Screen) Stage() Stage { return s.stage }
+
+// SetAI 只改下一個新局；載入進度仍採既有存檔設定。
+func (s *Screen) SetAI(mode ai.Mode, orders int) error {
+	if err := ai.CheckEdition(mode, s.edition); err != nil {
+		return err
+	}
+	if _, err := ai.New(mode); err != nil {
+		return err
+	}
+	if orders < 0 || orders > game.AIOrdersMax {
+		return fmt.Errorf("AI 強度越界")
+	}
+	s.mode = mode
+	s.aiExplicit = true
+	if orders > 0 {
+		s.aiOrders = orders
+	}
+	return nil
+}
+
+func (s *Screen) Relocalize(old i18n.Locale) {
+	s.title = i18n.Relocalize(s.title, old, i18n.Current)
+	for i := range s.items {
+		s.items[i] = i18n.Relocalize(s.items[i], old, i18n.Current)
+	}
+	for i := range s.lordItems {
+		s.lordItems[i] = i18n.Relocalize(s.lordItems[i], old, i18n.Current)
+	}
+}
 func (s *Screen) Title() string   { return s.title }
 func (s *Screen) Items() []string { return s.items }
 
@@ -471,6 +502,12 @@ func (s *Screen) start() *session.Session {
 	first := state.FactionID(state.NoFaction)
 	if len(players) > 0 {
 		first = players[0]
+	}
+	if s.aiExplicit {
+		g.Options.SetAIMode(string(s.mode))
+	}
+	if s.aiExplicit && s.aiOrders > 0 {
+		_ = g.Options.SetAIOrders(s.aiOrders)
 	}
 	return session.New(g, brain, first)
 }

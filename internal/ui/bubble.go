@@ -219,6 +219,7 @@ func drawImageAt(c *Canvas, im *assets.Image, x, y int) {
 			c.setClipped(x+sx, y+sy, assets.EGAPalette[im.Pix[sy*im.W+sx]&15])
 		}
 	}
+	c.drawHigh(im, x, y)
 }
 
 func spaces(n int) string {

@@ -14,7 +14,6 @@ package ui
 import (
 	"fmt"
 	"image"
-	"image/draw"
 	"strconv"
 	"strings"
 
@@ -102,8 +101,30 @@ var artBattleSides = [2]battle.Side{battle.MainAttacker, battle.MainDefender}
 // DrawArtBattle 畫一整張主戰場。
 func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, info ArtBattleInfo) {
 	im := ab.compose(b, v, info)
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{})
+	l := assets.BattleLayoutFor(b.Field.Narrow())
+	for i := range assets.BattleFaceMirror {
+		portrait := info.Portrait[i]
+		if info.Units != nil {
+			portrait = -1
+			if u := info.Units[i]; u.Unit != nil && u.Unit.Head() != nil {
+				portrait = u.Portrait
+			}
+		}
+		face := ab.face(portrait)
+		if face == nil {
+			continue
+		}
+		if assets.BattleFaceMirror[i] {
+			face = face.Mirror()
+		}
+		x, y := l.Face(i)
+		c.drawHigh(face, x, y)
+	}
+	if info.Inspect != nil {
+		c.drawHigh(ab.face(info.Inspect.Portrait), inspectFaceX, inspectFaceY)
+	}
 	ab.drawText(c, b, v, info)
 }
 
@@ -842,8 +863,8 @@ func DrawArtAtlas(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field) {
 	x0, y0, x1, y1 := l.Panel(2)
 	im.FillRect(x0, y0, assets.BattlePanelW, assets.BattlePanelH, assets.BattlePanelPaper)
 	im.BevelBox(x0, y0, x1, y1)
-	draw.Draw(c.Img, image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		im.RGBA(), image.Point{}, draw.Src)
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
+		im.RGBA(), image.Point{})
 	// 通道格子上的鄰郡編號。
 	ink, bg := assets.EGAPalette[atlasLabelInk], assets.EGAPalette[atlasLabelBG]
 	for n, hs := range fld.Gates {

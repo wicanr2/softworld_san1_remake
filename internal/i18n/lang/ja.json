@@ -712,6 +712,13 @@
   "title.loadPlate": "ロード",
   "title.lordLine": "%d. %s（%d 郡）",
   "title.lordPrompt": "%d人目,選択(1-%d):",
+  "title.mainKai": "3. 楷書を使用",
+  "title.mainLi": "4. 隷書を使用",
+  "title.mainLoad": "2. セーブ読込",
+  "title.mainMusic": "5. 音楽鑑賞",
+  "title.mainNew": "1. 新規ゲーム",
+  "title.mainPlate": "メニュー",
+  "title.mainQuit": "6. OSへ戻る",
   "title.music": "音楽鑑賞",
   "title.musicPlate": "音楽鑑賞",
   "title.newLord": "新君主",
@@ -777,5 +784,13 @@
   "view.treasury": "君主の宝物",
   "weather.clear": "晴",
   "weather.rainy": "雨",
-  "weather.windy": "強風"
+  "weather.windy": "強風",
+  "window.ai": "AI",
+  "window.battle": "戦闘中",
+  "window.enhanced": "強化 %d",
+  "window.hd": "B 高精細 4×",
+  "window.hdMissing": "HD 未導入",
+  "window.language": "言語",
+  "window.original": "原版",
+  "window.theme": "Theme"
 }

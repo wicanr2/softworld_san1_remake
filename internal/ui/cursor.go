@@ -46,7 +46,7 @@ func drawInputCursor(c *Canvas, frames *[assets.MenuOrnamentFrameCount]assets.Cu
 				continue
 			}
 			old := egaIndexOf(c.Img.RGBAAt(px, py))
-			c.Img.SetRGBA(px, py, assets.EGAPalette[f.Over(dx, dy, old)&15])
+			c.setClipped(px, py, assets.EGAPalette[f.Over(dx, dy, old)&15])
 		}
 	}
 }
