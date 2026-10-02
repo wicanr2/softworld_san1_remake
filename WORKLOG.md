@@ -13,6 +13,7 @@
 - 新增 `tools/hd-preview.go` 靜態樣圖工具，直接使用 `game.New`、正式 UI 與資料中的 Portrait，畫兩版、三語系、五種畫面及 2×／4× 共 60 張高清樣圖。每張素材區外 0 差，畫圖前後三表雜湊不變；`workplace/hd-preview/*-receipt.json` 保存完整收據。這不是正常 GUI、動畫或 dosgolem 驗收，未宣稱正式 HD 已完成。
 - 初次樣圖工具編譯失敗是未核對 `game.Tables` 四個回傳值及 `i18n.Current` 的 API。核對實際簽章後，以相同容器與命令乾淨重跑成功；另一次工具呼叫的自動審核逾時，重試後成功。兩者沒有當成遊戲缺陷。
 - 沿用 `rich2-go-ebiten:latest` 與 `eob-audio-capture:20260922-r2`，原版資料唯讀。輸出擁有權為 1000:1000；一次性容器使用 `--rm`。提交只包含工具、測試、文件及來源雜湊。
+- 盤點、樣圖工具、規格及文件已提交並推送為 [`5a990d9`](https://github.com/wicanr2/softworld_san1_remake/commit/5a990d945bf7d5002df37ac289524522b146441e)，遠端 main 雜湊核對相同。#105 補齊收據後以 completed 關閉；#104、#106、#107 已同步 B／4× 定案、實際驗證及渲染前條件，逐項回讀狀態及全文。#106 仍待啟動預設，#107–#110 未宣稱完成。
 
 ## 2026-10-02：AI HD 第一輪畫風樣圖
 
