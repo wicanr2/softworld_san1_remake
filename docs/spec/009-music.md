@@ -98,5 +98,63 @@ PC 喇叭的音效與語音是另一條路，在 `docs/spec/008`。
 |---|---|
 | 解碼與版面 | `internal/music` 單測（`music_test.go`／`render_test.go`）|
 | 串流與靜音 | `stream_test.go` |
-| 實際聽得到 | `tools/assets.sh` 轉出 OGG；`cmd/san1music` 列曲目 |
-| 接進遊戲 | `cmd/san1` 的 `jukebox`；**沒有無頭判準**，記為 remake 自驗 |
+| 離線匯出 | `tools/assets.sh` 轉出 OGG；`cmd/san1music` 列曲目 |
+| 正式遊戲播放 | `cmd/san1` 的 `jukebox`；[錄音驗證入口](../../tools/verify-music.sh) 與 §6.1 收據 |
+
+### 6.1 正式音訊串流契約
+
+狀態：`CONFORMED`；範圍：remake 播放器接線，`[both]`；2026-10-02 驗證。
+
+`Stream` 是持續合成、無盡循環的 `io.Reader`，不公開 `io.Seeker`。
+鎖版 Ebiten 2.9.9 的 `audio/player.go:newTimeStream` 會向可定位來源
+呼叫 `Seek(0, io.SeekCurrent)` 查詢位置；來源若只支援回到開頭，
+播放器初始化便會失敗。原問題與訂正證據集中於 [`CONTEXT.md`](../../CONTEXT.md) R87。
+
+驗收入口為 [`tools/verify-music.sh`](../../tools/verify-music.sh)。
+重跑前須備好兩版 `org_game/`、既有建置與錄音映像，以及本機
+`workplace/audio/`、`workplace/gocache/`、`workplace/gomodcache/`。
+Go 模組快取須已含鎖版依賴；腳本採無網路容器，缺少前置環境會直接報錯。
+素材根目錄可用 `SAN1_ORIG` 指定，建置／錄音映像可用
+`SAN1_GO_IMAGE`／`SAN1_AUDIO_IMAGE` 指定。
+
+它在容器內啟動正式 Ebiten 視窗，透過 XTEST 按鍵走片頭、主選單、
+逐首音樂欣賞、單人新局及音樂狀態切換；PulseAudio 的 monitor 錄製
+正式播放器輸出。每個按鍵按住 80 ms；新局主命令需 `9`、Enter，
+再選 `3`。靜音提示後已離開數字輸入，恢復操作為 `9`、`3`。
+
+有聲段需均方根音量（RMS）> −60 dBFS、峰值 > −45 dBFS；
+靜音段的 16 位元樣本峰值 ≤ 2。錄音長度須在目標秒數 ±1 秒內。
+這份收據只證明 Linux 正式播放器的音訊輸出；人耳聽辨、Windows／macOS
+原生音訊與原版逐波形一致均未驗。原版素材、截圖及錄音只留 `workplace/audio/`。
+
+| 正常操作 | RMS dBFS | 峰值 dBFS | 結果 |
+|---|---:|---:|---|
+| 原版主選單預設曲 | −21.28 | −7.88 | 通過 |
+| 音樂欣賞：思古 | −21.30 | −7.51 | 通過 |
+| 音樂欣賞：小徑 | −24.79 | −9.86 | 通過 |
+| 音樂欣賞：風雲 | −20.30 | −8.35 | 通過 |
+| 音樂欣賞：戰鼓 | −18.37 | −3.94 | 通過 |
+| 音樂欣賞：末路 | −21.85 | −8.16 | 通過 |
+| 原版正常單人新局 | −21.23 | −8.25 | 通過 |
+| 其他 → 音樂狀態關閉 | 全零 | 全零 | 通過 |
+| 其他 → 音樂狀態恢復 | −21.09 | −8.35 | 通過 |
+| 加強版正常單人新局 | −21.77 | −7.88 | 通過 |
+
+收據為 `workplace/audio/music-check-receipt.json`，包含 10/10 結果、
+每段長度與 SHA-256、輸入雜湊、工具版本、按鍵序列、基底提交及修改檔雜湊。
+最新兩版視窗及靜音／恢復截圖已目視核對。重跑會覆寫同名的本機驗證產物。
+
+| 驗證輸入／環境 | 定位 |
+|---|---|
+| 基底提交 | `c5fe228e48facef3bb3b1da6f837eaab06e32cf1`，加本次 `stream.go` 修正 |
+| `internal/music/stream.go` SHA-256 | `195c4203ecf36566aec462f6b8ad357e4abf674f10faf4971f06d7ae0096010c` |
+| 實際執行檔 SHA-256 | `1df72a79ee607dbed429e057519395c57166915fde62836ff0ae876bb69d8af9` |
+| 兩版 `DATA1.GRP` SHA-256 | `958f44fe45e38624401af55f033ffb037bd3211a037eadbce90f827637d977a5` |
+| 建置映像 | `rich2-go-ebiten:latest`，Go 1.24.13；映像 ID `sha256:fd2bdff81a22f5c5b7c49bb0983e2e3e4e9e82df5c789831c525e1af4e22ec8a` |
+| 錄音映像 | `eob-audio-capture:20260922-r2`；映像 ID `sha256:90933bf64c453a75d307d0b1c2b591bb67aa1eca57b82e779859164b92f9cde6` |
+| 音訊與擷取工具 | Ebiten 2.9.9、PulseAudio 16.1、FFmpeg 5.1.9；48000 Hz、雙聲道、PCM 16-bit |
+| 最新收據 SHA-256 | `ad0faa3cb66698059c6ef4dfd1007735deaeaddbc62a2dcd40d454027330d0a6` |
+
+主選單狀態依正式渲染的固定上圖辨識。現行 `app.Layout` 回傳 640×400，
+640×408 視窗上下各留 4 像素；腳本先套用這個已查證的位移再比對。
+這是擷取座標換算，不是日期或原版版面的新契約。

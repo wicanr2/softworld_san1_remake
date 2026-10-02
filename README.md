@@ -56,6 +56,9 @@
 AdLib 的聲部分配送進去邊播邊合成。音高也對過拍：原版播「思古」送出的
 F-number 與 remake 逐次相同。
 
+正式視窗的選曲、靜音與恢復播放可用 [`tools/verify-music.sh`](tools/verify-music.sh)
+在隔離容器內錄音驗證，方法與收據見[配樂規格](docs/spec/009-music.md#61-正式音訊串流契約)。
+
 原版的點陣圖也解出來了（[點陣圖格式](docs/formats/07-images.md)）：613 張 `.IMG`／`.FAC`
 全部同一個格式，表頭是高與寬、本體是四個位元平面。平面與顏色的對應
 拿 dosgolem 跑出來的原版畫面逐像素比對確認——`F000.FAC` 與 `F005.FAC`
@@ -107,6 +110,10 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
 目前的實際狀態在 [`CONTEXT.md`](CONTEXT.md)。玩家戰後結算已依
 原版程式碼修正；原版與加強版的玩家戰後人物／州郡全表同狀態對拍已通過，範圍見
 [`020` 玩家戰後規格](docs/spec/020-player-battle-settlement.md)。
+
+AI HD 化已規劃為[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)：
+保留原版版面，高清化人物與美術。先盤點素材、比較同狀態樣圖，再確認畫風與解析度。
+正式高清素材及渲染尚未實作。
 
 | 里程碑 | 狀態 |
 |---|---|

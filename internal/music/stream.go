@@ -2,7 +2,6 @@ package music
 
 import (
 	"encoding/binary"
-	"io"
 	"sync"
 )
 
@@ -16,7 +15,8 @@ import (
 
 // Stream 是一首曲子的音訊來源。播完自動從頭開始，永遠不會結束。
 //
-// 一個 Stream 同時只能給一個播放器讀。
+// 一個 Stream 同時只能給一個播放器讀；不公開 io.Seeker。
+// Ebiten 會向可定位來源查詢目前位置，部分 Seek 契約會讓播放直接失敗。
 type Stream struct {
 	mu     sync.Mutex
 	p      *Player
@@ -87,17 +87,4 @@ func (s *Stream) advance() {
 		}
 		s.nxt = s.p.Sample()
 	}
-}
-
-// Seek 讓 Stream 也算 io.ReadSeeker。它是無盡的循環，只認「回到開頭」。
-func (s *Stream) Seek(offset int64, whence int) (int64, error) {
-	if offset == 0 && whence == io.SeekStart {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		s.p.Rewind()
-		s.frac, s.pending = 0, nil
-		s.cur, s.nxt = s.p.Sample(), s.p.Sample()
-		return 0, nil
-	}
-	return 0, io.ErrUnexpectedEOF
 }

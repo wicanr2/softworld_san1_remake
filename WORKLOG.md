@@ -2,6 +2,17 @@
 
 目前狀態以 [`CONTEXT.md`](CONTEXT.md) 為準；本檔按日期記錄已做的工作與驗證。
 
+## 2026-10-02：正式音樂播放修正與 AI HD 工作規劃
+
+- 依使用者要求，年月對拍修正與 README 文件連結已提交為 [`c5fe228`](https://github.com/wicanr2/softworld_san1_remake/commit/c5fe228e48facef3bb3b1da6f837eaab06e32cf1)，並推送 `origin/main`。
+- 正式音樂驗證在可用 PulseAudio 下發現 `unexpected EOF`。單測及離線合成可讀到音訊，但舊 `music.Stream.Seek` 只支援回到開頭；Ebiten 2.9.9 初始化會查 `Seek(0, io.SeekCurrent)`，因此正式遊戲無法啟動。先補 `spec/009` §6.1 的 READY 串流契約，再移除沒有使用端的部分 Seek，保留連續 `io.Reader`；訂正集中於 `CONTEXT.md` R87。
+- 新增 `tools/verify-music.sh` 與容器內錄音腳本。沿用既有 Go／Ebiten 建置映像及 `eob-audio-capture:20260922-r2`，原版素材唯讀，透過正常片頭、主選單、逐曲音樂欣賞與新局操作驗證。正式 Ebiten／oto 輸出錄到 PulseAudio monitor，48000 Hz、雙聲道、PCM 16-bit；不用主機音效卡。
+- 初次操作腳本沒有確認片頭是否結束，選曲標籤不能算驗收；改依主選單固定上圖辨識。核對 `app.Layout` 後套用 640×400 邏輯輸出在 640×408 視窗的 4 像素留白，按鍵按住 80 ms。後續靜音失敗是漏掉主命令數字輸入的 Enter；依現有玩家契約修正後以相同容器與命令乾淨重跑，沒有改遊戲選單語意。
+- 最終 `tools/verify-music.sh` 10/10 通過：預設曲、五首音樂欣賞、原版正常新局、靜音、恢復及加強版正常新局。有聲段 RMS 為 −24.79 至 −18.37 dBFS；靜音段全零。主選單、音樂欣賞、兩版新局與靜音／恢復截圖已目視核對。來源、執行檔、每段錄音及完整收據雜湊見 [`spec/009` §6.1](docs/spec/009-music.md#61-正式音訊串流契約)；錄音、原版素材與截圖均留本機 `workplace/audio/`。
+- `SAN1_TIMEOUT=6m tools/go.sh test ./... -count=1` 在容器內掛兩版素材完整通過；腳本語法與收據的程式／腳本／十段 WAV 雜湊均核對通過。README 的 35 個本機連結目標有效，文件索引新增正式音樂驗證與 HD 工作入口。此結果限 Linux 正式音訊輸出，沒有宣稱人耳聽辨、Windows／macOS 原生音訊或原版波形相同。
+- 使用者選定「保留原版版面，高清化人物與美術」。建立並回讀 [#104 工作總表](https://github.com/wicanr2/softworld_san1_remake/issues/104) 及六個子項：#105 素材盤點、#106 樣圖與定版、#107 高清渲染／文字圖層、#108 肖像、#109 場景／地圖／戰場、#110 玩家路徑／效能／音畫／交付驗收。每項已有前置工作、範圍與驗收條件；畫風、尺寸及顯示模式待 #106 樣圖由使用者決定，未生成正式素材或實作 HD。
+- 本輪一次性容器均用 `--rm`，完成後無 san1 容器或掛載本專案的容器殘留；專案掃描未見 root 擁有檔案或誤建的 `.md` 目錄，修改檔皆為 1000:1000。未更新既有 tag、Release 或封包，既有 Release 尚未包含本次音樂修正；未改使用者未追蹤的 `AGENTS.md`。
+
 ## 2026-10-02：左側年月對拍修正與 README 文件連結
 
 - 使用者指出 README 主畫面左側「中平六年元月春」位置偏差。先讀現況、外部路由、dosgolem 能力與現有證據，再用 IDA Pro 9.4 的一次性資料庫核對日期 helper；沒有改名、修改原始 `.i64` 或更動 dosgolem 上游。
