@@ -135,92 +135,94 @@ def launch(edition, missing=False):
     return proc, wid
 
 
-try:
-    assert OUT.stat().st_uid == os.getuid() and OUT.stat().st_gid == os.getgid()
-    os.environ.update({'DISPLAY': ':99', 'LIBGL_ALWAYS_SOFTWARE': '1', 'XDG_RUNTIME_DIR': '/tmp'})
-    start(['Xvfb', ':99', '-screen', '0', '2800x1900x24', '-nolisten', 'tcp'], 'xvfb')
-    wait(['xdotool', 'getdisplaygeometry'])
-    receipt['binary_sha256'] = hashlib.sha256((OUT / 'san1-window-check').read_bytes()).hexdigest()
-    receipt['pack_sha256'] = hashlib.sha256((ROOT / 'workplace/hd-assets/manifest.json').read_bytes()).hexdigest()
-    for edition in ['base', 'plus']:
-        proc, wid = launch(edition)
-        move(wid, 100, 2)
-        dimensions(wid, edition + '-hover-show', 640, 440)
-        shot(wid, edition + '-hover-toolbar')
-        move(wid, 320, 200)
-        dimensions(wid, edition + '-hover-hide', 640, 408)
+
+if __name__ == "__main__":
+    try:
+        assert OUT.stat().st_uid == os.getuid() and OUT.stat().st_gid == os.getgid()
+        os.environ.update({'DISPLAY': ':99', 'LIBGL_ALWAYS_SOFTWARE': '1', 'XDG_RUNTIME_DIR': '/tmp'})
+        start(['Xvfb', ':99', '-screen', '0', '2800x1900x24', '-nolisten', 'tcp'], 'xvfb')
+        wait(['xdotool', 'getdisplaygeometry'])
+        receipt['binary_sha256'] = hashlib.sha256((OUT / 'san1-window-check').read_bytes()).hexdigest()
+        receipt['pack_sha256'] = hashlib.sha256((ROOT / 'workplace/hd-assets/manifest.json').read_bytes()).hexdigest()
+        for edition in ['base', 'plus']:
+            proc, wid = launch(edition)
+            move(wid, 100, 2)
+            dimensions(wid, edition + '-hover-show', 640, 440)
+            shot(wid, edition + '-hover-toolbar')
+            move(wid, 320, 200)
+            dimensions(wid, edition + '-hover-hide', 640, 408)
+            key(wid, 'Escape')
+            dimensions(wid, edition + '-escape-show', 640, 440)
+            # 固定在列外，鍵盤展開不被自動收起。
+            move(wid, 320, 200)
+            dimensions(wid, edition + '-escape-pinned', 640, 440)
+            choose(wid, 2, 5)
+            for row, label in [(1, 'en'), (2, 'ja'), (0, 'zh-Hant')]:
+                choose(wid, 0, row)
+                shot(wid, edition + '-language-' + label)
+            key(wid, 'Escape')
+            dimensions(wid, edition + '-escape-hide', 640, 408)
+            # 非原比例的視窗也依實際遊戲倍率加高，避免展開後放大遊戲。
+            move(wid, 320, 200)
+            run(['xdotool', 'windowsize', wid, '1280', '600'])
+            dimensions(wid, edition + '-wide-hidden', 1280, 600)
+            key(wid, 'Escape')
+            dimensions(wid, edition + '-wide-toolbar', 1280, 647)
+            key(wid, 'Escape')
+            dimensions(wid, edition + '-wide-restored', 1280, 600)
+            run(['xdotool', 'windowsize', wid, '640', '408'])
+            time.sleep(.3)
+            key(wid, '1', '1', '1', '2', '5')
+            time.sleep(.6)
+            key(wid, '0', 'Return')
+            original = shot(wid, edition + '-original-main')
+            key(wid, 'Escape')
+            key(wid, '9')  # 選項列的數字鍵不能滲入遊戲數字輸入。
+            choose(wid, 1, 1)
+            key(wid, 'Escape')
+            run(['xdotool', 'windowsize', wid, '2560', '1632'])
+            run(['xdotool', 'windowmove', wid, '0', '0'])
+            time.sleep(1)
+            native = shot(wid, edition + '-hd-native-main')
+            master = ROOT / 'workplace/hd-assets/F000.png'
+            check(edition + '-native-portrait-detail', rgb(native, '256:320:2144:464') == rgb(master))
+            receipt.setdefault('rss_kib_hd', {})[edition] = next(int(line.split()[1]) for line in
+                Path(f'/proc/{proc.pid}/status').read_text().splitlines() if line.startswith('VmRSS:'))
+            key(wid, 'Escape')
+            dimensions(wid, edition + '-native-toolbar', 2560, 1760)
+            shot(wid, edition + '-hd-toolbar')
+            choose(wid, 1, 0)
+            key(wid, 'Escape')
+            run(['xdotool', 'windowsize', wid, '640', '408'])
+            time.sleep(.5)
+            restored = shot(wid, edition + '-restored-main')
+            check(edition + '-original-restored', rgb(original, '224:200:408:36') == rgb(restored, '224:200:408:36'))
+            # 狀態命令已退出數字輸入，9 直接開其他選單，不再按 Enter 休息。
+            save_started_ns = time.time_ns()
+            key(wid, '9')
+            shot(wid, edition + '-other')
+            key(wid, '2')
+            shot(wid, edition + '-save-picker')
+            key(wid, '1', 'Return')
+            time.sleep(.4)
+            shot(wid, edition + '-saved')
+            files = [p for p in (OUT / ('saves-' + edition)).glob('**/REMAKE.JSON')
+                     if p.stat().st_mtime_ns >= save_started_ns]
+            saved = [json.loads(p.read_text()) for p in files]
+            check(edition + '-ai-strength-saved', any(x.get('options', {}).get('ai_orders') == 5 and
+                x.get('options', {}).get('ai_mode') == 'enhanced' for x in saved))
+            stop(proc)
+        proc, wid = launch('base', missing=True)
         key(wid, 'Escape')
-        dimensions(wid, edition + '-escape-show', 640, 440)
-        # 固定在列外，鍵盤展開不被自動收起。
-        move(wid, 320, 200)
-        dimensions(wid, edition + '-escape-pinned', 640, 440)
-        choose(wid, 2, 5)
-        for row, label in [(1, 'en'), (2, 'ja'), (0, 'zh-Hant')]:
-            choose(wid, 0, row)
-            shot(wid, edition + '-language-' + label)
-        key(wid, 'Escape')
-        dimensions(wid, edition + '-escape-hide', 640, 408)
-        # 非原比例的視窗也依實際遊戲倍率加高，避免展開後放大遊戲。
-        move(wid, 320, 200)
-        run(['xdotool', 'windowsize', wid, '1280', '600'])
-        dimensions(wid, edition + '-wide-hidden', 1280, 600)
-        key(wid, 'Escape')
-        dimensions(wid, edition + '-wide-toolbar', 1280, 647)
-        key(wid, 'Escape')
-        dimensions(wid, edition + '-wide-restored', 1280, 600)
-        run(['xdotool', 'windowsize', wid, '640', '408'])
-        time.sleep(.3)
-        key(wid, '1', '1', '1', '2', '5')
-        time.sleep(.6)
-        key(wid, '0', 'Return')
-        original = shot(wid, edition + '-original-main')
-        key(wid, 'Escape')
-        key(wid, '9')  # 選項列的數字鍵不能滲入遊戲數字輸入。
         choose(wid, 1, 1)
         key(wid, 'Escape')
-        run(['xdotool', 'windowsize', wid, '2560', '1632'])
-        run(['xdotool', 'windowmove', wid, '0', '0'])
-        time.sleep(1)
-        native = shot(wid, edition + '-hd-native-main')
-        master = ROOT / 'workplace/hd-assets/F000.png'
-        check(edition + '-native-portrait-detail', rgb(native, '256:320:2144:464') == rgb(master))
-        receipt.setdefault('rss_kib_hd', {})[edition] = next(int(line.split()[1]) for line in
-            Path(f'/proc/{proc.pid}/status').read_text().splitlines() if line.startswith('VmRSS:'))
-        key(wid, 'Escape')
-        dimensions(wid, edition + '-native-toolbar', 2560, 1760)
-        shot(wid, edition + '-hd-toolbar')
-        choose(wid, 1, 0)
-        key(wid, 'Escape')
-        run(['xdotool', 'windowsize', wid, '640', '408'])
-        time.sleep(.5)
-        restored = shot(wid, edition + '-restored-main')
-        check(edition + '-original-restored', rgb(original, '224:200:408:36') == rgb(restored, '224:200:408:36'))
-        # 狀態命令已退出數字輸入，9 直接開其他選單，不再按 Enter 休息。
-        save_started_ns = time.time_ns()
-        key(wid, '9')
-        shot(wid, edition + '-other')
-        key(wid, '2')
-        shot(wid, edition + '-save-picker')
-        key(wid, '1', 'Return')
-        time.sleep(.4)
-        shot(wid, edition + '-saved')
-        files = [p for p in (OUT / ('saves-' + edition)).glob('**/REMAKE.JSON')
-                 if p.stat().st_mtime_ns >= save_started_ns]
-        saved = [json.loads(p.read_text()) for p in files]
-        check(edition + '-ai-strength-saved', any(x.get('options', {}).get('ai_orders') == 5 and
-            x.get('options', {}).get('ai_mode') == 'enhanced' for x in saved))
-        stop(proc)
-    proc, wid = launch('base', missing=True)
-    key(wid, 'Escape')
-    choose(wid, 1, 1)
-    key(wid, 'Escape')
-    dimensions(wid, 'missing-pack-original', 640, 408)
-    shot(wid, 'missing-pack-original')
-    receipt['passed'] = True
-finally:
-    receipt.setdefault('passed', False)
-    for proc in reversed(processes):
-        stop(proc)
-    for log in logs:
-        log.close()
-    (OUT / 'receipt.json').write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n')
+        dimensions(wid, 'missing-pack-original', 640, 408)
+        shot(wid, 'missing-pack-original')
+        receipt['passed'] = True
+    finally:
+        receipt.setdefault('passed', False)
+        for proc in reversed(processes):
+            stop(proc)
+        for log in logs:
+            log.close()
+        (OUT / 'receipt.json').write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n')

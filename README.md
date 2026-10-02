@@ -123,6 +123,7 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 高清模式需提供符合[高清規格](docs/spec/021-hd-art.md)的素材包，以 `-hd-assets <目錄>`
 指定，或放在執行檔旁的 `hd-assets/`。缺包時仍可玩原貌；缺圖或錯誤素材逐項回退。
 素材準備與正式視窗驗證入口見[首批接入與驗收](docs/spec/021-hd-art.md#65-首批接入與驗收入口)。
+人物卡、選君主及自然換年地震的重跑入口見[首批正常玩家路徑](docs/spec/021-hd-art.md#66-首批四圖的正常玩家路徑)。
 
 | 里程碑 | 狀態 |
 |---|---|

@@ -49,6 +49,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 配樂怎麼解、怎麼合成 | `formats/06`、`spec/009` |
 | 正式視窗配樂能否播放、如何重跑錄音驗證 | [spec/009 §6.1](spec/009-music.md#61-正式音訊串流契約)、[驗證入口](../tools/verify-music.sh) |
 | 保留原版版面的 AI HD 工作順序與驗收 | [GitHub 工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)；子項 #105–#110；[B 高清與視窗選項列規格 021](spec/021-hd-art.md)、[兩版素材盤點](formats/04-asset-inventory.md#6-hd-兩版盤點) |
+| 首批高清肖像、選君主與自然地震的正常操作收據 | [spec/021 §6.6](spec/021-hd-art.md#66-首批四圖的正常玩家路徑)、[重跑工具](../tools/verify-hd-player.sh) |
 | 哪些地方原版會動 | `re/10`（清單 ＋ 已解的三支）、`re/13` 與 `spec/005`「片頭」（開機片頭）、`spec/010`（轉場與場景圖的 48 個呼叫端）|
 | 被擒的將領怎麼處置、釋放逃去哪、招降來的人紮在哪 | `spec/018`、`mechanics/40` §7 |
 | 幾人玩（0–16）、逐位選君主、多位玩家怎麼輪流下令、示範模式 | `spec/019`、`mechanics/10` §1、`spec/005` §9.4 |
