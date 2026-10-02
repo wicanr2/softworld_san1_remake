@@ -16,6 +16,7 @@
 - 原貌 dosgolem 抽樣 `TestZZLordPickScreenMatchesTheOriginal`、`TestZZPersonCardMatchesTheOriginal`、`TestZZBubbleMatchesTheOriginal`、`TestZZSceneEffectMatchesTheOriginal` 通過。前兩種與對白排除字模，只核對既有幾何與非字形像素；四方向場景各 24／24／22／22 步的區域逐像素相同、區域外不變。完整 log 在 `workplace/hd-window/original-parity.log`，SHA-256 `ee9da9f44f49838634507800b6369bfd8fd60fe77bedf91abef050c23b09bb1f`。這些是原版局部函式及選君主抽樣，不等於完整玩家戰役驗收。
 - 帶兩版原始資料的 `go test -timeout 6m ./... -count=1` 在主選單翻譯與視窗比例修正後重跑通過，log 在 `workplace/hd-window/all-tests.log`，SHA-256 `396f13d88e62c17dbb62fb884f5b6e5282e4962e27085eff825791c6fc27ede9`；最後日文短標籤與框線反例另以 UI／語言相關測試通過。UI、語言、選單與音樂四套測試亦獨立通過。鏡像測試保留對稱原圖的正常高清方向，錯來源／尺寸／版本／重複鍵與前景遮擋均有反例。
 - README 保留穩定操作與素材入口，文件索引補上 READY 規格。首批接入不代表 256 張人物、全部場景／地圖／戰場或跨平台 HD 已完成，#106–#110 的剩餘驗收維持開啟；既有 Release 未重建或覆寫。
+- 程式與文件已提交並推送為 [`6499ccc`](https://github.com/wicanr2/softworld_san1_remake/commit/6499cccb00091cabc39641ff33dfedfc6832abc6)，遠端 main 雜湊核對相同。#104／#106／#107 已更新原貌預設、選項列、READY 契約、首批收據及剩餘驗收，回讀完整內文與留言並逐項比對；三項均保持 OPEN。78 個本機文件連結通過，檔案 UID/GID 為 1000:1000，沒有 root-owned 檔案、異常 Markdown 目錄或殘留 san1 容器。
 
 ## 2026-10-02：B 定案與 HD 素材盤點、版面試作
 
