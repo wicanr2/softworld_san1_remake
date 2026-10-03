@@ -965,3 +965,92 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 | `workplace/hd-preview/commanders-v13-gui-plus-contact-1.png` | `d51a7595d272bacad841124387bc5a7e423b5e3cf7a9e0990e171fd9e86feb19` |
 | `workplace/hd-preview/commanders-v13-gui-plus-contact-2.png` | `ce93da45f6d603ee97e5d4a70fad22bfa4f6f1fd548a332a5dc2702266db8646` |
 | `workplace/hd-preview/commanders-v13-gui-plus-contact-3.png` | `d5d5191698f37a84b212000aa2d02a1ea9d3796435717c1e17447a72b14901a8` |
+
+### 6.25 劇本 003 新增三十四張肖像
+
+**狀態：READY**。沿用 §6.15／6.24 的固定肖像、B 寫實手繪、4× 與原貌預設契約。這批選取正式劇本 003 初次玩家停點可查看、尚未製作的三十四個 DATA3 槽。兩版 64×80 來源 PNG 與實際原始槽 bytes 逐項相同，原始資料為 L0、[both]。清單沿用已驗的 v12 正式六劇本診斷，由 v13 剩餘清單篩選，再回讀目前 DATA3.GRP／IDX／NAM 與 PNG；此步沒有重跑玩家流程，不當作原版 oracle。
+
+兩版均為 003、單人曹操、難度 5，201 年元月停在郡 14；每版二十七位經他國查看、七位經本國查看。F159 的清單選項分版保留，原版 1、加強版 3。完整六十八列本機計畫 `workplace/hd-commanders-v14-plan.json`，SHA-256 `5769200cdcc98c5f915ece16f79a28ab2285143137bef3149ec300760665a826`；來源回讀收據 `workplace/hd-v14-plan-verification.json`，SHA-256 `9c46be7c8a1571d5f6c88e72c07cc218c729d8cb4f3452a0d092b8dbf56fd2d6`。
+
+| 肖像槽 | 人物 | 人物索引 | 查看郡 | 清單選項，原版／加強版 | 他國確認 |
+|---|---|---|---|---|---|
+| F025 | 夏侯霸 | 334 | 6 | 2 | 否 |
+| F057 | 臧霸 | 80 | 6 | 7 | 否 |
+| F159 | 諸葛瑾 | 127 | 9 | 1／3 | 是 |
+| F242 | 郝昭 | 275 | 13 | 3 | 否 |
+| F058 | 毛玠 | 73 | 13 | 13 | 否 |
+| F056 | 楊修 | 197 | 15 | 1 | 否 |
+| F048 | 曹真 | 254 | 15 | 3 | 否 |
+| F082 | 賈逵 | 244 | 15 | 9 | 否 |
+| F059 | 楊昂 | 337 | 18 | 4 | 是 |
+| F138 | 龐德 | 184 | 19 | 2 | 是 |
+| F216 | 張紘 | 98 | 21 | 5 | 是 |
+| F144 | 張昭 | 97 | 21 | 7 | 是 |
+| F110 | 孫翊 | 57 | 21 | 12 | 是 |
+| F219 | 嚴峻 | 329 | 21 | 14 | 是 |
+| F152 | 程秉 | 147 | 21 | 15 | 是 |
+| F135 | 朱桓 | 148 | 23 | 2 | 是 |
+| F132 | 魯肅 | 126 | 24 | 1 | 是 |
+| F217 | 陸績 | 328 | 24 | 4 | 是 |
+| F234 | 徐盛 | 153 | 25 | 1 | 是 |
+| F247 | 趙統 | 277 | 27 | 5 | 是 |
+| F252 | 關平 | 124 | 27 | 6 | 是 |
+| F039 | 周倉 | 123 | 27 | 8 | 是 |
+| F207 | 蔡勳 | 142 | 28 | 8 | 是 |
+| F141 | 劉琦 | 138 | 30 | 2 | 是 |
+| F123 | 韓浩 | 333 | 30 | 3 | 是 |
+| F070 | 劉賢 | 168 | 30 | 5 | 是 |
+| F122 | 劉琮 | 139 | 31 | 1 | 是 |
+| F108 | 楊齡 | 176 | 31 | 4 | 是 |
+| F072 | 鞏志 | 174 | 32 | 2 | 是 |
+| F182 | 霍峻 | 213 | 35 | 1 | 是 |
+| F198 | 法正 | 10 | 36 | 9 | 是 |
+| F106 | 李嚴 | 219 | 37 | 9 | 是 |
+| F109 | 向朗 | 215 | 37 | 10 | 是 |
+| F158 | 王伉 | 259 | 38 | 4 | 是 |
+
+每張保留原圖冠帽、服色、鬚髮、朝向、可見眼睛與表情，不依劇本年齡或通俗形象換臉。原版 64×80 圖的最近鄰 16× 放大圖作編輯目標。早期兩張人物請求另附 B 人物圖，發現帽形受參考人物影響後，未執行的請求改以單張來源與文字描述既定 B 筆觸；已執行的原請求保留。郝昭與趙統的修正版以退稿作目標、原圖作外觀依據，分別修短圓捲邊帽與單眼側臉。完整 4:5 圖縮放至 256×320，不裁切、不拉伸、不烘焙文字。
+
+原圖三十四張、三十八張候選與三頁對照總覽均已逐張查看。三十四張由 Codex 採用，四張因冠帽或可見眼睛偏差退件並保留；使用者逐張簽核為零。各候選為 1122×1402、不透明，符合 §6.15 比例誤差契約。來源、原請求、實際參考圖清單與雜湊、候選及退件保留本機。單來源請求的 B 參考只記為畫風沿革，不宣稱曾作圖像輸入。模型與 seed 為工具未回報。生成記錄 `workplace/hd-commanders-v14-generation.json`，SHA-256 `4f62343d2b770c68ebce5266ecfc1a5c93ad8ef47200f1acacc6122440e4e396`；原請求 `workplace/hd-commanders-v14-requests.json`，SHA-256 `9b4f221bba761977605c3a0b0e632a775771ee79718001855675ba18334c4ea9`；對照頁收據 `workplace/hd-v14-contact-receipt.json`，SHA-256 `c88b193463da574aa7846ec9d00d4cc0544c512c6ef27f87ca07f0ee252387eb`。本機彙整、總覽與建包入口為 `workplace/collect-hd-commanders-v14.py`、`workplace/make-hd-v14-contact.py`、`workplace/build-hd-commanders-v14.py`。
+
+私人包須保留 v13 全部 422 筆欄位、PNG bytes 與準備紀錄，兩版正式載入器與全族稽核另驗。正常 GUI 從片頭開上述新局，依分版清單查看六十八張人物卡，逐項核對原貌來源、原生高清、圖外文字框線及原貌恢復。不注入人物、日期、勢力或 seed。此批不改規則、存檔或音訊，也不替代其他使用端、三語系、跨平台或原版 oracle 驗收。
+
+
+清單換頁沿用 [014 §4.2](014-art-main-overlays.md#42-挑一位將軍0x18024l0l1baseissue-77) 的十二列與空白換頁契約。驗證工具以當局實際清單首列的 1／13 字模判斷頁面，需要時按空白，不讀取或注入遊戲狀態。首次批次因未換頁而在毛玠第十三位停下，保留 `workplace/hd-window/player/commanders-v14-attempt-1/` 的全部收據與畫面；此為驗證腳本問題，正式遊戲行為未改。
+
+私人 v14 包備妥 214/256 肖像與 31/31 SCG，兩版各 245 筆、共 490 筆，245 張獨立 PNG；正式載入器警告零。v13 全部 422 筆欄位、PNG bytes 與準備紀錄完整保持。肖像缺 42、Codex 審查 214，場景缺 0、審查 31；兩族技術問題及使用者逐張簽核均為零。場景完整準備閘門返回 0，肖像返回 3。
+
+`bash tools/verify-hd-player.sh --officers-003` 從片頭開兩版正式 003 曹操新局，六十八張人物卡共 274/274 通過，外層返回 0。原貌來源、256×320 原生高清、圖外文字框線與原貌恢復各 68/68 相符，啟動仍為原貌及隱藏選項列。587 張最新 PNG、六十八份清單頁碼、三份工具快照、執行檔、原版六份 GRP、完整包與候選獨立回讀相符；四類人物卡像素另以獨立 RGB 解碼核對。三頁來源／高清對照與兩版各三頁正常人物卡均已查看。獨立工具首次誤寫遮罩右側界線，修正後在同一容器環境完整重跑通過；失敗工具快照及分類紀錄保留本機。
+
+本機獨立回讀、正常人物卡總覽及文件核對入口為 `workplace/verify-hd-v14-delivery.py`、`workplace/make-hd-v14-gui-contact.py`、`workplace/verify-hd-v14-docs.py`。來源準備入口為 `workplace/prepare-hd-commanders-v14-plan.py`。兩族稽核的完整命令列保存於 `workplace/hd-v14-audit-commands.json`。上述工具依專案 Docker-only 契約執行，原始資料、生成原檔、包與 GUI 截圖唯讀掛載；獨立工具使用 `eob-audio-capture:20260922-r2`，生成原檔目錄掛到 `/generated`，原版資料掛到 `/orig`，工作樹掛到 `/src`。私人資料未加入 Git。
+
+剩餘 42 槽中，29 槽有已驗的正式初次停點清單，004／005／006 各 14／9／6；其餘十三槽路徑未明。`workplace/verify-hd-v14-next-plan.py` 從固定 v12 診斷排除已準備槽，另核對當前來源與全槽稽核，收據為 `workplace/hd-v14-next-plan-verification.json`；此篩選不算下一批生成或新 GUI 驗收。場景素材、正式 Go 程式、規則、存檔、音訊及既有原版 oracle 保持原範圍，其他使用端、素材家族、三語系及跨平台仍待完成。圖片、候選、完整收據與含原版內容的包只留本機，未建立 Release，整份 021 保持 READY。
+
+| 本機產物 | SHA-256 |
+|---|---|
+| `workplace/hd-commanders-v14-plan.json` | `5769200cdcc98c5f915ece16f79a28ab2285143137bef3149ec300760665a826` |
+| `workplace/hd-v14-plan-verification.json` | `9c46be7c8a1571d5f6c88e72c07cc218c729d8cb4f3452a0d092b8dbf56fd2d6` |
+| `workplace/hd-commanders-v14-source-observations.json` | `6e4b3b319a3c0ff6982f4c798711765f605e538e96bbe84f831dda9c838dfaf6` |
+| `workplace/hd-commanders-v14-requests.json` | `9b4f221bba761977605c3a0b0e632a775771ee79718001855675ba18334c4ea9` |
+| `workplace/hd-commanders-v14-generated-paths.json` | `2f7932da506f99d26391d5a1a0c676561c317010936f4b29751dacadd0438493` |
+| `workplace/hd-commanders-v14-generation.json` | `4f62343d2b770c68ebce5266ecfc1a5c93ad8ef47200f1acacc6122440e4e396` |
+| `workplace/hd-commanders-v14-reviews.json` | `6c9c5fbe1154fa9a0a2b5cee6d191b044a96845ce758c49306ab92360aa14d4c` |
+| `workplace/hd-v14-contact-receipt.json` | `c88b193463da574aa7846ec9d00d4cc0544c512c6ef27f87ca07f0ee252387eb` |
+| `workplace/hd-assets-portraits-v14/manifest.json` | `3d008a020bf4ad34ab43647580bf095b6f1d75b0df1cf75ac95139fe2fe05dc5` |
+| `workplace/hd-assets-portraits-v14/preparation.json` | `59434c0fef8db8a3c29ef8f7fa89ad8546f61f356acf6a31a225bbeed1c1a933` |
+| `workplace/hd-commanders-v14-build-receipt.json` | `3db361be592b64ad66d1830ea5b7dd62ba23be51c8dd0e37005fa977dad10651` |
+| `workplace/hd-v14-audit-commands.json` | `3cd1c16b205e31d59c9ad3296c5e852120875ef9f042449322899384b1b0e143` |
+| `workplace/hd-portrait-audit-v14.json` | `e11e3c3ba804e26181d177bf1d0718e260edc3766dd48eacce3ad51e85b586f0` |
+| `workplace/hd-scene-audit-v14.json` | `4b720709bfce8dd03bd1e61f0dc9365b45228b6d0a1237960aba3324cfa8c8f8` |
+| `workplace/hd-window/player/commanders-v14/receipt.json` | `dcf0559f922cea26af1150657d940a3068a791156c3320fa32fd9123383f707b` |
+| `workplace/hd-v14-gui-contact-receipt.json` | `c567909bf647bdbcba5a6730d2f59d7448a3510df759d16dd843f37f308441e1` |
+| `workplace/hd-v14-next-plan-verification.json` | `5c39d6e87c32bb3a7c9f9f0984be7f424241ca0635f5d50c7181e256d6030143` |
+| `workplace/verify-hd-v14-delivery.py` | `cdf2fcafe869df62c8d83f38cc6bb89e6f18f25fdfcec9c687ff0a2c52fc5702` |
+| `workplace/make-hd-v14-gui-contact.py` | `47f0efa104a14ff9da56dcf95e837e48e4c6c3ff8c18ee54e4d84083826eb7a4` |
+| `workplace/verify-hd-v14-docs.py` | `19ad51328bbc6cbadfd53882671ab177029a0ee0201ef2e166f146b16799be95` |
+| `workplace/verify-hd-v14-next-plan.py` | `251e582b93779b0a22d168ab103bbc87dfd02f912182f41404ae8ed0fe7b90c4` |
+| `workplace/prepare-hd-commanders-v14-plan.py` | `a908f50e41054f8c9b7277d57ebdfbec55d6420dd52866e19087c3cec0b7d617` |
+| `workplace/hd-v14-delivery-verification.json` | `8d25c4195cb73253487c48f29228209de4b1b7be575fd6166936f5f543ded25a` |
+| `workplace/hd-v14-delivery-attempt-1.json` | `beea48cabc85a388372253c8d85b08f38ef0ca6a2c48401901f82b083a94c0bc` |
+| `workplace/verify-hd-v14-delivery-attempt-1.py` | `9b57d47673af09ee33966b38fe286100ee2e811393757f4edccd9cd215c54b62` |
+| `workplace/hd-window/player/commanders-v14-attempt-1/receipt.json` | `d20f90bd51aaaa14ce8c43961acdf081b8520dd4313da14cfdf762c99ccd4203` |
