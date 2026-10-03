@@ -21,8 +21,9 @@ lords_only = sys.argv[1:] == ['--lords']
 lords_all_only = sys.argv[1:] == ['--lords-all']
 commanders_only = sys.argv[1:] == ['--commanders']
 commanders_next_only = sys.argv[1:] == ['--commanders-next']
-if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only or lords_all_only or commanders_only or commanders_next_only):
-    raise SystemExit('僅接受 --scene-plus、--custom、--portraits、--lords、--lords-all、--commanders 或 --commanders-next')
+officers_only = sys.argv[1:] == ['--officers']
+if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only or lords_all_only or commanders_only or commanders_next_only or officers_only):
+    raise SystemExit('僅接受 --scene-plus、--custom、--portraits、--lords、--lords-all、--commanders、--commanders-next 或 --officers')
 if scene_only:
     gui.OUT /= 'scene-plus'
 if custom_only:
@@ -37,7 +38,10 @@ if commanders_only:
     gui.OUT /= 'commanders-v6'
 if commanders_next_only:
     gui.OUT /= 'commanders-v10'
+if officers_only:
+    gui.OUT /= 'commanders-v11'
 pack_dir = gui.ROOT / ('workplace/hd-assets-custom-v1' if custom_only else
+                       'workplace/hd-assets-portraits-v11' if officers_only else
                        'workplace/hd-assets-portraits-v10' if commanders_next_only else
                        'workplace/hd-assets-portraits-v6' if commanders_only else
                        'workplace/hd-assets-portraits-v4' if lords_all_only else
@@ -104,7 +108,7 @@ def theme(wid, high):
 
 def portrait(wid, edition, tag, name, x, y):
     original = shot(wid, edition + '-' + tag + '-original')
-    if commanders_next_only:
+    if commanders_next_only or officers_only:
         source = gui.ROOT / 'workplace/hd-inventory' / edition / 'img/DATA3' / (name + '.png')
         gui.receipt.setdefault('source_reference_sha256', {})[edition + '/' + name] = \
             hashlib.sha256(source.read_bytes()).hexdigest()
@@ -251,6 +255,33 @@ def portrait_cards(edition):
             ('F052', '華雄', 36, 15, 3, True),
             ('F241', '程普', 37, 31, 2, True),
             ('F055', '黃蓋', 39, 31, 3, True)])]
+    if officers_only:
+        gui.receipt['method'] = 'Linux Xvfb 正常片頭、劇本 001、單人曹操、他國查看及檢視二十位武將；未注入狀態'
+        gui.receipt['verification_mode'] = '--officers'
+        gui.receipt['state_injection'] = False
+        gui.receipt['scenarios'] = ['001']
+        # 兩版正式 session 初次玩家停點的查看清單。
+        plans = [('001', '1', [
+            ('F186', '孫乾', 87, 9, 2, True),
+            ('F181', '陳登', 76, 10, 2, True),
+            ('F103', '麋芳', 120, 10, 3, True),
+            ('F173', '麋竺', 75, 10, 4, True),
+            ('F021', '太史慈', 77, 21, 2, True),
+            ('F226', '陳武', 101, 21, 3, True),
+            ('F213', '虞翻', 104, 23, 2, True),
+            ('F094', '韓當', 38, 31, 4, True),
+            ('F189', '朱治', 94, 31, 5, True),
+            ('F244', '祖茂', 40, 31, 6, True),
+            ('F100', '丁奉', 155, 31, 7, True),
+            ('F246', '蔡瑁', 47, 28, 2, True),
+            ('F092', '蒯越', 46, 28, 3, True),
+            ('F130', '伊籍', 137, 28, 4, True),
+            ('F169', '黃祖', 59, 29, 1, True),
+            ('F091', '蒯良', 45, 30, 1, True),
+            ('F167', '文聘', 143, 30, 2, True),
+            ('F187', '吳懿', 210, 36, 4, True),
+            ('F218', '張任', 203, 37, 2, True),
+            ('F088', '黃權', 198, 37, 5, True)])]
     for scenario, button, cards in plans:
         tag = edition + '-' + scenario
         gui.receipt.setdefault('scenario_key_start', {})[tag] = len(gui.receipt.get('keys', []))
@@ -324,7 +355,7 @@ try:
         if custom_only:
             custom_rulers(edition)
             continue
-        if portraits_only or lords_only or lords_all_only or commanders_only or commanders_next_only:
+        if portraits_only or lords_only or lords_all_only or commanders_only or commanders_next_only or officers_only:
             portrait_cards(edition)
             continue
         proc, wid = gui.launch(edition)

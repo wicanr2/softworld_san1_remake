@@ -66,6 +66,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 高清人事、築城、退兵與射箭的正常操作 | [spec/021 §6.19](spec/021-hd-art.md#619-人事築城與戰場事件插圖批次)、[正常 GUI 工具](../tools/verify-hd-events.sh)、[合法築城診斷與提示](../tools/hd-events-reference.go)；[太守補位返回修復](spec/021-hd-art.md#6191-太守補位後恢復下令提示)與[控制器回歸](../cmd/san1/governor_test.go) |
 | 其餘災害、謀略與單挑場景的製作契約 | [spec/021 §6.20](spec/021-hd-art.md#620-其餘災害謀略與單挑場景)；READY，素材準備與正常使用驗證分列，SCG11 不新增使用端；[正常謀略工具](../tools/verify-hd-plots.sh)、[合法輸入與提示](../tools/hd-plots-reference.go) |
 | 二十張魏、袁、董、孫勢力肖像的來源與正常查看計畫 | [spec/021 §6.21](spec/021-hd-art.md#621-二十張魏袁董孫勢力肖像)；READY，[人物卡工具](../tools/verify-hd-player.sh) 加 `--commanders-next` |
+| 二十張徐州、江東、荊州與益州肖像的來源與查看計畫 | [spec/021 §6.22](spec/021-hd-art.md#622-二十張徐州江東荊州與益州肖像)；READY，[人物卡工具](../tools/verify-hd-player.sh) 加 `--officers` |
 | 高清模式五曲、兩版新局及靜音／恢復錄音 | [spec/021 §6.13](spec/021-hd-art.md#613-高清模式配樂驗證)；配樂工具加 `--hd` |
 | 哪些地方原版會動 | `re/10`（清單 ＋ 已解的三支）、`re/13` 與 `spec/005`「片頭」（開機片頭）、`spec/010`（轉場與場景圖的 48 個呼叫端）|
 | 被擒的將領怎麼處置、釋放逃去哪、招降來的人紮在哪 | `spec/018`、`mechanics/40` §7 |

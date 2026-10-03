@@ -12,7 +12,8 @@ case "${1:-}" in
   --lords-all) target=workplace/hd-window/player/lords-v4 ;;
   --commanders) target=workplace/hd-window/player/commanders-v6 ;;
   --commanders-next) target=workplace/hd-window/player/commanders-v10 ;;
-  *) echo "用法：bash tools/verify-hd-player.sh [--scene-plus|--custom|--portraits|--lords|--lords-all|--commanders|--commanders-next]" >&2; exit 2 ;;
+  --officers) target=workplace/hd-window/player/commanders-v11 ;;
+  *) echo "用法：bash tools/verify-hd-player.sh [--scene-plus|--custom|--portraits|--lords|--lords-all|--commanders|--commanders-next|--officers]" >&2; exit 2 ;;
 esac
 [[ $# -le 1 ]] || exit 2
 pack=workplace/hd-assets
@@ -23,6 +24,7 @@ case "${1:-}" in
   --lords-all) pack=workplace/hd-assets-portraits-v4 ;;
   --commanders) pack=workplace/hd-assets-portraits-v6 ;;
   --commanders-next) pack=workplace/hd-assets-portraits-v10 ;;
+  --officers) pack=workplace/hd-assets-portraits-v11 ;;
 esac
 for dir in "$ROOT" "$ORIG" "$ROOT/workplace/hd-window" "$ROOT/workplace/hd-assets" \
   "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
@@ -43,8 +45,8 @@ fi
 if [[ "${1:-}" == --commanders ]]; then
   test -d "$ROOT/workplace/hd-assets-portraits-v6" || { echo '缺少本機肖像素材包 v6' >&2; exit 2; }
 fi
-if [[ "${1:-}" == --commanders-next ]]; then
-  test -d "$ROOT/$pack" || { echo '缺少本機肖像素材包 v10' >&2; exit 2; }
+if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers ]]; then
+  test -d "$ROOT/$pack" || { echo '缺少本機肖像素材包' >&2; exit 2; }
   for edition in base plus; do
     test -d "$ROOT/workplace/hd-inventory/$edition/img/DATA3" || { echo '缺少肖像來源參考目錄' >&2; exit 2; }
   done
@@ -53,7 +55,7 @@ common=(--rm --network none --memory 3g --cpus 2 --pids-limit 256
   --log-opt max-size=10m --log-opt max-file=3 -u "$(id -u):$(id -g)"
   -v "$ROOT:/src" -v "$ORIG:/src/org_game:ro" -v "$ORIG:/orig:ro"
   -v "$ROOT/$pack:/src/$pack:ro" -w /src)
-if [[ "${1:-}" == --commanders-next ]]; then
+if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers ]]; then
   common+=(-v "$ROOT/workplace/hd-inventory:/src/workplace/hd-inventory:ro")
 fi
 timeout 3m docker run "${common[@]}" --name san1-hd-player-build \
@@ -80,6 +82,6 @@ if [[ "${1:-}" == --lords-all ]]; then gui_limit=28m; fi
 # 二十張卡、八次新局；十二分鐘批次在最後收尾時逾時。
 if [[ "${1:-}" == --commanders ]]; then gui_limit=18m; fi
 # 四十張卡、兩次新局，逐張額外核對原版肖像。
-if [[ "${1:-}" == --commanders-next ]]; then gui_limit=28m; fi
+if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers ]]; then gui_limit=28m; fi
 timeout "$gui_limit" docker run "${common[@]}" --name san1-hd-player-gui \
   --entrypoint python3 eob-audio-capture:20260922-r2 tools/verify-hd-player-inner.py "$@"
