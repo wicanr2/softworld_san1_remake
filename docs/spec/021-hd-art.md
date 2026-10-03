@@ -870,3 +870,98 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 | `workplace/hd-preview/commanders-v12-gui-plus-contact-1.png` | `b7e3eee5bf639aad185be10580ec6e7a0253cdb0b9979b4c78d3d7c5f2516d1e` |
 | `workplace/hd-preview/commanders-v12-gui-plus-contact-2.png` | `aa77f0a6cd2ff433c539088ae64506af5c98efd669f815e574b9a9f976ac370a` |
 | `workplace/hd-preview/commanders-v12-gui-plus-contact-3.png` | `3df89086f296378225acc4c4db6fbab93efa0bacea41d4955b7de6908efa7491` |
+
+### 6.24 劇本 002 新增四十六張肖像
+
+本節狀態：READY。沿用 §6.15／6.23 的固定肖像、B 寫實手繪、4× 與原貌預設契約。這批選取劇本 002 初次玩家停點可查看、尚未製作的四十六個 DATA3 槽。兩版 64×80 來源 PNG 及原始槽 bytes 逐項相同，原始資料為 L0、[both]。查看清單由 remake 正式劇本 002、單人曹操、難度 5 新局產生，195 年元月停在郡 16；不當作原版 oracle。完整九十二列保存本機 `workplace/hd-commanders-v13-plan.json`，SHA-256 `4002d2ab4e7f1a65f917ac45202743df81626bfc5bec1d5b77be8d9eab051abe`。
+
+| 肖像槽 | 人物 | 人物索引 | 查看郡 | 清單選項 | 他國確認 |
+|---|---|---|---|---|---|
+| F224 | 王修 | 318 | 3 | 10 | 是 |
+| F060 | 張南 | 323 | 3 | 11 | 是 |
+| F033 | 梁剛 | 307 | 4 | 9 | 是 |
+| F029 | 徐晃 | 91 | 5 | 2 | 是 |
+| F176 | 程昱 | 67 | 6 | 1 | 否 |
+| F049 | 于禁 | 72 | 6 | 3 | 否 |
+| F162 | 滿寵 | 70 | 6 | 5 | 否 |
+| F177 | 鮑龍 | 172 | 7 | 3 | 是 |
+| F222 | 傅幹 | 336 | 8 | 5 | 是 |
+| F154 | 簡雍 | 113 | 9 | 3 | 是 |
+| F101 | 張遼 | 79 | 11 | 3 | 是 |
+| F085 | 侯成 | 86 | 11 | 4 | 是 |
+| F099 | 宋憲 | 85 | 11 | 6 | 是 |
+| F238 | 郝萌 | 81 | 11 | 8 | 是 |
+| F206 | 許氾 | 312 | 11 | 9 | 是 |
+| F171 | 宋謙 | 177 | 12 | 1 | 是 |
+| F069 | 橋蕤 | 109 | 13 | 3 | 是 |
+| F120 | 徐庶 | 146 | 13 | 6 | 是 |
+| F201 | 鍾繇 | 180 | 14 | 1 | 否 |
+| F172 | 荀彧 | 65 | 15 | 2 | 否 |
+| F143 | 郭嘉 | 68 | 15 | 3 | 否 |
+| F180 | 劉曄 | 69 | 15 | 5 | 否 |
+| F248 | 李典 | 28 | 15 | 6 | 否 |
+| F215 | 荀攸 | 66 | 15 | 7 | 否 |
+| F202 | 陳矯 | 164 | 16 | 3 | 否 |
+| F104 | 閻圃 | 230 | 18 | 3 | 是 |
+| F145 | 楊松 | 221 | 18 | 5 | 是 |
+| F030 | 馬岱 | 9 | 19 | 2 | 是 |
+| F255 | 馬超 | 4 | 19 | 3 | 是 |
+| F150 | 馬玩 | 191 | 19 | 8 | 是 |
+| F194 | 馬鐵 | 181 | 20 | 4 | 是 |
+| F195 | 馬休 | 182 | 20 | 5 | 是 |
+| F197 | 梁興 | 189 | 20 | 6 | 是 |
+| F031 | 周泰 | 100 | 22 | 6 | 是 |
+| F157 | 闞澤 | 144 | 24 | 1 | 是 |
+| F028 | 呂蒙 | 151 | 24 | 4 | 是 |
+| F043 | 賈華 | 178 | 24 | 5 | 是 |
+| F174 | 潘璋 | 154 | 24 | 6 | 是 |
+| F153 | 顧雍 | 128 | 24 | 7 | 是 |
+| F061 | 魏延 | 8 | 27 | 6 | 是 |
+| F074 | 王粲 | 159 | 29 | 4 | 是 |
+| F251 | 甘寧 | 156 | 30 | 4 | 是 |
+| F051 | 王威 | 327 | 30 | 5 | 是 |
+| F163 | 張松 | 196 | 36 | 2 | 是 |
+| F083 | 許靖 | 224 | 36 | 6 | 是 |
+| F044 | 費詩 | 229 | 37 | 7 | 是 |
+
+每張生成圖須保留原圖冠帽、服色、鬚髮、朝向、可見眼睛與表情，不依劇本年齡或通俗人物形象改造。採用既定 B 樣圖作筆觸參考，完整 4:5 圖縮放至 256×320，不裁切、不拉伸、不烘焙文字。來源、提示詞、候選與退件保留本機，Codex 審查與使用者逐張簽核分列。四十六張原圖已逐張查看，六十六份候選均為不透明的 1122×1402 圖，比例檢查全部通過。Codex 採用四十六張、退件二十份，使用者逐張簽核為零；三頁最終對照已查看，來源與採用圖審查完成，授權建立私人 v13 包。完整提示詞及每次實際參考圖雜湊保存在 `workplace/hd-commanders-v13-generation.json`；`image_gen` 未回報模型版本與 seed，不自行補值。
+
+私人包須保留 v12 全部 330 筆欄位、PNG bytes 與準備紀錄。兩版正式載入器與全族稽核另驗。正常玩家驗證從片頭開劇本 002、單人曹操、難度 5，照上表走本國或原有他國查看確認；九十二張人物卡逐項核對原貌來源、原生高清、圖外文字框線及原貌恢復。不注入人物、日期、勢力或 seed。規則與存檔沿用既有契約，此批不替代其他使用端、三語系、音訊、跨平台或原版 oracle 驗收。
+
+準備結果：私人 v13 包為 180/256 肖像及 31/31 SCG，兩版各 211 筆、共 422 筆，正式載入器警告零。v12 全部 330 筆欄位、PNG bytes 及準備紀錄逐項保持。兩族技術問題均為零，Codex 肖像審查 180、缺 76，場景審查 31、缺零；使用者逐張簽核零。場景完整準備閘門返回 0，肖像返回 3。
+
+正常 GUI 結果為 [both]、L1，限於 remake 的實際玩家路徑。重跑入口為 `bash tools/verify-hd-player.sh --officers-002`，容器內從片頭開兩次正式新局，兩版各查看四十六張人物卡，其中三十六位經他國查看、十位經本國查看。370/370 檢查通過，九十二張卡的原貌來源、256×320 原生高清、圖外文字框線與切回原貌各 92/92 相符；沒有注入人物、日期、勢力或 seed。六頁正常人物卡對照已查看，肖像框、姓名及能力欄位未見裁切或遮擋。
+
+獨立回讀再次核對全部 678 張最新 PNG 的解碼、尺寸、擁有權與雜湊，以及原版六份 GRP、實際工具與程式快照、六十六份候選的原請求及參考圖雜湊、四十六份採用紀錄、完整私人包與 v12 的 330 筆保留紀錄。九十二張卡的四項圖面契約逐像素相符，收據 `workplace/hd-v13-delivery-verification.json` 的 SHA-256 為 `04559216184deaccf537c7a5ace8d89e729d62853f520ae7e70943726df88080`。這些結果涵蓋本批人物卡；其他使用端、三語系、音訊、跨平台與原版 oracle 仍依各自驗收範圍。
+
+剩餘來源診斷沿用已驗的 v12 正式六劇本初次停點清單，依目前 v13 稽核排除已準備槽，再回讀目前來源 PNG 及槽 bytes。剩餘七十六槽中，六十三槽有清單，兩版共 126 列；003／004／005／006 分別為 34／14／9／6。F159 查看選項仍為原版 1、加強版 3，F230 為 11／10，依版保存。另十三槽未在初次停點找到，F003 沒有劇本人物引用；不據此猜用途或注入狀態。這是既有診斷的篩選與來源回讀，沒有重跑玩家流程，不算生成或正常 GUI 完成。
+
+本機準備與驗證產物如下。圖片、來源及含原版內容的包不加入版控或發行包。
+
+| 路徑 | SHA-256 |
+|---|---|
+| `workplace/hd-commanders-v13-plan.json` | `4002d2ab4e7f1a65f917ac45202743df81626bfc5bec1d5b77be8d9eab051abe` |
+| `workplace/hd-commanders-v13-generation.json` | `d0dbfa49b69fd7e302f933a2cd6ee8cd9b63174f88dc8e7c1bb0bf11e1a4f754` |
+| `workplace/hd-commanders-v13-requests.json` | `ea20ad5f15a7e71f7a7307b352d1abfb05c5fe0fd5ad686d5d2ae3c25449287a` |
+| `workplace/hd-commanders-v13-reviews.json` | `a0675150ad49d71e989912765fd63229a6db06540c2beb6ca4af30e002f935b5` |
+| `workplace/hd-commanders-v13-build-receipt.json` | `52f0e1e04c57168ca7a6f9d90d75648622c1f3dca81a7423c58ed81218e9c1d2` |
+| `workplace/hd-assets-portraits-v13/manifest.json` | `40e9d06f6e3e511c7691405ad1ff26274a8c7e5b1044d852f98d294bdab7f265` |
+| `workplace/hd-assets-portraits-v13/preparation.json` | `0fae92eaed4cbbf2fa61a10221e3cc403c8473e195124798af26c5274f202861` |
+| `workplace/hd-portrait-audit-v13.json` | `11dc0ee4ef035a2855e5dfe17422e0d22533e620089c0c1020fc25be00a98a3e` |
+| `workplace/hd-scene-audit-v13.json` | `f6feef798512639b6e21dc49de34adfe2c5ad463b8c9c2dd038d61fc08f74481` |
+| `workplace/hd-v13-contact-receipt.json` | `eb3cae4e038ea247f324deb4d95ba53908bf9e0f9d0c399808d68f4099fbd455` |
+| `workplace/hd-v13-next-plan-verification.json` | `d2cb0f14ee4b81eb558c9fe34e1d2326422d0b369806bc823f6fdcd0e352b808` |
+| `workplace/hd-preview/commanders-v13-contact-1.png` | `b3591ebc74407acfcbc43af35e634f378c54909584f2587a57f852dc66ff93f7` |
+| `workplace/hd-preview/commanders-v13-contact-2.png` | `f24bb6080bc8a2c3737e785c4fb0b2c0087b717b94b425cca3e5ee3eb1cc87de` |
+| `workplace/hd-preview/commanders-v13-contact-3.png` | `a88925440827ee882ff604022a91014bffeac8c913a41ba1b86e3bcce9fe6672` |
+| `workplace/hd-window/player/commanders-v13/receipt.json` | `910a55d8e752eb38d2208fae2679823c78dc3ffed4efeea31b1768f5af2e866f` |
+| `workplace/hd-v13-delivery-verification.json` | `04559216184deaccf537c7a5ace8d89e729d62853f520ae7e70943726df88080` |
+| `workplace/hd-v13-gui-contact-receipt.json` | `919547948ad93d79c539d9295f08d013da02d66f7bd993155f9f509765823bbf` |
+| `workplace/hd-v13-audit-commands.json` | `efb62d6601823c140cbc7662b722659b81c0f3959e0dbf9231aa94e423253e7a` |
+| `workplace/verify-hd-v13-delivery.py` | `00ba2b797b2d1a6fcef3bac76dedfe60522abc5aa9b934f50fa3ac581792f77a` |
+| `workplace/hd-preview/commanders-v13-gui-base-contact-1.png` | `cc61ffea46f4bf678c5dc6ef444b12d04867a8afe4350e907be678fd17770966` |
+| `workplace/hd-preview/commanders-v13-gui-base-contact-2.png` | `acd428ec0030090f49a80692a68f497a8ad34dfb603c08301e7f2e9677ffea7c` |
+| `workplace/hd-preview/commanders-v13-gui-base-contact-3.png` | `eb86d5e9bbdfe7f99fbcd69a88936e3956cf2dc0355955e681b51f59b48e95a7` |
+| `workplace/hd-preview/commanders-v13-gui-plus-contact-1.png` | `d51a7595d272bacad841124387bc5a7e423b5e3cf7a9e0990e171fd9e86feb19` |
+| `workplace/hd-preview/commanders-v13-gui-plus-contact-2.png` | `ce93da45f6d603ee97e5d4a70fad22bfa4f6f1fd548a332a5dc2702266db8646` |
+| `workplace/hd-preview/commanders-v13-gui-plus-contact-3.png` | `d5d5191698f37a84b212000aa2d02a1ea9d3796435717c1e17447a72b14901a8` |

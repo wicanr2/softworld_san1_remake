@@ -14,7 +14,8 @@ case "${1:-}" in
   --commanders-next) target=workplace/hd-window/player/commanders-v10 ;;
   --officers) target=workplace/hd-window/player/commanders-v11 ;;
   --officers-all) target=workplace/hd-window/player/commanders-v12 ;;
-  *) echo "用法：bash tools/verify-hd-player.sh [--scene-plus|--custom|--portraits|--lords|--lords-all|--commanders|--commanders-next|--officers|--officers-all]" >&2; exit 2 ;;
+  --officers-002) target=workplace/hd-window/player/commanders-v13 ;;
+  *) echo "用法：bash tools/verify-hd-player.sh [--scene-plus|--custom|--portraits|--lords|--lords-all|--commanders|--commanders-next|--officers|--officers-all|--officers-002]" >&2; exit 2 ;;
 esac
 [[ $# -le 1 ]] || exit 2
 pack=workplace/hd-assets
@@ -27,6 +28,7 @@ case "${1:-}" in
   --commanders-next) pack=workplace/hd-assets-portraits-v10 ;;
   --officers) pack=workplace/hd-assets-portraits-v11 ;;
   --officers-all) pack=workplace/hd-assets-portraits-v12 ;;
+  --officers-002) pack=workplace/hd-assets-portraits-v13 ;;
 esac
 for dir in "$ROOT" "$ORIG" "$ROOT/workplace/hd-window" "$ROOT/workplace/hd-assets" \
   "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
@@ -47,7 +49,7 @@ fi
 if [[ "${1:-}" == --commanders ]]; then
   test -d "$ROOT/workplace/hd-assets-portraits-v6" || { echo '缺少本機肖像素材包 v6' >&2; exit 2; }
 fi
-if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers || "${1:-}" == --officers-all ]]; then
+if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers || "${1:-}" == --officers-all || "${1:-}" == --officers-002 ]]; then
   test -d "$ROOT/$pack" || { echo '缺少本機肖像素材包' >&2; exit 2; }
   for edition in base plus; do
     test -d "$ROOT/workplace/hd-inventory/$edition/img/DATA3" || { echo '缺少肖像來源參考目錄' >&2; exit 2; }
@@ -57,7 +59,7 @@ common=(--rm --network none --memory 3g --cpus 2 --pids-limit 256
   --log-opt max-size=10m --log-opt max-file=3 -u "$(id -u):$(id -g)"
   -v "$ROOT:/src" -v "$ORIG:/src/org_game:ro" -v "$ORIG:/orig:ro"
   -v "$ROOT/$pack:/src/$pack:ro" -w /src)
-if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers || "${1:-}" == --officers-all ]]; then
+if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers || "${1:-}" == --officers-all || "${1:-}" == --officers-002 ]]; then
   common+=(-v "$ROOT/workplace/hd-inventory:/src/workplace/hd-inventory:ro")
 fi
 timeout 3m docker run "${common[@]}" --name san1-hd-player-build \
@@ -87,5 +89,7 @@ if [[ "${1:-}" == --commanders ]]; then gui_limit=18m; fi
 if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers ]]; then gui_limit=28m; fi
 # 九十張卡、兩次新局，逐張核對來源、高清與恢復。
 if [[ "${1:-}" == --officers-all ]]; then gui_limit=60m; fi
+# 劇本 002 的九十二張卡、兩次新局。
+if [[ "${1:-}" == --officers-002 ]]; then gui_limit=60m; fi
 timeout "$gui_limit" docker run "${common[@]}" --name san1-hd-player-gui \
   --entrypoint python3 eob-audio-capture:20260922-r2 tools/verify-hd-player-inner.py "$@"
