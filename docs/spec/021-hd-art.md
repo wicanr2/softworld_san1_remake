@@ -1258,6 +1258,10 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 
 ### 6.29 最後十三張固定肖像
 
+郡名勘誤：本批初次工具與文件曾把郡 18 寫成漢中。兩版原始 DATA2.GRP 檔案位移 821,227 的四個 bytes `a4 d1 a4 f4`，依 cp950 均為天水，與正常尋訪畫面一致，L0、[both]；見 [州郡表](../formats/02-data2-prefecture-table.md#3-42-個郡名)。來源回讀收據為 `workplace/hd-v18-location-correction.json`；先前 GUI 收據另保留為 `workplace/hd-v18-gui-location-first.json`。修正地名描述後依相同正常操作重新生收據，不改郡編號、人物、遊戲狀態或規則。
+
+初次獨立回讀與公開文字收據另存 `workplace/hd-v18-delivery-location-first.json`、`workplace/hd-v18-publish-first-check.json`，保留地名勘誤前的驗證範圍。
+
 **狀態：READY**。沿用 §6.28 的 B 寫實手繪、4×、每次啟動原貌及固定肖像契約。本批補齊全 256 槽的最後十三槽，不以初次人物清單是否可見改變素材分母。直接回讀兩版 DATA3.GRP／IDX／NAM、原槽 bytes 與 64×80 PNG，分版來源相同，L0、[both]。來源回讀收據 `workplace/hd-v18-plan-verification.json` 的 SHA-256 為 `d73f102e22a05260870385ac2efecdac77cbdf33ca881a079e2966b2c6f54a83`，二十六列計畫 `workplace/hd-commanders-v18-plan.json` 為 `e74a6deb2a0248029b93de9e872359e281e363341c91066a5b42f99c2f6307d6`。
 
 | 肖像槽 | 遊戲資料姓名 | 原圖識別重點 |
@@ -1276,7 +1280,7 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 | F245 | 文鴛 | 強烈朝左雙眼及窄遠眼、青藍紋盔、黑髭尖黑鬚、紅黑衣黃領 |
 | F253 | 劉禪 | 朝左單眼側臉、露額黑髮及右上白紅髮飾、無鬚、紅衣白領 |
 
-F003 在六劇本人物表沒有引用，不猜人物姓名。F084 與 F208 各由兩人共用；保持原固定肖像，不按劇本年齡另畫。正式初始狀態診斷 `workplace/hd-portrait-hidden-state-v18.json` 的兩版六劇本共 168 列，姜維在 006 為漢中隱藏人物，其餘有引用槽均為未登場狀態。此為 remake 初始停點診斷，不是正常 GUI 或新增原版 oracle。
+F003 在六劇本人物表沒有引用，不猜人物姓名。F084 與 F208 各由兩人共用；保持原固定肖像，不按劇本年齡另畫。正式初始狀態診斷 `workplace/hd-portrait-hidden-state-v18.json` 的兩版六劇本共 168 列，姜維在 006 為天水隱藏人物，其餘有引用槽均為未登場狀態。此為 remake 初始停點診斷，不是正常 GUI 或新增原版 oracle。
 
 來源準備入口 `workplace/prepare-hd-commanders-v18-plan.py`；狀態診斷入口 `workplace/hd-portrait-hidden-plan-v18.go`。原圖及最近鄰 16× 目標全部查看，完整請求、原圖觀察、實際生成路徑與審查保存於 `workplace/hd-commanders-v18-requests.json`、`workplace/hd-commanders-v18-source-observations.json`、`workplace/hd-commanders-v18-generated-paths.json`、`workplace/hd-commanders-v18-reviews.json`。使用內建 image_gen，初版只輸入該人物原圖；B 畫風沿革參考 §6.28，不另輸入他人肖像。完整 4:5 圖縮放至 256×320，不裁切或烘焙文字。候選與最終來源／高清比較頁全部查看後才轉 READY 並建立私人 v18 包。
 
@@ -1288,9 +1292,9 @@ F003 在六劇本人物表沒有引用，不猜人物姓名。F084 與 F208 各�
 
 二十三份實際候選及最終原圖比較頁均已查看，十三張採用、十張退件保留。姜維、司馬師、傅巽、蔣欽共用槽與劉禪採第二版，司馬昭共用槽採第三版，鍾毓採第四版，其餘採第一版。全部候選為 1122×1402、不透明且符合既有 4:5 誤差契約，使用者逐張簽核零。生成彙整 `workplace/hd-commanders-v18-generation.json` 的 SHA-256 為 `69012f42152e2378b8380aa3128ed4a8b4dbb04d5f59ac4fe80234c631fbaf43`；最終原圖比較頁 `workplace/hd-preview/commanders-v18-contact-final-1.png` 為 `78cf1cdb707c1d22bd817f32884febf62ae869c2f6f6c949c1d54e202018fd19`。READY 解鎖私人 v18 包；下列正式載入、正常尋訪與獨立回讀均已完成。
 
-正常尋訪輸入的診斷入口為 `workplace/hd-v18-search-plan.go`，輸出 `workplace/hd-v18-search-plan.json`。沿正式選單開 006 劉備、難度 5，依正常休息流程輪到漢中，再選本地謀略最高者尋訪。漢中屬勢力 0 劉備，空郡哨兵為 255，不能作自創君主起點。正式新局的預設亂數不覆寫；此診斷先確認 GUI 等價輸入，不增加原版 parity 聲明。
+正常尋訪輸入的診斷入口為 `workplace/hd-v18-search-plan.go`，輸出 `workplace/hd-v18-search-plan.json`。沿正式選單開 006 劉備、難度 5，依正常休息流程輪到天水，再選本地謀略最高者尋訪。天水屬勢力 0 劉備，空郡哨兵為 255，不能作自創君主起點。正式新局的預設亂數不覆寫；此診斷先確認 GUI 等價輸入，不增加原版 parity 聲明。
 
-正常 GUI 重跑入口 `bash tools/verify-hd-hidden.sh`，容器內控制器為 `tools/verify-hd-hidden-inner.py`，收據位於 `workplace/hd-window/player/hidden-v18/receipt.json`。兩版各休息郡 36、32、39、37、38、30，再於漢中以謀略排序第一位馬良尋訪；核對姜維來源、原生高清、圖外文字框線及原貌恢復。
+正常 GUI 重跑入口 `bash tools/verify-hd-hidden.sh`，容器內控制器為 `tools/verify-hd-hidden-inner.py`，收據位於 `workplace/hd-window/player/hidden-v18/receipt.json`。兩版各休息郡 36、32、39、37、38、30，再於天水以謀略排序第一位馬良尋訪；核對姜維來源、原生高清、圖外文字框線及原貌恢復。
 
 獨立回讀入口為 `workplace/verify-hd-v18-delivery.py`，在 `eob-audio-capture:20260922-r2` Docker 執行，收據為 `workplace/hd-v18-delivery-verification.json`。回讀完整素材包、前版保留紀錄、實際候選與參考雜湊、原始容器、兩版正常尋訪及全部最新截圖；與建包程式分開檢查。
 
@@ -1329,9 +1333,12 @@ F003 在六劇本人物表沒有引用，不猜人物姓名。F084 與 F208 各�
 | `workplace/hd-v18-search-plan.json` | `a377c1c42926f578ed6844dae1eb63bb313872b49d6a1a017be60192a82c2b0a` |
 | `workplace/hd-v18-continue-reference.png` | `6621bdec13742de2acbc1b677536c4f3227a1f8b58155cc4fad587069cab3d34` |
 | `workplace/hd-v18-gui-first-attempt.json` | `bdc590cfff0037e21ae830e058b65b7e339a1db86f0fb1def4bf3f08c4e47bc5` |
-| `workplace/hd-window/player/hidden-v18/receipt.json` | `19c5f51e8137ad4c56fd77585c87f905ce55b1a6402cf37f0050f5012943c56f` |
-| `workplace/verify-hd-v18-delivery.py` | `27f334e2e3c977b6d1b9077686fa3f2f18fcda7bdc1819c5f0a58e8fedb656cf` |
-| `tools/verify-hd-hidden.sh` | `5109747574bfdf33384efd318b6a9c6d7af5c54a403c0988bf0fa5a121f6b20d` |
-| `tools/verify-hd-hidden-inner.py` | `7eef2a27c669319ab4e6cfb579f1f6b708aee50bb58aeb953b65d997992f4fb4` |
-| `workplace/hd-v18-delivery-verification.json` | `8e2feecad58d093cf8323c4efdf85fea568fa27a23e30a02ca1c2537c8b09fb7` |
-| `workplace/hd-v18-artifact-index.json` | `42a7f292b83efafd73ed7600fe931c915670581911d258c21cc64ec0dcf22a82` |
+| `workplace/hd-window/player/hidden-v18/receipt.json` | `ccb370f8937f96f480861ca4c8ec4dab8ee9675881af413a5311d73610cb6170` |
+| `workplace/verify-hd-v18-delivery.py` | `4dd34f1db24372803be62b14bb8346a088aabd83eba48bd526c1a2a028a0d168` |
+| `tools/verify-hd-hidden.sh` | `548c3ed3664e41ad9f3eabaf845fb9220ae886a5b2556ce69e3d2dd6e10b8601` |
+| `tools/verify-hd-hidden-inner.py` | `5a6efe73b3b5b816f2049433017817435d730eacc188d93e495b1c2a5a09c8bb` |
+| `workplace/hd-v18-delivery-verification.json` | `41caceb286670dfdf1470c4bc98bc5249fa51cfb48a3bbc2d7db4a8c304e3735` |
+| `workplace/hd-v18-location-correction.json` | `c6a287522e622c627e819d59d113f932aea8e725ba254a891de1151ff39d0c19` |
+| `workplace/hd-v18-gui-location-first.json` | `19c5f51e8137ad4c56fd77585c87f905ce55b1a6402cf37f0050f5012943c56f` |
+| `workplace/hd-v18-delivery-location-first.json` | `8e2feecad58d093cf8323c4efdf85fea568fa27a23e30a02ca1c2537c8b09fb7` |
+| `workplace/hd-v18-artifact-index.json` | `1411b2e1f0dc8107020692d09e06658df116d9ce7707cc604782ee218cf12a30` |

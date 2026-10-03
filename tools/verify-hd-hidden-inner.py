@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""正常新局的尋訪、寬／窄主戰場及查看。"""
+"""兩版正常劉備新局的天水姜維尋訪與高清切換。"""
 import hashlib
 import importlib.util
 import json
@@ -12,7 +12,7 @@ gui = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gui)
 gui.OUT = gui.ROOT / 'workplace/hd-window/player/hidden-v18'
 pack = gui.ROOT / 'workplace/hd-assets-portraits-v18'
-gui.receipt.update(method='Linux Xvfb 正常片頭、006 劉備新局、六郡休息後漢中尋訪姜維',
+gui.receipt.update(method='Linux Xvfb 正常片頭、006 劉備新局、六郡休息後天水尋訪姜維',
                    scenario='006', player=0, difficulty=5,
                    randomness='正式新局預設亂數；不是原版 oracle 收據')
 
@@ -109,7 +109,7 @@ def search(edition):
     verify(wid, tag + '-found', [found], [(408, 36, 224, 256)])
     gui.receipt.setdefault('normal_search_plan', []).append({
         'edition': edition, 'scenario': '006', 'lord': '劉備', 'player': 0,
-        'difficulty': 5, 'rests': rests, 'prefecture': 18, 'actor': '馬良',
+        'difficulty': 5, 'rests': rests, 'prefecture': 18, 'prefecture_name': '天水', 'actor': '馬良',
         'actor_choice': 1, 'found': '姜維', 'portrait': 'F019',
         'state_injection': False, 'seed_override': False})
     gui.stop(proc)
@@ -122,6 +122,7 @@ try:
     gui.wait(['xdotool', 'getdisplaygeometry'])
     gui.receipt['binary_sha256'] = hashlib.sha256((gui.OUT / 'san1-window-check').read_bytes()).hexdigest()
     gui.receipt['pack_sha256'] = hashlib.sha256((pack / 'manifest.json').read_bytes()).hexdigest()
+    gui.receipt['continue_reference_sha256'] = hashlib.sha256((gui.ROOT / 'workplace/hd-v18-continue-reference.png').read_bytes()).hexdigest()
     gui.receipt['tool_sha256'] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in [
         Path(__file__), Path(__file__).with_name('verify-hd-hidden.sh'),
         Path(__file__).with_name('verify-window-inner.py')]}

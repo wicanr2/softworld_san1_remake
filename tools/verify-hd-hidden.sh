@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 兩版 006 劉備正常休息後尋訪姜維；只在 Docker 中執行。
+# 兩版 006 劉備正常休息後於天水尋訪姜維；只在 Docker 中執行。
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ORIG="${SAN1_ORIG:-$ROOT/org_game}"

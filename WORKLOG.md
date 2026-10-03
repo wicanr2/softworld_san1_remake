@@ -2,12 +2,20 @@
 
 ## 2026-10-04 最後十三張固定肖像與正常姜維尋訪
 
+郡名勘誤：前次提交把正常尋訪的郡 18 註記為漢中，實際為天水。兩版原始 DATA2.GRP 位移 821,227 的 cp950 bytes 與 GUI 一致。保留初次收據及開工記錄，修正現況、工具描述與 Issue，並以相同操作重新產生收據；來源與結果見 021 §6.29。
+
+更正後兩版 GUI 10/10、36 張最新截圖與全包獨立回讀再次通過，兩版高清畫面已查看。新增原始地名 bytes 與辨識參考雜湊回讀。文件檢查為 133 個連結、67 個標題入口、36 份表列雜湊；七份實際暫存文字與既有 69 PNG／23 完整提示詞正反對照通過。
+
+地名勘誤的 Issue 同步另存 `workplace/hd-v18-issue-location-update-plan.json`、`workplace/hd-v18-issue-location-104-body.md`、`workplace/hd-v18-issue-location-107-body.md`、`workplace/hd-v18-issue-location-108-body.md`、`workplace/hd-v18-issue-location-109-body.md`、`workplace/hd-v18-issue-location-110-body.md`；公開檢查入口與收據為 `workplace/verify-hd-v18-issue-location-publish.py`、`workplace/hd-v18-issue-location-publish-check.json`，回讀收據為 `workplace/hd-v18-issue-location-sync-receipt.json`。初次同步收據與五份本文保留。
+
 - 最後十三槽共二十三份內建 image_gen 候選，採十三張、十張退件保留；最終原圖比較頁均已查看。口部複驗辨識出姜維短髭無下巴鬚、傅巽無髭鬚、司馬昭共用槽細髭無下巴鬚、鍾毓髭與尖鬚及微張口上齒；初始觀察、已執行提示詞與退件保留，追加勘誤並重生修正候選。
 - [021 §6.29](docs/spec/021-hd-art.md#629-最後十三張固定肖像) 轉 READY 後建立私人 v18 包，肖像 256/256、SCG 31/31，兩版各 287 筆、共 574 筆。正式載入器無警告，兩族完整準備閘門均返回 0；v17 全部 548 筆欄位、PNG bytes 與準備紀錄保持。素材與完整提示詞只留本機。
-- 正常尋訪診斷改循 006 劉備新局。漢中屬勢力 0 劉備，空郡哨兵為 255，初次自創君主起點假設撤回。兩版六郡休息後以馬良尋訪姜維，未注入狀態或覆寫 seed。首次 GUI 忘記送出軍師勸諫後的 Y/N 確認，修正控制器後同一路徑乾淨重跑；10/10 通過，兩版高清畫面已查看。
+- 正常尋訪診斷改循 006 劉備新局。天水屬勢力 0 劉備，空郡哨兵為 255，初次自創君主起點假設撤回。兩版六郡休息後以馬良尋訪姜維，未注入狀態或覆寫 seed。首次 GUI 忘記送出軍師勸諫後的 Y/N 確認，修正控制器後同一路徑乾淨重跑；10/10 通過，兩版高清畫面已查看。
 - 獨立回讀全部 574 筆素材、287 張 PNG、二十三份候選與實際生成來源、參考雜湊、兩版 DATA3 原始槽、執行工具快照及 36 張最新 GUI 截圖通過。驗證器的生成來源掛載及 DOS 8.3 名稱空白填補解析曾失敗，先回查 learning loop 規則與實際格式，最小二十六槽檢查通過後完整重跑；錯誤掛載產生的單一空目錄已刪除。這些是環境與驗證器問題，遊戲程式未改。
-- [獨立收據](workplace/hd-v18-delivery-verification.json) SHA-256 `8e2feecad58d093cf8323c4efdf85fea568fa27a23e30a02ca1c2537c8b09fb7`。未增加原版 oracle 或配樂重跑聲明；其他使用端、素材家族、三語系、跨平台及使用者逐張簽核仍待完成，整份 HD 保持 READY。
+- [獨立收據](workplace/hd-v18-delivery-verification.json) SHA-256 `41caceb286670dfdf1470c4bc98bc5249fa51cfb48a3bbc2d7db4a8c304e3735`。未增加原版 oracle 或配樂重跑聲明；其他使用端、素材家族、三語系、跨平台及使用者逐張簽核仍待完成，整份 HD 保持 READY。
 - 文件檢查通過 131 個連結、65 個標題入口與 33 份表列雜湊，工具語法及 `git diff --check` 通過。公開檢查核對七份實際暫存文字，69 份 PNG、23 份完整提示詞、MZ 前綴正對照及乾淨反對照通過，不宣稱通用片段或編碼外洩偵測。工作根擁有權自檢異常零，無殘留 san1 容器；私人圖片與原版資料不加入 Git。
+- 遠端 main 已核對為 `8b1dc690fb262715664e5a4d2c67fb4f3c0eae16`。Issue 同步計畫保存於 `workplace/hd-v18-issue-update-plan.json`；五份實際本文為 `workplace/hd-v18-issue-104-body.md`、`workplace/hd-v18-issue-107-body.md`、`workplace/hd-v18-issue-108-body.md`、`workplace/hd-v18-issue-109-body.md`、`workplace/hd-v18-issue-110-body.md`，公開檢查入口見 [021 §6.29](docs/spec/021-hd-art.md#629-最後十三張固定肖像)，回讀收據入口為 `workplace/hd-v18-issue-sync-receipt.json`。
+- 五項 Issue 的最新本文、標題、留言與 OPEN 狀態逐字回讀一致；#108 生成準備條件勾選完成，其餘使用端及人工驗收維持開啟。同步收據 SHA-256 `657b7725ae2d5f063ecee3dda7046de35ac7744f54663f8c36156b5bc053fcc1`，五份本文公開檢查 `021f95702315d4456e18f60f1cbc0e3519a4de9d0c111e1802d3a3d721d5cfb7`。本輪收尾提交的公開檢查入口與收據為 `workplace/verify-hd-v18-checkpoint-publish.py`、`workplace/hd-v18-checkpoint-publish-check.json`，沿用已驗私人來源及正反對照，僅提交工作歷程。
 
 ## 2026-10-04 最後十三張固定肖像開工
 
