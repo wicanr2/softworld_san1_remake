@@ -510,3 +510,94 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 | `verify-hd-battle-branches-delivery.py`，私人回讀工具 | `8dbaf0ba01589ac5492eaf7c4c3a1bb93088c15bb8f25a524440837ab873f496` |
 
 圖片、原版資料、失敗資料與完整收據只留本機。此批僅新增驗證工具與文件，素材仍為 49/256 肖像及 8/31 SCG 場景，正式 Go 程式、規則、seed 及存檔未改。原版 oracle、配樂、三語系、其他動畫／遮罩及跨平台的既有限制不因此擴張，021 維持 READY。
+
+### 6.19 人事、築城與戰場事件插圖批次
+
+本節狀態：READY。八張候選的兩版來源、比例與 Codex 逐張審查已通過，正式載入器兩版各接受 65 筆且沒有警告。正常玩家驗收另列，不由素材載入推定完成。
+
+| 場景 | 既有使用端 | 邏輯位置 |
+|---|---|---|
+| SCG04 | 登用成功、登用他國人才成功 | (432,80) |
+| SCG05 | 任命軍師、主事者 | (432,80) |
+| SCG07 | 登用前對白 | (432,80) |
+| SCG12 | 戰場退兵 | (448,268) |
+| SCG13 | 登用他國人才前對白 | (432,80) |
+| SCG17 | 戰場射箭 | (448,268) |
+| SCG21 | 築城 | (432,80) |
+| SCG26 | 撤職、釋放俘虜 | (432,80)、(448,268) |
+
+使用端依 [010](010-screen-transitions.md) 與目前程式，不推定新的原版行為。盤點已確認八鍵均來自 DATA3、176×96，兩版來源 bytes 相同。以每鍵原圖為構圖參考，SCG06 的 B 候選僅作筆觸參考；輸出不透明 11:6 原圖，完整縮放至 704×384。保留人物相對位置、衣著、動作、旗色及原場景主體，不加入文字或新物件。每鍵獨立生成，比例或構圖不符即保留退件並修正。
+
+提示詞、參考路徑、來源及候選雜湊、採用理由與未回報的模型／seed 分別記錄在私人 `workplace/`。Codex 審查與使用者簽核分列，不因 B 畫風已定案推定逐張簽核。原版規則、日期、亂數、存檔及命令路由不改。正常玩家驗收必須經片頭、新局與原有命令，診斷及靜態圖層驗證不能取代正常 GUI；尚未驗證的結果保留未完成狀態。
+
+生成紀錄為 `workplace/hd-scenes-v2-generation.json`，八張均採第一版。SCG21 採用圖為 1699×926，其他七張 1698×926，依既有一個來源像素內的比例誤差契約接受，沒有裁切。新包為 `workplace/hd-assets-scenes-v8/`，含 49/256 肖像與 16/31 SCG，兩版各 65 筆。場景缺 15、肖像缺 207；兩族技術問題均為 0，使用者逐張簽核均為 0。
+
+沿用 §6.17 的全族稽核及完整圖層工具，v8 兩版各 16 張場景、四方向的全部 24／24／22／22 步，共 1,472 幀通過，合計 2,944 幀。這是實際素材的 remake 圖層驗證，不能代替正常玩家或原版 oracle。
+
+| 本機 `workplace/` 產物 | SHA-256 |
+|---|---|
+| `hd-assets-scenes-v8/manifest.json` | `2c5f7cacb5f044194087f35b5ca1d7605432e0a4e79360913fbc04eccd94ea25` |
+| `hd-assets-scenes-v8/preparation.json` | `9aa5153e5424adb0fd43c9f8ebf614d2eecd3a88d2beed94367017188f06ac14` |
+| `hd-scenes-v2-generation.json`，八張採用 | `5f7205eca291fdd4fa33bf63edd2b3a7d39b47e5e5831bdc82585431256e0e44` |
+| `hd-scene-audit-v8.json` | `c58db1060bf78c23b5eef349b55678cf12a29aa475bf10599a4b3d185af493a9` |
+| `hd-portrait-audit-v8.json` | `f87ab62472428f81f5ac56645f24aa84ebbfc487df09844d50c59852b986539b` |
+| `hd-wipes-v8-base.json`，1,472 幀 | `81630027d2403ebaf44562934b854da5952886032a463bc8d7044f333ed83e86` |
+| `hd-wipes-v8-plus.json`，1,472 幀 | `bb4643c39e6eb66466f308b70c8d2a98e3e9955975f933aa8a855d332ba7bfbd` |
+| `hd-preview/events-v8-contact.png`，原圖與高清比較頁 | `86d6ac7887e47b223a5832e44f5e003028ad82c9df340774f93ab4ca9444f874` |
+
+正常視窗入口為 [`tools/verify-hd-events.sh`](../../tools/verify-hd-events.sh)，使用 `bash tools/verify-hd-events.sh`，可加 `--edition base|plus` 或 `--only SCG##` 縮小診斷。前置工具鏈及原版素材沿用 §6.5，需私人 v8 包與完整盤點。實際 X11 擷取沿用 [場景工具](../../tools/verify-hd-scenes-inner.py) 的獨立幾何判準，依場景位置讀取主畫面或戰場下方的 704×384 矩形；原貌及素材外文字另核對。
+
+人事路徑以 001 曹操登用名單第二位張邈、撤職名單第一位夏侯惇，以及登用洛陽名單第一位他國將領；任命場景以 001 劉備指定關羽為軍師。築城另開 003 曹操，弘農 14、潁川 13、上黨 6 依序休息，輪到洛陽 15 後，選楊修並按 `2,3,3,0,Y` 在第 27 格築城。正式新局與命令診斷確認原有金 3,118 足以付 3,000，關寨 3→4、金剩 118。路徑與提示由 [參考工具](../../tools/hd-events-reference.go) 重生，診斷不替代正常 GUI。
+
+戰場路徑沿用 §6.18 的董卓新局與洛陽呂布攻陳留。退兵在既有 (Q=4,R=3) 紮寨點選第一個合法逃郡譙郡 12；弓箭另在 (Q=1,R=4) 合法紮寨，游標鍵為 `3,0`，方向 `3` 射向 (Q=3,R=4) 曹洪。正式戰術 API 已確認中間格為淺水、箭數為 4，兩版均可射擊。舊紮寨點的方向 `2` 中間格為城池，依法不能射箭；保留診斷失敗，修正測試路徑，不改正式規則或部隊座標。
+
+退兵列表佔下方面板前三行，「退兵」標題位於第四行 y=316。築城確認位置後，正式流程另有軍師勸諫及「主公是否繼續」停點；工具依實際提示按 Y，並保存確認圖。窄版戰場的文字比較取攻方右側 (528,44) 與守方左側 (448,156) 的 96×96 區域，避開另有高清素材的肖像。初次驗證誤認退兵標題行、將高清肖像納入文字區，以及漏答築城勸諫，失敗資料分別保存於 `events-v8-before-retreat-sync/`、`events-v8-before-hud-region/`、`events-v8-before-fort-confirm/`，均在 `workplace/hd-window/player/` 下。修正的是驗證流程，正式 Go 程式未改。
+
+加強版任命軍師的初次完整擷取已包含 1–23 步與終點，截圖卻被額外續頁鍵推到劉備對白。失敗收據及實圖保存於同層 `events-v8-before-wipe-continuation/`。擷取器改為首個有效拉幕幀後鎖住續頁，直到目標原生像素完成；動畫開始後不再按空白鍵。這是輸入同步修正，不改動畫幀數、速度或玩家流程。
+
+兩版各八次正常片頭／新局，共十六次，200/200 檢查通過，完整批次返回 0。每張核對 704×384 原生高清、176×96 原貌來源、高清恢復與素材外文字框線。SCG04 只驗本郡登用成功，SCG05 只驗軍師任命，SCG13 只驗他國登用開場，SCG26 只驗主畫面撤職；同鍵其他使用端仍待抽驗。
+
+| 場景 | 原版捕獲方向／非終點步數 | 加強版捕獲方向／非終點步數 |
+|---|---|---|
+| SCG04 | 3，向左／1–21 | 3，向左／1–21 |
+| SCG05 | 1，向上／1–23 | 1，向上／1–23 |
+| SCG07 | 2，向右／1–21 | 2，向右／1–21 |
+| SCG12 | 1，向上／1–23 | 0，向下／1–23 |
+| SCG13 | 1，向上／1–23 | 1，向上／1–23 |
+| SCG17 | 2，向右／1–21 | 0，向下／1–23 |
+| SCG21 | 1，向上／1–23 | 1，向上／1–23 |
+| SCG26 | 3，向左／1–21 | 3，向左／1–21 |
+
+合計 354 個實際 X11 中間幀，十六段均捕獲該方向全部非終點步數；步數遞增、揭露區全部像素與首幀後未覆蓋區符合獨立幾何。原版本批捕獲三方向，加強版捕獲四方向，未重擲或挑選方向；各圖其他方向由前述完整圖層另驗。首個捕獲幀之前的遮蔽區不在 GUI 比較範圍。
+
+獨立回讀 290 個最新 PNG、354 份壓縮 RGB、七份工具、兩份控制器原文、執行檔、六份原始 GRP、包內 130 筆及八份生成紀錄，雜湊、尺寸與擁有權相符。另以獨立像素幾何重驗揭露區、未覆蓋區、原貌來源、文字框線及高清恢復，全部通過；v7 的 114 筆素材保留且欄位相同。原版與加強版都捕獲築城勸諫確認；加強版另捕獲正常太守補位與返回。收據的 `rested_prefectures` 記錄送出休息序列的嘗試，加強版潁川第一次被補位停點打斷，完成補位後再送休息，不將重複記錄視為兩次已執行命令。
+
+| 本機 `workplace/` 產物 | SHA-256 |
+|---|---|
+| `hd-window/player/events-v8/receipt.json`，200/200 | `53e359ee089bbe07cd77d050fd9bb2acb0ac611b2756df79750038ecfb75d7f1` |
+| `hd-window/player/events-v8/san1-window-check` | `aeba6c86449f2f38fb6f3a46400580edf4ed82ddb2ebb2379c725d11ca6f7b6b` |
+| `hd-window/player/events-v8/verify-hd-events-inner.py` | `2fcb05d066a036b33dd46370b9d6e73d4df2d364e89b63c7169850e9ea8b86f0` |
+| `hd-window/player/events-v8/verify-hd-events.sh` | `2351d2d94ee48882c4687bca8c6c3312f378b2ebef60943ecf9b03b83b95acb1` |
+| `hd-window/player/events-v8/hd-events-reference.go` | `68e1e58a09b43bbf8469db4e449e0c6a9266965562baa910863f6413d636ec22` |
+| `hd-window/player/events-v8/verify-hd-scenes-inner.py` | `b7dce8db9c193db0657b9b919fb90e4ce5f5ae57f2d1075de1b9385cc3b3d3c1` |
+| `hd-window/player/events-v8/san1-main.go` | `5b8c585bc065ba67ad086b9ba18be37a34b17544f5b6b0b06f95afd3c92b2004` |
+| `hd-window/player/events-v8/governor_test.go` | `a2915593a9e127ac22b49f2cacb399a73b7730e08bbd881b8b3e9d4fa8e27300` |
+| `hd-window/player/governor-prompt-tests.log`，四項 | `ff131040b19bf87fd78266351fa448cc5b846c52f599bb194e52c039fd927af8` |
+| `hd-window/player/governor-all-tests-summary.json`，653 通過／27 跳過 | `8b37f4a4de2e63a29216a15f7edbae51291c1a4c7701ed3c57dc4b6ed4078b79` |
+| `hd-window/player/governor-all-tests.jsonl` | `9524b78108196d917dc82ab2037955546ef1dbe0d430bd6b03a390721ddfca3a` |
+| `hd-v8-delivery-verification.json`，獨立回讀 | `7709795018886bf7899da6f539dabd836def5cd4fdbd3af2d363932303d9daeb` |
+| `verify-hd-v8-delivery.py`，私人回讀器 | `4ba404866afd9da50b7be516315aa72135d9f94dbfa818bf4a5c603a513b4e4b` |
+
+圖片、原版資料、生成紀錄、失敗資料與完整收據只留本機。規則、seed 與存檔未改；正式 UI 的補位返回修復依下一節。沒有新增原版 oracle 或配樂重跑聲明，使用者逐張簽核、其餘素材家族與使用端、動畫／遮罩、三語及跨平台仍待完成，021 維持 READY。
+
+#### 6.19.1 太守補位後恢復下令提示
+
+狀態：READY。證據審查沿用 [014 §2.1](014-art-main-overlays.md#21-主提示時上面板是十項指令表) 的主迴圈重印提示，以及同規格的 `0x1d638` → `0x1d6ed` 太守補位契約；原版證據維持該規格的 `[base]` L0／L1 範圍。
+
+加強版正常築城路徑出現太守補位，選完候選後，`closeRoster` 清掉提示與輸入，既有 `askNewGovernor` 回呼沒有重建目前玩家郡的下令提示。修復限定在合法補位完成後：若沒有其他待補位郡，且 `Session.Waiting()` 仍有玩家郡，恢復該郡的面板與 `mainAsk` 數字輸入。仍有待補位郡時交回既有補位流程，沒有玩家停點時交回既有電腦流程。不得結束回合、推進年月或改變規則、亂數與存檔。
+
+驗收須同時核對兩版的補位回呼、無玩家停點時不插入下令提示，以及加強版正常新局、補位、續行至洛陽與築城。控制器測試屬回歸，正常 GUI 收據另列，不升格為新的原版 oracle。
+
+[控制器回歸](../../cmd/san1/governor_test.go) 的兩版有／無玩家停點共四項通過；玩家停點與年月保持，無玩家停點時不插入下令提示。加強版正常補位、續行至洛陽與築城窄驗 12/12 通過，收據保留於 `workplace/hd-window/player/events-v8-fort-plus-return-pass/`。
+
+含原版素材的正式 Go 套件回歸為 653 項、17 個有測試套件通過；27 項跳過，完整列表在 `workplace/hd-window/player/governor-all-tests-summary.json`，不計入通過或原版 parity。`oracle` 標籤未啟用。初次 `go test ./...` 被私人 `workplace/` 的多個診斷 `main` 阻擋；重跑以 tmpfs 隔離該目錄，原版資料唯讀掛 `/orig`，快取與輸出另外掛載，Xvfb 有界且收尾關閉。失敗 log 保留為 `governor-all-tests-private-workplace-failure.log`，完整 JSON log 為 `governor-all-tests.jsonl`，兩者均在同一玩家驗證目錄。

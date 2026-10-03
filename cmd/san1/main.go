@@ -2264,6 +2264,13 @@ func (a *app) askNewGovernor(at int) {
 	a.askRoster(t("ask.newGovernor"), at, game.PickServing, game.PickByCharm, func(gi int) {
 		if err := a.s.G.AssignGovernor(at, gi); err != nil {
 			a.view.Prompt = game.ErrorText(err)
+			return
+		}
+		// 補位清單覆蓋了主提示；恢復目前下令郡，繼續既有主迴圈。
+		// 仍有補位或尚未輪到玩家時，留給 Update 的既有流程處理。
+		if waiting := a.s.Waiting(); waiting != 0 && a.s.G.NeedsGovernor() == 0 {
+			a.view.Sel, a.view.Status = waiting, true
+			a.mainAsk(waiting)
 		}
 	}, func() { a.askNewGovernor(at) })
 }

@@ -27,7 +27,8 @@ class XImage(ctypes.Structure):
 
 
 class Capture:
-    def __init__(self):
+    def __init__(self, x=1728, y=320):
+        self.x, self.y = x, y
         self.lib = ctypes.CDLL('libX11.so.6')
         self.lib.XOpenDisplay.argtypes, self.lib.XOpenDisplay.restype = [ctypes.c_char_p], ctypes.c_void_p
         self.lib.XDefaultRootWindow.argtypes, self.lib.XDefaultRootWindow.restype = [ctypes.c_void_p], ctypes.c_ulong
@@ -42,7 +43,7 @@ class Capture:
         self.root = self.lib.XDefaultRootWindow(self.display)
 
     def read(self):
-        im = self.lib.XGetImage(self.display, self.root, 1728, 320, W, H, ctypes.c_ulong(-1).value, 2)
+        im = self.lib.XGetImage(self.display, self.root, self.x, self.y, W, H, ctypes.c_ulong(-1).value, 2)
         if not im:
             raise RuntimeError('X11 擷取失敗')
         try:
