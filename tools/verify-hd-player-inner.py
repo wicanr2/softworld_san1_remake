@@ -20,8 +20,9 @@ portraits_only = sys.argv[1:] == ['--portraits']
 lords_only = sys.argv[1:] == ['--lords']
 lords_all_only = sys.argv[1:] == ['--lords-all']
 commanders_only = sys.argv[1:] == ['--commanders']
-if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only or lords_all_only or commanders_only):
-    raise SystemExit('僅接受 --scene-plus、--custom、--portraits、--lords、--lords-all 或 --commanders')
+commanders_next_only = sys.argv[1:] == ['--commanders-next']
+if sys.argv[1:] and not (scene_only or custom_only or portraits_only or lords_only or lords_all_only or commanders_only or commanders_next_only):
+    raise SystemExit('僅接受 --scene-plus、--custom、--portraits、--lords、--lords-all、--commanders 或 --commanders-next')
 if scene_only:
     gui.OUT /= 'scene-plus'
 if custom_only:
@@ -34,7 +35,10 @@ if lords_all_only:
     gui.OUT /= 'lords-v4'
 if commanders_only:
     gui.OUT /= 'commanders-v6'
+if commanders_next_only:
+    gui.OUT /= 'commanders-v10'
 pack_dir = gui.ROOT / ('workplace/hd-assets-custom-v1' if custom_only else
+                       'workplace/hd-assets-portraits-v10' if commanders_next_only else
                        'workplace/hd-assets-portraits-v6' if commanders_only else
                        'workplace/hd-assets-portraits-v4' if lords_all_only else
                        'workplace/hd-assets-portraits-v3' if lords_only else
@@ -100,6 +104,12 @@ def theme(wid, high):
 
 def portrait(wid, edition, tag, name, x, y):
     original = shot(wid, edition + '-' + tag + '-original')
+    if commanders_next_only:
+        source = gui.ROOT / 'workplace/hd-inventory' / edition / 'img/DATA3' / (name + '.png')
+        gui.receipt.setdefault('source_reference_sha256', {})[edition + '/' + name] = \
+            hashlib.sha256(source.read_bytes()).hexdigest()
+        check(edition + '-' + tag + '-original-source-pixels',
+              rgb(original, f'64:80:{x}:{y}') == rgb(source))
     theme(wid, True)
     high = shot(wid, edition + '-' + tag + '-hd')
     master = pack_dir / (name + '.png')
@@ -214,6 +224,33 @@ def portrait_cards(edition):
                                ('F254', '陸遜', 152, 23, 1, True)]),
                  ('004', '4', [('F007', '龐統', 7, 28, 6, True),
                                ('F062', '黃忠', 5, 31, 2, True)])]
+    if commanders_next_only:
+        gui.receipt['method'] = 'Linux Xvfb 正常片頭、劇本 001、單人曹操、查看郡及檢視二十位武將；未注入狀態'
+        gui.receipt['verification_mode'] = '--commanders-next'
+        gui.receipt['state_injection'] = False
+        gui.receipt['scenarios'] = ['001']
+        # 兩版正式 session 第一次玩家停點的 PickAny／PickByStatus 清單。
+        plans = [('001', '1', [
+            ('F250', '曹仁', 343, 11, 4, False),
+            ('F018', '曹洪', 344, 11, 5, False),
+            ('F125', '樂進', 27, 11, 6, False),
+            ('F190', '曹純', 112, 11, 7, False),
+            ('F112', '陳宮', 26, 11, 8, False),
+            ('F131', '張邈', 31, 11, 9, False),
+            ('F249', '田豐', 51, 3, 2, True),
+            ('F047', '顏良', 41, 3, 6, True),
+            ('F102', '文醜', 42, 3, 5, True),
+            ('F168', '許攸', 53, 3, 10, True),
+            ('F129', '郭圖', 116, 3, 7, True),
+            ('F178', '審配', 89, 4, 3, True),
+            ('F113', '沮授', 52, 4, 4, True),
+            ('F233', '張郃', 119, 4, 2, True),
+            ('F179', '高覽', 118, 4, 10, True),
+            ('F076', '李儒', 21, 14, 2, True),
+            ('F160', '賈詡', 63, 15, 1, True),
+            ('F052', '華雄', 36, 15, 3, True),
+            ('F241', '程普', 37, 31, 2, True),
+            ('F055', '黃蓋', 39, 31, 3, True)])]
     for scenario, button, cards in plans:
         tag = edition + '-' + scenario
         gui.receipt.setdefault('scenario_key_start', {})[tag] = len(gui.receipt.get('keys', []))
@@ -287,7 +324,7 @@ try:
         if custom_only:
             custom_rulers(edition)
             continue
-        if portraits_only or lords_only or lords_all_only or commanders_only:
+        if portraits_only or lords_only or lords_all_only or commanders_only or commanders_next_only:
             portrait_cards(edition)
             continue
         proc, wid = gui.launch(edition)

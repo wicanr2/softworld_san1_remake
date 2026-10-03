@@ -656,3 +656,65 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 | `workplace/hd-preview/plots-v9-contact.png` | `ccf7153aa33ebfa226fb861226e98966da40c627359ae998585ed61241e3b420` |
 
 兩版正常謀略與全批來源／高清比較頁已目視。SCG 素材準備完成不等於全部使用端驗收：自然事件、戰場謀略、被擒處置及單挑分支仍待驗，SCG11 不新增使用端。其餘素材家族、207 肖像、使用者逐張簽核、三語系與跨平台未完成，整份 021 保持 READY。原圖、AI 圖、候選、完整收據及包只留本機，不加入公開 Git 或 Release。
+
+### 6.21 二十張魏、袁、董、孫勢力肖像
+
+本節狀態：READY。二十個唯一採用鍵的來源、比例與 Codex 逐張審查已通過；素材包與正常玩家驗收另列。沿用 §6.15 的固定肖像與 B 寫實手繪契約。二十個 DATA3 肖像槽皆為 64×80，兩版來源 bytes 相同。姓名、人物索引與查看清單位置由兩版正式 `session` 新局第一次玩家停點讀出，不改寫人物、日期、勢力、亂數或存檔。
+
+| 肖像槽 | 人物 | 人物索引 | 查看郡 | 清單選項 |
+|---|---|---|---|---|
+| F250 | 曹仁 | 343 | 11 | 4 |
+| F018 | 曹洪 | 344 | 11 | 5 |
+| F125 | 樂進 | 27 | 11 | 6 |
+| F190 | 曹純 | 112 | 11 | 7 |
+| F112 | 陳宮 | 26 | 11 | 8 |
+| F131 | 張邈 | 31 | 11 | 9 |
+| F249 | 田豐 | 51 | 3 | 2 |
+| F047 | 顏良 | 41 | 3 | 6 |
+| F102 | 文醜 | 42 | 3 | 5 |
+| F168 | 許攸 | 53 | 3 | 10 |
+| F129 | 郭圖 | 116 | 3 | 7 |
+| F178 | 審配 | 89 | 4 | 3 |
+| F113 | 沮授 | 52 | 4 | 4 |
+| F233 | 張郃 | 119 | 4 | 2 |
+| F179 | 高覽 | 118 | 4 | 10 |
+| F076 | 李儒 | 21 | 14 | 2 |
+| F160 | 賈詡 | 63 | 15 | 1 |
+| F052 | 華雄 | 36 | 15 | 3 |
+| F241 | 程普 | 37 | 31 | 2 |
+| F055 | 黃蓋 | 39 | 31 | 3 |
+
+正常驗證統一從片頭開劇本 001、單人曹操、難度 5，189 年元月停在郡 11。前六位查看本國，其餘使用正式他國查看確認。逐張在原貌人物卡核對原版肖像，切 B 高清核對 256×320 原生圖及圖外文字框線，再切回原貌核對還原。人物卡落點為 (536,68)，沿用既有布局，不調整字區。
+
+每張獨立以 `image_gen` 參考該原圖與已採用的 B 筆觸；後者只作風格參考。保留原圖冠帽、服色、鬚髮、朝向、可見眼睛與剪影，不以通俗三國形象或劇本數字年齡補造外觀。完整 4:5 圖縮放至 256×320，不裁切、不拉伸、不添加文字。候選有誤時保留退件並另生版次。逐張 Codex 審查與使用者逐張簽核分開記錄。
+
+來源與正式清單的四十列計畫在本機 `workplace/hd-commanders-v10-plan.json`，SHA-256 `0939c7ca7bc4d7c78b303f1677ebe161b090765f9fe315e3294c4144dea21e87`。來源比較頁為 `workplace/hd-preview/commanders-v10-sources.png`，SHA-256 `76f6da73fcdb227619158f23fb4e541c1d1f8cc10dff1302c843091dc7509a9e`。採用前須核對來源雜湊、比例與外觀，再轉 READY、重建私人包、跑兩版正式載入器及全族稽核。新版須保留 v9 全部 160 筆欄位及 PNG bytes；場景族不變。
+
+本節只擴充已定案的美術，規則與存檔不變。正常人物卡驗證不宣稱原版 oracle parity，也不代替三語系、其他肖像使用端、跨平台或人耳音訊驗收。原圖、候選、生成紀錄與私人包留本機。
+
+二十九份候選採用二十張，採用圖皆為 1122×1402，符合既有一個來源像素的比例誤差契約。F190／F112／F131／F179／F052／F241 第一版比例不符，採第二版。F076 第一版高冠偏離低帽，採第二版。F047 第一版多露出遠眼並添額前紅寶石，第二版修正外觀但比例不符，採第三版。全部退件保留，不以裁切或拉伸通過。來源、完整提示詞、參考圖、生成路徑、候選版次與 Codex 審查在本機 `workplace/hd-commanders-v10-generation.json`，SHA-256 `7fb613cddac23e37f16ca386c8dd92f55cfaef509a28b3aa7a6b1fdf601f9b80`；工具未回報模型／seed，使用者逐張簽核為 0。
+
+正常人物卡重跑入口為 `bash tools/verify-hd-player.sh --commanders-next`。原版資料、快取、私人 `workplace/hd-assets-portraits-v10/` 及兩版來源肖像 PNG 必須存在；建置與 GUI 沿用既有 Docker 工具鏈。新增原貌來源像素檢查，兩版各一次劇本 001 新局；收據與工具快照保存於本機 `workplace/hd-window/player/commanders-v10/`。
+
+私人 v10 包為 `workplace/hd-assets-portraits-v10/`，兩版各 100 筆，共 200 筆；69/256 肖像及 31/31 SCG。兩版正式載入器警告為 0，v9 全部 160 筆欄位及 PNG bytes 保持。兩族稽核的技術問題均為 0，肖像缺 187、Codex 審查 69，場景缺 0、Codex 審查 31；使用者逐張簽核均為 0。場景完整準備閘門返回 0，肖像仍返回 3。場景圖未改，§6.20 的四方向與正常謀略收據保持原範圍。
+
+| 本機產物 | SHA-256 |
+|---|---|
+| `workplace/hd-commanders-v10-build-receipt.json` | `e9269f2aced15903d77c342623eeeef16095d548e551f08a6b2eea15932ba70e` |
+| `workplace/hd-assets-portraits-v10/manifest.json` | `17010a4fe8cbc621cf13ef2c68413df26b08ebc42b31874c0e48d7edeb51e1fa` |
+| `workplace/hd-assets-portraits-v10/preparation.json` | `f7c20ecca0b5c2b292866f52bab54f7ebe40ea923e4cfb36d60b5a346bec19bb` |
+| `workplace/hd-portrait-audit-v10.json` | `666dd5ff4840678802751aedfd7b4e5c227bb7fc8d3b78cc9d082fcd6f2f4875` |
+| `workplace/hd-scene-audit-v10.json` | `fe5a0b5f5c2accaf272bcdb1f92896b5b9311d17e95077f4fb2e4d321d94684b` |
+| `workplace/hd-preview/commanders-v10-contact.png` | `096e862208d17e0443dc80f8d3b1cf0e4ed409abc7cd3ff20a30f8862abde776` |
+
+兩版正常人物卡完整批次返回 0，162/162 檢查通過。兩次正常片頭／001 曹操新局，四十張卡逐張核對原貌來源、256×320 原生高清像素、肖像外文字框線與原貌恢復；未注入人物、日期、勢力或 seed。原貌、高清及切回的圖外區域皆相符，姓名與冠帽等識別依來源及正式人物卡目視確認。
+
+獨立回讀 304 張最新 PNG、三份工具快照、執行檔、六份原始 GRP、200 筆包內素材及二十九份候選，雜湊、尺寸、像素與擁有權相符。v9 全部 160 筆欄位、PNG bytes 與準備紀錄保持。四十張卡的來源、原生高清、圖外文字框線與原貌恢復再以獨立 RGB 解碼核對；兩版完整人物卡比較頁已目視。獨立工具為本機 `workplace/verify-hd-v10-delivery.py`，在既有 `eob-audio-capture:20260922-r2` 容器以唯讀原始資料執行，不再啟動遊戲。
+
+| 本機產物 | SHA-256 |
+|---|---|
+| `workplace/hd-window/player/commanders-v10/receipt.json` | `9d96e37518581d8ef33642d98515562afe5f5c7f7f2fb6a34e9b6365c14d9ced` |
+| `workplace/hd-v10-delivery-verification.json` | `879e1b3e808b614212eaff3ff5630321f448e7f222d082dfb03efbeb65bc45dc` |
+| `workplace/verify-hd-v10-delivery.py` | `8e2e380f6f75cdff104aba9dce2d82dd807a223723961afc5fdf517b2c7d06f3` |
+| `workplace/hd-preview/commanders-v10-gui-base-contact.png` | `3f38eb9129437b6f500d1f1b6a9e5bbd5a948e6c5bee002fadfbbab634246a00` |
+| `workplace/hd-preview/commanders-v10-gui-plus-contact.png` | `2a518f684281c0983333b6c384d1418eac5b46343e65a85bc3f3b146b9049d08` |
