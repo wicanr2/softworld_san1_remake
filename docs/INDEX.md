@@ -62,6 +62,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 高清尋訪、寬窄主戰場與查看面板 | [spec/021 §6.16](spec/021-hd-art.md#616-正常尋訪寬窄主戰場與查看)、[正常路徑工具](../tools/verify-hd-contexts.sh) |
 | 高清宣戰、徵兵、訓練、調動、賞賜、交易與農務場景 | [spec/021 §6.17](spec/021-hd-art.md#617-主畫面命令的七張場景批次)、[正常 GUI 與動畫工具](../tools/verify-hd-scenes.sh)；[稽核工具](../tools/hd-portrait-audit.py) 加 `--family scenes` 核對 31 槽 |
 | 實際高清場景的四方向全部步數與塊外像素 | [完整圖層工具](../tools/hd-wipe-check.go)，Docker 內使用 `go run ./tools/hd-wipe-check.go`；屬 remake 圖層驗證，正常操作另依 §6.17 |
+| 高清對戰子畫面、查看與快戰的正常操作 | [spec/021 §6.18](spec/021-hd-art.md#618-正常對戰子畫面與快戰)、[正常視窗工具](../tools/verify-hd-battle-branches.sh)、[提示就緒參考](../tools/hd-battle-branches-reference.go) |
 | 高清模式五曲、兩版新局及靜音／恢復錄音 | [spec/021 §6.13](spec/021-hd-art.md#613-高清模式配樂驗證)；配樂工具加 `--hd` |
 | 哪些地方原版會動 | `re/10`（清單 ＋ 已解的三支）、`re/13` 與 `spec/005`「片頭」（開機片頭）、`spec/010`（轉場與場景圖的 48 個呼叫端）|
 | 被擒的將領怎麼處置、釋放逃去哪、招降來的人紮在哪 | `spec/018`、`mechanics/40` §7 |

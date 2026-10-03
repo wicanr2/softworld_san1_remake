@@ -1,6 +1,6 @@
 # 021：B 寫實手繪 HD 素材與渲染
 
-狀態：`READY`，授權視窗選項列、首批四張素材及 §6.7–6.11、§6.15 已審查的肖像批次；其餘美術依 #108、#109 分批驗收。
+狀態：`READY`，授權視窗選項列、首批四張素材及 §6.7–6.11、§6.15 已審查的肖像批次、§6.17 場景批次；其餘美術依 #108、#109 分批驗收。
 
 使用者於 2026-10-02 選定 B「寫實手繪」，並授權開始 HD 計畫。排除 A 原貌高清及 C 現代英武立繪。沿用 640×408 邏輯版面、人物資料、規則及存檔。
 
@@ -481,3 +481,32 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 | `hd-v7-delivery-verification.json`，157 張最新 PNG、306 個中間幀及工具／素材回讀 | `aa1c3a1851f95983350b7b77ee6e0d7897291d4d6078098ee9c6c8c238c5a7ef` |
 
 本批沒有修改正式 Go 程式、規則、seed 或存檔，未新增原版 oracle 收據。使用者逐張簽核、其餘 23 張 SCG、其他素材家族、對戰子畫面、快速戰鬥及其他高清動畫仍待完成。Linux 配樂的先前 10/10 收據維持 §6.13 的範圍，未在此批重跑或擴張平台聲明。
+
+### 6.18 正常對戰子畫面與快戰
+
+沿用 READY 的肖像、圖層及輸入契約，補 #107 的既有正式使用端驗證，不新增美術、規則或玩家路徑。來源與位置依 [005 §8](005-main-screen.md)、[014](014-art-main-overlays.md)、目前 `cmd/san1/battle.go` 與 `internal/ui/artbattle.go`，原版證據範圍沿用原規格，不由 remake 診斷升格。
+
+兩版從片頭正常開劇本 001、單人董卓、難度 5，第一次停點為上黨 6；依序讓上黨 6、京兆 16 休息，經軍師勸諫及確認後輪到洛陽 15，再以原有指令出兵陳留 11，只派呂布並分到第一軍，金 0、米 1000。正式新局／出兵診斷確認兩版均可在 (Q=4,R=3) 合法紮寨，方向 `2` 為相鄰曹操部隊；UI 以 `3,3,6,3,0` 移游標並確認，不修改部隊座標。診斷位於本機 `workplace/hd-battle-branches-{skirmish,quick}-plan.json`，不當成正常 GUI 或原版 oracle。
+
+正常入口為 [`tools/verify-hd-battle-branches.sh`](../../tools/verify-hd-battle-branches.sh)，使用 `bash tools/verify-hd-battle-branches.sh`，可加 `--edition base|plus` 或 `--mode skirmish|quick` 縮小診斷。工具鏈及原版素材沿用 §6.5，需本機 v7 包與完整盤點。就緒辨識由 [`tools/hd-battle-branches-reference.go`](../../tools/hd-battle-branches-reference.go) 用正式翻譯、字型及文字視窗重生，僅作輸入同步參考，不替代實際玩家抓圖。
+
+驗收核對窄版攻方呂布 (456,52) 的鏡像、守方曹操 (552,164)、對戰子畫面的同位部隊肖像，以及正常 `7` 查看呂布 (552,276)。每處比較原生 256×320 高清像素、文字／框線與原貌恢復；查看頁遮住的上方面板仍符合原貌。快戰另核對正式 `3` 與方向提示、合法交戰後軍力資料變化及持續可操作，不能只靠同一張戰場終點圖推定有執行快戰。
+
+兩版各走對戰與快戰，共四次正常片頭／新局，117/117 檢查通過，完整批次返回 0。對戰依序驗證進入子畫面、`7` 查看、Shift＋Esc 返回、`0` 與 `Y` 休息，再核對左欄 (8,228) 的 32×96 時刻框推進；部隊主面板不在每次子命令後更新，不能拿它當作子戰鬥未動的證據。快戰核對戰前／戰後軍力面板變化及下令畫面恢復；原版釋放一名俘虜後恢復，加強版沒有此裁決停點。
+
+輸入同步同時核對玩家提示與原貌主事者肖像。郡 14／15／16 對應董卓 F077、賈詡 F160、張繡 F147；提示先出現而電腦回合對白尚未清空時，先用正式按鍵清完對白。軍師繼續確認及俘虜裁決都由畫面辨識後再送鍵，不用固定等待秒數推定已進入下一階段。
+
+獨立回讀 194 個最新 PNG、四份工具快照、執行檔、原始輸入及包內 114 筆素材，雜湊與尺寸相符。十四組戰前、子畫面、查看、返回、續玩及快戰戰後圖，另逐像素核對原貌來源、原生高清、肖像外文字／框線與原貌恢復，全部通過。查看遮蔽及時刻／軍力更新也獨立回讀；未把地圖標記的反白閃爍當成操作成功。
+
+| 本機 `workplace/` 產物 | SHA-256 |
+|---|---|
+| `hd-window/player/battle-branches-v7/receipt.json`，117/117 | `7a4029184811dcb0497ec4c1bf08ffeaa988a8db5f84372d15c877be38059d9a` |
+| `hd-window/player/battle-branches-v7/san1-window-check` | `4e12af406fcf9bf2fa474c41d8d51d23da701e90a9d5ebd65845f78d263c24d9` |
+| `hd-window/player/battle-branches-v7/verify-hd-battle-branches-inner.py` | `fee87a97c49731851ec0fda4476757cfb7f272bf3d5d9a2c073c070769918257` |
+| `hd-window/player/battle-branches-v7/verify-hd-battle-branches.sh` | `e83432dc99eb999f6636b00b60280337c8e392b05215a0e28ff6c34790c7e44e` |
+| `hd-window/player/battle-branches-v7/verify-window-inner.py` | `d7f0f648e4d50ce76cd6ffa1fc8b345d8e4d5662f4e2515c40c5b244b39d38a0` |
+| `hd-window/player/battle-branches-v7/hd-battle-branches-reference.go` | `909f4031a9dc9f72e7df992d3d633c4349bb3a2ecbb5bfdd077c1a3448333aab` |
+| `hd-battle-branches-v7-verification.json`，獨立回讀 | `3640daff65318319cac4932f0fd5c7ed20d13abd3fead604c6933dfc2ec139d6` |
+| `verify-hd-battle-branches-delivery.py`，私人回讀工具 | `8dbaf0ba01589ac5492eaf7c4c3a1bb93088c15bb8f25a524440837ab873f496` |
+
+圖片、原版資料、失敗資料與完整收據只留本機。此批僅新增驗證工具與文件，素材仍為 49/256 肖像及 8/31 SCG 場景，正式 Go 程式、規則、seed 及存檔未改。原版 oracle、配樂、三語系、其他動畫／遮罩及跨平台的既有限制不因此擴張，021 維持 READY。
