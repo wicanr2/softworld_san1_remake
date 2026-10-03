@@ -14,6 +14,8 @@
 - 獨立回讀 114 張最新 PNG、134 份壓縮 RGB、九份工具、控制器原文、執行檔、六份原始 GRP、160 筆素材、十七份候選、兩族稽核與四方向收據，來源、像素、尺寸、雜湊及擁有權相符。最終收據 `workplace/hd-v9-delivery-verification.json`，SHA-256 `e3e054426f81597de7ea1cf593da20fe9634830278dc60cc1996517b1594e480`；全部來源／高清與兩版正常謀略比較頁已目視。
 - 私人比較頁初次 ImageMagick montage 中止；固定字型、可寫快取與單執行緒後重建成功，不混作 GUI 失敗。正式 Go 程式、規則、seed 與存檔未改；既有原版 oracle、回歸與配樂收據保持原範圍。自然事件、戰場謀略、俘虜與單挑等使用端、其他素材家族、207 肖像、使用者逐張簽核、三語系及跨平台仍待完成，021 保持 READY。未建立 Release，圖片、候選、包與完整收據只留本機。
 
+- 工具與文件已提交為 [`a179ccc`](https://github.com/wicanr2/softworld_san1_remake/commit/a179ccc50c88d71e7d1236185b052e09e9ec4ee0) 並推送，遠端 main 完整雜湊相同。#104／#107／#108／#109／#110 已同步本批結果及剩餘範圍；寫入前核對未有其他更新，完整內文、留言、標題及 OPEN 狀態回讀相符，另保存本機 `workplace/hd-v9-issues-verification.json`。提交前 139 個本機連結、45 個標題入口、12 份表列產物雜湊、工具語法及 `git diff --check` 通過；無 root 擁有檔案、誤建 Markdown 目錄或殘留 san1 容器。使用者的 `AGENTS.md` 維持原狀。
+
 ## 2026-10-03：人事、築城與戰場事件插圖
 
 - 接續 #104／#107／#109／#110，載入復古 remake、圖像生成、正常玩家驗證及文件職責路由；同步問題另讀 `~/.claude/rulebook/40-learning-loop.md`、`~/.claude/rulebook/41-whack-a-mole-stop-rethink.md`。契約、來源及重跑入口見 [021 §6.19](docs/spec/021-hd-art.md#619-人事築城與戰場事件插圖批次)，同批掛入文件索引。
