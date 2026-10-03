@@ -20,6 +20,9 @@
 
 - 文件入口、30 份表列產物雜湊、工具語法與 `git diff --check` 通過。沒有本專案殘留容器，`workplace/` 未見 root-owned 檔案或 `.md` 目錄。公開閘門的 [本機收據](workplace/hd-v16-publish-check.json) 核對七份實際暫存文字檔，43 份 PNG 與 12 份完整提示詞正對照、MZ 前綴正對照及乾淨反對照均通過；不宣稱通用片段或編碼外洩偵測。圖片及原版資料只留本機。
 
+- 工具及文件已提交並推送 [b6001b3](https://github.com/wicanr2/softworld_san1_remake/commit/b6001b35c8e104559f5abf81effdb969f4fd0b78)，遠端 main 完整雜湊相同。Issue 全文首次批次在 107 未完整取得時提前中止；改為先保存各工具回覆再逐項核對，重讀 107–110 成功，屬收據編排問題。
+- #104／#107／#108／#109／#110 的現況及本批收據已同步，回讀全文與實際 body-file 逐字相同，標題、留言及 OPEN 狀態保持。[Issue 同步收據](workplace/hd-v16-issue-update-verification.json) SHA-256 `d978911da6fee9a99d96934d16a27fcb08aeb9a16962c7e884c75b875b245b96`，索引五份更新前後全文及本文雜湊；[Issue 公開檢查](workplace/hd-v16-issue-publish-check.json) SHA-256 `1dc3cd5756535b962ea8cfbb3bbe50ca718b4d5c2e53ef7d0c7b4260400302a3`，限於五份實際本文的 PNG 簽章、完整提示詞及 MZ 前綴。最後紀錄提交的公開檢查見 [本機收據](workplace/hd-v16-checkpoint-publish-check.json)。圖片及原版資料保持本機保存，未建立 Release。
+
 ## 2026-10-04：劇本 004 十四槽高清肖像與正常人物卡
 
 - 前輪完成 v14 三十四張並推送至 `d4d991e`，屬具體進度；本輪接續同一 HD Goal。命中規格閘門與文件職責路由，沿用 imagegen。回讀唯一現況表、v14 完整收據及遠端 #104／#107／#108／#109／#110 全文、留言與狀態，五項均為 OPEN。
