@@ -601,3 +601,58 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 [控制器回歸](../../cmd/san1/governor_test.go) 的兩版有／無玩家停點共四項通過；玩家停點與年月保持，無玩家停點時不插入下令提示。加強版正常補位、續行至洛陽與築城窄驗 12/12 通過，收據保留於 `workplace/hd-window/player/events-v8-fort-plus-return-pass/`。
 
 含原版素材的正式 Go 套件回歸為 653 項、17 個有測試套件通過；27 項跳過，完整列表在 `workplace/hd-window/player/governor-all-tests-summary.json`，不計入通過或原版 parity。`oracle` 標籤未啟用。初次 `go test ./...` 被私人 `workplace/` 的多個診斷 `main` 阻擋；重跑以 tmpfs 隔離該目錄，原版資料唯讀掛 `/orig`，快取與輸出另外掛載，Xvfb 有界且收尾關閉。失敗 log 保留為 `governor-all-tests-private-workplace-failure.log`，完整 JSON log 為 `governor-all-tests.jsonl`，兩者均在同一玩家驗證目錄。
+
+### 6.20 其餘災害、謀略與單挑場景
+
+本節狀態：READY。依 v8 全族稽核，本批為 DATA3 的 SCG02／03／08／10／11／14／16／18／19／22／23／25／27／28／29，兩版來源 bytes 均相同，尺寸皆為 176×96。十五個唯一採用鍵的來源、比例與 Codex 逐張審查已通過；素材包及正常玩家驗收另列。使用端與原版定位沿用 [010 §1.1](010-screen-transitions.md#11-呼叫端l0base)，不因素材存在推定新用途。
+
+| 場景 | 已有用途 | 邏輯位置 |
+|---|---|---|
+| SCG02／10／14 | 水災、蝗害、瘟疫 | (432,80) |
+| SCG16／25 | 元月老死／無繼承人、元月出頭 | (432,80) |
+| SCG18／23 | 遠交近攻、驅虎吞狼 | (432,80) |
+| SCG22 | 策反人民得手 | (432,120) |
+| SCG03／19 | 水淹、火攻／燒糧 | (448,268) |
+| SCG08 | 被擒囚禁 | (448,268) |
+| SCG27／28／29 | 單挑戰死、被擒、叫陣／平手 | (448,268) |
+| SCG11 | 010 的原版場景呼叫表未使用 | 無新使用端 |
+
+沿用 B 寫實手繪、4×、原貌預設。每鍵獨立參考原圖與已採用 B 場景，保留構圖、姿態、服色、主體數量與景物；完整圖縮放至 704×384，不裁切、不烘焙文字。比例或構圖不符時保存退件，回到該張修正。來源、提示詞、候選、版次、工具未回報的模型／seed、Codex 審查與使用者逐張簽核分開記錄，原版及衍生圖片留本機。
+
+候選逐張審查、來源及比例通過後，本節才轉 READY 並準備新版私人包。必須保留 v8 已有 130 筆素材與欄位，兩版正式載入器及全族稽核須通過。完整圖層四方向各步另驗；正常 GUI 從片頭與新局、原有合法命令或自然事件進入，不注入人物、事件、日期或 seed。SCG11 只計素材準備，不宣稱正常使用或新增原版行為。尚未跑到的使用端、單挑分支及自然事件維持未驗證。
+
+十七份候選採用十五張。SCG22／27 第一版比例不符，保留退件並由 `image_gen` 重新構圖，採用第二版；其餘採第一版。SCG16／27 採用圖為 1699×926，其餘 1698×926，符合既有一個來源像素的比例誤差契約。來源、提示詞、參考、候選、採用版次與 Codex 審查在本機 `workplace/hd-scenes-v3-generation.json`，SHA-256 `a5095d55359a9e405709fcae9aec2c80e4bd87891becb1f6d38b080a5e16015b`；模型／seed 未回報，使用者逐張簽核為 0。來源比較頁為 `workplace/hd-preview/scenes-v9-source-contact.png`，SHA-256 `d4538b160db841f196a702c64bfd2b1beb2f726d8320cc776ea28a6e731fb347`。
+
+正常謀略驗證沿既有 014 的命令流程：兩版各從片頭開 001 孫堅新局、難度 5，在長沙任命清單第一位程普為軍師，清完對白並核對主提示、孫堅肖像與月份變化後下令。驅虎吞狼選出使郡 2、攻打郡 3；遠交近攻選出使郡 27、攻打郡 29、我方郡 31；策反人民選目標郡 2。使者均選正式魅力排序清單第一位孫堅。診斷只讀正式劇本與合法命令，確認選單順序、條件與策反得手，不代替正常 GUI。
+
+三張各跑兩版新局，按正式選單輸入；軍師勸諫後以正式「主公是否繼續呢(Y/N)」畫面核對，再送 Y。核對 704×384 原生圖、實際中間幀的完整揭露區、未覆蓋區、原貌切回、高清恢復及場景外文字框線。SCG22 使用原版 (432,120)，文字比較自 y=216 起，避開仍屬圖內的 y=200–215。成功聲明限實際捕獲的場景與方向，不外推後續戰役、自然災害、單挑或原版規則 parity。
+
+私人 v9 包為 `workplace/hd-assets-scenes-v9/`，兩版各 80 筆，共 160 筆；49/256 肖像與 31/31 SCG，正式載入器警告為 0。v8 已有 130 筆的全部欄位與 PNG bytes 保持。兩族全槽稽核的技術問題均為 0，場景缺圖為 0、Codex 審查 31、使用者逐張簽核 0；肖像仍缺 207。場景 `--require-complete` 返回 0，只代表完整準備與 Codex 審查，不包含使用者簽核或全部正常使用端；肖像同閘門仍返回 3。
+
+實際場景的四方向完整圖層兩版各 2,852 幀，共 5,704/5,704 通過；每張 24／24／22／22 步，整幀、塊外與原貌 CPU 畫布差異為 0。沿用 [完整圖層工具](../../tools/hd-wipe-check.go)，不以此代替正常 GUI。包的精確重建命令、採用版次、來源 GRP 雜湊與 Go 1.24.13 工具鏈在本機建置收據。
+
+| 本機產物 | SHA-256 |
+|---|---|
+| `workplace/hd-scenes-v9-build-receipt.json` | `2ee41eb0fca927a28fda7037cba79feedc81e4a24e6c52d0d68a9f580d7864cd` |
+| `workplace/hd-assets-scenes-v9/manifest.json` | `e30b356a40226f3466d1def6e6a0eed752b262742cdcfca0ae2b3380f910d7f5` |
+| `workplace/hd-assets-scenes-v9/preparation.json` | `3cd3d3b8a587c58129323fba8fc1f00ab4d399b756df0a22adfadb3b79cbe8b1` |
+| `workplace/hd-scene-audit-v9.json` | `3386d3a026ce3ea9602f6d7b00df97bfbf0495f2a26b9b0bf00c435729e7400f` |
+| `workplace/hd-portrait-audit-v9.json` | `df8fc87a46b6eff1edfb54e664e5972e2f1ce939312bee5cee87b6782bd59b85` |
+| `workplace/hd-wipes-v9-base.json` | `6682d1f2bc66e6936103a361e591e225520725de6c2ca178363a71aad023811b` |
+| `workplace/hd-wipes-v9-plus.json` | `c8cb531ee399f179b2f2ae56adf31010aeb3989ef59285de3972be95e4cb8435` |
+| `workplace/hd-preview/scenes-v9-contact.png` | `5a3d3f283ccdc9be637e4b9b2ddd861184532ff847def3544be7d86e04c60e12` |
+
+正常謀略重跑入口為 `bash tools/verify-hd-plots.sh`，只控制既有 Docker 工具鏈。前置資料、快取與私人 v9 包必須存在；建置用 `rich2-go-ebiten:latest`，GUI 用 `eob-audio-capture:20260922-r2`。三張與兩版選擇可用 `--only SCG18|SCG23|SCG22`、`--edition base|plus`。 [合法輸入與提示](../../tools/hd-plots-reference.go) 只提供同步參考，不代替正常操作或原版 oracle。收據及實際中間幀在本機 `workplace/hd-window/player/plots-v9/`。
+
+兩版各三次正常片頭／孫堅新局，共 78/78 檢查通過，完整批次返回 0；三張合計核對六次正式軍師勸諫確認。任命前後主提示、原貌 F041 與月份變化均由實際截圖核對。實際 X11 中間幀共 134，六段完整捕獲該方向全部非終點步數，沒有缺步；每版 SCG18 為方向 2 的 1–21，SCG23／22 為方向 1 的 1–23。其餘方向由上述完整圖層另驗，不將它們稱為已由本批正常 GUI 跑過。
+
+獨立回讀 114 張最新 PNG、134 份壓縮 RGB、九份工具、正式控制器原文、執行檔、六份原始 GRP、160 筆包內素材、十七份候選與兩族稽核。來源、原生像素、場景外文字框線、月份推進、尺寸、雜湊及擁有權相符；v8 舊素材 bytes 保持。首次策反腳本漏處理勸諫確認，失敗收據與舊工具保留於本機；修正後的原版策反窄驗證 13/13 通過，再乾淨重跑完整兩版。正式 Go 程式、規則、seed 與存檔未改，未重跑或擴大原版 oracle、既有回歸與音訊聲明。
+
+| 正常玩家驗證產物 | SHA-256 |
+|---|---|
+| `workplace/hd-window/player/plots-v9/receipt.json` | `e562bd0aa14113c0abc95ab73a355e6270a9ef5997442154255d6aa2d3d06cfc` |
+| `workplace/hd-v9-delivery-verification.json` | `e3e054426f81597de7ea1cf593da20fe9634830278dc60cc1996517b1594e480` |
+| `workplace/verify-hd-v9-delivery.py` | `d93679e1d87c8f684f7184c77feb953a7b48876c649d2b7bd5b5eef94781314d` |
+| `workplace/hd-preview/plots-v9-contact.png` | `ccf7153aa33ebfa226fb861226e98966da40c627359ae998585ed61241e3b420` |
+
+兩版正常謀略與全批來源／高清比較頁已目視。SCG 素材準備完成不等於全部使用端驗收：自然事件、戰場謀略、被擒處置及單挑分支仍待驗，SCG11 不新增使用端。其餘素材家族、207 肖像、使用者逐張簽核、三語系與跨平台未完成，整份 021 保持 READY。原圖、AI 圖、候選、完整收據及包只留本機，不加入公開 Git 或 Release。

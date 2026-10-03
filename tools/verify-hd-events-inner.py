@@ -95,8 +95,8 @@ def reach_battle(wid, edition, tag, archery=False):
         'state_injection': False})
 
 
-def capture_scene(wid, edition, name, action, lower=False):
-    x, y = (448, 268) if lower else (432, 80)
+def capture_scene(wid, edition, name, action, lower=False, position=None, allow_confirmation=False):
+    x, y = position or ((448, 268) if lower else (432, 80))
     target = gui.rgb(pack / (name + '.png'))
     candidates = list(scenes.geometry())
     frames, errors = [], []
@@ -144,7 +144,7 @@ def capture_scene(wid, edition, name, action, lower=False):
                     gui.key(wid, '1')
                     escape_sent = True
                     continue
-            if name == 'SCG21':
+            if name == 'SCG21' or allow_confirmation:
                 screen = gui.shot(wid, edition + '-' + name + '-advice-await')
                 if gui.rgb(screen, '512:64:1696:1200') == confirmation:
                     gui.receipt.setdefault('confirmations', []).append({
@@ -188,7 +188,8 @@ def capture_scene(wid, edition, name, action, lower=False):
     restored = gui.shot(wid, tag + '-hd-restored')
     gui.check(tag + '-hd-restored', gui.rgb(restored, f'704:384:{x*4}:{y*4}') == target)
     # 窄版攻方肖像在左側 (456,52)，文字在右側；守方相反。
-    areas = [(528, 44, 96, 96), (448, 156, 96, 96)] if lower else [(408, 200, 224, 92)]
+    text_top = max(200, y + 96)
+    areas = [(528, 44, 96, 96), (448, 156, 96, 96)] if lower else [(408, text_top, 224, 292-text_top)]
     gui.check(tag + '-text-frame-unchanged', all(
         gui.rgb(original, f'{w}:{h}:{ax}:{ay},scale={w*4}:{h*4}:flags=neighbor') ==
         gui.rgb(restored, f'{w*4}:{h*4}:{ax*4}:{ay*4}') for ax, ay, w, h in areas))
