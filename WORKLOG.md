@@ -21,6 +21,8 @@
 
 - 文件入口檢查 122 個連結、58 個標題及 27 份表列產物雜湊通過，工具語法與 `git diff --check` 通過。收尾檢查沒有本專案殘留容器，`workplace/` 未見 root-owned 檔案或 `.md` 目錄。公開閘門的 [本機收據](workplace/hd-v15-publish-check.json) 核對本批七份實際暫存文字檔，47 份 PNG 與 19 份完整提示詞正對照、乾淨文件反對照均通過；檢查範圍限於原始 PNG、MZ 與完整提示詞，不宣稱通用片段外洩偵測。
 
+- 工具與文件已提交並推送 [c6c9760](https://github.com/wicanr2/softworld_san1_remake/commit/c6c97601ffde53e4213d500260a1e16bf7faadea)，遠端 main 完整雜湊相同。#104／#107／#108／#109／#110 的現況與本批收據已同步，全文與實際 body-file 逐字相同，標題、留言及 OPEN 狀態保持。本機 [Issue 同步收據](workplace/hd-v15-issue-update-verification.json) SHA-256 `8024c5ec966ef30db7abc3892a2bdacdb650361dc1d5f64e0f52bbe23fa8feae`，索引五份更新前後全文與本文雜湊。圖片與原版資料保持本機保存，未建立 Release。
+
 ## 2026-10-04：劇本 003 三十四槽高清肖像與正常人物卡
 
 - 前批 v13 的四十六張已完成並推送，本輪接續同一 HD Goal。載入規格閘門、文件職責與 imagegen；遠端 #104／#107／#108／#109／#110 全文及留言已讀，均為 OPEN。[021 §6.25](docs/spec/021-hd-art.md#625-劇本-003-新增三十四張肖像) 為 DRAFT，來源清單同批掛入索引。
