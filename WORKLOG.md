@@ -6,6 +6,8 @@
 
 更正後兩版 GUI 10/10、36 張最新截圖與全包獨立回讀再次通過，兩版高清畫面已查看。新增原始地名 bytes 與辨識參考雜湊回讀。文件檢查為 133 個連結、67 個標題入口、36 份表列雜湊；七份實際暫存文字與既有 69 PNG／23 完整提示詞正反對照通過。
 
+地名更正提交 `4b8107b7dd60519d4e746b01d7981f9dc29285c8` 已推送並核對遠端相同。五項 Issue 的更正本文、標題、留言及 OPEN 狀態逐字回讀一致。勘誤後的收尾公開檢查入口與收據為 `workplace/verify-hd-v18-location-checkpoint-publish.py`、`workplace/hd-v18-location-checkpoint-publish-check.json`，只提交工作歷程；私人圖片與全部初次收據保留。
+
 地名勘誤的 Issue 同步另存 `workplace/hd-v18-issue-location-update-plan.json`、`workplace/hd-v18-issue-location-104-body.md`、`workplace/hd-v18-issue-location-107-body.md`、`workplace/hd-v18-issue-location-108-body.md`、`workplace/hd-v18-issue-location-109-body.md`、`workplace/hd-v18-issue-location-110-body.md`；公開檢查入口與收據為 `workplace/verify-hd-v18-issue-location-publish.py`、`workplace/hd-v18-issue-location-publish-check.json`，回讀收據為 `workplace/hd-v18-issue-location-sync-receipt.json`。初次同步收據與五份本文保留。
 
 - 最後十三槽共二十三份內建 image_gen 候選，採十三張、十張退件保留；最終原圖比較頁均已查看。口部複驗辨識出姜維短髭無下巴鬚、傅巽無髭鬚、司馬昭共用槽細髭無下巴鬚、鍾毓髭與尖鬚及微張口上齒；初始觀察、已執行提示詞與退件保留，追加勘誤並重生修正候選。
