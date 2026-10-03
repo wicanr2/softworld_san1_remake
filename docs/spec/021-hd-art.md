@@ -1255,3 +1255,83 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 `bash tools/verify-hd-player.sh --officers-006` 在 Docker 內從兩版片頭各開 006 曹操、難度 5 正常新局。十二張人物卡的原貌來源、256×320 原生高清、圖外文字框線及原貌恢復各 12/12，另兩次啟動的原貌及隱藏列共 50/50 通過，89 張最新 PNG。未注入人物、日期、勢力或 seed；屬 remake 正常 GUI 驗證，不是新美術與原版的像素 parity。
 
 獨立回讀全部 89 張最新 PNG、十二張人物卡、七份候選的完整請求與實際輸出、實際參考雜湊、不透明像素、兩版原始 DATA3 容器與 548 筆素材；v16 全部 536 筆欄位、PNG bytes 與準備紀錄保持。兩版人物卡總覽均已查看，使用者逐張簽核仍為零。
+
+### 6.29 最後十三張固定肖像
+
+**狀態：READY**。沿用 §6.28 的 B 寫實手繪、4×、每次啟動原貌及固定肖像契約。本批補齊全 256 槽的最後十三槽，不以初次人物清單是否可見改變素材分母。直接回讀兩版 DATA3.GRP／IDX／NAM、原槽 bytes 與 64×80 PNG，分版來源相同，L0、[both]。來源回讀收據 `workplace/hd-v18-plan-verification.json` 的 SHA-256 為 `d73f102e22a05260870385ac2efecdac77cbdf33ca881a079e2966b2c6f54a83`，二十六列計畫 `workplace/hd-commanders-v18-plan.json` 為 `e74a6deb2a0248029b93de9e872359e281e363341c91066a5b42f99c2f6307d6`。
+
+| 肖像槽 | 遊戲資料姓名 | 原圖識別重點 |
+|---|---|---|
+| F003 | 未對應人物槽 | 近正面雙眼、紅色包頭黃邊、濃黑髭與濃黑鬚、青藍衣 |
+| F019 | 姜維 | 朝左雙眼及窄遠眼、青藍紋盔、短黑髭與無下巴鬚、閉口、青藍衣 |
+| F026 | 鍾會 | 朝左雙眼、紫紅褶帽與紅黃前飾、黑髭尖黑鬚、青紫衣 |
+| F037 | 司馬師 | 朝左單眼側臉、紅盔青方飾金邊、黑髭長尖黑鬚、青衣 |
+| F075 | 傅巽 | 朝左雙眼、高黑帽與紅帽帶及側垂帶、無髭鬚、綠衣白領 |
+| F084 | 蔣欽／文虎 | 朝左單眼側臉、青藍盔與前飾及後紋、黑髭長黑鬚、微張口小淺色齒區 |
+| F086 | 彭羕 | 朝左雙眼、露額黑髮及右上青飾、黑髭長尖黑鬚、青衣白領 |
+| F095 | 秦宓 | 近正面雙眼、黑帽紅髻、黑髭尖黑鬚、微張口上齒、紅衣 |
+| F203 | 諸葛誕 | 朝左雙眼及窄遠眼、灰紋折帽、黑髭尖黑鬚、黑衣淺領 |
+| F208 | 司馬昭／陳孫 | 略朝左雙眼微垂、黑髮及青紋後飾、細黑髭與無下巴鬚、青衣白領 |
+| F212 | 鍾毓 | 朝左單眼側臉、紅盔綠方飾、黑髭尖黑鬚、微張口上齒、紅金衣 |
+| F245 | 文鴛 | 強烈朝左雙眼及窄遠眼、青藍紋盔、黑髭尖黑鬚、紅黑衣黃領 |
+| F253 | 劉禪 | 朝左單眼側臉、露額黑髮及右上白紅髮飾、無鬚、紅衣白領 |
+
+F003 在六劇本人物表沒有引用，不猜人物姓名。F084 與 F208 各由兩人共用；保持原固定肖像，不按劇本年齡另畫。正式初始狀態診斷 `workplace/hd-portrait-hidden-state-v18.json` 的兩版六劇本共 168 列，姜維在 006 為漢中隱藏人物，其餘有引用槽均為未登場狀態。此為 remake 初始停點診斷，不是正常 GUI 或新增原版 oracle。
+
+來源準備入口 `workplace/prepare-hd-commanders-v18-plan.py`；狀態診斷入口 `workplace/hd-portrait-hidden-plan-v18.go`。原圖及最近鄰 16× 目標全部查看，完整請求、原圖觀察、實際生成路徑與審查保存於 `workplace/hd-commanders-v18-requests.json`、`workplace/hd-commanders-v18-source-observations.json`、`workplace/hd-commanders-v18-generated-paths.json`、`workplace/hd-commanders-v18-reviews.json`。使用內建 image_gen，初版只輸入該人物原圖；B 畫風沿革參考 §6.28，不另輸入他人肖像。完整 4:5 圖縮放至 256×320，不裁切或烘焙文字。候選與最終來源／高清比較頁全部查看後才轉 READY 並建立私人 v18 包。
+
+私人包須保留 v17 全部 548 筆欄位、PNG bytes 與準備紀錄，正式載入器及兩族完整準備稽核須通過。正常 GUI 抽驗循 006 劉備的正式新局與尋訪入口確認姜維，不注入人物、日期、勢力或亂數，不宣稱十三槽均有正常 GUI 收據。本批不改規則、存檔或音訊。其他素材家族、使用端、三語系、平台與使用者逐張簽核仍待完成。
+
+候選彙整、來源比較頁與私人包重建入口依序為 `workplace/collect-hd-commanders-v18.py`、`workplace/make-hd-v18-contact.py`、`workplace/build-hd-commanders-v18.py`。建包程式只允許本節 READY 後執行。
+
+原圖辨識勘誤保存於 `workplace/hd-commanders-v18-source-corrections.json`；五張口部複驗圖為 `workplace/hd-preview/v18-beard-source-review.png`。初始觀察、已執行請求及退件不重寫。
+
+二十三份實際候選及最終原圖比較頁均已查看，十三張採用、十張退件保留。姜維、司馬師、傅巽、蔣欽共用槽與劉禪採第二版，司馬昭共用槽採第三版，鍾毓採第四版，其餘採第一版。全部候選為 1122×1402、不透明且符合既有 4:5 誤差契約，使用者逐張簽核零。生成彙整 `workplace/hd-commanders-v18-generation.json` 的 SHA-256 為 `69012f42152e2378b8380aa3128ed4a8b4dbb04d5f59ac4fe80234c631fbaf43`；最終原圖比較頁 `workplace/hd-preview/commanders-v18-contact-final-1.png` 為 `78cf1cdb707c1d22bd817f32884febf62ae869c2f6f6c949c1d54e202018fd19`。READY 解鎖私人 v18 包；下列正式載入、正常尋訪與獨立回讀均已完成。
+
+正常尋訪輸入的診斷入口為 `workplace/hd-v18-search-plan.go`，輸出 `workplace/hd-v18-search-plan.json`。沿正式選單開 006 劉備、難度 5，依正常休息流程輪到漢中，再選本地謀略最高者尋訪。漢中屬勢力 0 劉備，空郡哨兵為 255，不能作自創君主起點。正式新局的預設亂數不覆寫；此診斷先確認 GUI 等價輸入，不增加原版 parity 聲明。
+
+正常 GUI 重跑入口 `bash tools/verify-hd-hidden.sh`，容器內控制器為 `tools/verify-hd-hidden-inner.py`，收據位於 `workplace/hd-window/player/hidden-v18/receipt.json`。兩版各休息郡 36、32、39、37、38、30，再於漢中以謀略排序第一位馬良尋訪；核對姜維來源、原生高清、圖外文字框線及原貌恢復。
+
+獨立回讀入口為 `workplace/verify-hd-v18-delivery.py`，在 `eob-audio-capture:20260922-r2` Docker 執行，收據為 `workplace/hd-v18-delivery-verification.json`。回讀完整素材包、前版保留紀錄、實際候選與參考雜湊、原始容器、兩版正常尋訪及全部最新截圖；與建包程式分開檢查。
+
+私人 v18 包為 256/256 肖像、31/31 SCG，兩版各 287 筆、共 574 筆及 287 張獨立 PNG。正式載入器兩版無警告，兩族完整準備閘門均返回 0。v17 全部 548 筆欄位、PNG bytes 與準備紀錄保持；場景未改。兩族技術問題零，使用者逐張簽核零。
+
+兩版正常尋訪共 10/10 通過，全部 36 張最新截圖及兩張原生高清畫面已獨立回讀，高清畫面亦已查看。各版姜維的原貌來源、256×320 原生高清、圖外文字框線及原貌恢復均通過；不注入狀態或覆寫 seed。軍師勸諫後依實際「主公是否繼續」送 Y，辨識用原貌參考為 `workplace/hd-v18-continue-reference.png`；第一次未送確認的失敗收據保留。本批未重跑原版 oracle 或音訊，既有範圍保持。
+
+獨立回讀核對二十三份完整執行請求、實際原始輸出、參考雜湊、不透明像素、兩版 DATA3 原始容器、完整素材包、執行工具快照與正常尋訪全部最新 PNG，結果相符。完整產物索引為 `workplace/hd-v18-artifact-index.json`。文件檢查入口與收據為 `workplace/verify-hd-v18-docs.py`、`workplace/hd-v18-docs-verification.json`；公開文字檢查入口與收據為 `workplace/verify-hd-v18-publish.py`、`workplace/hd-v18-publish-check.json`，Issue 檢查另存 `workplace/verify-hd-v18-issue-publish.py`、`workplace/hd-v18-issue-publish-check.json`。各工具只在本節記錄的隔離 Docker 執行；範圍與結果另記 WORKLOG。
+
+| 本機產物或工具 | SHA-256 |
+|---|---|
+| `workplace/hd-commanders-v18-plan.json` | `e74a6deb2a0248029b93de9e872359e281e363341c91066a5b42f99c2f6307d6` |
+| `workplace/hd-v18-plan-verification.json` | `d73f102e22a05260870385ac2efecdac77cbdf33ca881a079e2966b2c6f54a83` |
+| `workplace/prepare-hd-commanders-v18-plan.py` | `e88dafbc8b0994131d54920ee5bd4a50f121ead4dcc3ac36404a7daae4860203` |
+| `workplace/hd-portrait-hidden-plan-v18.go` | `5e9f3cbad87f0583a957e8505728929d823f8e47bc3cc23eb285be94c2e56b01` |
+| `workplace/hd-portrait-hidden-state-v18.json` | `d9bb6abdd4e9cca4b69d3fdbfcaee32efaa941fc45db37cf89c4436e2b185d38` |
+| `workplace/hd-commanders-v18-requests.json` | `64002bd40c7c9ade9d0df6cb9f51354c628a99f43821bd3d9b34efdf7da5c7b5` |
+| `workplace/hd-commanders-v18-source-observations.json` | `aa277a402589d80004b3979ea30a419d22941f6553c55238b8e5b17913ff26ad` |
+| `workplace/hd-commanders-v18-source-corrections.json` | `28c3f354ef93a744636a8aa0be50de7ef38ae699b5727495746221a432c8c363` |
+| `workplace/hd-preview/v18-beard-source-review.png` | `56f0fc8b074cfa01f95c4e2b19ba2e194904257ca1914ab183e3302ef8bd2634` |
+| `workplace/hd-commanders-v18-generated-paths.json` | `79bc6a3a2508ff80f38d67031ee92ffd13c00a00266b12c4a737de879e5b6179` |
+| `workplace/hd-commanders-v18-reviews.json` | `608adcfffdc40101403edf1e72981327fbe877280443f5b6094b8153ef9a7877` |
+| `workplace/hd-commanders-v18-generation.json` | `69012f42152e2378b8380aa3128ed4a8b4dbb04d5f59ac4fe80234c631fbaf43` |
+| `workplace/collect-hd-commanders-v18.py` | `ec022caf417b59c03cd1f7a5ffeb8e1f96c14f95e1f66411ff5d5bf4a6ea5626` |
+| `workplace/make-hd-v18-contact.py` | `6322fb95dac787cc2702f740fa13d42e334ca70eae72506c7aeb2fc2b35e5ac2` |
+| `workplace/build-hd-commanders-v18.py` | `9aaf360648043c69b3334920e6719911737bbe8923084e245e3ded20c415f799` |
+| `workplace/hd-assets-portraits-v18/manifest.json` | `5fdc94365df56068f583a89df00f4fc114d9feaff3631b6ae4c52f597c74d241` |
+| `workplace/hd-assets-portraits-v18/preparation.json` | `653f7c390041b21b7dac3ce22550d257d8fb6d679febad960c07b8fe4b5d554f` |
+| `workplace/hd-commanders-v18-build-receipt.json` | `a3628ac6564b3c349a75a2895e4cad363c65867b47320573958425c9adc2f2b3` |
+| `workplace/hd-portrait-audit-v18.json` | `e29adcac3d200ac959d04031bba5c2de258fa23d911ed76eebc7388e912e8095` |
+| `workplace/hd-scene-audit-v18.json` | `f3890579485cf8655393b93126306aece801ac2c66cb415bad23ff68a79d8a1f` |
+| `workplace/hd-v18-audit-commands.json` | `76da692d754b6e8516bf879787a7cdd3fafce62746af9451bfdaa673407af01e` |
+| `workplace/hd-preview/commanders-v18-contact-final-1.png` | `78cf1cdb707c1d22bd817f32884febf62ae869c2f6f6c949c1d54e202018fd19` |
+| `workplace/hd-v18-contact-receipt.json` | `692effb8ee3f470e3ec3b29723cedf06345cce088bf03c1ae32c47c30043045e` |
+| `workplace/hd-v18-search-plan.go` | `f17e1c545ebeac3e5ba21af93ce5cb5cc4897e1718d6a51016309414299c980c` |
+| `workplace/hd-v18-search-plan.json` | `a377c1c42926f578ed6844dae1eb63bb313872b49d6a1a017be60192a82c2b0a` |
+| `workplace/hd-v18-continue-reference.png` | `6621bdec13742de2acbc1b677536c4f3227a1f8b58155cc4fad587069cab3d34` |
+| `workplace/hd-v18-gui-first-attempt.json` | `bdc590cfff0037e21ae830e058b65b7e339a1db86f0fb1def4bf3f08c4e47bc5` |
+| `workplace/hd-window/player/hidden-v18/receipt.json` | `19c5f51e8137ad4c56fd77585c87f905ce55b1a6402cf37f0050f5012943c56f` |
+| `workplace/verify-hd-v18-delivery.py` | `27f334e2e3c977b6d1b9077686fa3f2f18fcda7bdc1819c5f0a58e8fedb656cf` |
+| `tools/verify-hd-hidden.sh` | `5109747574bfdf33384efd318b6a9c6d7af5c54a403c0988bf0fa5a121f6b20d` |
+| `tools/verify-hd-hidden-inner.py` | `7eef2a27c669319ab4e6cfb579f1f6b708aee50bb58aeb953b65d997992f4fb4` |
+| `workplace/hd-v18-delivery-verification.json` | `8e2feecad58d093cf8323c4efdf85fea568fa27a23e30a02ca1c2537c8b09fb7` |
+| `workplace/hd-v18-artifact-index.json` | `42a7f292b83efafd73ed7600fe931c915670581911d258c21cc64ec0dcf22a82` |
