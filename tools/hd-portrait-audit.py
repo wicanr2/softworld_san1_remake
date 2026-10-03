@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""稽核私人高清包的全部 256 肖像槽；須在 Docker 內執行。"""
+"""稽核私人高清包的 256 肖像槽或 31 場景槽；須在 Docker 內執行。"""
 import argparse
 import collections
 import hashlib
@@ -10,6 +10,7 @@ import re
 import struct
 
 KEY = re.compile(r'^DATA3/F(?:[01][0-9]{2}|2[0-4][0-9]|25[0-5])\.FAC$')
+SCENE_KEY = re.compile(r'^(?:DATA3/SCG(?:0[1-9]|[12][0-9])|DATA2/SCG3[01])\.IMG$')
 ACCEPTED = {'accepted-for-local-pack', 'accepted-local'}
 
 
@@ -39,10 +40,13 @@ def png_size(path):
 def canonical(key):
     if key.lower().startswith('f') and '/' not in key:
         key = 'DATA3/' + key.upper() + '.FAC'
+    elif key.lower().startswith('scg') and '/' not in key:
+        container = 'DATA2' if key.upper() in {'SCG30', 'SCG31'} else 'DATA3'
+        key = container + '/' + key.upper() + '.IMG'
     return key
 
 
-def generations(root, names):
+def generations(root, names, key_re=KEY):
     by_file = collections.defaultdict(list)
     receipts = []
     for name in names:
@@ -51,7 +55,7 @@ def generations(root, names):
         receipts.append({'file': name, 'sha256': sha(path)})
         for entry in data.get('entries', data.get('records', [])):
             key = canonical(entry['key'])
-            if not KEY.fullmatch(key):
+            if not key_re.fullmatch(key):
                 continue
             for candidate in entry.get('candidates', [entry]):
                 value = {**data, **entry, **candidate}
@@ -67,16 +71,21 @@ def audit(args):
     root = Path(args.root).resolve()
     inventory_path = local(root, args.inventory)
     inventory = json.loads(inventory_path.read_text())
-    expected = {f'DATA3/F{n:03d}.FAC' for n in range(256)}
+    scenes = getattr(args, 'family', 'portraits') == 'scenes'
+    key_re = SCENE_KEY if scenes else KEY
+    prefix, label = ('SCG', '場景') if scenes else ('F', '肖像')
+    expected = ({f'{"DATA2" if n >= 30 else "DATA3"}/SCG{n:02d}.IMG' for n in range(1, 32)}
+                if scenes else {f'DATA3/F{n:03d}.FAC' for n in range(256)})
+    total = len(expected)
     sources, references = {}, {}
     require(len(inventory['editions']) == 2, '來源盤點須恰有兩版')
     for edition in inventory['editions']:
         name = edition['edition']
-        entries = [x for x in edition['assets'] if KEY.fullmatch(x['key'])]
-        if len(entries) != 256 or {x['key'] for x in entries} != expected:
-            raise ValueError(f'{name}: 來源盤點不是完整 256 個獨立槽')
+        entries = [x for x in edition['assets'] if key_re.fullmatch(x['key'])]
+        if len(entries) != total or {x['key'] for x in entries} != expected:
+            raise ValueError(f'{name}: 來源盤點不是完整 {total} 個獨立槽')
         sources[name] = {x['key']: x for x in entries}
-        references[name] = edition['portrait_references']
+        references[name] = [] if scenes else edition['portrait_references']
     if set(sources) != {'base', 'plus'}:
         raise ValueError('來源盤點缺少兩版')
     pack = local(root, args.pack)
@@ -91,19 +100,19 @@ def audit(args):
             ('preparation', prepared, json.loads(preparation_path.read_text()))]:
         for x in values:
             key = x.get('key', x.get('container', '') + '/' + x.get('name', ''))
-            if not key.startswith('DATA3/F'):
-                if re.match(r'[^/]+/F', key):
-                    problems.append(f'{field}: 未知肖像鍵 {key}')
+            if not key.startswith(('DATA3/' + prefix, 'DATA2/' + prefix)):
+                if re.match(r'[^/]+/' + prefix, key):
+                    problems.append(f'{field}: 未知{label}鍵 {key}')
                 continue
-            if not KEY.fullmatch(key) or x['edition'] not in sources:
-                problems.append(f'{field}: 未知肖像鍵 {x["edition"]}/{key}')
+            if not key_re.fullmatch(key) or x['edition'] not in sources:
+                problems.append(f'{field}: 未知{label}鍵 {x["edition"]}/{key}')
                 continue
             identity = (x['edition'], key)
             if identity in target:
                 problems.append(f'{field}: 重複 {x["edition"]}/{key}')
                 invalid.add(identity)
             target[identity] = x
-    metadata, receipts = generations(root, args.records)
+    metadata, receipts = generations(root, args.records, key_re)
     reviews = {}
     for name in args.reviews:
         path = local(root, name)
@@ -111,7 +120,7 @@ def audit(args):
         for x in json.loads(path.read_text())['entries']:
             key = canonical(x['key'])
             identity = (key, x['master_sha256'])
-            if not KEY.fullmatch(key) or identity in reviews:
+            if not key_re.fullmatch(key) or identity in reviews:
                 raise ValueError(f'{name}: 未知或重複審查鍵 {key}')
             reviews[identity] = x
     result = []
@@ -122,7 +131,8 @@ def audit(args):
             source = sources[edition][key]
             item['sources'][edition] = {'sha256': source['source_sha256'],
                 'width': source['width'], 'height': source['height'],
-                'references': [x for x in references[edition] if x['portrait_key'] == key]}
+                    'references': ([{'usage': source['usage'], 'geometry': source['geometry']}]
+                                   if scenes else [x for x in references[edition] if x['portrait_key'] == key])}
             e, p = entries.get((edition, key)), prepared.get((edition, key))
             if e is None:
                 if p is not None:
@@ -153,7 +163,10 @@ def audit(args):
                 require(v.get('tool', v.get('method', '')).strip(), '缺工具紀錄')
                 require('seed' in v and ('model' in v or 'model_version' in v), '缺模型／seed 限制紀錄')
                 if v.get('source_sha256'):
-                    require(v['source_sha256'] == source['source_sha256'], '生成設定的來源雜湊不符')
+                    generation_source = v['source_sha256']
+                    if isinstance(generation_source, dict):
+                        generation_source = generation_source.get(edition)
+                    require(generation_source == source['source_sha256'], '生成設定的來源雜湊不符')
                 review = v.get('review', v.get('decision', ''))
                 if isinstance(review, dict):
                     status = review.get('status', '')
@@ -177,7 +190,7 @@ def audit(args):
         item['codex_reviewed'] = item['prepared_both'] and all(x['codex_reviewed'] for x in item['generation'])
         item['human_signoff'] = item['prepared_both'] and all(x['human_signoff'] for x in item['generation'])
         result.append(item)
-    summary = {'total': 256,
+    summary = {'total': total,
         'prepared_both': sum(x['prepared_both'] for x in result),
         'codex_reviewed': sum(x['codex_reviewed'] for x in result),
         'human_signoff': sum(x['human_signoff'] for x in result),
@@ -190,12 +203,12 @@ def audit(args):
     if output.exists():
         require((output.stat().st_uid, output.stat().st_gid) == (os.getuid(), os.getgid()), '輸出檔擁有權不符')
     report = {'schema': 1, 'rights': '原版衍生美術；公開再散布權未知，僅供本機私人驗收。',
-        'scope': '兩版全部 256 DATA3 肖像槽；未宣稱原版 parity 或使用者逐張簽核。',
+        'scope': f'兩版全部 {total} {label}槽；未宣稱原版 parity 或使用者逐張簽核。',
         'tool_sha256': sha(Path(__file__)), 'inventory_sha256': sha(inventory_path),
         'pack_sha256': sha(manifest_path), 'preparation_sha256': sha(preparation_path),
         'generation_receipts': receipts, 'summary': summary, 'entries': result}
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
-    print(f"肖像 {summary['prepared_both']}/256；Codex 已審查 {summary['codex_reviewed']}；使用者簽核 {summary['human_signoff']}")
+    print(f"{label} {summary['prepared_both']}/{total}；Codex 已審查 {summary['codex_reviewed']}；使用者簽核 {summary['human_signoff']}")
     print(f"缺項 {len(summary['missing_keys'])}；未審查 {len(summary['unreviewed_keys'])}；技術問題 {len(summary['technical_problems'])}")
     print('收據 SHA-256', sha(output))
     if summary['technical_problems']:
@@ -212,6 +225,7 @@ def main():
     p.add_argument('--root', default='.')
     p.add_argument('--inventory', default='workplace/hd-inventory/inventory.json')
     p.add_argument('--pack', required=True)
+    p.add_argument('--family', choices=['portraits', 'scenes'], default='portraits')
     p.add_argument('--records', action='append', required=True)
     p.add_argument('--reviews', action='append', default=[])
     p.add_argument('--out', required=True)

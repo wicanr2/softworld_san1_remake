@@ -400,3 +400,84 @@ tools/go.sh run ./cmd/san1hdpack -root /orig/三國演義 -peer-root /orig/三�
 窄版查看的初次驗證誤把被頁面遮住的肖像當成可見，依實際原貌畫面修正預期後重跑。失敗收據與當時工具保留於 `failed-before-inspect-occlusion/`；先前片頭同步失敗資料保留於 `failed-before-input-stream/`。
 
 此範圍不涵蓋對戰子畫面、快速戰鬥、其他戰場肖像或尚未製作的地形／旗陣高清素材。
+
+### 6.17 主畫面命令的七張場景批次
+
+狀態：`READY`。依 #109 及使用者定案的 B、4×、原貌預設製作七張場景。來源槽、尺寸及既有命令用途以兩版盤點、正式 `ArtScreen.Scene` 與 [010 §1.1、§8](010-screen-transitions.md) 為準；原版呼叫點為 `L0`、`[base]`，§8 已抽驗命令的骰序為 `L1`、`[both]`。高清美術是 remake 差異，不宣稱與原版像素相同。
+
+接入前的證據審查已核對七張採用圖、三張退件、兩版來源雜湊相同、原尺寸 176×96、原圖比例及完整提示詞；依上述輸入、邊界與驗收契約轉為 READY。
+
+| 槽 | 容器 | 正式用途 | 採用版次 |
+|---|---|---|---|
+| SCG06 | DATA3 | 發動戰役 | 1 |
+| SCG09 | DATA3 | 徵兵、購買武器 | 1 |
+| SCG15 | DATA3 | 訓練、調整兵力 | 2 |
+| SCG20 | DATA3 | 調動軍隊、運送錢糧 | 1 |
+| SCG24 | DATA3 | 賞賜、賜物 | 1 |
+| SCG30 | DATA2 | 買米、賣米 | 2 |
+| SCG31 | DATA2 | 開墾、治水 | 2 |
+
+輸入為 `workplace/hd-b-SCG##-vN.png`，原圖 11:6、完整縮放為 704×384。不得裁切、拉伸人物或把文字烘焙進圖片。保留原構圖、衣著、旗幟配色與人物方向；不得因命令名稱在 SCG20 加入原圖沒有的車馬。四方向切入仍沿用 010 的 22／24 步、對邊整塊滑入、原座標及不收輸入契約，不改規則、亂數或存檔。
+
+提示詞、參考圖、工具、原圖尺寸、來源與候選雜湊及 Codex 逐張審查保存在 `workplace/hd-scenes-v1-generation.json`。SCG15／30／31 第一版比例不符，退件保留；採用第二版由 `image_gen` 重構畫布。工具未回報模型版本與 seed，使用者逐張簽核為 0。全部圖與含原版資料的產物只留本機私人驗收。
+
+累積包另存 `workplace/hd-assets-scenes-v7/`，包含既有 49 個肖像槽與 8 張場景，兩版各 57 筆；前批包與收據保留。接入前核對兩版來源 bytes、原圖比例、圖檔形態與擁有權。失敗時依既有 §6.2 回退原貌，不猜測新鍵、命令用途或場景內容。
+
+驗收須從兩版正常片頭、新局、原有選單與命令進入場景。核對原生 704×384 像素、原貌切回、素材外文字與框線，並直接擷取實際 X11 動畫中間幀。獨立幾何判準按 010 §3 核對四方向的實際高清素材全部步數；正常 GUI 未捕獲的方向或步數分開記錄，不用靜態終點代替動畫完成。SCG 全族分母為 31；已準備、Codex 審查、使用者簽核與缺圖分別列數字，不將 SCG11 的素材存在推定為正式用途。
+
+兩版正式載入器均接受 57 筆，無警告。SCG15／30／31 採用圖為 1698×926，SCG20 為 1699×926，依既有一個來源像素內的比例誤差契約接受；其他採用圖為 1698×926。來源盤點中的使用端文字是歷史快照，例如 SCG30／31 的舊未接入敘述不代表目前狀態，正式路由以 §5、010 及目前程式為準。
+
+[`tools/hd-portrait-audit.py`](../../tools/hd-portrait-audit.py) 新增 `--family scenes`，沿用來源、PNG、生成設定及審查契約，SCG01–29 必須來自 DATA3、SCG30／31 必須來自 DATA2。SCG01 的 Codex 補記在 `workplace/hd-scenes-pilot-review.json`，不推定使用者簽核。最新稽核為 8/31 兩版備妥、Codex 審查 8、使用者簽核 0、缺 23、技術問題 0；`--require-complete` 返回 3。原有 16 個肖像及新增 8 個場景 CLI 正反例均在 Python `-O` 下通過，保存於 `workplace/hd-audit-checks-v7/`。累積包的肖像重驗為 49/256、缺 207、技術問題 0。
+
+完整圖層入口為 [`tools/hd-wipe-check.go`](../../tools/hd-wipe-check.go)，Docker 內使用以下命令。它透過正式容器及高清載入器讀取實際素材，獨立按 010 §3 計算預期矩形及來源位置，核對整張 800×440 圖層、素材外像素、原貌畫布與結束閘門；不拿實作的 `Reveal`／`Source` 作預期。
+
+```sh
+tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義 -edition base -pack workplace/hd-assets-scenes-v7 -out workplace/hd-wipes-v7-base.json
+tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edition plus -pack workplace/hd-assets-scenes-v7 -out workplace/hd-wipes-v7-plus.json
+```
+
+兩版各 8 張場景、四方向的 24／24／22／22 步，共 736 個完整幀通過，合計 1,472 幀。此為實際素材的 remake 圖層驗證，不能代替正常玩家或原版 oracle。
+
+| 本機 `workplace/` 產物 | SHA-256 |
+|---|---|
+| `hd-assets-scenes-v7/manifest.json` | `b40ca7121dc1b78ad52530e081055364e6b2074dda2da4631743fa560d57ac9b` |
+| `hd-assets-scenes-v7/preparation.json` | `45569b93738c0a9bdc883df7c599a859088f6153ff1268567b6d18a156b9b176` |
+| `hd-scenes-v1-generation.json`，7 張採用與 3 張退件 | `0aa05e51724f7b6a54c2327c143958dbba0940b76c6033fb0541de0c01933cd9` |
+| `hd-scene-audit-v7.json` | `391e0dc1011f19d563441a87e92dc731e362e2e8c89c2ce2e0bbb35761f74663` |
+| `hd-portrait-audit-v7.json` | `034eb2a2ef58fb257edba6b9b6a434f182054cedbc6d7bdc283f5d822045a3aa` |
+| `hd-wipes-v7-base.json`，736 幀 | `4718c3511c6a72c862d07769d01b07ae1d459003b47606449993293a797f0cab` |
+| `hd-wipes-v7-plus.json`，736 幀 | `eee869bdb6cca44e69cf599b96da79bf9dcf37b7864f8c08a33cc02a8d3fbf2f` |
+| `hd-preview/scenes-v7-contact.png`，8 張原圖與高清比較頁 | `fbe57efd41c731dfda8434731f2a4e3aced3d89039f432ef11fe14bd9050c906` |
+
+正常視窗入口為 [`tools/verify-hd-scenes.sh`](../../tools/verify-hd-scenes.sh)，重跑使用 `bash tools/verify-hd-scenes.sh`；前置映像及原版資料沿用 §6.5，另需 v7 包與完整盤點。從兩版正常片頭開 001、單人曹操、難度 5，各場景重新開局，以原有選單與命令進入。X11 擷取從最後命令輸入前開始，保存已捕獲中間幀的 RGB、方向、步數、來源／目的矩形、時間及雜湊。幾何按 010 §3 獨立計算，核對揭露區全部像素與首個捕獲幀之後的未覆蓋區；不同驗證範圍分開記錄。
+
+宣戰以陳留出兵洛陽，曹操編入第一軍、金 0、米 1000；調動由陳留至相鄰無主的譙郡 12，兩版正式第一次玩家停點已查證為 11、郡 12 的主人為 255。徵兵選第一位、增加 1；賞賜第一位將軍 1 金，交易買 1 金的米；訓練與開墾均經原有命令，不植入人物、事件、日期或亂數。這些是 remake 正常操作，未作新的規則或原版 seed 對拍聲明。
+
+兩版各七次片頭／新局、十四次正常命令，共 140/140 檢查通過。704×384 終點與切回後的高清圖逐像素符合包內素材，176×96 原貌符合來源；下方 (408,200) 的 224×92 文字與框線符合原貌的四倍最近鄰縮放。其他肖像另有高清圖，未把整個視窗都宣稱為原貌像素相同。
+
+| 場景 | 正常命令捕獲的方向，兩版相同 | 每版非終點步數 |
+|---|---|---|
+| SCG06 | 3，向左 | 1–21 |
+| SCG09 | 1，向上 | 1–23 |
+| SCG15 | 1，向上 | 1–23 |
+| SCG20 | 3，向左 | 1–21 |
+| SCG24 | 2，向右 | 1–21 |
+| SCG30 | 0，向下 | 1–23 |
+| SCG31 | 2，向右 | 1–21 |
+
+合計 306 個實際 X11 中間幀，兩版均涵蓋四方向。每段從第一步開始、步數完整且遞增，揭露區全部像素符合對邊滑入的來源位置，首幀後未覆蓋區保持相同。正常命令每張只涵蓋表中實際方向；其他方向由前述完整圖層驗證另證。沒有反覆重擲或挑選方向作通過證據。首個擷取幀之前的遮蔽區不在此 GUI 比較範圍。
+
+收據目錄保存三份工具原文、執行檔、157 個最新 PNG 與 306 份壓縮 RGB；片頭及選項列同名圖片依最後一次擷取核對。方向比較頁由實際中間幀轉成 PNG，只加標籤，沒有重新生成動畫圖片。完整批次外層返回 0。
+
+| 本機 `workplace/` 產物 | SHA-256 |
+|---|---|
+| `hd-window/player/scenes-v7/receipt.json`，140/140 | `a723e712152453be87fa4ffb74a56a1f3a9a43a22de1234c8c9502ec7af66d8e` |
+| `hd-window/player/scenes-v7/san1-window-check` | `b7fc59b7cbe365c7b7912805184321a592f3a5c3ad109184e3ae83647f893ee6` |
+| `hd-window/player/scenes-v7/verify-hd-scenes-inner.py` | `0fa8da115ec6d1ccc0da8e684525b05b3ef3e727e7e205086173b6ab689b660a` |
+| `hd-window/player/scenes-v7/verify-hd-scenes.sh` | `1aa98a0a71d06e348fed3a23189ba448028c6a84ca649702a0f1306115f6480a` |
+| `hd-window/player/scenes-v7/verify-window-inner.py` | `d7f0f648e4d50ce76cd6ffa1fc8b345d8e4d5662f4e2515c40c5b244b39d38a0` |
+| `hd-audit-checks-v7/receipt.json`，24/24 | `8f8c3c90bf23d62b04aa397e37bcf42036713d6f14699ddbf721bc90354f2195` |
+| `hd-preview/scenes-v7-directions.png`，四方向實際中間幀 | `54f93baf71e6171ba133817562a7378ad4f65783abd7bf95aafe64a85ae02d51` |
+| `hd-v7-delivery-verification.json`，157 張最新 PNG、306 個中間幀及工具／素材回讀 | `aa1c3a1851f95983350b7b77ee6e0d7897291d4d6078098ee9c6c8c238c5a7ef` |
+
+本批沒有修改正式 Go 程式、規則、seed 或存檔，未新增原版 oracle 收據。使用者逐張簽核、其餘 23 張 SCG、其他素材家族、對戰子畫面、快速戰鬥及其他高清動畫仍待完成。Linux 配樂的先前 10/10 收據維持 §6.13 的範圍，未在此批重跑或擴張平台聲明。
