@@ -15,6 +15,10 @@
 - `bash tools/verify-hd-player.sh --officers-006` 由兩版片頭開 006 曹操、難度 5 正常新局，十二張卡共 50/50 通過、89 張最新 PNG。每版他國三位、本國三位，全部清單在第一頁；來源、原生高清、圖外文字框線與原貌恢復各 12/12。兩版人物卡總覽已查看，沒有注入人物、日期、勢力或 seed。
 - 獨立回讀全部 89 張最新 PNG、十二張人物卡、七份候選、完整原請求與實際輸出、實際參考雜湊、不透明像素、兩版原始 DATA3 容器及 548 筆素材；v16 全部 536 筆欄位、PNG bytes 與準備紀錄保持。[獨立收據](workplace/hd-v17-delivery-verification.json) SHA-256 `ab0370b460b8d0efdf7138e9366af0923a9f23437f4854468b0c9c5d29d8c4a0`；[021 §6.28](docs/spec/021-hd-art.md#628-劇本-006-新增六張肖像) 同批索引完整產物與工具。整份 HD 保持 READY，其他使用端、素材家族、三語系、平台與使用者逐張簽核仍待完成。
 
+- 文件入口、30 份表列產物雜湊、工具語法與 `git diff --check` 通過；檢查為 127 個文件連結、62 個標題入口。[公開檢查](workplace/hd-v17-publish-check.json) 核對七份實際暫存文字，29 份 PNG、7 份完整提示詞、MZ 前綴正對照及乾淨反對照均通過；不宣稱通用片段或編碼外洩偵測。
+- 已提交並推送 [52a7801](https://github.com/wicanr2/softworld_san1_remake/commit/52a7801f99f5ac39e1617910aeba0bbb996f5a72)，遠端 main 完整雜湊相同。#104／#107／#108／#109／#110 現況及六槽收據已同步，回讀全文與實際 body-file 逐字相同，標題、留言與 OPEN 狀態保持。[同步收據](workplace/hd-v17-issue-update-verification.json) SHA-256 `437f1b9f6aa91cdb77072a8a7312ee00e08a853a8d5d26aa28bbfd0fb0229a70`，入口 `workplace/verify-hd-v17-issue-sync.py`，保存五項更新前後全文及本文雜湊；[Issue 公開檢查](workplace/hd-v17-issue-publish-check.json) SHA-256 `95f7e3fd04c54715463517a23d86a11e889fd44209dc680b22d31014be46db25`，入口 `workplace/verify-hd-v17-issue-publish.py`，限於五份實際本文的 PNG 簽章、完整提示詞及 MZ 前綴。
+- 最後紀錄提交的 [公開檢查](workplace/hd-v17-checkpoint-publish-check.json) 由 `workplace/verify-hd-v17-checkpoint.py` 回讀實際暫存的 WORKLOG。圖片及原版資料保持本機，未建立 Release。收尾無本專案殘留容器，`workplace/` 未見 root-owned 檔案或 `.md` 目錄；使用者未追蹤的 AGENTS.md 保持原狀。
+
 ## 2026-10-04：劇本 005 九槽高清肖像與正常人物卡
 
 - 前輪 v15 已完成並推送至 `ab85c05`，接續既定 HD 計畫。命中規格閘門與文件職責路由，沿用 imagegen；回讀唯一現況表、v15 完整收據及 #104／#107／#108／#109／#110 的全文、留言與 OPEN 狀態。
