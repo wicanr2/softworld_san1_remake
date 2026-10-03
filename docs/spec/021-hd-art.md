@@ -779,3 +779,94 @@ tools/go.sh run ./tools/hd-wipe-check.go -root /orig/三國演義1加強版 -edi
 | `workplace/verify-hd-v11-delivery.py` | `0c58ccfdd698931c5eac23e54fc62b2168a03ed4eb5154e46ed06f40e2c9d808` |
 | `workplace/hd-preview/commanders-v11-gui-base-contact.png` | `e73fc9e5af040f563c8ad4102a39c80da927e027b06043a8a3d4a459b15d7f68` |
 | `workplace/hd-preview/commanders-v11-gui-plus-contact.png` | `0414cb9116d4bb3a0b8b5056575a38735cda4bf80181106c0870e809590b39fb` |
+
+### 6.23 劇本 001 其餘四十五張肖像
+
+本節狀態：READY。沿用 §6.15／6.22 的固定肖像、B 寫實手繪、4× 與原貌預設契約。這批選取劇本 001 正常開局可查看、尚未製作的四十五個 DATA3 槽。兩版 64×80 來源 PNG 及原始槽 bytes 已逐項核對相同，原始資料為 L0、[both]。查看選項來自 remake 正式新局清單，不當作原版 oracle。來源、比例與四十五張採用圖的 Codex 審查已通過，私人包與正常 GUI 驗收另列。完整九十列在本機 `workplace/hd-commanders-v12-plan.json`，SHA-256 `a7d006509a77b371bfb4ea917d871af7e27fc403e617d904c054796dab2005c1`。
+
+| 肖像槽 | 人物 | 人物索引 | 查看郡 | 清單選項 |
+|---|---|---|---|---|
+| F073 | 嚴綱 | 298 | 2 | 2 |
+| F199 | 公孫越 | 54 | 2 | 3 |
+| F022 | 袁尚 | 131 | 3 | 3 |
+| F126 | 袁譚 | 129 | 3 | 4 |
+| F050 | 淳于瓊 | 290 | 3 | 9 |
+| F080 | 辛評 | 50 | 3 | 11 |
+| F089 | 袁熙 | 130 | 4 | 1 |
+| F071 | 張顗 | 320 | 4 | 5 |
+| F175 | 麴義 | 297 | 4 | 7 |
+| F045 | 馬延 | 319 | 4 | 8 |
+| F137 | 高幹 | 317 | 4 | 9 |
+| F148 | 陳琳 | 117 | 4 | 11 |
+| F134 | 董旻 | 25 | 6 | 1 |
+| F096 | 郭汜 | 18 | 6 | 2 |
+| F032 | 李肅 | 24 | 6 | 4 |
+| F231 | 楊彪 | 291 | 6 | 5 |
+| F170 | 董璜 | 62 | 6 | 6 |
+| F211 | 鮑信 | 292 | 7 | 3 |
+| F066 | 曹豹 | 300 | 9 | 4 |
+| F205 | 袁胤 | 342 | 13 | 1 |
+| F188 | 雷薄 | 107 | 13 | 2 |
+| F185 | 陳蘭 | 108 | 13 | 3 |
+| F116 | 徐榮 | 43 | 15 | 4 |
+| F065 | 王允 | 345 | 15 | 5 |
+| F093 | 胡軫 | 294 | 15 | 6 |
+| F147 | 張繡 | 111 | 16 | 1 |
+| F223 | 趙岑 | 295 | 16 | 4 |
+| F191 | 程銀 | 186 | 19 | 4 |
+| F151 | 楊秋 | 192 | 19 | 5 |
+| F118 | 華歆 | 125 | 24 | 1 |
+| F165 | 紀靈 | 93 | 27 | 2 |
+| F067 | 李豐 | 308 | 27 | 3 |
+| F240 | 呂公 | 61 | 29 | 2 |
+| F243 | 陳生 | 60 | 29 | 3 |
+| F105 | 張允 | 335 | 29 | 4 |
+| F196 | 劉磐 | 175 | 30 | 3 |
+| F036 | 孟達 | 11 | 36 | 2 |
+| F225 | 王累 | 200 | 36 | 6 |
+| F079 | 吳蘭 | 211 | 37 | 1 |
+| F027 | 冷苞 | 202 | 37 | 3 |
+| F204 | 雷同 | 212 | 37 | 4 |
+| F183 | 譙周 | 222 | 38 | 1 |
+| F090 | 楊懷 | 205 | 38 | 3 |
+| F161 | 高沛 | 206 | 38 | 4 |
+| F133 | 張肅 | 208 | 38 | 5 |
+
+生成時逐張沿用原圖身份、冠帽、服色、鬚髮、姿態與可見眼睛；不依劇本年齡或通俗人物形象改造。完整 4:5 圖縮放至 256×320，不裁切、不拉伸、不烘焙文字。來源、提示詞、候選與退件保留本機，Codex 審查與使用者逐張簽核分列。四十五張全部通過來源與比例審查後，本節由 DRAFT 轉 READY，再建立私人 v12 包。
+
+四十七份候選採用四十五張，全部不透明 1122×1402，比例符合既有契約。F151／F036 採第二版，分別修掉額外遠側眼與恢復原有微張嘴表情，其餘採第一版。兩份退件保留，使用者逐張簽核 0。工具為 image_gen，模型／seed 未回報。完整紀錄為本機 `workplace/hd-commanders-v12-generation.json`，SHA-256 `c6f4b0380842258114aff0cc4473447c42d97966026805d56dd3c3f6fd98b311`。
+
+私人包保留 v11 全部 240 筆欄位、PNG bytes 與準備紀錄。兩版正式載入器及全族稽核另列。正常玩家驗證從片頭開劇本 001、單人曹操、難度 5，189 年元月停在郡 11，四十五位皆走原有他國查看確認。人物卡位置為 (536,68)，高清為 256×320；逐張核對原貌來源、原生高清、肖像外文字框線及原貌恢復。不注入人物、日期、勢力或 seed。入口為 [`tools/verify-hd-player.sh`](../../tools/verify-hd-player.sh) 加 `--officers-all`，兩版共九十張人物卡。
+
+此批屬 remake 美術差異及使用端驗證，不替代原版 oracle、其他使用端、三語系、音訊或跨平台驗收。規則與存檔維持既有契約。
+
+
+本機包為 `workplace/hd-assets-portraits-v12/`，134/256 肖像與 31/31 SCG，兩版各 165 筆、共 330 筆，正式載入器警告 0。v11 全部 240 筆欄位與 PNG bytes 保持；準備紀錄亦經獨立回讀確認保持。兩族技術問題均為 0；肖像 Codex 審查 134、缺 122，場景審查 31、缺 0。使用者逐張簽核均為 0。場景完整準備閘門返回 0，肖像返回 3。
+
+| 本機產物 | SHA-256 |
+|---|---|
+| `workplace/hd-commanders-v12-generation.json` | `c6f4b0380842258114aff0cc4473447c42d97966026805d56dd3c3f6fd98b311` |
+| `workplace/hd-commanders-v12-build-receipt.json` | `60bf1c94e19cad42e8cc6892fcc533a8fdee94d778347734417b1018fe1ede48` |
+| `workplace/hd-assets-portraits-v12/manifest.json` | `581f2bd5beb3f6be421e3a346cdfac7361a6a9cfd47068faacd3baedf5b62bea` |
+| `workplace/hd-assets-portraits-v12/preparation.json` | `b5d157775aec1cc1e2b1a6b9a9272788a41ab9c9e277582699ea289b98c398b5` |
+| `workplace/hd-portrait-audit-v12.json` | `8d510e80322ce3410b046e7d001bc28a734edc5436b7c243c0d6456461ab67ba` |
+| `workplace/hd-scene-audit-v12.json` | `0e39c5cbbebefccaf79a14d06570fafb9b7d64ad03c027c5236d389bd104f027` |
+| `workplace/hd-preview/commanders-v12-contact-1.png` | `08de2f51f7cc395e4691ce4e6d5f5c9ba1a4770f610ac0a4ac304abb4efa4f18` |
+| `workplace/hd-preview/commanders-v12-contact-2.png` | `830e543c5205ee62e3aa9067a83968feccb3bd12357b34091b3a99aabf74ac28` |
+| `workplace/hd-preview/commanders-v12-contact-3.png` | `f8dbfc4bb4fec618a56fca1b4c7b87ba31c9038101cba1acda9ae0f3a8a59f1e` |
+兩版正常人物卡 362/362 通過，完整批次返回 0。兩次正常片頭與 001 曹操新局，各四十五張卡，全部走他國查看確認；原貌來源、原生高清、肖像外文字框線及原貌恢復均相符。每次新局仍以原貌及隱藏選項列啟動。
+
+獨立回讀 692 張最新 PNG、三份工具快照、執行檔、六份原始 GRP、330 筆素材及四十七份候選，雜湊、尺寸、像素與擁有權相符。v11 全部 240 筆欄位、PNG bytes 與準備紀錄保持，九十張卡的四類像素比較由獨立 RGB 解碼再驗。三張來源／高清比較頁與兩版各三張正式人物卡頁已目視。完整收據只留本機。
+
+| 本機驗證產物 | SHA-256 |
+|---|---|
+| `workplace/hd-commanders-v12-plan.json` | `a7d006509a77b371bfb4ea917d871af7e27fc403e617d904c054796dab2005c1` |
+| `workplace/hd-window/player/commanders-v12/receipt.json` | `fc906cdfc20aa75603f5ec242e1609f3f8b83dee999ac712e29d1777bd0e3338` |
+| `workplace/hd-v12-delivery-verification.json` | `9b9ee1a112596345d854e39f32a11ff305918b6bc25d590e381e81da3254b62e` |
+| `workplace/hd-v12-audit-commands.json` | `6f9573f1dc8a8fa9c2f345895f91e1d37a07909a5404d887667edbfc58a0ec1d` |
+| `workplace/hd-preview/commanders-v12-gui-base-contact-1.png` | `46a401bd8c72d3012d02f3ef2a0c9555b3dc679320920c53499c0779019b5599` |
+| `workplace/hd-preview/commanders-v12-gui-base-contact-2.png` | `4856b8ca108d45004ac46f2af954cc29039badf31e26fdefeb382822288ea766` |
+| `workplace/hd-preview/commanders-v12-gui-base-contact-3.png` | `116e62305bee29983d3b691ad39be04dbf0f0a8ee0504aa133ec6ee265a09fd6` |
+| `workplace/hd-preview/commanders-v12-gui-plus-contact-1.png` | `b7e3eee5bf639aad185be10580ec6e7a0253cdb0b9979b4c78d3d7c5f2516d1e` |
+| `workplace/hd-preview/commanders-v12-gui-plus-contact-2.png` | `aa77f0a6cd2ff433c539088ae64506af5c98efd669f815e574b9a9f976ac370a` |
+| `workplace/hd-preview/commanders-v12-gui-plus-contact-3.png` | `3df89086f296378225acc4c4db6fbab93efa0bacea41d4955b7de6908efa7491` |
