@@ -18,7 +18,8 @@ case "${1:-}" in
   --officers-003) target=workplace/hd-window/player/commanders-v14 ;;
   --officers-004) target=workplace/hd-window/player/commanders-v15 ;;
   --officers-005) target=workplace/hd-window/player/commanders-v16 ;;
-  *) echo "用法：bash tools/verify-hd-player.sh [--scene-plus|--custom|--portraits|--lords|--lords-all|--commanders|--commanders-next|--officers|--officers-all|--officers-002|--officers-003|--officers-004|--officers-005]" >&2; exit 2 ;;
+  --officers-006) target=workplace/hd-window/player/commanders-v17 ;;
+  *) echo "用法：bash tools/verify-hd-player.sh [--scene-plus|--custom|--portraits|--lords|--lords-all|--commanders|--commanders-next|--officers|--officers-all|--officers-002|--officers-003|--officers-004|--officers-005|--officers-006]" >&2; exit 2 ;;
 esac
 [[ $# -le 1 ]] || exit 2
 pack=workplace/hd-assets
@@ -35,6 +36,7 @@ case "${1:-}" in
   --officers-003) pack=workplace/hd-assets-portraits-v14 ;;
   --officers-004) pack=workplace/hd-assets-portraits-v15 ;;
   --officers-005) pack=workplace/hd-assets-portraits-v16 ;;
+  --officers-006) pack=workplace/hd-assets-portraits-v17 ;;
 esac
 for dir in "$ROOT" "$ORIG" "$ROOT/workplace/hd-window" "$ROOT/workplace/hd-assets" \
   "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
@@ -55,7 +57,7 @@ fi
 if [[ "${1:-}" == --commanders ]]; then
   test -d "$ROOT/workplace/hd-assets-portraits-v6" || { echo '缺少本機肖像素材包 v6' >&2; exit 2; }
 fi
-if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers || "${1:-}" == --officers-all || "${1:-}" == --officers-002 || "${1:-}" == --officers-003 || "${1:-}" == --officers-004 || "${1:-}" == --officers-005 ]]; then
+if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers || "${1:-}" == --officers-all || "${1:-}" == --officers-002 || "${1:-}" == --officers-003 || "${1:-}" == --officers-004 || "${1:-}" == --officers-005 || "${1:-}" == --officers-006 ]]; then
   test -d "$ROOT/$pack" || { echo '缺少本機肖像素材包' >&2; exit 2; }
   for edition in base plus; do
     test -d "$ROOT/workplace/hd-inventory/$edition/img/DATA3" || { echo '缺少肖像來源參考目錄' >&2; exit 2; }
@@ -65,7 +67,7 @@ common=(--rm --network none --memory 3g --cpus 2 --pids-limit 256
   --log-opt max-size=10m --log-opt max-file=3 -u "$(id -u):$(id -g)"
   -v "$ROOT:/src" -v "$ORIG:/src/org_game:ro" -v "$ORIG:/orig:ro"
   -v "$ROOT/$pack:/src/$pack:ro" -w /src)
-if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers || "${1:-}" == --officers-all || "${1:-}" == --officers-002 || "${1:-}" == --officers-003 || "${1:-}" == --officers-004 || "${1:-}" == --officers-005 ]]; then
+if [[ "${1:-}" == --commanders-next || "${1:-}" == --officers || "${1:-}" == --officers-all || "${1:-}" == --officers-002 || "${1:-}" == --officers-003 || "${1:-}" == --officers-004 || "${1:-}" == --officers-005 || "${1:-}" == --officers-006 ]]; then
   common+=(-v "$ROOT/workplace/hd-inventory:/src/workplace/hd-inventory:ro")
 fi
 timeout 3m docker run "${common[@]}" --name san1-hd-player-build \
