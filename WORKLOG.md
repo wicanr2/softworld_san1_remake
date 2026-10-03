@@ -12,6 +12,7 @@
 - `bash tools/verify-hd-player.sh --officers-003` 由兩版正常片頭開 003 曹操新局，六十八張人物卡共 274/274 通過，587 張最新 PNG；每版他國二十七位、本國七位，未注入狀態。首次 GUI 因漏按空白換頁，在毛玠第十三位中止；依 014 §4.2 修正工具後完整乾淨重跑。初次畫面與收據保留 `workplace/hd-window/player/commanders-v14-attempt-1/`，其中 `receipt.json` 的 SHA-256 `d20f90bd51aaaa14ce8c43961acdf081b8520dd4313da14cfdf762c99ccd4203`；遊戲程式未改。
 - 獨立回讀首次在 F025 停下，原因是驗證工具把肖像右側遮罩界線 768 誤寫為 428。依人物卡座標 `(536-408)*4 + 64*4` 修正，保留 `workplace/verify-hd-v14-delivery-attempt-1.py` 與 `workplace/hd-v14-delivery-attempt-1.json`，同一容器環境完整重跑通過。六頁正常人物卡總覽均已查看；未建立 Release，未改正式規則、存檔或音訊。
 - 最終獨立回讀 587 張最新 PNG、六十八份清單頁碼、三份工具快照、執行檔、原版六份 GRP、490 筆素材與 38 份候選，雜湊、尺寸、像素與擁有權相符。人物卡四類比較各 68/68；v13 全部 422 筆欄位、PNG bytes 與準備紀錄保持。獨立收據 SHA-256 `8d25c4195cb73253487c48f29228209de4b1b7be575fd6166936f5f543ded25a`。肖像缺 42，其中 29 槽有已驗的正式初次清單，004／005／006 各 14／9／6；其餘十三槽路徑未明。此篩選未重跑玩家流程。Docker 無 san1 容器殘留，工作區無 root-owned 檔案或 `.md` 目錄；整份 HD 及 #104／#107–#110 維持未完成。
+- 工具與文件已提交並推送 [f988288](https://github.com/wicanr2/softworld_san1_remake/commit/f9882881e5df96f740c2af8b025a97a941c2d7fc)，遠端 main 雜湊相符。#104／#107／#108／#109／#110 的現況與本批收據已同步，GitHub 全文回讀與本機本文逐字相同，五項均為 OPEN；舊批紀錄保留。[本機同步收據](workplace/hd-v14-issue-update-verification.json) 索引五份本文、各自雜湊與更新時間。沒有加入私人素材或建立 Release。
 
 ## 2026-10-03：劇本 002 新增四十六張肖像
 
