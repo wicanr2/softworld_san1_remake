@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 var formatSlot = regexp.MustCompile(`%[0-9]*[sd]`)
@@ -26,6 +27,10 @@ func Relocalize(text string, from, to Locale) string {
 		for _, slot := range formatSlot.FindAllString(s, -1) {
 			s = strings.Replace(s, slot, "", 1)
 		}
+		// 只有空白或標點的模板無法辨識提示，會把未知文字誤當成 UI。
+		if !strings.ContainsFunc(s, func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }) {
+			return 0
+		}
 		return len(s)
 	}
 	sort.SliceStable(keys, func(i, j int) bool { return literalWeight(keys[i]) > literalWeight(keys[j]) })
@@ -41,7 +46,7 @@ func Relocalize(text string, from, to Locale) string {
 		for _, slot := range slots {
 			pattern.WriteString(regexp.QuoteMeta(template[at:slot[0]]))
 			if template[slot[1]-1] == 'd' {
-				pattern.WriteString(`(-?[0-9]+)`)
+				pattern.WriteString(` *(-?[0-9]+)`)
 			} else {
 				pattern.WriteString(`(.*?)`)
 			}

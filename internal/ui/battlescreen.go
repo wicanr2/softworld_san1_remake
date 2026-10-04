@@ -15,6 +15,7 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
+	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 )
 
 // 戰場版面（格）。戰場 12×10 格，每格畫兩個半形位置
@@ -87,6 +88,37 @@ type BattleView struct {
 	// 反白（原版每 512 個時脈切換一次，`0x1538:0x58ac`）。
 	SkirmishActing *battle.SkirmishGeneral
 	Blink          bool
+}
+
+// Relocalize 更新已生成的顯示文字，不推進戰場或重新送出玩家輸入。
+// command 由目前隊伍的 typed 資料重建，包含新語系的姓名與隊伍名。
+func (v *BattleView) Relocalize(old i18n.Locale, command string) {
+	translate := func(s string) string { return i18n.Relocalize(s, old, i18n.Current) }
+	menu := i18n.T(old, "bat.win.menu")
+	if at := strings.Index(v.Window, menu); command != "" && at >= 0 {
+		prefix := strings.Split(v.Window[:at], "\n")
+		for i := range prefix {
+			prefix[i] = translate(prefix[i])
+		}
+		v.Window = strings.Join(prefix, "\n") + command
+	} else {
+		v.Window = translate(v.Window)
+	}
+	v.Menu, v.Prompt, v.PageTitle = translate(v.Menu), translate(v.Prompt), translate(v.PageTitle)
+	// 顯示快照可能共享 slice 的底層陣列，更新時保留另一份的舊語系來源。
+	items, page := make([]string, len(v.Items)), make([]string, len(v.Page))
+	for i, s := range v.Items {
+		items[i] = translate(s)
+	}
+	for i, s := range v.Page {
+		page[i] = translate(s)
+	}
+	if v.Items != nil {
+		v.Items = items
+	}
+	if v.Page != nil {
+		v.Page = page
+	}
 }
 
 // SetPage 打開一頁，捲回最上面。
@@ -305,7 +337,6 @@ func BattleStratagemLines() []string {
 	}
 	return packBattle(items)
 }
-
 
 // BattleUnitPage 是「查看」一支部隊的內容。
 func BattleUnitPage(u *battle.Unit) (string, []string) {

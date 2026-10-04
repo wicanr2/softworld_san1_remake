@@ -274,5 +274,16 @@ func (a *app) relocalizeWindow(old i18n.Locale) {
 	if a.menuScreen != nil {
 		a.menuScreen.Relocalize(old)
 	}
+	if battle := a.fight; battle != nil {
+		command := ""
+		if battle.acting != nil {
+			command = a.commandWindow(battle.acting)
+		}
+		battle.view.Relocalize(old, command)
+		battle.saved.Relocalize(old, command)
+		for i := range battle.speeches {
+			battle.speeches[i].Text = f(battle.speeches[i].Text)
+		}
+	}
 	ebiten.SetWindowTitle(fmt.Sprintf("三國演義 remake (%s)", i18n.Current.Name()))
 }

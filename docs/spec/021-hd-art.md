@@ -1648,3 +1648,55 @@ UI 測試結果另存 `workplace/hd-weather-v19-tests.json`。CLI 正反例只�
 預設高清的容器限流增加 35／44 期，累積 1,795,674／3,715,040 微秒；指定 2 執行緒的四段動畫均無限流，高清反而變慢。因此不採用 `LP_NUM_THREADS=2`，也不能把「渲染執行緒超過配額」當成既有慢速的已證實真因。本試驗未重現先前最慢的時長，未排除其他呈現與排程因素。正式遊戲、驗證入口及等待均不改，本節保留 DRAFT，不再靠增加同類參數試驗求過關。
 
 獨立回讀入口與收據為 `workplace/verify-hd-perf-v23-delivery.py`、`workplace/verify-hd-perf-v23-delivery.json`。逐項核對正式來源、overlay、相同 binary、八組原始 trace、實際執行緒及完整相位；圖片與原始紀錄只留本機。後續呈現路徑的變更須另做像素等價試作，通過後才授權正式維護。
+
+## 6.35 最終呈現的像素等價試作
+
+**狀態：DRAFT**。§6.34 的兩執行緒設定不採用。本節只試作減少原生尺寸、隱藏選項列時的一次全畫面 GPU 繪製；保留 4×、B 畫風、完整遊戲畫面、透明度、動畫 22 相位、速度、TPS、等待及音訊。正式來源、資料與存檔保持，試作僅由私人 Go overlay 接入。
+
+目前 `cmd/san1` 在 `Draw` 將已上傳的遊戲圖畫至 Ebiten 中間畫布，再由引擎畫到最終視窗。鎖定 Ebiten 2.9.9 的 [FinalScreenDrawer API](https://github.com/hajimehoshi/ebiten/blob/v2.9.9/run.go) 與[預設呈現實作](https://github.com/hajimehoshi/ebiten/blob/v2.9.9/gameforui.go)：最終回呼在 `Draw` 之後，縮放矩陣含等比縮放及置中；整數倍率採最近鄰，縮小採線性，非整數放大採 Pixelated。不能直接合併任意倍率、選項列及透明圖層。
+
+試作保留 `Draw` 原有拉幕起點、CPU 繪圖及上傳，將視窗合成放到最終回呼。只有選項列隱藏、最終矩陣六元素完全為單位矩陣、遊戲圖／中間畫布／最終視窗的 bounds 相同時，直接畫已上傳遊戲圖。其餘情況依原有 `drawWindow` 合成中間畫布，再呼叫 `DefaultDrawFinalScreen`。不依視窗大小、DPI 或前一幀推測矩陣，也不變更插值模式。
+
+先以真實原貌／高清人物卡及戰場全圖，另加透明像素反例，在 Docker／Xvfb 的實際 GPU 路徑回讀整張 RGBA，比較原合成與試作。涵蓋原生兩倍率、選項列及下拉、縮小、非整數放大及置中。控制與試作兩組均以最終回呼記錄正常誘敵相位，完整 22 步及 279 次 Update，兩版各原貌／高清；維持預設 Mesa 執行緒、同一來源與相同鍵序，不錄影、不注入狀態或 seed。幀數與時間實測保存，像素不等價或播放未改善時不進正式程式。
+
+入口與證據沿用私人 `workplace/`，前綴為 `hd-perf-v24-`：`prepare.py`、`main-control.go`、`main-prototype.go`、`main-fixture.go`、`windowbar.go`、`trace.go`、`final-control.go`、`final-prototype.go`、`fixture.go`、`overlay-control.json`、`overlay-prototype.json`、`overlay-fixture.json`、`normal.py`、`build.json`、`gpu.json`。輸出在既有 `workplace/hd-window/player/` 下的 `perf-v24-control/`、`perf-v24-prototype/`、`perf-v24-gpu/`。公開維護須在上述證據審查後轉 READY，另跑正常視窗的 Esc／hover、語言、Theme、AI 及縮放，再驗正式無 overlay 的原生圖、外框與動畫恢復。這是 remake 呈現維護，原版 oracle 與既有音訊驗證範圍保持。
+
+GPU 14 組共 22,712,320 像素回讀相同，原生直接呈現及非原生回退皆命中預期。帶 CPU 採樣的八段正常量測仍不一致：兩版高清控制為 47.499／4.747 秒，試作為 4.645／11.897 秒。全部完整 22 相位及 279 次 Update；試作的最終回呼均走直接呈現。這些結果不足以宣稱一致改善，本節保持 DRAFT。
+
+後續只隔離 CPU 採樣這一因素，不調正式參數：同一程式、資料、矩陣、配額及鍵序，控制／試作各四段，關閉 pprof，保留原有逐階段計時及 cgroup 起訖。原組保留不覆寫。入口與收據仍用 `hd-perf-v24-` 前綴：`prepare-plain.py`、`trace-plain.go`、`normal-plain.py`、`overlay-plain-control.json`、`overlay-plain-prototype.json`、`build-plain.json`、`normal-plain-control.json`、`normal-plain-prototype.json`；輸出在 `workplace/hd-window/player/perf-v24-plain-control/` 與 `perf-v24-plain-prototype/`。兩組都不採用前輪的兩執行緒設定；若仍無一致證據，不修改正式呈現，改推進其他未完成驗收。
+
+獨立回讀入口及收據為 `workplace/verify-hd-perf-v24-delivery.py`、`workplace/verify-hd-perf-v24-delivery.json`，逐項核對正式來源、固定試作／控制程式、十四組 GPU 分母、四組建置、十六段原始 trace、全部最新完整 PNG 與兩版全部相位。計時結果分開 CPU 採樣與無採樣，不將最終回呼頻率稱為實體螢幕更新率。
+
+本次試作已結束，**不採用**。關閉 CPU 採樣後，原版高清控制／試作為 4.655／4.652 秒，加強版為 5.029／32.276 秒，仍無一致改善。十六段均完整保留 22 相位、原速度及 279 次 Update；獨立回讀通過 124 份正式來源、184 張最新完整 PNG、四組建置與十四組 GPU 全圖比較。正式呈現保持原有路徑，本節保留 DRAFT 及完整負結果，不再以調參數重跑此候選。這些數字不證明特定驅動、CPU 採樣或主機排程是差異真因。
+
+## 6.36 三語系的正常玩家畫面與即時切換
+
+**狀態：DRAFT**。接續 #110 的三語驗收，範圍為兩版正常片頭、新局、主畫面、人物卡、對白、選單與主戰場。沿用 B、4×、原貌預設與 §6.3 的即時切換契約，不改玩法、資料或存檔格式。
+
+先用目前正式程式重現每個玩家停點的繁中／英文／日文切換，分別擷取原貌與原生高清。核對語系確實更新、文字安全區、日期十槽、肖像身份與圖框、高清外的文字／框線及切回原貌。已驗圖片不推定全部長姓名、所有事件、子畫面或三語系全文完成；結果逐項記入驗證矩陣。
+
+靜態檢查發現 `cmd/san1/windowbar.go` 的 `relocalizeWindow` 目前更新主畫面與主選單，未處理 `fight.view` 的已生成文字。`ui.BattleCommandWindow` 在建立玩家命令提示時依當下語系生成多行字串；是否在即時切換後保留舊語言，先以正式 GUI 查證，不先修改程式。
+
+私人入口沿用 `workplace/`，前綴為 `hd-locale-v25-`：`normal.py`、`prepare.py`、`build-before.json`；正常重現輸出為 `workplace/hd-window/player/locale-v25-before/`。先使用已核對 124 份正式來源的現有無 overlay 執行檔，保留控制器、鍵序、PNG、來源及素材包雜湊。若發現缺陷，補齊顯示狀態的輸入／輸出、語系回復、存檔隔離及實際失敗證據後，才轉 READY 修正，再以同一正常路徑重跑。
+
+首輪原版正常戰場的英文／日文標題更新，命令前三行仍與繁中完全相同，原貌／高清皆重現。加強版第一組全 96 列比較只差輸入游標的 576 個高清像素，範圍為面板內 (576,272)–(607,295)，前三行相同。此差異是非同步擷取的游標，不列為產品缺陷；原失敗保存，改用 `normal-r2.py` 比較不含游標的前三行，輸出 `locale-v25-before-r2/`、`build-before-r2.json`，游標差異收據為 `cursor-diff.json`，前綴同上。
+
+### 6.36.1 戰場已生成提示的即時更新
+
+**狀態：CONFORMED，限戰場命令即時切換及顯示字串回歸**。原 READY 契約只處理已生成的戰場顯示文字，不涵蓋整份三語系或所有字區。兩版正常證據為 `locale-v25-before-r2/receipt.json`，四次英文／日文切換皆保留繁中命令；共同正式來源的 `BattleView.Window` 在 `nextActor` 以當下語系產生，`relocalizeWindow` 未更新 `fight.view`。這是 remake 選項列缺陷，無原版語言切換 oracle，亦不修改原版規則。
+
+輸入為舊語系、目前戰場顯示快照及同一隊伍依現有 `commandWindow` 產生的新語系提示。已知舊命令選單保留前方訊息，替換為完整新命令與姓名；其他已知提示、選單、分頁逐項依既有字串表更新。未知文字原樣保存，不猜譯或用改寫文字決定遊戲行為。同步更新戰術協程的已保存顯示快照，避免答完後恢復舊語言；已排入控制器的對白只更新文字。
+
+隊伍、等待種類、已選命令、位置、移動力、亂數、游標、反白、分頁位置及輸入回呼保持；沒有存檔欄位變更。回歸驗證兩種目標語系及回切，包含未知前綴、數值與非文字欄位。實作入口為 `ui.BattleView.Relocalize` 及 `cmd/san1/windowbar.go`，回歸在 `internal/ui/battleview_locale_test.go`；正式兩版正常 GUI 依相同 `normal-r2.py` 重跑，後續其他畫面仍由 §6.36 追蹤。
+
+修改後的無 overlay 建置入口為 `workplace/hd-locale-v25-build-after.sh`，輸出在 `workplace/hd-window/player/locale-v25-after/`，來源、工具及建置記錄為 `workplace/hd-locale-v25-build-after.json`，原始測試事件為 `workplace/hd-locale-v25-tests.jsonl`。使用同一 `normal-r2.py`，僅以 `SAN1_HD_LOCALE_OUT` 指向新目錄；兩版控制及修改後的完整原生圖與文字比較分開保存。
+
+首輪回切測試揭露既有 `i18n.Relocalize` 把只有空白的 `%s` 模板當成已知提示，將未知紀錄回切成籍貫；原始事件、來源及目錄分別保存為 `workplace/hd-locale-v25-tests-first.jsonl`、`workplace/hd-locale-v25-first-source.json`、`locale-v25-after-first/`。修正契約只允許含文字或數字常量的格式模板參與辨識，並接受數字欄的填寬空白，保留解析後的數值。回歸入口包含 `internal/i18n/relocalize_test.go` 的未知文字雙向回切及 0／6／17／−6 填寬數值。
+
+獨立回讀入口及收據為 `workplace/verify-hd-locale-v25-delivery.py`、`workplace/verify-hd-locale-v25-delivery.json`，核對兩組正式來源、控制組的四項真實失敗、修改後全部正常停點、測試原始事件、最新完整 PNG 及原生肖像／日期／命令文字。公開檢查入口與收據為 `workplace/verify-hd-locale-v25-publish.py`、`workplace/hd-locale-v25-publish-check.json`；Issue 同步依 `workplace/hd-locale-v25-issue-sync-plan.json` 及 `workplace/hd-locale-v25-issue-sync-receipt.json` 核對全文與 OPEN 狀態。這些私人收據不加入 Git。
+
+修改後 R2 的 28/28 正常檢查通過。獨立下框比較發現八組均只差系統滑鼠游標的 2,322 像素，完整差異框為下框內 (52,4)–(115,67)；擷取入口的 x11grab 未關閉 `draw_mouse`。R2 保留，不遮掉差異；`normal-r3.py` 只將擷取改為 `-draw_mouse 0`，同鍵序、同 binary 重跑，輸出在 `locale-v25-after-r3/`，建置對照為 `build-after-r3.json`，前綴同上。原獨立讀取器保存為 `workplace/verify-hd-locale-v25-delivery-first.py`。這是擷取工具修正，不變更遊戲。
+
+R3 兩版繁中、英文、日文及回切繁中的 28/28 正常檢查通過。UI、翻譯及控制器三個套件共 186 項測試通過，零 skip、零 fail。獨立回讀控制／修改後共 166 張最新完整 PNG，核對 124 份正式來源、固定素材包、原生高清曹操肖像、命令前三行及完整日期下框；全部通過。兩版英文與日文的四張完整高清畫面已查看。正式來源中 `Relocalize` 的使用端僅更新顯示文字，未接到規則、識別鍵或存檔；語言與行為分離契約沿用 `local/localization-display-semantic-isolation.md`，既有 JSON 母本維持專案契約。
+
+§6.36 的三語系驗收仍為 DRAFT。完整畫面可見英語軍力面板的標籤／數值裁切、姓名與地名仍使用繁中字形，以及日文時刻欄的文字重疊；這些在控制組已存在，不是本次命令更新造成。下一步先追查 `battleInfo`、`DrawArtBattle` 的翻譯與字區，再依已量版面建立窄修正契約。主畫面、人物卡、對白、選單及其他戰場分支尚未完成此輪三語驗收；戰術保存快照與非命令提示目前只有回歸測試，不外推正常 GUI 完成。
