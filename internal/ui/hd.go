@@ -54,7 +54,7 @@ type HDPack struct {
 	Warnings        []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13])$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU[1-3]\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13])$`)
 
 type highFlag struct {
 	image    *image.RGBA
@@ -85,7 +85,7 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 712 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 718 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
 	p := &HDPack{images: make(map[[32]byte]*image.RGBA), flags: make(map[[32]byte]highFlag), flagText: make(map[highFlagTextKey]*image.RGBA), panels: map[string]hdPanel{}, sidePanels: map[hdSideKey]map[byte]string{}, sideBorders: map[hdSideKey]string{}, panelCache: map[hdPanelSize]*image.RGBA{}}
@@ -134,13 +134,14 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	if strings.HasSuffix(e.Name, ".FAC") && e.Name > "F255.FAC" {
 		return nil, nil, fmt.Errorf("肖像資源越界")
 	}
-	if (strings.HasSuffix(e.Name, ".FAC") || (strings.HasPrefix(e.Name, "SCG") && e.Name < "SCG30.IMG")) && e.Container != "DATA3" {
+	if (strings.HasSuffix(e.Name, ".FAC") || strings.HasPrefix(e.Name, "MENU") || (strings.HasPrefix(e.Name, "SCG") && e.Name < "SCG30.IMG")) && e.Container != "DATA3" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
 	terrain := strings.HasPrefix(e.Name, "EICON.")
 	flag := strings.HasPrefix(e.Name, "WFLAG")
 	panel := strings.HasPrefix(e.Name, "PANEL.")
 	frame := strings.HasPrefix(e.Name, "FBR")
+	menu := strings.HasPrefix(e.Name, "MENU")
 	if (strings.HasPrefix(e.Name, "WEATHER") || terrain || flag || panel || frame) && e.Container != "DATA1" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
@@ -195,6 +196,21 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 		(flag && (im.W != assets.FlagW || im.H != assets.FlagH)) ||
 		(terrain && (im.W != assets.TileW || im.H != assets.TileH)) {
 		return nil, nil, fmt.Errorf("來源尺寸不符")
+	}
+	if menu {
+		sizes := map[string][2]int{"MENU1.IMG": {96, 151}, "MENU2.IMG": {200, 46}, "MENU3.IMG": {40, 41}}
+		want := sizes[e.Name]
+		if im.W != want[0] || im.H != want[1] {
+			return nil, nil, fmt.Errorf("主選單素材尺寸不符")
+		}
+		if hdMenuFrameBounds(im).Empty() {
+			return nil, nil, fmt.Errorf("主選單素材缺少框面")
+		}
+		for _, code := range im.Pix {
+			if code != 0 && code != 3 && code != 9 && code != 15 {
+				return nil, nil, fmt.Errorf("主選單素材色號不符")
+			}
+		}
 	}
 	if frame {
 		w, h := 80, 8
@@ -263,10 +279,10 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	high := image.NewRGBA(image.Rect(0, 0, e.Width, e.Height))
 	draw.Draw(high, high.Bounds(), decoded, decoded.Bounds().Min, draw.Src)
-	if terrain || flag || panel || frame {
+	if terrain || flag || panel || frame || menu {
 		for i := 3; i < len(high.Pix); i += 4 {
 			if high.Pix[i] != 255 {
-				return nil, nil, fmt.Errorf("地形、旗幟、面板與肖像框必須不透明")
+				return nil, nil, fmt.Errorf("地形、旗幟、面板、肖像框與主選單素材必須不透明")
 			}
 		}
 	}
@@ -488,4 +504,42 @@ func (c *Canvas) SearchHighScene(a *ArtScreen, portrait int) *image.RGBA {
 	pt := image.Pt(56*4, 8*4)
 	draw.Draw(out, high.Bounds().Add(pt), high, image.Point{}, draw.Src)
 	return out
+}
+
+// hdMenuFrameBounds 由原始高光及青色框面量出可重繪範圍。
+func hdMenuFrameBounds(im *assets.Image) image.Rectangle {
+	r := image.Rectangle{Min: image.Pt(im.W, im.H)}
+	for y := 0; y < im.H; y++ {
+		for x := 0; x < im.W; x++ {
+			if p := im.At(x, y); p == 3 || p == 15 {
+				r.Min.X = min(r.Min.X, x)
+				r.Min.Y = min(r.Min.Y, y)
+				r.Max.X = max(r.Max.X, x+1)
+				r.Max.Y = max(r.Max.Y, y+1)
+			}
+		}
+	}
+	return r
+}
+
+// drawHighMenu 保留框外背景及投影，框內黑色線條與框面一併重繪。
+func (c *Canvas) drawHighMenu(im *assets.Image, x, y int) {
+	high := c.HighImage(im)
+	if high == nil {
+		return
+	}
+	before := len(c.highOps)
+	c.addHigh(high, image.Rect(x, y, x+im.W, y+im.H), image.Point{})
+	if len(c.highOps) == before {
+		return
+	}
+	op := c.highOps[len(c.highOps)-1]
+	frame := hdMenuFrameBounds(im).Add(image.Pt(x, y))
+	for py := op.rect.Min.Y; py < op.rect.Max.Y; py++ {
+		for px := op.rect.Min.X; px < op.rect.Max.X; px++ {
+			if !image.Pt(px, py).In(frame) {
+				op.covered[(py-op.rect.Min.Y)*op.rect.Dx()+px-op.rect.Min.X] = true
+			}
+		}
+	}
 }

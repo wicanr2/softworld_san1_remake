@@ -1919,7 +1919,7 @@ func main() {
 			if a.windowBar != nil && a.windowBar.aiExplicit {
 				_ = m.SetAI(mode, a.windowBar.orders)
 			}
-			m.OnFont = a.setFont
+			m.OnFont = a.setMenuFont
 			return m
 		}
 		a.startTitle(titleScreen, a.newMenu())
@@ -2153,6 +2153,16 @@ func cloneCanvas(src *image.RGBA) *image.RGBA {
 // setFont 換主選單那兩項指定的字模（Issue #71）：原版換完**直接重畫、
 // 不印訊息**（`0x11bb4`／`0x11bc2`）。讀不到就留著現在這一套並說一句
 // ——悄悄不換的話，玩家看到的是「這個選項沒作用」。
+// setMenuFont 將選單的 0／1 對回正式字型設定的 1／2。
+func (a *app) setMenuFont(choice int) {
+	switch choice {
+	case 0:
+		a.setFont(game.FontKai)
+	case 1:
+		a.setFont(game.FontLi)
+	}
+}
+
 func (a *app) setFont(kind int) {
 	if kind == a.fontKind {
 		a.dirty = true

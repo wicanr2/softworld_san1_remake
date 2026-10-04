@@ -132,7 +132,12 @@ func (s *Screen) SetAI(mode ai.Mode, orders int) error {
 }
 
 func (s *Screen) Relocalize(old i18n.Locale) {
-	s.title = i18n.Relocalize(s.title, old, i18n.Current)
+	if s.stage == Music {
+		// Music 與設定頁同文，標題須依目前階段取固定鍵。
+		s.title = i18n.S("title.musicPlate")
+	} else {
+		s.title = i18n.Relocalize(s.title, old, i18n.Current)
+	}
 	for i := range s.items {
 		s.items[i] = i18n.Relocalize(s.items[i], old, i18n.Current)
 	}

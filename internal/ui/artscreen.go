@@ -861,8 +861,9 @@ const (
 // 圖是原版的（`assets.MenuScreen`），字是 remake 自己的字庫。
 // 六個項目的文字照原版的選單抄（`docs/re/02` §3 的開機畫面）。
 type TitleScreen struct {
-	bg     *assets.Image
-	frames [assets.MenuOrnamentFrameCount]*assets.Image
+	menuPieces [3]*assets.Image
+	bg         *assets.Image
+	frames     [assets.MenuOrnamentFrameCount]*assets.Image
 }
 
 // TitleOrnamentTicksPerFrame 是 remake 的可攜節拍；60 TPS 時每格約 0.13 秒。
@@ -877,6 +878,11 @@ func NewTitleScreen(data3 *assets.Container, data1 ...*assets.Container) (*Title
 		return nil, err
 	}
 	ts := &TitleScreen{bg: bg}
+	for n, name := range []string{"MENU1.IMG", "MENU2.IMG", "MENU3.IMG"} {
+		if index, ok := data3.ByName(name); ok {
+			ts.menuPieces[n], _ = assets.DecodeImage(data3.Data(index))
+		}
+	}
 	if len(data1) > 0 && data1[0] != nil {
 		if ts.frames, err = assets.MenuScreenFrames(data1[0], data3); err != nil {
 			return nil, err
@@ -904,12 +910,7 @@ func DrawTitle(c *Canvas, ts *TitleScreen, sel int) {
 
 // DrawTitleFrame 畫指定的 `CURA0`～`CURA5` 小飾框畫格。
 func DrawTitleFrame(c *Canvas, ts *TitleScreen, sel, frame int) {
-	bg := ts.bg
-	if frame >= 0 && frame < len(ts.frames) && ts.frames[frame] != nil {
-		bg = ts.frames[frame]
-	}
-	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		bg.RGBA(), image.Point{})
+	ts.drawBackground(c, frame)
 	label := color.RGBA{0x55, 0xFF, 0xFF, 0xFF}
 	ink := color.RGBA{0xFF, 0xFF, 0x55, 0xFF}
 	hot := color.RGBA{0xFF, 0xFF, 0xFF, 0xFF}
@@ -1180,18 +1181,15 @@ const (
 //
 // 直牌的字只有全是全形字時才畫（英日版直排放不下，留白，remake 差異）。
 func DrawTitleLayer(c *Canvas, ts *TitleScreen, frame int, label string, labelInk byte, items []string, sel int) {
-	bg := ts.bg
-	if frame >= 0 && frame < len(ts.frames) && ts.frames[frame] != nil {
-		bg = ts.frames[frame]
-	}
-	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
-		bg.RGBA(), image.Point{})
+	ts.drawBackground(c, frame)
 	if artAllWide(label) {
 		DrawMenuLabel(c, label, assets.EGAPalette[labelInk&15])
 	}
 	for i, b := range assets.MenuButtons() {
 		x, y := b[0]+TitleLayerTextX, b[1]+TitleLayerTextY
 		c.FillRect(x, y, x+TitleLayerTextCells*CellW, y+CellH, assets.EGAPalette[TitleLayerTextBG])
+		// 清字只留在原貌；高清重畫空白按鈕後再疊文字。
+		c.drawHighMenu(ts.menuPieces[1], b[0], b[1])
 		if i >= len(items) {
 			continue
 		}
@@ -1232,4 +1230,21 @@ func MessageLines(text string, cols int) []string {
 		out = append(out, lines...)
 	}
 	return out
+}
+
+// drawBackground 接回原主選單底圖；皮膚、游標與前景文字保持原繪製順序。
+func (ts *TitleScreen) drawBackground(c *Canvas, frame int) {
+	bg := ts.bg
+	if frame >= 0 && frame < len(ts.frames) && ts.frames[frame] != nil {
+		bg = ts.frames[frame]
+	}
+	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH), bg.RGBA(), image.Point{})
+	c.drawHighMenu(ts.menuPieces[0], 56, 215)
+	for _, at := range assets.MenuButtons() {
+		c.drawHighMenu(ts.menuPieces[1], at[0], at[1])
+	}
+	c.drawHighMenu(ts.menuPieces[2], 576, 320)
+	// 整格保留原底圖及 CURA 的 AND／OR 結果，不讓高清框蓋住游標。
+	c.trackRect(image.Rect(assets.MenuOrnamentX, assets.MenuOrnamentY,
+		assets.MenuOrnamentX+8, assets.MenuOrnamentY+16))
 }
