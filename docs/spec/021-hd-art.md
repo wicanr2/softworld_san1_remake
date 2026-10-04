@@ -1700,3 +1700,31 @@ GPU 14 組共 22,712,320 像素回讀相同，原生直接呈現及非原生回�
 R3 兩版繁中、英文、日文及回切繁中的 28/28 正常檢查通過。UI、翻譯及控制器三個套件共 186 項測試通過，零 skip、零 fail。獨立回讀控制／修改後共 166 張最新完整 PNG，核對 124 份正式來源、固定素材包、原生高清曹操肖像、命令前三行及完整日期下框；全部通過。兩版英文與日文的四張完整高清畫面已查看。正式來源中 `Relocalize` 的使用端僅更新顯示文字，未接到規則、識別鍵或存檔；語言與行為分離契約沿用 `local/localization-display-semantic-isolation.md`，既有 JSON 母本維持專案契約。
 
 §6.36 的三語系驗收仍為 DRAFT。完整畫面可見英語軍力面板的標籤／數值裁切、姓名與地名仍使用繁中字形，以及日文時刻欄的文字重疊；這些在控制組已存在，不是本次命令更新造成。下一步先追查 `battleInfo`、`DrawArtBattle` 的翻譯與字區，再依已量版面建立窄修正契約。主畫面、人物卡、對白、選單及其他戰場分支尚未完成此輪三語驗收；戰術保存快照與非命令提示目前只有回歸測試，不外推正常 GUI 完成。
+
+### 6.36.2 戰場名稱與資料的完整顯示
+
+**狀態：DRAFT**。沿用 [014 §3.2、§7](014-art-main-overlays.md#32-下面板) 已定案的字級與原版面板。`battleInfo` 提供原始姓名及郡／州名，`DrawArtBattle` 未套用既有 `PersonName`、`PlaceName`；英文面板仍保留繁中大字姓名欄，資料只剩 64 像素，且混入中文字使 ASCII 小字回退失效。v25 的兩版正常完整圖可重現軍力名稱及數值裁切。
+
+先以私人 overlay 試作顯示層翻譯，資料與識別鍵維持原文。繁中座標、字型、全部像素保持；日文只依既有新字體對照。拉丁姓名使用既有面板的 96 像素資料區，完整保留統帥、君主、軍別、將數、兵、金及米；必要時使用 6×10 小字，最多九行，最後一行仍在 96 像素面板內。部隊與查看面板也必須從原始姓名翻譯，不要求呼叫者預先翻譯。空首將維持原有空面板。
+
+英文郡名在原有 32×64 槽內用完整拼音折行，不取前兩個字母。州名沿用既有「放不下才拿掉州字再轉」契約；天候在原有 32×16 槽內量寬後選字級。英文下框日期須完整顯示既有 `Date.FormatWithSeason` 的年號或西曆、年、月及季節，留在原有日期範圍，保留雙色網點；繁中十槽保持。
+
+前輪對日文時刻欄的重疊判斷須訂正：v25 兩版完整 32×96 日數／時辰框與繁中逐像素相同，雜湊均為 `f944aad0036ed62baf83fbfbb3648c4000a3e5ec0a387eef9d04b3703ca78c13`。原排法的時辰／數字在 x 8–23，「時」在 x 24–39；同列的兩塊字區沒有重疊，不改原排法。此項是 remake 截圖及來源幾何回讀，未新增原版 oracle。
+
+私人入口沿用 `workplace/hd-locale-v26-` 前綴：`prepare.py`、`prototype-artbattle.go`、`prototype-artscreen.go`、`probe_test.go`、`overlay.json`、`control-overlay.json`、`run-probe.sh`、`before.json`。控制與試作輸出沿用 `workplace/hd-window/player/locale-v26-control/`、`locale-v26-prototype/`，各有 `probe.json`。以兩版六劇本的實際姓名與郡／州資料、四軍及上界數值核對完整文字、原貌字區與繁中不變；高清及正常玩家路徑另驗，不以直入畫面代替。證據足以描述輸入／輸出及邊界後再轉 READY；不改人物、規則、亂數、等待、肖像或存檔。
+
+首輪兩版六劇本共 347 種原始姓名、42 郡名，拼音姓名最長 12 格，郡名最長 9 格。九行試作將數值上界截字由 128 組降至 4 組，剩餘皆為原版模板名「新君主」，既有 `PersonName` 原樣回退。R2 只在戰場顯示層將此模板名對到現有 `title.newLord`，不更改會寫入新局的 `title.newLordName` 或全域姓名轉換。原版姓名之外的未知自訂姓名仍按既有整串原文回退，不猜譯；混合文字的完整排版另列限制。首輪全部試作來源保存於 `workplace/hd-locale-v26-first-source.json`，R2 控制／試作輸出為 `locale-v26-control-r2/`、`locale-v26-prototype-r2/`，另加入實際模板名的完整畫面。
+
+R2 包裝腳本先誤改來源／overlay 檔名，檢查全部輸入路徑後修復；兩組 Go 原始測試均 PASS，彙整器卻未接受 Go 空列表的 JSON `null`。R2 來源與失敗保留於 `workplace/hd-locale-v26-r2-source.json` 及原目錄；修復摘要後在同一映像、同一命令乾淨重跑，R3 輸出為 `locale-v26-control-r3/`、`locale-v26-prototype-r3/`。兩次檔名失敗後已讀取規則 40／41，不以固定重試取代全部路徑核對；這些是驗證腳本問題，沒有新增產品失敗。
+
+R3 的 Go 原始測試均 PASS，但候選輸出環境仍指向 R2，彙整讀錯 R3 路徑。停止替換檔名前綴，改用 `workplace/hd-locale-v26-run-probe-final.sh` 的兩個固定輸出環境變數，Go 與彙整器讀同一變數；逐項檢查輸入及新目錄後乾淨重跑。最終控制／試作輸出為 `locale-v26-control-final/`、`locale-v26-prototype-final/`，建置來源與工具版本為 `workplace/hd-locale-v26-probe.json`。先前目錄與失敗保留；不把包裝腳本錯誤稱為產品失敗。
+
+試作獨立回讀入口與收據為 `workplace/verify-hd-locale-v26-prototype.py`、`workplace/verify-hd-locale-v26-prototype.json`，逐張核對完整控制／候選 RGBA、繁中全圖、文字矩形外、肖像及圖框、日文時辰、來源三表、尺寸、雜湊與擁有權。
+
+最終兩組 Go 試作確實執行且 PASS，未 skip；排版判定另讀完整收據。347 種原始姓名乘四軍共 1,388 組，控制 124 組裁切，試作 0 組；最多九行。兩版六劇本的十二組來源三表相同，42 郡名保持來源。寬窄版、主場／部隊／查看／新君主模板、三語共 48 張控制與 48 張候選完整 640×408 圖獨立回讀，繁中 16 張全圖相同，日文日數／時辰框保持。
+
+首輪獨立回讀在天候框外發現六個差分，原檢查器與失敗保存於 `workplace/hd-locale-v26-independent-first.json`。查明是控制組的 Clear 以 8 像素字寬畫到 x 47，超出 x 8–39 字區；候選改用 6 像素字寬後，原白色墨點消失。最終檢查不放寬字區，只逐點核對這些舊溢字已恢復為同 fixture 的繁中背景。十六張英文圖共恢復 96 像素，其餘字區外、肖像及框線保持。讀取腳本曾使用不合法的 Python comprehension 語法，修正後同環境重跑，屬驗證腳本問題。
+
+獨立收據 SHA-256 為 `c580a7aee28d204326ec9084b09e9e37883b7be91c9213b4183cef4b7ebbf3f6`，實際六份私人來源、兩組原始測試日誌、96 張 PNG 雜湊及擁有權均符合建置收據；117 份正式來源保持。**本節仍為 DRAFT**。試作尚未進入正式程式；全日期／州名邊界、高清疊層與正常玩家路徑仍待完成，不宣稱原版 parity、存讀檔或整份三語畫面驗收。
+
+本輪文件與公開檢查入口為 `workplace/verify-hd-locale-v26-docs.py`、`workplace/verify-hd-locale-v26-publish.py`。Issue 候選與變更計畫保存於 `workplace/hd-locale-v26-issue-sync-plan.json`、`workplace/hd-locale-v26-issue-candidates.json`；只修改 #104、#107、#110 的目前狀態，#108、#109 保持全文。私人來源、候選圖及完整提示詞不入 Git。

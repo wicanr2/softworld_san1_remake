@@ -140,7 +140,7 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 | M4 靜態資料 | 完成：劇本三表、地圖圖形、資產目錄 |
 | M5 規則層 | 完成：平時十類指令、四季事件、戰役決勝、勝負判定；電腦諸侯的十八張分派表逐位元組對齊。九份機制文件的「還缺什麼」欄全部結清 |
 | M6 引擎可玩 | 主要路徑可玩；玩家戰後人物／州郡全表在結算切點與兩版原版相同，諸侯表及戰術全程仍有限制 |
-| M7 多語系 | 完成：畫面、提示、事件紀錄、人名、郡名，繁中／英／日 |
+| M7 多語系 | 字串表、人名與郡名已覆蓋繁中／英／日；三語畫面完整性持續驗收 |
 | M8 發行 | 本機封包的版號與驗收結果以 `dist-all/<版本>/SHA256SUMS.json` 為準；Windows／macOS 原生啟動與簽章仍待驗 |
 
 下載入口是 [GitHub 最新 Release](https://github.com/wicanr2/softworld_san1_remake/releases/latest)。
