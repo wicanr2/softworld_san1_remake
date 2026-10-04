@@ -14,6 +14,10 @@
 
 §6.36.6 限切換及英文指令字寬為 CONFORMED，面板與整份 HD 仍 READY。其他正常使用端、地圖標記譯名、仍寫 Esc 的分頁提示、效能／音畫／平台及使用者逐張簽核仍待完成。原貌預設、README 四圖、Release、tag、封包及素材本機邊界保持，Goal ACTIVE。
 
+正式提交 `9196066a17b73bf89edf93cbffa9d45b09ad8818` 已推送 main，實際遠端 ref 回讀一致。九份暫存 UTF-8 文字、新增章節入口、360 份來源與既有展示圖核對通過，收據 workplace/hd-panels-v36-publish.json。GitHub #104／#107／#109／#110 只更新目前狀態；五項全文、標題、標籤、留言及 OPEN 狀態回讀通過，段外歷史保持，#108 完整物件未變，收據 workplace/hd-panels-v36-issue-sync.json。
+
+專案執行中與已停止容器均為零。53,537 個工作樹項目沒有 root-owned 檔案或 .md 目錄，360 份來源、擁有權、正式執行檔及 README 四圖再次核對，收據 workplace/hd-panels-v36-cleanup.json。使用者未追蹤的 AGENTS.md 保持，不加入提交；本段收尾另作文件提交。HD Goal 維持 ACTIVE，沒有建立新 tag、Release 或封包。
+
 ## 2026-10-05 二十旗正常玩家驗證與守城輸入阻塞修正
 
 沿用目前狀態表、五項 HD Issue 最新全文與規格閘門路由。第一劇本曹操五軍正常整編及紮寨，兩版新包／缺旗包四段 142/142，十種旗、40 面完整旗與兵力牌、207 PNG 獨立回讀通過。程式與素材最初保持，原收據及執行檔身份保留。
