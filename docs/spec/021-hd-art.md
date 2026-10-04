@@ -1759,3 +1759,31 @@ READY 最小契約於 2026-10-04 經上述證據審查成立。960 組日期包�
 十八份原始容器、四套字型、三份語系與 v21 素材包保持；618 筆登錄與 309 PNG 身份及尺寸相同。124 份建置輸入包含 119 份正式來源／依賴檔及五份既有工具試作，本輪只有兩份 UI 正式來源改變，回歸檔另記雜湊。修正只接顯示層，未新增存讀檔、原版 oracle、音畫或平台完成聲明。部隊／查看、寬窄版與上界數值屬正式 renderer 回歸，不外推三語正常子畫面；未知混合姓名完整排版、其他畫面及整份 HD 仍待完成，§6.36 留 DRAFT，整份 021 留 READY。
 
 文件與公開檢查入口為 `workplace/verify-hd-locale-v27-docs.py`、`workplace/verify-hd-locale-v27-publish.py`。本輪新來源、候選、原版資料、素材包、完整提示詞及 PNG 收據保持本機；README 既有四張展示圖保持。
+
+### 6.36.3 主畫面與人物卡的完整譯名
+
+**狀態：CONFORMED，限已量裁切欄位及正常 Theme 切換**。沿用 014 的既有面板、小字與英文日期契約，核對兩版正常 001 曹操新局的主畫面與人物卡，逐語系切換原貌、原生 4× 與原貌恢復。完整畫布只排除實際肖像內部，圖框、日期與下面板全部比較；游標依下述已證實六格契約逐像素核對，不遮掉游標。本節不宣稱所有主畫面文字都已即時翻譯。
+
+私人入口為 `workplace/hd-locale-v28-normal.py`、`workplace/hd-locale-v28-probe_test.go` 及 `workplace/hd-locale-v28-run-probe.sh`。正常控制組沿用 v27 正式執行檔，輸出在 `workplace/hd-window/player/locale-main-v28-control/`；資料檢查以兩版六劇本的原始州郡、人物、所屬與能力值為輸入，記錄完整譯名及目前實際準備的顯示字串，不以截短後的量寬證明資訊完整。
+
+兩版六劇本共 12,600 個人物／語系案例及 1,158 個有主州郡／語系案例。首輪 3,276 組英文籍貫差異中，3,072 組只是既有去除州字的授權排法；另 204 組確實截短州名，例如「Jing Xiangyang」成為「Jin Xiangyang」。主事者姓名另有十組實際裁切，公孫瓚、夏侯淵與向寵均少了最後一個字母。實際君主、軍師及人物卡姓名沒有這項裁切，不擴大修改。原始收據為 `workplace/hd-locale-v28-probe.json`，分類收據為 `workplace/hd-locale-v28-classification.json`；354 份受版控 Go 來源及依賴、十八個原始容器、四字型、三語系與 v21 包雜湊在 `workplace/hd-locale-v28-before.json`。
+
+2026-10-04 READY 證據審查：`[both] L1 remake 顯示驗證`，未新增原版 oracle。完整籍貫沿用先拿掉州字再轉的政策，最長十四個 ASCII 字，6×10 字級寬 84 像素，留在原 (424,84) 的 104×16 槽；只有 8×16 確實放不下且所有字模存在才用小字，垂直置中。主事者拼音在原 (536,220) 的 80×16 槽也依相同量寬判準完整顯示。正常尺寸可放入的文字與繁中／日文排法保持；小字缺字或未知混合姓名維持原有回退，不猜譯。
+
+本節授權 `internal/ui/artscreen.go` 與 `internal/ui/card.go` 的顯示修正，以及實際字模、六劇本完整籍貫與主事者姓名回歸。原始人物、識別鍵、規則、亂數、等待、肖像身份與存檔不改。正式建置不得帶私人 overlay；兩版正常操作及獨立全圖回讀通過後才標記本節 CONFORMED。其他畫面與整份 HD 保持未完成。
+
+驗收器的游標前提於本輪重新審查。強求三張擷取圖具有同一相位會漏掉實際顯示的合法幀；兩次差分都只在原有 8×16 游標，變化擷取節奏的單停點通過，完整補驗仍有一次取樣失敗。原控制與失敗圖全部保留，沒有改 TPS、速度或等待。改採 [014 §4.1](014-art-main-overlays.md#41-輸入游標l0l1baseissue-78) 已證實的六格輸入游標契約，入口為 `workplace/hd-locale-v28-cursor_test.go`、`workplace/hd-locale-v28-cursor-compare.py`：兩版 DATA1 的 sprite／mask 與下面板底色 2 依 `(底 AND 遮罩) OR 圖` 核對全 128 像素。比較仍涵蓋完整畫布；只允許最後一個字後同一 8×16 格內的六種已知相位，原貌與目標的整格都須符合原始圖，其他差異一律拒絕。高清另核對完整最近鄰複製；游標不遮罩、不改遊戲時間。
+
+第三次原始失敗的全部恢復候選均通過上述有限預期，字區外差異與非法游標的兩個反例均拒絕，收據為 `workplace/hd-locale-v28-finite-cursor-proof.json`。原版已通過的八組正常停點保持，不重拍；加強版依 `workplace/hd-locale-v28-normal-r4.py` 從正常新局補驗八組。長姓名與籍貫的正常入口為 `workplace/hd-locale-v28-defects-r3.py`，兩版查看郡 2 的公孫瓚資料，再到郡 15 經他國確認選第三位華雄，繁中／英文及回切共十二組，仍採實際同相位全圖比較。
+
+正式無 overlay 建置及原始事件為 `workplace/hd-locale-v28-build.sh`、`workplace/hd-locale-v28-build.json`、`workplace/hd-locale-v28-tests.jsonl`。UI、翻譯與控制器共 215 項通過，零 skip、零 fail。新回歸在 [card_locale_test.go](../../internal/ui/card_locale_test.go)，12,600 個實際籍貫案例涵蓋 123 組完整字模，386 個英文主事者案例涵蓋 105 種姓名。將同一回歸對回修改前的兩份顯示來源，三項皆確實失敗；小字缺字與未知混合姓名仍保留原回退。
+
+最新正常曹操主畫面／人物卡共 16 組、82/82；原版取自 R2 已通過的八組，加強版取自 R4 的八組，使用同一份正式修改後執行檔。長字串兩版正常查看共 12 組、50/50。獨立入口與收據為 `workplace/verify-hd-locale-v28-delivery.py`、`workplace/verify-hd-locale-v28-delivery.json`，972 張完整 PNG 的雜湊、尺寸及擁有權符合；完整高清字區與圖框、原貌恢復、F000／F063／F052 原生肖像及六格游標均通過。兩種真實缺陷的四個英文欄位在控制組缺字，修改後完整字模相同；16 組繁中上面板及日期與控制相同。公孫瓚、華雄兩張加強版英文高清圖已查看。
+
+左側日期另以 `workplace/hd-locale-v28-date_test.go` 與 `workplace/hd-locale-v28-date-proof.json` 核對兩版原貌圖的全部旋轉英文墨點，均為完整「Zhongping 6, month 1, Spring」。目視曾將旋轉字形誤認為繁中，字模回讀已排除，不列產品缺陷。真正仍保留繁中的已完成數字提示由 §6.36.4 接續。354 份接入前來源與依賴、355 份修改後來源、十八原始容器、四字型、三語系與 v21 包保持既定範圍；只有兩份正式 UI 行為檔及回歸改變。未新增原版 oracle、存讀檔、音畫或平台聲明，§6.36 仍 DRAFT，整份 HD 仍 READY。
+
+### 6.36.4 已完成數字提示的即時切換
+
+**狀態：DRAFT**。§6.36.3 的兩版正常公孫瓚郡資料在英文停點仍顯示「查看那一郡」及 `(1-42):2`；英文 `ask.pref` 已有完整譯文，人物卡的「請按任一鍵」也能切換。證據為 `workplace/hd-window/player/locale-main-v28-defects-after/receipt.json` 及其兩版英文原貌／高清 PNG。左側英文日期已由完整字模核對，與此缺口分開。
+
+先追 `cmd/san1/main.go` 的 `askPref`、數字完成回呼、`showNumber` 與 `View.Prompt` 保存，再核對 `windowbar.go` 的 `relocalizeWindow` 及 `i18n.Relocalize`。需要分辨正在輸入與已完成的顯示字串，保留標題、範圍、已輸入數字、游標及回呼；未知文字不猜譯、不參與行為判定。補齊正常輸入與回切證據後再轉 READY，不以本節授權正式修正。

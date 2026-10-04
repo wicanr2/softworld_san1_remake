@@ -107,6 +107,7 @@ func TestDrawPersonCardWithoutArt(t *testing.T) {
 // 的槽位（13 格）。
 func TestCardFitsEveryLanguage(t *testing.T) {
 	g := loadGame(t)
+	c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
 	saved := i18n.Current
 	defer func() { i18n.Current = saved }()
 	for _, l := range []i18n.Locale{i18n.ZhHant, i18n.En, i18n.Ja} {
@@ -117,7 +118,8 @@ func TestCardFitsEveryLanguage(t *testing.T) {
 			}
 			seen := map[int]bool{}
 			for _, ln := range cardLines(g, x) {
-				if w := cells.Width(ln.text); w > ln.cols {
+				if w := cells.Width(ln.text); w > ln.cols &&
+					!(c.FitsSmall(ln.text) && w*SmallW <= ln.cols*CellW) {
 					t.Errorf("%s 人物 %d 的 y %d「%s」%d 格，槽位只有 %d 格", l, i, ln.y, ln.text, w, ln.cols)
 				}
 				if ln.y < cardFaceBotY && ln.x+ln.cols*CellW > cardFaceX-8 {

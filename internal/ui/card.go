@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
@@ -88,11 +89,10 @@ const (
 	cardFaceBotY = cardFaceY + 80 + 8
 )
 
-// cardLines 排出一位人物的資料行（名字另外畫）。**沒有一行會超過它的槽**
-// （`TestCardFitsEveryLanguage`）。中文照原版一行一行擺；譯文塞不下的
+// cardLines 排出一位人物的完整資料行（名字另外畫）。中文照原版一行一行擺；譯文塞不下的
 // 三處各有一條退路（`docs/spec/014` 的譯文槽位規則，記為 remake 差異）：
 //
-//   - 籍貫放不下 → 州名去掉「州」再轉寫（與主畫面的 `artProvinceIn` 同一招）。
+//   - 籍貫放不下 → 州名去掉「州」再轉寫，仍放不下時依既有小字政策量寬。
 //   - `任%s%s` 放不下 → 拆成兩行：身分（`card.servingStatus`）與君主名，
 //     忠心度、年齡各往下挪一列（116→132、132→148；原版 148 是空行）。
 //   - 身分 8–12 的身分名從 456 起放不下 → 從 424 起。
@@ -104,8 +104,8 @@ func cardLines(g *game.State, x *game.General) []cardLine {
 		name := PlaceName(p.Name)
 		origin := tf("card.origin", PlaceName(state.ProvinceName(int(p.Province))), name)
 		if cells.Width(origin) > cardNarrow {
-			room := cardNarrow - cells.Width(tf("card.origin", "", name))
-			origin = tf("card.origin", artProvinceIn(int(p.Province), room), name)
+			province := strings.TrimSuffix(state.ProvinceName(int(p.Province)), "州")
+			origin = tf("card.origin", PlaceName(province), name)
 		}
 		out = append(out, cardLine{cardTextX, 84, cardNarrow, 11, origin})
 	}
@@ -204,7 +204,7 @@ func DrawPersonCard(c *Canvas, a *ArtScreen, g *game.State, index int) {
 		artBigName(c, cardNameX, cardNameY, cardFaceX-8-cardNameX, name, ink(14))
 	}
 	for _, l := range cardLines(g, x) {
-		c.DrawTextPx(l.x, l.y, cells.Truncate(l.text, l.cols), ink(l.ink))
+		artTextIn(c, l.x, l.y, l.cols*CellW, l.text, ink(l.ink))
 	}
 }
 

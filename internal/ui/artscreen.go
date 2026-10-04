@@ -774,7 +774,7 @@ func artStatusFields(g *game.State, p *game.Prefecture) []artStatusField {
 //
 // 中文照原版畫 32×32 雙倍字。譯名是拼音、不是全形字——雙倍寬一個字母
 // 16 像素，「Nanhai」就壓到右邊的州名上了——所以改畫一倍字、垂直置中、
-// 截在槽位內。
+// 放不下時依已定案的小字政策量寬，不截短可完整顯示的拼音。
 func artBigName(c *Canvas, x, y, slot int, s string, ink color.RGBA) {
 	if artAllWide(s) {
 		for _, r := range s {
@@ -782,7 +782,16 @@ func artBigName(c *Canvas, x, y, slot int, s string, ink color.RGBA) {
 		}
 		return
 	}
-	c.DrawTextPx(x, y+CellH/2, cells.Truncate(s, slot/CellW), ink)
+	artTextIn(c, x, y+CellH/2, slot, s, ink)
+}
+
+// artTextIn 在原有單行槽內選字級。小字不完整或仍放不下時保留原回退。
+func artTextIn(c *Canvas, x, y, slot int, s string, ink color.RGBA) {
+	if cells.Width(s)*CellW > slot && c.FitsSmall(s) && cells.Width(s)*SmallW <= slot {
+		c.DrawSmallTextPx(x, y+(CellH-SmallH)/2, s, ink)
+		return
+	}
+	c.DrawTextPx(x, y, cells.Truncate(s, slot/CellW), ink)
 }
 
 // artHasLatin 回報字串裡有沒有拉丁字母（英文的年號、拼音）。
