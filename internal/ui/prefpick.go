@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
@@ -21,6 +22,8 @@ const (
 	prefPickX0, prefPickDX       = 432, 64 // 第 k 欄 x ＝ 432 ＋ 64k（`0x1d5a9`）
 	prefPickY0                   = 60      // 第 j 列 y ＝ 60 ＋ 16j（`0x1d5bb`）
 	prefPickRows                 = 14
+	prefPickCompactX             = 424 // 完整小字三欄，spec/021 §6.36.5。
+	prefPickCompactDX            = 66
 	prefPickValidInk             = 14
 	prefPickOtherInk             = 6
 )
@@ -31,7 +34,33 @@ func DrawPrefPick(c *Canvas, a *ArtScreen, g *game.State, p *PrefPick) {
 	if a != nil && a.havePanel {
 		drawSideFrame(c, a.prefBox, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1)
 	}
-	c.DrawTextPx(prefPickHeadX, prefPickHeadY, t("pick.prefHead"), assets.EGAPalette[rosterHeadInk])
+	// 完整編號與譯名量得出超寬時，整張清單改用既有小字排法。
+	// 中日文及沒有小字的畫布沿用原欄位。
+	compact := false
+	for id := 1; id <= state.PrefectureCount; id++ {
+		q := g.Prefecture(id)
+		if q == nil {
+			continue
+		}
+		s := fmt.Sprintf("%2d", id) + PlaceName(q.Name)
+		if cells.Width(s)*CellW > prefPickDX && c.FitsSmall(s) && cells.Width(s)*SmallW <= prefPickCompactDX {
+			compact = true
+			break
+		}
+	}
+	head := t("pick.prefHead")
+	heads := strings.Fields(head)
+	smallHead := compact && len(heads) == 3
+	for _, h := range heads {
+		smallHead = smallHead && c.FitsSmall(h) && cells.Width(h)*SmallW <= prefPickCompactDX
+	}
+	if smallHead {
+		for k, h := range heads {
+			c.DrawSmallTextPx(prefPickCompactX+k*prefPickCompactDX, prefPickHeadY+(CellH-SmallH)/2, h, assets.EGAPalette[rosterHeadInk])
+		}
+	} else {
+		artTextIn(c, prefPickHeadX, prefPickHeadY, 192, head, assets.EGAPalette[rosterHeadInk])
+	}
 	for id := 1; id <= 42; id++ {
 		q := g.Prefecture(id)
 		if q == nil {
@@ -43,6 +72,16 @@ func DrawPrefPick(c *Canvas, a *ArtScreen, g *game.State, p *PrefPick) {
 		}
 		x := prefPickX0 + (id-1)/prefPickRows*prefPickDX
 		y := prefPickY0 + (id-1)%prefPickRows*CellH
-		c.DrawTextPx(x, y, fmt.Sprintf("%2d", id)+cells.Truncate(PlaceName(q.Name), 6), assets.EGAPalette[ink])
+		s := fmt.Sprintf("%2d", id) + PlaceName(q.Name)
+		if compact {
+			x = prefPickCompactX + (id-1)/prefPickRows*prefPickCompactDX
+			if c.FitsSmall(s) && cells.Width(s)*SmallW <= prefPickCompactDX {
+				c.DrawSmallTextPx(x, y+(CellH-SmallH)/2, s, assets.EGAPalette[ink])
+			} else {
+				artTextIn(c, x, y, prefPickCompactDX, s, assets.EGAPalette[ink])
+			}
+		} else {
+			artTextIn(c, x, y, prefPickDX, s, assets.EGAPalette[ink])
+		}
 	}
 }
