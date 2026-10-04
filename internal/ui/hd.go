@@ -19,6 +19,7 @@ import (
 	xdraw "golang.org/x/image/draw"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/font"
 )
 
 // HDManifest 是 spec/021 的顯示素材包；不參與遊戲或存檔資料。
@@ -42,11 +43,24 @@ type HDEntry struct {
 
 type HDPack struct {
 	images   map[[32]byte]*image.RGBA
+	flags    map[[32]byte]highFlag
+	flagText map[highFlagTextKey]*image.RGBA
 	Count    int
 	Warnings []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5]))$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG)$`)
+
+type highFlag struct {
+	image    *image.RGBA
+	label    rune
+	selected bool
+}
+
+type highFlagTextKey struct {
+	flag highFlag
+	face *font.Face
+}
 
 // LoadHDPack 逐項驗證玩家自己的來源，錯項回退原圖。
 func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*HDPack, error) {
@@ -66,10 +80,10 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 618 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 658 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
-	p := &HDPack{images: make(map[[32]byte]*image.RGBA)}
+	p := &HDPack{images: make(map[[32]byte]*image.RGBA), flags: make(map[[32]byte]highFlag), flagText: make(map[highFlagTextKey]*image.RGBA)}
 	counts := map[string]int{}
 	for _, e := range m.Entries {
 		counts[e.Edition+"/"+e.Container+"/"+e.Name]++
@@ -89,6 +103,11 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 			continue
 		}
 		p.images[hdImageKey(im)] = high
+		if strings.HasPrefix(e.Name, "WFLAG") {
+			label := []rune("帥先左右後")[int(e.Name[7]-'0')]
+			p.flags[hdImageKey(im)] = highFlag{image: high, label: label}
+			p.flags[hdImageKey(im.Complement())] = highFlag{image: high, label: label, selected: true}
+		}
 		if strings.HasPrefix(e.Name, "F") {
 			if key := hdImageKey(im.Mirror()); key != hdImageKey(im) {
 				p.images[key] = mirrorRGBA(high)
@@ -110,7 +129,8 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
 	terrain := strings.HasPrefix(e.Name, "EICON.")
-	if (strings.HasPrefix(e.Name, "WEATHER") || terrain) && e.Container != "DATA1" {
+	flag := strings.HasPrefix(e.Name, "WFLAG")
+	if (strings.HasPrefix(e.Name, "WEATHER") || terrain || flag) && e.Container != "DATA1" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
 	if strings.HasPrefix(e.Name, "SCG") && e.Name >= "SCG30.IMG" && (e.Container != "DATA2" || e.Name > "SCG31.IMG") {
@@ -148,8 +168,17 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	if (strings.HasPrefix(e.Name, "F") && (im.W != 64 || im.H != 80)) ||
 		(strings.HasPrefix(e.Name, "SCG") && (im.W != 176 || im.H != 96 || e.Name == "SCG00.IMG")) ||
 		(strings.HasPrefix(e.Name, "WEATHER") && (im.W != 32 || im.H != 32)) ||
+		(flag && (im.W != assets.FlagW || im.H != assets.FlagH)) ||
 		(terrain && (im.W != assets.TileW || im.H != assets.TileH)) {
 		return nil, nil, fmt.Errorf("來源尺寸不符")
+	}
+	if flag {
+		for _, code := range im.Pix {
+			a, b := assets.EGAPalette[code], assets.EGAPalette[code^15]
+			if a.R^255 != b.R || a.G^255 != b.G || a.B^255 != b.B {
+				return nil, nil, fmt.Errorf("旗幟反白色號不符")
+			}
+		}
 	}
 	if e.Width != im.W*4 || e.Height != im.H*4 {
 		return nil, nil, fmt.Errorf("高清尺寸不符")
@@ -201,10 +230,10 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	high := image.NewRGBA(image.Rect(0, 0, e.Width, e.Height))
 	draw.Draw(high, high.Bounds(), decoded, decoded.Bounds().Min, draw.Src)
-	if terrain {
+	if terrain || flag {
 		for i := 3; i < len(high.Pix); i += 4 {
 			if high.Pix[i] != 255 {
-				return nil, nil, fmt.Errorf("地形圖塊必須不透明")
+				return nil, nil, fmt.Errorf("地形與旗幟必須不透明")
 			}
 		}
 	}
@@ -244,7 +273,44 @@ func (c *Canvas) HighImage(im *assets.Image) *image.RGBA {
 	if c.HD == nil || im == nil {
 		return nil
 	}
-	return c.HD.images[hdImageKey(im)]
+	key := hdImageKey(im)
+	if flag, ok := c.HD.flags[key]; ok {
+		return c.highFlagImage(flag)
+	}
+	return c.HD.images[key]
+}
+
+// highFlagImage 的隊伍字走目前字型，原色與反白分開快取。
+func (c *Canvas) highFlagImage(flag highFlag) *image.RGBA {
+	if c.face == nil {
+		return nil
+	}
+	glyph, ok := c.face.Glyph(flag.label)
+	if !ok || glyph.W != 16 || glyph.H != 16 {
+		return nil
+	}
+	key := highFlagTextKey{flag: flag, face: c.face}
+	if cached := c.HD.flagText[key]; cached != nil {
+		return cached
+	}
+	out := image.NewRGBA(flag.image.Bounds())
+	draw.Draw(out, out.Bounds(), flag.image, flag.image.Bounds().Min, draw.Src)
+	for y := 0; y < glyph.H; y++ {
+		for x := 0; x < glyph.W; x++ {
+			if glyph.At(x, y) {
+				draw.Draw(out, image.Rect(10+x*3, 6+y*3, 13+x*3, 9+y*3), image.Black, image.Point{}, draw.Src)
+			}
+		}
+	}
+	if flag.selected {
+		for i := 0; i < len(out.Pix); i += 4 {
+			out.Pix[i] ^= 255
+			out.Pix[i+1] ^= 255
+			out.Pix[i+2] ^= 255
+		}
+	}
+	c.HD.flagText[key] = out
+	return out
 }
 
 func (c *Canvas) drawHigh(im *assets.Image, x, y int) {

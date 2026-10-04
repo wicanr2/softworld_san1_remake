@@ -1073,6 +1073,15 @@ func DrawArtField(c *Canvas, ab *ArtBattle, name string, field []byte,
 	}
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	if c.HD != nil {
+		c.drawHighField(ab.tiles, field, assets.MaxTerrain)
+		mask := c.indexedCoverage()
+		if ab.top != nil {
+			mask.Blit(ab.top, 0, 0)
+		}
+		c.coverIndexed(mask)
+		ab.drawHighUnits(c, units, highlight)
+	}
 	for _, p := range plates {
 		c.DrawTextPx(p.x, p.y, p.text, assets.EGAPalette[p.col])
 	}

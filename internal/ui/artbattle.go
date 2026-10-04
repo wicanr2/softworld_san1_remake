@@ -172,12 +172,16 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 
 // composeForeground 同時供原圖與高清覆蓋記錄使用，維持相同繪製順序。
 func (ab *ArtBattle) composeForeground(im *assets.Image, b *battle.Battle, v BattleView, info ArtBattleInfo) {
-	l := assets.BattleLayoutFor(b.Field.Narrow())
 	if s := info.Skirmish; s != nil {
 		drawSkirmishMarkers(im, s, v)
 	} else {
 		ab.drawUnits(im, b, v)
 	}
+	ab.composePanels(im, b, v, info)
+}
+
+func (ab *ArtBattle) composePanels(im *assets.Image, b *battle.Battle, v BattleView, info ArtBattleInfo) {
+	l := assets.BattleLayoutFor(b.Field.Narrow())
 
 	// 左欄、場地左右緣的線與三個面板：先塗底色再畫下凹的外框。
 	// 查看那一塊（`0x284a2`）把第三塊面板清成藍再畫，與軍力面板同色。
@@ -240,8 +244,36 @@ func (ab *ArtBattle) drawHighTerrain(c *Canvas, b *battle.Battle, v BattleView, 
 		c.drawHighField(ab.tiles, skirmishFieldBytes(info.Skirmish), assets.SkirmishMaxTerrain)
 	}
 	mask := c.indexedCoverage()
-	ab.composeForeground(mask, b, v, info)
+	if info.Skirmish != nil {
+		ab.composeForeground(mask, b, v, info)
+	} else {
+		ab.drawHighUnits(c, b.Units, v.Acting)
+		ab.composePanels(mask, b, v, info)
+	}
 	c.coverIndexed(mask)
+}
+
+// drawHighUnits 保留原旗與兵力牌的順序，缺圖也能遮住先畫的高清圖。
+func (ab *ArtBattle) drawHighUnits(c *Canvas, units []*battle.Unit, acting *battle.Unit) {
+	for _, u := range units {
+		if u == nil || !u.Alive() {
+			continue
+		}
+		army, form := u.Side.OriginalIndex(), u.Formation.OriginalIndex()
+		if army < 0 || form < 0 || ab.flags[army][form] == nil {
+			continue
+		}
+		flag := ab.flags[army][form]
+		if u == acting {
+			flag = flag.Complement()
+		}
+		col, row := battle.ToOffset(u.At)
+		x, y := assets.FlagCell(col, row)
+		c.trackRect(image.Rect(x, y, x+flag.W, y+flag.H))
+		c.drawHigh(flag, x, y)
+		c.trackRect(image.Rect(x, y+assets.FlagPlateOffsetY,
+			x+assets.FlagPlateW, y+assets.FlagPlateOffsetY+assets.FlagPlateH))
+	}
 }
 
 // blitFrame 把一組肖像框的四片畫在肖像 (x, y) 的外圍：上 (x−8, y−8)、
