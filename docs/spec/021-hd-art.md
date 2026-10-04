@@ -1623,3 +1623,28 @@ UI 測試結果另存 `workplace/hd-weather-v19-tests.json`。CLI 正反例只�
 | `workplace/hd-perf-v22-tests.json` | `d839159ca920480c50b4339ea3f640695fa9dec674e13411e0628f9e664ec348` |
 | `workplace/verify-hd-perf-v22-delivery.py` | `9821a6679a304166132f626c2890afa391776d13a3348e72da5bd7f720b973d2` |
 | `workplace/verify-hd-perf-v22-delivery.json` | `35073ff1826980587069b585f2c486ab3337407b226efb8cce6519da794c1efb` |
+
+## 6.34 軟體顯示驅動與 CPU 配額
+
+**狀態：DRAFT**。§6.33 已完成像素等價的 CPU 放大維護，整段高清仍較慢。本節先區分顯示環境、容器排程與產品合成，不授權修改正式等待、速度、TPS、動畫相位或解析度。
+
+工具容器為既有 `eob-audio-capture:20260922-r2`，實際 Mesa 為 22.3.6、LLVM 15.0.6；可見 CPU 與 affinity 均為 14。Mesa 官方 [LLVMpipe 文件](https://docs.mesa3d.org/drivers/llvmpipe.html) 說明軟體光柵器採多執行緒；[環境變數契約](https://docs.mesa3d.org/envvars.html#llvmpipe-driver-environment-variables) 指定 `LP_NUM_THREADS` 控制渲染執行緒數，預設依可見核心數。診斷與八組正常比較實際 `cpu.max` 為 `400000 100000`，維持 4 CPU／4 GiB。程序的實際 Mesa 執行緒名稱確認預設 14 個、指定組 2 個；兩組 Go GOMAXPROCS 均為 14。
+
+以同一正式來源、同一可丟棄計時程式及正常鍵序，預先指定兩組：`LP_NUM_THREADS` 未設、以及 `LP_NUM_THREADS=2`。Go 的 GOMAXPROCS 維持 14。每組均跑兩版原貌／高清，完整 22 相位與等待保持；記錄實際 Mesa renderer、執行緒名稱、容器 `cpu.stat` 開始與結束值及逐階段時間。不在試驗中關閉 rasterization、移除畫面、縮小輸出或挑選較快 seed。結果無論快慢均保存；若出現產品缺口，另回到規格審查。
+
+`cpu.max` 與 `cpu.stat` 的單位及語意依 [Linux cgroup v2 文件](https://docs.kernel.org/admin-guide/cgroup-v2.html#cpu-interface-files)。`cpu.stat` 包含整個容器的程序，限流欄位記錄此 cgroup 自身的頻寬限制，不含祖先限制；不把累積的 `throttled_usec` 直接當成遊戲的單一牆鐘停頓。開始／結束讀取位於相同動畫邊界，結束值在停止 CPU 採樣前擷取。
+
+本機入口與收據採 `workplace/hd-perf-v23-{platform.py,platform.json,normal.py,trace.go,overlay.json,build.json,normal-default.json,normal-two.json}`，正常輸出沿用 `workplace/hd-window/player/` 下的 `perf-v23-default/` 與 `perf-v23-two/`。原始來源、私人 v21 包及先前 v22 收據唯讀；計時及 cgroup 蒐證只由 Go overlay 接入，不進正式程式。這是 remake 顯示環境診斷，不是原版 oracle、硬體時序、音效或人耳驗收。
+
+八組皆完整繪製 22 相位，Tile／Speed 次序及 279 次 Update 保持，兩組 binary bytes 相同。無錄影動畫時間如下；這是固定試驗的結果，不作平台效能保證。
+
+| 版本與外觀 | 預設 14 執行緒，秒 | 2 執行緒，秒 |
+|---|---:|---:|
+| 原版原貌 | 4.640 | 4.639 |
+| 原版高清 | 4.638 | 9.988 |
+| 加強版原貌 | 4.678 | 4.615 |
+| 加強版高清 | 4.893 | 8.941 |
+
+預設高清的容器限流增加 35／44 期，累積 1,795,674／3,715,040 微秒；指定 2 執行緒的四段動畫均無限流，高清反而變慢。因此不採用 `LP_NUM_THREADS=2`，也不能把「渲染執行緒超過配額」當成既有慢速的已證實真因。本試驗未重現先前最慢的時長，未排除其他呈現與排程因素。正式遊戲、驗證入口及等待均不改，本節保留 DRAFT，不再靠增加同類參數試驗求過關。
+
+獨立回讀入口與收據為 `workplace/verify-hd-perf-v23-delivery.py`、`workplace/verify-hd-perf-v23-delivery.json`。逐項核對正式來源、overlay、相同 binary、八組原始 trace、實際執行緒及完整相位；圖片與原始紀錄只留本機。後續呈現路徑的變更須另做像素等價試作，通過後才授權正式維護。

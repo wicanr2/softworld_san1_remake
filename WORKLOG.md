@@ -1,5 +1,32 @@
 # 工作歷程
 
+## 2026-10-04 README 原貌與高清展示
+
+使用者要求在 README 展示 remake 原貌與 HD 截圖。命中 README 標準、文件職責與公開閘門，已讀取相應契約。沿用 `docs/images/`，只加入正式視窗的完整執行期展示圖；原版資料、獨立素材、生成原圖及完整提示詞維持本機。
+
+擷取入口為 `workplace/capture-readme-hd.py`，正常片頭、劇本 001、單人曹操及難度 5，經查看人物、出兵與合法紮寨，於同一個玩家停點切換原貌／B 高清。輸出及完整操作收據保存於 `workplace/hd-window/player/readme-hd/`；公開四圖為 `docs/images/remake-main.png`、`remake-main-hd.png`、`remake-battle.png`、`remake-battle-hd.png`。不以展示圖宣稱原版對拍或整份 HD 完成。
+
+首輪人物卡通過，接續戰場鍵序卻走到其他選單。失敗截圖與收據保留於 `workplace/hd-window/player/readme-hd-first/`。擷取腳本改為另一個正常新局走既有戰場鍵序；每一對仍在同一視窗與停點切換 Theme，不改正式遊戲。
+
+獨立圖檔、README 連結與公開範圍檢查入口為 `workplace/verify-readme-hd.py`，收據為 `workplace/verify-readme-hd.json`。這次的展示圖例外限四個正式執行期 PNG 及其固定雜湊，不放入原始素材或高清素材包。
+
+新 binary 與前輪不同，查證為 Go 內嵌版本資訊已隨提交改變。改以 124 份正式來源雜湊、鎖版依賴及建置選項核對，另保存 `workplace/hd-window/player/readme-hd/build-info.json`，不宣稱兩輪 binary bytes 相同。
+
+正常 GUI 12/12 通過。獨立回讀核對四張完整 PNG、原生高清肖像及鏡像、人物卡文字與外框、戰場日期及上框，原貌恢復一致；四張已目視確認。README 使用等寬兩欄，點圖可開原生尺寸；五份文件的 248 個相對連結及標題入口通過。連結檢查初次把行內程式碼當連結，排除程式碼後用同一命令乾淨重跑，不列為產品缺陷。本輪只改文件與展示圖，正式程式保持，既有回歸不重跑。
+
+| 展示圖 | SHA-256 |
+|---|---|
+| `docs/images/remake-main.png` | `20a3235acbe3ce1540bc4fe1467b8353b82534238fb3746edaa448cf7abc9d08` |
+| `docs/images/remake-main-hd.png` | `a8d4b3352717f5a642c6bdcf49b34c3d7f9ed0651359d016cc8696e7320fae4d` |
+| `docs/images/remake-battle.png` | `ec0e0148d7ee7cdd4ff66ca8efb0df0d7dc801cb242b77180734b4183198197a` |
+| `docs/images/remake-battle-hd.png` | `f101003462d31ed1f2fc524608b5f57e6f7cdb1349234cb2436ce04827136e43` |
+
+## 2026-10-04 軟體顯示環境診斷開工
+
+上一輪固定 4× 像素等價維護、208 項回歸、兩版四段正式正常錄影及五份 Issue 同步已完成並推送，main 為 `a8f287c`，屬實際進展。本輪重新核對目前程式、五份 Issue 最新全文、留言及 OPEN 狀態，沒有殘留 san1 容器。命中復古重製、規格閘門與文件職責，載入契約後建立 [021 §6.34 DRAFT](docs/spec/021-hd-art.md#634-軟體顯示驅動與-cpu-配額) 並掛入索引。先依 Mesa 官方契約比較預設及兩個軟體渲染執行緒、實際 CPU 配額與限流，不改正式速度、等待或解析度。首批合併輸出被截斷，已分開讀取所需契約；文件職責與技能全文完整讀取。
+
+固定八組完成，實際 Mesa 執行緒分別 14／2，正常配額皆為 4 CPU，全部 22 相位及 279 次 Update 通過。預設高清 4.638／4.893 秒，兩個執行緒為 9.988／8.941 秒；指定組消除限流卻變慢，不採用該環境設定。此結果不支持限流是單一真因，正式來源及驗證入口保持，#110 繼續開啟。獨立回讀由 `workplace/verify-hd-perf-v23-delivery.py` 保存至 `workplace/verify-hd-perf-v23-delivery.json`；尚未實作呈現路徑試作，下一步仍須獨立像素等價證據。
+
 ## 2026-10-04 高清播放效能開工
 
 上一輪完成誘敵四幀、兩版正常 31/31 與獨立整包回讀，main 為 `4aaff79`，屬實際進展。本輪核對工作樹與五項 HD Issue 最新全文、留言及 OPEN 狀態，命中復古重製、規格閘門與文件職責路由。建立 [021 §6.33 DRAFT](docs/spec/021-hd-art.md#633-高清播放效能量測) 並掛入索引，先分離 CPU 合成、GPU／顯示器與錄影負載，不降低 4×、跳過動畫或調整等待。首批合併輸出遭截斷，已分批重讀契約；#107 的全文超出原輸出上限，已完整重讀，未改遠端本文。

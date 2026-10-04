@@ -8,11 +8,16 @@
 
 戰爭從出兵、編隊與攜帶補給開始；進入戰場後，可以親自指揮部隊移動、攻擊、單挑與用計，也可以交給電腦處理。勝負會接回戰略地圖，影響城池、武將與下一回合。這個重製版同時保留原版與加強版已驗證的規則差異，提供繁中原文及英、日介面。
 
-## 現行 remake 畫面
+## remake 原貌與 HD 畫面
 
-![現行 remake 的劇本一主畫面：州郡地圖與十項指令](docs/images/remake-main.png)
+保留原版版面，人物與美術採 B 寫實手繪高清化。下列兩組由正式 remake 視窗在同一個玩家停點切換 Theme 擷取，點圖可看原生尺寸。
 
-這張是現行 remake 程式以劇本 001 繪製的主畫面，**不是 DOS 原版截圖**。地圖與美術由程式在本機讀取玩家自備的原版資料；文字使用重製版字庫。圖片展示目前畫面，不代表戰役全程或每一段文字都已完成逐格對拍；實測範圍見[畫面對拍紀錄](docs/playtest/03-screen-parity.md)。
+| 場景 | remake 原貌，640×408 | B 高清，2560×1632 |
+|---|---|---|
+| 主畫面與曹操人物卡 | <a href="docs/images/remake-main.png"><img src="docs/images/remake-main.png" width="360" alt="remake 原貌：劇本一主畫面與曹操人物卡"></a> | <a href="docs/images/remake-main-hd.png"><img src="docs/images/remake-main-hd.png" width="360" alt="B 高清：相同主畫面與曹操人物卡"></a> |
+| 主戰場，陳留出兵攻鄴郡 | <a href="docs/images/remake-battle.png"><img src="docs/images/remake-battle.png" width="360" alt="remake 原貌：主戰場正常指令停點"></a> | <a href="docs/images/remake-battle-hd.png"><img src="docs/images/remake-battle-hd.png" width="360" alt="B 高清：相同主戰場，高清人物、地形與天候"></a> |
+
+截圖使用劇本 001、單人曹操、難度 5。原貌讀取本機合法持有的原版美術，HD 使用本機高清素材包，文字使用重製版字庫。**HD 計畫仍在進行**；圖示呈現目前成果，驗收範圍見[高清規格](docs/spec/021-hd-art.md)與[畫面對拍紀錄](docs/playtest/03-screen-parity.md)。
 
 公開原始碼與引擎封包不包含原版執行檔、資料、美術、音樂或字型。遊玩時需自行提供合法持有的原版資料，使用方式見下方「需要原版」。
 
@@ -82,7 +87,7 @@ JSON、配樂轉成 OGG。
 三組容器載入、EGA 640×408 畫面輸出，全程無頭、決定性。
 
 ```sh
-# Ebiten 視窗：← → 選郡、0–9 指令、Enter 結束這個月、Esc 返回
+# Ebiten 視窗：← → 選郡、0–9 指令、Enter 結束這個月、Shift＋Esc 返回
 # 存檔：其他（9）→ 儲存（2）→ 選一格；開場讀檔用 -load
 tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -faction 0 -ai enhanced \
     -saves ~/.local/share/san1-remake/saves
