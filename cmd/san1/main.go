@@ -54,6 +54,8 @@ type app struct {
 	pick  []pickItem
 	num   *numEntry
 	dirty bool
+	// numPrompt 保存數字提示的顯示組成，完成輸入後仍可切換語言。
+	numPrompt *numberPrompt
 
 	// afterBubbles 是訊息框全部收掉之後要接著做的事（軍師勸諫之後問
 	// Y/N、宣戰對白之後開打）；confirm 是等著的 Y/N。
@@ -599,6 +601,24 @@ type numEntry struct {
 	then func(int)
 }
 
+// numberPrompt 只保存顯示資料，不保存輸入值或完成回呼。
+type numberPrompt struct {
+	title  string
+	lo     int
+	max    int
+	digits string
+	bare   bool
+	shown  string
+}
+
+func (n *numberPrompt) text() string {
+	s := n.title
+	if !n.bare {
+		s += tf("pick.range", n.lo, n.max)
+	}
+	return s + n.digits
+}
+
 // askNumber 開一個數字輸入。0 也是合法的答案。
 func (a *app) askNumber(title, hint string, max int, then func(int)) {
 	if max < 0 {
@@ -632,13 +652,12 @@ func (a *app) showNumber() {
 		// 原版：下面板寫提示，數字接在「(下限-上限):」後面回顯（`0x34ede`，
 		// `docs/spec/014` §4.3）。remake 的說明字（hint）在這個版面不畫。
 		a.view.Menu, a.view.Items = "", nil
-		a.view.Prompt = n.title
-		if !n.bare {
-			a.view.Prompt += tf("pick.range", n.lo, n.max)
-		}
-		a.view.Prompt += n.digits
+		a.numPrompt = &numberPrompt{title: n.title, lo: n.lo, max: n.max, digits: n.digits, bare: n.bare}
+		a.numPrompt.shown = a.numPrompt.text()
+		a.view.Prompt = a.numPrompt.shown
 		return
 	}
+	a.numPrompt = nil
 	a.view.Menu = strings.ReplaceAll(n.title, "\n", " ")
 	a.view.Items = []ui.Command{
 		{Key: '=', Name: fmt.Sprintf("%d", n.value)},

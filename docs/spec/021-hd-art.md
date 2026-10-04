@@ -1784,6 +1784,26 @@ READY 最小契約於 2026-10-04 經上述證據審查成立。960 組日期包�
 
 ### 6.36.4 已完成數字提示的即時切換
 
-**狀態：DRAFT**。§6.36.3 的兩版正常公孫瓚郡資料在英文停點仍顯示「查看那一郡」及 `(1-42):2`；英文 `ask.pref` 已有完整譯文，人物卡的「請按任一鍵」也能切換。證據為 `workplace/hd-window/player/locale-main-v28-defects-after/receipt.json` 及其兩版英文原貌／高清 PNG。左側英文日期已由完整字模核對，與此缺口分開。
+**狀態：CONFORMED，限顯示快照與已驗正常數字路徑**。§6.36.3 的兩版正常公孫瓚郡資料在英文停點仍顯示「查看那一郡」及 `(1-42):2`；英文 `ask.pref` 已有完整譯文，人物卡的「請按任一鍵」也能切換。證據為 `workplace/hd-window/player/locale-main-v28-defects-after/receipt.json` 及其兩版英文原貌／高清 PNG。左側英文日期已由完整字模核對，與此缺口分開。
 
-先追 `cmd/san1/main.go` 的 `askPref`、數字完成回呼、`showNumber` 與 `View.Prompt` 保存，再核對 `windowbar.go` 的 `relocalizeWindow` 及 `i18n.Relocalize`。需要分辨正在輸入與已完成的顯示字串，保留標題、範圍、已輸入數字、游標及回呼；未知文字不猜譯、不參與行為判定。補齊正常輸入與回切證據後再轉 READY，不以本節授權正式修正。
+2026-10-04 證據審查：`[both] L1 remake 顯示驗證`，未新增原版 oracle。`cmd/san1/roster.go` 的 `askPref` 經 `askRange`／`showNumber` 組出標題、`pick.range` 與原始輸入數字。`main.go` 的 Enter 路徑清掉 `a.num`，查看完成回呼只更新所選郡及狀態面板，保留整句 `View.Prompt`。`windowbar.go` 目前只將整句交給 `i18n.Relocalize`；它要求完整匹配字串表，不能辨認這種組合。翻譯掛勾的正式呼叫者均屬視窗、選單或戰場顯示，未接到規則比較、識別鍵或序列化。
+
+本節授權在 `showNumber` 保存顯示用的標題、上下限、bare 旗標、原始 digits 與已畫整句。這份快照不保留輸入值、回呼、玩家狀態或存檔欄位。語言切換時只有數字輸入已完成、目前提示仍完整等於快照的已畫整句，才翻譯標題並以目標語系的 `pick.range` 重新組合。正在輸入仍走既有 `a.num` 更新；其他提示走原有完整匹配。畫面已被新提示取代時不得重播舊快照；未知標題保留原文，不拆猜片語。
+
+空輸入、前導零、尚未確定的超界數字、bare 提示、不用原版美術的文字版面，以及完成回呼都保持原有契約。切換語言不確定輸入、不重播回呼、不改所選郡、規則、亂數、等待或存檔。連續運輸／調動的多段標題仍沿用既有整句匹配，未證實的組合不得拆猜；不以本節宣稱所有數字標題已完整翻譯。
+
+正式回歸須涵蓋三語往返、正在輸入及已完成、前導零、bare、未知標題與被新提示取代的負例；正常玩家路徑須在兩版從新局進入查看郡，先切換正在輸入的提示，再確認已完成提示、原貌／4×／回復及繼續輸入／取消。來源與依賴、十八原始容器、四字型、三語系、v21 包與修改前正式執行檔的實際雜湊在 `workplace/hd-locale-v29-before.json`；原始輸入保持唯讀。通過正式建置、正常操作與獨立完整字區回讀後才標記本節 CONFORMED；整份 HD 仍 READY。
+
+正式無 overlay 建置與回歸在 `workplace/hd-locale-v29-build.sh`、`workplace/hd-locale-v29-build.json`。UI、翻譯與控制器共 223 項、零 skip、零 fail；[number_locale_test.go](../../cmd/san1/number_locale_test.go) 涵蓋上述邊界。舊 `windowbar.go` 對同一完成提示回歸確實失敗，收據為 `workplace/hd-locale-v29-negative-tests.jsonl`。只有兩份控制器行為來源及新增回歸改變；356 份實際來源、原始容器、字型、三語系、v21 的 618 筆及 309 PNG 均獨立核對。
+
+兩版從正常 001 曹操新局查看郡 `02`，先切換正在輸入的提示，再 Enter 完成；另輸入 `43` 重問、輸入 `02` 後刪兩位、查看 `2`，取消後重新查看 `2`。五種停點逐語系及回切、原貌／原生 4×／原貌恢復共四十組、220/220。九組完整來源字模涵蓋三語與空數字／`02`／`2`，下面板的 192×64 全區及每個游標像素均核對。控制組八個英文／日文完成提示保留繁中，修改後皆正確；完成後所選郡與原生 F063 肖像保持。兩版英文高清完成圖已查看。
+
+原版來源擷取在完成二十組後進入加強版，因 720 秒外層上限退出 124，`receipt.json` 未保存；不補造它。原版 110 項由 `workplace/hd-locale-v29-base-capture-proof.py` 直接核對保存的完整圖及凍結來源；加強版另用 `workplace/hd-locale-v29-normal-r3.py` 從正常新局完成二十組、110/110。最終入口 `workplace/verify-hd-locale-v29-delivery-r2.py` 與 `workplace/verify-hd-locale-v29-delivery.json` 合併這兩類證據，核對 809 張現存完整 PNG。重複的開機擷取檔名只核對現存最後一筆，不宣稱舊覆寫幀仍存在。
+
+正在挑郡的上面板是清單，沒有肖像；`workplace/hd-locale-v29-active-full-proof.json` 另核對兩版及控制／修正組的四十八張原貌／高清配對，完整畫布沒有排除任何上面板矩形。只有完成後的資料面板才排除真正的肖像並獨立核對原生素材。游標沿用 §6.36.3 的六格有限預期，不遮罩或改時間。原版擷取收據缺失仍明示，未新增原版 oracle、存讀檔、音畫、效能或平台聲明。挑郡譯名的裁切另由 §6.36.5 接續，組合標題、其他三語畫面與整份 HD 仍未完成。
+
+### 6.36.5 挑郡清單的完整譯名
+
+**狀態：DRAFT**。§6.36.4 的正常英文正在輸入停點可見三欄郡名清單的 `Liaodong` 顯示為 `Liaodo`。原貌圖為 `workplace/hd-window/player/locale-main-v29-after-r2/base-active-02-en-original.png`，加強版同類完整圖在 `locale-main-v29-after-plus-r3/`。`internal/ui/prefpick.go` 的 `DrawPrefPick` 直接將 `PlaceName(q.Name)` 限為六格後接在兩格編號後面；目前是顯示裁切，原始資料與選擇編號保持。
+
+先量兩版四十二郡的完整三語譯名、三欄實際座標、原字級及既有小字的容量，再審查完整姓名、欄間留白與標題的正常排法。沿用原始識別值、不猜縮寫、不將截短後的量寬當成完整資訊。量測與正常字模證據足夠後才轉 READY，本節不授權正式修正。

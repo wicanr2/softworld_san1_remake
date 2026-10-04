@@ -254,7 +254,16 @@ func (a *app) drawWindow(dst *ebiten.Image) {
 
 func (a *app) relocalizeWindow(old i18n.Locale) {
 	f := func(s string) string { return i18n.Relocalize(s, old, i18n.Current) }
-	a.view.Prompt = f(a.view.Prompt)
+	if n := a.numPrompt; a.num == nil && n != nil && a.view.Prompt == n.shown {
+		n.title = f(n.title)
+		n.shown = n.text()
+		a.view.Prompt = n.shown
+	} else {
+		a.view.Prompt = f(a.view.Prompt)
+		if a.num == nil {
+			a.numPrompt = nil
+		}
+	}
 	a.view.Menu = f(a.view.Menu)
 	a.view.PageTitle = f(a.view.PageTitle)
 	for i := range a.view.Items {
