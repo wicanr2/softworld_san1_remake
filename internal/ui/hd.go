@@ -46,7 +46,7 @@ type HDPack struct {
 	Warnings []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]))$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5]))$`)
 
 // LoadHDPack 逐項驗證玩家自己的來源，錯項回退原圖。
 func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*HDPack, error) {
@@ -66,7 +66,7 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 610 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 618 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
 	p := &HDPack{images: make(map[[32]byte]*image.RGBA)}
@@ -132,7 +132,7 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 			return nil, nil, err
 		}
 		n, err := strconv.Atoi(fragment)
-		if err != nil || n < 0 || n > assets.SkirmishMaxTerrain {
+		if err != nil || n < 0 || (n > assets.SkirmishMaxTerrain && (n < 32 || n > 35)) {
 			return nil, nil, fmt.Errorf("地形資源越界")
 		}
 		const stride = assets.ImageHeader + assets.TileW/8*assets.TileH*4

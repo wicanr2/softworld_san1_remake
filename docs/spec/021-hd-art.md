@@ -1452,7 +1452,13 @@ UI 測試結果另存 `workplace/hd-weather-v19-tests.json`。CLI 正反例只�
 
 第二輪收據及截圖保留於 `workplace/hd-window/player/terrain-contexts-v20-second/`。查看頁僅 2,700 像素不同，差異框為高清座標 (1252,772) 至 (1315,835)，原貌恢復完全相同；原因是 `x11grab` 同時擷取固定螢幕尺寸的系統游標。比對前將滑鼠移至邏輯 (20,380)，避開所有驗證矩形，再以相同命令乾淨重跑；不遮罩差異，也不修改遊戲繪製。
 
-本批完整私人產物索引採 `workplace/hd-terrain-v20-artifact-index.json`，由 `workplace/index-hd-terrain-v20.py` 收錄準備、生成、包、驗證工具與收據雜湊。文件閘門入口及結果為 `workplace/verify-hd-terrain-v20-docs.py`、`workplace/hd-terrain-v20-docs-verification.json`。公開閘門為 `workplace/verify-hd-terrain-v20-publish.py`，分列 `workplace/hd-terrain-v20-publish-check.json`、`workplace/hd-terrain-v20-issue-publish-check.json` 及 `workplace/hd-terrain-v20-checkpoint-publish-check.json`，檢查實際暫存文字或 Issue 本文，保存 PNG 簽章、完整提示詞及 MZ 前綴的正反對照；不宣稱通用片段或編碼外洩偵測。
+本批第五輪在遊戲啟動前遇到 X11 顯示器連線失敗，保存於 `workplace/hd-window/player/lure-v21-fifth/`。非 root Xvfb 缺少 Unix socket 目錄，原啟動檢查也未保證探測後的顯示器連線可用；驗證工具在容器內建立 socket 目錄，停用最後客戶端退出時的重設，並核對實際 socket 與顯示器幾何後重跑。此項屬驗證環境，不列為遊戲缺陷。
+
+第六輪完整高清 22 步通過，長錄影結束時已進入後續電腦回合，施放前截圖另含閃爍游標，收據保留於 `workplace/hd-window/player/lure-v21-sixth/`。改核對錄影內動畫結束的第一個恢復幀：施法者 WFLAGA00 依正式索引 XOR 15 取補數後，整塊 24×15 旗區與原貌及高清均逐像素相同。兵力及後續戰況不拿來要求與施放前相同；原規則明定動畫後接交戰結算。
+
+第七輪兩版原貌及原版高清的完整動畫通過。加強版在誘敵後的交戰中退出主攻軍，第一個恢復幀已改畫主守軍 WFLAGD00，完整 24×15 像素與來源相同；原收據保存於 `workplace/hd-window/player/lure-v21-seventh/`。驗證器核對本路徑兩支中軍的 A00／D00 原圖及正式反白，記錄實際來源與反白狀態，不預設施法者存活。
+
+完整私人產物索引採 `workplace/hd-terrain-v20-artifact-index.json`，由 `workplace/index-hd-terrain-v20.py` 收錄準備、生成、包、驗證工具與收據雜湊。文件閘門入口及結果為 `workplace/verify-hd-terrain-v20-docs.py`、`workplace/hd-terrain-v20-docs-verification.json`。公開閘門為 `workplace/verify-hd-terrain-v20-publish.py`，分列 `workplace/hd-terrain-v20-publish-check.json`、`workplace/hd-terrain-v20-issue-publish-check.json` 及 `workplace/hd-terrain-v20-checkpoint-publish-check.json`，檢查實際暫存文字或 Issue 本文，保存 PNG 簽章、完整提示詞及 MZ 前綴的正反對照；不宣稱通用片段或編碼外洩偵測。
 
 五項 Issue 的讀取、待寫全文與比對結果分別保存於 `workplace/hd-terrain-v20-issue-{104,107,108,109,110}-{before.json,body.md,after.json}`；更新計畫及同步收據為 `workplace/hd-terrain-v20-issues-plan.json`、`workplace/hd-terrain-v20-issues-sync.json`。只更新目前狀態與 #104 工作表，保留歷史、標題與 OPEN 狀態。
 
@@ -1496,3 +1502,64 @@ UI 測試結果另存 `workplace/hd-weather-v19-tests.json`。CLI 正反例只�
 | `tools/verify-hd-contexts.sh` | `1d069b19dd7ae9f1f78eeb8ed6c966497b23d4926b3c527e3214cbc0c7168a7f` |
 | `tools/verify-window-inner.py` | `8374fa135ad677af19c583b4bf6213b81f933f3de411f38b574adc48bafdab59` |
 | `workplace/verify-hd-terrain-v20-delivery.py` | `5e9f3dac484d483e226f14438e470dbcaedda240e374dd9a1b543c61e8f04898` |
+
+## 6.32 誘敵的四張特效圖
+
+**狀態：READY**。沿用 B 寫實手繪、4×、原貌預設及既定玩家路徑，處理 DATA1/EICON.GRP#32–35。兩版來源容器相同，36 張 48×32 圖；本批只開放已確認的四張誘敵圖，不開放 15–31。原版證據與原始位址見 [005 §8 誘敵特效](005-main-screen.md#誘敵的特效0x2b7830x2b7f4l0l1bothissue-63)。原版的 22 步為 32、33，接 34／35 交替二十次；速度為 440、440，接 300／252 交替。位置仍由 `assets.FieldCell` 算施法者那一格，48×32 整塊不透明覆蓋，完成後由既有路徑重畫地形與旗幟。不改戰術、命中判定、亂數、聲音、等待或存檔。
+
+先回讀及查看四張來源，按實際構圖生成候選，保留角色、特效方向與各幀差異。完整圖縮放至 192×128，不以任意 alpha 改變原整塊覆蓋。圖層試作須涵蓋 22 步、原貌畫布、原生高清、矩形外像素、前幀覆蓋、缺圖回退與完成後恢復；通過後才轉 READY 並接正式渲染。正常玩家施放及播放另驗，不以直接入口取代。
+
+來源準備入口與收據為 `workplace/prepare-hd-lure-v21.go`、`workplace/hd-lure-v21-source.json`、`workplace/hd-lure-v21-plan.json`；原圖及 16× 編輯目標保存於既有 `workplace/hd-preview/` 的 `v21-source-EICON32.png` 至 `v21-source-EICON35.png` 與各自 `-16x.png`。來源比較頁與獨立回讀由 `workplace/make-hd-lure-v21-source-contact.py` 保存 `workplace/hd-preview/lure-v21-source-contact.png` 及 `workplace/hd-lure-v21-source-contact.json`，另驗兩版八個記錄的 12,288 像素。
+
+執行請求、實際生成路徑、候選審查及生成彙整分別為 `workplace/hd-lure-v21-requests.json`、`workplace/hd-lure-v21-generated-paths.json`、`workplace/hd-lure-v21-reviews.json`、`workplace/hd-lure-v21-generation.json`。候選採 `workplace/hd-b-EICON32-v1.png` 至 `workplace/hd-b-EICON35-v1.png` 等版次，不覆寫實際生成檔；收集入口為 `workplace/collect-hd-lure-v21.py`。最終比較入口與產物為 `workplace/make-hd-lure-v21-contact.py`、`workplace/hd-preview/lure-v21-contact.png`、`workplace/hd-lure-v21-contact.json`。
+
+可丟棄圖層入口及收據採 `workplace/hd-lure-v21-prototype_test.go`、`workplace/hd-lure-v21-prototype.json`，隔離容器短暫複製為 `internal/ui/zz_hd_lure_prototype_test.go`，以 trap 移除。READY 後才由 `workplace/build-hd-lure-v21.py` 建立私人 `workplace/hd-assets-lure-v21/`，保存 v20 全部 610 筆欄位、PNG bytes 與準備紀錄，只增兩版八筆，schema 1 上限為 618，收據為 `workplace/hd-lure-v21-build.json`。正式載入與整包回讀入口採 `workplace/verify-hd-lure-v21-pack.go`、`workplace/verify-hd-lure-v21-delivery.py`，各自同名 JSON 保存結果。所有來源、提示詞、候選及含原版衍生美術的包只留本機。
+
+來源八個記錄的 12,288 像素回讀通過。四張 1536×1024 不透明候選及 192×128 比較頁已查看，Codex 採用，使用者逐張簽核為 0；生成工具採內建 image_gen，模型與 seed 未回報。人物姿態與紅黃格帶按原圖改編，高清外觀不宣稱原像素一致。生成紀錄雜湊為 `bf9f8527f8d58b6b6e8bb2d617f3b2ec67d7663c91dce480da1355c7ffbad7d4`，比較頁為 `7879395c162acc5cd2d369da6aa486fe6a07af9c279b17024e1577de1632ac5f`。圖層試作 108 項通過，含 22 步、四個位置、原貌、矩形外像素、前幀、裁切、缺圖及重畫恢復，足以授權正式接入；正常玩家驗證另行記錄。
+
+正式準備稽核由 `workplace/audit-hd-lure-v21.py` 保存 `workplace/hd-lure-v21-audits.json` 與 `workplace/hd-{portraits,scenes,weather,terrain,lure}-audit-v21.json`；CLI 正反例為 `workplace/test-hd-lure-v21-audit.py` 與同名 JSON。完整 UI／assets 的原始事件與摘要採 `workplace/hd-lure-v21-tests-log.jsonl`、`workplace/hd-lure-v21-tests.json`。正常 GUI 入口預定為 `tools/verify-hd-lure.sh`、`tools/verify-hd-lure-inner.py`，資料與連續錄影保存於 `workplace/hd-window/player/lure-v21/`；素材只讀並使用正常新局、出兵、合法紮寨與策略選單。私人靜態玩家計畫入口及收據採 `workplace/hd-lure-v21-player-plan.go`、`workplace/hd-lure-v21-player-plan.json`，只讀 typed data，不注入執行中的遊戲。
+
+首輪正常 GUI 在紮寨後仍有戰場對白，驗證器過早要求命令選單。原始收據與截圖保存於 `workplace/hd-window/player/lure-v21-first/`。第二輪已抵達正常選單，但整塊參考不含動態部隊資料，保留於 `workplace/hd-window/player/lure-v21-second/`。依失敗診斷路由核對實際畫面後，改以正常空白鍵收對白，只辨識固定三行選單，不改遊戲程式、能力、資金或亂數。
+
+第三輪原貌正常施放完整 22 步與四幀原像素通過，旗幟恢復檢查卻錯用未合成的單張旗圖。收據、錄影及截圖保留於 `workplace/hd-window/player/lure-v21-third/`；逐像素查明動畫前後的實際旗區完全相同，改比較正常畫面上的同區，不抹除原有選取或疊層。
+
+第四輪原貌完整 22 步與恢復通過。高清六秒錄影只到 32／33，已出現的幀均與原生素材相符，保留於 `workplace/hd-window/player/lure-v21-fourth/`；高清另採 30 fps、90 秒有界錄影並指定輸出幀率，核對完整步序及實際時間。較長錄影不算效能合格，也不改遊戲的速度或等待常數。
+
+第五輪在遊戲啟動前遇到 X11 顯示器連線失敗，保存於 `workplace/hd-window/player/lure-v21-fifth/`。非 root Xvfb 缺少 Unix socket 目錄，原啟動檢查也未保證探測後的顯示器連線可用；驗證工具在容器內建立 socket 目錄，停用最後客戶端退出時的重設，並核對實際 socket 與顯示器幾何後重跑。此項屬驗證環境，不列為遊戲缺陷。
+
+第六輪完整高清 22 步通過，長錄影結束時已進入後續電腦回合，施放前截圖另含閃爍游標，收據保留於 `workplace/hd-window/player/lure-v21-sixth/`。改核對錄影內動畫結束的第一個恢復幀：施法者 WFLAGA00 依正式索引 XOR 15 取補數後，整塊 24×15 旗區與原貌及高清均逐像素相同。兵力及後續戰況不拿來要求與施放前相同；原規則明定動畫後接交戰結算。
+
+第七輪兩版原貌及原版高清的完整動畫通過。加強版在誘敵後的交戰中退出主攻軍，第一個恢復幀已改畫主守軍 WFLAGD00，完整 24×15 像素與來源相同；原收據保存於 `workplace/hd-window/player/lure-v21-seventh/`。驗證器核對本路徑兩支中軍的 A00／D00 原圖及正式反白，記錄實際來源與反白狀態，不預設施法者存活。
+
+完整私人產物索引採 `workplace/index-hd-lure-v21.py` 與 `workplace/hd-lure-v21-artifact-index.json`。文件與公開文字閘門入口採 `workplace/verify-hd-lure-v21-docs.py`、`workplace/verify-hd-lure-v21-publish.py`；收據分別為 `workplace/hd-lure-v21-docs-verification.json` 與 `workplace/hd-lure-v21-{publish,issue-publish,checkpoint-publish}-check.json`。公開閘門核對實際暫存文字與五份 Issue 全文，附私人 PNG、完整提示詞及 MZ 前綴的正反對照。
+
+五項 Issue 的全文讀取、待寫本文與遠端核對採 `workplace/hd-lure-v21-issue-{104,107,108,109,110}-{before.json,body.md,after.json}`，計畫及同步收據為 `workplace/hd-lure-v21-issues-plan.json`、`workplace/hd-lure-v21-issues-sync.json`；保留標題、歷史與 OPEN 狀態。工作歷程只追加 `WORKLOG.md`，現況回填 `CONTEXT.md` 與 `VERIFICATION-MATRIX.md`。
+
+本批已驗結果由 `workplace/update-hd-lure-v21-docs.py` 回填上述現況文件，必須先通過獨立整包及錄影回讀，再執行文件與公開閘門。
+
+### 6.32.1 本批驗證結果
+
+私人 v21 包為 618 登錄、309 PNG，兩版各 309，正式載入器警告 0，v20 全部 610 筆欄位、圖檔及準備紀錄保持。五家族完整稽核技術問題均為 0，CLI 正反例 14/14，正式 UI／assets 195 項通過、skip 0；108 項圖層檢查保持原貌 CPU 畫布、22 步及速度、矩形外像素、前幀覆蓋、裁切、缺圖回退與重畫恢復。
+
+`bash tools/verify-hd-lure.sh` 在 `rich2-go-ebiten:latest` 建置後，以 `eob-audio-capture:20260922-r2` 進行兩版各原貌及高清的正常片頭、新局、陳留出兵鄴郡、400 金／1000 米、合法紮寨及誘敵。容器為 UID/GID 1000、4 CPU、4 GiB、256 pids、network none，原始資料與素材包只讀。四段共 31/31 檢查，每段完整 22 步、四張原生圖、外框保持，動畫結束的第一個恢復幀與實際 A00／D00 原圖及反白完全相同。戰損與後續回合照原路徑推進，不要求施法者存活。正常新局不注入人物、戰場或 seed，不稱為原版 oracle。
+
+獨立回讀確認來源八筆／12,288 像素、四份實際生成檔、完整 192×128 縮放、不透明、618 登錄與前版保留；四段錄影、54 張最新完整視窗截圖、16 張動畫及 4 張恢復截圖全部回讀通過，兩版高清畫面已查看。
+
+錄影採原貌 60 fps／6 秒及高清 30 fps／90 秒，指定實際輸出幀率並逐幀核對。觀察到的動畫時長為 base-original 4.617 秒、base-hd 32.233 秒、plus-original 4.617 秒、plus-hd 5.667 秒。這是軟體 OpenGL 與錄影並行的環境，未建立獨立效能基準；高清明顯較慢，#110 的播放效能仍未完成。不改音訊等待、TPS 或速度常數，也不外推硬體時序、人耳或其他平台。整份 HD 仍為 READY，#107–#110 保持 OPEN。
+
+| 私人收據或素材 | SHA-256 |
+|---|---|
+| `workplace/hd-assets-lure-v21/manifest.json` | `1310aa2ba0363298ec753fed67d2e62f9327be4bea1b009a5186d2def16b7600` |
+| `workplace/hd-assets-lure-v21/preparation.json` | `c71b4d7b5b2cc61298f67ea86f548c1af607bd06a80a9d7aeaa24b57da035a7e` |
+| `workplace/hd-lure-v21-generation.json` | `bf9f8527f8d58b6b6e8bb2d617f3b2ec67d7663c91dce480da1355c7ffbad7d4` |
+| `workplace/hd-lure-v21-contact.json` | `230d84402684956d179282c5037645a50647586d4c54ff44fec847a13d03198e` |
+| `workplace/hd-lure-v21-build.json` | `e3a939787daa6e2f43605183a9a82cc6dedbe591d8740f5ee94f6521f0f6f3c5` |
+| `workplace/hd-lure-v21-source-contact.json` | `cdf413e9ec5c07b69739bf914f99874947b6c174ddf7d2807025b17aa053fc5c` |
+| `workplace/hd-lure-v21-prototype.json` | `f0af4c1185ae25a41c99456a0ff58ad4bd4484f8db51e36b68e8ff4a7fdb5175` |
+| `workplace/verify-hd-lure-v21-pack.json` | `b628a7dd93e2a69deaba8cdfa83d3dcf1103da4ac5f5aba44b51b842ed7ad499` |
+| `workplace/hd-lure-v21-audits.json` | `b9d8ee21aa11a6e387eb6100133a2a6af835dc4ec8c42bafa301d936a76b2b52` |
+| `workplace/test-hd-lure-v21-audit.json` | `d6bfcba41fa7bf2f1c76ec6ce247e7fdc8fba8fc1612a1fc2e73fee26a645d8e` |
+| `workplace/hd-lure-v21-tests.json` | `584fc61577be800f18215cdb0d22e52d06824a928779c58fda2f1aa215039723` |
+| `workplace/hd-window/player/lure-v21/receipt.json` | `8d6e5cc8586efdcb3cc3d65167c88b9e0d871a8048b28369be1f013f13d64498` |
+| `workplace/verify-hd-lure-v21-delivery.json` | `c469723d947427c999536fac35310b38687ef5f400f055ab2c15b609e64792dc` |
+| `workplace/hd-lure-v21-artifact-index.json` | `231e33e86b32407b0dedecc3556b5855da6e9e16bff2f568a31990d263b44f22` |

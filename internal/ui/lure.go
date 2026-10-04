@@ -40,6 +40,7 @@ func DrawLureFlash(c *Canvas, ab *ArtBattle, at battle.Hex, tile int) {
 			c.setClipped(px, py, assets.EGAPalette[im.Pix[yy*im.W+xx]&15])
 		}
 	}
+	c.drawHigh(im, x, y)
 }
 
 // LureFlashCell 是那一格在畫面上的左上角與圖塊的寬高（對拍用）。

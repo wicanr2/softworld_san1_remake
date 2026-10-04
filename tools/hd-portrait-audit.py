@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""稽核私人高清包的肖像、場景、天候或 15 個地形槽；須在 Docker 內執行。"""
+"""稽核私人高清包的肖像、場景、天候、地形及誘敵特效；須在 Docker 內執行。"""
 import argparse
 import collections
 import hashlib
@@ -13,6 +13,7 @@ KEY = re.compile(r'^DATA3/F(?:[01][0-9]{2}|2[0-4][0-9]|25[0-5])\.FAC$')
 SCENE_KEY = re.compile(r'^(?:DATA3/SCG(?:0[1-9]|[12][0-9])|DATA2/SCG3[01])\.IMG$')
 WEATHER_KEY = re.compile(r'^DATA1/WEATHER[0-2]\.IMG$')
 TERRAIN_KEY = re.compile(r'^DATA1/EICON\.GRP#(?:0[0-9]|1[0-4])$')
+LURE_KEY = re.compile(r'^DATA1/EICON\.GRP#3[2-5]$')
 ACCEPTED = {'accepted-for-local-pack', 'accepted-local'}
 
 
@@ -47,7 +48,7 @@ def canonical(key):
         key = container + '/' + key.upper() + '.IMG'
     elif key.lower().startswith('weather') and '/' not in key:
         key = 'DATA1/' + key.upper() + '.IMG'
-    elif re.fullmatch(r'(?i)eicon(?:0[0-9]|1[0-4])', key):
+    elif re.fullmatch(r'(?i)eicon(?:0[0-9]|1[0-4]|3[2-5])', key):
         key = 'DATA1/EICON.GRP#' + key[-2:]
     return key
 
@@ -78,7 +79,11 @@ def audit(args):
     inventory_path = local(root, args.inventory)
     inventory = json.loads(inventory_path.read_text())
     family = getattr(args, 'family', 'portraits')
-    if family == 'terrain':
+    if family == 'lure':
+        key_re, prefix, label = LURE_KEY, 'EICON', '誘敵'
+        expected = {f'DATA1/EICON.GRP#{n:02d}' for n in range(32, 36)}
+        containers = ('DATA1',)
+    elif family == 'terrain':
         key_re, prefix, label = TERRAIN_KEY, 'EICON', '地形'
         expected = {f'DATA1/EICON.GRP#{n:02d}' for n in range(15)}
         containers = ('DATA1',)
@@ -118,6 +123,8 @@ def audit(args):
             ('preparation', prepared, json.loads(preparation_path.read_text()))]:
         for x in values:
             key = x.get('key', x.get('container', '') + '/' + x.get('name', ''))
+            if (family == 'terrain' and LURE_KEY.fullmatch(key)) or (family == 'lure' and TERRAIN_KEY.fullmatch(key)):
+                continue
             if not key.startswith(tuple(container + '/' + prefix for container in containers)):
                 if re.match(r'[^/]+/' + prefix, key):
                     problems.append(f'{field}: 未知{label}鍵 {key}')
@@ -243,7 +250,7 @@ def main():
     p.add_argument('--root', default='.')
     p.add_argument('--inventory', default='workplace/hd-inventory/inventory.json')
     p.add_argument('--pack', required=True)
-    p.add_argument('--family', choices=['portraits', 'scenes', 'weather', 'terrain'], default='portraits')
+    p.add_argument('--family', choices=['portraits', 'scenes', 'weather', 'terrain', 'lure'], default='portraits')
     p.add_argument('--records', action='append', required=True)
     p.add_argument('--reviews', action='append', default=[])
     p.add_argument('--out', required=True)

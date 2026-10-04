@@ -308,14 +308,14 @@ func TestHDWeatherValidationAndFallback(t *testing.T) {
 	if err != nil || p.Count != 0 || len(p.Warnings) != 1 {
 		t.Fatalf("來源尺寸：%+v %v", p, err)
 	}
-	for _, n := range []int{610, 611} {
+	for _, n := range []int{618, 619} {
 		many := make([]HDEntry, n)
 		for i := range many {
 			many[i].Edition = "plus"
 		}
 		hdManifest(t, dir, many)
 		_, err = LoadHDPack(dir, "base", nil)
-		if (err == nil) != (n == 610) {
+		if (err == nil) != (n == 618) {
 			t.Fatalf("manifest 上限 %d：%v", n, err)
 		}
 	}
@@ -729,4 +729,186 @@ func TestHDTerrainAtlasLabelsAndFortCursor(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestHDLureRecordValidation(t *testing.T) {
+	dir, source, _ := hdTerrainFixture(t)
+	const stride = assets.ImageHeader + assets.TileW/8*assets.TileH*4
+	var entries []HDEntry
+	for n := 32; n < 36; n++ {
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, hdTerrainDetail(n)); err != nil {
+			t.Fatal(err)
+		}
+		file := fmt.Sprintf("EICON%02d.png", n)
+		if err := os.WriteFile(filepath.Join(dir, file), buf.Bytes(), 0644); err != nil {
+			t.Fatal(err)
+		}
+		entries = append(entries, HDEntry{Edition: "base", Container: "DATA1", Name: fmt.Sprintf("EICON.GRP#%02d", n), File: file, Width: 192, Height: 128,
+			SourceSHA256: fmt.Sprintf("%x", sha256.Sum256(source.Data(0)[n*stride:(n+1)*stride])), SHA256: fmt.Sprintf("%x", sha256.Sum256(buf.Bytes()))})
+	}
+	tiles, err := assets.BattleTiles(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	both := append([]HDEntry(nil), entries...)
+	for _, e := range entries {
+		e.Edition = "plus"
+		both = append(both, e)
+	}
+	hdManifest(t, dir, both)
+	for _, edition := range []string{"base", "plus"} {
+		p, err := LoadHDPack(dir, edition, map[string]*assets.Container{"DATA1": source})
+		if err != nil || p.Count != 4 || len(p.Warnings) != 0 {
+			t.Fatalf("兩版誘敵載入：%+v %v", p, err)
+		}
+		for n := 32; n < 36; n++ {
+			if !bytes.Equal(p.images[hdImageKey(tiles[n])].Pix, hdTerrainDetail(n).Pix) {
+				t.Fatal("來源子記錄或幀索引選錯")
+			}
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		edit func(*HDEntry)
+	}{
+		{"unreviewed_15", func(e *HDEntry) { e.Name = "EICON.GRP#15" }},
+		{"unreviewed_31", func(e *HDEntry) { e.Name = "EICON.GRP#31" }},
+		{"out_of_archive", func(e *HDEntry) { e.Name = "EICON.GRP#36" }},
+		{"wrong_record_hash", func(e *HDEntry) { e.SourceSHA256 = entries[1].SourceSHA256 }},
+		{"parent_hash", func(e *HDEntry) { e.SourceSHA256 = fmt.Sprintf("%x", sha256.Sum256(source.Data(0))) }},
+		{"wrong_container", func(e *HDEntry) { e.Container = "DATA3" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bad := append([]HDEntry(nil), entries...)
+			tc.edit(&bad[0])
+			hdManifest(t, dir, bad)
+			p, err := LoadHDPack(dir, "base", map[string]*assets.Container{"DATA1": source, "DATA3": source})
+			if err != nil || p.Count != 3 || len(p.Warnings) != 1 {
+				t.Fatalf("逐幀回退：%+v %v", p, err)
+			}
+		})
+	}
+	badRaw := append([]byte(nil), source.Data(0)...)
+	badRaw[31*stride] = 31
+	hdManifest(t, dir, entries)
+	p, err := LoadHDPack(dir, "base", map[string]*assets.Container{"DATA1": hdTerrainContainer(t, badRaw)})
+	if err != nil || p.Count != 0 || len(p.Warnings) != 4 {
+		t.Fatalf("其他記錄的錯形也須拒絕：%+v %v", p, err)
+	}
+	transparent := hdTerrainDetail(32)
+	transparent.SetRGBA(1, 1, color.RGBA{})
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, transparent); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "transparent-lure.png"), buf.Bytes(), 0644); err != nil {
+		t.Fatal(err)
+	}
+	bad := entries[0]
+	bad.File = "transparent-lure.png"
+	bad.SHA256 = fmt.Sprintf("%x", sha256.Sum256(buf.Bytes()))
+	hdManifest(t, dir, []HDEntry{bad})
+	p, err = LoadHDPack(dir, "base", map[string]*assets.Container{"DATA1": source})
+	if err != nil || p.Count != 0 || len(p.Warnings) != 1 {
+		t.Fatalf("誘敵整塊必須不透明：%+v %v", p, err)
+	}
+}
+
+func TestHDLureAnimationLayers(t *testing.T) {
+	c1, c3 := artContainers(t)
+	ab, err := NewArtBattle(c1, c3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc, err := state.LoadScenario(artContainer(t, "DATA2"), state.Scenario1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pref, err := sc.Prefecture(25)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fld, err := battle.Load(pref.BattleField, pref.Neighbours)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := battle.New(battle.Setup{Field: fld, Seed: 1})
+	info := ArtBattleInfo{Field: pref.BattleField, Portrait: [2]int{-1, -1}}
+	wantTiles := []int{32, 33, 34, 35, 34, 35, 34, 35, 34, 35, 34, 35, 34, 35, 34, 35, 34, 35, 34, 35, 34, 35}
+	wantSpeeds := []int{440, 440, 300, 252, 300, 252, 300, 252, 300, 252, 300, 252, 300, 252, 300, 252, 300, 252, 300, 252, 300, 252}
+	steps := LureFlashSteps()
+	if len(steps) != 22 {
+		t.Fatal("22 步")
+	}
+	checks := 0
+	for _, at := range []battle.Hex{battle.FromOffset(2, 2), battle.FromOffset(3, 2), battle.FromOffset(-2, 0), battle.FromOffset(12, 0)} {
+		plain, c := testCanvasPx(t, 640, 408), testCanvasPx(t, 640, 408)
+		pack := &HDPack{images: map[[32]byte]*image.RGBA{}}
+		for n := 0; n < 15; n++ {
+			pack.images[hdImageKey(ab.tiles[n])] = hdTerrainDetail(n)
+		}
+		for n := 32; n < 36; n++ {
+			pack.images[hdImageKey(ab.tiles[n])] = hdTerrainDetail(n)
+		}
+		c.HD = pack
+		DrawArtBattle(plain, ab, b, BattleView{}, info)
+		DrawArtBattle(c, ab, b, BattleView{}, info)
+		before := append([]byte(nil), c.Output(true).Pix...)
+		x, y, w, h := LureFlashCell(at)
+		rect := image.Rect(x*4, y*4, (x+w)*4, (y+h)*4)
+		for k, step := range steps {
+			if step.Tile != wantTiles[k] || step.Speed != wantSpeeds[k] {
+				t.Fatal("來源步序／速度")
+			}
+			DrawLureFlash(plain, ab, at, step.Tile)
+			DrawLureFlash(c, ab, at, step.Tile)
+			if !bytes.Equal(c.Img.Pix, plain.Img.Pix) || c.Output(false) != c.Img {
+				t.Fatal("原貌畫布")
+			}
+			out := c.Output(true)
+			high := hdTerrainDetail(step.Tile)
+			for yy := 0; yy < out.Rect.Dy(); yy++ {
+				for xx := 0; xx < out.Rect.Dx(); xx++ {
+					if image.Pt(xx, yy).In(rect) {
+						if out.RGBAAt(xx, yy) != high.RGBAAt(xx-x*4, yy-y*4) {
+							t.Fatalf("原生圖或前幀殘留：%d", k)
+						}
+					} else {
+						o := out.PixOffset(xx, yy)
+						if !bytes.Equal(out.Pix[o:o+4], before[o:o+4]) {
+							t.Fatal("矩形外像素")
+						}
+					}
+				}
+			}
+			checks++
+		}
+		DrawArtBattle(c, ab, b, BattleView{}, info)
+		if !bytes.Equal(c.Output(true).Pix, before) {
+			t.Fatal("完成後未恢復地形／旗幟")
+		}
+		checks++
+		// 缺任一相位時仍由整塊原圖蓋掉先前高清，不能殘留上一幀。
+		for missing := 32; missing < 36; missing++ {
+			DrawArtBattle(plain, ab, b, BattleView{}, info)
+			DrawArtBattle(c, ab, b, BattleView{}, info)
+			DrawLureFlash(c, ab, at, 35)
+			saved := pack.images[hdImageKey(ab.tiles[missing])]
+			delete(pack.images, hdImageKey(ab.tiles[missing]))
+			DrawLureFlash(plain, ab, at, missing)
+			DrawLureFlash(c, ab, at, missing)
+			out := c.Output(true)
+			for yy := rect.Min.Y; yy < rect.Max.Y; yy++ {
+				for xx := rect.Min.X; xx < rect.Max.X; xx++ {
+					if image.Pt(xx, yy).In(out.Rect) && out.RGBAAt(xx, yy) != plain.Img.RGBAAt(xx/4, yy/4) {
+						t.Fatal("缺圖回退")
+					}
+				}
+			}
+			pack.images[hdImageKey(ab.tiles[missing])] = saved
+			checks++
+		}
+	}
+	t.Logf("誘敵圖層：%d 項檢查", checks)
 }

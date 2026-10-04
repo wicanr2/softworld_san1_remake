@@ -146,7 +146,8 @@ def verify_hd_terrain(original, high, restored, pack, tag, edition):
     """從正常截圖辨識完整未遮擋原圖格，再逐格核對原生高清與恢復。"""
     manifest = json.loads((pack / 'manifest.json').read_text())['entries']
     entries = [e for e in manifest if e['edition'] == edition and
-               e['container'] == 'DATA1' and e['name'].startswith('EICON.GRP#')]
+               e['container'] == 'DATA1' and e['name'].startswith('EICON.GRP#') and
+               0 <= int(e['name'].split('#')[1]) <= 14]
     if not entries:
         return
 
