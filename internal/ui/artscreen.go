@@ -812,8 +812,10 @@ func artAllWide(s string) bool {
 func artProvince(i int) string { return artProvinceIn(i, artProvCols) }
 
 // artProvinceIn 是塞進 cols 格的州名：放不下就拿掉「州」字再轉。
-func artProvinceIn(i, cols int) string {
-	zh := state.ProvinceName(i)
+func artProvinceIn(i, cols int) string { return artPlaceIn(state.ProvinceName(i), cols) }
+
+// artPlaceIn 依相同字區契約排原始州名；只改顯示。
+func artPlaceIn(zh string, cols int) string {
 	s := PlaceName(zh)
 	if cells.Width(s) > cols {
 		s = PlaceName(strings.TrimSuffix(zh, "州"))

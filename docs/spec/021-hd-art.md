@@ -1703,7 +1703,7 @@ R3 兩版繁中、英文、日文及回切繁中的 28/28 正常檢查通過。U
 
 ### 6.36.2 戰場名稱與資料的完整顯示
 
-**狀態：DRAFT**。沿用 [014 §3.2、§7](014-art-main-overlays.md#32-下面板) 已定案的字級與原版面板。`battleInfo` 提供原始姓名及郡／州名，`DrawArtBattle` 未套用既有 `PersonName`、`PlaceName`；英文面板仍保留繁中大字姓名欄，資料只剩 64 像素，且混入中文字使 ASCII 小字回退失效。v25 的兩版正常完整圖可重現軍力名稱及數值裁切。
+**狀態：CONFORMED**，限下列正式顯示修正、回歸及兩版正常窄版主戰場停點。沿用 [014 §3.2、§7](014-art-main-overlays.md#32-下面板) 已定案的字級與原版面板。`battleInfo` 提供原始姓名及郡／州名，先前 `DrawArtBattle` 未套用既有 `PersonName`、`PlaceName`；英文面板仍保留繁中大字姓名欄，資料只剩 64 像素，且混入中文字使 ASCII 小字回退失效。v25 的兩版正常完整圖可重現軍力名稱及數值裁切。
 
 先以私人 overlay 試作顯示層翻譯，資料與識別鍵維持原文。繁中座標、字型、全部像素保持；日文只依既有新字體對照。拉丁姓名使用既有面板的 96 像素資料區，完整保留統帥、君主、軍別、將數、兵、金及米；必要時使用 6×10 小字，最多九行，最後一行仍在 96 像素面板內。部隊與查看面板也必須從原始姓名翻譯，不要求呼叫者預先翻譯。空首將維持原有空面板。
 
@@ -1725,6 +1725,37 @@ R3 的 Go 原始測試均 PASS，但候選輸出環境仍指向 R2，彙整讀�
 
 首輪獨立回讀在天候框外發現六個差分，原檢查器與失敗保存於 `workplace/hd-locale-v26-independent-first.json`。查明是控制組的 Clear 以 8 像素字寬畫到 x 47，超出 x 8–39 字區；候選改用 6 像素字寬後，原白色墨點消失。最終檢查不放寬字區，只逐點核對這些舊溢字已恢復為同 fixture 的繁中背景。十六張英文圖共恢復 96 像素，其餘字區外、肖像及框線保持。讀取腳本曾使用不合法的 Python comprehension 語法，修正後同環境重跑，屬驗證腳本問題。
 
-獨立收據 SHA-256 為 `c580a7aee28d204326ec9084b09e9e37883b7be91c9213b4183cef4b7ebbf3f6`，實際六份私人來源、兩組原始測試日誌、96 張 PNG 雜湊及擁有權均符合建置收據；117 份正式來源保持。**本節仍為 DRAFT**。試作尚未進入正式程式；全日期／州名邊界、高清疊層與正常玩家路徑仍待完成，不宣稱原版 parity、存讀檔或整份三語畫面驗收。
+獨立收據 SHA-256 為 `c580a7aee28d204326ec9084b09e9e37883b7be91c9213b4183cef4b7ebbf3f6`，實際六份私人來源、兩組原始測試日誌、96 張 PNG 雜湊及擁有權均符合建置收據；117 份正式來源保持。此回讀階段為 DRAFT，當時試作尚未進入正式程式；全日期／州名邊界、高清疊層與正常玩家路徑待補，不宣稱原版 parity、存讀檔或整份三語畫面驗收。
 
 本輪文件與公開檢查入口為 `workplace/verify-hd-locale-v26-docs.py`、`workplace/verify-hd-locale-v26-publish.py`。Issue 候選與變更計畫保存於 `workplace/hd-locale-v26-issue-sync-plan.json`、`workplace/hd-locale-v26-issue-candidates.json`；只修改 #104、#107、#110 的目前狀態，#108、#109 保持全文。私人來源、候選圖及完整提示詞不入 Git。
+
+正式接入前的日期／州名邊界入口為 `workplace/hd-locale-v27-boundary_test.go`、`workplace/hd-locale-v27-boundary-overlay.json`、`workplace/hd-locale-v27-run-boundaries.sh`；沿用已回讀的 v26 候選，不覆寫原試作。日期以完整單行字模另做整行高度縮放，再核對候選雙色網點的每個像素；涵蓋十七年號的起訖、表外、西曆、整數上下界與十二月份。十四州、四十二郡與三種天候按現有名稱與原字區核對。收據為 `workplace/hd-locale-v27-boundary.json`、`workplace/hd-locale-v27-boundary-proof.json`。
+
+首次邊界驗證在 240 秒外層逾時終止，來源及原始事件保存於 `workplace/hd-locale-v27-boundary-first.json`。檢查器每個日期反覆解析字型，改為共用已載入的兩張畫布並逐組清空；日期集合、字模比較及容器配額保持。修正後原始事件另存 `workplace/hd-locale-v27-boundary-r2-tests.jsonl`，不覆蓋首輪日誌。
+
+行高防護另以 `workplace/hd-locale-v27-prototype-artbattle.go`、`workplace/hd-locale-v27-fallback_test.go`、`workplace/hd-locale-v27-overlay.json`、`workplace/hd-locale-v27-run-candidate.sh` 試作。資料能完整使用 ASCII 小字時才增加統帥首行；混合姓名維持既有回退。原尺寸判斷同時量行數，七行不能使用 16 像素行高。輸出為 `workplace/hd-window/player/locale-v27-prototype/`，收據為 `workplace/hd-locale-v27-candidate-proof.json`；須與 v26 的 48 張完整候選圖一致。接入前正式來源、十八個原版容器檔、字型、語系與素材包雜湊保存於 `workplace/hd-locale-v27-before.json`。
+
+READY 最小契約於 2026-10-04 經上述證據審查成立。960 組日期包括四十個代表年份、十二月份及兩種曆法，完整字模與雙色網點相同，最寬 304 像素，小於原 (128,378) 的 384×23 字區。十四州最寬 30 像素；四十二郡完整折行留在 32×64，三種天候留在 32×16。邊界收據 SHA-256 為 `11aef339e5109a4028201ec7eecf668b7cba440e7401cfd70c3cbe1e8b85b7a1`。行高防護的 1,388 組排版零裁切、兩個試作測試零 skip，48 張完整圖與 v26 的 PNG bytes 相同；收據 SHA-256 為 `9e1c46ec23b6004f197713d1c9c662254915b413220e7eb1fc9c94af9f74656f`。
+
+- 證據等級為 `[both] L1 remake 顯示驗證`。來源是兩版 DATA1／DATA2／DATA3 的 NAM、IDX、GRP 共十八檔，雜湊與 124 份接入前正式來源、四套字型及三份語系目錄均在 `hd-locale-v27-before.json`。工具為既有 `rich2-go-ebiten:latest` 的 Go 1.24.13、Xvfb；原字區定位回到 `assets.BattleLayoutFor`、`BattleLeftBox`、`BattleDate*` 與 [005](005-main-screen.md)。英文排法為已授權的 remake 差異，未新增原版 oracle 聲明。
+- typed input 為 `ArtBattleInfo`、`UnitPanel`、`InspectPanel`、`game.Date` 與現有戰役資料。繪圖時套用既有姓名／地名譯名及 `title.newLord`；識別、比較、原始人物名、`title.newLordName`、存檔、規則、亂數、等待與美術來源均保持。`battleInfo` 仍傳原文，呼叫者不預先翻譯。
+- 本節授權修改 `internal/ui/artbattle.go` 及 `internal/ui/artscreen.go` 的顯示。原始姓名、主軍／援軍、統帥與君主不同、米列、部隊／查看與模板名須由正式 renderer 回歸。空首將維持空面板；未知姓名整串原文回退，混合文字的完整排版仍是未完成限制，不猜譯。
+- 驗收依序為正式來源回歸、兩版從片頭開 001 曹操新局、正常出兵及紮寨、繁中／英／日與回切、原貌／高清切換。完整命令、軍力、左欄及日期字區須在 4× 下與原貌最近鄰相同，原貌恢復保持；原生高清肖像、圖框與原始資料雜湊另核對。尚未通過前不稱 CONFORMED；其他畫面、音訊、平台與整份 HD 仍依 #104、#110 推進。
+
+正式原始姓名、資料／肖像區、模板名及完整日期回歸在 [artbattle_locale_test.go](../../internal/ui/artbattle_locale_test.go)。無 overlay 的正式測試與建置入口為 `workplace/hd-locale-v27-build.sh`，收據為 `workplace/hd-locale-v27-build.json`，輸出沿用 `workplace/hd-window/player/locale-v27-after/`；只允許兩份 UI 來源改變，原始容器、字型、語系及素材包保持。
+
+正常玩家驗證入口為 `workplace/hd-locale-v27-normal.py`，必須指定 `SAN1_HD_LOCALE_OUT=/src/workplace/hd-window/player/locale-v27-after`，使用該目錄的正式建置。保存七個完整字區的原貌、原生高清與恢復圖，不裁掉命令末行或隱藏差異；系統滑鼠不入擷取。完整 PNG 與收據留在該目錄。
+
+完整命令末行仍有原有六格輸入游標。首輪 132 項中 12 項相位差、其餘六個完整字區全數通過，保存 `workplace/hd-locale-v27-normal-first.json`。相位同步重跑入口為 `workplace/hd-locale-v27-normal-r2.py`，輸出改為 `workplace/hd-window/player/locale-v27-after-r2/`；所有候選截圖保留，只有等到相同完整命令與游標相位才比較，未遮罩或改變遊戲時間。
+
+混合統帥與已知君主的回退另用 `workplace/hd-locale-v27-mixed-commander_test.go`、`workplace/hd-locale-v27-mixed-control-overlay.json`、`workplace/hd-locale-v27-run-mixed-control-r2.sh`，實際 renderer 核對面板下完整空隙。新增統帥首行前必須連同統帥確認 ASCII 小字可完整顯示，維持原本六行回退，不能新增第七行溢出。這項防護未解決未知混合姓名的完整顯示。
+
+控制組英文混合統帥「Bob龘」與已知君主「劉備」確實在 (540,143) 溢出，繁中及日文通過；負例、完整候選來源及原始事件保存於 `workplace/hd-locale-v27-mixed-negative.json`。修正前述防護並將同一負例加入正式 renderer 回歸。控制腳本首次誤設 `/opt/gopath`，沒有執行產品測試，已改用既有專案快取；首輪空日誌保留。相位分析曾將首墨列當成槽起點，依既有 8×16 槽界線訂正，入口及收據為 `workplace/verify-hd-locale-v27-first-diff.py`、`workplace/hd-locale-v27-first-diff.json`，初次判斷保存在 `workplace/hd-locale-v27-first-diff-first.json`；十二個完整差分均只落在原有游標槽。
+
+最終建置入口為 `workplace/hd-locale-v27-build-r2.sh`，收據為 `workplace/hd-locale-v27-build-r2.json`，原始回歸日誌為 `workplace/hd-locale-v27-r2-tests.jsonl`。三套件 212 項通過，零 skip、零 fail，含混合姓名的三語實際繪圖回歸。正常操作沿用 `hd-locale-v27-normal-r2.py`，指定 `SAN1_HD_LOCALE_OUT=/src/workplace/hd-window/player/locale-v27-after-r3`，兩版各從片頭開 001 曹操、難度 5 新局、出兵鄴郡與合法紮寨；繁中／英／日與回切八個停點共 132/132。
+
+獨立回讀入口及收據為 `workplace/verify-hd-locale-v27-delivery.py`、`workplace/verify-hd-locale-v27-delivery.json`，SHA-256 為 `a766b050aea91caa171699a1a8cb2bc06355fcb7e8fc9981d20754b32476d9fb`。143 張最新完整 PNG、24 組有界相位擷取、七個完整字區的原貌／4× 最近鄰／原貌恢復、攻方原生曹操肖像及朝向、兩側完整圖框均通過；繁中六個靜態字區及日文時刻原框對 v25 保持。兩版英文高清圖已目視，統帥、君主、軍別、將兵金米、州郡及日期完整留在既有字區。
+
+十八份原始容器、四套字型、三份語系與 v21 素材包保持；618 筆登錄與 309 PNG 身份及尺寸相同。124 份建置輸入包含 119 份正式來源／依賴檔及五份既有工具試作，本輪只有兩份 UI 正式來源改變，回歸檔另記雜湊。修正只接顯示層，未新增存讀檔、原版 oracle、音畫或平台完成聲明。部隊／查看、寬窄版與上界數值屬正式 renderer 回歸，不外推三語正常子畫面；未知混合姓名完整排版、其他畫面及整份 HD 仍待完成，§6.36 留 DRAFT，整份 021 留 READY。
+
+文件與公開檢查入口為 `workplace/verify-hd-locale-v27-docs.py`、`workplace/verify-hd-locale-v27-publish.py`。本輪新來源、候選、原版資料、素材包、完整提示詞及 PNG 收據保持本機；README 既有四張展示圖保持。
