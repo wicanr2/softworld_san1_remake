@@ -294,7 +294,7 @@ func (a *app) Update() error {
 		return nil
 	}
 	// 電腦打過來、玩家要親自守的那一場（Issue #64）：接過指揮權。
-	if a.s != nil && a.fight == nil && a.s.G.PendingDefence() != nil {
+	if a.s != nil && a.fight == nil && a.form == nil && a.s.G.PendingDefence() != nil {
 		a.startDefence()
 		a.dirty = true
 		return nil
