@@ -94,6 +94,13 @@ type BattleView struct {
 // command 由目前隊伍的 typed 資料重建，包含新語系的姓名與隊伍名。
 func (v *BattleView) Relocalize(old i18n.Locale, command string) {
 	translate := func(s string) string { return i18n.Relocalize(s, old, i18n.Current) }
+	skirmishMenu := strings.Join(v.Items, "|") == i18n.T(old, "skm.menu")
+	skirmishPrompt := false
+	if g := v.SkirmishActing; g != nil && g.Leader != nil {
+		name := NameField(i18n.PersonNameFor(old, g.Leader.Name))
+		skirmishPrompt = v.Prompt == i18n.Tf(old, "skm.prompt", name, g.Left, g.MoveCap)
+	}
+	inspectPage := v.Inspecting != nil && len(v.Page) > 0 && v.PageTitle == i18n.T(old, "bat.inspect")
 	menu := i18n.T(old, "bat.win.menu")
 	if at := strings.Index(v.Window, menu); command != "" && at >= 0 {
 		prefix := strings.Split(v.Window[:at], "\n")
@@ -116,8 +123,18 @@ func (v *BattleView) Relocalize(old i18n.Locale, command string) {
 	if v.Items != nil {
 		v.Items = items
 	}
+	if skirmishMenu {
+		v.Items = strings.Split(i18n.S("skm.menu"), "|")
+	}
+	if skirmishPrompt {
+		g := v.SkirmishActing
+		v.Prompt = SkirmishPrompt(g.Leader.Name, g.Left, g.MoveCap)
+	}
 	if v.Page != nil {
 		v.Page = page
+	}
+	if inspectPage {
+		v.PageTitle, v.Page = BattleUnitPage(v.Inspecting)
 	}
 }
 

@@ -583,8 +583,12 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		opts = v.Items
 	}
 	small := battleSmallLayout(c, opts, v.Menu, v.Prompt)
+	large := len(opts) <= battleOptRows
+	for _, line := range opts {
+		large = large && cells.Width(strings.TrimRight(line, " ")) <= w
+	}
 	switch {
-	case len(opts) <= battleOptRows:
+	case large:
 		for k, s := range opts {
 			c.DrawTextPx(ordX, ordY+k*CellH, cells.Truncate(s, w), ord)
 		}

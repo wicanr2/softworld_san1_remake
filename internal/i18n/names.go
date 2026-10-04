@@ -143,7 +143,12 @@ var pinyin = map[rune]string{
 // 繁中原樣回傳；**有任何一個字沒有對照就整個原樣回傳**——半翻的名字
 // （`Liu 備`）比不翻更糟，看起來像資料壞掉。
 func PersonName(zh string) string {
-	switch Current {
+	return PersonNameFor(Current, zh)
+}
+
+// PersonNameFor 以明示語系轉換顯示姓名，不改目前語系或來源姓名。
+func PersonNameFor(locale Locale, zh string) string {
+	switch locale {
 	case Ja:
 		return toShinjitai(zh)
 	case En:
