@@ -17,6 +17,10 @@
 
 正式只改 main.go 一行，359/360 份來源保持。新正式 binary 為 3130f19b85a4172255b840e1f77a0800e106edf4e31267ef155ad8ed5ca954a3，沒有 overlay；主軍四段保留其舊正式 binary。712 筆／340 PNG 的 v34 包與 manifest 保持，沒有新生成。守城援軍逐方重編、其他面板使用端、效能、三語、音畫與平台仍待驗；整份 HD READY，Goal ACTIVE。README 四圖、既有 Release／tag／封包保持，使用者逐張簽核仍為零。素材與完整提示詞只留本機。
 
+正式提交 `9c70ef146beada231517c4f32f485c88d6aa2f85` 已推送 main，實際遠端 ref 回讀一致。六份暫存 UTF-8 文字、六組完整提示詞正對照與新增入口連結通過，收據 workplace/hd-flags-v35-publish.json。GitHub #104／#107／#109／#110 只更新目前狀態；五項全文、標題、留言、標籤及 OPEN 狀態回讀通過，段外歷史保持，#108 完整物件未變，收據 workplace/hd-flags-v35-issue-sync.json。
+
+專案執行中與已停止容器均為零。52,199 個工作樹項目沒有 root-owned 檔案或 .md 目錄，360 份來源與擁有權再次核對，收據 workplace/hd-flags-v35-cleanup.json。使用者未追蹤的 AGENTS.md 保持，不加入提交；本段收尾另作文件提交。HD Goal 維持 ACTIVE，沒有建立新 tag、Release 或封包。
+
 ## 2026-10-05 四種旗形與二十面旗幟素材完成
 
 依目前程式、狀態表與五項 HD Issue 接續，命中規格閘門及高清素材；沿用 §6.37 READY 契約、B 畫風及 4×。正式 parser 重新核對兩版四十八個 DATA1 旗／城門記錄與原始雜湊。四種旗形逐列辨認，D0 深凹、D1 雙淺凹、A0 單凸、A1 雙凸各自保留，不以攻旗代替守旗。四張未使用城門仍排除。
