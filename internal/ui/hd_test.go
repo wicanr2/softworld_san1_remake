@@ -14,6 +14,8 @@ import (
 	"testing"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
+	"github.com/wicanr2/softworld_san1_remake/internal/battle"
+	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
 func hdFixture(t *testing.T) (string, *assets.Container, HDEntry, *assets.Image, *image.RGBA) {
@@ -204,6 +206,199 @@ func TestScene30And31UseDATA2(t *testing.T) {
 	for _, n := range []int{30, 31} {
 		if im := a.Scene(n); im == nil || im.W != 176 || im.H != 96 {
 			t.Fatalf("SCG%d 路由失敗", n)
+		}
+	}
+}
+
+func hdWeatherFixture(t *testing.T) (string, *assets.Container, []HDEntry) {
+	t.Helper()
+	dir := t.TempDir()
+	var nam, idx, grp []byte
+	var entries []HDEntry
+	for n := 0; n < 3; n++ {
+		raw := make([]byte, 4+32*32/2)
+		binary.LittleEndian.PutUint16(raw, 32)
+		binary.LittleEndian.PutUint16(raw[2:], 32)
+		raw[4] = byte(1 << n)
+		name := fmt.Sprintf("WEATHER%d", n)
+		nm := make([]byte, 16)
+		copy(nm, name)
+		copy(nm[9:], "IMG")
+		nam = append(nam, nm...)
+		grp = append(grp, raw...)
+		end := make([]byte, 4)
+		binary.LittleEndian.PutUint32(end, uint32(len(grp)))
+		idx = append(idx, end...)
+		high := image.NewRGBA(image.Rect(0, 0, 128, 128))
+		for y := 0; y < 128; y++ {
+			for x := 0; x < 128; x++ {
+				high.SetRGBA(x, y, color.RGBA{byte(x), byte(y), byte(60 + n), 255})
+			}
+		}
+		var out bytes.Buffer
+		if err := png.Encode(&out, high); err != nil {
+			t.Fatal(err)
+		}
+		file := name + ".png"
+		if err := os.WriteFile(filepath.Join(dir, file), out.Bytes(), 0644); err != nil {
+			t.Fatal(err)
+		}
+		entries = append(entries, HDEntry{Edition: "base", Container: "DATA1", Name: name + ".IMG", File: file,
+			Width: 128, Height: 128, SourceSHA256: fmt.Sprintf("%x", sha256.Sum256(raw)), SHA256: fmt.Sprintf("%x", sha256.Sum256(out.Bytes()))})
+	}
+	c, err := assets.OpenContainer(nam, idx, grp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir, c, entries
+}
+
+func TestHDWeatherValidationAndFallback(t *testing.T) {
+	dir, source, entries := hdWeatherFixture(t)
+	hdManifest(t, dir, entries)
+	pack, err := LoadHDPack(dir, "base", map[string]*assets.Container{"DATA1": source})
+	if err != nil || pack.Count != 3 || len(pack.Warnings) != 0 {
+		t.Fatalf("三種天候載入：%+v %v", pack, err)
+	}
+	for _, tc := range []struct {
+		name    string
+		change  func(*HDEntry)
+		missing bool
+	}{
+		{"missing_container", func(e *HDEntry) {}, true},
+		{"wrong_container", func(e *HDEntry) { e.Container = "DATA3" }, false},
+		{"unknown_key", func(e *HDEntry) { e.Name = "WEATHER3.IMG" }, false},
+		{"source_hash", func(e *HDEntry) { e.SourceSHA256 = "wrong" }, false},
+		{"size", func(e *HDEntry) { e.Width = 256 }, false},
+		{"png_hash", func(e *HDEntry) { e.SHA256 = "wrong" }, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bad := append([]HDEntry(nil), entries...)
+			tc.change(&bad[1])
+			hdManifest(t, dir, bad)
+			containers := map[string]*assets.Container{"DATA1": source, "DATA3": source}
+			want, warnings := 2, 1
+			if tc.missing {
+				delete(containers, "DATA1")
+				want, warnings = 0, 3
+			}
+			p, err := LoadHDPack(dir, "base", containers)
+			if err != nil || p.Count != want || len(p.Warnings) != warnings {
+				t.Fatalf("逐項回退：%+v %v", p, err)
+			}
+		})
+	}
+	hdManifest(t, dir, append(entries, entries[0]))
+	p, err := LoadHDPack(dir, "base", map[string]*assets.Container{"DATA1": source})
+	if err != nil || p.Count != 2 || len(p.Warnings) != 2 {
+		t.Fatalf("重複天候：%+v %v", p, err)
+	}
+	hdManifest(t, dir, entries)
+	p, err = LoadHDPack(dir, "plus", map[string]*assets.Container{"DATA1": source})
+	if err != nil || p.Count != 0 || len(p.Warnings) != 0 {
+		t.Fatalf("隔離版本：%+v %v", p, err)
+	}
+	// 原圖仍能解碼，但非 32×32 的來源不能註冊為天候。
+	raw := source.Data(0)
+	binary.LittleEndian.PutUint16(raw, 16)
+	bad := entries[0]
+	bad.SourceSHA256 = fmt.Sprintf("%x", sha256.Sum256(raw))
+	hdManifest(t, dir, []HDEntry{bad})
+	p, err = LoadHDPack(dir, "base", map[string]*assets.Container{"DATA1": source})
+	if err != nil || p.Count != 0 || len(p.Warnings) != 1 {
+		t.Fatalf("來源尺寸：%+v %v", p, err)
+	}
+	for _, n := range []int{580, 581} {
+		many := make([]HDEntry, n)
+		for i := range many {
+			many[i].Edition = "plus"
+		}
+		hdManifest(t, dir, many)
+		_, err = LoadHDPack(dir, "base", nil)
+		if (err == nil) != (n == 580) {
+			t.Fatalf("manifest 上限 %d：%v", n, err)
+		}
+	}
+}
+
+func TestHDWeatherBattleLayers(t *testing.T) {
+	c1, c3 := artContainers(t)
+	ab, err := NewArtBattle(c1, c3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc, err := state.LoadScenario(artContainer(t, "DATA2"), state.Scenario1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pack := &HDPack{images: map[[32]byte]*image.RGBA{}}
+	for n, im := range ab.weather {
+		if im == nil {
+			t.Fatalf("缺天候 %d", n)
+		}
+		high := image.NewRGBA(image.Rect(0, 0, 128, 128))
+		for y := 0; y < 128; y++ {
+			for x := 0; x < 128; x++ {
+				high.SetRGBA(x, y, color.RGBA{byte(x), byte(y), byte(60 + n), 255})
+			}
+		}
+		pack.images[hdImageKey(im)] = high
+	}
+	for _, prefID := range []int{25, 26} {
+		pref, err := sc.Prefecture(prefID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		field, err := battle.Load(pref.BattleField, pref.Neighbours)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, weather := range []battle.Weather{battle.Clear, battle.Rainy, battle.Windy} {
+			for _, child := range []bool{false, true} {
+				t.Run(fmt.Sprintf("pref%d-weather%d-child%v", prefID, weather, child), func(t *testing.T) {
+					b := battle.New(battle.Setup{Field: field, Weather: weather, FixedWeather: true, Seed: 1})
+					info := ArtBattleInfo{Field: pref.BattleField, Portrait: [2]int{-1, -1}}
+					if child {
+						info.Skirmish = &battle.Skirmish{Hour: battle.SkirmishFirstHour}
+					}
+					plain := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
+					DrawArtBattle(plain, ab, b, BattleView{}, info)
+					c := testCanvasPx(t, assets.ScreenW, assets.ScreenH)
+					c.HD = pack
+					DrawArtBattle(c, ab, b, BattleView{}, info)
+					if !bytes.Equal(c.Img.Pix, plain.Img.Pix) || c.Output(false) != c.Img {
+						t.Fatal("原貌被改寫")
+					}
+					out := c.Output(true)
+					high := pack.images[hdImageKey(ab.weather[weather.OriginalIndex()])]
+					for y := 0; y < 128; y++ {
+						for x := 0; x < 128; x++ {
+							if out.RGBAAt(32+x, 620+y) != high.RGBAAt(x, y) {
+								t.Fatalf("天候索引或原生細節 %d,%d", x, y)
+							}
+						}
+					}
+					for y := 0; y < out.Bounds().Dy(); y++ {
+						for x := 0; x < out.Bounds().Dx(); x++ {
+							if x >= 32 && x < 160 && y >= 620 && y < 748 {
+								continue
+							}
+							if out.RGBAAt(x, y) != plain.Img.RGBAAt(x/4, y/4) {
+								t.Fatalf("越界 %d,%d", x, y)
+							}
+						}
+					}
+					c.FillRect(10, 160, 12, 162, fg)
+					if c.Output(true).RGBAAt(40, 640) != fg {
+						t.Fatal("前景被天候蓋住")
+					}
+					c.HD = &HDPack{images: map[[32]byte]*image.RGBA{}}
+					DrawArtBattle(c, ab, b, BattleView{}, info)
+					if c.Output(true).RGBAAt(33, 620) != plain.Img.RGBAAt(8, 155) {
+						t.Fatal("缺圖回退或舊圖殘留")
+					}
+				})
+			}
 		}
 	}
 }

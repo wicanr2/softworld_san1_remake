@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""稽核私人高清包的 256 肖像槽或 31 場景槽；須在 Docker 內執行。"""
+"""稽核私人高清包的 256 肖像槽、31 場景槽或 3 天候槽；須在 Docker 內執行。"""
 import argparse
 import collections
 import hashlib
@@ -11,6 +11,7 @@ import struct
 
 KEY = re.compile(r'^DATA3/F(?:[01][0-9]{2}|2[0-4][0-9]|25[0-5])\.FAC$')
 SCENE_KEY = re.compile(r'^(?:DATA3/SCG(?:0[1-9]|[12][0-9])|DATA2/SCG3[01])\.IMG$')
+WEATHER_KEY = re.compile(r'^DATA1/WEATHER[0-2]\.IMG$')
 ACCEPTED = {'accepted-for-local-pack', 'accepted-local'}
 
 
@@ -43,6 +44,8 @@ def canonical(key):
     elif key.lower().startswith('scg') and '/' not in key:
         container = 'DATA2' if key.upper() in {'SCG30', 'SCG31'} else 'DATA3'
         key = container + '/' + key.upper() + '.IMG'
+    elif key.lower().startswith('weather') and '/' not in key:
+        key = 'DATA1/' + key.upper() + '.IMG'
     return key
 
 
@@ -71,11 +74,19 @@ def audit(args):
     root = Path(args.root).resolve()
     inventory_path = local(root, args.inventory)
     inventory = json.loads(inventory_path.read_text())
-    scenes = getattr(args, 'family', 'portraits') == 'scenes'
-    key_re = SCENE_KEY if scenes else KEY
-    prefix, label = ('SCG', '場景') if scenes else ('F', '肖像')
-    expected = ({f'{"DATA2" if n >= 30 else "DATA3"}/SCG{n:02d}.IMG' for n in range(1, 32)}
-                if scenes else {f'DATA3/F{n:03d}.FAC' for n in range(256)})
+    family = getattr(args, 'family', 'portraits')
+    if family == 'weather':
+        key_re, prefix, label = WEATHER_KEY, 'WEATHER', '天候'
+        expected = {f'DATA1/WEATHER{n}.IMG' for n in range(3)}
+        containers = ('DATA1',)
+    elif family == 'scenes':
+        key_re, prefix, label = SCENE_KEY, 'SCG', '場景'
+        expected = {f'{"DATA2" if n >= 30 else "DATA3"}/SCG{n:02d}.IMG' for n in range(1, 32)}
+        containers = ('DATA3', 'DATA2')
+    else:
+        key_re, prefix, label = KEY, 'F', '肖像'
+        expected = {f'DATA3/F{n:03d}.FAC' for n in range(256)}
+        containers = ('DATA3', 'DATA2')
     total = len(expected)
     sources, references = {}, {}
     require(len(inventory['editions']) == 2, '來源盤點須恰有兩版')
@@ -85,7 +96,7 @@ def audit(args):
         if len(entries) != total or {x['key'] for x in entries} != expected:
             raise ValueError(f'{name}: 來源盤點不是完整 {total} 個獨立槽')
         sources[name] = {x['key']: x for x in entries}
-        references[name] = [] if scenes else edition['portrait_references']
+        references[name] = edition['portrait_references'] if family == 'portraits' else []
     if set(sources) != {'base', 'plus'}:
         raise ValueError('來源盤點缺少兩版')
     pack = local(root, args.pack)
@@ -100,7 +111,7 @@ def audit(args):
             ('preparation', prepared, json.loads(preparation_path.read_text()))]:
         for x in values:
             key = x.get('key', x.get('container', '') + '/' + x.get('name', ''))
-            if not key.startswith(('DATA3/' + prefix, 'DATA2/' + prefix)):
+            if not key.startswith(tuple(container + '/' + prefix for container in containers)):
                 if re.match(r'[^/]+/' + prefix, key):
                     problems.append(f'{field}: 未知{label}鍵 {key}')
                 continue
@@ -132,7 +143,7 @@ def audit(args):
             item['sources'][edition] = {'sha256': source['source_sha256'],
                 'width': source['width'], 'height': source['height'],
                     'references': ([{'usage': source['usage'], 'geometry': source['geometry']}]
-                                   if scenes else [x for x in references[edition] if x['portrait_key'] == key])}
+                                   if family != 'portraits' else [x for x in references[edition] if x['portrait_key'] == key])}
             e, p = entries.get((edition, key)), prepared.get((edition, key))
             if e is None:
                 if p is not None:
@@ -225,7 +236,7 @@ def main():
     p.add_argument('--root', default='.')
     p.add_argument('--inventory', default='workplace/hd-inventory/inventory.json')
     p.add_argument('--pack', required=True)
-    p.add_argument('--family', choices=['portraits', 'scenes'], default='portraits')
+    p.add_argument('--family', choices=['portraits', 'scenes', 'weather'], default='portraits')
     p.add_argument('--records', action='append', required=True)
     p.add_argument('--reviews', action='append', default=[])
     p.add_argument('--out', required=True)

@@ -11,8 +11,10 @@ import time
 spec = importlib.util.spec_from_file_location('window_check', Path(__file__).with_name('verify-window-inner.py'))
 gui = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gui)
-gui.OUT = gui.ROOT / 'workplace/hd-window/player/battle-branches-v7'
-pack = gui.ROOT / 'workplace/hd-assets-scenes-v7'
+gui.OUT = gui.ROOT / os.environ.get('SAN1_HD_BRANCHES_OUT', 'workplace/hd-window/player/battle-branches-v7')
+pack = gui.ROOT / os.environ.get('SAN1_HD_BRANCHES_PACK', 'workplace/hd-assets-scenes-v7')
+weather_enabled = any(e['container'] == 'DATA1' and e['name'].startswith('WEATHER')
+                      for e in json.loads((pack / 'manifest.json').read_text())['entries'])
 FACES = [('F006', 456, 52, True), ('F000', 552, 164, False)]
 PANELS = [(448, 44, 176, 96), (448, 156, 176, 96)]
 
@@ -109,11 +111,25 @@ def outside_faces(before, after, rectangle, faces):
 
 def verify(wid, edition, tag, faces, panels):
     original = gui.shot(wid, tag + '-original')
+    weather_key = None
+    if weather_enabled:
+        actual = gui.rgb(original, '32:32:8:155')
+        matches = [f'WEATHER{n}' for n in range(3) if actual == gui.rgb(
+            gui.ROOT / f'workplace/hd-inventory/{edition}/img/DATA1/WEATHER{n}.png')]
+        gui.check(tag + '-weather-source', len(matches) == 1)
+        weather_key = matches[0]
     for name, x, y, mirror in faces:
         gui.check(tag + '-' + name + '-source',
                   gui.rgb(original, f'64:80:{x}:{y}') == source_face(edition, name, mirror))
     theme(wid, True)
     high = gui.shot(wid, tag + '-hd')
+    if weather_key:
+        gui.check(tag + '-weather-native', gui.rgb(high, '128:128:32:620') == gui.rgb(pack / (weather_key + '.png')))
+        expected = gui.rgb(original, '56:70:0:140,scale=224:280:flags=neighbor')
+        actual = gui.rgb(high, '224:280:0:560')
+        gui.check(tag + '-weather-frame-text-unchanged', all(
+            expected[(y*224+x)*3:(y*224+x+1)*3] == actual[(y*224+x)*3:(y*224+x+1)*3]
+            for y in range(280) for x in range(224) if not (32 <= x < 160 and 60 <= y < 188)))
     for name, x, y, mirror in faces:
         expected = gui.rgb(pack / (name + '.png'))
         if mirror:
@@ -123,6 +139,12 @@ def verify(wid, edition, tag, faces, panels):
     gui.check(tag + '-text-frame-unchanged', all(outside_faces(original, high, p, faces) for p in panels))
     theme(wid, False)
     restored = gui.shot(wid, tag + '-restored')
+    if weather_key:
+        gui.check(tag + '-weather-original-restored', gui.rgb(original, '56:70:0:140') == gui.rgb(restored, '56:70:0:140'))
+        gui.receipt.setdefault('weather_samples', []).append({'edition': edition, 'stage': tag,
+            'key': 'DATA1/' + weather_key + '.IMG', 'source_rect': [8,155,32,32],
+            'high_rect': [32,620,128,128], 'original': str(original.relative_to(gui.ROOT)),
+            'high': str(high.relative_to(gui.ROOT)), 'restored': str(restored.relative_to(gui.ROOT))})
     gui.check(tag + '-original-restored', all(
         gui.rgb(original, f'{w}:{h}:{x}:{y}') == gui.rgb(restored, f'{w}:{h}:{x}:{y}')
         for x, y, w, h in panels))

@@ -3,14 +3,16 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ORIG="${SAN1_ORIG:-$ROOT/org_game}"
-target=workplace/hd-window/player/battle-branches-v7
-pack=workplace/hd-assets-scenes-v7
+target="${SAN1_HD_BRANCHES_OUT:-workplace/hd-window/player/battle-branches-v7}"
+pack="${SAN1_HD_BRANCHES_PACK:-workplace/hd-assets-scenes-v7}"
+case "$target:$pack" in *..*|/*|*:/*) echo "輸出與素材須使用專案內相對路徑" >&2; exit 2 ;; esac
 for path in "$ROOT" "$ORIG" "$ROOT/workplace/hd-window/player" "$ROOT/$pack" \
   "$ROOT/workplace/hd-inventory" "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
   test -d "$path" || { echo "缺少目錄：$path" >&2; exit 2; }
 done
 common=(--rm --network none --memory 3g --cpus 2 --pids-limit 256
   --log-opt max-size=10m --log-opt max-file=3 -u "$(id -u):$(id -g)"
+  -e SAN1_HD_BRANCHES_OUT="$target" -e SAN1_HD_BRANCHES_PACK="$pack"
   -v "$ROOT:/src" -v "$ORIG:/src/org_game:ro" -v "$ORIG:/orig:ro"
   -v "$ROOT/$pack:/src/$pack:ro" -v "$ROOT/workplace/hd-inventory:/src/workplace/hd-inventory:ro" -w /src)
 timeout 3m docker run "${common[@]}" --name san1-hd-battle-branches-build \

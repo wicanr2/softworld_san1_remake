@@ -103,6 +103,7 @@ func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, inf
 	im := ab.compose(b, v, info)
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	c.drawHigh(ab.weather[b.Weather.OriginalIndex()%len(ab.weather)], assets.BattleWeatherX, assets.BattleWeatherY)
 	l := assets.BattleLayoutFor(b.Field.Narrow())
 	for i := range assets.BattleFaceMirror {
 		portrait := info.Portrait[i]

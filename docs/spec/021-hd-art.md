@@ -1342,3 +1342,78 @@ F003 在六劇本人物表沒有引用，不猜人物姓名。F084 與 F208 各�
 | `workplace/hd-v18-gui-location-first.json` | `19c5f51e8137ad4c56fd77585c87f905ce55b1a6402cf37f0050f5012943c56f` |
 | `workplace/hd-v18-delivery-location-first.json` | `8e2feecad58d093cf8323c4efdf85fea568fa27a23e30a02ca1c2537c8b09fb7` |
 | `workplace/hd-v18-artifact-index.json` | `1411b2e1f0dc8107020692d09e06658df116d9ce7707cc604782ee218cf12a30` |
+
+### 6.30 三種天候圖示
+
+**狀態：READY**。沿用 B 寫實手繪、4× 及每次啟動原貌，補齊戰場左欄的晴、雨、風圖示。本批不改天候判定、戰術條件、索引、日期或存檔。原版與加強版的三個 DATA1 槽來源 bytes 相同，32×32 不透明，L0、[both]；完整來源見 [盤點](../formats/04-asset-inventory.md#6-hd-兩版盤點)。
+
+| 資源鍵 | 圖示語意 | 原圖／高清尺寸 | 原始槽 SHA-256 |
+|---|---|---|---|
+| DATA1/WEATHER0.IMG | 晴 | 32×32／128×128 | `48dec119d31511402fc579212773823dc2c884a51d64a5ea3b99f15ce792b01b` |
+| DATA1/WEATHER1.IMG | 雨 | 32×32／128×128 | `22aebb469db88b9106e0e8ef6df3319075a705b32b7701df01e6eed9c5c79652` |
+| DATA1/WEATHER2.IMG | 風 | 32×32／128×128 | `8c5a28d81bf05316857b0016e8d9256ff9af403c5f66b07be10f83b6f101e63d` |
+
+直接回讀 DATA1.NAM／IDX／GRP 與既有 PNG，來源準備入口為 `workplace/prepare-hd-weather-v19.py`，計畫及收據為 `workplace/hd-weather-v19-plan.json`、`workplace/hd-weather-v19-source-verification.json`；最近鄰預覽為 `workplace/hd-preview/v19-source-WEATHER0-16x.png`、`workplace/hd-preview/v19-source-WEATHER1-16x.png`、`workplace/hd-preview/v19-source-WEATHER2-16x.png`。原圖與預覽均須目視後才生成，候選保存於 `workplace/hd-weather-v19-requests.json`、`workplace/hd-weather-v19-generated-paths.json`、`workplace/hd-weather-v19-reviews.json`、`workplace/hd-weather-v19-generation.json`。工具未回報模型或 seed 時明示，不推定使用者逐張簽核。
+
+圖像解碼使用既有 `assets.DecodeImage` 的四個 I／R／G／B 位元平面，不當成雙像素打包格式。正式 parser 回讀入口為 `workplace/verify-hd-weather-v19-source.go`，收據為 `workplace/hd-weather-v19-decoder-verification.json`；逐像素核對已匯出 PNG，避免只憑檔案大小判定。
+
+候選彙整與來源比較入口為 `workplace/collect-hd-weather-v19.py`、`workplace/make-hd-weather-v19-contact.py`，比較頁為 `workplace/hd-preview/weather-v19-contact.png`。通過後才建立 `workplace/hd-assets-weather-v19/` 私人包，重建入口與收據為 `workplace/build-hd-weather-v19.py`、`workplace/hd-weather-v19-build-receipt.json`。
+
+比較頁收據為 `workplace/hd-weather-v19-contact-receipt.json`；三組均為左原圖、右採用候選的 128×128 全圖縮放，順序為晴、雨、風。候選本體採 `workplace/hd-b-WEATHER0-v1.png`、`workplace/hd-b-WEATHER1-v1.png`、`workplace/hd-b-WEATHER2-v1.png` 等版次保存，完整執行請求與實際路徑另列於生成紀錄。
+
+現行天候索引為 `battle.Weather.OriginalIndex()` 的晴 0、雨 1、風 2；不直接用 remake 列舉值。主戰場、窄戰場與對戰子畫面均由 `DrawArtBattle` 在 (8,155) 畫 32×32 圖示。高清只於相同矩形疊 128×128 完整圖，文字、時刻、地形、兵力牌與其他框線保留覆蓋權；原貌 CPU 畫布不改。索引與原版位置依 [主戰場規格](005-main-screen.md)，實際入口為 `internal/ui/artbattle.go`、`internal/assets/battlescreen.go` 與 `internal/battle/battle.go`。
+
+候選及原圖比較通過後才轉 READY，允許正式載入器接受 DATA1 的 WEATHER0–2，核對實際來源存在、32×32、4× 尺寸與來源／輸出雜湊。沿用 schema 1，雙版上限增加六筆至 580，不開放其他未審查鍵；缺 DATA1、缺圖、錯槽、錯尺寸或錯來源逐項回退。私人 v19 包須保留 v18 全部 574 筆欄位、PNG bytes 與準備紀錄。
+
+來源的 6 個槽及 6,144 像素核對通過。三張 1254×1254 候選與原圖、128×128 全圖縮放比較頁均已查看，Codex 採用，使用者逐張簽核為 0。生成紀錄 SHA-256 為 `31b0807474f5255b46c154d197888f55f3c6b8586767c471c9ce92f443784d49`，比較頁為 `457ec8ee1bb2437078a03d77ca97df4ccf473536b71a1839812bf6df32aab1fd`。來源、構圖與尺寸契約已足以授權正式接入。
+
+驗收分列來源／候選、載入器正反例、三種天候的正式圖層，以及兩版正常玩家戰場。正常 GUI 不注入天候、人物、戰場或 seed；只宣稱實際抵達的天候與分支，不以圖層檢查替代正常流程。正式接入、三家族完整準備稽核及兩版正常晴天 GUI 已通過；正常雨、風尚未由本批驗證，不新增原版天候規則 parity。
+
+正式驗證沿用 `internal/ui/hd_test.go`、`tools/hd-portrait-audit.py --family weather` 與 `tools/verify-hd-battle-branches.sh`。GUI 使用 `SAN1_HD_BRANCHES_PACK=workplace/hd-assets-weather-v19`、`SAN1_HD_BRANCHES_OUT=workplace/hd-window/player/weather-v19`，收據為該目錄的 `receipt.json`。載入器回讀、三家族完整稽核、CLI 正反例與獨立交付回讀分別由 `workplace/verify-hd-weather-v19-pack.go`、`workplace/audit-hd-weather-v19.py`、`workplace/test-hd-weather-v19-audit.py`、`workplace/verify-hd-weather-v19-delivery.py` 執行；同名 JSON 保存命令、結果與雜湊。
+
+UI 測試結果另存 `workplace/hd-weather-v19-tests.json`。CLI 正反例只在 `workplace/` 建立短期 fixture，完成後自動移除。三家族報告為 `workplace/hd-portraits-audit-v19.json`、`workplace/hd-scenes-audit-v19.json`、`workplace/hd-weather-audit-v19.json`。
+
+文件檢查入口與收據為 `workplace/verify-hd-weather-v19-docs.py`、`workplace/hd-weather-v19-docs-verification.json`。公開檢查沿用完整 PNG、完整提示詞、MZ 前綴與正反對照，只掃本輪實際暫存文字或五份 Issue 本文，入口為 `workplace/verify-hd-weather-v19-publish.py`，收據依序為 `workplace/hd-weather-v19-publish-check.json`、`workplace/hd-weather-v19-issue-publish-check.json`、`workplace/hd-weather-v19-checkpoint-publish-check.json`。Issue 計畫、本文及回讀為 `workplace/hd-weather-v19-issue-plan.json`、`workplace/hd-weather-v19-issue-{104,107,108,109,110}-body.md`、`workplace/hd-weather-v19-issue-sync.json`。
+
+正式載入器兩版各 290 筆、無警告；三家族備妥數為 256/256、31/31、3/3，Codex 已審查，使用者逐張簽核均為 0。天候 CLI 正反例 14/14、正式圖層 12/12 組與完整 UI 套件通過。正常兩版 001 董卓、難度 5，依序休息郡 6、16 後，洛陽呂布攻陳留，合法紮寨、對戰、查看、續行及快戰 173/173，14 個停點皆為晴。子畫面時刻推進，快戰結算後返回，原版釋放一名俘虜、加強版無俘虜；未注入狀態或改寫 seed。兩版高清畫面已查看。189 張最新 GUI PNG、全部 580 筆登錄、290 張 PNG、三張實際生成檔與 v18 保留紀錄獨立回讀通過。
+
+獨立交付收據 SHA-256 為 `e4d9d91eb13e0f2cf004b0d55f11e25bc6d614c0859ee7b46f7287f7fb8544af`。本批不外推正常雨、風、其他素材家族或平台，不新增原版 oracle、音畫或人耳驗收。
+
+| 產物或入口 | SHA-256 |
+|---|---|
+| `workplace/hd-weather-v19-plan.json` | `6c525e649082f5e31542fe1c4e7d2963c89affc9a97cc217533215ca7573bec7` |
+| `workplace/hd-weather-v19-source-verification.json` | `230210121a21b83e79c200082924d2d6a552755903b99334b5f934f95fd8ad04` |
+| `workplace/hd-weather-v19-decoder-verification.json` | `27c1c55b7a183027a84e0087e8ecd2ec000a03056c30798b4ab451c59409d77e` |
+| `workplace/hd-weather-v19-requests.json` | `c751ac4d1bbce8e417a8dcc993a3026171ab238cdb35d0628fe7ce98f4b6a70f` |
+| `workplace/hd-weather-v19-generated-paths.json` | `47b362e255d3f8f9bad964331da992140672bcc9256a8272ec7b7a34e7c23be6` |
+| `workplace/hd-weather-v19-reviews.json` | `ec1a3efc3e6590c761ff2cfd1653aba268108664a669a67174df7289a8516159` |
+| `workplace/hd-weather-v19-generation.json` | `31b0807474f5255b46c154d197888f55f3c6b8586767c471c9ce92f443784d49` |
+| `workplace/hd-weather-v19-contact-receipt.json` | `a376415ef58b4c57001cc8fca97933b2dcb51093d636240a6a30c97ee06aa43e` |
+| `workplace/hd-preview/weather-v19-contact.png` | `457ec8ee1bb2437078a03d77ca97df4ccf473536b71a1839812bf6df32aab1fd` |
+| `workplace/hd-assets-weather-v19/manifest.json` | `ed2a7ccad8457606c894fe93b5f475d3bacc365edd081896ecff75d7ce0994d9` |
+| `workplace/hd-assets-weather-v19/preparation.json` | `dca0a61314c2bdb1993a7ca8ff3c78f3ee874b07546fcec82134034b437d8c93` |
+| `workplace/hd-weather-v19-build-receipt.json` | `d1716ce147974c6d1dd9e61e639bbe96bfc4a8bf335e7cea148f7757f03bae24` |
+| `workplace/verify-hd-weather-v19-pack.json` | `b55749fb508d85f560f4e1a419839a14cf22966c5880e656f7247dad19f9b117` |
+| `workplace/audit-hd-weather-v19.json` | `01e2afcb3e7062cc0244965b1591a1e6f2472dcb40a91228e8eefc572f9a0c4c` |
+| `workplace/hd-portraits-audit-v19.json` | `cee3f8ac7988b300169fa91f47be859ed7db8ae1dc421ae79ad1b4785a22a01b` |
+| `workplace/hd-scenes-audit-v19.json` | `415e6810bab238826a33a9a0269e8365c362b4a1110b271b4bff0b18063f5a6e` |
+| `workplace/hd-weather-audit-v19.json` | `b9f72a04084f6493b84967ce099ee16a2db93b94858ae03bbea0637bf28d5eda` |
+| `workplace/test-hd-weather-v19-audit.json` | `84f0035a743d72bb3bcaeaf42acf4fcb0d199ce10642b74e9fc1df0d8b05070c` |
+| `workplace/hd-weather-v19-tests.json` | `ec5d7196d2de14695c86094d7f514c55c122490e3d7d71d51f3c0b845965111c` |
+| `workplace/hd-window/player/weather-v19/receipt.json` | `70a71264e45dc3832521bdf424e28fbecf80c2c830f756d99900dfa0d46e3228` |
+| `workplace/verify-hd-weather-v19-delivery.json` | `e4d9d91eb13e0f2cf004b0d55f11e25bc6d614c0859ee7b46f7287f7fb8544af` |
+| `workplace/prepare-hd-weather-v19.py` | `d04d7f5360f42d22175414ad42d7c5b10dceed7371f82bb8c718cf93527669bc` |
+| `workplace/verify-hd-weather-v19-source.go` | `535d999127549857daed43627a0eea0016b9ef8864b488499a9ace368c7b1882` |
+| `workplace/collect-hd-weather-v19.py` | `8d5350b8b6057ce58c3f1520eac61ab6d9398a60f85a5059cd9aa7c94eadb1e3` |
+| `workplace/make-hd-weather-v19-contact.py` | `1f4807ebdd07e08b8b06dc63206e3c6578d9ba00f98af9abff1cbb40bebed29d` |
+| `workplace/build-hd-weather-v19.py` | `3762b954e8ed1f1d8939fb98672ef5a6fa64f5c14f47563b6ee2e3245128b93d` |
+| `workplace/verify-hd-weather-v19-pack.go` | `9b85db7ab9c67e2a0b75410faf68ab6a394201255e311e07c704d25a987ede58` |
+| `workplace/audit-hd-weather-v19.py` | `4b805a630d483a348e373c8243057522aa905b8ddeaed61b51f42a8c58128266` |
+| `workplace/test-hd-weather-v19-audit.py` | `f3c0eaa638c4d5241546679012a7ee84fb5fdbcf8d0dc5d207c223802ee4b6b7` |
+| `workplace/verify-hd-weather-v19-delivery.py` | `6b93e32f872df32287a5503b2c87108dffbb653d64276e20f840d978915de34a` |
+| `workplace/verify-hd-weather-v19-publish.py` | `64d3a878a74ca66e9a128b0c92d49107b7b3aa38bd1cc284c756e5ee35359c1a` |
+| `tools/hd-portrait-audit.py` | `c16d3fb10da2f3b560c087af63149a5daf9801056ab306caec95c5dfd34c847f` |
+| `tools/verify-hd-battle-branches.sh` | `e11421c01e7bfd619840e61ba1ea583c0c363058bbf110100eb2c4d93e0d0139` |
+| `tools/verify-hd-battle-branches-inner.py` | `ffe87236739ce50bd4e7270c05181dc2cccc178d195c1226a439e8b21689bbd6` |
+| `tools/verify-window-inner.py` | `d7f0f648e4d50ce76cd6ffa1fc8b345d8e4d5662f4e2515c40c5b244b39d38a0` |
+| `tools/hd-battle-branches-reference.go` | `909f4031a9dc9f72e7df992d3d633c4349bb3a2ecbb5bfdd077c1a3448333aab` |

@@ -45,7 +45,7 @@ type HDPack struct {
 	Warnings []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG)$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG)$`)
 
 // LoadHDPack 逐項驗證玩家自己的來源，錯項回退原圖。
 func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*HDPack, error) {
@@ -65,7 +65,7 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 574 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 580 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
 	p := &HDPack{images: make(map[[32]byte]*image.RGBA)}
@@ -105,7 +105,10 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	if strings.HasPrefix(e.Name, "F") && e.Name > "F255.FAC" {
 		return nil, nil, fmt.Errorf("肖像資源越界")
 	}
-	if (strings.HasPrefix(e.Name, "F") || e.Name < "SCG30.IMG") && e.Container != "DATA3" {
+	if (strings.HasPrefix(e.Name, "F") || (strings.HasPrefix(e.Name, "SCG") && e.Name < "SCG30.IMG")) && e.Container != "DATA3" {
+		return nil, nil, fmt.Errorf("來源容器不符")
+	}
+	if strings.HasPrefix(e.Name, "WEATHER") && e.Container != "DATA1" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
 	if strings.HasPrefix(e.Name, "SCG") && e.Name >= "SCG30.IMG" && (e.Container != "DATA2" || e.Name > "SCG31.IMG") {
@@ -128,7 +131,8 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 		return nil, nil, err
 	}
 	if (strings.HasPrefix(e.Name, "F") && (im.W != 64 || im.H != 80)) ||
-		(strings.HasPrefix(e.Name, "SCG") && (im.W != 176 || im.H != 96 || e.Name == "SCG00.IMG")) {
+		(strings.HasPrefix(e.Name, "SCG") && (im.W != 176 || im.H != 96 || e.Name == "SCG00.IMG")) ||
+		(strings.HasPrefix(e.Name, "WEATHER") && (im.W != 32 || im.H != 32)) {
 		return nil, nil, fmt.Errorf("來源尺寸不符")
 	}
 	if e.Width != im.W*4 || e.Height != im.H*4 {

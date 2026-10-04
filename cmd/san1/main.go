@@ -1846,7 +1846,8 @@ func main() {
 	}
 	if art != nil {
 		c3, _ := openContainer(*root, "DATA3")
-		pack, err := ui.LoadHDPack(*hdAssets, string(ed), map[string]*assets.Container{"DATA3": c3, "DATA2": c})
+		c1, _ := openContainer(*root, "DATA1")
+		pack, err := ui.LoadHDPack(*hdAssets, string(ed), map[string]*assets.Container{"DATA1": c1, "DATA3": c3, "DATA2": c})
 		if err == nil {
 			a.canvas.HD = pack
 			for _, why := range pack.Warnings {
