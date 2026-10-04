@@ -331,7 +331,7 @@ func (c *Canvas) Output(high bool) *image.RGBA {
 	if c.highOutput == nil {
 		c.highOutput = image.NewRGBA(image.Rect(0, 0, b.Dx()*4, b.Dy()*4))
 	}
-	xdraw.NearestNeighbor.Scale(c.highOutput, c.highOutput.Bounds(), c.Img, b, draw.Src, nil)
+	scaleRGBA4(c.highOutput, c.Img)
 	for _, op := range c.highOps {
 		r := image.Rectangle{Min: op.rect.Min.Mul(4), Max: op.rect.Max.Mul(4)}
 		draw.Draw(c.highOutput, r, op.image, op.source, draw.Src)
@@ -350,6 +350,28 @@ func (c *Canvas) Output(high bool) *image.RGBA {
 		}
 	}
 	return c.highOutput
+}
+
+// scaleRGBA4 將每個 RGBA 像素複製為 4×4；目的尺寸須為來源的四倍。
+func scaleRGBA4(dst, src *image.RGBA) {
+	b, d := src.Bounds(), dst.Bounds()
+	rowBytes := b.Dx() * 16
+	for y := 0; y < b.Dy(); y++ {
+		so := src.PixOffset(b.Min.X, b.Min.Y+y)
+		source := src.Pix[so : so+b.Dx()*4]
+		do := dst.PixOffset(d.Min.X, d.Min.Y+y*4)
+		row := dst.Pix[do : do+rowBytes]
+		for x := 0; x < len(source); x += 4 {
+			i := x * 4
+			copy(row[i:i+4], source[x:x+4])
+			copy(row[i+4:i+8], row[i:i+4])
+			copy(row[i+8:i+16], row[i:i+8])
+		}
+		for sy := 1; sy < 4; sy++ {
+			off := do + sy*dst.Stride
+			copy(dst.Pix[off:off+rowBytes], row)
+		}
+	}
 }
 
 // SearchHighScene 保留尋訪的藍底及原版肖像定位。

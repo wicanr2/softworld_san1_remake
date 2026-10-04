@@ -1563,3 +1563,63 @@ UI 測試結果另存 `workplace/hd-weather-v19-tests.json`。CLI 正反例只�
 | `workplace/hd-window/player/lure-v21/receipt.json` | `8d6e5cc8586efdcb3cc3d65167c88b9e0d871a8048b28369be1f013f13d64498` |
 | `workplace/verify-hd-lure-v21-delivery.json` | `c469723d947427c999536fac35310b38687ef5f400f055ab2c15b609e64792dc` |
 | `workplace/hd-lure-v21-artifact-index.json` | `231e33e86b32407b0dedecc3556b5855da6e9e16bff2f568a31990d263b44f22` |
+
+## 6.33 高清播放效能量測
+
+**狀態：CONFORMED，限固定 4× 像素等價維護**。#110 的整體播放效能尚未完成，整份 HD 仍為 READY。§6.32 四段完整誘敵錄影證實高清顯示正確；在 4 CPU／4 GiB 的軟體 OpenGL 與錄影並行環境，原版高清 32.233 秒、加強版高清 5.667 秒，兩段原貌皆 4.617 秒。此證據未隔離 CPU 合成、GPU／驅動與錄影負載，不能據此指定產品修法。
+
+本輪保持 B、4×、完整 2560×1632、每次啟動原貌及所有原像素、疊層與缺圖回退。先量測既有 `DrawArtBattle`、`DrawLureFlash`、`Canvas.Output`、`uploadGame` 與視窗繪製的時間及配置量，再依實際瓶頸做可丟棄的等價實作。不得降低解析度、跳過動畫相位、調整 TPS、延遲或音訊等待來縮短時間。Go、Ebiten 與顯示器使用目前 Docker 工具鏈，不退回主機執行。
+
+控制組只讀目前兩版原始容器及私人 v21 包；寬窄主戰場、場景與肖像的 CPU 合成量測不能取代正常玩家路徑。量測入口及收據採 `workplace/hd-perf-v22-probe_test.go`、`workplace/hd-perf-v22-cpu-probe.json`、`workplace/hd-perf-v22-cpu-profile.pprof`、`workplace/hd-perf-v22-cpu-profile.txt`，隔離容器暫時複製為 `internal/ui/zz_hd_perf_v22_probe_test.go`，以 trap 移除。
+
+首份 CPU 控制量測為 Go 1.24.13、兩版 × 寬窄 × 原貌／高清，共八組 960 幀。原貌 paint 平均 1.93–2.94 ms；高清 paint 3.24–3.62 ms、Output 24.16–27.46 ms。通用最近鄰縮放占 CPU 採樣 53.79%，含載入採樣；此項為 remake 控制量測已證實，不證明原版硬體時序或正常視窗根因已全部解決。
+
+固定 4× 的複製試作採 `workplace/hd-perf-v22-scale-prototype_test.go`、`workplace/hd-perf-v22-scale-prototype.json`，同樣暫存於 `internal/ui/zz_hd_perf_v22_scale_test.go` 並以 trap 移除。以目前 `x/image` 的最近鄰 `draw.Src` 作獨立預期值，核對完整 RGBA、alpha、非零原點、來源／目的 stride、子圖與矩形外像素；原版寬窄兩種版面的 22 相位逐幀回讀。試作不可改變原畫布、覆蓋權、解析度或素材。等價檢查與速度量測通過後，才授權將純像素等價的維護接入正式 `Canvas.Output`。
+
+試作已通過 12 組幾何與 44 個原版正式疊層幀的完整 RGBA 比較。寬窄兩組各 120 次純放大量測，通用縮放平均 21.17／23.78 ms，固定複製平均 2.51／2.56 ms，分別快 8.45／9.29 倍。來源與目的原點、stride、子圖、alpha 及矩形外位元組皆相同。此證據足以授權純維護接入；正式回歸由 [hd_scale_test.go](../../internal/ui/hd_scale_test.go) 保存同一個獨立最近鄰預期值，不在 CI 設不穩定的耗時門檻。
+
+基線程式與建置來源保存於 `workplace/hd-perf-v22-baseline-hd.go`、`workplace/hd-perf-v22-baseline-build.json`；後續純維護實作不得覆寫這份控制組。正式接入後的 CPU 與正常玩家複驗採 `workplace/hd-perf-v22-{optimized-cpu.json,optimized-profile.pprof,optimized-profile.txt,optimized-normal.py,optimized-normal.json,optimized-build.json}` 及 `workplace/hd-window/player/perf-v22-optimized/`，以相同素材、鍵序、資源限制與計時 overlay 比較。完整 UI／assets 事件與摘要採 `workplace/hd-perf-v22-tests.jsonl`、`workplace/hd-perf-v22-tests.json`。
+
+正常玩家量測以 Go overlay 的可丟棄副本接入計時與 CPU 採樣，不改正式程式。入口、工具副本、原始與摘要收據存於 `workplace/hd-perf-v22-normal.py`、`workplace/hd-perf-v22-overlay.json`、`workplace/hd-perf-v22-{main.go,windowbar.go,trace.go}`、`workplace/hd-perf-v22-normal.json` 與既有 `workplace/hd-window/player/perf-v22/`。各次正常原貌／高清新局、出兵、合法紮寨與誘敵採相同既有鍵序，不注入人物、seed 或戰場；先停用錄影，量測完整 22 步與實際更新／繪製，再決定是否需要錄影交叉驗證。收據記錄程式、來源、包、工具與容器版本及雜湊，不稱為原版硬體時序對拍。
+
+無錄影基線四組皆畫出完整 22 相位。兩版原貌為 4.636／4.634 秒，高清為 5.299／13.671 秒；高清 Output 平均為 29.96／40.12 ms。移除錄影後仍有波動，先前 32.233 秒不能只歸因於這個縮放函式。後續比較保持同一 overlay、軟體 OpenGL、4 CPU／4 GiB 與正常操作；純 CPU 量測和整段正常動畫分別報告。
+
+正式維護將通用最近鄰改為逐行複製 4×4 的 RGBA bytes，保留 `highOps` 的疊圖及原 UI 覆蓋權。來源限定為現有 RGBA 畫布，目的矩形尺寸是來源四倍，兩者不重疊；不引入 unsafe、近似插值或低解析輸出。回歸十二組尺寸／子圖幾何、完整 UI／assets 208 項均通過，skip 與 fail 為 0。八組 CPU 各量測 120 幀、合計 960 幀；八組末幀的原貌與高清輸出雜湊相同，完整逐幀等價另由前述 44 幀試作與幾何回歸驗證。
+
+| CPU 高清 Output | 修改前平均 ms | 修改後平均 ms | 速度比 |
+|---|---:|---:|---:|
+| 原版窄圖 | 27.46 | 4.68 | 5.86× |
+| 原版寬圖 | 24.16 | 3.67 | 6.59× |
+| 加強版窄圖 | 26.06 | 3.76 | 6.93× |
+| 加強版寬圖 | 24.80 | 3.52 | 7.04× |
+
+控制組與修改組均為 Go 1.24.13、GOMAXPROCS 14、4 CPU／4 GiB，18 份原始來源雜湊與私人 v21 包完全相同。含載入的 CPU 採樣中，固定複製占 10.46% flat、13.03% cumulative；此百分比的分母含 PNG 與字型載入，不能外推正常視窗占比。
+
+| 無錄影正常動畫 | 修改前秒 | 修改後秒 | 修改前／後 Output 平均 ms |
+|---|---:|---:|---:|
+| 原版原貌 | 4.636 | 4.633 | <0.001／<0.001 |
+| 原版高清 | 5.299 | 5.587 | 29.96／6.18 |
+| 加強版原貌 | 4.634 | 4.634 | <0.001／<0.001 |
+| 加強版高清 | 13.671 | 10.506 | 40.12／7.17 |
+
+兩組皆透過相同 Go overlay 從正常片頭、新局、出兵、合法紮寨及策略選單施放，每次 22 個相位都有實際 Draw；每段 Update 次數均為 279，來源、正式等待、速度與 TPS 保持。CPU 合成改善已證實，整段高清仍較慢；尚未分離 GPU 呈現、驅動及排程，#110 保持未完成，不以單次時長認定跨平台效能或原版硬體時序一致。
+
+不帶 overlay 的正式正常路徑另以 [verify-hd-lure.sh](../../tools/verify-hd-lure.sh) 重跑，`SAN1_HD_LURE_OUT=workplace/hd-window/player/lure-perf-v22`，核對四段原生圖、完整相位、塊外像素及恢復旗圖。私人交付回讀、索引、文件及公開閘門入口採 `workplace/verify-hd-perf-v22-{delivery.py,delivery.json,docs.py,docs.json,publish.py}`、`workplace/index-hd-perf-v22.py`、`workplace/hd-perf-v22-artifact-index.json` 與 `workplace/hd-perf-v22-{publish-check.json,issue-publish-check.json,checkpoint-publish-check.json}`。五份 Issue 的讀寫前後快照及本文採 `workplace/hd-perf-v22-issue-{104,107,108,109,110}-{before.json,body.md,after.json}`，同步計畫與收據採 `workplace/hd-perf-v22-issue-{plan.json,sync-receipt.json}`。不公開原圖、高清圖、完整提示詞或私人收據。
+
+正式四次正常玩家操作共 31/31 檢查通過。獨立回讀核對實際程式、18 份原始來源、私人包的全部 309 PNG、原始測試事件、兩組共八次計時及四段錄影；54 張最新完整視窗 PNG、16 張動畫與 4 張第一個恢復幀 PNG 皆核對雜湊。四段各完整 22 步、四張原生圖、動畫外框及恢復旗圖相符，兩版高清畫面已查看。原貌動畫各約 4.633 秒，錄影並行的高清約 6.833／20.267 秒；此時長含錄影負載，與無錄影量測分開，不作效能合格聲明。音訊未重測，保留 §6.13 的 Linux 配樂範圍；不新增音效、人耳、原版 oracle 或跨平台聲明。
+
+本輪主要私人證據：
+
+| 路徑 | SHA-256 |
+|---|---|
+| `workplace/hd-perf-v22-cpu-probe.json` | `1880db38a733dcd0b274c938ca2bcfee2febec8ebc29cfbe9732cd56456cf198` |
+| `workplace/hd-perf-v22-optimized-cpu.json` | `cc11e6ff286386ec1b71b8ab3adc158b2cae969ada068c876b11cf3e1c97c29a` |
+| `workplace/hd-perf-v22-scale-prototype.json` | `e533dae8bf64a8bf4972f0db6f553770f150cba321220960c9bcd19a9cb2b1cc` |
+| `workplace/hd-perf-v22-normal.json` | `fa8f5477c3a5838447318be46ad07c2deed90bd2f7c9a09ca8cbfde5f5553cd9` |
+| `workplace/hd-perf-v22-optimized-normal.json` | `5e4fa13e3186dd19673f28eebade2a13f62958097dc0d509c93225c12192b16a` |
+| `workplace/hd-perf-v22-baseline-build.json` | `82f6533a39a6db805c729bc3261c26b5994efeefb29aaf16914cef7f6ddf98f0` |
+| `workplace/hd-perf-v22-optimized-build.json` | `39de485ca48717006c988f0b5c209dc787dcc4f3423cb58d4bca9a6376753657` |
+| `workplace/hd-perf-v22-tests.jsonl` | `43326e35f0c1172d9d8e881354e65f23164565e4f197838f993b733db0bb3e72` |
+| `workplace/hd-perf-v22-tests.json` | `d839159ca920480c50b4339ea3f640695fa9dec674e13411e0628f9e664ec348` |
+| `workplace/verify-hd-perf-v22-delivery.py` | `9821a6679a304166132f626c2890afa391776d13a3348e72da5bd7f720b973d2` |
+| `workplace/verify-hd-perf-v22-delivery.json` | `35073ff1826980587069b585f2c486ab3337407b226efb8cce6519da794c1efb` |
