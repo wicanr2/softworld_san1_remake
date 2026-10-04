@@ -179,7 +179,7 @@ func DrawPersonCard(c *Canvas, a *ArtScreen, g *game.State, index int) {
 	if a != nil {
 		// 外框：原版的 `0x1058:0x262c` 在清好的矩形上拼 `SIDEC`（樣式 7）。
 		if a.havePanel {
-			drawSideFrame(c, a.cardPanel, cardX0, cardY0, cardX1-cardX0+1, cardY1-cardY0+1)
+			drawSideFrame(c, a.cardPanel, cardX0, cardY0, cardX1-cardX0+1, cardY1-cardY0+1, cardPaper)
 		}
 		if face := a.Portrait(int(x.Portrait)); face != nil {
 			drawImageAt(c, face, cardFaceX, cardFaceY)
@@ -210,7 +210,7 @@ func DrawPersonCard(c *Canvas, a *ArtScreen, g *game.State, index int) {
 
 // drawSideFrame 照 `assets.Image.DrawPanel` 的拼法把外框拼到畫布上：
 // 四個角 16×16、四條邊 8×8 平鋪。
-func drawSideFrame(c *Canvas, f assets.SideFrame, x, y, w, h int) {
+func drawSideFrame(c *Canvas, f assets.SideFrame, x, y, w, h int, paper ...byte) {
 	const cn, e = 16, 8
 	for _, pt := range [][2]int{{x, y}, {x + w - cn, y}, {x, y + h - cn}, {x + w - cn, y + h - cn}} {
 		drawImageAt(c, f.Corner, pt[0], pt[1])
@@ -223,4 +223,5 @@ func drawSideFrame(c *Canvas, f assets.SideFrame, x, y, w, h int) {
 		drawImageAt(c, f.Edge, x, yy)
 		drawImageAt(c, f.Edge, x+w-e, yy)
 	}
+	c.drawHighSidePanel(f, x, y, w, h, paper...)
 }

@@ -303,7 +303,18 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	}
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	if a.havePanel {
+		for i, pn := range assets.MainPanels() {
+			c.drawHighSidePanel(a.panels[i], pn.X, pn.Y, pn.W, pn.H, pn.Fill)
+		}
+	}
 	if upper == artUpperStatus {
+		c.trackRect(image.Rect(artFrameX, artFrameY, artFrameX+80, artFrameY+96))
+	}
+	if upper == artUpperStatus {
+		if a.havePanel {
+			c.drawHighPortraitFrame(a.frame, artPortraitX, artPortraitY)
+		}
 		if who := g.Governor(sel); who != nil {
 			c.drawHigh(a.Portrait(int(who.Portrait)), artPortraitX, artPortraitY)
 		}
@@ -653,6 +664,7 @@ func drawArtOverlay(c *Canvas, title string, body []string, hint string, top int
 // 一頁放不下時從 top 那一行開始畫，標題帶位置、提示換成怎麼捲。
 func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hint string, top int) {
 	c.FillRect(x0, y0, x1, y1, artInkPageBG)
+	c.drawHighPaper(image.Rect(x0, y0, x1, y1), 1)
 	cols := (x1-x0)/CellW - 2
 	rows := (y1-y0)/CellH - 2 // 標題與提示各佔一行
 	x := x0 + CellW

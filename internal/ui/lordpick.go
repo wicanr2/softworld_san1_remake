@@ -59,7 +59,11 @@ func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, 
 		if prompt != "" {
 			c.FillRect(assets.MainPanelX+8, 324+8, assets.MainPanelX+assets.MainPanelW-8, 372-8, ink(3))
 		}
-		drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48)
+		if prompt != "" {
+			drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48, 3)
+		} else {
+			drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48)
+		}
 	}
 	c.DrawTextPx(lordPickPromptX, lordPickPromptY, cells.Truncate(prompt, 25), ink(10))
 
@@ -171,7 +175,7 @@ func DrawCustomLord(c *Canvas, a *ArtScreen, g *game.State, faction, portrait in
 	if a.havePanel {
 		drawSideFrame(c, a.panels[0], assets.MainPanelX, 36, assets.MainPanelW, 288)
 		c.FillRect(assets.MainPanelX+8, 324+8, assets.MainPanelX+assets.MainPanelW-8, 372-8, ink(3))
-		drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48)
+		drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48, 3)
 		fx, fy := customFaceX-8, customFaceY-8
 		drawImageAt(c, a.frame[0], fx, fy)
 		drawImageAt(c, a.frame[1], fx, customFaceY+80)
@@ -225,7 +229,7 @@ func DrawNewLordBorn(c *Canvas, a *ArtScreen, g *game.State, portrait int, name 
 	if a.havePanel {
 		drawSideFrame(c, a.panels[0], assets.MainPanelX, 36, assets.MainPanelW, 288)
 		c.FillRect(assets.MainPanelX+8, 324+8, assets.MainPanelX+assets.MainPanelW-8, 372-8, ink(3))
-		drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48)
+		drawSideFrame(c, a.pickBox, assets.MainPanelX, 324, assets.MainPanelW, 48, 3)
 	}
 	c.DrawTextPx(lordPickPromptX, lordPickPromptY, cells.Truncate(t("title.newLordBorn"), 25), ink(10))
 	DrawBubbleAs(c, a, &game.Bubble{X1: game.BubbleX1, Y1: newLordBubbleY1, X2: game.BubbleX2, Y2: newLordBubbleY2,

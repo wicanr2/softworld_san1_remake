@@ -61,7 +61,7 @@ func DrawRosterPick(c *Canvas, a *ArtScreen, g *game.State, p *RosterPick) {
 		if p.Multi || p.Succession {
 			box = a.multiBox
 		}
-		drawSideFrame(c, box, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1)
+		drawSideFrame(c, box, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1, rosterBG)
 	}
 	if len(p.List) == 0 {
 		c.DrawTextPx(rosterEmptyX, rosterEmptyY, t("pick.none"), assets.EGAPalette[rosterHeadInk])

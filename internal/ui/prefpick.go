@@ -32,7 +32,7 @@ const (
 func DrawPrefPick(c *Canvas, a *ArtScreen, g *game.State, p *PrefPick) {
 	c.FillRect(rosterX0, rosterY0, rosterX1+1, rosterY1+1, assets.EGAPalette[rosterBG])
 	if a != nil && a.havePanel {
-		drawSideFrame(c, a.prefBox, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1)
+		drawSideFrame(c, a.prefBox, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1, rosterBG)
 	}
 	// 完整編號與譯名量得出超寬時，整張清單改用既有小字排法。
 	// 中日文及沒有小字的畫布沿用原欄位。

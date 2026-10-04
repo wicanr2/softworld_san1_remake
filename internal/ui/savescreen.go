@@ -28,7 +28,7 @@ const (
 func DrawSaveScreen(c *Canvas, a *ArtScreen, s *SaveScreen) {
 	ClearPanel(c, 408, 36, 631, 291, assets.EGAPalette[saveBG])
 	if a != nil && a.havePanel {
-		drawSideFrame(c, a.cardPanel, 408, 36, 224, 256)
+		drawSideFrame(c, a.cardPanel, 408, 36, 224, 256, saveBG)
 	}
 	for k, name := range s.Names {
 		ink := saveInk

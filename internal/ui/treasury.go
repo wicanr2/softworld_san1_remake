@@ -36,7 +36,7 @@ func DrawTreasuryPanel(c *Canvas, a *ArtScreen, g *game.State, p *TreasuryPanel)
 	}
 	c.FillRect(rosterX0, rosterY0, rosterX1+1, rosterY1+1, assets.EGAPalette[treasuryBG])
 	if a != nil && a.havePanel {
-		drawSideFrame(c, a.cardPanel, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1)
+		drawSideFrame(c, a.cardPanel, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1, treasuryBG)
 	}
 	c.DrawTextPx(treasuryHeadX, treasuryHeadY, tf("tre.head", NameField(PersonName(lord.Name))), assets.EGAPalette[treasuryHeadInk])
 	keys := []string{"tre.row.seal", "tre.row.book", "tre.row.blade", "tre.row.beauty", "tre.row.horse"}

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"image"
 	"image/color"
 	"strings"
 
@@ -193,6 +194,7 @@ func DrawBattleSpeech(c *Canvas, a *ArtScreen, g *game.State, b *battle.Battle, 
 	}
 	x1, y1, x2, y2 := assets.BattleLayoutFor(b.Field.Narrow()).Panel(sp.Box.Panel())
 	c.FillRect(x1, y1, x2+1, y2+1, assets.EGAPalette[1])
+	c.drawHighPaper(image.Rect(x1, y1, x2+1, y2+1), 1)
 	DrawBubble(c, a, g, &game.Bubble{X1: x1, Y1: y1, X2: x2, Y2: y2, Left: sp.Left,
 		Speaker: sp.Speaker, Color: sp.Color, Text: sp.Text})
 }
@@ -210,6 +212,10 @@ func DrawBattleScene(c *Canvas, a *ArtScreen, sp *battle.Speech, step int) int {
 func ClearPanel(c *Canvas, x1, y1, x2, y2 int, ink color.RGBA) {
 	c.FillRect(x1+16, y1+8, x2-16+1, y2-8+1, ink)
 	c.FillRect(x1+8, y1+16, x2-8+1, y2-16+1, ink)
+	if ink == assets.EGAPalette[1] {
+		c.drawHighPaper(image.Rect(x1+16, y1+8, x2-16+1, y2-8+1), 1)
+		c.drawHighPaper(image.Rect(x1+8, y1+16, x2-8+1, y2-16+1), 1)
+	}
 }
 
 // drawImageAt 把一張原版的圖貼到畫布的像素座標上。

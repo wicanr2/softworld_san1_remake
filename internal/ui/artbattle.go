@@ -107,6 +107,14 @@ func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, inf
 	ab.drawHighTerrain(c, b, v, info)
 	c.drawHigh(ab.weather[b.Weather.OriginalIndex()%len(ab.weather)], assets.BattleWeatherX, assets.BattleWeatherY)
 	l := assets.BattleLayoutFor(b.Field.Narrow())
+	for i := range l.PanelX {
+		paper := byte(assets.BattlePanelPaper)
+		if i == 2 && info.Inspect == nil {
+			paper = assets.BattleOrderPaper
+		}
+		x, y, _, _ := l.Panel(i)
+		c.drawHighBevel(x, y, assets.BattlePanelW, assets.BattlePanelH, paper)
+	}
 	for i := range assets.BattleFaceMirror {
 		portrait := info.Portrait[i]
 		if info.Units != nil {
@@ -115,6 +123,15 @@ func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, inf
 				portrait = u.Portrait
 			}
 		}
+		x, y := l.Face(i)
+		if info.Units == nil || portrait >= 0 {
+			c.trackRect(image.Rect(x-8, y-8, x+72, y+88))
+			fr := ab.frame
+			if info.Units != nil {
+				fr = ab.frameA
+			}
+			c.drawHighPortraitFrame(fr, x, y)
+		}
 		face := ab.face(portrait)
 		if face == nil {
 			continue
@@ -122,10 +139,11 @@ func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, inf
 		if assets.BattleFaceMirror[i] {
 			face = face.Mirror()
 		}
-		x, y := l.Face(i)
 		c.drawHigh(face, x, y)
 	}
 	if info.Inspect != nil {
+		c.trackRect(image.Rect(inspectFaceX-8, inspectFaceY-8, inspectFaceX+72, inspectFaceY+88))
+		c.drawHighPortraitFrame(ab.frameB, inspectFaceX, inspectFaceY)
 		c.drawHigh(ab.face(info.Inspect.Portrait), inspectFaceX, inspectFaceY)
 	}
 	ab.drawText(c, b, v, info)
@@ -528,6 +546,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		// 原版的文字視窗：面板清成青 3，逐列寫（`BattleWindowLines`）。英日文排不進
 		// 6 列就改小字（一行 28 字、8 列，remake 差異同下面的選單）。
 		c.FillRect(ordX, ordY, ordX+assets.BattlePanelW, ordY+assets.BattlePanelH, assets.EGAPalette[battleWindowPaper])
+		c.drawHighPaper(image.Rect(ordX, ordY, ordX+assets.BattlePanelW, ordY+assets.BattlePanelH), battleWindowPaper)
 		ink := assets.EGAPalette[battleWindowInk]
 		lines := BattleWindowLines(v.Window, BattleWindowCols, 1<<16)
 		if len(lines) <= BattleWindowRows {
@@ -960,6 +979,8 @@ func DrawArtAtlas(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field) {
 		drawAtlasForeground(mask, l)
 		c.coverIndexed(mask)
 	}
+	x, y, _, _ := l.Panel(2)
+	c.drawHighBevel(x, y, assets.BattlePanelW, assets.BattlePanelH, assets.BattlePanelPaper)
 	// 通道格子上的鄰郡編號。
 	ink, bg := assets.EGAPalette[atlasLabelInk], assets.EGAPalette[atlasLabelBG]
 	for n, hs := range fld.Gates {
