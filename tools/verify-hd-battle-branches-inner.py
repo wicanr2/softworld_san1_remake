@@ -148,6 +148,7 @@ def verify(wid, edition, tag, faces, panels):
     gui.check(tag + '-original-restored', all(
         gui.rgb(original, f'{w}:{h}:{x}:{y}') == gui.rgb(restored, f'{w}:{h}:{x}:{y}')
         for x, y, w, h in panels))
+    gui.verify_hd_terrain(original, high, restored, pack, tag, edition)
     return original
 
 

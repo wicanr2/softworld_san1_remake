@@ -1417,3 +1417,82 @@ UI 測試結果另存 `workplace/hd-weather-v19-tests.json`。CLI 正反例只�
 | `tools/verify-hd-battle-branches-inner.py` | `ffe87236739ce50bd4e7270c05181dc2cccc178d195c1226a439e8b21689bbd6` |
 | `tools/verify-window-inner.py` | `d7f0f648e4d50ce76cd6ffa1fc8b345d8e4d5662f4e2515c40c5b244b39d38a0` |
 | `tools/hd-battle-branches-reference.go` | `909f4031a9dc9f72e7df992d3d633c4349bb3a2ecbb5bfdd077c1a3448333aab` |
+
+### 6.31 主戰場與對戰子畫面的地形圖塊
+
+**狀態：READY**。沿用已定案 B 寫實手繪、4×、每次啟動原貌與固定 640×408 邏輯版面，補 EICON.GRP 的 00–14。原版與加強版來源相同，各張 48×32、四平面、772 bytes，高清 192×128；地形、州郡資料、移動與戰術規則、存檔不改。正式主戰場只畫低四位 0–10，對戰子畫面 0–14，15 跳過；來源與繪製證據見 [005 §8](005-main-screen.md#8-主戰場的地形圖塊) 及 `internal/assets/battlefield.go`。本批不替 15–35 自訂用途。
+
+保持 `assets.FieldCell` 的 x=56+48 欄、y=36+32 列與奇數欄 +16，逐欄順序及矩形範圍不變。高清地形在旗幟、兵力牌、子地圖將領標記、左右線、軍力／命令面板與文字之前；後續前景與選取效果沿原像素覆蓋。原貌 CPU 畫布逐像素保持，缺圖逐格回退。不得在已合成旗幟的整張畫面上直接覆蓋高清地形。
+
+來源回讀與原圖輸出入口為 `workplace/prepare-hd-terrain-v20.go`，來源收據及 15 槽計畫為 `workplace/hd-terrain-v20-source.json`、`workplace/hd-terrain-v20-plan.json`。原圖輸出至既有 `workplace/hd-preview/`，檔名 `v20-source-EICON00.png` 至 `v20-source-EICON14.png`；比較頁由 `workplace/make-hd-terrain-v20-source-contact.py` 產生 `workplace/hd-preview/terrain-v20-source-contact.png`，另存 `workplace/hd-terrain-v20-source-contact.json`。先查看來源，再逐張記錄可見構圖、地形辨識與配色，不憑印象替未具名圖塊補用途。
+
+候選及圖層 prototype 通過後才轉 READY。資源鍵沿盤點的 `DATA1/EICON.GRP#00`–`#14`；載入器必須驗實際 36 記錄與 27,792 bytes、來源子記錄 SHA-256、48×32 與 4× 尺寸，沿用 schema 1。雙版上限為 610，不開放未審查的圖塊。原始素材、提示詞、候選及含原版衍生美術的包只留本機。
+
+最近鄰 16× 生成目標為 `workplace/hd-preview/v20-source-EICON00-16x.png` 至 `v20-source-EICON14-16x.png`，在既有預覽目錄製作。來源比較頁依序五欄、三列排列 00–14，來源回讀包含每槽 bytes、正式 parser 的索引像素及 PNG 像素，不只核對表頭。外部工具未回報模型與 seed 時明示；不推定使用者逐張簽核。
+
+候選生成只以各自 16× 原圖作編輯目標，記錄在 `workplace/hd-terrain-v20-requests.json`。實際預設生成路徑保存於 `workplace/hd-terrain-v20-generated-paths.json`，候選副本採 `workplace/hd-b-EICON00-v1.png` 至 `workplace/hd-b-EICON14-v1.png` 等版次；不覆寫原始生成檔。候選收集、技術回讀及 Codex 審查分別為 `workplace/collect-hd-terrain-v20.py`、`workplace/hd-terrain-v20-generation.json`、`workplace/hd-terrain-v20-reviews.json`。完整提示詞與原圖只留本機。
+
+圖層試作由 `workplace/prepare-hd-terrain-v20-prototype.py` 產生 `workplace/hd-terrain-v20-prototype_test.go`，收據為 `workplace/hd-terrain-v20-prototype.json`。隔離容器短暫複製測試至 `internal/ui/zz_hd_terrain_prototype_test.go`，以 trap 移除；試作不接正式玩家路徑。抽測寬／窄主戰場、子地圖、選取閃爍、前景遮擋與 CPU 畫布。前景記錄以未畫像素 255 為哨兵，執行同一套索引繪圖操作；不依原畫面與地形的顏色差判斷。選取矩形保留原本的索引 XOR 15 像素。EGA 色盤的棕色例外使 XOR 15 不完全等於 RGB 取補數，因此不以通道反相近似選取效果。
+
+正常玩家地理誌及築城畫面共用 `DrawArtAtlas`，同樣需要高清地形，鄰郡標籤、提示與游標仍保有覆蓋權。原版紮寨的網點 `assets.ApplyMask` 目前未接到正式 `cmd/san1` 玩家路徑，本批不新增紮寨行為，也不宣稱已還原該遮罩；該差異不以高清素材補猜。
+
+候選比較頁由 `workplace/make-hd-terrain-v20-contact.py` 製作 `workplace/hd-preview/terrain-v20-contact.png`，收據為 `workplace/hd-terrain-v20-contact.json`；每組左原圖、右 192×128 全圖縮放，順序 00–14。通過後以 `workplace/build-hd-terrain-v20.py` 建立私人 `workplace/hd-assets-terrain-v20/`，保存 v19 全部 580 筆欄位、PNG bytes 與準備紀錄，只增 30 筆兩版地形，收據為 `workplace/hd-terrain-v20-build.json`。
+
+正式驗證入口為 `internal/ui/hd_test.go` 與 `tools/verify-hd-battle-branches.sh`；`tools/hd-portrait-audit.py` 已新增 `--family terrain`。本機正式載入與獨立回讀入口採 `workplace/verify-hd-terrain-v20-pack.go`、`workplace/verify-hd-terrain-v20-delivery.py`，同名 JSON 保存結果。UI 測試收據為 `workplace/hd-terrain-v20-tests.json`；四家族稽核收據為 `workplace/hd-terrain-v20-audits.json`。驗收仍分來源／候選、正式圖層與正常玩家路徑，不以試作或直接入口替代玩家流程。
+
+兩版 30 個來源記錄、46,080 像素與 PNG 回讀通過；15 張 1536×1024 不透明候選及實際 192×128 比較頁均已查看，Codex 採用，使用者逐張簽核為 0。生成紀錄 SHA-256 為 `93c65c61f3d77a36a10cbefa5c236a1e960cd4c898c9040811a161a1c4d5bc77`；比較頁為 `0f12796bc668e18c22c1a78913021cdbe574656179c8634a46825cf744f9debc`。可丟棄圖層試作 40 項檢查通過，涵蓋兩種版面、子地圖與閃爍，足以授權正式接入；正式 GUI 與完整素材包驗收另行記錄。
+
+正常玩家驗收採 `SAN1_HD_BRANCHES_PACK=workplace/hd-assets-terrain-v20`、`SAN1_HD_BRANCHES_OUT=workplace/hd-window/player/terrain-v20`。寬／窄主戰場另用 `tools/verify-hd-contexts.sh --battle-only`，設定 `SAN1_HD_CONTEXTS_PACK=workplace/hd-assets-terrain-v20`、`SAN1_HD_CONTEXTS_OUT=workplace/hd-window/player/terrain-contexts-v20`；兩目錄的 `receipt.json` 分列分支及範圍。兩項工具維持舊預設。共用 `tools/verify-window-inner.py` 從正常原貌截圖辨識完整未遮擋格，再核對原生 192×128 及原貌恢復；只辨識已回讀的 00–14 原圖，不注入狀態。
+
+四家族完整稽核由 `workplace/audit-hd-terrain-v20.py` 執行，分族報告保存於 `workplace/hd-{portraits,scenes,weather,terrain}-audit-v20.json`。CLI 正反例入口與收據為 `workplace/test-hd-terrain-v20-audit.py`、`workplace/test-hd-terrain-v20-audit.json`；只建立自動清除的私人 fixture。獨立回讀另核對候選原檔、固定原圖、全部登錄與 PNG、前版保留紀錄及正常 GUI 最新截圖。
+
+完整 UI／assets 套件的原始測試事件保存於 `workplace/hd-terrain-v20-tests-log.jsonl`，摘要為上述 `workplace/hd-terrain-v20-tests.json`，分列通過與 skip，不以 skip 宣稱完成。
+
+寬版查看頁的正式 `drawOverlay` 填滿 (64,4) 至 (624,264)，沒有完整地形格可見；該停點改驗整張查看頁的原貌覆蓋與恢復，不計入可見地形分母。第一輪錯誤要求可見地形的收據及完整截圖保留於 `workplace/hd-window/player/terrain-contexts-v20-first/`，屬驗證腳本問題；正式 renderer 未因此修改。
+
+第二輪收據及截圖保留於 `workplace/hd-window/player/terrain-contexts-v20-second/`。查看頁僅 2,700 像素不同，差異框為高清座標 (1252,772) 至 (1315,835)，原貌恢復完全相同；原因是 `x11grab` 同時擷取固定螢幕尺寸的系統游標。比對前將滑鼠移至邏輯 (20,380)，避開所有驗證矩形，再以相同命令乾淨重跑；不遮罩差異，也不修改遊戲繪製。
+
+本批完整私人產物索引採 `workplace/hd-terrain-v20-artifact-index.json`，由 `workplace/index-hd-terrain-v20.py` 收錄準備、生成、包、驗證工具與收據雜湊。文件閘門入口及結果為 `workplace/verify-hd-terrain-v20-docs.py`、`workplace/hd-terrain-v20-docs-verification.json`。公開閘門為 `workplace/verify-hd-terrain-v20-publish.py`，分列 `workplace/hd-terrain-v20-publish-check.json`、`workplace/hd-terrain-v20-issue-publish-check.json` 及 `workplace/hd-terrain-v20-checkpoint-publish-check.json`，檢查實際暫存文字或 Issue 本文，保存 PNG 簽章、完整提示詞及 MZ 前綴的正反對照；不宣稱通用片段或編碼外洩偵測。
+
+五項 Issue 的讀取、待寫全文與比對結果分別保存於 `workplace/hd-terrain-v20-issue-{104,107,108,109,110}-{before.json,body.md,after.json}`；更新計畫及同步收據為 `workplace/hd-terrain-v20-issues-plan.json`、`workplace/hd-terrain-v20-issues-sync.json`。只更新目前狀態與 #104 工作表，保留歷史、標題與 OPEN 狀態。
+
+正式載入器雙版各 305 筆、警告 0，四家族完整準備稽核均返回 0，技術問題與使用者簽核為 0。地形 CLI 正反例 14/14；完整 UI／assets 187 項通過、skip 0。正式圖層涵蓋寬窄、主場／子場、閃爍的 8/8 組，以及地理誌／築城共用圖層、鄰郡標籤及游標顯隱。地理誌與築城正常 GUI 不由圖層測試代替。
+
+兩版正常董卓新局、呂布攻陳留的對戰／快戰 229/229，14 個地形停點共 933 格、205 張最新 PNG；兩版曹操新局、陳留攻鄴郡／洛陽的寬窄主戰場與查看 80/80，6 個可見地形停點共 332 格、兩個完整遮擋停點、87 張最新 PNG。兩次 GUI 的正式執行檔雜湊相同。獨立回讀全部原始來源、610 登錄、305 PNG、15 張實際生成檔、v19 保留紀錄、完整格及查看頁通過，收據 `b1149ae28bd7093fd2cec0bb7407867f1aa0846dd74921de66339145f23c538a`。兩版實際高清主戰場、子畫面與查看頁已查看。
+
+正常 GUI 保持正式預設亂數，沒有注入人物、戰場或 seed。可見地形集合為 0、1、2、3、6、7、8、10、11、13，其他五張由正式載入與圖層驗證，不推定本批正常 GUI 已出現。分支驗證的 14 個天候停點仍皆晴；寬版流程可出現雨，但本批未新增完整天候像素驗收。原貌預設、隱藏選項列、規則與存檔維持既有契約。整份 021 保持 READY，其他素材家族、誘敵動畫、自然事件與單挑等使用端、三語及跨平台仍待完成；配樂沿用既有收據。
+
+| 本機產物或工具 | SHA-256 |
+|---|---|
+| `workplace/hd-terrain-v20-source.json` | `577840f2bfd79e92ea9dac413bfe6f51737539ee8ed613853dfb031285849f5c` |
+| `workplace/hd-terrain-v20-plan.json` | `363cdc04c13274201429ed07e4b608a9f07f616312115c5af456cd3d43ff56cf` |
+| `workplace/hd-terrain-v20-source-contact.json` | `0a5f0d46f1bb1fba1986bc50248e4e79b9839e1313051056914f17d285c70525` |
+| `workplace/hd-terrain-v20-requests.json` | `89b9ccc2ae87678d01add6a2cbcbbafd9e9080b1649101ab1838315049a0bbe9` |
+| `workplace/hd-terrain-v20-generated-paths.json` | `3f64bd930c5dd74ce843896b95b2b18db0f51a4ae0aec9fa6b8f1c97adec2cf2` |
+| `workplace/hd-terrain-v20-generation.json` | `93c65c61f3d77a36a10cbefa5c236a1e960cd4c898c9040811a161a1c4d5bc77` |
+| `workplace/hd-terrain-v20-reviews.json` | `756f558711c9eda2b02e7a79b3376f46a4d188cdd94bad2d87e1dc515e9a2405` |
+| `workplace/hd-terrain-v20-contact.json` | `8e895badfd78dccbedebc524c281f41e32111e43bed0a13506198783152f6b28` |
+| `workplace/hd-terrain-v20-prototype.json` | `10a9bf153b90b46b3e463b2e6fda6e5b91eb4bf7b823d06a81400764e4a5f2eb` |
+| `workplace/hd-terrain-v20-build.json` | `b242a0413dd4d1832718555ae4896f1b43050009784646c8b998bfbfa2d83000` |
+| `workplace/hd-assets-terrain-v20/manifest.json` | `64ae8f8745ee67cf2da28948d3e36ea43157570e9e56649e83b2d931ddae5b2c` |
+| `workplace/hd-assets-terrain-v20/preparation.json` | `06f89dc4afbb839b15e19f9f4c2ee6711e6cce9189d7ef68d2d77d39372475f7` |
+| `workplace/verify-hd-terrain-v20-pack.json` | `839f720c36c36c61ee3772a5335e76c7e71de1bbb8b46b583bb488e8d5fed01c` |
+| `workplace/hd-terrain-v20-audits.json` | `da379850cf3af7283d3d54b1dcc64b80b6d19cefd7a2013fa52cc88b4bfa8a84` |
+| `workplace/hd-portraits-audit-v20.json` | `435ee87adb421e53b465ec718f1b4f6cbc465fa5132ebec9c8906f92d4981fcd` |
+| `workplace/hd-scenes-audit-v20.json` | `02aa7bc6f95d92408eed678ee0cb474e8c6b111ce157cafa1af5a553e50b1c97` |
+| `workplace/hd-weather-audit-v20.json` | `752a94e420835c1fe98f99a1694a2b88e45be58826a36050852059d6b49b8d8a` |
+| `workplace/hd-terrain-audit-v20.json` | `1a6c6104f720374f4ed421c39cf0faee0dded9160b38f0acc69807e75278017a` |
+| `workplace/test-hd-terrain-v20-audit.json` | `a8b6f3b06a65ce77043df97e542471912fd57ce5a7dd4b55c90430a8310036e9` |
+| `workplace/hd-terrain-v20-tests.json` | `03ddeaf9abfafdd6612a9eeefb21d1628ee94fb66f539ccdc4487c9c2e594bdd` |
+| `workplace/hd-terrain-v20-tests-log.jsonl` | `fd980801e7cdf11d41dd557147e5bdf6490391adbba7f26fff5d47ede10c2208` |
+| `workplace/hd-window/player/terrain-v20/receipt.json` | `98abe6e55aab60c54debcd4bcf873d1a127195f98123f2fe146f079631e13ea2` |
+| `workplace/hd-window/player/terrain-contexts-v20/receipt.json` | `c08fef776a120e9dbb51401e4def116bfb031230ee5a467960a6965042cae6f4` |
+| `workplace/verify-hd-terrain-v20-delivery.json` | `b1149ae28bd7093fd2cec0bb7407867f1aa0846dd74921de66339145f23c538a` |
+| `workplace/hd-terrain-v20-artifact-index.json` | `cc89ed257009b58fe6afce77a5f5ef0d2649155984823af1f3ff276d0bd93ca0` |
+| `tools/hd-portrait-audit.py` | `af017c26cc11478fcc81cf9237c710ec1b3d5b8a667db1794c63640a21a315e1` |
+| `tools/verify-hd-battle-branches-inner.py` | `d7728ea00803973e9da33e218bd71c8f46a9365563ccdfc02acee0e61b729a30` |
+| `tools/verify-hd-battle-branches.sh` | `e11421c01e7bfd619840e61ba1ea583c0c363058bbf110100eb2c4d93e0d0139` |
+| `tools/verify-hd-contexts-inner.py` | `d0c930a73e53dcea0bc1ee384272d8ec9fcf35d8fb97d0f071bab1ffbfc10ec4` |
+| `tools/verify-hd-contexts.sh` | `1d069b19dd7ae9f1f78eeb8ed6c966497b23d4926b3c527e3214cbc0c7168a7f` |
+| `tools/verify-window-inner.py` | `8374fa135ad677af19c583b4bf6213b81f933f3de411f38b574adc48bafdab59` |
+| `workplace/verify-hd-terrain-v20-delivery.py` | `5e9f3dac484d483e226f14438e470dbcaedda240e374dd9a1b543c61e8f04898` |

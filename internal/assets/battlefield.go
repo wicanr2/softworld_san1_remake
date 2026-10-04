@@ -115,6 +115,11 @@ const SkirmishMaxTerrain = 14
 
 // BlitFieldUpTo 同 BlitField，地形碼上限由呼叫端給。
 func (im *Image) BlitFieldUpTo(tiles []*Image, field []byte, max int) {
+	ForEachFieldTile(tiles, field, max, im.Blit)
+}
+
+// ForEachFieldTile 以原版順序走訪實際會畫的格子，供索引與高清繪圖共用。
+func ForEachFieldTile(tiles []*Image, field []byte, max int, visit func(*Image, int, int)) {
 	// **順序有差**：奇數欄往下錯開 16，而圖塊高 32——後畫的會蓋掉
 	// 先畫的一半。原版逐欄畫（`0x22704` 的兩層迴圈外層是欄），
 	// 照列畫出來的疊法不一樣，格子邊緣就會對不上。
@@ -130,7 +135,7 @@ func (im *Image) BlitFieldUpTo(tiles []*Image, field []byte, max int) {
 				continue
 			}
 			x, y := FieldCell(col, row)
-			im.Blit(tiles[t], x, y)
+			visit(tiles[t], x, y)
 		}
 	}
 }

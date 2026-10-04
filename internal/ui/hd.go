@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	xdraw "golang.org/x/image/draw"
@@ -45,7 +46,7 @@ type HDPack struct {
 	Warnings []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG)$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]))$`)
 
 // LoadHDPack 逐項驗證玩家自己的來源，錯項回退原圖。
 func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*HDPack, error) {
@@ -65,7 +66,7 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 580 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 610 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
 	p := &HDPack{images: make(map[[32]byte]*image.RGBA)}
@@ -108,7 +109,8 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	if (strings.HasPrefix(e.Name, "F") || (strings.HasPrefix(e.Name, "SCG") && e.Name < "SCG30.IMG")) && e.Container != "DATA3" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
-	if strings.HasPrefix(e.Name, "WEATHER") && e.Container != "DATA1" {
+	terrain := strings.HasPrefix(e.Name, "EICON.")
+	if (strings.HasPrefix(e.Name, "WEATHER") || terrain) && e.Container != "DATA1" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
 	if strings.HasPrefix(e.Name, "SCG") && e.Name >= "SCG30.IMG" && (e.Container != "DATA2" || e.Name > "SCG31.IMG") {
@@ -118,11 +120,24 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	if c == nil {
 		return nil, nil, fmt.Errorf("缺少來源容器")
 	}
-	i, ok := c.ByName(e.Name)
+	name, fragment, _ := strings.Cut(e.Name, "#")
+	i, ok := c.ByName(name)
 	if !ok {
 		return nil, nil, fmt.Errorf("來源資源不存在")
 	}
 	raw := c.Data(i)
+	if terrain {
+		// 實際檔案形狀由正式解碼器驗證，不能只憑來源雜湊或版本宣稱。
+		if _, err := assets.BattleTiles(c); err != nil {
+			return nil, nil, err
+		}
+		n, err := strconv.Atoi(fragment)
+		if err != nil || n < 0 || n > assets.SkirmishMaxTerrain {
+			return nil, nil, fmt.Errorf("地形資源越界")
+		}
+		const stride = assets.ImageHeader + assets.TileW/8*assets.TileH*4
+		raw = raw[n*stride : (n+1)*stride]
+	}
 	if fmt.Sprintf("%x", sha256.Sum256(raw)) != e.SourceSHA256 {
 		return nil, nil, fmt.Errorf("來源雜湊不符")
 	}
@@ -132,7 +147,8 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	if (strings.HasPrefix(e.Name, "F") && (im.W != 64 || im.H != 80)) ||
 		(strings.HasPrefix(e.Name, "SCG") && (im.W != 176 || im.H != 96 || e.Name == "SCG00.IMG")) ||
-		(strings.HasPrefix(e.Name, "WEATHER") && (im.W != 32 || im.H != 32)) {
+		(strings.HasPrefix(e.Name, "WEATHER") && (im.W != 32 || im.H != 32)) ||
+		(terrain && (im.W != assets.TileW || im.H != assets.TileH)) {
 		return nil, nil, fmt.Errorf("來源尺寸不符")
 	}
 	if e.Width != im.W*4 || e.Height != im.H*4 {
@@ -185,6 +201,13 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	high := image.NewRGBA(image.Rect(0, 0, e.Width, e.Height))
 	draw.Draw(high, high.Bounds(), decoded, decoded.Bounds().Min, draw.Src)
+	if terrain {
+		for i := 3; i < len(high.Pix); i += 4 {
+			if high.Pix[i] != 255 {
+				return nil, nil, fmt.Errorf("地形圖塊必須不透明")
+			}
+		}
+	}
 	return im, high, nil
 }
 
@@ -227,6 +250,38 @@ func (c *Canvas) HighImage(im *assets.Image) *image.RGBA {
 func (c *Canvas) drawHigh(im *assets.Image, x, y int) {
 	if high := c.HighImage(im); high != nil {
 		c.addHigh(high, image.Rect(x, y, x+im.W, y+im.H), image.Point{})
+	}
+}
+
+// drawHighField 先保留該格的原圖覆蓋權，再疊可用高清圖；缺子圖也能蓋住主圖。
+func (c *Canvas) drawHighField(tiles []*assets.Image, field []byte, max int) {
+	assets.ForEachFieldTile(tiles, field, max, func(im *assets.Image, x, y int) {
+		c.trackRect(image.Rect(x, y, x+im.W, y+im.H))
+		c.drawHigh(im, x, y)
+	})
+}
+
+// indexedCoverage 用同一套索引繪圖操作記錄前景，不比較來源與前景的顏色。
+func (c *Canvas) indexedCoverage() *assets.Image {
+	b := c.Img.Bounds()
+	if c.highCoverage == nil || c.highCoverage.W != b.Dx() || c.highCoverage.H != b.Dy() {
+		c.highCoverage = &assets.Image{W: b.Dx(), H: b.Dy(), Pix: make([]byte, b.Dx()*b.Dy())}
+	}
+	for i := range c.highCoverage.Pix {
+		c.highCoverage.Pix[i] = 255 // 所有正式索引圖只使用 0–15。
+	}
+	return c.highCoverage
+}
+
+func (c *Canvas) coverIndexed(mask *assets.Image) {
+	for _, op := range c.highOps {
+		for y := op.rect.Min.Y; y < op.rect.Max.Y; y++ {
+			for x := op.rect.Min.X; x < op.rect.Max.X; x++ {
+				if mask.At(x, y) != 255 {
+					op.covered[(y-op.rect.Min.Y)*op.rect.Dx()+x-op.rect.Min.X] = true
+				}
+			}
+		}
 	}
 }
 

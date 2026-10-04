@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""稽核私人高清包的 256 肖像槽、31 場景槽或 3 天候槽；須在 Docker 內執行。"""
+"""稽核私人高清包的肖像、場景、天候或 15 個地形槽；須在 Docker 內執行。"""
 import argparse
 import collections
 import hashlib
@@ -12,6 +12,7 @@ import struct
 KEY = re.compile(r'^DATA3/F(?:[01][0-9]{2}|2[0-4][0-9]|25[0-5])\.FAC$')
 SCENE_KEY = re.compile(r'^(?:DATA3/SCG(?:0[1-9]|[12][0-9])|DATA2/SCG3[01])\.IMG$')
 WEATHER_KEY = re.compile(r'^DATA1/WEATHER[0-2]\.IMG$')
+TERRAIN_KEY = re.compile(r'^DATA1/EICON\.GRP#(?:0[0-9]|1[0-4])$')
 ACCEPTED = {'accepted-for-local-pack', 'accepted-local'}
 
 
@@ -46,6 +47,8 @@ def canonical(key):
         key = container + '/' + key.upper() + '.IMG'
     elif key.lower().startswith('weather') and '/' not in key:
         key = 'DATA1/' + key.upper() + '.IMG'
+    elif re.fullmatch(r'(?i)eicon(?:0[0-9]|1[0-4])', key):
+        key = 'DATA1/EICON.GRP#' + key[-2:]
     return key
 
 
@@ -75,7 +78,11 @@ def audit(args):
     inventory_path = local(root, args.inventory)
     inventory = json.loads(inventory_path.read_text())
     family = getattr(args, 'family', 'portraits')
-    if family == 'weather':
+    if family == 'terrain':
+        key_re, prefix, label = TERRAIN_KEY, 'EICON', '地形'
+        expected = {f'DATA1/EICON.GRP#{n:02d}' for n in range(15)}
+        containers = ('DATA1',)
+    elif family == 'weather':
         key_re, prefix, label = WEATHER_KEY, 'WEATHER', '天候'
         expected = {f'DATA1/WEATHER{n}.IMG' for n in range(3)}
         containers = ('DATA1',)
@@ -236,7 +243,7 @@ def main():
     p.add_argument('--root', default='.')
     p.add_argument('--inventory', default='workplace/hd-inventory/inventory.json')
     p.add_argument('--pack', required=True)
-    p.add_argument('--family', choices=['portraits', 'scenes', 'weather'], default='portraits')
+    p.add_argument('--family', choices=['portraits', 'scenes', 'weather', 'terrain'], default='portraits')
     p.add_argument('--records', action='append', required=True)
     p.add_argument('--reviews', action='append', default=[])
     p.add_argument('--out', required=True)

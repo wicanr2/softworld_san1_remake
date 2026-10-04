@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """正常新局的尋訪、寬／窄主戰場及查看。"""
+import argparse
 import hashlib
 import importlib.util
 import json
@@ -10,11 +11,16 @@ import time
 spec = importlib.util.spec_from_file_location('window_check', Path(__file__).with_name('verify-window-inner.py'))
 gui = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gui)
-gui.OUT = gui.ROOT / 'workplace/hd-window/player/contexts-v6'
-pack = gui.ROOT / 'workplace/hd-assets-portraits-v6'
+gui.OUT = gui.ROOT / os.environ.get('SAN1_HD_CONTEXTS_OUT', 'workplace/hd-window/player/contexts-v6')
+pack = gui.ROOT / os.environ.get('SAN1_HD_CONTEXTS_PACK', 'workplace/hd-assets-portraits-v6')
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--battle-only', action='store_true', help='只驗寬／窄主戰場與查看')
+args = parser.parse_args()
 gui.receipt.update(method='Linux Xvfb 正常片頭、新局、尋訪及出兵；正常預設紮寨及查看',
                    scenario='001', player=1, difficulty=5,
                    randomness='正式新局預設亂數；不是原版 oracle 收據')
+if args.battle_only:
+    gui.receipt['method'] = 'Linux Xvfb 正常新局、寬／窄出兵、預設紮寨與查看；未驗尋訪'
 
 
 def flip(pixels, width, height):
@@ -33,7 +39,8 @@ def theme(wid, high):
     gui.key(wid, 'Escape')
     gui.run(['xdotool', 'windowsize', wid, '2560' if high else '640', '1632' if high else '408'])
     gui.run(['xdotool', 'windowmove', wid, '0', '0'])
-    gui.move(wid, 320, 200)
+    # x11grab 會擷取固定螢幕尺寸的系統游標，先移到比對範圍外。
+    gui.move(wid, 20, 380)
     time.sleep(.5)
 
 
@@ -69,7 +76,8 @@ def outside_faces(before, after, rectangle, faces):
     return True
 
 
-def verify(wid, tag, faces, panels):
+def verify(wid, tag, faces, panels, terrain=False, edition='base', overlay=None):
+    gui.move(wid, 20, 380)
     original = gui.shot(wid, tag + '-original')
     for face in faces:
         name, x, y, mirror = face
@@ -89,6 +97,19 @@ def verify(wid, tag, faces, panels):
     gui.check(tag + '-original-restored', all(
         gui.rgb(original, f'{w}:{h}:{x}:{y}') == gui.rgb(restored, f'{w}:{h}:{x}:{y}')
         for x, y, w, h in panels))
+    if terrain:
+        gui.verify_hd_terrain(original, high, restored, pack, tag, edition)
+    if overlay:
+        x, y, w, h = overlay
+        gui.check(tag + '-terrain-covered-overlay-original',
+                  gui.rgb(original, f'{w}:{h}:{x}:{y},scale={w*4}:{h*4}:flags=neighbor') ==
+                  gui.rgb(high, f'{w*4}:{h*4}:{x*4}:{y*4}'))
+        gui.check(tag + '-terrain-covered-overlay-restored',
+                  gui.rgb(original, f'{w}:{h}:{x}:{y}') == gui.rgb(restored, f'{w}:{h}:{x}:{y}'))
+        gui.receipt.setdefault('terrain_overlay_samples', []).append({'edition': edition,
+            'stage': tag, 'rect': list(overlay), 'original': str(original.relative_to(gui.ROOT)),
+            'high': str(high.relative_to(gui.ROOT)), 'restored': str(restored.relative_to(gui.ROOT)),
+            'scope': '查看頁覆蓋場地，只核對頁面覆蓋權與原貌恢復，未宣稱可見完整地形格'})
 
 
 def new_game(edition, tag):
@@ -130,13 +151,14 @@ def battle(edition, target):
         'edition': edition, 'target': target, 'layout': layout,
         'camp_keys': ['9'],
         'attacker': 'F000', 'defender': faces[1][0]})
-    verify(wid, tag + '-command', faces, panels)
+    verify(wid, tag + '-command', faces, panels, terrain=True, edition=edition)
     gui.key(wid, '7')
     inspector = ('F000', 552, 276, False)
     await_face(wid, tag + '-inspect', inspector)
     # 窄版查看頁會遮住上方軍力面板；遮蔽區也須完整保留原貌。
     visible = [inspector] if narrow else faces + [inspector]
-    verify(wid, tag + '-inspect', visible, panels + [(448, 268, 176, 96)])
+    verify(wid, tag + '-inspect', visible, panels + [(448, 268, 176, 96)], terrain=narrow,
+           edition=edition, overlay=None if narrow else (64, 4, 560, 260))
     gui.stop(proc)
 
 
@@ -157,7 +179,8 @@ try:
         for name in ['DATA1.GRP', 'DATA2.GRP', 'DATA3.GRP']}
     for edition in ['base', 'plus']:
         gui.receipt.setdefault('edition_key_start', {})[edition] = len(gui.receipt.get('keys', []))
-        search(edition)
+        if not args.battle_only:
+            search(edition)
         for target in [4, 15]:
             battle(edition, target)
     gui.receipt['passed'] = True

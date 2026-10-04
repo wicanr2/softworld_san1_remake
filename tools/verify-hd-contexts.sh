@@ -3,14 +3,16 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ORIG="${SAN1_ORIG:-$ROOT/org_game}"
-target=workplace/hd-window/player/contexts-v6
-pack=workplace/hd-assets-portraits-v6
+target="${SAN1_HD_CONTEXTS_OUT:-workplace/hd-window/player/contexts-v6}"
+pack="${SAN1_HD_CONTEXTS_PACK:-workplace/hd-assets-portraits-v6}"
+case "$target:$pack" in *..*|/*|*:/*) echo "輸出與素材須使用專案內相對路徑" >&2; exit 2 ;; esac
 for dir in "$ROOT" "$ORIG" "$ROOT/workplace/hd-window" "$ROOT/$pack" \
   "$ROOT/workplace/hd-inventory" "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
   test -d "$dir" || { echo "缺少目錄：$dir" >&2; exit 2; }
 done
 common=(--rm --network none --memory 3g --cpus 2 --pids-limit 256
   --log-opt max-size=10m --log-opt max-file=3 -u "$(id -u):$(id -g)"
+  -e SAN1_HD_CONTEXTS_OUT="$target" -e SAN1_HD_CONTEXTS_PACK="$pack"
   -v "$ROOT:/src" -v "$ORIG:/src/org_game:ro" -v "$ORIG:/orig:ro"
   -v "$ROOT/$pack:/src/$pack:ro"
   -v "$ROOT/workplace/hd-inventory:/src/workplace/hd-inventory:ro" -w /src)
@@ -34,4 +36,4 @@ timeout 3m docker run "${common[@]}" --name san1-hd-contexts-build \
     cp tools/verify-hd-contexts.sh tools/verify-hd-contexts-inner.py tools/verify-window-inner.py "$target/"
   '
 timeout 14m docker run "${common[@]}" --name san1-hd-contexts-gui \
-  --entrypoint python3 eob-audio-capture:20260922-r2 tools/verify-hd-contexts-inner.py
+  --entrypoint python3 eob-audio-capture:20260922-r2 tools/verify-hd-contexts-inner.py "$@"

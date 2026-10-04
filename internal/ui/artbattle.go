@@ -103,6 +103,7 @@ func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, inf
 	im := ab.compose(b, v, info)
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	ab.drawHighTerrain(c, b, v, info)
 	c.drawHigh(ab.weather[b.Weather.OriginalIndex()%len(ab.weather)], assets.BattleWeatherX, assets.BattleWeatherY)
 	l := assets.BattleLayoutFor(b.Field.Narrow())
 	for i := range assets.BattleFaceMirror {
@@ -163,6 +164,15 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 		// 子地圖蓋在主戰場上：地形碼 15 的格不畫，露出底下原來那一張
 		// （`0x2e76c`）；旗幟不畫，換成將領標記。
 		im.BlitFieldUpTo(ab.tiles, skirmishFieldBytes(s), assets.SkirmishMaxTerrain)
+	}
+	ab.composeForeground(im, b, v, info)
+	return im
+}
+
+// composeForeground 同時供原圖與高清覆蓋記錄使用，維持相同繪製順序。
+func (ab *ArtBattle) composeForeground(im *assets.Image, b *battle.Battle, v BattleView, info ArtBattleInfo) {
+	l := assets.BattleLayoutFor(b.Field.Narrow())
+	if s := info.Skirmish; s != nil {
 		drawSkirmishMarkers(im, s, v)
 	} else {
 		ab.drawUnits(im, b, v)
@@ -218,7 +228,19 @@ func (ab *ArtBattle) compose(b *battle.Battle, v BattleView, info ArtBattleInfo)
 			im.Blit(face, inspectFaceX, inspectFaceY)
 		}
 	}
-	return im
+}
+
+func (ab *ArtBattle) drawHighTerrain(c *Canvas, b *battle.Battle, v BattleView, info ArtBattleInfo) {
+	if c.HD == nil {
+		return
+	}
+	c.drawHighField(ab.tiles, info.Field, assets.MaxTerrain)
+	if info.Skirmish != nil {
+		c.drawHighField(ab.tiles, skirmishFieldBytes(info.Skirmish), assets.SkirmishMaxTerrain)
+	}
+	mask := c.indexedCoverage()
+	ab.composeForeground(mask, b, v, info)
+	c.coverIndexed(mask)
 }
 
 // blitFrame 把一組肖像框的四片畫在肖像 (x, y) 的外圍：上 (x−8, y−8)、
@@ -860,12 +882,15 @@ func DrawArtAtlas(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field) {
 	l := assets.BattleLayoutFor(fld.Narrow())
 	im.FieldEdges(l)
 	im.BlitField(ab.tiles, field)
-	im.FieldLines(l)
-	x0, y0, x1, y1 := l.Panel(2)
-	im.FillRect(x0, y0, assets.BattlePanelW, assets.BattlePanelH, assets.BattlePanelPaper)
-	im.BevelBox(x0, y0, x1, y1)
+	drawAtlasForeground(im, l)
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	if c.HD != nil {
+		c.drawHighField(ab.tiles, field, assets.MaxTerrain)
+		mask := c.indexedCoverage()
+		drawAtlasForeground(mask, l)
+		c.coverIndexed(mask)
+	}
 	// 通道格子上的鄰郡編號。
 	ink, bg := assets.EGAPalette[atlasLabelInk], assets.EGAPalette[atlasLabelBG]
 	for n, hs := range fld.Gates {
@@ -878,4 +903,11 @@ func DrawArtAtlas(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field) {
 			c.DrawTextPx(x, y, label, ink)
 		}
 	}
+}
+
+func drawAtlasForeground(im *assets.Image, l assets.BattleLayout) {
+	im.FieldLines(l)
+	x0, y0, x1, y1 := l.Panel(2)
+	im.FillRect(x0, y0, assets.BattlePanelW, assets.BattlePanelH, assets.BattlePanelPaper)
+	im.BevelBox(x0, y0, x1, y1)
 }

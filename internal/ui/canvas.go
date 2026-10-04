@@ -12,6 +12,7 @@ import (
 	"image"
 	"image/color"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
 )
@@ -49,9 +50,10 @@ type Canvas struct {
 	// 累計起來才問得到「這一畫面有沒有字被截」。
 	Clipped int
 
-	HD         *HDPack
-	highOps    []*highOp
-	highOutput *image.RGBA
+	HD           *HDPack
+	highOps      []*highOp
+	highOutput   *image.RGBA
+	highCoverage *assets.Image
 }
 
 // SetFace 換一份字模（主選單的「使用楷書字／使用隸書字」，Issue #71）。

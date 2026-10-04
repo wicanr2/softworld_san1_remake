@@ -135,11 +135,51 @@ def shot(wid, name):
 
 
 def rgb(path, crop=None):
-    args = ['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-i', str(path)]
+    args = ['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-threads', '1', '-i', str(path)]
     if crop:
         args += ['-vf', 'crop=' + crop]
-    return subprocess.run(args + ['-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', 'pipe:1'],
+    return subprocess.run(args + ['-frames:v', '1', '-pix_fmt', 'rgb24', '-threads', '1', '-f', 'rawvideo', 'pipe:1'],
                           check=True, capture_output=True, timeout=15).stdout
+
+
+def verify_hd_terrain(original, high, restored, pack, tag, edition):
+    """從正常截圖辨識完整未遮擋原圖格，再逐格核對原生高清與恢復。"""
+    manifest = json.loads((pack / 'manifest.json').read_text())['entries']
+    entries = [e for e in manifest if e['edition'] == edition and
+               e['container'] == 'DATA1' and e['name'].startswith('EICON.GRP#')]
+    if not entries:
+        return
+
+    def crop(data, width, x, y, w, h):
+        return b''.join(data[((y+r)*width+x)*3:((y+r)*width+x+w)*3] for r in range(h))
+
+    before, after, again = rgb(original), rgb(high), rgb(restored)
+    check(tag + '-terrain-canvas-size', len(before) == len(again) == 640*408*3 and len(after) == 2560*1632*3)
+    sources = {}
+    for entry in entries:
+        n = int(entry['name'].split('#')[1])
+        source = ROOT / f'workplace/hd-preview/v20-source-EICON{n:02d}.png'
+        sources[rgb(source)] = (entry, rgb(pack / entry['file']))
+    samples = []
+    for col in range(12):
+        for row in range(10):
+            x, y = 56+48*col, 36+32*row+16*(col%2)
+            raw = crop(before, 640, x, y, 48, 32)
+            match = sources.get(raw)
+            if match is None:
+                continue
+            entry, expected = match
+            samples.append({'key': 'DATA1/'+entry['name'], 'source_rect': [x,y,48,32],
+                            'high_rect': [x*4,y*4,192,128],
+                            'native_equal': crop(after,2560,x*4,y*4,192,128) == expected,
+                            'original_restored': crop(again,640,x,y,48,32) == raw})
+    check(tag + '-terrain-source-present', bool(samples))
+    check(tag + '-terrain-native', all(s['native_equal'] for s in samples))
+    check(tag + '-terrain-original-restored', all(s['original_restored'] for s in samples))
+    receipt.setdefault('terrain_samples', []).append({'edition': edition, 'stage': tag,
+        'original': str(original.relative_to(ROOT)), 'high': str(high.relative_to(ROOT)),
+        'restored': str(restored.relative_to(ROOT)), 'tiles': samples,
+        'scope': '正常截圖中逐像素符合完整原圖的未遮擋格；不注入地圖或 seed'})
 
 
 def launch(edition, missing=False, hd_assets=None, tag=None):
