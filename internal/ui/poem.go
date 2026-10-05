@@ -37,11 +37,15 @@ func DrawPages(c *Canvas, p *opening.Pages) {
 	if p == nil {
 		return
 	}
+	c.highOps = nil // 完整頁取代上一畫面的高清圖層。
 	pal := p.Palette()
 	vis := p.Visible()
 	for y := 0; y < vis.H && y < c.Img.Bounds().Dy(); y++ {
 		for x := 0; x < vis.W && x < c.Img.Bounds().Dx(); x++ {
 			c.setClipped(x, y, pal[vis.Pix[y*vis.W+x]&15])
 		}
+	}
+	if h, ok := p.Observer.(*hdOpening); ok && h.pack == c.HD && c.HD != nil {
+		c.addHigh(h.visible(), image.Rect(0, 0, assets.ScreenW, assets.ScreenH), image.Point{})
 	}
 }

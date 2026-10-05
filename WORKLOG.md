@@ -788,3 +788,33 @@ R2 以純藍作游標底色，第一個正式主提示即因完整 8×16 差 44 
 提交前收尾為 workplace/hd-march-v42-closing-before-feature-commit.json，十三份本輪收據通過，64,616 個工作樹路徑皆 UID/GID1000，沒有 root-owned 路徑或誤建 .md 目錄。公開閘門限十份程式／文件，五十份完整來源注入負對照及乾淨中文正對照通過；原始素材、母圖、提示、私人包及驗證腳本不提交。docker ps -a 的 san1 專案篩選為空；使用者未追蹤 AGENTS.md 保留。
 
 功能提交 88d89a26541fb2701aeded5089d8f4ed8370f13d 已推送，遠端 main 回讀相同。#104、#107、#109、#110 只替換目前狀態，全文回讀與預備檔逐字相同，歷史、標題、標籤、留言及 OPEN 狀態保持；#108 完整物件未變，五項仍 OPEN。收據為 workplace/hd-march-v42-issue-sync.json。既有正式 tag 的 annotated object／dereference 保持 fe0cd19f742ed1dcce0a105fe0d5c1e129b375e8／8d89946357580a6a650b1e9a4bc0fea12dadcf3b，沒有新發行或打包。此段另作文件提交，公開候選及 370 份建置來源隨之核對，收尾入口為 workplace/hd-march-v42-closing-integrity.json；Goal ACTIVE，下一批依正式使用端處理片頭與製作群，其餘 HD 待辦不縮減。
+
+## 2026-10-05 完整片頭的雙頁高清顯示
+
+路由命中重製技能、規格閘門、正常試玩及文件職責，沿用 B、4×、原貌預設與隱藏列。兩版十二項片頭美術及七項文字／遮罩的原始 bytes 相同，來源與完整組圖已查看。製作群九項只作下一批來源準備；ENDO2 跨版不同，不合併版本證據。§6.45 先為 DRAFT，私人雙頁試作及完整輸出審查後提升 READY，再把十份來源逐檔相同接入正式路徑。
+
+本輪內建 image_gen 生成商標、海景、三英及四種船的 B 母圖。商標與三英首輪的模型文字退件保留，第二輪移除文字後由來源字樣與紅印章墨點合成。27357 個商標字樣來源格及 2421 個印章來源格保持，不靠模型轉錄。母圖按 Go CatmullRom 正規化及原始遮罩準備十二張原生 PNG，沒有把正規化尺寸稱為模型原生輸出。來源、實際提示、生成設定、退件與包只留本機。
+
+高清跟隨同一 opening.Pages 的 Clear／Put／CopyPage／CopyRect／Capture。兩頁共31.875MiB、最多八十條擷取及15.9375MiB，原始頁的位元組對齊與前向重疊搬移保持。船的來源0格有高清覆蓋權，15格保留背景；文字仍依CPU結果繪製。調色盤依原格分組，再縮放高清色差，屬 remake 色彩近似；最近鄰回退精確得到當拍原色。原貌資料頁、順序、等待、原文、按鍵及存檔保持。本批沒有新增原版 oracle 證據。
+
+私人247項檢查及兩版2616拍完整原生回讀通過後，正式五套件772/772、零skip／fail通過。正式binary SHA-256為ba46fee0d4e332a985aa73558501e440f7ecab0a4764acff85ca6da30fa3165e，沒有overlay。正式兩版各1308拍、十五階段與308張選定完整原生PNG逐檔相符，2616列完整輸出與審查原型相同；原貌每拍另對照修改前HEAD的完整CPU參考。Rand=0只固定參考等待，不注入正常GUI。入口為workplace/hd-opening-v43-{formal-integration,build,formal-native-audit}.json與hd-opening-v43-native-formal-r1/receipt.json。
+
+R3私人包為workplace/hd-assets-opening-v43-r3/，786筆／377PNG／382檔，兩版各393筆；manifest SHA-256為ad7d46fe7811a91a4e0ca8aa4a1bd25a6a46e1695e6f1a701011f94df86b3eed。舊762筆與368份非manifest檔保持。以相同原始資料、母圖及準備程式乾淨重建的382檔全部相同，收據為hd-opening-v43-clean-rebuild.json。
+
+重建R1以符號連結提供舊包，Go filepath.Walk沒有展開根連結，清單檢查立即拒收。保留十四份部分產物與失敗收據，R2改用實體副本後同程式重跑通過。父端正式身份稽核R1漏掛/orig，停在第一份原始容器，補唯讀掛載後相同稽核通過；沒有修改產品來配合工具。
+
+實際舊包、新包與移除CMARKL／SANTBM2的混合包共32張完整畫布，最近鄰回退及原生貼入相同，收據為workplace/hd-opening-v43-fallback.json。正式正常五份採用R1兩版paused、R3兩版continuous與R4原版skip；48個三語停點、238/238檢查、兩版主選單與正常劇本入口通過。沒有overlay、狀態、位置、seed、clock或動畫拍注入。入口為workplace/opening-v43-formal-index.json。
+
+父端獨立回讀1080完整視窗與40影片來源PNG，共1120張；48次完整原貌回切、十六次恢復與三語全選項列相符。初次全列比較誤認焦點應相同，原貌最後選語言、回切最後選Theme。失敗收據保持；R2僅依DrawWindowBar的正式焦點底色契約統一背景，全部文字及其他像素仍比較。入口為hd-opening-v43-independent.json及同名checkpoints，父端另直接查看十一張完整實際GUI／影片代表圖，記在hd-opening-v43-root-visual.json。
+
+五片按實際解碼順序3599幀回讀，二十張完整原生代表幀相符。兩版連續各涵蓋船隊、寫詞、淡出、肖像橫幅及三英捲入五個自然家族，來源共圖別名保持；不外推正常全部1308拍或十五個排他階段。影片全量回讀與父端PNG稽核分列，父端只核對完整影片身份及保存的原生代表幀。
+
+R1並行12fps錄影未於480秒抵達三英，R2兩個Mesa執行緒只作診斷且不採。依停止線不修改產品GPU／執行緒設定。R3維持預設Mesa、單GUI、四CPU與2fps錄影，兩版同原定480秒通過。R3skip與另一片解碼並行，240秒仍在完整詩詞；R4同binary、包、腳本、預設Mesa及240秒單獨重跑後，實際橫幅空白鍵跳過到主選單通過。失敗與診斷保持，沒有由多項環境變動推論單一效能因果，錄影速率不作效能合格聲明。
+
+收尾再次核對重製、規格閘門與文件職責路由。§6.45限本節顯示契約及上述正常樣本CONFORMED；整份HD READY、Goal ACTIVE，五項Issue OPEN。本批音訊關閉，沒有新增原版oracle、人耳、存讀檔、效能或平台驗收；製作群九項與其他未完成使用端接續，操作面板沿用§6.38–6.43的完成範圍。
+
+試玩代理逐張查看268張完整採用圖，包括144原貌／高清／回切與40影片來源PNG。首次finalize因目視清單少列34張正對照拒收，補看後相同工具通過，未改產品。五份正常來源共101項工具身份核對、29唯一檔均相同，入口為workplace/opening-v43-formal-{viewed-final,player-closing,tool-identities}.json；失敗／診斷保存在tool-events-final.json。影片讀取器的舊12fps名目句不作依據，以每片實際r_frame_rate與解碼幀數為準。
+
+父端收尾R1誤把保留失敗的events物件當成passed收據，欄位檢查拒收。完整腳本及失敗保留為hd-opening-v43-closing-r1.py與同名failure.json，R2依實際schema改驗事件檔SHA及工具身份的passed，沒有改收據或產品。
+
+提交前收尾為workplace/hd-opening-v43-closing-before-feature-commit.json，十七份收據身份通過；372份來源中八份修改、兩份新增及362份保持。24份保護檔、三語母檔、舊369檔包及新786筆／377PNG／382檔核對。71,437個工作樹路徑皆UID/GID1000，沒有root-owned或誤建.md目錄。公開閘門限十五份程式／文件，五十份完整來源注入負對照及乾淨中文正對照通過；使用者未追蹤AGENTS.md保留，原始素材、美術及私人驗證不提交。san1專案容器清單為空，未建立新Release或封包。

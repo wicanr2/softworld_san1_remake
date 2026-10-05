@@ -191,14 +191,18 @@ type Script struct {
 	Rand func(n int) int
 	// Aborted 由播放端在 Step 那一拍收到按鍵時設起來：片頭剩下的部分跳過，
 	// 直接到「程式載入中」（原版 `0ad0:055e` 回 −1）。
-	Aborted bool
-	Pages   *Pages
+	Aborted    bool
+	Pages      *Pages
+	PagesReady func(*Pages) // 在第一個操作前接入可選顯示鏡像。
 }
 
 // Beats 從頭播一次片頭。
 func (s *Script) Beats() iter.Seq[Beat] {
 	return func(yield func(Beat) bool) {
 		s.Pages = NewPages()
+		if s.PagesReady != nil {
+			s.PagesReady(s.Pages)
+		}
 		p, a := s.Pages, s.Art
 		stopped := false
 		beat := func(k Kind, n int, site Site) bool {

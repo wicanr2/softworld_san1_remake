@@ -170,7 +170,7 @@ func (a *app) Update() error {
 	// iter.Pull 必須在之後呼叫 next 的執行緒狀態下建立。Ebiten 的主迴圈
 	// 會從初始化時的鎖定執行緒切到更新執行緒，因此在第一幀才啟動片頭。
 	if a.openingArt != nil {
-		a.opening = newOpeningPlayer(a.openingArt)
+		a.opening = newOpeningPlayer(a.openingArt, a.canvas.HD)
 		a.openingArt = nil
 	}
 	// 轉場進行中就只走轉場：原版那一段是**阻塞**的（`docs/re/09` §5），

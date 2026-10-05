@@ -32,7 +32,8 @@ var DefaultPal = [16]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x14, 0x07,
 
 // Pages 是兩頁畫面與顯示狀態。
 type Pages struct {
-	P [2]*assets.Image
+	P        [2]*assets.Image
+	Observer Observer // 可選的顯示鏡像，不改索引頁。
 	// Draw 是貼圖、清畫面寫進哪一頁（`0110:0066`：1 → `A800`，0 → `A000`）。
 	Draw int
 	// Show 是顯示哪一頁（`0110:1deb`，`int 10h AH=05h`）。
@@ -40,6 +41,15 @@ type Pages struct {
 	// Pal 是 16 個屬性暫存器（EGA 6 位元色）：`0aaa:0232` 改一格再整份送出，
 	// `0aaa:0251` 還原成 DefaultPal。
 	Pal [16]byte
+}
+
+// Observer 接收完成後的頁操作。規則與索引頁不依賴顯示實作。
+type Observer interface {
+	Clear(page int, c byte)
+	Put(page int, im *assets.Image, x, y int, mode Mode)
+	CopyPage(from, to int)
+	CopyRect(from, to, x1, y1, x2, y2, dx, dy int)
+	Capture(page int, x1, y1 int, im *assets.Image)
 }
 
 // NewPages 開兩頁全黑的畫面。
@@ -60,6 +70,9 @@ func (p *Pages) Clear(c byte) {
 	pix := p.P[p.Draw&1].Pix
 	for i := range pix {
 		pix[i] = c & 15
+	}
+	if p.Observer != nil {
+		p.Observer.Clear(p.Draw&1, c&15)
 	}
 }
 
@@ -94,11 +107,17 @@ func (p *Pages) Put(im *assets.Image, x, y int, mode Mode) {
 			}
 		}
 	}
+	if p.Observer != nil {
+		p.Observer.Put(p.Draw&1, im, x, y, mode)
+	}
 }
 
 // CopyPage 整頁複製（`0110:1a40` 是 0 → 1，`0110:1a6a` 是 1 → 0）。
 func (p *Pages) CopyPage(from, to int) {
 	copy(p.P[to&1].Pix, p.P[from&1].Pix)
+	if p.Observer != nil {
+		p.Observer.CopyPage(from&1, to&1)
+	}
 }
 
 // CopyRect 把 from 頁的 (x1..x2, y1..y2) 搬到 to 頁的 (dx, dy)。
@@ -124,6 +143,9 @@ func (p *Pages) CopyRect(from, to, x1, y1, x2, y2, dx, dy int) {
 			dst.Pix[ty*dst.W+tx] = src.Pix[sy*src.W+sx]
 		}
 	}
+	if p.Observer != nil {
+		p.Observer.CopyRect(from&1, to&1, x1, y1, x2, y2, dx, dy)
+	}
 }
 
 // Capture 從畫的那一頁取一塊 (x1..x2, y1..y2) 成圖（`0ad0` 經 `0eba:0164`）。
@@ -135,6 +157,9 @@ func (p *Pages) Capture(x1, y1, x2, y2 int) *assets.Image {
 		for xx := 0; xx < w; xx++ {
 			im.Pix[yy*w+xx] = src.At(x1+xx, y1+yy)
 		}
+	}
+	if p.Observer != nil {
+		p.Observer.Capture(p.Draw&1, x1, y1, im)
 	}
 	return im
 }

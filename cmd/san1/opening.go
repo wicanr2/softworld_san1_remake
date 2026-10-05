@@ -5,6 +5,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/opening"
+	"github.com/wicanr2/softworld_san1_remake/internal/ui"
 )
 
 // 開機片頭的播放（`docs/spec/005`「片頭」）。畫面怎麼搬由 `internal/opening`
@@ -29,8 +30,11 @@ type openingPlayer struct {
 }
 
 // newOpeningPlayer 從第一拍開始；片頭一拍都沒有時回 nil。
-func newOpeningPlayer(art *opening.Art) *openingPlayer {
+func newOpeningPlayer(art *opening.Art, packs ...*ui.HDPack) *openingPlayer {
 	s := &opening.Script{Art: art, Rand: rand.IntN}
+	if len(packs) > 0 {
+		s.PagesReady = func(p *opening.Pages) { ui.BindHDOpening(p, packs[0]) }
+	}
 	next, stop := iter.Pull(s.Beats())
 	p := &openingPlayer{script: s, next: next, stop: stop}
 	if !p.advance() {
