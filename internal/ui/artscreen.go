@@ -863,9 +863,10 @@ const (
 // 圖是原版的（`assets.MenuScreen`），字是 remake 自己的字庫。
 // 六個項目的文字照原版的選單抄（`docs/re/02` §3 的開機畫面）。
 type TitleScreen struct {
-	menuPieces [3]*assets.Image
-	bg         *assets.Image
-	frames     [assets.MenuOrnamentFrameCount]*assets.Image
+	titlePieces [2]*assets.Image
+	menuPieces  [3]*assets.Image
+	bg          *assets.Image
+	frames      [assets.MenuOrnamentFrameCount]*assets.Image
 }
 
 // TitleOrnamentTicksPerFrame 是 remake 的可攜節拍；60 TPS 時每格約 0.13 秒。
@@ -880,6 +881,16 @@ func NewTitleScreen(data3 *assets.Container, data1 ...*assets.Container) (*Title
 		return nil, err
 	}
 	ts := &TitleScreen{bg: bg}
+	for n, name := range []string{"MENU0A.IMG", "MENU0B.IMG"} {
+		index, ok := data3.ByName(name)
+		if !ok {
+			return nil, fmt.Errorf("assets: DATA3 裡沒有 %s", name)
+		}
+		ts.titlePieces[n], err = assets.DecodeImage(data3.Data(index))
+		if err != nil {
+			return nil, err
+		}
+	}
 	for n, name := range []string{"MENU1.IMG", "MENU2.IMG", "MENU3.IMG"} {
 		if index, ok := data3.ByName(name); ok {
 			ts.menuPieces[n], _ = assets.DecodeImage(data3.Data(index))
@@ -1245,6 +1256,12 @@ func (ts *TitleScreen) drawBackground(c *Canvas, frame int) {
 		bg = ts.frames[frame]
 	}
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH), bg.RGBA(), image.Point{})
+	for n, im := range ts.titlePieces {
+		if high := c.HighImage(im); high != nil {
+			x := 40 + n*280
+			c.addHigh(high, image.Rect(x, 27, x+im.W, 27+im.H), image.Point{})
+		}
+	}
 	c.drawHighMenu(ts.menuPieces[0], 56, 215)
 	for _, at := range assets.MenuButtons() {
 		c.drawHighMenu(ts.menuPieces[1], at[0], at[1])

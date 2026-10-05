@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/png"
 	"io"
@@ -58,7 +59,7 @@ type HDPack struct {
 	Warnings         []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|CVSC(?:0[0-9]|1[0-5])\.IMG|CMARK[LR]\.IMG|SANT(?:[LR]|BB|BM[12]|BS)\.IMG|TITL[0-3]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU[1-3]\.IMG|MAINMAP[12378]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13]|ENDO[0-3]\.IMG|REC1[01][LR]\.IMG|UPR(?:[01][0-9]|2[01])\.IMG)$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|CVSC(?:0[0-9]|1[0-5])\.IMG|CMARK[LR]\.IMG|SANT(?:[LR]|BB|BM[12]|BS)\.IMG|TITL[0-3]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU(?:0[AB]|[1-3])\.IMG|MAINMAP[12378]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13]|ENDO[0-3]\.IMG|REC1[01][LR]\.IMG|UPR(?:[01][0-9]|2[01])\.IMG)$`)
 
 type highFlag struct {
 	image    *image.RGBA
@@ -89,7 +90,7 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 846 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 850 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
 	p := &HDPack{creditFigures: map[[32]byte][]image.Rectangle{}, images: make(map[[32]byte]*image.RGBA), flags: make(map[[32]byte]highFlag), flagText: make(map[highFlagTextKey]*image.RGBA), panels: map[string]hdPanel{}, sidePanels: map[hdSideKey]map[byte]string{}, sideBorders: map[hdSideKey]string{}, panelCache: map[hdPanelSize]*image.RGBA{}}
@@ -157,6 +158,7 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	panel := strings.HasPrefix(e.Name, "PANEL.")
 	frame := strings.HasPrefix(e.Name, "FBR")
 	menu := strings.HasPrefix(e.Name, "MENU")
+	menuTitle := strings.HasPrefix(e.Name, "MENU0")
 	decoration := strings.HasPrefix(e.Name, "MAINMAP")
 	pattern := e.Name == assets.BattleBGTile
 	openingArt := strings.HasPrefix(e.Name, "CMARK") || strings.HasPrefix(e.Name, "SANT") || strings.HasPrefix(e.Name, "TITL")
@@ -258,16 +260,16 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 		}
 	}
 	if menu {
-		sizes := map[string][2]int{"MENU1.IMG": {96, 151}, "MENU2.IMG": {200, 46}, "MENU3.IMG": {40, 41}}
+		sizes := map[string][2]int{"MENU0A.IMG": {280, 180}, "MENU0B.IMG": {288, 180}, "MENU1.IMG": {96, 151}, "MENU2.IMG": {200, 46}, "MENU3.IMG": {40, 41}}
 		want := sizes[e.Name]
 		if im.W != want[0] || im.H != want[1] {
 			return nil, nil, fmt.Errorf("主選單素材尺寸不符")
 		}
-		if hdMenuFrameBounds(im).Empty() {
+		if !menuTitle && hdMenuFrameBounds(im).Empty() {
 			return nil, nil, fmt.Errorf("主選單素材缺少框面")
 		}
 		for _, code := range im.Pix {
-			if code != 0 && code != 3 && code != 9 && code != 15 {
+			if !menuTitle && code != 0 && code != 3 && code != 9 && code != 15 {
 				return nil, nil, fmt.Errorf("主選單素材色號不符")
 			}
 		}
@@ -344,6 +346,11 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 			if high.Pix[i] != 255 {
 				return nil, nil, fmt.Errorf("地形、旗幟、面板、框材與底紋必須不透明")
 			}
+		}
+	}
+	if menuTitle {
+		if err := validateTitleInk(im, high, e.Name); err != nil {
+			return nil, nil, err
 		}
 	}
 	if strings.HasPrefix(e.Name, "UPR") {
@@ -625,4 +632,63 @@ func (c *Canvas) drawHighMenu(im *assets.Image, x, y int) {
 			}
 		}
 	}
+}
+
+// titleInk 保留來源的書法格點，交錯填色改為 B 的象牙白與青黑投影。
+func titleInk(im *assets.Image, name string, x, y int) (color.RGBA, bool) {
+	rects := [2]image.Rectangle{image.Rect(56, 40, 168, 134), image.Rect(184, 40, 264, 134)}
+	if name == "MENU0B.IMG" {
+		rects = [2]image.Rectangle{image.Rect(0, 40, 104, 134), image.Rect(104, 40, 208, 134)}
+	}
+	if !image.Pt(x, y).In(rects[0]) && !image.Pt(x, y).In(rects[1]) {
+		return color.RGBA{}, false
+	}
+	ink := color.RGBA{238, 242, 226, 255}
+	switch im.At(x, y) {
+	case 13:
+		return ink, true
+	case 15:
+		return color.RGBA{255, 255, 242, 255}, true
+	case 0:
+		return color.RGBA{18, 36, 38, 255}, true
+	case 3:
+		neighbours := 0
+		for _, d := range [...]image.Point{{-1, 0}, {1, 0}, {0, -1}, {0, 1}} {
+			if im.At(x+d.X, y+d.Y) == 13 {
+				neighbours++
+			}
+		}
+		return ink, neighbours >= 2
+	}
+	return color.RGBA{}, false
+}
+
+// validateTitleInk 拒絕改寫已知書法的素材，錯項仍走原圖回退。
+func validateTitleInk(im *assets.Image, high *image.RGBA, name string) error {
+	glyphs := 0
+	for y := 0; y < im.H; y++ {
+		for x := 0; x < im.W; x++ {
+			expected, protected := titleInk(im, name, x, y)
+			if im.At(x, y) == 13 {
+				glyphs++
+				if !protected {
+					return fmt.Errorf("書法來源超出保護範圍")
+				}
+			}
+			if !protected {
+				continue
+			}
+			for dy := 0; dy < 4; dy++ {
+				for dx := 0; dx < 4; dx++ {
+					if high.RGBAAt(x*4+dx, y*4+dy) != expected {
+						return fmt.Errorf("書法筆畫或填色不符")
+					}
+				}
+			}
+		}
+	}
+	if glyphs == 0 {
+		return fmt.Errorf("書法來源缺少字面")
+	}
+	return nil
 }
