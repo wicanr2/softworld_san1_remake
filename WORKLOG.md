@@ -818,3 +818,5 @@ R1並行12fps錄影未於480秒抵達三英，R2兩個Mesa執行緒只作診斷�
 父端收尾R1誤把保留失敗的events物件當成passed收據，欄位檢查拒收。完整腳本及失敗保留為hd-opening-v43-closing-r1.py與同名failure.json，R2依實際schema改驗事件檔SHA及工具身份的passed，沒有改收據或產品。
 
 提交前收尾為workplace/hd-opening-v43-closing-before-feature-commit.json，十七份收據身份通過；372份來源中八份修改、兩份新增及362份保持。24份保護檔、三語母檔、舊369檔包及新786筆／377PNG／382檔核對。71,437個工作樹路徑皆UID/GID1000，沒有root-owned或誤建.md目錄。公開閘門限十五份程式／文件，五十份完整來源注入負對照及乾淨中文正對照通過；使用者未追蹤AGENTS.md保留，原始素材、美術及私人驗證不提交。san1專案容器清單為空，未建立新Release或封包。
+
+功能提交edaa395179bd1ebdfb1b2df73807bf25d3a4afae已推送，遠端main回讀相同。寫入前再次讀取五項Issue全文，與本輪開始相同；#104、#107、#109、#110僅替換目前狀態，回讀body與預備檔逐字相同，歷史、標題、標籤、留言及OPEN狀態保持；#108完整物件不變。收據為workplace/hd-opening-v43-issue-sync.json。既有v.1.0.3-20260924的tag object／dereference仍為fe0cd19f742ed1dcce0a105fe0d5c1e129b375e8／8d89946357580a6a650b1e9a4bc0fea12dadcf3b，沒有發行寫入。此段另作文件提交；收尾入口為workplace/hd-opening-v43-closing-integrity.json，正式十份來源與binary保持，不為文件重跑玩法驗證。Goal ACTIVE，下一批製作群沿用兩版來源差異，其餘未完成項保持。
