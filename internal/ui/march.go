@@ -8,8 +8,8 @@ import (
 
 // 大地圖上的戰役（`0x1ecfc`，`docs/spec/005`「大地圖上的戰役」）。
 //
-// 電腦對電腦的戰役在大地圖上播：攻方的旗隊從攻方郡往守方郡走，守方的
-// 旗隊站在守方郡，兩張都兩格交替。原版先把兩郡之間那一塊存到第二頁
+// 電腦對電腦的戰役在大地圖上播：攻方的刀兵從攻方郡往守方郡走，守方的
+// 刀兵站在守方郡，兩張都兩格交替。原版先把兩郡之間那一塊存到第二頁
 // (408,36)，每一格在第二頁還原那一塊、按 y 的先後以遮罩（模式 5）＋
 // OR（模式 2）貼兩隊，再把那一塊搬回第一頁。
 //
@@ -87,12 +87,13 @@ func MarchArt(data3 *assets.Container) ([MarchArtCount]*assets.Image, error) {
 // March 是一場播放中的戰役動畫。Page1 是第二頁（640×408）：存底放在
 // (408,36)，合成也在這一頁做；每一格的結果照原版搬回 Screen。
 type March struct {
-	L      MarchLayout
-	Art    [MarchArtCount]*assets.Image
-	Days   int // 日迴圈跑幾天（＝ 結算呼叫幾次）
-	Screen *assets.Image
-	Page1  *assets.Image
-	frame  int
+	L       MarchLayout
+	Art     [MarchArtCount]*assets.Image
+	Days    int // 日迴圈跑幾天（＝ 結算呼叫幾次）
+	Screen  *assets.Image
+	Page1   *assets.Image
+	frame   int
+	painted bool
 }
 
 // NewMarch 從目前的畫面 screen（第一頁）起一場。page1 可以是 nil（全黑）。
@@ -113,42 +114,41 @@ func (m *March) Frames() int { return MarchPreroll + m.Days }
 func (m *March) Step() bool {
 	l := m.L
 	if m.frame >= m.Frames() {
+		m.painted = false
 		// 0x1f52a：第二頁存著的底搬回第一頁。
 		marchCopy(m.Page1, m.Screen, marchSaveX, marchSaveY, marchSaveX+l.W-1, marchSaveY+l.H-1, l.X, l.Y)
 		return false
 	}
 	k := m.frame
 	m.frame++
-	moved := 0 // 已經走了幾天
+	m.painted = true
+	marchCopy(m.Page1, m.Page1, marchSaveX, marchSaveY, marchSaveX+l.W-1, marchSaveY+l.H-1, l.X, l.Y)
+	for _, pose := range m.sprites(k) {
+		marchPut(m.Page1, m.Art[pose.mask], pose.x, pose.y, 5)
+		marchPut(m.Page1, m.Art[pose.sprite], pose.x, pose.y, 2)
+	}
+	marchCopy(m.Page1, m.Screen, l.X, l.Y, l.X+l.W-1, l.Y+l.H-1, l.X, l.Y)
+	return true
+}
+
+type marchPose struct{ x, y, sprite, mask int }
+
+// sprites 共用原貌與高清的兩格、位置及 y 排序。
+func (m *March) sprites(k int) [2]marchPose {
+	l := m.L
+	moved := 0
 	if k > MarchPreroll {
 		moved = k - MarchPreroll
 	}
 	f := k & 1
-	// 還原那一塊（第二頁內 (408,36) → (X,Y)）。
-	marchCopy(m.Page1, m.Page1, marchSaveX, marchSaveY, marchSaveX+l.W-1, marchSaveY+l.H-1, l.X, l.Y)
-	// 攻方的位置：x ＝ trunc(攻X − 8 ＋ 天 × (守X − 攻X)/32 ＋ 80)（每一項都是 1/32 的倍數，
-	// 單精度加起來沒有誤差）。
 	ax := marchTrunc(float64(l.AX-8) + float64(moved*(l.DX-l.AX))/32 + 80)
 	ay := marchTrunc(float64(l.AY-24) + float64(moved*(l.DY-l.AY))/32 + 44)
-	dx, dy := l.DX+72, l.DY+20
-	att := func() {
-		marchPut(m.Page1, m.Art[l.AttMask+f], ax, ay, 5)
-		marchPut(m.Page1, m.Art[l.Att+f], ax, ay, 2)
+	att := marchPose{ax, ay, l.Att + f, l.AttMask + f}
+	def := marchPose{l.DX + 72, l.DY + 20, l.Def + f, l.DefMask + f}
+	if def.y >= att.y {
+		return [2]marchPose{att, def}
 	}
-	def := func() {
-		marchPut(m.Page1, m.Art[l.DefMask+f], dx, dy, 5)
-		marchPut(m.Page1, m.Art[l.Def+f], dx, dy, 2)
-	}
-	// 0x1f24a：y 大的後畫（蓋在上面）。
-	if dy >= ay {
-		att()
-		def()
-	} else {
-		def()
-		att()
-	}
-	marchCopy(m.Page1, m.Screen, l.X, l.Y, l.X+l.W-1, l.Y+l.H-1, l.X, l.Y)
-	return true
+	return [2]marchPose{def, att}
 }
 
 // Speeds 是這一格（Step 之前的第 k 格）前後原版叫 `speak(0, 速度)` 的速度：
@@ -238,4 +238,5 @@ func DrawMarch(c *Canvas, m *March) {
 			c.setClipped(x, y, assets.EGAPalette[m.Screen.At(x, y)&15])
 		}
 	}
+	c.drawHighMarch(m)
 }
