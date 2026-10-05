@@ -308,7 +308,7 @@ func TestHDWeatherValidationAndFallback(t *testing.T) {
 	if err != nil || p.Count != 0 || len(p.Warnings) != 1 {
 		t.Fatalf("來源尺寸：%+v %v", p, err)
 	}
-	for _, n := range []int{902, 903} {
+	for _, n := range []int{902, 905} {
 		many := make([]HDEntry, n)
 		for i := range many {
 			many[i].Edition = "plus"

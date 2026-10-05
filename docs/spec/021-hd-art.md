@@ -2403,3 +2403,32 @@ DATA3.GRP SHA-256 為 `24e642cc8c3df7614909c054b6a92334fe6a0f3d1eefa544f57159164
 R1 的 MENU3 比較 stride 誤寫為 32，來源實為 40；R2 修正來源寬 40／高清寬 160，正式程式與包未改。R2 原版完成七組，英文主畫面的 CURB 出現垂直平移等價，定位器將三種來源幀誤判為不同起點而失敗，整份收據保持 false。R3 按既有 `artMsg=(424,300)`、行距 16 的提示格點定位，只補其餘九組；R2 加強版十六組整條通過。獨立回讀採 R2 原版已完成的七組，不採後續失敗停點。入口為 `hd-cursor-v49-normal{-r2,-r3}.py`、`hd-window/player/cursor-v49-{r2-base,r3-base,r2-plus}/receipt.json` 與 `hd-cursor-v49-independent.{go,json}`。
 
 父端查看四種完整實際高清畫面，採用。371 份既有 Go 中六份修改、365 份保持，新增兩份游標程式及測試；規則、存檔及三語母檔保持。README 四圖未更新，本批素材、原稿與提示只留本機。完整性及提交收據為 `workplace/hd-cursor-v49-{integrity,delivery}.json`。本批音訊關閉，不增加音畫、效能、原版 oracle、原生平台、發行或 HD 全案完成聲明；整份 021 仍 READY。
+
+
+### 6.51 建寨位置標記的高清反白
+
+**狀態：CONFORMED，限本節標記顯示及正常建寨樣本**。處理現行 DrawArtFortSpot 使用的 MAPCUR1；亮相保留 B 地形細節，幾何、節拍、移動、確認、成本與 CPU 索引 XOR 保持。MAPCUR0 與 MNGCUR 沒有正式使用端，不接入新玩法。
+
+來源為 L0、[both]，Go 1.24.13、正式 assets 解碼器。兩版 DATA1.GRP 的檔案區間 `[628506,629278)` 各自重讀相同，raw SHA-256 為 `67e35945af1c7ff448fd2212cf9cc473a9127152cf163ff01228f8d7cc1521ce`，48×32，色號 15 有 1,453 格、色號 0 有 83 格。容器三檔身份及六劇本合法起始候選在私人 `workplace/hd-mapcursor-v50-source.json`。這是資料證據；原版建寨規則及標記回呼證據沿用 [014 §4.4](014-art-main-overlays.md)，不外推新的加強版行為 oracle。
+
+已審查的顯示契約：
+
+- 包沿用 schema 1、B、4×，上限增至 904。只新增 DATA1/MAPCUR1.IMG；來源必須 48×32、色號只含 0／15。原生 192×128 PNG 是來源導出的二值遮罩；每個來源 15 格對應整片白色不透明 4×4，0 格為 RGBA 全零。SourceSHA256 綁定原始記錄 bytes；錯項、缺檔或舊包沿用現行像素回退。
+- 亮相先在標記與畫布交集重建既有高清圖層，再執行原 CPU XOR。高清材料逐通道 XOR 255；已由 CPU 文字、鄰郡標籤或缺圖覆蓋的像素，使用最後 CPU 的 EGA XOR 結果。色號 0 的遮罩格保持底圖。後畫文字與輸入游標仍取得覆蓋權。
+- 局部合成與完整輸出共用同一圖層重播，另追蹤每個原生像素是否來自高清材料，避免把 EGA 棕色／亮藍錯當 RGB 補色。局部最多 192×128 RGBA 與等量布林標記，重用有界暫存，不生成第二張全畫布或跨位置快取。
+- 這是 remake 視覺差異，不改 typed 地形、CanBuildFortOn、FortSpotStep、BuildFortOrder 或存檔。二值遮罩由來源生成，不新增 AI 美術或提示詞；來源及包只留本機。
+
+READY 前需以可丟棄原型核對完整 CPU、原生亮／暗相、來源輪廓、CPU 前景及裁切，並查看實際合成圖。正式驗收需兩版全格、混合高清／回退、後畫前景、包拒收與重建，以及正常新局進建寨、移動、確認／取消、三語與 Theme 回切。音訊、平台、原版新增對拍及全案完成不由本節證明。
+
+可丟棄原型已核對兩版 120 格 × 兩種確認狀態，共 480 組完整 CPU 與局部原生像素。完整合成器與修改前重播逐點相同；舊包回退保持。父端已查看合法位置的完整亮相及暗相圖，採用。審查收據 `workplace/hd-mapcursor-v50-ready-review.json` 先於正式修改，包含原型結果、來源身份、373 份正式 Go 與保護檔身份。
+
+
+正式入口為 [`hdmapcursor.go`](../../internal/ui/hdmapcursor.go)、[`fortspot.go`](../../internal/ui/fortspot.go) 與共用 Output。UI／assets 完整回歸 1014/1014，零 skip／fail；兩版 480 組完整 CPU 與局部原生畫布、前景 EGA 棕色反白、透明疊圖、局部／完整合成等價、負座標及右下裁切、後畫前景與錯項拒收通過。舊包的兩種場地地理誌與標記回退測試保持。收據為 `workplace/hd-mapcursor-v50-tests-r3.jsonl`。R1 的兩個測試仍以 903 為越界值，更新為本節 904 上限之外的 905 後保留首輪失敗；R2 達 Go 預設十分鐘而停止，720 項完成測試沒有失敗，整份仍為 false。R3 沿用工具鏈，依 Go help testflag 明確指定 25 分鐘，乾淨重跑通過，不停用時限。
+
+私人包 `workplace/hd-assets-mapcursor-v50-r1/` 為 904 筆／437 PNG／444 檔，兩版各 452 筆，正式載入無警告。新增一張來源導出的遮罩，442 份舊非 manifest 檔與 902 筆舊項目保持；444 檔乾淨重建相同。入口為 `hd-mapcursor-v50-prepare.go` 及 `hd-mapcursor-v50-pack-audit.json`。manifest SHA-256 為 `fcbe0d0af17840bdb68647a03fa6e31585f9b19f4e3bb068018f86c8d9215843`，正式 binary 為 `257b20de24b35e654db19f721890a0c8dd6d5e0dc0fa3c7650f66d00705359b9`，由目前來源重建的 binary 逐位元組相同。三語、兩種確認、兩個位置、亮暗相及新舊包共 144 張正式參考 PNG 由 `hd-mapcursor-v50-reference-test.txt` 重生。
+
+正常視窗從片頭開劇本 003、單人曹操、難度 5，以 Shift＋Esc 收主數字提示、Tab 正常選洛陽，再下內政／建築關寨並挑名單第一位。洛陽的來源初始金 3118、物價 30、三關寨，已有合格人才；沒有補金、人物、位置、seed、clock 或動畫拍注入。兩版分別抽 0,0 的挑位置、三次鍵 3 移到 3,1 並按 0 確認、確認頁三語，以及 v49 舊包回退，合計 10/10、20/20 檢查。N 回挑位置、Shift＋Esc 取消，父端已查看實際返回主畫面。
+
+獨立 Go 讀取器不依賴 UI 或合成器，回讀全部 345 張實際 PNG 的雜湊與尺寸。從兩版 DATA1 重生原 XOR 及 CURC AND／OR，逐點核對 50 張完整原貌／原生畫布、232,480 個標記原生像素及 10 次整張原貌恢復；沒有排除游標矩形或固定動畫時間。原生亮／暗相另以實際暗相為底，CPU 格用 EGA XOR、藝術格用 RGB 補色核對整張畫布。入口為 `hd-mapcursor-v50-normal.py`、`hd-window/player/mapcursor-v50-r1/receipt.json` 與 `hd-mapcursor-v50-independent.{go,json}`。父端查看兩版完整實際高清圖，採用。
+
+373 份既有 Go 中五份修改、368 份保持，新增兩份標記程式及測試。原始三容器兩版十八檔、使用者 AGENTS.md、舊包 443 檔及 README 四圖保持，完整性入口為 `hd-mapcursor-v50-integrity.json`。本批無新增 AI 母圖，遮罩及素材仍只留本機。英文確認行的第 12 字從 x=536 起，進入固定輸入游標格；修改前原貌同樣，後續仍需依既有小字政策修正文排版，不以本節稱全三語已完成。本批音訊關閉，不增加音畫、效能、存讀檔、原版 oracle、平台、發行或全案完成聲明；整份 021 仍 READY、Goal ACTIVE。

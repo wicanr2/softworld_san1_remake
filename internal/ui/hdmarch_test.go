@@ -57,7 +57,7 @@ func TestHDMarchSourceValidation(t *testing.T) {
 			t.Fatal("mask accepted as HD art", slot)
 		}
 	}
-	for _, n := range []int{902, 903} {
+	for _, n := range []int{902, 905} {
 		dir := t.TempDir()
 		many := make([]HDEntry, n)
 		for i := range many {

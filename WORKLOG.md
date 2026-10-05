@@ -933,3 +933,18 @@ R4 17/17 正常檢查通過，包括兩組完整原貌／4×／回切、原生�
 兩版正常片頭、001 曹操難度 5 新局及陳留出兵潁川，採主選單 A、選君主 D、主畫面 B、紮寨 C。四組三語 24 樣本加八組舊包，共 32/32，172 項成功檢查；623 完整實際 PNG、27,648 原生不透明像素、4,992 主選單透明背景像素、16,384 舊包完整格與 32 次整張原貌回切均獨立回讀。先驗 DATA1 AND／OR 或原旗幟補色相位，再比較整張畫布，沒有排除矩形；沒有狀態、seed、clock 或動畫拍注入。R2 原版只採七組完成樣本，不採後續失敗停點。四種完整正式高清畫面已查看，入口為 `hd-window/player/cursor-v49-{r2-base,r3-base,r2-plus}/receipt.json`、`hd-cursor-v49-normal{-r2,-r3}.py` 及 `hd-cursor-v49-independent.{go,json}`。
 
 021 §6.50 限上述顯示與正常樣本 CONFORMED，整份 HD READY、Goal ACTIVE。371 份既有 Go 中六份修改、365 份保持，新增兩份游標程式及測試；三語、規則及存檔來源保持。README 只補穩定游標入口，四圖不變；使用者 AGENTS.md 未編輯。提交前獨立完整性檢查核對兩版 18 份原始容器、舊包全部 419 檔、生成稿及提示身份；85,235 工作樹路徑沒有錯誤 UID/GID、root-owned 或誤建 .md 目錄。本批音訊關閉，不增加音畫、效能、原版 oracle、原生平台、發行或 HD 全案完成聲明。完整性、提交、推送及 Docker 清理記在 `workplace/hd-cursor-v49-{integrity,delivery}.json`。
+
+
+## 2026-10-06 建寨位置標記保留高清材質
+
+接續 db1da7b，重新命中規格閘門、正常試玩、README 與文件職責路由。#109／#110 最新狀態只讀，均 OPEN；未重試待授權的 Issue 寫入。操作面板及 README 四圖的既有成果保持。
+
+兩版 MAPCUR1 原始記錄各自重讀相同，48×32、1,453 格反白與 83 格 identity；位移及容器身份在 `hd-mapcursor-v50-source.json`。現行唯一使用端是建寨挑位置，其他未用游標不另造用途。先 DRAFT，局部合成原型核對兩版全格、CPU 及 EGA 前景，查看完整亮／暗相後 READY，才接正式渲染。局部有界暫存重播既有圖層，藝術做 RGB 補色，CPU 前景保持 EGA XOR；來源二值遮罩沒有新增 AI 母圖。
+
+UI／assets 回歸 1014/1014，零 skip／fail，見 `hd-mapcursor-v50-tests-r3.jsonl`。R1 的兩個上限測試仍把 903 當作越界，依新 904 契約改為拒收 905；原失敗保留。R2 受到 Go 預設 10m 的測試 panic 中止，720 完成項無失敗，整份仍 false。查 Go help testflag 與堆疊後，R3 明確指定 25m、外層 30m，在同 image 與 CPU／記憶體條件乾淨重跑通過，沒有關閉時限或修改產品迎合逾時。
+
+私人包 `hd-assets-mapcursor-v50-r1/` 為 904 筆／437 PNG／444 檔，兩版各 452 筆、正式載入無警告。444 檔重建相同，902 筆舊項目與 442 份非 manifest 檔保持；目前 binary 重建與正常 GUI 使用的程式 bytes 相同。來源、準備及包審查見 `hd-mapcursor-v50-{prepare.go,pack-audit.json,ready-review.json}`。
+
+正常片頭開 003 單人曹操、難度 5，以普通 Tab 選洛陽，內政建寨並選合格人才。沒有金、人物、位置、seed、clock 或動畫拍注入。兩版原始位置、移動三次 3、按 0 確認、三語及舊包共 10/10、20/20，完整 345 PNG、50 相位畫布、232,480 標記像素與 10 次整張原貌回切由不依賴 UI 的 Go 讀取器重驗。游標全部先驗來源 AND／OR，未排除矩形。父端另查看高清圖及兩版取消返回主畫面；入口為 `hd-mapcursor-v50-{normal.py,independent.go,independent.json}` 與 `hd-window/player/mapcursor-v50-r1/receipt.json`。
+
+本節限顯示及上述正常樣本 CONFORMED；整份 HD READY、Goal ACTIVE。英文確認行進入固定游標格，修改前原貌同樣，下一步依既有小字政策修正。三語母檔、規則及存檔程式保持。README 只新增穩定入口，四圖不變；18 原始容器檔、舊包 443 檔與使用者 AGENTS.md 保持。86,757 工作樹路徑沒有 root-owned 或誤建 .md 目錄。本批音訊關閉，不增加音畫、效能、原版 oracle、存讀檔、平台、發行或全案完成聲明。提交、推送與 Docker 清理另存 `hd-mapcursor-v50-delivery.json`。

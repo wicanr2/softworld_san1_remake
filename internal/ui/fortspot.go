@@ -47,6 +47,7 @@ func DrawArtFortSpot(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field, 
 	if s.Marked && ab.mapCursor != nil {
 		x, y := assets.FieldCell(s.Col, s.Row)
 		im := ab.mapCursor
+		high := c.highMapCursorPrefix(im, x, y)
 		for dy := 0; dy < im.H; dy++ {
 			for dx := 0; dx < im.W; dx++ {
 				p := im.Pix[dy*im.W+dx] & 15
@@ -57,6 +58,7 @@ func DrawArtFortSpot(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field, 
 				c.setClipped(px, py, assets.EGAPalette[(egaIndexOf(c.Img.RGBAAt(px, py))^p)&15])
 			}
 		}
+		c.finishHighMapCursor(im, x, y, high)
 	}
 	drawInputCursor(c, ab.cursor, s.Input, fortSpotInputX, fortSpotInputY)
 }
