@@ -20,6 +20,7 @@ import (
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/font"
+	"github.com/wicanr2/softworld_san1_remake/internal/game"
 )
 
 // HDManifest 是 spec/021 的顯示素材包；不參與遊戲或存檔資料。
@@ -509,20 +510,33 @@ func scaleRGBA4(dst, src *image.RGBA) {
 	}
 }
 
-// SearchHighScene 保留尋訪的藍底及原版肖像定位。
+// SearchHighScene 裁取完成畫面的同一塊藍底紙，避免拉幕結尾更換紋理。
 func (c *Canvas) SearchHighScene(a *ArtScreen, portrait int) *image.RGBA {
 	if a == nil || c.HD == nil {
 		return nil
 	}
-	scene := SearchPanel(a, portrait)
-	high := c.HighImage(a.Portrait(portrait))
-	if high == nil {
+	pn := assets.MainPanels()[0]
+	r := clearPanelRects(pn.X, pn.Y, pn.X+pn.W-1, pn.Y+pn.H-1)[1]
+	paper := c.highPanel("PANEL.BEVEL#1", r, true)
+	face := a.Portrait(portrait)
+	high := c.HighImage(face)
+	if paper == nil && high == nil {
 		return nil
 	}
 	out := image.NewRGBA(image.Rect(0, 0, assets.SceneW*4, assets.SceneH*4))
-	xdraw.NearestNeighbor.Scale(out, out.Bounds(), scene.RGBA(), scene.RGBA().Bounds(), draw.Src, nil)
-	pt := image.Pt(56*4, 8*4)
-	draw.Draw(out, high.Bounds().Add(pt), high, image.Point{}, draw.Src)
+	if paper != nil {
+		origin := image.Pt(assets.SceneMainX, assets.SceneMainY).Sub(r.Min).Mul(4)
+		draw.Draw(out, out.Bounds(), paper, origin, draw.Src)
+	} else {
+		draw.Draw(out, out.Bounds(), image.NewUniform(assets.EGAPalette[1]), image.Point{}, draw.Src)
+	}
+	pt := image.Pt(game.SearchFaceX-assets.SceneMainX, game.SearchFaceY-assets.SceneMainY).Mul(4)
+	if high != nil {
+		draw.Draw(out, high.Bounds().Add(pt), high, image.Point{}, draw.Src)
+	} else if face != nil {
+		original := face.RGBA()
+		xdraw.NearestNeighbor.Scale(out, image.Rect(0, 0, face.W*4, face.H*4).Add(pt), original, original.Bounds(), draw.Src, nil)
+	}
 	return out
 }
 

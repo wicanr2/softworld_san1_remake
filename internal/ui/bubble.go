@@ -205,16 +205,26 @@ func DrawBattleScene(c *Canvas, a *ArtScreen, sp *battle.Speech, step int) int {
 	return DrawScene(c, a, sp.Scene, WipeKind(sp.Style), assets.SceneBattleX, assets.SceneBattleY, step)
 }
 
+func clearPanelRects(x1, y1, x2, y2 int) [2]image.Rectangle {
+	return [2]image.Rectangle{
+		image.Rect(x1+16, y1+8, x2-16+1, y2-8+1),
+		image.Rect(x1+8, y1+16, x2-8+1, y2-16+1),
+	}
+}
+
 // ClearPanel 照原版的 `0x1058:0x27e8(x1, y1, x2, y2, 色)` 清一塊面板的
 // **內部**：外框的拼件留著——角是 16×16、邊是 8 寬，所以清的是兩塊矩形
 // 拼成的十字：(x1+16, y1+8)–(x2−16, y2−8) 與 (x1+8, y1+16)–(x2−8, y2−16)。
 // 座標含端點。呼叫端在對白之前拿它把右側面板清成藍（`0x14899`／`0x1bb3c`）。
 func ClearPanel(c *Canvas, x1, y1, x2, y2 int, ink color.RGBA) {
-	c.FillRect(x1+16, y1+8, x2-16+1, y2-8+1, ink)
-	c.FillRect(x1+8, y1+16, x2-8+1, y2-16+1, ink)
+	rects := clearPanelRects(x1, y1, x2, y2)
+	for _, r := range rects {
+		c.FillRect(r.Min.X, r.Min.Y, r.Max.X, r.Max.Y, ink)
+	}
 	if ink == assets.EGAPalette[1] {
-		c.drawHighPaper(image.Rect(x1+16, y1+8, x2-16+1, y2-8+1), 1)
-		c.drawHighPaper(image.Rect(x1+8, y1+16, x2-8+1, y2-16+1), 1)
+		for _, r := range rects {
+			c.drawHighPaper(r, 1)
+		}
 	}
 }
 
