@@ -761,4 +761,6 @@ R2 以純藍作游標底色，第一個正式主提示即因完整 8×16 差 44 
 
 §6.43限本節顯示契約與上述正常樣本CONFORMED，整份HD READY、Goal ACTIVE，五項Issue OPEN。原貌預設、B／4×、既有README四圖、tag／Release／封包與素材本機範圍保持。尋訪日誌保留生成時文字，不把三語Theme切換當成舊日誌已重新翻譯；其他素材／使用端、效能、音畫及平台仍待完成。
 
-提交前收尾入口為 workplace/hd-search-v41-closing-integrity.json，368份來源、十二份驗證收據與八份公開候選相符。公開閘門有27份完整來源注入負對照與乾淨程式正對照；原始資料、美術、提示與私人包不提交。62,736個工作樹路徑皆UID/GID1000，沒有root-owned路徑或誤建.md目錄；正常GUI及本批容器均已清理。使用者未追蹤AGENTS.md保留。
+提交前收尾另保留為 workplace/hd-search-v41-closing-before-feature-commit.json，368份來源、十二份驗證收據與八份公開候選相符。公開閘門有27份完整來源注入負對照與乾淨程式正對照；原始資料、美術、提示與私人包不提交。62,737個工作樹路徑皆UID/GID1000，沒有root-owned路徑或誤建.md目錄；正常GUI及本批容器均已清理。使用者未追蹤AGENTS.md保留。
+
+功能提交 662cc00db293271e4afd2fafeea44eda913929a9 已推送，遠端 main 回讀相同。#104、#107、#109、#110 只更新目前狀態，回讀內文與預備檔逐字相同，歷史、標題、標籤、留言及 OPEN 狀態保持；#108 完整物件保持。收據為 workplace/hd-search-v41-issue-sync.json，五項仍 OPEN。既有正式 tag 的 annotated object／dereference 保持 fe0cd19f742ed1dcce0a105fe0d5c1e129b375e8／8d89946357580a6a650b1e9a4bc0fea12dadcf3b，本輪沒有發行或打包。此段另作文件提交，公開檔案閘門隨之重驗，最近完整性入口仍為 hd-search-v41-closing-integrity.json。
