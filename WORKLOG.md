@@ -865,3 +865,19 @@ R5原型159項測試零skip／fail；兩版940個完整朝堂與捲動狀態，�
 本輪沒有 Issue 寫入，先前遠端編輯遭自動核准審查拒絕的授權問題仍待使用者回覆。來源、原稿、提示、候選、私人包與收據不進 Git；公開候選限五份 Go 與五份文件。README 四圖、使用者 AGENTS.md、三語母檔、原始容器、既有 tag／Release／交付保持。
 
 提交前完整性收據為 `workplace/hd-title-v45-closing.json`：原有 367 份 Go 中四份修改、363 份保持，新增一份負對照測試；45 份保護檔、舊包全部 414 檔保持。80,767 路徑未見 root-owned 或誤建 `.md` 目錄，本批 Docker 容器已全部清除。完整原稿在 `hd-title-v45-master-r1.png`，實際提示集在 `hd-title-v45-request.json`，生成工具為內建 imagegen。
+
+## 2026-10-06 主選單直牌的三語文字
+
+接手已推送的 d48a994，命中 remake、規格閘門與文件分工路由。沿用 B、4×、原貌預設及既有面板素材。日文年代第五字壓住底部裝飾，英文次層被 artAllWide 略過。文字安全區依四個原字格定為 [80,242,112,330)，繁中四字保留原格；五字日文用 18 行距，英文轉書脊方向，完整年代標題採既有 6×10 小字。沒有改母檔、規則、存檔或輸入。
+
+021 §6.48 先 DRAFT，再私有 overlay 原型。兩版三語四種選單三套字型 72 組原貌／原生畫布通過，288 前後 PNG 獨立回讀；繁中 48 完整畫布相同，其他變化限新舊文字格。首輪工具錯用反向 image.Rect 初始化空邊界，修正後同 image／條件重跑，失敗保留為 hd-label-v46-failure-r1.json。四張完整原型圖已查看，READY 後才接入 artscreen.go 及新增測試。
+
+正式 UI 115/115、選單狀態 31/31，零 skip／fail；72 組正式畫布與原型相同，288 PNG 再獨立回讀。binary SHA-256 為 54072fb173deb2b2cfd49734e68242922e0449d6de3405bc6072e4646bb0a3fe。入口為 hd-label-v46-formal-tests.json、hd-label-v46-menu-tests.jsonl、hd-label-v46-formal.json.receipt 及 hd-label-v46-formal-independent.json。
+
+正常原版 R1 完成十二組三語樣本，換楷書後反白第三項而參考為第一項，最後檢查失敗，整份收據保持 false。從實際原貌全圖及 Screen.Confirm 的 s.sel=i 確認原因。R2 只用普通 Up 鍵回第一項；原版補六組楷隸，加強版完成十八組，兩份路徑通過，正式程式未變。不重跑已通過的十二組，而由獨立 Go 讀取器逐張重驗。
+
+兩版共 36/36 完整原貌／高清／恢復樣本、153 項成功檢查、432 實際 PNG 完整回讀。R1 唯一後續失敗狀態不採，保留圖也核對身份。CURA 六格由 DATA1／DATA3 重生，實際相位先驗後全畫布比較，沒有排除矩形。四張實際高清圖已查看，英文年代／音樂及日文楷隸五字可讀。收據在 hd-window/player/label-v46-{r1,r2}/，獨立入口為 hd-label-v46-normal-independent.json；本節限上述範圍 CONFORMED，整份 HD READY、Goal ACTIVE。
+
+收尾核對 374 份既有 Go，僅 artscreen.go 修改、373 份保持，新增 menulabel_test.go。45 份保護檔含原始容器、README 四圖、三語母檔與使用者 AGENTS.md，既有 B 包 417 檔均保持。81,812 工作樹路徑沒有 root-owned、錯誤 UID/GID 或誤建 .md 目錄，見 hd-label-v46-integrity.json。來源、私有原型、截圖與驗證收據不加入 Git；公開候選限兩份 Go 與五份既有文件。
+
+沒有新增 AI 美術、音畫、效能、平台、原版 oracle、Release 或封包聲明。遠端 Issue 編輯仍等待先前授權，不重試自動核准審查已拒絕的操作。提交、推送與最終容器清理回讀記在 workplace/hd-label-v46-delivery.json。

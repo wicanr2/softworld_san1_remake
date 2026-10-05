@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
+	"github.com/wicanr2/softworld_san1_remake/internal/font"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
@@ -938,12 +939,144 @@ func DrawTitleFrame(c *Canvas, ts *TitleScreen, sel, frame int) {
 	}
 }
 
-// DrawMenuLabel 把左側直牌上的字畫上去（由上往下一個字一列）。
+// menuLabelSafe 是四個原版字格的完整範圍，排除直牌底部裝飾。
+// 原字格為 (80,242+24k)、32×16；見 docs/spec/021 §6.48。
+var menuLabelSafe = image.Rect(80, 242, 112, 330)
+
+type menuLabelLayout struct {
+	text                      string
+	face                      *font.Face
+	rotated, small            bool
+	x, y, step, width, height int
+}
+
+// menuLabelGeometry 量目前字模再排版。省略發生於排版前，不用裁切隱藏溢出。
+func menuLabelGeometry(c *Canvas, s string) menuLabelLayout {
+	l := menuLabelLayout{text: s, face: c.face, rotated: artHasLatin(s)}
+	runes := []rune(s)
+	if len(runes) == 0 {
+		return l
+	}
+	if l.rotated {
+		measure := func(rs []rune) (width, height int) {
+			for _, r := range rs {
+				g, ok := l.face.Glyph(r)
+				w, h := cells.RuneWidth(r)*CellW, CellH
+				if ok {
+					w, h = g.W, g.H
+				}
+				if l.small {
+					w = SmallW
+				}
+				if h > width {
+					width = h
+				}
+				height += w
+			}
+			return
+		}
+		l.width, l.height = measure(runes)
+		if l.height > menuLabelSafe.Dy() && c.FitsSmall(s) {
+			// 6×10 字模存為八列寬；確認右側兩列確實空白後才用六列步長。
+			fits := true
+			for _, r := range runes {
+				g, _ := c.small.Glyph(r)
+				for y := 0; y < g.H; y++ {
+					for x := SmallW; x < g.W; x++ {
+						if g.At(x, y) {
+							fits = false
+						}
+					}
+				}
+			}
+			if fits {
+				l.face, l.small = c.small, true
+				l.width, l.height = measure(runes)
+			}
+		}
+		// 未來過長標題採明示省略；目前三語十二個標題均完整。
+		if l.height > menuLabelSafe.Dy() {
+			suffix := []rune("...")
+			for len(runes) > 0 {
+				runes = runes[:len(runes)-1]
+				candidate := append(append([]rune(nil), runes...), suffix...)
+				width, height := measure(candidate)
+				if width <= menuLabelSafe.Dx() && height <= menuLabelSafe.Dy() {
+					runes = candidate
+					break
+				}
+			}
+			l.text = string(runes)
+			l.width, l.height = measure(runes)
+		}
+	} else {
+		// 四字仍使用原版 24 行距，五字使用 18；更多字先省略為五字。
+		if len(runes) > 5 {
+			runes = append(runes[:4], '…')
+			l.text = string(runes)
+		}
+		l.step = assets.MenuLabelPitch
+		if len(runes) > 1 {
+			l.step = min(l.step, (menuLabelSafe.Dy()-CellH)/(len(runes)-1))
+		}
+		l.height = CellH + (len(runes)-1)*l.step
+		for _, r := range runes {
+			g, ok := l.face.Glyph(r)
+			width := cells.RuneWidth(r) * CellW * assets.MenuLabelScaleX
+			if ok {
+				width = g.W * assets.MenuLabelScaleX
+			}
+			l.width = max(l.width, width)
+		}
+	}
+	l.x = menuLabelSafe.Min.X + (menuLabelSafe.Dx()-l.width)/2
+	l.y = menuLabelSafe.Min.Y + (menuLabelSafe.Dy()-l.height)/2
+	return l
+}
+
+// DrawMenuLabel 保持原版四字位置，譯文依目前字模完整排入同一字區。
 func DrawMenuLabel(c *Canvas, s string, fg color.RGBA) {
-	y := assets.MenuLabelY
-	for _, r := range s {
-		c.DrawRuneWidePx(assets.MenuLabelX, y, r, fg, assets.MenuLabelScaleX)
-		y += assets.MenuLabelPitch
+	l := menuLabelGeometry(c, s)
+	if l.width > menuLabelSafe.Dx() || l.height > menuLabelSafe.Dy() {
+		c.Clipped += len([]rune(s))
+		return
+	}
+	y := l.y
+	for _, r := range l.text {
+		g, ok := l.face.Glyph(r)
+		if !ok {
+			c.Missing[r]++
+			if l.rotated {
+				y += cells.RuneWidth(r) * CellW
+			} else {
+				y += l.step
+			}
+			continue
+		}
+		if l.rotated {
+			for gy := 0; gy < g.H; gy++ {
+				for gx := 0; gx < g.W; gx++ {
+					if g.At(gx, gy) {
+						c.setClipped(l.x+g.H-1-gy, y+gx, fg)
+					}
+				}
+			}
+			if l.small {
+				y += SmallW
+			} else {
+				y += g.W
+			}
+		} else {
+			// 活躍字型均為 16 高；字框置中，保留繁中 32×16 原格。
+			if g.H > CellH {
+				c.Clipped++
+				y += l.step
+				continue
+			}
+			x := menuLabelSafe.Min.X + (menuLabelSafe.Dx()-g.W*assets.MenuLabelScaleX)/2
+			c.DrawRuneWidePx(x, y, r, fg, assets.MenuLabelScaleX)
+			y += l.step
+		}
 	}
 }
 
@@ -1196,12 +1329,10 @@ const (
 // DrawTitleLayer 畫主選單的其他一層：frame 是小飾框的畫格、labelInk 是直牌字色、
 // items 是六個按鈕上的字串（原樣排）、sel 是 remake 反白的那一項（−1 不反白）。
 //
-// 直牌的字只有全是全形字時才畫（英日版直排放不下，留白，remake 差異）。
+// 三語直牌共用受限字區；英文轉為書脊方向，五字日文縮小行距。
 func DrawTitleLayer(c *Canvas, ts *TitleScreen, frame int, label string, labelInk byte, items []string, sel int) {
 	ts.drawBackground(c, frame)
-	if artAllWide(label) {
-		DrawMenuLabel(c, label, assets.EGAPalette[labelInk&15])
-	}
+	DrawMenuLabel(c, label, assets.EGAPalette[labelInk&15])
 	for i, b := range assets.MenuButtons() {
 		x, y := b[0]+TitleLayerTextX, b[1]+TitleLayerTextY
 		c.FillRect(x, y, x+TitleLayerTextCells*CellW, y+CellH, assets.EGAPalette[TitleLayerTextBG])
