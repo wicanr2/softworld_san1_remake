@@ -26,6 +26,8 @@
 
 收尾入口為 workplace/hd-frame-v39-closing-integrity.json，正式來源、執行檔、九份驗證收據與十三份公開候選相符。全工作樹擁有權核對通過，沒有 root 擁有檔案或誤建 .md 目錄；本批 GUI 程序與 san1-v39 容器均已清理。README 四圖、使用者未追蹤 AGENTS.md、既有 tag／Release／封包保持。
 
+正式提交 `9d4437a29ac0a8c06ccfcc497229eb191d0d3d05` 已推送，遠端 main 回讀一致。#104、#107、#109、#110 僅更新目前狀態；更新後全文與預期逐字相同，歷史、標題、標籤與留言保持。#108 完整物件保持，五項皆 OPEN，收據為 workplace/hd-frame-v39-issue-sync.json。既有 `v.1.0.3-20260924` tag 的 annotated object 與 dereference 分別保持 `fe0cd19f742ed1dcce0a105fe0d5c1e129b375e8`／`8d89946357580a6a650b1e9a4bc0fea12dadcf3b`；沒有建立或改動 Release／封包。最後專案相關的執行中與已停止容器均為零。
+
 ## 2026-10-05 寬版操作面板與外殼返回提示
 
 沿用單一狀態表、五項 HD Issue 最新全文、規格閘門、正常試玩及文件職責。十一款 B 操作面板與四款人物框保持；本輪補兩版寬版使用端及八種取消／返回提示。§6.40 先達 READY，再接入正式顯示呼叫者，不改輸入、規則或存檔。
