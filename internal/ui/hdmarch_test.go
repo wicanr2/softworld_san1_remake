@@ -57,7 +57,7 @@ func TestHDMarchSourceValidation(t *testing.T) {
 			t.Fatal("mask accepted as HD art", slot)
 		}
 	}
-	for _, n := range []int{786, 787} {
+	for _, n := range []int{846, 847} {
 		dir := t.TempDir()
 		many := make([]HDEntry, n)
 		for i := range many {
@@ -65,7 +65,7 @@ func TestHDMarchSourceValidation(t *testing.T) {
 		}
 		hdManifest(t, dir, many)
 		_, e := LoadHDPack(dir, "base", nil)
-		if (e == nil) != (n == 786) {
+		if (e == nil) != (n == 846) {
 			t.Fatal("manifest bound", n, e)
 		}
 	}

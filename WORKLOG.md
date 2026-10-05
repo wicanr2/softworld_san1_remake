@@ -820,3 +820,29 @@ R1並行12fps錄影未於480秒抵達三英，R2兩個Mesa執行緒只作診斷�
 提交前收尾為workplace/hd-opening-v43-closing-before-feature-commit.json，十七份收據身份通過；372份來源中八份修改、兩份新增及362份保持。24份保護檔、三語母檔、舊369檔包及新786筆／377PNG／382檔核對。71,437個工作樹路徑皆UID/GID1000，沒有root-owned或誤建.md目錄。公開閘門限十五份程式／文件，五十份完整來源注入負對照及乾淨中文正對照通過；使用者未追蹤AGENTS.md保留，原始素材、美術及私人驗證不提交。san1專案容器清單為空，未建立新Release或封包。
 
 功能提交edaa395179bd1ebdfb1b2df73807bf25d3a4afae已推送，遠端main回讀相同。寫入前再次讀取五項Issue全文，與本輪開始相同；#104、#107、#109、#110僅替換目前狀態，回讀body與預備檔逐字相同，歷史、標題、標籤、留言及OPEN狀態保持；#108完整物件不變。收據為workplace/hd-opening-v43-issue-sync.json。既有v.1.0.3-20260924的tag object／dereference仍為fe0cd19f742ed1dcce0a105fe0d5c1e129b375e8／8d89946357580a6a650b1e9a4bc0fea12dadcf3b，沒有發行寫入。此段另作文件提交；收尾入口為workplace/hd-opening-v43-closing-integrity.json，正式十份來源與binary保持，不為文件重跑玩法驗證。Goal ACTIVE，下一批製作群沿用兩版來源差異，其餘未完成項保持。
+
+## 2026-10-05 製作群的高清背景與嵌入人物
+
+接手63c9e32，操作面板沿用§6.38–6.43完成範圍。路由載入重製技能、規格閘門、文件職責與正常試玩 reference，沿用B、4×、原貌預設及隱藏選項列。GitHub五項Issue最新全文讀入workplace/hd-v44-before-issue-*.json，全數OPEN；沒有用歷史worklist重開已完成項。
+
+DATA2兩版各31項製作群來源正式解碼，共62完整來源與8組圖。只有ENDO2項內位移8878的原始byte不同，導致y=107六個像素不同；不推定差異用途。REC11沒有正常caller，只準備美術。八項背景、22字條、ENDO4天空遮罩分列，歷史文字與中央人物中間64×48的三個重疊區保持原始像素。FAC搜尋只證明指定未鏡射裁圖未命中，不外推人物身份或完整枚舉。
+
+九張B母圖以實際imagegen生成，來源、完整提示詞、透明度與輸出SHA記在workplace/hd-credits-v44-generation.json。一次REC11生成連線失敗後重試成功，沒有偽造生成結果。來源色號0在可分離人物美術框內可繪製黑色五官，框外保持透明；中央文字保護區不取得這項權利。最終R4使用RGBA Over，框外全部4×像素及alpha由載入器核對，改字或改透明度拒收該項。R1非決定性準備順序、R2五官碎塊、R3黑色方框候選保留未採；數字通過不能替代目視。
+
+私人R4包為workplace/hd-assets-credits-v44-r4/，846筆／408PNG／414檔，兩版各423筆，manifest SHA-256為6e136641cda58338cd0fb81fc98551b63e26e8bdcb62fd669aba4ead1dcb4bb4。舊786筆及381份非manifest檔保持，414檔乾淨重建相同。Go CatmullRom正規化後的4×尺寸不稱為模型原生解析度。母圖、提示、來源、候選與包只留本機。
+
+R5原型159項測試零skip／fail；兩版940個完整朝堂與捲動狀態，加24個實際舊包／混合缺圖狀態，共964組CPU與完整原生畫布相同，54完整PNG核對。較早R2全套測試在240秒外層期限以137結束，屬未完成驗證，不算綠；逾時或OOM的單一原因未證實。READY稽核誤用舊translations路徑，第二次讀取也失敗；依實際既有v43稽核找到internal/i18n/lang後修正工具，沒有改產品或語系。稽核通過後才接入9份正式檔案。
+
+正式opening／ui／assets／menu／cmd/san1五套件782/782、零skip／fail，binary SHA-256為fdc3d01cb9920af5903aa71f6d05ee584269e5ee85f1ff6a6a419240383defc7，沒有overlay。正式964組完整畫布、54PNG及六次實際包載入逐列、逐檔與R5審查原型相同，收據為workplace/hd-credits-v44-formal-native-audit.json與hd-credits-v44-native-formal-r1/receipt.json。375份來源中六份修改、三份新增，修改前366份保持；24份保護檔及三語母檔保持。Canvas只增加一張15.9375MiB重用合成頁。父端另查看正式朝堂及第一人物完整原生圖，入口hd-credits-v44-root-formal-visual.json。
+
+正式規則自然生成的兩版晚期存檔以既有主選單建局、Session.AdvanceToHuman與Session.Save得到，沒有seed、領土、Over或時間注入。兩版主選單載入後各44個正常規則cell到達統一，與自然演算三表相同。修改前正常GUI兩版20/20、135完整來源／影片PNG與197實際影片幀回讀，36圖逐張查看；共圖別名及既有格式字串限制保持。這些是路線準備與原貌基準，不能當正式高清GUI驗收；入口為workplace/credits-v44-baseline-handoff.json。
+
+正式原版paused的R1／R2各12個四家族三語停點全圖通過，但最後示範退出皆未達標，兩份完整收據與影片保留未採。R2將最後Space的OS按下由80ms改為500ms，實際0.534615秒，結果沒有改變；不據此宣稱按鍵漏收。兩輪同類失敗後重讀learning-loop與停損規則，停止調參數。R1失敗影片355實際幀完整回讀、133幀完整來源候選；R2原片保留，診斷先於全量失敗影片分析。
+
+私人只讀logging overlay的最小正常診斷在app-routing-trace.json的sequence38記錄到Space：creditsDone=true、Players=0、newMenu存在、選項列隱藏，但wipe=true且目前Bubble為scene16。原有Update拉幕分支先於示範退出，鍵因此沒有走到endDemo。這推翻「兩張相同完結頁就代表可以收返回鍵」的工具前提，沒有推翻HD渲染。正式main.go、title.go、credits.go及375份建置來源保持；診斷binary不採為正式驗收。後續工具以實際完成的既有場景拉幕辨識停點，不改產品流程。
+
+2026-10-06 收尾：R3 原版改按既有 SCG16 完整來源揭露同步，普通80ms Space可正常返回。R3 加強版十二組三語原貌／高清／恢復全圖相符，但末列收起後自然跨過字幕終點，整條收據保持false；不重跑已通視覺。加強版既有正常baseline0056與自然規則主指令來源全640×408校準相同，R4連續播放以兩張完整主指令頁同步後普通Space一次返回。原版R4連續片的0057／0060有完整SCG16匹配，未滿工具要求連續兩張，最後0110已是正常主指令頁；就緒90秒期限失敗保留，未送最後退出，不宣稱產品效能缺陷。原版R4跳過單次6/6通過。
+
+兩版四家族三語 24/24 視覺樣本、24 次完整原貌回切與十二種完整選項列來源獨立回讀通過，共 625 完整實際 PNG。五份收據共有 113 項通過檢查；三條完整路徑通過，兩條未完成收據原狀保留。原版 R3 暫停／切換與加強版 R4 連續播放均正常完結並返回，原版 R4 空白鍵跳過亦通過。 加強版 R3 收列時字幕已自然播完，工具要求仍有字幕而失敗；其十二組完整視覺可採，整條保持 false。原版 R4 高清連續播放有完整場景匹配，工具未取得連續兩張 SCG16 就緒圖而逾時，最後返回未驗；不把這項工具限制寫成產品效能缺陷。REC11 仍無正常使用端；既有完結順序為 L3 remake 推論，音畫與平台範圍保持。 父端以獨立Go PNG解碼器讀取完整實際圖片，完整CPU／原生畫布及全部共圖候選相符；焦點底色按正式顏色契約統一，整列文字與其他像素沒有排除。R3私人工具快照credits-v44-formal-normal-r3.py依原SHA解析，原收據不改寫；另外來源參考PNG不併入實際GUI圖數。入口為workplace/hd-credits-v44-independent.json與credits-v44-formal-index.json。
+
+兩版72張原貌／高清／恢復樣本由tester查看，父端另查看四家族實際高清全圖，見hd-credits-v44-root-normal-visual.json。§6.46限上述顯示契約與正常視覺為CONFORMED，整份HD READY、Goal ACTIVE。README四圖、原貌預設、隱藏列、tag／Release與素材本機邊界保持；其他素材／使用端、三語地圖標記、援軍逐方重編、效能、音畫與平台繼續列於GitHub。

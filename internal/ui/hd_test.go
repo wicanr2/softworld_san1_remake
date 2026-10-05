@@ -308,14 +308,14 @@ func TestHDWeatherValidationAndFallback(t *testing.T) {
 	if err != nil || p.Count != 0 || len(p.Warnings) != 1 {
 		t.Fatalf("來源尺寸：%+v %v", p, err)
 	}
-	for _, n := range []int{786, 787} {
+	for _, n := range []int{846, 847} {
 		many := make([]HDEntry, n)
 		for i := range many {
 			many[i].Edition = "plus"
 		}
 		hdManifest(t, dir, many)
 		_, err = LoadHDPack(dir, "base", nil)
-		if (err == nil) != (n == 786) {
+		if (err == nil) != (n == 846) {
 			t.Fatalf("manifest 上限 %d：%v", n, err)
 		}
 	}

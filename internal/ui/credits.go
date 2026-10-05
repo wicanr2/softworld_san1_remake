@@ -54,6 +54,7 @@ func DrawCredits(c *Canvas, cr *assets.Credits, scroll int) {
 	}
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	c.drawHDCredits(cr, scroll, false)
 }
 
 // blitCreditLine 畫一條字幕：**色號 0 當透明**（字條是黑底彩字），
@@ -90,4 +91,5 @@ func DrawCreditHall(c *Canvas, cr *assets.Credits) {
 	}
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	c.drawHDCredits(cr, 0, true)
 }

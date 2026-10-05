@@ -35,11 +35,13 @@ const (
 // Credits 是製作群畫面要的東西。
 type Credits struct {
 	// Backdrop 是兩張山景（`REC10`／`REC11`），各 640×336。
-	Backdrop [2]*Image
+	Backdrop      [2]*Image
+	BackdropParts [2][2]*Image
 	// Mask 是 `REC10` 的天空遮罩，640×151，1 ＝ 天空、0 ＝ 山。
 	Mask *Image
 	// Hall 是朝堂圖，640×336。
-	Hall *Image
+	Hall      *Image
+	HallParts [4]*Image
 	// Lines 是二十二條字幕，由上往下就是名單的順序。
 	Lines []*Image
 }
@@ -59,7 +61,8 @@ func LoadCredits(c *Container) (*Credits, error) {
 		}
 		return c.Data(i), nil
 	}
-	pair := func(l, r string) (*Image, error) {
+	cr := &Credits{}
+	pair := func(l, r string, slot int) (*Image, error) {
 		lb, err := get(l)
 		if err != nil {
 			return nil, err
@@ -76,6 +79,10 @@ func LoadCredits(c *Container) (*Credits, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s：%w", r, err)
 		}
+		if li.W != 320 || li.H != CreditBackdropH || ri.W != 320 || ri.H != CreditBackdropH {
+			return nil, fmt.Errorf("assets: 製作群背景片尺寸不符")
+		}
+		cr.BackdropParts[slot] = [2]*Image{li, ri}
 		if li.H != ri.H {
 			return nil, fmt.Errorf("assets: %s 與 %s 高度不同（%d／%d）",
 				l, r, li.H, ri.H)
@@ -87,12 +94,11 @@ func LoadCredits(c *Container) (*Credits, error) {
 		return out, nil
 	}
 
-	cr := &Credits{}
 	var err error
-	if cr.Backdrop[0], err = pair("REC10L.IMG", "REC10R.IMG"); err != nil {
+	if cr.Backdrop[0], err = pair("REC10L.IMG", "REC10R.IMG", 0); err != nil {
 		return nil, err
 	}
-	if cr.Backdrop[1], err = pair("REC11L.IMG", "REC11R.IMG"); err != nil {
+	if cr.Backdrop[1], err = pair("REC11L.IMG", "REC11R.IMG", 1); err != nil {
 		return nil, err
 	}
 	for _, b := range cr.Backdrop {
@@ -116,6 +122,10 @@ func LoadCredits(c *Container) (*Credits, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s：%w", name, err)
 		}
+		if im.W != 160 || im.H != CreditBackdropH {
+			return nil, fmt.Errorf("assets: %s 朝堂片尺寸不符", name)
+		}
+		cr.HallParts[i] = im
 		hall.Blit(im, x, 0)
 		x += im.W
 	}

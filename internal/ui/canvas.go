@@ -54,6 +54,7 @@ type Canvas struct {
 	highOps      []*highOp
 	highOutput   *image.RGBA
 	highCoverage *assets.Image
+	creditNative *image.RGBA
 }
 
 // SetFace 換一份字模（主選單的「使用楷書字／使用隸書字」，Issue #71）。

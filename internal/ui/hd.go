@@ -43,6 +43,7 @@ type HDEntry struct {
 }
 
 type HDPack struct {
+	creditFigures    map[[32]byte][]image.Rectangle
 	marchCache       map[hdMarchKey]*image.RGBA
 	images           map[[32]byte]*image.RGBA
 	flags            map[[32]byte]highFlag
@@ -57,7 +58,7 @@ type HDPack struct {
 	Warnings         []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|CVSC(?:0[0-9]|1[0-5])\.IMG|CMARK[LR]\.IMG|SANT(?:[LR]|BB|BM[12]|BS)\.IMG|TITL[0-3]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU[1-3]\.IMG|MAINMAP[12378]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13])$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|CVSC(?:0[0-9]|1[0-5])\.IMG|CMARK[LR]\.IMG|SANT(?:[LR]|BB|BM[12]|BS)\.IMG|TITL[0-3]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU[1-3]\.IMG|MAINMAP[12378]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13]|ENDO[0-3]\.IMG|REC1[01][LR]\.IMG|UPR(?:[01][0-9]|2[01])\.IMG)$`)
 
 type highFlag struct {
 	image    *image.RGBA
@@ -88,10 +89,10 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 786 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 846 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
-	p := &HDPack{images: make(map[[32]byte]*image.RGBA), flags: make(map[[32]byte]highFlag), flagText: make(map[highFlagTextKey]*image.RGBA), panels: map[string]hdPanel{}, sidePanels: map[hdSideKey]map[byte]string{}, sideBorders: map[hdSideKey]string{}, panelCache: map[hdPanelSize]*image.RGBA{}}
+	p := &HDPack{creditFigures: map[[32]byte][]image.Rectangle{}, images: make(map[[32]byte]*image.RGBA), flags: make(map[[32]byte]highFlag), flagText: make(map[highFlagTextKey]*image.RGBA), panels: map[string]hdPanel{}, sidePanels: map[hdSideKey]map[byte]string{}, sideBorders: map[hdSideKey]string{}, panelCache: map[hdPanelSize]*image.RGBA{}}
 	counts := map[string]int{}
 	for _, e := range m.Entries {
 		counts[e.Edition+"/"+e.Container+"/"+e.Name]++
@@ -114,6 +115,9 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 			p.registerPanel(containers[e.Container], e, high)
 		} else {
 			p.images[hdImageKey(im)] = high
+		}
+		if strings.HasPrefix(e.Name, "UPR") {
+			p.creditFigures[hdImageKey(im)] = hdCreditFigures(e.Name, im.W)
 		}
 		if e.Name == assets.BattleBGTile {
 			p.battleBackground = tileBattleBackground(high)
@@ -142,6 +146,10 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	if (strings.HasSuffix(e.Name, ".FAC") || strings.HasPrefix(e.Name, "MENU") || strings.HasPrefix(e.Name, "CVSC") || strings.HasPrefix(e.Name, "MAINMAP") || (strings.HasPrefix(e.Name, "SCG") && e.Name < "SCG30.IMG")) && e.Container != "DATA3" {
 		return nil, nil, fmt.Errorf("來源容器不符")
+	}
+	credit := strings.HasPrefix(e.Name, "ENDO") || strings.HasPrefix(e.Name, "REC") || strings.HasPrefix(e.Name, "UPR")
+	if credit && e.Container != "DATA2" {
+		return nil, nil, fmt.Errorf("製作群來源容器不符")
 	}
 	march := strings.HasPrefix(e.Name, "CVSC")
 	terrain := strings.HasPrefix(e.Name, "EICON.")
@@ -207,6 +215,19 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 		(flag && (im.W != assets.FlagW || im.H != assets.FlagH)) ||
 		(terrain && (im.W != assets.TileW || im.H != assets.TileH)) {
 		return nil, nil, fmt.Errorf("來源尺寸不符")
+	}
+	if credit {
+		w, h := 160, assets.CreditBackdropH
+		if strings.HasPrefix(e.Name, "REC") {
+			w = 320
+		}
+		if strings.HasPrefix(e.Name, "UPR") {
+			n, _ := strconv.Atoi(e.Name[3:5])
+			w, h = hdCreditWidths[n], assets.CreditLineH
+		}
+		if im.W != w || im.H != h {
+			return nil, nil, fmt.Errorf("製作群來源尺寸不符")
+		}
 	}
 	if decoration || pattern {
 		w, h := 640, 36
@@ -318,11 +339,16 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	high := image.NewRGBA(image.Rect(0, 0, e.Width, e.Height))
 	draw.Draw(high, high.Bounds(), decoded, decoded.Bounds().Min, draw.Src)
-	if terrain || flag || panel || frame || menu || decoration || pattern || march || openingArt {
+	if terrain || flag || panel || frame || menu || decoration || pattern || march || openingArt || (credit && !strings.HasPrefix(e.Name, "UPR")) {
 		for i := 3; i < len(high.Pix); i += 4 {
 			if high.Pix[i] != 255 {
 				return nil, nil, fmt.Errorf("地形、旗幟、面板、框材與底紋必須不透明")
 			}
+		}
+	}
+	if strings.HasPrefix(e.Name, "UPR") {
+		if err := validateCreditText(im, high, e.Name); err != nil {
+			return nil, nil, err
 		}
 	}
 	return im, high, nil
