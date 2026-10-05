@@ -732,3 +732,5 @@ CPU 控制組八組 960 幀確認通用最近鄰縮放占採樣 53.79%。固定�
 §6.42限本節顯示契約及上述正常樣本CONFORMED，整份HD READY、Goal ACTIVE，五項Issue OPEN。其他素材、自然事件／單挑等使用端、動畫／遮罩、效能、音畫與平台尚未完成。本批音訊關閉，沒有新增人耳、原版oracle、存讀檔或平台聲明；既有README四圖、正式tag／Release／封包及素材本機範圍保持。
 
 二十二張正式高清全圖已逐張查看，視讀收據為 workplace/hd-left-v40-visual.json；與完整像素回讀分列。workplace/hd-left-v40-private-audit.json 回讀 533 張 PNG 與六份正常收據，970 個本批路徑皆 UID/GID 1000；父端收尾另核對整個工作樹。
+
+功能提交 9413c86a63ae16f2d3e038d7c26798c702432d56 已推送，遠端 main 回讀相同。Issue #104、#107、#109、#110 的目前狀態更新後全文回讀，與預備內文逐字相同；歷史、標題、標籤、留言及 OPEN 狀態保持。#108 全部欄位未變，五項仍 OPEN。收據為 workplace/hd-left-v40-issue-sync.json。提交前的全工作樹收尾收據另保留於 workplace/hd-left-v40-closing-integrity-before-commit.json，62,125 個路徑皆 UID/GID 1000，沒有 root-owned 路徑或 .md 目錄。既有正式 tag 未變，本輪未發行或打包；使用者未追蹤的 AGENTS.md 保留。本段紀錄另作文件提交，公開檔案與來源雜湊閘門隨之重驗。
