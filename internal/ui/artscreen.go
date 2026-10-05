@@ -338,7 +338,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	case artUpperList:
 		if !drawArtList(c, v.Menu, v.Items) {
 			// 標籤寬過上面板（存檔槽的描述、英文的計略名）就改蓋整個內容區。
-			drawArtOverlay(c, v.Menu, commandLines(v.Items), t("hint.pick"), 0)
+			drawArtOverlay(c, v.Menu, commandLines(v.Items), t("window.hint.pick"), 0)
 		}
 	default:
 		drawArtCommands(c)
@@ -360,7 +360,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 		DrawSaveScreen(c, a, v.Save)
 	}
 	if len(v.Page) > 0 {
-		drawArtOverlay(c, v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+		drawArtOverlay(c, v.PageTitle, v.Page, t("window.hint.page"), v.PageTop)
 	}
 }
 

@@ -844,7 +844,7 @@ func TestPageScrollsToTheEnd(t *testing.T) {
 	// 捲得動時標題帶位置、提示換成怎麼捲；捲到底時畫得出最後一行。
 	cols, rows := PageSize(true)
 	lines, head, hint, top := pageWindow("戰報", body, 1000, cols, rows)
-	if !strings.Contains(head, "／60") || hint != i18n.S("hint.pageScroll") {
+	if !strings.Contains(head, "／60") || hint != i18n.S("window.hint.pageScroll") {
 		t.Errorf("標題 %q、提示 %q：捲得動時要帶位置與捲動的說明", head, hint)
 	}
 	if lines[top+rows-1] != "第 60 行" {

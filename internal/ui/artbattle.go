@@ -531,7 +531,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		}
 		if len(v.Page) > 0 {
 			drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
-				v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+				v.PageTitle, v.Page, t("window.hint.page"), v.PageTop)
 		}
 		return
 	}
@@ -572,7 +572,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		}
 		if len(v.Page) > 0 {
 			drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
-				v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+				v.PageTitle, v.Page, t("window.hint.page"), v.PageTop)
 		}
 		return
 	}
@@ -606,7 +606,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		}
 		if len(v.Page) > 0 {
 			drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
-				v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+				v.PageTitle, v.Page, t("window.hint.page"), v.PageTop)
 		}
 		return
 	default:
@@ -640,7 +640,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	// 查看部隊那一頁蓋在戰場區上（面板上面那一整塊）。
 	if len(v.Page) > 0 {
 		drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
-			v.PageTitle, v.Page, t("hint.page"), v.PageTop)
+			v.PageTitle, v.Page, t("window.hint.page"), v.PageTop)
 	}
 }
 

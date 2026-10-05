@@ -221,7 +221,7 @@ func pageWindow(title string, lines []string, top, cols, rows int) ([]string, st
 			last = len(body)
 		}
 		head = tf("page.pos", title, top+1, last, len(body))
-		hint = t("hint.pageScroll")
+		hint = t("window.hint.pageScroll")
 	}
 	return body, head, hint, top
 }
@@ -385,7 +385,7 @@ func drawInfoPanel(c *Canvas, g *game.State, sel int) {
 
 // drawCommandPanel 畫右下的指令欄。原版是兩欄五列。
 // commandPanelRows 是文字版指令欄一欄最多幾項（第 15–22 列；第 23 列
-// 留給「Esc 返回」）；commandColW 是兩欄時一欄的寬。
+// 留給「Shift+Esc 返回」）；commandColW 是兩欄時一欄的寬。
 const (
 	commandPanelRows = 8
 	commandColW      = 13
@@ -428,7 +428,7 @@ func drawCommandPanel(c *Canvas, title string, cmds []Command) {
 		c.DrawText(col+3, row, name, ColFG)
 	}
 	if len(cmds) < len(Commands()) {
-		c.DrawText(panelCol+2, Rows-2, t("msg.back"), ColDim)
+		c.DrawText(panelCol+2, Rows-2, t("window.msg.back"), ColDim)
 	}
 }
 

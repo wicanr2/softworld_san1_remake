@@ -529,7 +529,7 @@ func (a *app) endBattle() {
 	if a.s.G.PendingDefence() == a.fight.pending {
 		a.fight = nil
 		a.s.FinishDefence()
-		a.view.Prompt = t("bat.finished")
+		a.view.Prompt = t("window.bat.finished")
 		return
 	}
 	r := a.s.G.FinishAttack(a.fight.pending)
@@ -538,7 +538,7 @@ func (a *app) endBattle() {
 	if r != nil {
 		a.view.SetPage(ui.BattleReport(a.s.G, r))
 	}
-	a.view.Prompt = t("bat.finished")
+	a.view.Prompt = t("window.bat.finished")
 }
 
 // battleKey 收戰場上的一個按鍵。戰術層停著問玩家時交給 `answerEngine`，
@@ -695,7 +695,7 @@ func (a *app) battleCommand(k byte, done func(error), say func(string, ...any)) 
 		}
 		f.view.SetPage(ui.BattleUnitPage(u))
 		f.view.Inspecting = u
-		say(t("bat.close"))
+		say(t("window.bat.close"))
 	case battle.CmdRetreat:
 		f.waiting = waitRetreatYN
 		f.view.Window = t("bat.win.retreatYN")

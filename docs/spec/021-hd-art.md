@@ -2010,7 +2010,7 @@ READY 保持：本批已完成上述面板、框片與使用端接入；白色�
 
 驗證工具曾漏算游標整格底色及子圖行動標記閃爍，失敗圖與收據保留；依原始六格及 005 已有反白契約修正，沒有改產品來符合工具。源碼也顯示查看頁仍保留行動標記，部分 R3 主動停止並保留不成功收據。實際語言與英文 23 格指令裁切缺陷依 §6.36.6 修正後，另從正常新局複驗。工作歷程見 [WORKLOG](../../WORKLOG.md#2026-10-05-正常對戰與查看面板三語驗證)。
 
-本批是 remake 正常 GUI 與美術接入證據，不新增原版 oracle、音畫、存讀檔或跨平台聲明。寬版正常子畫面、其他自然事件／單挑／快戰、地圖將領完整譯名、目前仍顯示 Esc 的分頁提示、守城援軍逐方重編、效能及平台仍待驗或修正；實際分頁返回已用 Shift＋Esc 通過。使用者逐張簽核仍為零，整份 HD 保持 READY。
+本批是 remake 正常 GUI 與美術接入證據，不新增原版 oracle、音畫、存讀檔或跨平台聲明。寬版正常子畫面及分頁提示後續補驗見 [§6.40](#640-外殼取消與返回提示)。其他自然事件／單挑／快戰、地圖將領完整譯名、守城援軍逐方重編、效能及平台仍待驗或修正；實際分頁返回已用 Shift＋Esc 通過。使用者逐張簽核仍為零，整份 HD 保持 READY。
 
 ### 6.39 主選單的空白直牌、按鈕與飾框
 
@@ -2055,3 +2055,29 @@ Codex 已查看三張皮膚及完整主選單／年代頁，採用第三稿按�
 本機 manifest SHA-256：`c2445e9e3c028f07a200da977906882457f7e8445df4fd0470b3a8280265a4d3`；正式 Linux 執行檔：`55cf3a7c0e75f3a6aed87d5afa1fb7d15003b27e91ed11efdfd83f8668d3c1af`。來源及重建稽核為 `hd-menu-v37-font-audit.json`，建置為 `hd-menu-v37-font-build.json`，正常收據在 `workplace/hd-window/player/menu-v37-r4/{base,plus}/receipt.json`。完整框材、候選及兩版正常高清圖由 Codex 查看；使用者逐張簽核不推定完成。
 
 驗證限 remake 的框材與正常操作，沒有新增 dosgolem oracle、規則／存讀檔、音畫、人耳或跨平台聲明。MENU0A／B 書法標題與其他素材家族仍按原範圍；README 四圖、Release／tag／封包保持。整份 HD 保持 READY，五項 HD Issue 保持 OPEN。
+
+## 6.40 外殼取消與返回提示
+
+**狀態：CONFORMED，限本節外殼提示與正常寬版樣本**。沿用 §6.3 已定案的 Esc 選項列及 Shift＋Esc 遊戲返回／取消，不改輸入、規則、存檔或原版字串。正式 `app.updateWindowBar` 在遊戲輸入前攔下未按 Shift 的 Esc；Shift＋Esc 收起外殼後送入原有取消分支。本節補正顯示提示與驗證寬版使用端。
+
+修改前八種提示寫 Esc：分頁、捲動分頁、挑選、數字輸入、文字選單返回、戰役收起、戰役結束及築寨位置第五行。來源為修改前正式 Go／三語字串表，身份收據為 `workplace/hd-panels-v38-before.json`；位址空間為儲存庫檔案／字串鍵，屬 remake 顯示契約，不新增 DOS 行為推論。原始資料來源與版本身份沿用 §2。
+
+- 新增 `window.hint.page`、`window.hint.pageScroll`、`window.hint.pick`、`window.hint.number`、`window.msg.back`、`window.bat.close`、`window.bat.finished`、`window.fort.help5`。三語均複製自身原提示，只把 Esc／ESC 改成 `Shift+Esc`。原有鍵與原文逐字保存，尤其 `fort.help5` 原版提示不可覆寫。
+- 正式 UI 與控制器的上述顯示呼叫者改用新鍵。規則與原始資料不依新鍵。築寨確認的 Y／N、前四行說明、編號、等待、游標、點擊與外殼攔截保持。
+- 按原有字型量寬。分頁提示留在末行；築寨第五行最多 176 px，超出即視為缺陷，不裁切鍵名。原貌、4× 與即時語言切換使用同一新提示。
+- 回歸經正式分頁／戰場／築寨繪製路徑核對完整字模；原有三語 catalog 逐鍵保持。正常寬版由劇本 001 曹操陳留 11 出兵潁川 13，目的郡 FieldShape 為 9。主戰場、對戰與查看各自核對版面，不能套窄版遮擋範圍；只用正常鍵盤紮寨，不注入狀態、位置或 seed。
+- 正常 GUI 另驗 Esc 只開外殼、Shift＋Esc 關閉分頁、三語與 Theme 原貌／4×／回切。參考與回歸不代替正常到達；結果不外推原版 oracle、所有事件、音畫或跨平台完成。
+
+私人資料探針 `workplace/hd-panels-v38-wide-route.go`／`.json` 用正式 `state.LoadScenario`、`game.New`、`ActorRoster` 讀兩版六劇本，確認攻方曹操 F000、潁川開局太守袁胤 F205。開局太守不等於戰場統帥；正式正常路徑另讀完整肖像辨識，不跨版本外推。這是正式資料路線盤點，尚非正常試玩。沿用 `workplace/hd-assets-menu-v37-r3/` 的 718 筆／343 PNG，沒有新生成或替換美術；素材、提示詞與完整收據仍只留本機。
+
+正式五套件回歸 394/394，零 skip／fail；`workplace/hd-panels-v38-build.json` 記錄無 overlay 的正式執行檔與 358 份 runtime／測試來源。獨立完整性收據 `workplace/hd-panels-v38-integrity.json` 另核對工具來源，共 364 份，既有 356 份保持、七份修改及一份新測試。三語各保留原有 794 鍵，僅新增八鍵；十八份原始容器、718 筆素材 manifest、343 PNG、README 四圖與使用者未追蹤 AGENTS.md 保持。
+
+同一完整字模測試套回舊正式 renderer 時，十二組分頁、三組築寨取消及兩項總測試均失敗；三語 Y／N 確認控制組均通過。負對照為 `workplace/hd-panels-v38-hint-negative.json`。正常兩版寬版全圖及返回操作已由下列正式玩家收據補驗，回歸測試不代替正常到達。
+
+正常寬版每版十一停點：主戰場、對戰及查看各三語，再查看返回與休息繼續。兩版合計 22/22 停點、220/220 檢查。原貌、4× 與完整回切逐像素核對；六組查看的三語完整新末列、Esc 開／關保留頁面、Shift＋Esc 返回及正常休息進時均通過。主守雷薄 F188、對戰隊首陳蘭 F185 依每版實際原貌的完整 64×80 來源肖像辨識；開局太守 F205 不外推。
+
+獨立 `workplace/verify-hd-panels-v38-wide.json` 記錄精確輸入：base 為 `workplace/hd-window/player/panels-v38-wide-r3/base/receipt.json`，plus 為 `workplace/hd-window/player/panels-v38-wide-r2/plus/receipt.json`。302 張完整 PNG 均經 FFmpeg 解碼、尺寸、SHA-256 及 UID/GID 核對；66 份完整 720×400 面板共 19,008,000 原生高清像素、六份完整 2240×1040 查看頁共 13,977,600 像素相同。寬版查看不遮住下方三面板，不能沿用窄版遮擋；CURC 完整格只接受來源六格，查看外可見的行動格左側 8×32 完整核對補色相位，沒有差異遮罩。22 張正式高清圖已逐張目視，收據為 `workplace/hd-panels-v38-wide-visual-review.json`。
+
+正常路線入口為 `workplace/hd-panels-v38-wide-normal-r3.py` 與 `hd-panels-v38-wide-normal-r2.py`，獨立回讀入口為 `workplace/verify-hd-panels-v38-wide.py`。原版 R2 保存視窗尺寸已改、尚未重繪的原尺寸舊幀與黑底擷取。R3 以完整未高清化的左上 56×32 來源塊及其 4× 圖，作十二秒有界的重繪就緒條件；十一組均完整相等。只重跑必要原版，加強版通過的 R2 保持。獨立回讀的首版末列斷言誤將原藍底直接放大，改為來源高清紙紋加完整字像素；失敗程式與完整圖片保存，正式 renderer 不變。
+
+舊正常提示負對照為 `workplace/hd-panels-v38-wide-old-hint-negative.json`，base 三語及 plus 繁中四張末列均與完整舊字模相同、與新字模不同。完整性收據為 `workplace/hd-panels-v38-closing-integrity.json`。本節不新增原版 oracle、存讀檔、音訊、人耳或跨平台聲明；其他素材及使用端、效能與逐張使用者驗收仍待完成，整份 HD 保持 READY，五項 Issue 保持 OPEN。

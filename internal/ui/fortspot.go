@@ -35,7 +35,7 @@ func DrawArtFortSpot(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field, 
 	bg := assets.EGAPalette[fortSpotHelpBG]
 	for i := 0; i < 5; i++ {
 		y := fortSpotHelpY + i*CellH
-		line := t([]string{"fort.help1", "fort.help2", "fort.help3", "fort.help4", "fort.help5"}[i])
+		line := t([]string{"fort.help1", "fort.help2", "fort.help3", "fort.help4", "window.fort.help5"}[i])
 		ink := fortSpotHelpInk[i]
 		if i == 4 && s.Confirm {
 			// `0x1aee8`：確認那一句蓋在第五行上，紅 12。

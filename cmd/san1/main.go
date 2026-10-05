@@ -10,7 +10,8 @@
 //	0–9              指令類別（查看／軍事／兵士／內政／商業／人事／君主／謀略）
 //	1–9              子選單與挑選清單
 //	Enter            這個郡這個月休息，換下一個郡
-//	Esc              返回上一層
+//	Esc              展開或收起選項列
+//	Shift+Esc        返回上一層
 //	M                換下一首配樂
 package main
 
@@ -663,7 +664,7 @@ func (a *app) showNumber() {
 		{Key: '=', Name: fmt.Sprintf("%d", n.value)},
 		{Key: ' ', Name: tf("fld.max", n.max)},
 	}
-	a.view.Prompt = n.hint + t("hint.number")
+	a.view.Prompt = n.hint + t("window.hint.number")
 }
 
 // numberKey 收數字輸入的一個按鍵。
