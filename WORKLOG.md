@@ -881,3 +881,17 @@ R5原型159項測試零skip／fail；兩版940個完整朝堂與捲動狀態，�
 收尾核對 374 份既有 Go，僅 artscreen.go 修改、373 份保持，新增 menulabel_test.go。45 份保護檔含原始容器、README 四圖、三語母檔與使用者 AGENTS.md，既有 B 包 417 檔均保持。81,812 工作樹路徑沒有 root-owned、錯誤 UID/GID 或誤建 .md 目錄，見 hd-label-v46-integrity.json。來源、私有原型、截圖與驗證收據不加入 Git；公開候選限兩份 Go 與五份既有文件。
 
 沒有新增 AI 美術、音畫、效能、平台、原版 oracle、Release 或封包聲明。遠端 Issue 編輯仍等待先前授權，不重試自動核准審查已拒絕的操作。提交、推送與最終容器清理回讀記在 workplace/hd-label-v46-delivery.json。
+
+## 2026-10-06 README 現行高清操作面板展示
+
+接手已推送的 d4dcbcc，上一輪屬已完成並推送的進度。重新命中完整 remake、README 與文件職責路由，沿用現行 021、B 風格、4× 與原貌預設。確認操作面板的底材及飾框已接入，README 的四張展示仍是較早素材包，未呈現目前面板成果。此次沒有修改正式程式或生成新美術。
+
+以目前正式 binary 與 `workplace/hd-assets-title-v45-r4/`，從正常片頭開劇本 001、單人曹操、難度 5。第一條路徑正常查看陳留曹操人物卡；第二條由陳留出兵潁川，只選曹操、金 0、糧 1000，鍵序 3,3,2,2,0 合法紮寨，停在第一日 6 時指令輸入。主戰場採寬版。README caption 依實際郡名更新；沒有注入局面、座標、seed 或 clock。
+
+R1 容器未指定 /src 工作目錄，正式程式找不到相對字型路徑。R2 已正常開局，但擷取工具把主框來源誤指到一般 DATA1 圖片目錄。R3 通過主畫面及完整戰場回切，肖像檢查仍用窄版的 (456,52)，對寬版誤判失敗。從正式 BattleWide.Face(0) 及完整原始 F000 鏡像確認寬版位置為 (72,276)。三份 false 收據、當時腳本與圖片全部保留；R4 在同一 image、CPU／記憶體設定及同一正式程式乾淨重跑。沒有改遊戲來配合工具。
+
+R4 17/17 正常檢查通過，包括兩組完整原貌／4×／回切、原生肖像與原生高清鏡像、人物卡及指令面板，以及正常戰場未遮擋地形格。獨立回讀 115/115 完整 PNG 的尺寸、SHA-256 與擁有權，369 份 cmd／internal Go 來源保持。兩張目前公開高清完整畫面已查看，面板底紋、飾框、肖像框及指令文字可見。入口為 `hd-readme-v47-capture.py`、`hd-window/player/readme-v47-r4/receipt.json`、`hd-readme-v47-publish.py` 與 `hd-readme-v47-publish.json`。
+
+公開變更限六份既有文件與使用者已指定的四張完整執行期展示圖。README 只補面板現況與入口；021 §6.38.4、CONTEXT、VERIFICATION-MATRIX 及 INDEX 記錄本次範圍。原素材、高清素材包、生成提示與私人收據不加入 Git；現行包仍為 850 筆／410 PNG／417 檔。這次不新增音訊、人耳、原版 oracle、存讀檔、效能、跨平台、Release 或封包聲明。HD 全案維持 READY，Goal ACTIVE。
+
+提交前回讀與公開範圍檢查入口為 `workplace/hd-readme-v47-final-check.py`；提交、推送與 Docker 清理結果另記 `workplace/hd-readme-v47-delivery.json`。遠端 Issue 的編輯仍待先前授權，本輪沒有重試自動核准審查已拒絕的操作。使用者未追蹤的 AGENTS.md 保持。

@@ -10,14 +10,14 @@
 
 ## remake 原貌與 HD 畫面
 
-保留原版版面，人物與美術採 B 寫實手繪高清化。下列兩組由正式 remake 視窗在同一個玩家停點切換 Theme 擷取，點圖可看原生尺寸。
+保留原版版面，人物、美術與操作面板採 B 寫實手繪高清化。面板加入高清底紋、飾框與肖像框，文字及操作位置沿用既有版面。下列兩組由正式 remake 視窗在同一個玩家停點切換 Theme 擷取，點圖可看原生尺寸。
 
 | 場景 | remake 原貌，640×408 | B 高清，2560×1632 |
 |---|---|---|
 | 主畫面與曹操人物卡 | <a href="docs/images/remake-main.png"><img src="docs/images/remake-main.png" width="360" alt="remake 原貌：劇本一主畫面與曹操人物卡"></a> | <a href="docs/images/remake-main-hd.png"><img src="docs/images/remake-main-hd.png" width="360" alt="B 高清：相同主畫面與曹操人物卡"></a> |
-| 主戰場，陳留出兵攻鄴郡 | <a href="docs/images/remake-battle.png"><img src="docs/images/remake-battle.png" width="360" alt="remake 原貌：主戰場正常指令停點"></a> | <a href="docs/images/remake-battle-hd.png"><img src="docs/images/remake-battle-hd.png" width="360" alt="B 高清：相同主戰場，高清人物、地形與天候"></a> |
+| 主戰場，陳留出兵攻潁川 | <a href="docs/images/remake-battle.png"><img src="docs/images/remake-battle.png" width="360" alt="remake 原貌：潁川寬版主戰場的正常指令停點"></a> | <a href="docs/images/remake-battle-hd.png"><img src="docs/images/remake-battle-hd.png" width="360" alt="B 高清：相同主戰場，高清人物、地形、天候與操作面板"></a> |
 
-截圖使用劇本 001、單人曹操、難度 5。原貌讀取本機合法持有的原版美術，HD 使用本機高清素材包，文字使用重製版字庫。**HD 計畫仍在進行**；圖示呈現目前成果，驗收範圍見[高清規格](docs/spec/021-hd-art.md)與[畫面對拍紀錄](docs/playtest/03-screen-parity.md)。
+截圖使用劇本 001、單人曹操、難度 5。原貌讀取本機合法持有的原版美術，HD 使用本機高清素材包，文字使用重製版字庫。操作面板涵蓋主畫面、人物清單、資料卡、存檔及戰場指令，接入與驗證見[操作面板規格](docs/spec/021-hd-art.md#638-操作面板)。**HD 計畫仍在進行**；圖示呈現目前成果，驗收範圍見[高清規格](docs/spec/021-hd-art.md)與[畫面對拍紀錄](docs/playtest/03-screen-parity.md)。
 
 公開原始碼與引擎封包不包含原版執行檔、資料、美術、音樂或字型。遊玩時需自行提供合法持有的原版資料，使用方式見下方「需要原版」。
 
