@@ -104,6 +104,7 @@ func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, inf
 	im := ab.compose(b, v, info)
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	ab.drawHighBackdrop(c, assets.BattleLayoutFor(b.Field.Narrow()))
 	ab.drawHighTerrain(c, b, v, info)
 	c.drawHigh(ab.weather[b.Weather.OriginalIndex()%len(ab.weather)], assets.BattleWeatherX, assets.BattleWeatherY)
 	l := assets.BattleLayoutFor(b.Field.Narrow())
@@ -977,6 +978,7 @@ func DrawArtAtlas(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field) {
 	drawAtlasForeground(im, l)
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	ab.drawHighBackdrop(c, l)
 	if c.HD != nil {
 		c.drawHighField(ab.tiles, field, assets.MaxTerrain)
 		mask := c.indexedCoverage()

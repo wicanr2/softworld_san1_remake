@@ -30,8 +30,9 @@ import (
 // ArtScreen 是一張接上原版底圖的主畫面。
 type ArtScreen struct {
 	// base 是拼好的底圖（未上色），每回合從它複製一份再填色。
-	base  *assets.Image
-	faces *assets.Container
+	base   *assets.Image
+	faces  *assets.Container
+	layers []assets.ScreenLayer
 
 	// fills 是州郡的填色圖樣（`EGAFILL.PAL`）；沒有原版的 `DATA1` 就是
 	// nil，那時退回 `artFactionColour`。
@@ -70,11 +71,11 @@ type ArtScreen struct {
 // data1 給的是州郡的填色圖樣（`EGAFILL.PAL`）；可以是 nil，那就退回
 // remake 自己的色號。
 func NewArtScreen(data3, data1 *assets.Container, data2 ...*assets.Container) (*ArtScreen, error) {
-	bg, err := assets.MainScreen(data3)
+	bg, layers, err := assets.MainScreenWithLayers(data3)
 	if err != nil {
 		return nil, err
 	}
-	a := &ArtScreen{base: bg, faces: data3}
+	a := &ArtScreen{base: bg, faces: data3, layers: layers}
 	if len(data2) > 0 {
 		a.scenes = data2[0]
 	}
@@ -303,6 +304,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	}
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH),
 		im.RGBA(), image.Point{})
+	a.drawHighFrame(c)
 	if a.havePanel {
 		for i, pn := range assets.MainPanels() {
 			c.drawHighSidePanel(a.panels[i], pn.X, pn.Y, pn.W, pn.H, pn.Fill)
@@ -968,6 +970,7 @@ type ArtBattle struct {
 	flags   [4][6]*assets.Image
 	top     *assets.Image
 	bg      *assets.Image
+	bgTile  *assets.Image
 	frame   [4]*assets.Image // 軍力面板的肖像框 `FBRC`（`0x22c94` 的樣式 2）
 	frameA  [4]*assets.Image // 對戰子畫面部隊面板的肖像框 `FBRA`（`0x320a6` 的樣式 0）
 	frameB  [4]*assets.Image // 查看那一塊的肖像框 `FBRB`（`0x284a2` 的樣式 1）
@@ -997,6 +1000,9 @@ func NewArtBattle(data1, data3 *assets.Container) (*ArtBattle, error) {
 	}
 	if ab.bg, err = assets.BattleBackground(data1); err != nil {
 		return nil, err
+	}
+	if i, ok := data1.ByName(assets.BattleBGTile); ok {
+		ab.bgTile, _ = assets.DecodeImage(data1.Data(i))
 	}
 	if ab.frame, err = assets.PortraitFrame(data1, 'C'); err != nil {
 		return nil, err

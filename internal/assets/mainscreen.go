@@ -80,19 +80,34 @@ const MapBorderBottomY = 372
 // 回傳的是**色號**（0–15）不是 RGBA：州郡換色是在色號上做的，
 // 換成 RGBA 之後再比對顏色會被色盤差異干擾。要畫出來用 `Image.RGBA()`。
 func MainScreen(data3 *Container) (*Image, error) {
+	im, _, err := MainScreenWithLayers(data3)
+	return im, err
+}
+
+// ScreenLayer 保留原版拼圖的來源與順序，供顯示素材逐層覆蓋。
+type ScreenLayer struct {
+	Name  string
+	Image *Image
+	X, Y  int
+}
+
+// MainScreenWithLayers 與 MainScreen 共用座標及解碼，不重建另一份版面表。
+func MainScreenWithLayers(data3 *Container) (*Image, []ScreenLayer, error) {
 	dst := &Image{W: ScreenW, H: ScreenH, Pix: make([]byte, ScreenW*ScreenH)}
+	layers := make([]ScreenLayer, 0, len(mainScreenPieces))
 	for _, p := range mainScreenPieces {
 		i, ok := data3.ByName(p.Name)
 		if !ok {
-			return nil, fmt.Errorf("assets: DATA3 裡沒有 %s", p.Name)
+			return nil, nil, fmt.Errorf("assets: DATA3 裡沒有 %s", p.Name)
 		}
 		im, err := DecodeImage(data3.Data(i))
 		if err != nil {
-			return nil, fmt.Errorf("assets: 解 %s：%w", p.Name, err)
+			return nil, nil, fmt.Errorf("assets: 解 %s：%w", p.Name, err)
 		}
 		dst.Blit(im, p.X, p.Y)
+		layers = append(layers, ScreenLayer{p.Name, im, p.X, p.Y})
 	}
-	return dst, nil
+	return dst, layers, nil
 }
 
 // Blit 把一張圖畫到 (x, y)，超出邊界的部分**裁掉不繞行**。

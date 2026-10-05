@@ -42,19 +42,20 @@ type HDEntry struct {
 }
 
 type HDPack struct {
-	images          map[[32]byte]*image.RGBA
-	flags           map[[32]byte]highFlag
-	flagText        map[highFlagTextKey]*image.RGBA
-	panels          map[string]hdPanel
-	sidePanels      map[hdSideKey]map[byte]string
-	sideBorders     map[hdSideKey]string
-	panelCache      map[hdPanelSize]*image.RGBA
-	panelCacheBytes int
-	Count           int
-	Warnings        []string
+	images           map[[32]byte]*image.RGBA
+	flags            map[[32]byte]highFlag
+	flagText         map[highFlagTextKey]*image.RGBA
+	panels           map[string]hdPanel
+	sidePanels       map[hdSideKey]map[byte]string
+	sideBorders      map[hdSideKey]string
+	panelCache       map[hdPanelSize]*image.RGBA
+	panelCacheBytes  int
+	battleBackground *image.RGBA
+	Count            int
+	Warnings         []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU[1-3]\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13])$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU[1-3]\.IMG|MAINMAP[12378]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13])$`)
 
 type highFlag struct {
 	image    *image.RGBA
@@ -85,7 +86,7 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 718 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 730 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
 	p := &HDPack{images: make(map[[32]byte]*image.RGBA), flags: make(map[[32]byte]highFlag), flagText: make(map[highFlagTextKey]*image.RGBA), panels: map[string]hdPanel{}, sidePanels: map[hdSideKey]map[byte]string{}, sideBorders: map[hdSideKey]string{}, panelCache: map[hdPanelSize]*image.RGBA{}}
@@ -112,6 +113,9 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 		} else {
 			p.images[hdImageKey(im)] = high
 		}
+		if e.Name == assets.BattleBGTile {
+			p.battleBackground = tileBattleBackground(high)
+		}
 		if strings.HasPrefix(e.Name, "WFLAG") {
 			label := []rune("帥先左右後")[int(e.Name[7]-'0')]
 			p.flags[hdImageKey(im)] = highFlag{image: high, label: label}
@@ -134,7 +138,7 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	if strings.HasSuffix(e.Name, ".FAC") && e.Name > "F255.FAC" {
 		return nil, nil, fmt.Errorf("肖像資源越界")
 	}
-	if (strings.HasSuffix(e.Name, ".FAC") || strings.HasPrefix(e.Name, "MENU") || (strings.HasPrefix(e.Name, "SCG") && e.Name < "SCG30.IMG")) && e.Container != "DATA3" {
+	if (strings.HasSuffix(e.Name, ".FAC") || strings.HasPrefix(e.Name, "MENU") || strings.HasPrefix(e.Name, "MAINMAP") || (strings.HasPrefix(e.Name, "SCG") && e.Name < "SCG30.IMG")) && e.Container != "DATA3" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
 	terrain := strings.HasPrefix(e.Name, "EICON.")
@@ -142,7 +146,9 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	panel := strings.HasPrefix(e.Name, "PANEL.")
 	frame := strings.HasPrefix(e.Name, "FBR")
 	menu := strings.HasPrefix(e.Name, "MENU")
-	if (strings.HasPrefix(e.Name, "WEATHER") || terrain || flag || panel || frame) && e.Container != "DATA1" {
+	decoration := strings.HasPrefix(e.Name, "MAINMAP")
+	pattern := e.Name == assets.BattleBGTile
+	if (strings.HasPrefix(e.Name, "WEATHER") || terrain || flag || panel || frame || pattern) && e.Container != "DATA1" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
 	if strings.HasPrefix(e.Name, "SCG") && e.Name >= "SCG30.IMG" && (e.Container != "DATA2" || e.Name > "SCG31.IMG") {
@@ -196,6 +202,20 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 		(flag && (im.W != assets.FlagW || im.H != assets.FlagH)) ||
 		(terrain && (im.W != assets.TileW || im.H != assets.TileH)) {
 		return nil, nil, fmt.Errorf("來源尺寸不符")
+	}
+	if decoration || pattern {
+		w, h := 640, 36
+		switch e.Name {
+		case "MAINMAP3.IMG":
+			w, h = 72, 336
+		case "MAINMAP7.IMG":
+			w, h = 8, 336
+		case assets.BattleBGTile:
+			w, h = 8, 8
+		}
+		if im.W != w || im.H != h {
+			return nil, nil, fmt.Errorf("外框或底紋來源尺寸不符")
+		}
 	}
 	if menu {
 		sizes := map[string][2]int{"MENU1.IMG": {96, 151}, "MENU2.IMG": {200, 46}, "MENU3.IMG": {40, 41}}
@@ -279,10 +299,10 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	high := image.NewRGBA(image.Rect(0, 0, e.Width, e.Height))
 	draw.Draw(high, high.Bounds(), decoded, decoded.Bounds().Min, draw.Src)
-	if terrain || flag || panel || frame || menu {
+	if terrain || flag || panel || frame || menu || decoration || pattern {
 		for i := 3; i < len(high.Pix); i += 4 {
 			if high.Pix[i] != 255 {
-				return nil, nil, fmt.Errorf("地形、旗幟、面板、肖像框與主選單素材必須不透明")
+				return nil, nil, fmt.Errorf("地形、旗幟、面板、框材與底紋必須不透明")
 			}
 		}
 	}

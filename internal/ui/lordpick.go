@@ -51,6 +51,7 @@ type LordPickSlot struct {
 func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, sel int, prompt string, cal game.Calendar) {
 	im := a.Compose(g, 0)
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{})
+	a.drawHighFrame(c)
 	drawArtDate(c, g.Date, cal)
 
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
@@ -170,6 +171,7 @@ var customLineInk = [6]int{10, 13, 14, 14, 14, 12}
 func DrawCustomLord(c *Canvas, a *ArtScreen, g *game.State, faction, portrait int, name string, lines [6]string, sel int, prompt [2]string, cal game.Calendar) {
 	im := a.Compose(g, 0)
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{})
+	a.drawHighFrame(c)
 	drawArtDate(c, g.Date, cal)
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
 	if a.havePanel {
@@ -224,6 +226,7 @@ const (
 func DrawNewLordBorn(c *Canvas, a *ArtScreen, g *game.State, portrait int, name string, colour int, cal game.Calendar) {
 	im := a.Compose(g, 0)
 	c.drawRGBA(image.Rect(0, 0, assets.ScreenW, assets.ScreenH), im.RGBA(), image.Point{})
+	a.drawHighFrame(c)
 	drawArtDate(c, g.Date, cal)
 	ink := func(n int) color.RGBA { return assets.EGAPalette[n&15] }
 	if a.havePanel {
