@@ -67,7 +67,7 @@ func TestHDFrameSourceValidation(t *testing.T) {
 			}
 		})
 	}
-	for _, name := range []string{"MAINMAP4.IMG", "MAINMAP5.IMG", "MAINMAPB.IMG", "MAINMAPC.IMG", "8x8PAT1.IMG"} {
+	for _, name := range []string{"MAINMAP6.IMG", "MAINMAPB.IMG", "MAINMAPC.IMG", "8x8PAT1.IMG"} {
 		if hdResource.MatchString(name) {
 			t.Fatal("world map or other pattern accepted", name)
 		}

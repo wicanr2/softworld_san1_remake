@@ -895,3 +895,21 @@ R4 17/17 正常檢查通過，包括兩組完整原貌／4×／回切、原生�
 公開變更限六份既有文件與使用者已指定的四張完整執行期展示圖。README 只補面板現況與入口；021 §6.38.4、CONTEXT、VERIFICATION-MATRIX 及 INDEX 記錄本次範圍。原素材、高清素材包、生成提示與私人收據不加入 Git；現行包仍為 850 筆／410 PNG／417 檔。這次不新增音訊、人耳、原版 oracle、存讀檔、效能、跨平台、Release 或封包聲明。HD 全案維持 READY，Goal ACTIVE。
 
 提交前回讀與公開範圍檢查入口為 `workplace/hd-readme-v47-final-check.py`；提交、推送與 Docker 清理結果另記 `workplace/hd-readme-v47-delivery.json`。遠端 Issue 的編輯仍待先前授權，本輪沒有重試自動核准審查已拒絕的操作。使用者未追蹤的 AGENTS.md 保持。
+
+## 2026-10-06 大地圖高清背景與語意保護
+
+接續已推送的 f271e89，操作面板及 README 展示屬已完成進度。重新命中 remake、規格閘門與文件職責路由；沿用 B、4×、原貌預設與隱藏選項列。本次補 MAINMAP4／5 的山林、海面與標題牌，郡區、郡界、郡號、勢力填色及文字保留來源。沒有更改規則或存檔。
+
+以正式解碼器重讀兩版 DATA3 及 DATA2 六劇本，504 個郡種子皆在不同原白色連通區，六組座標相同。白色郡區 48,494 格、字洞 4,472 格，加一格邊界與 1,375 個識別字墨點後，總保護 61,874 格。檔案位移、原始記錄及容器雜湊記在 021 §6.49 與 `hd-map-v48-source-r2.json`，不新增 dosgolem 行為結論。
+
+內建 imagegen 以原地圖與既有 B 框為參考，生成一張 1254×1254 的連續山林海面母圖。完整請求與生成身份為 `hd-map-v48-{request,generation}.json`；工具未公開模型與 seed。母圖先整張縮放至 1344×1344，再分兩半，避免接縫。R1 整塊標題矩形保護留下舊像素底紋；R2 改為原文字墨點，父端查看採用。DRAFT → 來源與原型審查 → READY 後才修改正式程式，見 `hd-map-v48-ready-review.json`。準備腳本一度誤用不存在的 translations JSON 路徑；改為已確認的 internal/i18n 後重跑，不改產品。
+
+正式新增 hdmap.go 的每包保護區，HD 載入器允許兩個地圖鍵、854 筆上限及各項回退，hdframe.go 按原順序疊圖並保留 CPU 與後畫前景覆蓋權。單測核對兩版六劇本與完整／缺左／缺右三種，共 36 組全畫布；另驗來源異常、DATA2／DATA3 缺失、種子越界／重複／跨劇本差異、透明與身份不符拒收、舊包及後畫前景。首輪 289 項測試全過，但外層 150 秒逾時回傳 124，保留原收據。相同 image、CPU／記憶體與測試命令增加外層至 480 秒後乾淨重跑，289/289、零 skip／fail、退出 0，見 `hd-map-v48-tests-r2.jsonl`。
+
+私人包 `workplace/hd-assets-map-v48-r1/` 為 854 筆／412 PNG／419 檔，419 檔乾淨重建相同；舊 850 筆與 416 份非 manifest 檔保持。manifest SHA-256 為 cedef3989d2cbb4b0362cb2fed5bf30e49ab62d1f96c2af379453a667d7667bb，正式 binary 為 b5b697f340615cc1500b485307794287bbbac7dd3addfd261d4e835ddaecc100。配方與核對為 `hd-map-v48-pack.go`、`hd-map-v48-pack-audit.json`。
+
+正式正常視窗由片頭開 001 曹操難度 5 新局，主畫面及人物卡各切三語與原貌／高清／回切，兩版共十二組；舊包正常回退各一組。14/14、46/46 檢查通過，沒有局面、位置、seed 或 clock 注入。獨立 Go PNG 解碼回讀 263/263 完整圖、25,288,704 地圖像素及 14 次整張回切，游標先核對原 DATA1 AND／OR 六格，沒有排除矩形。四張完整正式高清圖已查看；入口為 `hd-window/player/map-v48-r1/receipt.json` 與 `hd-map-v48-independent.{go,json}`。
+
+正式人物卡與 R2 原型的嚴格比較差 1,312 原生像素，首輪 false 收據保留。獨立原始 CURB 追查確認為 (504,300)、底色 2、第 5 格至第 3 格；完整 2,048 像素游標均符合來源，再比較整張 4,177,920 像素畫布相同。入口為 `hd-map-v48-prototype-{match,phase}.json`。README 只更新已有高清主圖，原貌主圖雜湊相同，戰場二圖保持，見 `hd-map-v48-publish.json`。
+
+021 §6.49 限顯示契約及上述正常樣本 CONFORMED；整份 HD READY、Goal ACTIVE。新美術、母圖、提示與包只留本機，未加入既有 Release。本批音訊關閉，不增加音畫、效能、平台、原版 oracle、存讀檔或發行聲明。遠端 #109 唯讀核對仍 OPEN，沒有重試待授權的 Issue 編輯。使用者 AGENTS.md 保持；最終完整性、提交、推送與容器清理記在 `workplace/hd-map-v48-{integrity,delivery}.json`。

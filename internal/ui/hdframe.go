@@ -17,6 +17,22 @@ func (a *ArtScreen) drawHighFrame(c *Canvas) {
 		switch p.Name {
 		case "MAINMAP1.IMG", "MAINMAP2.IMG", "MAINMAP3.IMG", "MAINMAP7.IMG":
 			c.drawHigh(p.Image, p.X, p.Y)
+		case "MAINMAP4.IMG", "MAINMAP5.IMG":
+			if len(c.HD.worldMapCoverage) != hdWorldMapSize*hdWorldMapSize {
+				continue
+			}
+			before := len(c.highOps)
+			c.drawHigh(p.Image, p.X, p.Y)
+			if len(c.highOps) == before {
+				continue
+			}
+			op := c.highOps[len(c.highOps)-1]
+			for y := op.rect.Min.Y; y < op.rect.Max.Y; y++ {
+				for x := op.rect.Min.X; x < op.rect.Max.X; x++ {
+					op.covered[(y-op.rect.Min.Y)*op.rect.Dx()+x-op.rect.Min.X] =
+						c.HD.worldMapCoverage[(y-36)*hdWorldMapSize+x-72]
+				}
+			}
 		}
 	}
 }

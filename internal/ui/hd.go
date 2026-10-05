@@ -55,11 +55,12 @@ type HDPack struct {
 	panelCache       map[hdPanelSize]*image.RGBA
 	panelCacheBytes  int
 	battleBackground *image.RGBA
+	worldMapCoverage []bool
 	Count            int
 	Warnings         []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|CVSC(?:0[0-9]|1[0-5])\.IMG|CMARK[LR]\.IMG|SANT(?:[LR]|BB|BM[12]|BS)\.IMG|TITL[0-3]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU(?:0[AB]|[1-3])\.IMG|MAINMAP[12378]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13]|ENDO[0-3]\.IMG|REC1[01][LR]\.IMG|UPR(?:[01][0-9]|2[01])\.IMG)$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|CVSC(?:0[0-9]|1[0-5])\.IMG|CMARK[LR]\.IMG|SANT(?:[LR]|BB|BM[12]|BS)\.IMG|TITL[0-3]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU(?:0[AB]|[1-3])\.IMG|MAINMAP[1234578]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13]|ENDO[0-3]\.IMG|REC1[01][LR]\.IMG|UPR(?:[01][0-9]|2[01])\.IMG)$`)
 
 type highFlag struct {
 	image    *image.RGBA
@@ -90,11 +91,13 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 850 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 854 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
 	p := &HDPack{creditFigures: map[[32]byte][]image.Rectangle{}, images: make(map[[32]byte]*image.RGBA), flags: make(map[[32]byte]highFlag), flagText: make(map[highFlagTextKey]*image.RGBA), panels: map[string]hdPanel{}, sidePanels: map[hdSideKey]map[byte]string{}, sideBorders: map[hdSideKey]string{}, panelCache: map[hdPanelSize]*image.RGBA{}}
 	counts := map[string]int{}
+	var mapChecked bool
+	var mapErr error
 	for _, e := range m.Entries {
 		counts[e.Edition+"/"+e.Container+"/"+e.Name]++
 	}
@@ -111,6 +114,16 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 		if err != nil {
 			p.Warnings = append(p.Warnings, key+": "+err.Error())
 			continue
+		}
+		if e.Name == "MAINMAP4.IMG" || e.Name == "MAINMAP5.IMG" {
+			if !mapChecked {
+				p.worldMapCoverage, mapErr = hdWorldMapCoverage(containers)
+				mapChecked = true
+			}
+			if mapErr != nil {
+				p.Warnings = append(p.Warnings, key+": "+mapErr.Error())
+				continue
+			}
 		}
 		if strings.HasPrefix(e.Name, "PANEL.") {
 			p.registerPanel(containers[e.Container], e, high)
@@ -236,6 +249,8 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 		switch e.Name {
 		case "MAINMAP3.IMG":
 			w, h = 72, 336
+		case "MAINMAP4.IMG", "MAINMAP5.IMG":
+			w, h = 168, 336
 		case "MAINMAP7.IMG":
 			w, h = 8, 336
 		case assets.BattleBGTile:
