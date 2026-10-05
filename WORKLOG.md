@@ -846,3 +846,9 @@ R5原型159項測試零skip／fail；兩版940個完整朝堂與捲動狀態，�
 兩版四家族三語 24/24 視覺樣本、24 次完整原貌回切與十二種完整選項列來源獨立回讀通過，共 625 完整實際 PNG。五份收據共有 113 項通過檢查；三條完整路徑通過，兩條未完成收據原狀保留。原版 R3 暫停／切換與加強版 R4 連續播放均正常完結並返回，原版 R4 空白鍵跳過亦通過。 加強版 R3 收列時字幕已自然播完，工具要求仍有字幕而失敗；其十二組完整視覺可採，整條保持 false。原版 R4 高清連續播放有完整場景匹配，工具未取得連續兩張 SCG16 就緒圖而逾時，最後返回未驗；不把這項工具限制寫成產品效能缺陷。REC11 仍無正常使用端；既有完結順序為 L3 remake 推論，音畫與平台範圍保持。 父端以獨立Go PNG解碼器讀取完整實際圖片，完整CPU／原生畫布及全部共圖候選相符；焦點底色按正式顏色契約統一，整列文字與其他像素沒有排除。R3私人工具快照credits-v44-formal-normal-r3.py依原SHA解析，原收據不改寫；另外來源參考PNG不併入實際GUI圖數。入口為workplace/hd-credits-v44-independent.json與credits-v44-formal-index.json。
 
 兩版72張原貌／高清／恢復樣本由tester查看，父端另查看四家族實際高清全圖，見hd-credits-v44-root-normal-visual.json。§6.46限上述顯示契約與正常視覺為CONFORMED，整份HD READY、Goal ACTIVE。README四圖、原貌預設、隱藏列、tag／Release與素材本機邊界保持；其他素材／使用端、三語地圖標記、援軍逐方重編、效能、音畫與平台繼續列於GitHub。
+
+功能提交07d7ab4aec4353cb70807b887682fb73a1f14906已推送，遠端main回讀相同。提交前完整性收據hd-credits-v44-closing-before-feature-commit.json核對375份來源、十四份公開候選、69份完整來源注入負對照及77,060個UID/GID1000路徑，沒有root-owned路徑或誤建.md目錄。既有正式tag的annotated object／dereference保持fe0cd19f742ed1dcce0a105fe0d5c1e129b375e8／8d89946357580a6a650b1e9a4bc0fea12dadcf3b，沒有新增發行或打包。
+
+四份Issue目前狀態預備稿已完成，正式提交連結及保留歷史核對通過。主機gh編輯#104遭自動核准審查拒絕，理由是目前可信使用者訊息未明確授權遠端Issue編輯，只有HD工作與commit/push。未繞過拒絕；已提出具體更新預覽等待授權。五項Issue全文與留言回讀皆與更新前完全相同，全部OPEN，沒有任何Issue寫入；驗證為workplace/hd-credits-v44-issue-pending.json，不能當成同步成功收據。
+
+獨立tester收尾為credits-v44-formal-closing.json及credits-v44-formal-visual.json，共112張實際目視全圖。私人JSON組裝首輪以整檔讀影片計算SHA而exit137，失敗收據保留；改分塊SHA後同image與限制重跑，只組裝既有收據，沒有新GUI或產品變更。父端完整625PNG、24次整張回切及十二種選項列核對已通過。正常及回讀容器均已清理；使用者未追蹤AGENTS.md保持。
