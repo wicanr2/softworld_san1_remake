@@ -2377,3 +2377,29 @@ DATA3.GRP SHA-256 為 `24e642cc8c3df7614909c054b6a92334fe6a0f3d1eefa544f57159164
 正式正常視窗從片頭進入新局 001、曹操、難度 5，主畫面及人物卡各三語；兩版共十二組新包樣本與兩組舊包回退，14/14、46/46 檢查通過，沒有狀態、位置、seed 或 clock 注入。Go PNG 解碼器獨立回讀 263/263 完整實際 PNG、25,288,704 地圖像素及 14 次整張原貌回切；游標先依玩家 DATA1 的六格 AND／OR 來源驗證，再比較完整畫布，沒有排除矩形。入口為 `hd-map-v48-normal.py`、`hd-window/player/map-v48-r1/receipt.json` 及 `hd-map-v48-independent.{go,json}`。父端查看兩版繁中人物卡、原版主畫面及英文人物卡的四張完整高清圖，採用。
 
 正式繁中人物卡與採用原型的嚴格比較差 1,312 個原生像素，首輪 false 收據保留。獨立重讀 CURB 與遮罩確認為 (504,300)、底色 2 的第 5 格與第 3 格相位；完整 2,048 像素游標逐點符合來源後，整張 4,177,920 像素畫布相同，見 `hd-map-v48-prototype-{match,phase}.json`。README 只更新既有高清主圖，原貌主圖 bytes 相同，兩張戰場圖保持。整份 HD 仍 READY；本批音訊關閉，不增加音畫、效能、平台、存讀檔或原版 oracle 聲明。
+
+### 6.50 四組輸入游標的六幀材質
+
+**狀態：CONFORMED，限本節顯示契約及正常四組三語樣本**。補 CURA／B／C／D 各六幀的 B 材質；原邏輯尺寸 8×16、原生尺寸 32×64。A 為主選單小飾框、B 為主畫面、C 為戰場、D 為新局設定。幀序、節拍、座標、輸入與 CPU 的 AND／OR 運算保持。MAPCUR 的 XOR 標記與未用的 MNGCUR 不在本節。
+
+來源為 L0、[both]，正式 assets.CursorFrames 解碼、Go 1.24.13。兩版 DATA1.GRP SHA-256 為 `958f44fe45e38624401af55f033ffb037bd3211a037eadbce90f827637d977a5`；游標原圖位於檔案位移 `[629318,630950)`，遮罩 `[630950,632582)`，不是執行期或 IDA 位址。每筆 68 B，表頭高 16、寬 8，四位元平面。48 列分版身份、各筆 raw／索引像素雜湊、色號及範圍在 `workplace/hd-cursor-v49-source.json`。兩版 24 個 sprite／mask 配對各自相同；遮罩只含 0／15，mask=15 的 sprite 都為 0，故這些格是背景 identity，不含額外 OR 寫入。各幀 mask=0 面積為 44–128 格，不能把黑色像素當成透明。
+
+已審查的顯示契約：
+
+- 原始圖決定六幀色組與全部輪廓；AI 只生成四區不透明 B 材質圖。實際生成稿 1278×1230，象限分別供 A、B、C、D，以 Go CatmullRom 各縮至 32×64。每個 mask=0 邏輯格完整保留 4×4 不透明像素；mask=15 的整格必須 RGBA 全零。新美術不跨原始遮罩，也不新增陰影範圍。
+- 材質亮度 `L=(299R+587G+114B)/(1000×255)`。原色號非 0 時，每通道取 `round(min(255,0.9×原EGA通道×(0.72+0.40L)+0.1×材質通道))`；色號 0 為三通道 `floor(6+10L)`，alpha=255。這是 B 美化配方，保留色組與黑色輪廓，不宣稱原版像素一致。原稿、完整請求與模式身份在 `hd-cursor-v49-{request,generation}.json`，工具未公開模型／seed。
+- 包 schema 1、B、4× 沿用，上限增至 902 筆。只允許 DATA1 的 CUR[A-D][0-5].IMG，來源尺寸 8×16、PNG 32×64；遮罩鍵是在副檔名前加 M。SourceSHA256 改以此新家族的配方身份綁定兩筆 raw：ASCII `san1-hd-cursor-v1` 加一個零 byte，接 sprite 與 mask 各自的 little-endian uint32 長度及完整 bytes，再取 SHA-256。其他既有資源的身份語意保持。
+- 各項檢查來源與遮罩存在、尺寸、mask 只含 0／15、identity 的 sprite=0，以及全部 4×4 格的透明／不透明契約。缺項、來源不符或圖不合規只回退該幀。原貌 CPU 與舊包回退保持；遮罩不作獨立高清資源。CursorFrame 增加來源檔名作顯示身份，不寫入遊戲或存檔。快取鍵包含名稱及兩個已解碼圖的尺寸與索引像素身份；來源已量到 CURC1／5 的 sprite／mask 相同，名稱仍分開，避免缺幀被同圖別名吞掉，也避免同 sprite、不同 mask 的碰撞。新 RGBA 至多 24×8192=196,608 B，不增加每幀影像快取。
+- 新游標存在時，CPU 仍寫入完整原 AND／OR 結果。identity 格沿用前景已記錄的覆蓋權，讓未覆蓋的高清底紋保持；mask=0 格照原本追蹤 CPU，再以新不透明圖蓋上。缺新游標沿用原先完整格追蹤。主選單原 CPU 頁仍用 MenuScreenFrames；高清小飾框只為 mask=0 格保護 CPU，再疊該幀的 RGBA。後畫文字、選項列與圖層仍取得覆蓋權，透明格不能清掉底圖。
+
+私人 `hd-assets-cursor-v49-r1/` 與比較頁 `hd-cursor-v49-prototype-r1.png` 已準備，父端查看四組全部六幀。READY 審查先於正式修改，收據為 `workplace/hd-cursor-v49-ready-review.json`；兩版 48 幀的 56,640 個不透明原生像素與 41,664 個 identity 像素全數符合契約，並保存 371 份正式 Go 的修改前身份。正式接入後須驗兩版全幀、邊界裁切、缺幀及舊包回退、完整 CPU 不變與後畫前景。正常視窗需抽樣主選單、主畫面、新局與戰場四組，含 Theme 回切及三語；範圍不外推音畫、平台或整份 HD 完成。
+
+正式入口為 [`hdcursor.go`](../../internal/ui/hdcursor.go)、[`cursor.go`](../../internal/ui/cursor.go) 與 [`artscreen.go`](../../internal/ui/artscreen.go)。正式 UI／assets 回歸 370/370、零 skip／fail，收據為 `workplace/hd-cursor-v49-tests-r2.jsonl`。兩版全部 48 幀核對完整 CPU 與原生畫布；另驗十六種底色及三個內部／越界位置、透明格保留先畫文字與高清底圖、後畫文字覆蓋、來源或遮罩異常拒收。主選單六幀與缺幀回退、同 sprite 不同 mask 的身份，以及實際 CURC1／5 各自缺幀時只讓該幀回退均通過。原貌 CPU 保持，CursorFrame 的名稱只供顯示快取。
+
+私人包為 902 筆／436 PNG／443 檔，兩版各 451 筆，正式載入無警告。443 檔乾淨重建相同，舊 854 筆及 418 份非 manifest 檔保持。獨立 Go PNG 回讀全部 48 個分版來源與材質，56,640 個不透明格及 41,664 個透明格相符；入口為 `hd-cursor-v49-pack.go`、`hd-cursor-v49-pack-audit.{go,json}`。manifest SHA-256 為 `cd962a00d680e1065c5041db5f625138f2b568a9eeb92c84bce1809dc46609fe`，正式 binary 為 `ea3cfc9be80c8d800a201b1cc43a6167d110e990a2cca73db6eb273669b2ace6`。
+
+正式正常視窗由片頭開 001、單人曹操、難度 5，再正常出兵陳留→潁川，停在紮寨提示。主選單 A、選君主 D、主畫面 B、紮寨 C 各切三語與原貌／4×／回切，兩版共 24 組新包樣本；v48 舊包的四組各驗一次，共八組，合計 32/32 完整樣本。172 項成功檢查與 623 張實際 PNG 由獨立 Go 讀取器重驗，原生不透明格 27,648 px、八組舊包完整格 16,384 px、主選單透明背景 4,992 px 均相符。32 次整張原貌回切先核對 DATA1 的 AND／OR 或來源旗幟補色相位，再逐像素比較，沒有排除矩形。正常輸入沒有狀態、seed、clock 或動畫拍注入；同圖 CURC1／5 只判為合法來源之一，不推定實際拍號。
+
+R1 的 MENU3 比較 stride 誤寫為 32，來源實為 40；R2 修正來源寬 40／高清寬 160，正式程式與包未改。R2 原版完成七組，英文主畫面的 CURB 出現垂直平移等價，定位器將三種來源幀誤判為不同起點而失敗，整份收據保持 false。R3 按既有 `artMsg=(424,300)`、行距 16 的提示格點定位，只補其餘九組；R2 加強版十六組整條通過。獨立回讀採 R2 原版已完成的七組，不採後續失敗停點。入口為 `hd-cursor-v49-normal{-r2,-r3}.py`、`hd-window/player/cursor-v49-{r2-base,r3-base,r2-plus}/receipt.json` 與 `hd-cursor-v49-independent.{go,json}`。
+
+父端查看四種完整實際高清畫面，採用。371 份既有 Go 中六份修改、365 份保持，新增兩份游標程式及測試；規則、存檔及三語母檔保持。README 四圖未更新，本批素材、原稿與提示只留本機。完整性及提交收據為 `workplace/hd-cursor-v49-{integrity,delivery}.json`。本批音訊關閉，不增加音畫、效能、原版 oracle、原生平台、發行或 HD 全案完成聲明；整份 021 仍 READY。

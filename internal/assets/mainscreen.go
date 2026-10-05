@@ -331,6 +331,7 @@ const (
 
 // CursorFrame 是輸入游標的一格：8×16 的圖與同名 `M` 遮罩（遮罩只含 0／15）。
 type CursorFrame struct {
+	Name         string // 來源檔名只供高清快取身份，不參與 AND／OR 或存檔。
 	Sprite, Mask *Image
 }
 
@@ -381,7 +382,7 @@ func CursorFrames(data1 *Container, style CursorStyle) ([MenuOrnamentFrameCount]
 				}
 			}
 		}
-		out[frame] = CursorFrame{Sprite: sprite, Mask: mask}
+		out[frame] = CursorFrame{Name: name, Sprite: sprite, Mask: mask}
 	}
 	return out, nil
 }

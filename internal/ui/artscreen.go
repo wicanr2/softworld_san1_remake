@@ -868,6 +868,7 @@ type TitleScreen struct {
 	menuPieces  [3]*assets.Image
 	bg          *assets.Image
 	frames      [assets.MenuOrnamentFrameCount]*assets.Image
+	cursors     *[assets.MenuOrnamentFrameCount]assets.CursorFrame
 }
 
 // TitleOrnamentTicksPerFrame 是 remake 的可攜節拍；60 TPS 時每格約 0.13 秒。
@@ -901,6 +902,11 @@ func NewTitleScreen(data3 *assets.Container, data1 ...*assets.Container) (*Title
 		if ts.frames, err = assets.MenuScreenFrames(data1[0], data3); err != nil {
 			return nil, err
 		}
+		frames, err := assets.CursorFrames(data1[0], assets.CursorMenu)
+		if err != nil {
+			return nil, err
+		}
+		ts.cursors = &frames
 	}
 	return ts, nil
 }
@@ -1398,7 +1404,20 @@ func (ts *TitleScreen) drawBackground(c *Canvas, frame int) {
 		c.drawHighMenu(ts.menuPieces[1], at[0], at[1])
 	}
 	c.drawHighMenu(ts.menuPieces[2], 576, 320)
-	// 整格保留原底圖及 CURA 的 AND／OR 結果，不讓高清框蓋住游標。
-	c.trackRect(image.Rect(assets.MenuOrnamentX, assets.MenuOrnamentY,
-		assets.MenuOrnamentX+8, assets.MenuOrnamentY+16))
+	if ts.cursors != nil && frame >= 0 && frame < len(ts.frames) && ts.frames[frame] != nil {
+		f := ts.cursors[frame]
+		if high := c.highCursor(f); high != nil {
+			for y := 0; y < 16; y++ {
+				for x := 0; x < 8; x++ {
+					if f.Mask.At(x, y) == 0 {
+						c.trackPixel(assets.MenuOrnamentX+x, assets.MenuOrnamentY+y)
+					}
+				}
+			}
+			c.drawHighCursor(high, assets.MenuOrnamentX, assets.MenuOrnamentY)
+			return
+		}
+	}
+	// 舊包保留整格原底圖及 CURA 的 AND／OR 結果。
+	c.trackRect(image.Rect(assets.MenuOrnamentX, assets.MenuOrnamentY, assets.MenuOrnamentX+8, assets.MenuOrnamentY+16))
 }

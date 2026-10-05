@@ -39,6 +39,7 @@ func drawInputCursor(c *Canvas, frames *[assets.MenuOrnamentFrameCount]assets.Cu
 	if f.Sprite == nil || f.Mask == nil {
 		return
 	}
+	high := c.highCursor(f)
 	for dy := 0; dy < f.Sprite.H; dy++ {
 		for dx := 0; dx < f.Sprite.W; dx++ {
 			px, py := x+dx, y+dy
@@ -46,9 +47,16 @@ func drawInputCursor(c *Canvas, frames *[assets.MenuOrnamentFrameCount]assets.Cu
 				continue
 			}
 			old := egaIndexOf(c.Img.RGBAAt(px, py))
-			c.setClipped(px, py, assets.EGAPalette[f.Over(dx, dy, old)&15])
+			col := assets.EGAPalette[f.Over(dx, dy, old)&15]
+			if high != nil && f.Mask.At(dx, dy) == 15 && f.Sprite.At(dx, dy) == 0 {
+				// identity 保留既有高清底紋及前景的覆蓋權，CPU 照常寫入。
+				c.Img.SetRGBA(px, py, col)
+			} else {
+				c.setClipped(px, py, col)
+			}
 		}
 	}
+	c.drawHighCursor(high, x, y)
 }
 
 // cursorAfterLines 是一疊逐列排好的字最後一行尾端那一格。

@@ -56,11 +56,12 @@ type HDPack struct {
 	panelCacheBytes  int
 	battleBackground *image.RGBA
 	worldMapCoverage []bool
+	cursors          map[[32]byte]*image.RGBA
 	Count            int
 	Warnings         []string
 }
 
-var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|CVSC(?:0[0-9]|1[0-5])\.IMG|CMARK[LR]\.IMG|SANT(?:[LR]|BB|BM[12]|BS)\.IMG|TITL[0-3]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU(?:0[AB]|[1-3])\.IMG|MAINMAP[1234578]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13]|ENDO[0-3]\.IMG|REC1[01][LR]\.IMG|UPR(?:[01][0-9]|2[01])\.IMG)$`)
+var hdResource = regexp.MustCompile(`^(F[0-9]{3}\.FAC|SCG[0-9]{2}\.IMG|WEATHER[0-2]\.IMG|CVSC(?:0[0-9]|1[0-5])\.IMG|CMARK[LR]\.IMG|SANT(?:[LR]|BB|BM[12]|BS)\.IMG|TITL[0-3]\.IMG|EICON\.GRP#(?:0[0-9]|1[0-4]|3[2-5])|WFLAG[DA][01][0-4]\.IMG|MENU(?:0[AB]|[1-3])\.IMG|MAINMAP[1234578]\.IMG|8x8PAT0\.IMG|FBR[A-D][0-3]\.IMG|PANEL\.SIDE#(?:A[13]|B3|C[157]|D[12]|E1)|PANEL\.BEVEL#[13]|ENDO[0-3]\.IMG|REC1[01][LR]\.IMG|UPR(?:[01][0-9]|2[01])\.IMG|CUR[A-D][0-5]\.IMG)$`)
 
 type highFlag struct {
 	image    *image.RGBA
@@ -91,10 +92,11 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 	if err := json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
-	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 854 {
+	if m.Schema != 1 || m.Style != "b" || m.Scale != 4 || len(m.Entries) > 902 {
 		return nil, fmt.Errorf("HD 素材包規格不符")
 	}
 	p := &HDPack{creditFigures: map[[32]byte][]image.Rectangle{}, images: make(map[[32]byte]*image.RGBA), flags: make(map[[32]byte]highFlag), flagText: make(map[highFlagTextKey]*image.RGBA), panels: map[string]hdPanel{}, sidePanels: map[hdSideKey]map[byte]string{}, sideBorders: map[hdSideKey]string{}, panelCache: map[hdPanelSize]*image.RGBA{}}
+	p.cursors = make(map[[32]byte]*image.RGBA)
 	counts := map[string]int{}
 	var mapChecked bool
 	var mapErr error
@@ -125,7 +127,10 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 				continue
 			}
 		}
-		if strings.HasPrefix(e.Name, "PANEL.") {
+		if strings.HasPrefix(e.Name, "CUR") {
+			frame, _, _ := hdCursorSource(containers[e.Container], e.Name)
+			p.cursors[hdCursorKey(frame)] = high
+		} else if strings.HasPrefix(e.Name, "PANEL.") {
 			p.registerPanel(containers[e.Container], e, high)
 		} else {
 			p.images[hdImageKey(im)] = high
@@ -174,8 +179,9 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	menuTitle := strings.HasPrefix(e.Name, "MENU0")
 	decoration := strings.HasPrefix(e.Name, "MAINMAP")
 	pattern := e.Name == assets.BattleBGTile
+	cursor := strings.HasPrefix(e.Name, "CUR")
 	openingArt := strings.HasPrefix(e.Name, "CMARK") || strings.HasPrefix(e.Name, "SANT") || strings.HasPrefix(e.Name, "TITL")
-	if (strings.HasPrefix(e.Name, "WEATHER") || terrain || flag || panel || frame || pattern || openingArt) && e.Container != "DATA1" {
+	if (strings.HasPrefix(e.Name, "WEATHER") || terrain || flag || panel || frame || pattern || openingArt || cursor) && e.Container != "DATA1" {
 		return nil, nil, fmt.Errorf("來源容器不符")
 	}
 	if strings.HasPrefix(e.Name, "SCG") && e.Name >= "SCG30.IMG" && (e.Container != "DATA2" || e.Name > "SCG31.IMG") {
@@ -187,7 +193,18 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	var im *assets.Image
 	var err error
-	if panel {
+	var cursorFrame assets.CursorFrame
+	if cursor {
+		var recipe string
+		cursorFrame, recipe, err = hdCursorSource(c, e.Name)
+		if err != nil {
+			return nil, nil, err
+		}
+		if recipe != e.SourceSHA256 {
+			return nil, nil, fmt.Errorf("游標及遮罩來源雜湊不符")
+		}
+		im = cursorFrame.Sprite
+	} else if panel {
 		var raw []byte
 		im, raw, err = hdPanelSource(c, e.Name)
 		if err != nil {
@@ -370,6 +387,11 @@ func loadHDEntry(dir string, e HDEntry, containers map[string]*assets.Container)
 	}
 	if strings.HasPrefix(e.Name, "UPR") {
 		if err := validateCreditText(im, high, e.Name); err != nil {
+			return nil, nil, err
+		}
+	}
+	if cursor {
+		if err := validateHighCursor(cursorFrame, high); err != nil {
 			return nil, nil, err
 		}
 	}
