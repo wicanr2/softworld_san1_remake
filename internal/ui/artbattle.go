@@ -106,6 +106,7 @@ func DrawArtBattle(c *Canvas, ab *ArtBattle, b *battle.Battle, v BattleView, inf
 		im.RGBA(), image.Point{})
 	ab.drawHighBackdrop(c, assets.BattleLayoutFor(b.Field.Narrow()))
 	ab.drawHighTerrain(c, b, v, info)
+	c.drawHighBattleLeftColumn()
 	c.drawHigh(ab.weather[b.Weather.OriginalIndex()%len(ab.weather)], assets.BattleWeatherX, assets.BattleWeatherY)
 	l := assets.BattleLayoutFor(b.Field.Narrow())
 	for i := range l.PanelX {

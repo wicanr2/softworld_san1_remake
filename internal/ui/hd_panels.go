@@ -199,6 +199,16 @@ func (c *Canvas) drawHighBevel(x, y, w, h int, paper byte) {
 	}
 }
 
+// drawHighBattleLeftColumn 沿用原版四框的位置；天候與文字由呼叫端最後疊畫。
+func (c *Canvas) drawHighBattleLeftColumn() {
+	for i := range assets.BattleLeftBoxCount {
+		y0, y1 := assets.BattleLeftBox(i)
+		c.drawHighBevel(assets.BattleLeftBoxX0, y0,
+			assets.BattleLeftBoxX1-assets.BattleLeftBoxX0+1, y1-y0+1,
+			assets.BattleOrderPaper)
+	}
+}
+
 func (c *Canvas) drawHighPaper(r image.Rectangle, paper byte) {
 	high := c.highPanel(fmt.Sprintf("PANEL.BEVEL#%d", paper), r, true)
 	if high != nil {

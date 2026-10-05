@@ -714,3 +714,21 @@ CPU 控制組八組 960 幀確認通用最近鄰縮放占採樣 53.79%。固定�
 - 第二次封包清單通過後，Linux 原版啟動在片頭 `iter.Pull` 崩潰：初始化建立協程時 Ebiten 鎖著主執行緒，第一幀更新卻在另一個未鎖執行緒呼叫 `next`。把片頭協程延到第一幀 `Update` 建立；全庫測試重跑通過，實際封包啟動仍須從乾淨輸入重驗。第二次也未建立 `dist-all/`。
 - 第三次本機預交付成功產出四包，base／plus 各跑滿 25 秒；解開 Linux 包另各啟動 8 秒，四包 SHA-256 與擁有權回讀通過。交付前發現包內 README 的 M8 欄仍寫「尚無 dist-all」，因此把該欄改成以 manifest 為準的穩定入口，將這份未交付的本機預產物撤離現行根目錄，再從乾淨輸入重建相同首版。此時尚無 Git tag 或公開 Release。
 - 最終本機交付：`tools/release.sh v.1.0.0-20260923` 從 `d74a7350ec3346152cb25904ed2ba256a93f8ae6` 乾淨建置至 `dist-all/v.1.0.0-20260923/`。四包 SHA-256、13 個成員、壓縮完整性、權利清單、UID/GID 及包內 README 重新讀回通過；base／plus 在封包前各跑滿 25 秒，最終 Linux 包解開後各再跑滿 8 秒。完整 SHA-256 與工具 image ID 見清單，交付限制見 `docs/release/01`。無 Git tag、遠端推送、公開 Release，亦未改 GitHub Issue。
+
+## 2026-10-05 戰場左側四個狀態框高清化
+
+路由沿用重製技能、規格閘門、文件職責及正常試玩參考。先核對五項遠端 HD Issue、目前狀態表及正式圖層，確認郡名、天候圖、天候名與日數時辰四框仍使用原版青底。沿用已採用的 PANEL.BEVEL#3，沒有新風格決定、圖像生成或 manifest 改動。§6.42 先為 DRAFT，幾何、來源配方、兩版皮膚雜湊及完整空白皮膚審查後提升 READY，再接入正式渲染。
+
+新呼叫位於高清地形／前景保護之後、天候與文字之前。幾何仍由 assets.BattleLeftBox 供應，另導出原陣列的框數；地理誌不呼叫此入口。四框重用三種九宮格快取，共 361,728 B，四角保持 8×8 原生像素。五套件正式回歸 502/502，零 skip／fail；三語、三天候、寬窄主戰／對戰／查看的完整框、框外、文字與天候覆蓋通過。三尺寸快取重複一百次保持，缺皮膚及地理誌省略通過。套回 HEAD 的 artbattle.go 作參考負對照，完整框檢查如預期失敗；正式 GUI 執行檔沒有 overlay。收據為 workplace/hd-left-v40-{review,build,negative,integrity}.json。
+
+正式執行檔 SHA-256 0b7afd07ecde50c1c8a24af365993eaf67ef32de9fbd4af177d3cc0c568f4e05。367 份來源中三份修改、一份新增、363 份保持；十八份原始容器、三語母檔、README 四圖、使用者 AGENTS.md 及現行包全部 352 檔保持。正常 GUI 與獨立回讀結果接續記錄；整份 HD READY、Goal ACTIVE，五項 Issue OPEN。
+
+正常 GUI 由獨立 tester 從兩版正常片頭／新局走三條分開路線：寬版主戰三語、對戰三語、繁中查看；窄版主戰三語；繁中地理誌。六份收據皆通過，22/22 停點、416/416 檢查、533 完整 PNG，索引為 workplace/hd-left-v40-normal-index.json。實際完整原貌左欄皆匹配第一日、6 時及晴；參考候選有雨風，不能拿來宣稱雨風正常操作已驗。所有正式程式與包身份保持，正常路徑沒有狀態、位置、seed 或 clock 注入。
+
+父端 workplace/hd-left-v40-independent.py 獨立解碼533張完整圖並核對尺寸、SHA及UID/GID；原貌36×276整片與正式coverage來源精確匹配，再重建完整高清左欄、天候、四框與框間底材。另用不依賴UI的Go九片縮放重建四款皮膚，與正式兩版八張完整相同；32個原生角精確保持。80片完整框共2,960,640 px、兩張地理誌的完整左側底紋、場地空隙全域相位及66/66全畫布原貌／Esc開關恢復通過。游標只接受六個來源完整8×16格；對戰只接受完整當事格補色，查看頁則核對實際可見8×32，沒有差異矩形遮罩。收據為 workplace/hd-left-v40-independent.json，父端已另外實際查看兩版寬版、窄版英文及查看四圖，身份見 hd-left-v40-root-visual.json。
+
+私人工具失敗均保留於 workplace/hd-left-v40-tool-failures.json。xvfb-run未啟動Go且TERM未完成退出，只停止該單一容器，改用本輪已通過的Xvfb Popen／finally／terminate5秒／kill與外層kill-after。第二次探針引用不存在的translations路徑，實查internal/i18n/lang後同image乾淨重跑；空輸出目錄保留。額外肖像回讀首輪使用F000.IMG而非實際F000.FAC，完整原貌匹配已成功、錯在manifest查找；修正來源鍵後二十停點、42肖像及84/84通過，原失敗收據保持。最後的私人稽核把相對字型鍵當作容器工作目錄的路徑；改由 /src 解析，/orig 絕對路徑保持，623 項檢查通過。四項皆為私人驗證工具問題，沒有修改產品、原始資料或正式 GUI 來配合。
+
+§6.42限本節顯示契約及上述正常樣本CONFORMED，整份HD READY、Goal ACTIVE，五項Issue OPEN。其他素材、自然事件／單挑等使用端、動畫／遮罩、效能、音畫與平台尚未完成。本批音訊關閉，沒有新增人耳、原版oracle、存讀檔或平台聲明；既有README四圖、正式tag／Release／封包及素材本機範圍保持。
+
+二十二張正式高清全圖已逐張查看，視讀收據為 workplace/hd-left-v40-visual.json；與完整像素回讀分列。workplace/hd-left-v40-private-audit.json 回讀 533 張 PNG 與六份正常收據，970 個本批路徑皆 UID/GID 1000；父端收尾另核對整個工作樹。

@@ -286,10 +286,11 @@ var battleLeftBoxes = [4][2]int{{52, 147}, {155, 187}, {196, 211}, {228, 323}}
 // BattleLeftBox 回傳左欄第 i 個框的上下緣。
 func BattleLeftBox(i int) (y0, y1 int) { return battleLeftBoxes[i][0], battleLeftBoxes[i][1] }
 
-// BattleLeftBoxX0／X1 是左欄三個框共用的左右緣。
+// BattleLeftBoxCount 與 X0／X1 是左欄四個框的數量及共用左右緣。
 const (
-	BattleLeftBoxX0 = 8
-	BattleLeftBoxX1 = 39
+	BattleLeftBoxCount = len(battleLeftBoxes)
+	BattleLeftBoxX0    = 8
+	BattleLeftBoxX1    = 39
 )
 
 // LeftColumn 畫左欄的四個框。
