@@ -786,3 +786,5 @@ R2 以純藍作游標底色，第一個正式主提示即因完整 8×16 差 44 
 §6.44 限本節顯示契約及上述正常樣本 CONFORMED，整份 HD READY、Goal ACTIVE，五項 Issue OPEN。其他素材家族、自然事件／單挑等使用端、三語地圖標記、守城援軍逐方重編、效能、音畫與平台仍待完成。既有 README 四圖、正式 tag／Release／封包與素材本機邊界保持，沒有新增發行。本輪正常 GUI 已退出，tester 的 364 個私人路徑 UID/GID1000，專屬容器已清理；提交前另核對全工作樹及公開候選。
 
 提交前收尾為 workplace/hd-march-v42-closing-before-feature-commit.json，十三份本輪收據通過，64,616 個工作樹路徑皆 UID/GID1000，沒有 root-owned 路徑或誤建 .md 目錄。公開閘門限十份程式／文件，五十份完整來源注入負對照及乾淨中文正對照通過；原始素材、母圖、提示、私人包及驗證腳本不提交。docker ps -a 的 san1 專案篩選為空；使用者未追蹤 AGENTS.md 保留。
+
+功能提交 88d89a26541fb2701aeded5089d8f4ed8370f13d 已推送，遠端 main 回讀相同。#104、#107、#109、#110 只替換目前狀態，全文回讀與預備檔逐字相同，歷史、標題、標籤、留言及 OPEN 狀態保持；#108 完整物件未變，五項仍 OPEN。收據為 workplace/hd-march-v42-issue-sync.json。既有正式 tag 的 annotated object／dereference 保持 fe0cd19f742ed1dcce0a105fe0d5c1e129b375e8／8d89946357580a6a650b1e9a4bc0fea12dadcf3b，沒有新發行或打包。此段另作文件提交，公開候選及 370 份建置來源隨之核對，收尾入口為 workplace/hd-march-v42-closing-integrity.json；Goal ACTIVE，下一批依正式使用端處理片頭與製作群，其餘 HD 待辦不縮減。
