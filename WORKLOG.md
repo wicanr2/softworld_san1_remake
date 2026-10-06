@@ -962,3 +962,19 @@ UI／assets 回歸 1014/1014，零 skip／fail，見 `hd-mapcursor-v50-tests-r3.
 每版新包在 HD 頁送 Y，回原貌完成後續訊息與存檔；舊包在原貌頁送 Y。N 回挑位置通過。四個初始及四個建寨後存檔經正式 `save.Read` 回讀，洛陽金 3118→118、關寨 3→4、已下令旗標與全 120 格符合既有規則；只比較該郡的建寨結果及年月，不稱整局相同，GUI 重載留在全案 gate。入口為 `hd-forttext-v51-save-review.{py,json}` 與 `hd-window/player/forttext-v51-{r5,r9-plus}/receipt.json`。
 
 021 §6.52 限本節 CONFORMED，整份 HD READY、Goal ACTIVE。373 份既有 Go、三語、字型、18 原始容器、使用者 AGENTS.md、README 四圖與現行包 444 檔保持。無新增 AI 美術，素材只留本機；音訊關閉，不增加原版 oracle、音畫、效能、原生平台、發行或全案完成聲明。完整性、擁有權、提交、推送與 Docker 清理另存 `hd-forttext-v51-{integrity,hygiene,delivery}.json`。
+
+## 2026-10-06 正常單挑的高清場景與對白面板
+
+接續 bd7f695，沿用現行 B／4×、原貌預設、操作面板與私人 v50 包。命中 remake 技能、規格閘門、完整驗收及文件職責路由。#109／#110 最新內文、留言與 OPEN 狀態唯讀保存於 `workplace/hd-duel-v52-issues.json`，沒有重試待授權的 Issue 寫入。
+
+R1 用有界容器與 TTY 從片頭開 001 董卓、難度 5，正常休息、令呂布由洛陽出兵陳留並紮寨。對戰子畫面依實際畫面行軍、休息及方向 `2 5` 向陳宮單挑。人工探查的場景、按鍵與未通過收據保留，不計入正式檢查數字。
+
+新增 `tools/verify-hd-duel-inner.py` 與 Docker 入口 `tools/verify-hd-duel.sh`。R2 兩版各由正常片頭、新局、出兵、紮寨、對戰、行軍與單挑走到底。原版自然產生 SCG29／28，加強版自然產生 SCG29／27；沒有 seed、事件、部隊、日期、位置或動畫拍注入，也沒有重擲。三語於同一停點切原貌、4× 及原貌恢復；完整場景、面板、左右肖像與返回子畫面通過。共 36/36 樣本、140/140 檢查、489 張完整 PNG。當時中途訊息誤稱兩版皆被擒，已以實際收據立即訂正，沒有修改結果迎合敘述。
+
+獨立 `workplace/hd-duel-v52-independent.{go,json}` 使用 Go 標準 image/png，重驗全部圖的雜湊與尺寸，從來源 PNG、私人包與泡泡幾何核對 3,244,032 場景原生像素及 6,912,000 完整對白面板像素。36 次整張原貌恢復只允許已量完整 48×32 行動標記的 RGB 補色，沒有排除矩形。來源工具快照保存在每版收據目錄。首輪保存快照未指定 /src 工作目錄，只讀相對工具路徑而失敗；修正同一容器的 cwd 後保存成功，GUI 收據沒有重跑或改寫。
+
+父端已查看高清被擒、戰死與英日對白實圖。英文及日文長對白被截去後半句，英文姓名牌截成 Chen G；即時換語言後，句中的舊姓名值沒有重生。這些缺陷在原貌同樣，另列 §6.54 DRAFT；美術接入 §6.53 限上述正常樣本 CONFORMED，不稱三語文字完整。下一步從已知插入姓名及固定文字安全區做顯示層原型，不改規則或繁中原文。
+
+建置階段以 wrapper 原文在 Go image 執行，兩版 binary、正式主選單及提示參考共 28 檔通過，見 `hd-duel-v52-wrapper-build.json`。另驗正常比較器拒絕覆寫既有收據、工具快照 bytes 相同及拒絕覆寫，見 `hd-duel-v52-tool-checks.json`。正式遊戲來源沒有變更，沒有重跑無關規則全庫測試。381 份既有 Go、36 份 DATA 檔、原版 EXE、README 四圖、使用者 AGENTS.md 及現行包 444 檔保持，完整身份在 `hd-duel-v52-inputs.json`。
+
+本批音訊關閉，沒有新增原版 oracle、完整戰役／戰後存讀檔、效能、原生平台或發行聲明；整份 HD READY、Goal ACTIVE。提交、推送、擁有權及 Docker 清理收據為 `workplace/hd-duel-v52-delivery.json`。README 展示圖沿用目前正式四圖。
