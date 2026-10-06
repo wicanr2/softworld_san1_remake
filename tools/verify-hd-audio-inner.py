@@ -243,7 +243,7 @@ def run():
     gui.receipt.update(method='正常片頭、新局、選項列、音效開關與軍師任命；PulseAudio monitor',
                        binary_sha256=sha(OUT/'san1-window-check'),pack_sha256=sha(PACK/'manifest.json'),
                        state_injection=False,seed_injection=False,human_listening=False,
-                       scope='配樂與音效輸出；語音入口缺少正式呼叫，未驗收語音')
+                       scope='所選配樂／音效的輸出；本工具不執行語音驗收')
     gui.receipt['reference_files']={name:sha(REFERENCE/name) for name in ['main-cursors.json','music-reference.pcm','sfx-reference.pcm']}
     gui.receipt['selection']=dict(scope=args.scope,editions=args.editions,locales=args.locales)
     gui.receipt['cpu_runtime']=dict(before=cpu_runtime())
