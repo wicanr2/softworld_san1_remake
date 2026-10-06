@@ -283,6 +283,14 @@ func (a *app) relocalizeWindow(old i18n.Locale) {
 	if a.menuScreen != nil {
 		a.menuScreen.Relocalize(old)
 	}
+	if a.s != nil {
+		for _, b := range a.s.Bubbles {
+			b.Relocalize(old, i18n.Current)
+		}
+		if a.s.G != nil {
+			a.s.G.RelocalizePendingBubbles(old, i18n.Current)
+		}
+	}
 	if battle := a.fight; battle != nil {
 		command := ""
 		if battle.acting != nil {

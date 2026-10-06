@@ -114,7 +114,7 @@ func (g *State) AssignHeir(index int) error {
 	}
 	g.heirAsks = g.heirAsks[1:]
 	g.pending = append(g.pending, g.bubbleAt(x, false, true,
-		tf("bub.succeed", personName(x.Name)), a.Color))
+		t("bub.succeed"), a.Color))
 	return nil
 }
 

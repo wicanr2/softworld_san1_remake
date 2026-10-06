@@ -180,7 +180,7 @@ func (g *State) Advise(kind AdviceKind, at int, by state.FactionID, t AdviceTarg
 			if ok {
 				key = "bub.adv.plotEasy"
 			}
-			ev = append(ev, say(tf(key, personName(gov.Name)), 417))
+			ev = append(ev, g.nameBubbleEvent(chief, false, true, key, gov.Name, at, 417))
 		}
 	default:
 		return nil

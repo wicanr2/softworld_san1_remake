@@ -144,13 +144,13 @@ func (o RecruitOrder) Apply(g *State, by state.FactionID) error {
 	player := g.playerCommand(by) && t != nil
 	if player {
 		g.commandScene(o.At, assets.SceneRecruit, by)
-		g.say(g.Governor(o.At), true, true, tf("bub.recruitAsk", personName(t.Name)), o.At, 0x1c088)
+		g.sayName(g.Governor(o.At), true, true, "bub.recruitAsk", t.Name, o.At, 0x1c088)
 	}
 	err := g.Recruit(o.At, o.Target, by)
 	switch {
 	case !player:
 	case err == nil:
-		g.say(t, false, false, tf("bub.recruitYes", personName(t.Name)), o.At, 0x1c129)
+		g.sayName(t, false, false, "bub.recruitYes", t.Name, o.At, 0x1c129)
 		g.commandScene(o.At, assets.SceneJoin, by)
 	case errors.Is(err, ErrDeclined):
 		g.say(t, false, false, t_("bub.recruitNo"), o.At, 0x1c0cc)
@@ -505,7 +505,7 @@ func (o AppointChiefOrder) Apply(g *State, by state.FactionID) error {
 	if err == nil && g.playerCommand(by) {
 		// `0x1ca9e`／`0x1cad5`：君主在上格下令，新軍師在下格領命。
 		t := g.General(o.Target)
-		g.say(g.Lord(by), true, false, tf("bub.chiefOrder", personName(t.Name)), o.At, 0x1ca9e)
+		g.sayName(g.Lord(by), true, false, "bub.chiefOrder", t.Name, o.At, 0x1ca9e)
 		g.say(t, false, true, t_("bub.chiefReply"), o.At, 0x1cad5)
 	}
 	return err
@@ -550,8 +550,8 @@ func (o AppointGovernorOrder) Apply(g *State, by state.FactionID) error {
 	if err == nil && g.playerCommand(by) {
 		// `0x1ccd7`／`0x1cd24`：君主在上格下令，新太守在下格領命。
 		t := g.General(o.Target)
-		g.say(g.Lord(by), true, false, tf("bub.governorOrder", personName(t.Name)), o.Pref, 0x1ccd7)
-		g.say(t, false, true, tf("bub.governorReply", personName(t.Name)), o.Pref, 0x1cd24)
+		g.sayName(g.Lord(by), true, false, "bub.governorOrder", t.Name, o.Pref, 0x1ccd7)
+		g.sayName(t, false, true, "bub.governorReply", t.Name, o.Pref, 0x1cd24)
 	}
 	return err
 }
@@ -581,8 +581,8 @@ func (o AutonomyOrder) Apply(g *State, by state.FactionID) error {
 	if err == nil && g.playerCommand(by) {
 		// `0x1cf7d`／`0x1cfc6`：君主在上格把郡交給主事者，主事者在下格領命。
 		if gov := g.Governor(o.Pref); gov != nil {
-			g.say(g.Lord(by), true, false, tf("bub.autonomyOrder", personName(gov.Name)), o.Pref, 0x1cf7d)
-			g.say(gov, false, true, tf("bub.autonomyReply", personName(gov.Name)), o.Pref, 0x1cfc6)
+			g.sayName(g.Lord(by), true, false, "bub.autonomyOrder", gov.Name, o.Pref, 0x1cf7d)
+			g.sayName(gov, false, true, "bub.autonomyReply", gov.Name, o.Pref, 0x1cfc6)
 		}
 	}
 	return err
@@ -632,7 +632,7 @@ func (o GiftOrder) Apply(g *State, by state.FactionID) error {
 	if g.playerCommand(by) {
 		// `0x1d4c1` 道謝之後再畫一次受賜者的資料卡（`0x1d4d1`），等鍵。
 		t := g.General(o.Target)
-		g.say(t, true, false, tf("bub.giftThanks", personName(t.Name)), o.At, 0x1d4c1)
+		g.sayName(t, true, false, "bub.giftThanks", t.Name, o.At, 0x1d4c1)
 		g.showCard(t)
 	}
 	if o.Round == nil {
@@ -674,7 +674,7 @@ func (o HeadhuntOrder) Apply(g *State, by state.FactionID) error {
 	case !player:
 	case err == nil:
 		g.commandScene(o.At, assets.SceneJoin, by)
-		g.say(t, false, true, tf("bub.headhuntYes", personName(t.Name)), o.At, 0x1dbc9)
+		g.sayName(t, false, true, "bub.headhuntYes", t.Name, o.At, 0x1dbc9)
 	case errors.Is(err, ErrDeclined):
 		g.say(t, false, true, t_("bub.headhuntNo"), o.At, 0x1db1f)
 	}

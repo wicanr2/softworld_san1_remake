@@ -65,6 +65,8 @@ type Bubble struct {
 	Speaker        int  // 人物槽：肖像與名字從這裡取
 	Color          int  // 對白的字色 0–7（`RND(8)`）
 	Text           string
+	textKey        string // 顯示句型與原始姓名快照，不寫入存檔。
+	textName       string
 
 	// FaceOnly 為真是「只亮一張肖像」的那一格：不畫名字、泡泡與字，
 	// 肖像貼在 (X1, Y1)。玩家尋訪找到人時原版先把那一位的肖像亮在
@@ -169,7 +171,7 @@ func (g *State) searchEvents(searcher, found *General) []Event {
 		return []Event{
 			{Prefecture: searcher.Location, Bubble: &Bubble{X1: SearchFaceX, Y1: SearchFaceY, Speaker: found.Index,
 				FaceOnly: true, WipeIn: true, Style: style}},
-			g.bubbleEvent(searcher, false, false, tf("bub.found", personName(found.Name)), searcher.Index),
+			g.nameBubbleEvent(searcher, false, false, "bub.found", found.Name, searcher.Index),
 		}
 	}
 	return []Event{g.bubbleEvent(searcher, false, false, t("bub.notFound"), searcher.Index)}
@@ -274,8 +276,8 @@ func (g *State) WarDeclaration(from, to int, by state.FactionID) []Event {
 		def = g.Lord(p.Owner)
 	}
 	if att != nil && def != nil {
-		out = append(out, g.bubbleEvent(att, true, false, tf("bub.warDeclare", personName(def.Name)), from, 0x202e1))
-		out = append(out, g.bubbleEvent(def, false, true, tf("bub.warReply", personName(att.Name)), from, 0x20322))
+		out = append(out, g.nameBubbleEvent(att, true, false, "bub.warDeclare", def.Name, from, 0x202e1))
+		out = append(out, g.nameBubbleEvent(def, false, true, "bub.warReply", att.Name, from, 0x20322))
 	}
 	return out
 }
@@ -456,13 +458,13 @@ func (g *State) spring() []Event {
 			// 君主那一則在繼承常式裡（`SucceedLord`）。下格、肖像在右
 			// （`0x14848`：(424,180)–(615,275)，side 0）。
 			out = append(out, g.bubbleEvent(x, false, false,
-				tf("bub.death", personName(x.Name)), int(Spring), x.Index, 48))
+				t("bub.death"), int(Spring), x.Index, 48))
 		}
 		g.retire(x)
 		out = append(out, g.PendingEvents()...)
 		if x.Index == DeathEpilogueSlot {
 			out = append(out, g.bubbleEvent(x, false, false,
-				tf("bub.epilogue", personName(x.Name)), int(Spring), x.Index, 49))
+				t("bub.epilogue"), int(Spring), x.Index, 49))
 		}
 	}
 	for i := range g.generals {
@@ -707,12 +709,12 @@ func (g *State) debut(x *General) []Event {
 			g.Roll(EffectVariants, int(Spring), x.Index, 47), assets.SceneMainX, assets.SceneMainY)}
 		if b.Status != state.StatusLord {
 			// 上格、肖像在右，說話的是牽絆對象（`0x161c4`）。
-			bubbles = append(bubbles, g.bubbleEvent(b, true, false,
-				tf("bub.debutBond", personName(x.Name)), int(Spring), x.Index, 48))
+			bubbles = append(bubbles, g.nameBubbleEvent(b, true, false,
+				"bub.debutBond", x.Name, int(Spring), x.Index, 48))
 		}
 		// 下格、肖像在左，說話的是新人（`0x16270`）。
-		bubbles = append(bubbles, g.bubbleEvent(x, false, true,
-			tf("bub.debut", personName(x.Name)), int(Spring), x.Index, 49))
+		bubbles = append(bubbles, g.nameBubbleEvent(x, false, true,
+			"bub.debut", x.Name, int(Spring), x.Index, 49))
 		x.Location = at
 		x.Faction = id
 		x.Status = state.StatusOfficer
@@ -1518,7 +1520,7 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 	// 寫進去的），上格、肖像在右。
 	if dead := g.General(f.Lord); dead != nil {
 		g.pending = append(g.pending, g.bubbleEvent(dead, true, false,
-			tf("bub.lordDeath", personName(dead.Name)), int(id), 0x14a38))
+			t("bub.lordDeath"), int(id), 0x14a38))
 	} else {
 		g.Roll(MessageLines, int(id), 0x14a38)
 	}
@@ -1562,7 +1564,7 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 		return heir
 	}
 	g.pending = append(g.pending, g.bubbleAt(heir, false, true,
-		tf("bub.succeed", personName(heir.Name)), color))
+		t("bub.succeed"), color))
 	return heir
 }
 

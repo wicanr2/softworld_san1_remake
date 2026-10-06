@@ -46,6 +46,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 主戰場、開場詞、主選單怎麼拼 | `spec/005`（版面）、`re/05` §2.5–2.6（畫的那一端）|
 | 音效與語音怎麼播、槽怎麼分 | `re/09`、`spec/008` |
 | 訊息框（肖像＋對白泡泡）的版面、片語表 350–499 | `spec/005` §9、`re/12` |
+| 主畫面對白的即時換語言、姓名快照及存檔隔離 | [021 §6.54.3](spec/021-hd-art.md#6543-主畫面對白的語言佇列)、[顯示實作](../internal/game/bubble_locale.go)、[對白測試](../internal/game/bubble_locale_test.go)、[視窗與存檔測試](../cmd/san1/main_bubble_locale_test.go)、[正常 GUI 重跑](../tools/verify-hd-main-bubbles.sh)、[畫面比較器](../tools/verify-hd-main-bubbles-inner.py) |
 | 配樂怎麼解、怎麼合成 | `formats/06`、`spec/009` |
 | 正式視窗配樂能否播放、如何重跑錄音驗證 | [spec/009 §6.1](spec/009-music.md#61-正式音訊串流契約)、[驗證入口](../tools/verify-music.sh) |
 | 保留原版版面的 AI HD 工作順序與驗收 | [GitHub 工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)；子項 #105–#110；[B 高清與視窗選項列規格 021](spec/021-hd-art.md)、[兩版素材盤點](formats/04-asset-inventory.md#6-hd-兩版盤點) |
@@ -112,7 +113,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 正常單挑的高清叫陣、被擒、戰死及左右對白面板 | [spec/021 §6.53](spec/021-hd-art.md#653-正常單挑的場景與對白面板)、[Docker 重跑入口](../tools/verify-hd-duel.sh)、[正常操作比較器](../tools/verify-hd-duel-inner.py)；限美術接入 CONFORMED，36 樣本、140 項檢查、489 PNG 與整張原貌恢復獨立回讀通過 |
 | 戰場對白換語言後的插入姓名 | [spec/021 §6.54.1](spec/021-hd-art.md#6541-戰場對白的原始姓名)；限十鍵資料契約及正常單挑 CONFORMED，222 項回歸、48 組修改前後控制、36 正常樣本、150 項檢查與 484 PNG 獨立回讀通過 |
 | 長對白在原框內縮排 | [spec/021 §6.54.2](spec/021-hd-art.md#6542-長對白在原框內縮排)；限顯示契約及正常單挑 CONFORMED，1,265 項回歸、96 完整控制、36 正常樣本、158 項檢查與 474 PNG 獨立回讀通過 |
-| 英文姓名牌與主畫面插入姓名 | [spec/021 §6.54](spec/021-hd-art.md#654-對白文字的裁切與插入姓名)；DRAFT，姓名牌原寬／肖像寬原型等使用者選擇。長對白已另依 §6.54.2 修正，不外推主畫面姓名與其他使用端 |
+| 英文姓名牌與地圖姓名 | [spec/021 §6.54](spec/021-hd-art.md#654-對白文字的裁切與插入姓名)；DRAFT，姓名牌原寬／肖像寬原型等使用者選擇。長對白另見 §6.54.2，主畫面佇列另見 [§6.54.3](spec/021-hd-art.md#6543-主畫面對白的語言佇列)，地圖姓名與其他使用端仍待驗 |
 | 自創君主怎麼建、範本在哪 | `spec/013`、`re/08` §3 |
 | 主畫面上的指令表、子選單、分頁畫在哪 | `spec/014`（原版量自 `TestZZSubMenuScreens`）|
 | 原版 oracle 如何不用固定指令數開到主畫面 | `spec/015`（執行期輸入位址、行為停點與失敗上限）|

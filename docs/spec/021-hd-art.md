@@ -2482,7 +2482,7 @@ READY 前須以可丟棄原型核對兩版三語的完整字模、88×16 安全�
 - 即時換到英文時，句中姓名仍為「陳宮」或「呂布」。`relocalizeWindow` 使用 `Relocalize` 回譯完整模板，字串槽的舊值保持，沒有依人物原始姓名重生插入值。
 - 守方英文姓名牌只顯示「Chen G」，48 像素單行槽截去末尾；說話者肖像仍正確。
 
-戰場插入姓名已依 §6.54.1 修正，長對白已依 §6.54.2 修正。英文姓名牌仍裁切，現行原寬縮字與肖像寬原型等待使用者選擇，未定案前不改正式姓名牌。原版繁中原文及既有兩行 oracle 保持，主畫面插入姓名與地圖姓名仍需另驗。
+戰場插入姓名已依 §6.54.1 修正，長對白已依 §6.54.2 修正，主畫面佇列已依 §6.54.3 修正。英文姓名牌仍裁切，現行原寬縮字與肖像寬原型等待使用者選擇，未定案前不改正式姓名牌。原版繁中原文及既有兩行 oracle 保持，地圖姓名仍需另驗。
 
 #### 6.54.1 戰場對白的原始姓名
 
@@ -2502,7 +2502,7 @@ READY 前須以可丟棄原型核對兩版三語的完整字模、88×16 安全�
 | 垂直鏈 | 原始人物資料 → `Leader.Name` → 已知對白呼叫端的型別化姓名 → 對白佇列 → 選項列／`DrawBattleSpeech`；新增快照只服務畫面，存檔格式及來源姓名保持 |
 | 不變條件 | 字色與場景亂數的次數、次序、規則、說話者、肖像方向、面板、部隊、對白順序及輸入閘門保持 |
 
-驗收須涵蓋十鍵的三語初次顯示與反覆換語言、兩版實際單挑佇列的規則及亂數狀態、未知文字／姓名與普通字串參數、視窗中已移交及未移交的對白。正式正常 GUI 沿用 `tools/verify-hd-duel-inner.py` 的董卓／呂布路線，核對兩版的左右叫陣及應戰姓名、原貌／4×／恢復、三語回切及正常返回。英文可見姓名文字區另由自由字模重建，避免把截圖自身的墨點當成正確文字。長句、姓名牌、主畫面對白及地圖姓名仍需各自驗收，不能由此節外推。
+驗收須涵蓋十鍵的三語初次顯示與反覆換語言、兩版實際單挑佇列的規則及亂數狀態、未知文字／姓名與普通字串參數、視窗中已移交及未移交的對白。正式正常 GUI 沿用 `tools/verify-hd-duel-inner.py` 的董卓／呂布路線，核對兩版的左右叫陣及應戰姓名、原貌／4×／恢復、三語回切及正常返回。英文可見姓名文字區另由自由字模重建，避免把截圖自身的墨點當成正確文字。長句另見 §6.54.2，主畫面佇列另見 §6.54.3；姓名牌及地圖姓名仍待驗，不由本節外推。
 
 正式回歸：`internal/battle`、`internal/i18n` 及 `cmd/san1` 共 222 個通過事件，零 skip／fail，見 `workplace/hd-speech-v53-formal-tests-r2.jsonl`。新增 [十鍵與來源快照測試](../../internal/battle/speech_locale_test.go) 及 [視窗兩個佇列測試](../../cmd/san1/speech_locale_test.go)。修改前保存的 48 組兩版／三語／固定 seed 單挑，修改後完整公開欄位、初次文字與 LCG 狀態逐位元組相同，見 `hd-speech-v53-control-test.go`、`hd-speech-v53-control-overlay.json` 與 `hd-speech-v53-baseline.json`，均位於 `workplace/`。這是 remake 修改前後控制，沒有重新跑原版。正常正式 binary SHA-256 為 `217b6aa41db01a180ee9adf0636b6f1c6b0bf76265f43ac9f921b3b5db369038`，相同輸入與 `-trimpath` 重建相同，384 份 Go 雜湊保持，見 `hd-speech-v53-{build-inputs,rebuild}.json`。
 
@@ -2514,7 +2514,7 @@ READY 前須以可丟棄原型核對兩版三語的完整字模、88×16 安全�
 
 #### 6.54.2 長對白在原框內縮排
 
-**狀態：CONFORMED，限長對白的顯示契約與下列正常單挑樣本。** 先審查 READY 契約再實作。姓名牌、主畫面的插入姓名及地圖姓名仍待各自驗收。沿用 [014 §3.2](014-art-main-overlays.md#32-下面板) 的「文字允許縮小」定案，不縮短文字，不改面板或輸入順序。
+**狀態：CONFORMED，限長對白的顯示契約與下列正常單挑樣本。** 先審查 READY 契約再實作。主畫面佇列另見 §6.54.3，姓名牌及地圖姓名仍待驗收。沿用 [014 §3.2](014-art-main-overlays.md#32-下面板) 的「文字允許縮小」定案，不縮短文字，不改面板或輸入順序。
 
 證據審查：正常單挑的英文、日文文字被 `BubbleLines` 的兩行限制丟棄。私人量測 `workplace/hd-bubble-v54-measure.go` 從兩版 DATA2 的六劇本讀出 346 個不重複姓名，逐一代入現行 102 個 `bub.*` 模板。每語 35,292 組；最窄 96 像素字區內，英文最多七行一般字級，日文最多四行。一般字級排不下的英文都可用現有 6×10 字模完整排入，沒有缺字。此量測把每個 `%s` 都代入同一姓名、`%d` 代入 999，是版面壓力樣本，並非實際事件證據。中文仍保留既有兩行原版切法，不把量測中的中文換行當成新 oracle。
 
@@ -2542,3 +2542,35 @@ R1 的日文應戰比較器多保留換行邊界空白，兩版收據保持 fals
 來源完整性在 `workplace/hd-bubble-v54-inputs.json` 與 `hd-bubble-v54-integrity.py`，530 份不可變輸入及 379 份 `cmd/`／`internal/` Go 在建置至核對期間保持。現行私人包 444 檔、原始資料、三語字串、字型、README 四圖及使用者 AGENTS.md 保持。字模、版本與實際輸入雜湊均可回查收據；Go image 為 `rich2-go-ebiten:latest`，GUI image 為 `eob-audio-capture:20260922-r2`。重跑入口為 `bash tools/verify-hd-duel.sh`，現在使用 `--verify-text`，追加完整英日對白核對。素材、完整圖與收據留本機，提交限程式、測試及文件。
 
 英文姓名牌已提供 `workplace/hd-bubble-v54-nameplate-options.png` 的原寬／肖像寬原型，後兩列是長姓名壓力樣本，尚未定案或接入正式程式。音訊關閉，沒有新增音畫、人耳、效能、平台、完整戰役存讀檔或發行聲明。整份 HD READY、Goal ACTIVE。
+
+#### 6.54.3 主畫面對白的語言佇列
+
+**狀態：CONFORMED，限十六姓名鍵、四個靜態模板及下列正常任命樣本。** 本節是兩版共用顯示層的 remake 差異。姓名牌版面仍待 §6.54 的方案選擇。先核對顯示呼叫端、原始姓名與存檔，再審查 READY 契約，之後才實作。
+
+目前 `game.Bubble` 只保存格式化文字；`relocalizeWindow` 沒有更新 `Session.Bubbles` 或 `game.State.pending`。即時切換語言後，主畫面對白及句中姓名仍停留在排入佇列時的語言。二十處已知呼叫端中，十六個模板有一個姓名槽；另外四個 `bub.death`、`bub.epilogue`、`bub.lordDeath`、`bub.succeed` 在三語都沒有參數，現有 `tf` 卻傳入姓名，產生 `%!(EXTRA string=...)`。這些是目前 Go 資料流的直接查證；原版對白與片語證據沿用 [005 §9](005-main-screen.md#9-訊息框肖像對白泡泡)、[014](014-art-main-overlays.md)，不新增原版 oracle 或機制聲明。
+
+修改前雜湊在 `workplace/hd-main-bubble-v55-inputs.json`，涵蓋 530 份不可變輸入及 379 份正式 Go 原始碼。兩版 DATA2 先由既有容器與劇本解析器讀取，再由 `game.New` 建立資料。私人控制 `workplace/hd-main-bubble-v55-control-test.go` 固定三個 seed，記錄兩版、三語的宣戰、軍師任命、尋訪畫面及君主繼承，共 72 組公開事件、三張資料表 SHA-256、LCG 狀態與抽樣次數。修改前收據為 `hd-main-bubble-v55-before.json`，overlay 與有效命令紀錄為 `hd-main-bubble-v55-control-overlay.json`、`hd-main-bubble-v55-before-r2.log`，均在 `workplace/`。這是 remake 修改前後控制，不取代正常玩家路徑。
+
+| 契約 | 行為 |
+|---|---|
+| 姓名模板 | 登用兩句、軍師任命、太守任命兩句、自治兩句、賜物、網羅、尋訪、宣戰兩句、新人登場兩句、勸諫的容易／困難預測，共十六鍵；排入時保存句型與原始姓名字串快照 |
+| 初次顯示與換語言 | 姓名只在顯示時走 `PersonNameFor`；由句型及快照重生整句。初次文字維持，人物資料後續變動不回改已排入的姓名快照 |
+| 無姓名槽 | 上述四個無參數模板直接取字串，去除多餘參數的格式診斷；原始繁中及英日模板保持 |
+| 靜態與回退 | 其他既有對白沿用 `Relocalize`；未知文字、場景、卡片、單獨肖像與地圖戰役事件保持，nil 安全 |
+| 兩個佇列 | 已移交的 `Session.Bubbles` 及未移交的 `game.State.pending` 都可更新文字；保持指標、長度、順序、特效狀態及下一次移交，不消耗事件 |
+| 不變條件 | 不增加亂數；字色、場景方向、幾何、說話者、肖像、輸入閘門、事件紀錄、規則、原始姓名與存檔表保持。繼承使用已擲字色的路徑仍不擲新骰 |
+| 垂直鏈 | 原始 DATA2 → typed `General.Name` → 已知對白呼叫端 → 暫存顯示快照 → 主畫面佇列／選項列；存檔仍由 `Tables` 與 `SaveName` 使用原始欄位，顯示快照不加入存檔 |
+
+驗收須涵蓋十六姓名鍵的三語初次顯示與反覆切換、未知姓名／文字、四個無參數模板、兩個佇列、已擲字色的繼承路徑，以及資料表、存檔與 LCG 保持。72 組控制中，只有繼承兩句移除已知格式診斷，其他公開欄位與文字應完全相同。正常 GUI 從片頭開 001 劉備、難度 5，依既有 `verify-hd-events-inner.py` 的合法軍師任命路線，查看任命與領命兩句。兩版三語各核對 Original／4×／回切、完整英日自由字模及正常續頁；修改前畫面須拒收，不能只驗內部字串。字型、三語 JSON、現行私人包及 README 四圖保持。本節不外推其他命令、完整戰役存讀檔、音畫、效能、平台或發行。
+
+正式 [姓名快照測試](../../internal/game/bubble_locale_test.go) 及 [兩個視窗佇列與存檔測試](../../cmd/san1/main_bubble_locale_test.go) 通過。五套件共 293 個測試通過／略過事件，其中 291 通過、零 fail；既有 `TestMoveNeedsAdjacency` 因弘農與上黨相鄰、`TestGiftTreasure` 因找不到符合能力前提的部將而略過，不列為通過。新測試沒有略過。存檔比較涵蓋五份原版表及名稱表的完整 bytes；`REMAKE.JSON` 只正規化既有 `saved_at` 寫檔時間，其他欄位完整比較，沒有改正式時鐘或存檔格式。回歸收據為 `workplace/hd-main-bubble-v55-tests-r4.jsonl`、`hd-main-bubble-v55-test-summary.json`。
+
+72 組修改前後控制的事件、三張資料表、LCG 狀態及抽樣次數相同，只有 36 則君主死亡／繼承對白去除已知 `%!(EXTRA string=...)`。見 `workplace/hd-main-bubble-v55-{before,after,control}.json`；其他兩個靜態死亡模板也改為無參數取字串，模板本身保持。正式 binary SHA-256 為 `6be3e86647395d40e2299d2f0b3c8aaf434d06fd5eae2f73efd652d7ec2cf65d`，同一批 382 份 `cmd/`／`internal/` Go 凍結後重建相同。
+
+正常修改前收據在 `workplace/hd-window/player/main-bubble-v55-before-r1/`；兩版任命與領命的八組英日字區都拒收。正式 R3 在 `workplace/hd-window/player/main-bubble-v55-after-r3/`：兩版正常片頭、新局、合法任命關羽為軍師、三語切換、續頁及返回下令停點，沒有狀態、seed、clock 或位置注入。共 12 樣本、60/60 檢查、201 張實際完整 PNG。八組完整英日對白從自由字模重建 112×83 字區及 4× 輸出；日文任命保留既有兩行雙倍高度，長句使用 §6.54.2 的一般字級，沒有增加續頁。
+
+`workplace/hd-main-bubble-v55-independent.{go,json}` 使用 Go 標準 PNG／gzip 解碼，獨立核對修改前後全部 399 PNG 的雜湊及尺寸、983,040 肖像原生像素、1,189,888 對白原生像素、十二次整張原貌恢復及四張修改前後完整繁中畫布。八組完整英日句接受，八組舊未翻譯字區拒收，沒有排除矩形。正常高清英文任命及日文領命圖已查看。
+
+驗證工具的 R1 未正規化 DOS 8.3 槽名、R2 丟掉日文領命第二行的行首空白，兩份 false 收據保持。校正來源索引及比較器後，以相同 binary、容器及正常輸入重跑 R3。另查明 R3 八個英日樣本的 `portrait` 標籤被翻譯姓名覆蓋；原圖、原生像素檢查及兩個 PNG 雜湊保持。獨立工具從兩版 DATA2 的原始姓名欄與肖像 offset 27 核對 F005／F002，勘誤只附在新的獨立收據，不改寫 R3。正式比較器已分開兩個變數，保存圖片的重播驗證見 `hd-main-bubble-v55-metadata-replay.{py,json}`；這份重播不是新 GUI 收據。比較器控制見 `hd-main-bubble-v55-comparator-control.{py,json}`，均位於 `workplace/`。正式程式未因上述工具問題再改動。
+
+重跑入口為 [正常任命驗證](../../tools/verify-hd-main-bubbles.sh)，比較器在 [verify-hd-main-bubbles-inner.py](../../tools/verify-hd-main-bubbles-inner.py)。使用尚不存在的 `SAN1_HD_MAIN_BUBBLES_OUT`，原始資料與私人包仍須在本機；來源工具、完整圖及收據不加入公開提交。530 份不可變輸入、現行 444 檔私人包、三語 JSON、字型、README 四圖及使用者 AGENTS.md 保持。擁有權、連結、提交推送及 Docker 清理見 `workplace/hd-main-bubble-v55-{hygiene,delivery}.json`。音訊關閉，沒有新增音畫、人耳、效能、平台、完整戰役存讀檔或原版 oracle 聲明；整份 HD READY、Goal ACTIVE。
