@@ -18,7 +18,24 @@ func (b *Bubble) Relocalize(from, to i18n.Locale) {
 func (g *State) nameBubbleEvent(x *General, upper, left bool, key, name string, salt ...int) Event {
 	e := g.bubbleEvent(x, upper, left, tf(key, personName(name)), salt...)
 	e.Bubble.textKey, e.Bubble.textName = key, name
+	if x != nil {
+		switch {
+		case key == "bub.warDeclare" && x.Name == "劉備" && name == "孔融":
+			e.Bubble.voiceClips, e.Bubble.voiceKnown = [3]int{32, 456, 499}, true
+		case key == "bub.warReply" && x.Name == "孔融" && name == "劉備":
+			e.Bubble.voiceClips, e.Bubble.voiceKnown = [3]int{0, 457, 499}, true
+		}
+	}
 	return e
+}
+
+// VoiceClips 回傳已證實的三段索引。特殊畫面與未知對白不猜語音。
+// 映射來自建立時的原始姓名，不受 Relocalize 或後續人物變更影響。
+func (b *Bubble) VoiceClips() ([3]int, bool) {
+	if b == nil || b.FaceOnly || b.Card || b.Scene != 0 || b.Panel != 0 || b.MapBattle != nil {
+		return [3]int{}, false
+	}
+	return b.voiceClips, b.voiceKnown
 }
 
 func (g *State) sayName(x *General, upper, left bool, key, name string, salt ...int) {

@@ -86,6 +86,8 @@ type app struct {
 
 	// sfx 是 PC 喇叭的音效與語音（`docs/spec/008`）；放不出聲音就是 nil。
 	sfx *voicebox
+	// shownBubble 是實際畫出的對白；voicePlayed 防止換語言與重畫時重播。
+	shownBubble, voicePlayed *game.Bubble
 
 	// wipe 非 nil 表示正在把一張場景圖拉進畫面（`docs/spec/010`）；
 	// scenePlayed 是拉過（或正在拉）的那一格，同一格不重播。
@@ -164,6 +166,7 @@ func (a *app) Update() error {
 	if a.quit {
 		return ebiten.Termination
 	}
+	a.playShownBubbleVoice()
 	if a.updateWindowBar() {
 		return nil
 	}
@@ -1520,6 +1523,7 @@ func (a *app) Draw(dst *ebiten.Image) {
 // 從 Draw 抽出來是為了**轉場**：拉幕要先有「新畫面」才有東西可以露出來
 // （`docs/spec/010`），而那張圖就是「照現在的狀態畫一次」。
 func (a *app) paint() {
+	a.shownBubble = nil
 	{
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
 		// 同一張圖無頭環境也產得出來（cmd/san1dump -png）。
@@ -1596,6 +1600,7 @@ func (a *app) paint() {
 						ui.ClearPanel(a.canvas, 408, 36, 631, 291, assets.EGAPalette[1])
 					}
 					ui.DrawBubble(a.canvas, a.art, a.s.G, b)
+					a.shownBubble = b
 				}
 			} else {
 				ui.DrawSession(a.canvas, a.s.G, a.s.Log, a.view)

@@ -1092,3 +1092,38 @@ R3 外層正常結束，正式兩版三語 GUI 68/68、630 PNG 與六組整張�
 訂正與完整證據為 workplace/hd-audio-v58-r1-correction.json、workplace/hd-audio-v58-backend-focus-r2-proof.json、workplace/hd-audio-v58-{independent,positive-independent,explicit-positive-independent}.json 與 workplace/audio/hd-v58-*。探針、兩份 overlay、原始後端緩衝與完整 WAV 僅留本機。021 §6.55.2 訂正失焦候選的前提，§6.55.3 收錄 SDK 契約與控制結果，並掛入既有索引；CONTEXT 及驗證矩陣同步現況。
 
 下一步核對渲染／載入與 ALSA 補給間隔，避免再調資源或重跑完整矩陣直到偶然通過。正式語音依 008 已知 base 映射另接最小正常使用端；不由人物 ID 猜語音索引，不跨版外推。英文姓名牌 A/B、其他使用端、GUI 存讀檔、效能與原生平台保持未完成。整份 HD READY、Goal ACTIVE，Issue 維持只讀，沒有新 Release。擁有權、文件連結、提交推送及 Docker 清理見 workplace/hd-audio-v58-{hygiene,delivery}.json。
+
+## 2026-10-06 已知宣戰語音的正式接線
+
+新增兩則已證實宣戰語音的使用端，限劉備／孔融這一對。原始模板與姓名在建立
+對白時保存固定三段索引，正式視窗畫出後只排入一次；缺段或越界整句回退。
+不改既有選項初值、非同步與按鍵收對白、規則、亂數、存檔、字型、B 包或 README。
+RE、機制、READY 契約先完成，實作驗證後 008 §9 與 021 §6.56 標為限範圍 CONFORMED。
+
+加強版 ASV.EXE 的載入器線性 0x59d8、含速度校正的 speak 線性 0x5ad6；正常
+001 劉備難度 5、seed 0x13579bdf，六筆載入與兩次槽 1 入口通過。原版採既有
+rec10 證據，新的固定 seed 原版開機因既有密碼 helper 未續行，沒有新原版收據。
+私人 R2 等錯輸入、R3 攔了未使用的無校正入口，均保存；R4 比對 bytes 後通過。
+正式測試 TestVoiceDeclarationMappingPlus 另乾淨重跑通過，沒有修改 dosgolem。
+
+四個套件回歸 299 通過、零失敗；兩項既有盤面前提略過。新增原始姓名與語音
+快照、兩版三語四種開關、一次觸發、完整 PCM、缺段／越界、兩版完整存檔保持。
+正常 GUI R5 原版繁中、R6 兩版英日、R7 加強版繁中共有六組新局、42/42 檢查、
+十二段完整 WAV。獨立 Go 回讀 489 PNG、十二次整張原貌回切及完整原生 HD 肖像；
+774,636 個語音參考幀最大差 0，無排除，所有片段外全零，確認三段順序與不重播。
+
+新 GUI 腳本的 R1 主命令少 Enter、R2 直接命令多 Enter，按現有輸入狀態修正，
+R2 主動中止保持 false。R3 視窗置中超出 Xvfb，移回原點及限定抓圖執行緒後修正。
+R4 誤認 remake 語音初值，實際畫面顯示關閉且整份 WAV 613,119 幀全零；獨立回讀
+保留此負例，原收據仍 false。最後以正常選項先關再開完成，未改正式初值或測試 seed。
+
+執行檔 SHA-256 b84a0e7fae081b29d9f69374d33d337e70680db209e166c96712f38e7901107c。
+獨立收據 workplace/hd-voice-v59-independent.json SHA-256
+4ef0ec679d7429400481ee7428ec0646bae85c143f4d751051f1cb554f2c0328。
+入口 tools/verify-voice.sh 在 Docker 建置、產生本機參考及正常 GUI；原始／衍生音訊
+與完整素材保持本機。三次參考重建 bytes 相同，三條成功路徑使用同一正式執行檔。
+
+先前配樂連續性維持 3/4，其他語音、姓名牌 A/B、GUI 存讀檔、效能、人耳與原生
+平台另驗。整份 HD READY、Goal ACTIVE，Issue 只讀，沒有新 Release。提交推送、
+既有 530 份輸入保持、四份 Go 修改、三份正式測試新增、文件連結、擁有權與容器
+清理見 workplace/hd-voice-v59-{inputs,hygiene,delivery}.json。

@@ -4,7 +4,7 @@
 SHA-256 為
 `474780e5be697b3b4899da5e0dbadd2f327e0bbe7e56306ac3b732a15fc124ca`；
 執行期 dump `workplace/dump/code-000400.bin`（基底 `0x400`）。本文位址一律是
-原版執行期線性位址，不與檔案位移混寫。動態證據由 dosgolem
+原版執行期線性位址，第 9 節另明示加強版；不與檔案位移混寫。動態證據由 dosgolem
 `d9c0c27ca9af8239c7e96272a7165e03d7da04bf` 重生。
 
 社群對這一款印象最深的是「用 PC 喇叭講話」
@@ -309,3 +309,38 @@ slot 0 且 長度 > 1000 → "Real#0>1000"  （DS:0x540e）
 rec10 的舊 DOSBox-X PNG 是 640×350，而目前原版取樣契約是 640×408；
 測試明確不拿舊圖作逐點 parity，只沿用它的按鍵序列。上述兩張完整訊息畫面
 由本輪 dosgolem 直接重生。
+
+## 9. 加強版宣戰的六段載入
+
+`L0 + L1 [plus]`。輸入 `ASV.EXE` SHA-256
+`ad18a251fece9b7b8b0c5f2fd42565f4981883af4b55fd68ca2df00f1bc88be5`。
+工具為 dosgolem `92f84f0`、Go 1.24.13，唯讀匯入工作副本；沒有修改模擬器。
+本節所有位址為加強版執行期線性位址。載入器 `0x59d8` 的前 24 bytes 為
+`558becb802009a1e05b905837e0a007c06837e0a037e0fff`。
+
+正常開新局，劇本 001、劉備、難度 5。首次 RND 與軍事指令之前固定
+`0x13579bdf`，工作段只把音效及語音開關設為開啟，不注入人物、郡或戰役。
+從主命令依序送 `2\r`、`2\r`、`8\r`、`7\r`，載入器精確命中以下六筆。
+
+| 說話者 | 畫面喊話對象 | 槽 1 | 槽 2 | 槽 3 |
+|---|---|---|---|---|
+| 劉備 | 孔融 | R032.OKR | R456.OKR | R499.OKR |
+| 孔融 | 劉備 | R000.OKR | R457.OKR | R499.OKR |
+
+含速度校正的 `speak` 位於 `0x5ad6`；槽 1 入口命中兩次，分別擷取兩則
+完整對白。音效開關是工作段 `+0x31b6`、語音開關是 `+0x3154`，兩個段值
+均為 `3ae9`。上表與原版第 8.1 節相同，但沒有外推其他訊息或硬體波形。
+`R499` 仍未逐段聽辨，不命名其語意。
+
+可重跑入口是 [voice_declaration_oracle_test.go](../../internal/parity/voice_declaration_oracle_test.go) 的
+`TestVoiceDeclarationMappingPlus`，使用 `-tags oracle`、唯讀兩版原始素材及
+既有 Go workspace。私人 R4 收據 `workplace/hd-voice-v59-r4-plus.json` 的 SHA-256
+為 `75106a86fe365b368505e0f937754d59c4c7a44d2a3fcc5dd3a010d8336a0fdf`；
+原始私人測試與 overlay 同前綴保存。兩張原版執行器畫面為
+`workplace/hd-voice-v59-r4-plus-speech-{1,2}.png`，已查看完整文字與肖像。
+
+R2 的新原版固定種子遇到既有密碼 helper 不能續行，沒有新原版映射收據；
+原版仍採第 8.1 節。R2 加強版等待不存在的輸入提示而失敗；R3 誤攔未使用的
+無速度校正入口 `0x5a70`，命中零次。比對原始 prologue 與浮點校正 bytes 後，
+R4 改攔 `0x5ad6` 通過。各版腳本、日誌與失敗均保留，沒有調 seed 選成功結果。
+正式接線契約見 [008 §9](../spec/008-speaker-audio.md#9-已知宣戰對白的正式觸發)。

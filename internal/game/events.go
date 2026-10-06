@@ -67,6 +67,8 @@ type Bubble struct {
 	Text           string
 	textKey        string // 顯示句型與原始姓名快照，不寫入存檔。
 	textName       string
+	voiceClips     [3]int // spec/008 §9 的已知映射；不寫入存檔。
+	voiceKnown     bool
 
 	// FaceOnly 為真是「只亮一張肖像」的那一格：不畫名字、泡泡與字，
 	// 肖像貼在 (X1, Y1)。玩家尋訪找到人時原版先把那一位的肖像亮在

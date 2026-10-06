@@ -102,30 +102,42 @@ func (v *voicebox) Click() {
 	v.mx.Play(speaker.SFXSlot, v.sfxDiv)
 }
 
-// Say 播一句話：三個索引依序載進槽 1–3 再接起來播
-//（`docs/re/09` §6.2）。索引 −1 表示那一段留白。
-func (v *voicebox) Say(idx ...int) {
-	if v == nil || len(v.voice) == 0 {
+// Say 先驗證完整三段，再依序載入槽 1–3。缺段時整句省略。
+// 契約：spec/008 §9；取樣率沿用全域設定。
+func (v *voicebox) Say(idx [3]int) {
+	if v == nil || v.mx == nil || v.bank == nil || len(v.voice) == 0 {
 		return
 	}
-	slots := make([]int, 0, len(idx))
+	var clips [3][]byte
 	for i, n := range idx {
-		slot := speaker.VoiceLo + i
-		if slot > speaker.VoiceHi || n < 0 {
-			continue
+		if n < 0 || n > 499 {
+			return
 		}
 		b := v.clip(n)
-		if b == nil {
-			continue
+		if len(b) == 0 || len(b) > speaker.MaxVoiceBytes {
+			return
 		}
-		if err := v.bank.Load(slot, b); err != nil {
-			fmt.Fprintln(os.Stderr, "san1: 語音載不進去：", err)
-			continue
-		}
-		slots = append(slots, slot)
+		clips[i] = b
 	}
-	if len(slots) > 0 {
-		v.mx.Say(v.voiceDiv, slots...)
+	for i, b := range clips {
+		if err := v.bank.Load(speaker.VoiceLo+i, b); err != nil {
+			fmt.Fprintln(os.Stderr, "san1: 語音載不進去：", err)
+			return
+		}
+	}
+	v.mx.Say(v.voiceDiv, 1, 2, 3)
+}
+
+// playShownBubbleVoice 只處理已畫出且仍在畫面上的同一格。
+// 關閉開關或缺素材也記為已處理，不在重畫或重新開啟時補播舊對白。
+func (a *app) playShownBubbleVoice() {
+	b := a.shownBubble
+	if b == nil || a.s == nil || a.s.Bubble() != b || a.voicePlayed == b {
+		return
+	}
+	a.voicePlayed = b
+	if clips, ok := b.VoiceClips(); ok {
+		a.sfx.Say(clips)
 	}
 }
 

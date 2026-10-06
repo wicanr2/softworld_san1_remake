@@ -44,10 +44,11 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 主畫面左側年月的位置、空白槽與重生收據 | [spec/005 §2.2](spec/005-main-screen.md#22-左側年月直排)、[re/03 §8.1](re/03-main-program-code-map.md)、[playtest/03](playtest/03-screen-parity.md) |
 | 畫面幾列高、憑什麼是 408 不是 350 | `spec/006` |
 | 主戰場、開場詞、主選單怎麼拼 | `spec/005`（版面）、`re/05` §2.5–2.6（畫的那一端）|
-| 音效與語音怎麼播、槽怎麼分 | `re/09`、`spec/008` |
+| 音效與語音怎麼播、槽怎麼分 | [RE/09](re/09-speech.md)、[008](spec/008-speaker-audio.md)、[兩版已知宣戰的正式觸發](spec/008-speaker-audio.md#9-已知宣戰對白的正式觸發) |
 | 訊息框（肖像＋對白泡泡）的版面、片語表 350–499 | `spec/005` §9、`re/12` |
 | 主畫面對白的即時換語言、姓名快照及存檔隔離 | [021 §6.54.3](spec/021-hd-art.md#6543-主畫面對白的語言佇列)、[顯示實作](../internal/game/bubble_locale.go)、[對白測試](../internal/game/bubble_locale_test.go)、[視窗與存檔測試](../cmd/san1/main_bubble_locale_test.go)、[正常 GUI 重跑](../tools/verify-hd-main-bubbles.sh)、[畫面比較器](../tools/verify-hd-main-bubbles-inner.py) |
 | 現行高清包的音訊接線 | [021 §6.55](spec/021-hd-art.md#655-現行完整包的音訊接線)、[驗證容器 CPU 配額](spec/021-hd-art.md#6551-音訊驗證容器的-cpu-配額)、[Mesa 執行緒](spec/021-hd-art.md#6552-音訊驗證的-mesa-執行緒)、[桌面背景執行與暫停探針](spec/021-hd-art.md#6553-桌面背景執行與暫停探針)、[GUI 入口](../tools/verify-hd-audio.sh)、[音訊擷取](../tools/verify-hd-audio-inner.py)、[本機 PCM 參考](../tools/hd-audio-reference.go)、[波形回讀](../tools/verify-hd-audio-pcm.py)；配樂、音效及語音接線分開驗收 |
+| 已知宣戰語音的正式使用端 | [008 §9](spec/008-speaker-audio.md#9-已知宣戰對白的正式觸發)、[021 §6.56](spec/021-hd-art.md#656-已知宣戰語音的正常使用端)、[GUI 入口](../tools/verify-voice.sh)、[正常語音擷取](../tools/verify-voice-inner.py)、[完整 PCM 參考](../tools/voice-reference.go)、[加強版 oracle](../internal/parity/voice_declaration_oracle_test.go)；限兩則已知對白 |
 | 配樂怎麼解、怎麼合成 | `formats/06`、`spec/009` |
 | 正式視窗配樂能否播放、如何重跑錄音驗證 | [spec/009 §6.1](spec/009-music.md#61-正式音訊串流契約)、[驗證入口](../tools/verify-music.sh) |
 | 保留原版版面的 AI HD 工作順序與驗收 | [GitHub 工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)；子項 #105–#110；[B 高清與視窗選項列規格 021](spec/021-hd-art.md)、[兩版素材盤點](formats/04-asset-inventory.md#6-hd-兩版盤點) |
