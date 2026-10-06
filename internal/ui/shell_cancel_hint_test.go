@@ -102,7 +102,11 @@ func TestFortSpotDisplaysShellCancelAndKeepsConfirmation(t *testing.T) {
 				rect := image.Rect(fortSpotHelpX, fortSpotHelpY+4*CellH, fortSpotHelpX+assets.BattlePanelW, fortSpotHelpY+5*CellH)
 				want := testCanvasPx(t, 640, 408)
 				want.Fill(assets.EGAPalette[fortSpotHelpBG])
-				want.DrawTextPx(rect.Min.X, rect.Min.Y, line, assets.EGAPalette[ink])
+				if confirm && locale == "en" {
+					want.DrawSmallTextPx(rect.Min.X, rect.Min.Y+3, line, assets.EGAPalette[ink])
+				} else {
+					want.DrawTextPx(rect.Min.X, rect.Min.Y, line, assets.EGAPalette[ink])
+				}
 				assertBattleLocaleRegion(t, got, want, rect, "築寨第五行完整提示及確認")
 			})
 		}

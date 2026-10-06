@@ -42,7 +42,11 @@ func DrawArtFortSpot(c *Canvas, ab *ArtBattle, field []byte, fld *battle.Field, 
 			line, ink = t("fort.confirm"), fortSpotConfirmInk
 		}
 		c.FillRect(fortSpotHelpX, y, fortSpotHelpX+cells.Width(line)*CellW, y+CellH, bg)
-		c.DrawTextPx(fortSpotHelpX, y, line, assets.EGAPalette[ink])
+		if i == 4 && s.Confirm {
+			artTextIn(c, fortSpotHelpX, y, fortSpotInputX-fortSpotHelpX, line, assets.EGAPalette[ink])
+		} else {
+			c.DrawTextPx(fortSpotHelpX, y, line, assets.EGAPalette[ink])
+		}
 	}
 	if s.Marked && ab.mapCursor != nil {
 		x, y := assets.FieldCell(s.Col, s.Row)
