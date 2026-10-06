@@ -2,9 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
+	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
+	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 )
 
 // 對戰子畫面（`0x2deb0`，`docs/spec/005` §8「對戰子畫面」）：主戰場的外框、
@@ -92,12 +95,42 @@ func drawSkirmishMarkerText(c *Canvas, s *battle.Skirmish, v BattleView) {
 		if g == v.SkirmishActing && v.Blink {
 			name, side, num = name^0x0F, side^0x0F, num^0x0F
 		}
-		c.DrawTextPx(x, y, battlePaddedName(g.Leader.Name), assets.EGAPalette[name])
+		drawSkirmishName(c, x, y, battlePaddedName(battleDisplayName(g.Leader.Name)), assets.EGAPalette[name])
 		mark := t("skm.defender")
 		if g.Side == battle.SkirmishAttacker {
 			mark = t("skm.attacker")
 		}
 		c.DrawTextPx(x, y+15, mark, assets.EGAPalette[side])
 		c.DrawTextPx(x+CellW*2, y+15, fmt.Sprintf("%4d", g.Leader.Soldiers), assets.EGAPalette[num])
+	}
+}
+
+// drawSkirmishName 在原來的姓名格內顯示完整譯名（spec/021 §6.59）。
+// 兵數底色從 y+15 開始；長 ASCII 姓名用兩行既有小字，墨點合併為七列。
+func drawSkirmishName(c *Canvas, x, y int, name string, ink color.RGBA) {
+	if cells.Width(name)*CellW <= SkirmishMarkerW || !c.FitsSmall(name) {
+		c.DrawTextPx(x, y, name, ink)
+		return
+	}
+	if cells.Width(name)*SmallW <= SkirmishMarkerW-1 {
+		c.DrawSmallTextPx(x, y+3, name, ink)
+		return
+	}
+	lines := cells.Wrap(name, (SkirmishMarkerW-1)/SmallW)
+	if len(lines) > 2 {
+		artTextIn(c, x, y, SkirmishMarkerW-1, name, ink)
+		return
+	}
+	for row, line := range lines {
+		for i, r := range strings.TrimRight(line, " ") {
+			g, _ := c.small.Glyph(r) // FitsSmall 已確認整串字模存在。
+			for gy := 1; gy < SmallH; gy++ {
+				for gx := 0; gx < SmallW; gx++ {
+					if g.At(gx, gy) {
+						c.setClipped(x+i*SmallW+gx, y+row*8+(gy-1)*7/9, ink)
+					}
+				}
+			}
+		}
 	}
 }
