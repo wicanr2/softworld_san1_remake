@@ -39,6 +39,10 @@ type Speech struct {
 	Text    string
 	Units   [2]*Unit
 
+	// 句型與原始參數只供換語言，不寫進存檔。人物參數保留來源姓名。
+	textKey  string
+	textArgs []any
+
 	// Scene 不是 0 時這一格不是對白，是一張場景圖 `SCG%02d` 拉進第三塊
 	// 面板 (448,268)（`0x32dfa`，`docs/spec/010`）：Style 是 `RND(4)` 挑的
 	// 拉幕方向。
@@ -48,6 +52,30 @@ type Speech struct {
 	// （`0x2b783`，`docs/spec/005` §8「誘敵的特效」）：At 是那一格。不擲骰。
 	LureFlash bool
 	At        Hex
+}
+
+// speechPerson 標明這個參數是原始人物姓名，避免猜譯普通字串。
+type speechPerson string
+
+func speechText(locale i18n.Locale, key string, args []any) string {
+	display := make([]any, len(args))
+	for i, arg := range args {
+		if name, ok := arg.(speechPerson); ok {
+			display[i] = i18n.PersonNameFor(locale, string(name))
+		} else {
+			display[i] = arg
+		}
+	}
+	return i18n.Tf(locale, key, display...)
+}
+
+// Relocalize 從來源參數重生對白；舊對白沿用既有模板回譯。
+func (s *Speech) Relocalize(from, to i18n.Locale) {
+	if s.textKey == "" {
+		s.Text = i18n.Relocalize(s.Text, from, to)
+		return
+	}
+	s.Text = speechText(to, s.textKey, s.textArgs)
 }
 
 // Panel 是這一塊在版面裡的面板編號：攻方 0、守方 1、指令列（第三塊）2，
@@ -75,7 +103,8 @@ func (b *Battle) say(speaker *Leader, box SpeechBox, left bool, key string, a ..
 	if speaker == nil {
 		return
 	}
-	sp := Speech{Speaker: speaker.Index, Box: box, Left: left, Color: c, Text: i18n.Sf(key, a...)}
+	sp := Speech{Speaker: speaker.Index, Box: box, Left: left, Color: c,
+		Text: speechText(i18n.Current, key, a), textKey: key, textArgs: append([]any(nil), a...)}
 	if s := b.inSkirmish; s != nil {
 		for _, u := range s.Units {
 			if u.Side.Attacking() {

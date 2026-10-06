@@ -3,23 +3,27 @@
 
 輸出目錄須先放正式 san1-window-check、title-reference.png，並由
 hd-battle-branches-reference.go 產生提示參考。來源 PNG 來自 hd-inventory。
-本工具只核對美術接入及原貌恢復，不能證明譯文完整或原版規則 parity。
+預設核對美術接入及原貌恢復，--verify-names 另核對英文插入姓名；
+不能證明譯文完整或原版規則 parity。
 """
 import argparse
 import ast
 import functools
+import gzip
 import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
 import time
+import textwrap
 
 ROOT = Path('/src')
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--edition', choices=['base', 'plus'], required=True)
 parser.add_argument('--out', type=Path, required=True)
 parser.add_argument('--hd-assets', type=Path, required=True)
+parser.add_argument('--verify-names', action='store_true', help='以自由字模核對英文叫陣與應戰的來源姓名')
 args = parser.parse_args()
 edition, pack = args.edition, args.hd_assets
 spec = importlib.util.spec_from_file_location('window_check', ROOT / 'tools/verify-window-inner.py')
@@ -147,13 +151,54 @@ def speech_expected(original, left):
     return bytes(expected), [x1 - 2, y1 - 2, 180, 100], name
 
 
-def sample(wid, stage, kind, value):
+def english_name_pixels(original, left, key):
+    """獨立讀自由字模；核對現行兩行完整文字區，不從畫面抄字墨。"""
+    names = {'bub.duelChallenge': 'Chen Gong', 'bub.duelAccept': 'Lu Bu'}
+    catalog = json.loads((ROOT / 'internal/i18n/lang/en.json').read_text())
+    text = catalog[key] % names[key]
+    lines = textwrap.wrap(text, 12)[:2]
+    glyphs = {}
+    with gzip.open(ROOT / 'fonts/unifont.hex.gz', 'rt') as font:
+        for line in font:
+            if ':' not in line:
+                continue
+            code, bits = line.strip().split(':')
+            char = chr(int(code, 16))
+            if char in text:
+                glyphs[char] = bytes.fromhex(bits)
+    assert all(len(glyphs[char]) == 16 for char in set(''.join(lines))), '須有完整 8×16 ASCII 字模'
+    x, y = (520, 56) if left else (456, 168)
+    actual = crop(original, 640, x, y, 96, 72)
+    palette = [(0, 0, 0), (0, 0, 170), (0, 170, 0), (0, 170, 170),
+               (170, 0, 0), (170, 0, 170), (170, 85, 0), (170, 170, 170)]
+    for index, color in enumerate(palette):
+        expected = bytearray(b'\xff' * (96 * 72 * 3))
+        for row, line in enumerate(lines):
+            for column, char in enumerate(line):
+                for gy, bits in enumerate(glyphs[char]):
+                    for gx in range(8):
+                        if bits & (0x80 >> gx):
+                            for sy in range(2):
+                                at = ((row * 40 + gy * 2 + sy) * 96 + column * 8 + gx) * 3
+                                expected[at:at + 3] = bytes(color)
+        if actual == expected:
+            return dict(key=key, source_name=names[key], full_text=text, visible_lines=lines,
+                        logical_rect=[x, y, 96, 72], color=index,
+                        expected_rgb_sha256=hashlib.sha256(expected).hexdigest()), bytes(expected)
+    raise RuntimeError('英文叫陣／應戰的完整姓名文字區與自由字模不符')
+
+
+def sample(wid, stage, kind, value, text_key=None):
     for row, locale in enumerate(('zh-Hant', 'en', 'ja')):
         if row:
             language(wid, row)
         tag = edition + '-' + stage + '-' + locale
         original = shot(wid, tag + '-original')
         old = gui.rgb(original)
+        projection, name_expected = None, None
+        if args.verify_names and locale == 'en' and text_key:
+            projection, name_expected = english_name_pixels(old, value, text_key)
+            gui.check(tag + '-source-name-text', True)
         if kind == 'scene':
             expected_original = rgb(str(source / (f'SCG{value:02d}.png')))
             gui.check(tag + '-whole-source-scene', crop(old, 640, 448, 268, 176, 96) == expected_original)
@@ -169,6 +214,10 @@ def sample(wid, stage, kind, value):
         x, y, w, h = rect
         actual = crop(native, 2560, x * 4, y * 4, w * 4, h * 4)
         gui.check(tag + '-all-native-region-pixels', actual == expected)
+        if projection:
+            tx, ty, tw, th = projection['logical_rect']
+            gui.check(tag + '-native-source-name-text',
+                      crop(native, 2560, tx * 4, ty * 4, tw * 4, th * 4) == nearest(name_expected, tw, th))
         theme(wid, False)
         restored = shot(wid, tag + '-restored')
         phase = restore_whole(old, gui.rgb(restored))
@@ -177,6 +226,8 @@ def sample(wid, stage, kind, value):
             material=material, logical_rect=rect, pixels=w * h * 16,
             original=original.name, high=high.name, restored=restored.name, marker_phase=phase,
             expected_rgb_sha256=hashlib.sha256(expected).hexdigest(), actual_rgb_sha256=hashlib.sha256(actual).hexdigest()))
+        if projection:
+            gui.receipt['samples'][-1]['name_text'] = projection
         save()
     language(wid, 0)
 
@@ -264,7 +315,8 @@ def play():
         # 泡泡肖像與普通軍力面板的錨點不同。完整來源肖像辨識，不從選單推定對白已完。
         if kind == 'speech':
             side = 'attacker' if value else 'defender'
-            sample(wid, side + '-speech-' + str(step), 'speech', value)
+            key = 'bub.duelChallenge' if step == 0 and value else ('bub.duelAccept' if step == 1 and not value else None)
+            sample(wid, side + '-speech-' + str(step), 'speech', value, key)
             speeches.append(side)
             continue
         if kind == 'returned':
@@ -276,6 +328,10 @@ def play():
         raise RuntimeError('單挑未在有界續頁內返回')
     gui.check(edition + '-both-speech-sides-observed', {'attacker', 'defender'}.issubset(speeches))
     gui.check(edition + '-actual-result-scene-observed', len(scenes) == 2 and scenes[-1] in (27, 28, 29))
+    if args.verify_names:
+        gui.check(edition + '-both-english-source-names-observed',
+                  {s['name_text']['key'] for s in gui.receipt['samples'] if 'name_text' in s}
+                  == {'bub.duelChallenge', 'bub.duelAccept'})
     gui.receipt.update(observed_scenes=scenes, observed_speeches=speeches)
     gui.stop(proc)
 
@@ -290,7 +346,9 @@ try:
         state_injection=False, seed_injection=False, clock_injection=False,
         randomness='正式新局預設亂數；不重擲、不挑成功結果；不是 dosgolem oracle',
         audio='關閉音訊；未驗音畫', save_load='未驗戰役結束後存讀檔',
-        localization='文字墨點保持現行程式；不代表譯文完整，長對白裁切與插入姓名另待修正',
+        localization=('自由字模核對英文叫陣與應戰的插入姓名；長對白及姓名牌裁切仍待修正'
+                      if args.verify_names else '只驗美術；未驗文字完整或插入姓名'),
+        verify_names=args.verify_names,
         binary_sha256=sha(gui.OUT / 'san1-window-check'), manifest_sha256=sha(pack / 'manifest.json'),
         sources_sha256={str(p.relative_to(ROOT)): sha(p) for p in
                         [Path(__file__).resolve(), route, ROOT / 'tools/verify-window-inner.py']} )

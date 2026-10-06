@@ -46,5 +46,5 @@ for edition in base plus; do
   timeout 15m docker run "${common[@]}" --name "san1-hd-duel-$edition" \
     --entrypoint python3 eob-audio-capture:20260922-r2 \
     tools/verify-hd-duel-inner.py --edition "$edition" --out "/src/$target/$edition" \
-    --hd-assets "/src/$pack"
+    --hd-assets "/src/$pack" --verify-names
 done
