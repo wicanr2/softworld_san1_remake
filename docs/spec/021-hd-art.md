@@ -2589,8 +2589,36 @@ R1 的日文應戰比較器多保留換行邊界空白，兩版收據保持 fals
 
 [獨立 PCM 回讀](../../tools/verify-hd-audio-pcm.py) 使用 `--out <輸出> --reference <輸出>-reference`，核對 WAV 雜湊、完整波形、音效片段外靜音及所選範圍的錄音數。GUI 未完成、缺錄音或波形不符時保存 false 收據並回傳失敗，不把個別成功樣本升格為整批完成。需在既有 Docker 工具鏈內執行，原始資料及參考只留本機。
 
-目前採用證據限 `[base]` 的正常新局診斷。十二組三語畫面與全部保存 PNG 已獨立回讀，整張回切符合完整來源游標相位；這不等於兩版音訊通過。原貌音效開啟段的一個 S000 完整片段吻合，關閉段靜音。HD 開啟段的實際畫面顯示開啟、選項列已收起，錄音仍全靜音。原貌閒置及切換中的配樂都有聲，但完整波形不符合連續參考；未歸因於 HD 或焦點。
+目前採用 R3 的 Linux、8 CPU、兩個 Mesa 渲染執行緒正式兩版三語樣本。正常新局的原貌／HD 音效 30/30 段符合完整片段與靜音契約，六組軍師任命各有 24 個完整片段。配樂只有 3/4 段通過，原版連續段仍有中斷；GUI 68/68、630 PNG 與六組整張來源相位回切另已獨立回讀。音效通過不取代整批音畫驗收。
 
 相同錄音環境以保存 PCM 直接播放的控制組，整段逐樣本相同，插入重啟前奏的負例被拒收。此控制沒有 GUI 負載，不能排除正式音訊後端與渲染排程的影響。離線合成十二秒的參考與完整參考起頭相同，也不證明正式串流可持續供應。正式 `cmd/san1` 的 Go 語法樹查證確認語音入口沒有呼叫者，音效入口的正對照存在。
 
-完整數字以 [驗證矩陣](../../VERIFICATION-MATRIX.md#65-高清驗證) 為準。現行證據為 `workplace/hd-audio-v56-{inputs,independent}.json`、`workplace/audio/hd-v56-{r5,r6,observed-close}/pcm-proof.json` 及 `workplace/audio/hd-v56-capture-control/receipt.json`；失敗原因與先前收據見 [WORKLOG](../../WORKLOG.md#2026-10-06-現行高清包的音訊診斷)。下一個判準是以私人 overlay 記錄正式播放器與來源消耗，區分混音佇列、音訊後端與 GUI 負載；不再延長按鍵或盲目重跑完整矩陣。語音先依 008 的已知映射建立最小正常使用端。整節保持 READY，兩版音畫、語音及人耳確認尚未完成。
+完整數字以 [驗證矩陣](../../VERIFICATION-MATRIX.md#65-高清驗證) 為準。現行收據為 `workplace/audio/hd-v57-production-mesa-r3/{receipt,pcm-proof}.json` 與 `workplace/hd-audio-v57-mesa-full-independent.json`；來源與後端控制另見下列兩節。v56 及未完成批次的原始收據保持，歷程見 [WORKLOG](../../WORKLOG.md#2026-10-06-音訊驗證容器的-cpu-配額)。下一個判準是有 GUI 的獨立播放控制與音訊暫停／恢復紀錄，分辨焦點處理及後端輸出；容器無節流仍中斷，停止調配額或再跑完整矩陣。語音先依 008 的已知映射建立最小正常使用端。整節保持 READY，兩版音畫、語音及人耳確認尚未完成。
+
+#### 6.55.1 音訊驗證容器的 CPU 配額
+
+狀態：`READY`。本節只調整驗證環境，不改正式播放器、混音器、Theme 或素材。
+
+私人 overlay 回讀正常原版軍師任命的來源緩衝，兩次開關加 24 次拉幕音效共 26 個完整 S000 片段，片段外全零。預先合成的 PCM 在遊戲視窗仍有中斷，故不能將問題只歸因於即時 OPL 合成。相同 Oto 3.4.0 ALSA 後端在沒有 GUI 的控制組，完整 242,111 幀逐樣本相同，沒有欠載。
+
+2 CPU 配額下的 GUI 後端紀錄有 220 次 `snd_pcm_writei` 回傳 `-32`，隨後 `snd_pcm_recover` 回傳 0。Linux 的 `EPIPE` 為 32；依 [ALSA PCM 契約](https://www.alsa-project.org/alsa-doc/alsa-lib/pcm.html#errorcodes)，播放時的 `-EPIPE` 表示欠載。寫入前最後十秒的完整混音資料仍符合來源，最大樣本差為 0。容器 694 個排程週期中有 643 個節流週期。這些是驗證環境與輸出後端的觀察，不是 DOS 硬體時序或遊戲規則差異。SDK 定位為鎖定的 `github.com/ebitengine/oto/v3@v3.4.0/driver_unix.go` 的 `readAndWrite`；私人 overlay 依行程分檔，音訊探測子行程與主行程不共用檔案。
+
+只將容器配額改為 8 CPU，使用相同正式程式、工具、素材及預設 Go／Mesa 執行緒設定，原版繁中七段錄音全部通過。閒置與 Theme 往返的音樂完整連續，原貌與 HD 開啟音效各一個完整片段，關閉段全零，正常任命 24 個完整片段，片段外全零。因此 [verify-hd-audio.sh](../../tools/verify-hd-audio.sh) 的 GUI 驗證配額改為 8 CPU；建置仍用 2 CPU。可用 `SAN1_HD_AUDIO_CPUS` 明示其他正整數配額，收據保存實際 `cpu.max`、節流計數、可用 CPU 數與執行緒環境。不得把不同配額的結果合稱同一效能驗收。
+
+8 CPU 配額的兩版三語 R1 完整波形通過，但外層腳本收尾失敗；乾淨重跑 R2 的音效全部通過，加強版一段配樂仍中斷。因此配額增加只支持上述改善，沒有證明預設 Mesa 可穩定播放。既有失敗收據保持，執行緒控制另見 §6.55.2。私人證據為 `workplace/hd-audio-v57-{source,backend}-proof.json`、`workplace/audio/hd-v57-oto-control/receipt.json` 與 `workplace/audio/hd-v57-cpu8-production/pcm-proof.json`。HD 的最低硬體需求、動畫效能及原生平台仍未由此驗證，正式語音接線仍待完成。
+
+#### 6.55.2 音訊驗證的 Mesa 執行緒
+
+狀態：`READY`，只調整隔離驗證環境，不改遊戲或玩家的預設設定。
+
+R2 的 `plus-music-continuous.wav` 保存 2,615,193 幀，其中前 1,006,633 幀符合連續來源。第一個差異是插入 2,003 個零值幀，恢復後來源位置也偏移，整段保持 false。兩批預設 Mesa 的音效共 60/60 段通過；不同配額及執行緒設定的波形不合併為單一完整批次。
+
+[Mesa 的環境變數契約](https://docs.mesa3d.org/envvars.html) 說明 `LP_NUM_THREADS` 控制 LLVMpipe 的渲染執行緒數，預設依可見 CPU 數。此容器可見 14 CPU，配額為 8。只設定 `LP_NUM_THREADS=2`，沿用 R2 的正式 binary、配額與完整參考，加強版三語的閒置及 Theme 往返兩段錄音通過，完整 147,313／1,978,483 幀最大差 0、無排除幀，容器節流計數為 0。這支持渲染資源競爭的解釋，沒有驗證所有硬體或保證即時排程。
+
+[verify-hd-audio.sh](../../tools/verify-hd-audio.sh) 的音訊 GUI 驗證預設採 8 CPU、兩個 Mesa 渲染執行緒，Go 執行緒設定保持原值。可用 `SAN1_HD_AUDIO_LP_THREADS` 明示非負整數，0 依 Mesa 契約關閉渲染執行緒；收據已有 `LP_NUM_THREADS` 的實際值。此設定只用於本入口，其他視覺與效能收據保持各自的環境，不回填成相同設定。
+
+同一設定的正式兩版三語 R3：GUI 68/68、630 PNG、六組整張回切及音效 30/30 通過，但配樂為 3/4。原版連續段的前 304,855 幀符合來源，隨後插入 1,508 個零值幀並偏移；容器節流計數仍為 0。因此 CPU 配額及渲染執行緒不能解釋全部中斷，設定不稱為完整修復。PCM 整批收據保持 false，個別音效通過另外列出。
+
+下一個最小控制以正常 GUI 負載配合獨立 PCM 播放，另記錄 SDK 的音訊暫停／恢復，分辨錄音後端與視窗焦點處理。現行程式沒有設定 `SetRunnableOnUnfocused`；鎖定 Ebitengine 2.9.9 的 `internal/ui/ui_glfw.go` 1394–1434 在失焦等待時呼叫 `SuspendAudio`，回來後呼叫 `ResumeAudio`。這是待查證路徑，尚未證明它造成此樣本中斷，不授權改玩家的背景執行方式。
+
+私人控制在 `workplace/audio/hd-v57-mesa2-plus-music/`，兩個失敗段的差異定位為 `workplace/hd-audio-v57-r2-gap.json` 與 `workplace/hd-audio-v57-r3-gap.json`。R3 完整收據見 §6.55。語音、動畫效能、最低硬體需求及原生平台仍不由本節證明。

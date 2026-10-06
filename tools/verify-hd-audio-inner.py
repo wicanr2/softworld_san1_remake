@@ -40,6 +40,15 @@ start_original = gui.start
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
+def cpu_runtime():
+    result = dict(affinity_cpus=len(os.sched_getaffinity(0)),
+                  environment={name:os.environ.get(name) for name in
+                               ['GOMAXPROCS','LP_NUM_THREADS','OMP_NUM_THREADS']})
+    for name in ['cpu.max','cpu.stat','cpu.pressure']:
+        path = Path('/sys/fs/cgroup')/name
+        result[name] = path.read_text() if path.is_file() else None
+    return result
+
 def start(command, tag):
     if command[0] == str(OUT/'san1-window-check'):
         command = [('-music=' + str(mode == 'music').lower()) if s == '-music=false'
@@ -237,6 +246,7 @@ def run():
                        scope='配樂與音效輸出；語音入口缺少正式呼叫，未驗收語音')
     gui.receipt['reference_files']={name:sha(REFERENCE/name) for name in ['main-cursors.json','music-reference.pcm','sfx-reference.pcm']}
     gui.receipt['selection']=dict(scope=args.scope,editions=args.editions,locales=args.locales)
+    gui.receipt['cpu_runtime']=dict(before=cpu_runtime())
     for edition in args.editions:
         if args.scope in ['all','music']:
             mode='music'
@@ -293,4 +303,5 @@ finally:
     gui.receipt.setdefault('passed',False)
     for proc in reversed(gui.processes):gui.stop(proc)
     for log in gui.logs:log.close()
+    if 'cpu_runtime' in gui.receipt:gui.receipt['cpu_runtime']['after']=cpu_runtime()
     if OUT.exists():(OUT/'receipt.json').write_text(json.dumps(gui.receipt,ensure_ascii=False,indent=2)+'\n')
