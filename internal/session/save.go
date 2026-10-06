@@ -29,7 +29,13 @@ func (s *Session) Save(dir string, slot int, name string) error {
 			name = i18n.S("sess.spectator")
 		}
 	}
-	if err := save.Write(dir, slot, s.G, name); err != nil {
+	var err error
+	if len(s.MonthOrder) != 0 {
+		err = save.WriteWithProgress(dir, slot, s.G, name, s.MonthOrder, s.MonthCursor)
+	} else {
+		err = save.Write(dir, slot, s.G, name)
+	}
+	if err != nil {
 		s.say("sess.saveFailed", err)
 		return err
 	}
@@ -78,6 +84,14 @@ func Load(dir string, slot int, mode ai.Mode) (*Session, error) {
 		return nil, err
 	}
 	s := New(g, brain, g.Player)
+	p, err := save.ReadProgress(dir, slot)
+	if err != nil {
+		return nil, err
+	}
+	if p != nil && p.InMonth {
+		s.MonthOrder = append([]int(nil), p.Order[:]...)
+		s.MonthCursor = p.Cursor
+	}
 	s.say("sess.loaded", slot)
 	return s, nil
 }

@@ -121,6 +121,12 @@ JSON 那幾格只為了讀得懂舊存檔而留著。
 版面與逐欄的出處在 `docs/re/08-save-load.md`；實作是
 `internal/state/progress.go`，`internal/save/original.go` 負責與局面對接。
 
+正常 Session 另以 `save.WriteWithProgress` 傳入 43 格月順序及游標，寫進
+既有 `0x56`、`0xB2` 欄位。讀回時由 `save.ReadProgress` 交回 Session。
+游標收 0–43，43 表示本月已走完；非法排列或游標報錯，舊 JSON 存檔缺少
+`BASEPRO` 時維持後備流程。其他欄位與未解 bytes 保持，格式版本不變。
+驗收見 [021 §6.57](../spec/021-hd-art.md#657-正常六槽存讀檔與視窗設定)。
+
 三支測試釘住它（`internal/state/progress_test.go`）：
 
 - 出貨的六個進度逐欄核對，年份對得上名稱裡的 `Y201`／`Y208`／`Y215`／`Y220`；

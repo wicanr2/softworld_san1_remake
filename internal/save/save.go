@@ -140,6 +140,23 @@ func checkSlot(slot int) error {
 // 先寫到暫存檔再改名：**存檔寫到一半當掉，玩家會失去的是上一次的進度**，
 // 那比沒存到嚴重得多。
 func Write(root string, slot int, g *game.State, name string) error {
+	return write(root, slot, g, name, nil)
+}
+
+// WriteWithProgress 保存 Session 實際的月順序及游標，沿用 BASEPRO 欄位。
+func WriteWithProgress(root string, slot int, g *game.State, name string, order []int, cursor int) error {
+	if len(order) != 43 || cursor < 0 || cursor > 43 {
+		return fmt.Errorf("save: 月順序須有 43 格，游標須在 0–43")
+	}
+	p := &state.Progress{Cursor: cursor}
+	copy(p.Order[:], order)
+	if _, err := state.DecodeProgress(p.Encode()); err != nil {
+		return fmt.Errorf("save: 月順序：%w", err)
+	}
+	return write(root, slot, g, name, p)
+}
+
+func write(root string, slot int, g *game.State, name string, current *state.Progress) error {
 	if err := checkSlot(slot); err != nil {
 		return err
 	}
@@ -192,6 +209,10 @@ func Write(root string, slot int, g *game.State, name string) error {
 		return err
 	}
 	suffix := fmt.Sprintf("SV%d", slot)
+	progress := buildProgress(e, readProgress(dirFor(root, slot), slot))
+	if current != nil {
+		progress.Order, progress.Cursor = current.Order, current.Cursor
+	}
 	files := []struct {
 		name string
 		data []byte
@@ -199,7 +220,7 @@ func Write(root string, slot int, g *game.State, name string) error {
 		{"BASEMAS." + suffix, mas},
 		{"BASESTA." + suffix, sta},
 		{"BASEGEN." + suffix, gen},
-		{"BASEPRO." + suffix, buildProgress(e, readProgress(dirFor(root, slot), slot)).Encode()},
+		{"BASEPRO." + suffix, progress.Encode()},
 		{"BASEPRE." + suffix, glyphsOf(g, dirFor(root, slot), slot).Encode()},
 		{"REMAKE.JSON", blob},
 	}
@@ -263,6 +284,28 @@ func readProgress(dir string, slot int) *state.Progress {
 		return nil
 	}
 	return p
+}
+
+// ReadProgress 讀月內進度；舊 JSON 存檔沒有 BASEPRO 時回 nil。
+func ReadProgress(root string, slot int) (*state.Progress, error) {
+	if err := checkSlot(slot); err != nil {
+		return nil, err
+	}
+	b, err := os.ReadFile(filepath.Join(dirFor(root, slot), fmt.Sprintf("BASEPRO.SV%d", slot)))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	p, err := state.DecodeProgress(b)
+	if err != nil {
+		return nil, err
+	}
+	if p.Cursor < 0 || p.Cursor > len(p.Order) {
+		return nil, fmt.Errorf("save: 月游標 %d 越界", p.Cursor)
+	}
+	return p, nil
 }
 
 // glyphsOf 挑這一局該寫出去的字模。
@@ -363,7 +406,11 @@ func Read(root string, slot int) (*game.State, error) {
 	}
 	// `BASEPRO` 有的欄位以它為準——**同一個值不要有兩個真相**。
 	// 舊存檔沒有這個檔，那時 JSON 就是唯一來源。
-	if p := readProgress(dir, slot); p != nil {
+	p, err := ReadProgress(root, slot)
+	if err != nil {
+		return nil, fmt.Errorf("save: 存檔 %d：%w", slot, err)
+	}
+	if p != nil {
 		if err := applyProgress(&e, p); err != nil {
 			return nil, fmt.Errorf("save: 存檔 %d：%w", slot, err)
 		}

@@ -40,6 +40,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 戰場地圖、地形碼、軍團編成 | `re/05` |
 | 五種謀略的選單、候選郡、效果 | `re/07`、`mechanics/30` |
 | 存檔的六個項目、年月難度存在哪 | `re/08`、`formats/05` |
+| HD 六槽正常儲存、重啟讀回及 AI 設定 | [021 §6.57](spec/021-hd-art.md#657-正常六槽存讀檔與視窗設定)、[Docker 重跑](../tools/verify-hd-save.sh)、[正常操作](../tools/verify-hd-save-inner.py)、[獨立回讀](../tools/verify-hd-save-readback.go)；限兩版三語正常樣本 CONFORMED，112/112 操作檢查、334/336 回歸通過，兩項既有前提略過 |
 | 主畫面怎麼用原版素材拼出來 | `spec/005` |
 | 主畫面左側年月的位置、空白槽與重生收據 | [spec/005 §2.2](spec/005-main-screen.md#22-左側年月直排)、[re/03 §8.1](re/03-main-program-code-map.md)、[playtest/03](playtest/03-screen-parity.md) |
 | 畫面幾列高、憑什麼是 408 不是 350 | `spec/006` |

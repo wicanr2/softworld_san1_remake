@@ -1,15 +1,114 @@
 package session
 
 import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 	"unicode"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
+	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
+
+// 正常玩家停點存檔，讀回不得讓前面的電腦郡再次下令（021 §6.57.1）。
+func TestSaveLoadResumesTheWaitingPrefecture(t *testing.T) {
+	root := os.Getenv("SAN1_ORIG")
+	if root == "" {
+		t.Skip("需要兩版原始劇本")
+	}
+	for _, ed := range []state.Edition{state.EditionBase, state.EditionPlus} {
+		folder := "三國演義"
+		if ed == state.EditionPlus {
+			folder = "三國演義1加強版"
+		}
+		read := func(ext string) []byte {
+			b, err := os.ReadFile(filepath.Join(root, folder, "DATA2"+ext))
+			if err != nil {
+				t.Fatal(err)
+			}
+			return b
+		}
+		c, err := assets.OpenContainer(read(".NAM"), read(".IDX"), read(".GRP"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		sc, err := state.LoadScenario(c, state.Scenario1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for row := 0; row <= 5; row++ {
+			t.Run(fmt.Sprintf("%s/row%d", ed, row), func(t *testing.T) {
+				mode := ai.Mode(ed)
+				if row > 0 {
+					mode = ai.ModeEnhanced
+				}
+				g, err := game.New(sc, 0, 5, ed)
+				if err != nil {
+					t.Fatal(err)
+				}
+				g.Options.SetAIMode(string(mode))
+				if row > 0 {
+					if err := g.Options.SetAIOrders(row); err != nil {
+						t.Fatal(err)
+					}
+				}
+				brain, err := ai.New(mode)
+				if err != nil {
+					t.Fatal(err)
+				}
+				s := New(g, brain, 0)
+				at := s.AdvanceToHuman(0)
+				if at == 0 || s.Waiting() != at {
+					t.Fatal("沒有正常玩家停點")
+				}
+				dir := t.TempDir()
+				if err := s.Save(dir, 1, "月內進度"); err != nil {
+					t.Fatal(err)
+				}
+				back, err := Load(dir, 1, ai.ModeEnhanced)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got := back.AdvanceToHuman(0); got != at {
+					t.Fatalf("讀回停在郡 %d，存前是 %d", got, at)
+				}
+				a, b, c, err := g.Tables()
+				if err != nil {
+					t.Fatal(err)
+				}
+				x, y, z, err := back.G.Tables()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(a, x) || !bytes.Equal(b, y) || !bytes.Equal(c, z) {
+					t.Fatal("未下令就讀回，三表已改變")
+				}
+				before, after := g.CaptureExtra(), back.G.CaptureExtra()
+				// 選項的零值表示預設值；比功能值，不要求私有表示相同。
+				_ = before.Options.SetDelay(before.Options.Delay())
+				_ = after.Options.SetDelay(after.Options.Delay())
+				_ = before.Options.SetAIOrders(before.Options.AIOrders())
+				_ = after.Options.SetAIOrders(after.Options.AIOrders())
+				if !reflect.DeepEqual(before, after) {
+					t.Fatalf("補充狀態改變：前 %+v；後 %+v", before, after)
+				}
+				if !reflect.DeepEqual(s.MonthOrder, back.MonthOrder) || s.MonthCursor != back.MonthCursor {
+					t.Fatal("月順序或游標改變")
+				}
+				if back.Brain.Mode() != mode {
+					t.Fatal("存檔 AI 未恢復")
+				}
+			})
+		}
+	}
+}
 
 // TestSaveThenLoadContinues 釘住存了再讀回來還能繼續玩下去。
 //

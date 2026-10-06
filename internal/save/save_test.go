@@ -15,6 +15,50 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/state"
 )
 
+func TestProgressRejectsInvalidTurnState(t *testing.T) {
+	g := newGame(t)
+	order := make([]int, 43)
+	for i := range order {
+		order[i] = i
+	}
+	for _, cursor := range []int{-1, 44} {
+		dir := t.TempDir()
+		if err := save.WriteWithProgress(dir, 1, g, "錯誤進度", order, cursor); err == nil {
+			t.Fatal("非法游標被接受")
+		}
+		if _, err := os.Stat(filepath.Join(dir, "SV1")); !os.IsNotExist(err) {
+			t.Fatal("拒收仍寫入槽位")
+		}
+	}
+	order[1] = order[0]
+	if err := save.WriteWithProgress(t.TempDir(), 1, g, "錯誤進度", order, 0); err == nil {
+		t.Fatal("重複郡號被接受")
+	}
+}
+
+func TestReadProgressRejectsInvalidCursorAndAllowsLegacy(t *testing.T) {
+	dir := t.TempDir()
+	if p, err := save.ReadProgress(dir, 1); err != nil || p != nil {
+		t.Fatal("舊存檔缺 BASEPRO 不能讀")
+	}
+	g := newGame(t)
+	if err := save.Write(dir, 1, g, "游標"); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(dir, "SV1", "BASEPRO.SV1")
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary.LittleEndian.PutUint16(b[0xB2:], 44)
+	if err := os.WriteFile(p, b, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := save.Read(dir, 1); err == nil {
+		t.Fatal("非法月游標被讀入")
+	}
+}
+
 // loadScenario 讀劇本 001；沒有原版素材就 skip。**本儲存庫不含原版檔案。**
 func loadScenario(t *testing.T) *state.Scenario {
 	t.Helper()

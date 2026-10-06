@@ -89,7 +89,7 @@ func (s *Session) SetBrain(b ai.Brain) {
 }
 
 // say 記一則走譯文的訊息（`sess.*`）；note 收的是已經成句的字串
-//（事件、命令描述、戰報摘要都是別的套件譯好的）。
+// （事件、命令描述、戰報摘要都是別的套件譯好的）。
 //
 // **訊息紀錄會出現在下面板上**（原版素材畫面顯示最後一則），先前這些
 // 字寫死中文，英日文玩家看到「已存入第 1 個進度」。
@@ -258,6 +258,12 @@ func (s *Session) turnCell(stopAtHuman bool) (at int, stop bool) {
 		s.entered = true
 		// 月迴圈每一格先抽一次（`0x15790`），跳過的格子也算。
 		s.G.TurnTick()
+		// 原版月迴圈先看未下令旗標，再進這一郡（RE/08 §2）。
+		// 讀回舊進度的順序也可能包含已處理的郡，不能讓電腦再下令。
+		if p := s.G.Prefecture(at); p != nil && p.Commanded {
+			s.nextCell()
+			return at, false
+		}
 		// **回合入口先重整這個郡的守將清單**（`0x17471` 的第一道
 		// `call 0x1949e`），兵士與現役將兩欄跟著刷新。
 		s.G.RefreshGarrison(at)

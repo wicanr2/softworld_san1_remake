@@ -20,9 +20,8 @@ import (
 // buildProgress 把一局的狀態填進 `BASEPRO` 的版面。
 //
 // prev 是這個槽上一次寫出去的內容，用來保住兩樣東西：還沒解出用途的
-// 位元組，以及**郡的處理順序**。順序是原版每個月洗出來的狀態，
-// remake 沒有它，寫成 0..42 的恆等排列即可——但既然上一次寫過就照抄，
-// 存讀一輪不要無故變動別人的資料。
+// 位元組，以及資料層呼叫沒有提供的郡順序。正常 Session 會在此配方後
+// 覆蓋實際月順序及游標；單獨呼叫資料層時沿用既有值，初次使用恆等排列。
 func buildProgress(e game.Extra, prev *state.Progress) *state.Progress {
 	p := &state.Progress{}
 	if prev != nil {
@@ -50,8 +49,7 @@ func buildProgress(e game.Extra, prev *state.Progress) *state.Progress {
 			p.Pending[id] = !pe.Commanded
 		}
 	}
-	// 游標要與旗標一致：原版的月內迴圈拿它當進度。remake 沒有這個概念
-	// （它逐郡檢查 Commanded），所以照旗標反推一個相容的值。
+	// 未提供 Session 進度的資料層入口，照旗標反推相容游標。
 	p.Cursor = 0
 	for i, pref := range p.Order {
 		if pref > 0 && pref < len(p.Pending) && p.Pending[pref] {
