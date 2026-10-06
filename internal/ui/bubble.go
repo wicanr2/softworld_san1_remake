@@ -79,6 +79,40 @@ func BubbleLines(b *game.Bubble) [2]string {
 	return out
 }
 
+type bubbleTextPlan struct {
+	lines        []string
+	top, gap, sy int
+	small        bool
+}
+
+// 長譯文沿用原框與既有字模縮排；繁中及可放下的兩行維持原版畫法。
+// 契約：spec/021 §6.54.2。無法完整排入時保留舊回退，不增加續頁。
+func planBubbleText(c *Canvas, b *game.Bubble) bubbleTextPlan {
+	legacy := BubbleLines(b)
+	out := bubbleTextPlan{lines: legacy[:], top: 12, gap: bubbleLineGap, sy: bubbleTextScale}
+	if i18n.Current == i18n.ZhHant {
+		return out
+	}
+	cols := BubbleColumns(b) * 2
+	lines := cells.Wrap(b.Text, cols)
+	if len(lines) <= 2 {
+		return out
+	}
+	height := b.Y2 - b.Y1 - 12 // Y1+8 至 Y2−5，含下端。
+	if len(lines)*CellH <= height {
+		out = bubbleTextPlan{lines: lines, top: 8, gap: CellH, sy: 1}
+	} else if c.FitsSmall(b.Text) {
+		smallLines := cells.Wrap(b.Text, cols*CellW/SmallW)
+		if len(smallLines)*SmallH <= height {
+			out = bubbleTextPlan{lines: smallLines, top: 8, gap: SmallH, sy: 1, small: true}
+		}
+	}
+	for i := range out.lines {
+		out.lines[i] = strings.TrimRight(out.lines[i], " ")
+	}
+	return out
+}
+
 // DrawBubble 在畫布上畫一格訊息框。肖像從 `a` 取；`a` 為 nil（沒有
 // 原版素材）時只畫名字、泡泡與字。
 func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
@@ -166,16 +200,22 @@ func DrawBubbleAs(c *Canvas, a *ArtScreen, b *game.Bubble, name string, portrait
 		c.FillRect(tx, y1+47-i, tx+1, y1+49+i, bubbleWhite)
 	}
 
-	// 對白：兩行 16×32，字色照擲出來的那一格。
+	// 對白字色照擲出來的那一格；長譯文在原白色字區內縮排。
 	tx := x1 + 8
 	if b.Left {
 		tx = x1 + 72
 	}
 	fg := assets.EGAPalette[b.Color&7]
-	for i, line := range BubbleLines(b) {
+	plan := planBubbleText(c, b)
+	for i, line := range plan.lines {
+		y := y1 + plan.top + i*plan.gap
+		if plan.small {
+			c.DrawSmallTextPx(tx, y, line, fg)
+			continue
+		}
 		x := tx
 		for _, r := range line {
-			x += c.DrawRuneScaledPx(x, y1+12+i*bubbleLineGap, r, fg, 1, bubbleTextScale)
+			x += c.DrawRuneScaledPx(x, y, r, fg, 1, plan.sy)
 		}
 	}
 }
