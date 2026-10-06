@@ -2574,3 +2574,23 @@ R1 的日文應戰比較器多保留換行邊界空白，兩版收據保持 fals
 驗證工具的 R1 未正規化 DOS 8.3 槽名、R2 丟掉日文領命第二行的行首空白，兩份 false 收據保持。校正來源索引及比較器後，以相同 binary、容器及正常輸入重跑 R3。另查明 R3 八個英日樣本的 `portrait` 標籤被翻譯姓名覆蓋；原圖、原生像素檢查及兩個 PNG 雜湊保持。獨立工具從兩版 DATA2 的原始姓名欄與肖像 offset 27 核對 F005／F002，勘誤只附在新的獨立收據，不改寫 R3。正式比較器已分開兩個變數，保存圖片的重播驗證見 `hd-main-bubble-v55-metadata-replay.{py,json}`；這份重播不是新 GUI 收據。比較器控制見 `hd-main-bubble-v55-comparator-control.{py,json}`，均位於 `workplace/`。正式程式未因上述工具問題再改動。
 
 重跑入口為 [正常任命驗證](../../tools/verify-hd-main-bubbles.sh)，比較器在 [verify-hd-main-bubbles-inner.py](../../tools/verify-hd-main-bubbles-inner.py)。使用尚不存在的 `SAN1_HD_MAIN_BUBBLES_OUT`，原始資料與私人包仍須在本機；來源工具、完整圖及收據不加入公開提交。530 份不可變輸入、現行 444 檔私人包、三語 JSON、字型、README 四圖及使用者 AGENTS.md 保持。擁有權、連結、提交推送及 Docker 清理見 `workplace/hd-main-bubble-v55-{hygiene,delivery}.json`。音訊關閉，沒有新增音畫、人耳、效能、平台、完整戰役存讀檔或原版 oracle 聲明；整份 HD READY、Goal ACTIVE。
+
+## 6.55 現行完整包的音訊接線
+
+狀態：`READY`，驗證現行播放器與完整私人包，不授權猜測新的語音映射。前批 §6.13 只驗配樂十段輸出，沒有驗播放中往返切換的完整波形或音效。
+
+查證目前 `chooseWindowOption` 的 Theme 分支只更新 `hdTheme`。`jukebox` 與 `voicebox` 各自建立播放器，共用音訊環境。`voicebox.Say` 目前沒有正式呼叫者；唯一 `.Say` 呼叫位於此方法內，送往混音器。008 §5 的兩則原版映射為 `[base]`，不能猜補所有訊息或跨版外推。故語音尚未接入正常訊息，既有混音器及語系單測不證明正式 GUI 已播放語音。
+
+驗證契約沿用 009 §6.1 的 48,000 Hz、雙聲道、16 位元格式及有聲／靜音音量判準。由兩版正常片頭、001 劉備新局，在三語主畫面切換原貌／4×／回切，配樂持續錄製，整張原貌的來源游標相位及原生 F005 肖像另驗。CURB 六幀依 DATA1 的 AND／OR 遮罩完整重建，整張畫布比較，不排除游標矩形。配樂參考由玩家 DATA1 經同一 remake 串流產生，用完整錄音核對連續位置與波形，不能只靠 RMS 宣稱沒有重啟。
+
+音效另關閉配樂，兩版三語在原貌／高清各切音效開關。關閉段峰值須 ≤ 2，開啟後對照 S000 的一個完整片段；正常軍師任命的拉幕另核對來源完整片段及 010 的每步音效。四方向可為 22 或 24 步，以實際錄音與畫面列出採樣範圍，不外推未採方向。取樣率沿用 008 R8 的 remake 模型，沒有硬體逐週期或原版逐波形聲明。
+
+入口為 [verify-hd-audio.sh](../../tools/verify-hd-audio.sh)。使用尚不存在的 `SAN1_HD_AUDIO_OUT`，沿用本機 `workplace/audio/`、現行 `hd-assets-mapcursor-v50-r1/` 及已鎖依賴；拒絕覆寫證據。每次另產生 `<輸出>-reference/`，避免沿用未核對的舊 PCM。[擷取工具](../../tools/verify-hd-audio-inner.py) 保存完整 PNG、WAV、按鍵、工具快照及輸入雜湊；[PCM 參考](../../tools/hd-audio-reference.go) 只匯出本機資料。可用 `--scope sound --editions base --locales zh-Hant` 限定診斷範圍。滑鼠上緣展開、實際畫面確認收列後才送遊戲指令；錄音先確認首封包，失敗段亦登錄。
+
+[獨立 PCM 回讀](../../tools/verify-hd-audio-pcm.py) 使用 `--out <輸出> --reference <輸出>-reference`，核對 WAV 雜湊、完整波形、音效片段外靜音及所選範圍的錄音數。GUI 未完成、缺錄音或波形不符時保存 false 收據並回傳失敗，不把個別成功樣本升格為整批完成。需在既有 Docker 工具鏈內執行，原始資料及參考只留本機。
+
+目前採用證據限 `[base]` 的正常新局診斷。十二組三語畫面與全部保存 PNG 已獨立回讀，整張回切符合完整來源游標相位；這不等於兩版音訊通過。原貌音效開啟段的一個 S000 完整片段吻合，關閉段靜音。HD 開啟段的實際畫面顯示開啟、選項列已收起，錄音仍全靜音。原貌閒置及切換中的配樂都有聲，但完整波形不符合連續參考；未歸因於 HD 或焦點。
+
+相同錄音環境以保存 PCM 直接播放的控制組，整段逐樣本相同，插入重啟前奏的負例被拒收。此控制沒有 GUI 負載，不能排除正式音訊後端與渲染排程的影響。離線合成十二秒的參考與完整參考起頭相同，也不證明正式串流可持續供應。正式 `cmd/san1` 的 Go 語法樹查證確認語音入口沒有呼叫者，音效入口的正對照存在。
+
+完整數字以 [驗證矩陣](../../VERIFICATION-MATRIX.md#65-高清驗證) 為準。現行證據為 `workplace/hd-audio-v56-{inputs,independent}.json`、`workplace/audio/hd-v56-{r5,r6,observed-close}/pcm-proof.json` 及 `workplace/audio/hd-v56-capture-control/receipt.json`；失敗原因與先前收據見 [WORKLOG](../../WORKLOG.md#2026-10-06-現行高清包的音訊診斷)。下一個判準是以私人 overlay 記錄正式播放器與來源消耗，區分混音佇列、音訊後端與 GUI 負載；不再延長按鍵或盲目重跑完整矩陣。語音先依 008 的已知映射建立最小正常使用端。整節保持 READY，兩版音畫、語音及人耳確認尚未完成。

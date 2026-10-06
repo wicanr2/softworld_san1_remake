@@ -47,6 +47,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 音效與語音怎麼播、槽怎麼分 | `re/09`、`spec/008` |
 | 訊息框（肖像＋對白泡泡）的版面、片語表 350–499 | `spec/005` §9、`re/12` |
 | 主畫面對白的即時換語言、姓名快照及存檔隔離 | [021 §6.54.3](spec/021-hd-art.md#6543-主畫面對白的語言佇列)、[顯示實作](../internal/game/bubble_locale.go)、[對白測試](../internal/game/bubble_locale_test.go)、[視窗與存檔測試](../cmd/san1/main_bubble_locale_test.go)、[正常 GUI 重跑](../tools/verify-hd-main-bubbles.sh)、[畫面比較器](../tools/verify-hd-main-bubbles-inner.py) |
+| 現行高清包的音訊接線 | [021 §6.55](spec/021-hd-art.md#655-現行完整包的音訊接線)、[GUI 入口](../tools/verify-hd-audio.sh)、[音訊擷取](../tools/verify-hd-audio-inner.py)、[本機 PCM 參考](../tools/hd-audio-reference.go)、[波形回讀](../tools/verify-hd-audio-pcm.py)；配樂、音效及語音接線分開驗收 |
 | 配樂怎麼解、怎麼合成 | `formats/06`、`spec/009` |
 | 正式視窗配樂能否播放、如何重跑錄音驗證 | [spec/009 §6.1](spec/009-music.md#61-正式音訊串流契約)、[驗證入口](../tools/verify-music.sh) |
 | 保留原版版面的 AI HD 工作順序與驗收 | [GitHub 工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)；子項 #105–#110；[B 高清與視窗選項列規格 021](spec/021-hd-art.md)、[兩版素材盤點](formats/04-asset-inventory.md#6-hd-兩版盤點) |
