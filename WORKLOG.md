@@ -1074,3 +1074,21 @@ R3 外層正常結束，正式兩版三語 GUI 68/68、630 PNG 與六組整張�
 本輪只更新驗證工具與文件，021 §6.55 保持 READY、整份 HD READY、Goal ACTIVE；Issue 維持只讀，沒有新 Release 或原版 oracle 聲明。收據為 `workplace/hd-audio-v57-*` 與 `workplace/audio/hd-v57-*`；擁有權、提交推送與 Docker 清理見 `workplace/hd-audio-v57-{hygiene,delivery}.json`。
 
 收尾的連結檢查初次把反組譯運算元 `es:[0x2e78](1)` 當成 Markdown 連結。沿用既有去除程式碼區的解析器，先確認 README 的已知音樂工具入口可抓到，再核對 441 個本機連結。工具語法、CLI、兩個規格索引與四個工具入口、SDK 原始碼、正式 binary 的依賴及建置設定均通過；root-owned 檔案與 `.md` 目錄為 0，Docker 容器收尾檢查為 0。正式素材與程式的不可變收據保持。
+
+## 2026-10-06 桌面背景執行與音訊暫停控制
+
+接續已推送的 72b1233；上一輪提交及完整波形收據屬實質進度。本輪路由命中 remake 驗收、READY 規格與文件職責。#110 最新標題、全文、留言與狀態唯讀核對，仍為 OPEN。正式 Go、B 包、原始素材、README 四圖與原貌預設保持，沒有重跑整個兩版三語音效矩陣。
+
+先沿用正式 c6c71b0 binary，正常原版 001 劉備、難度 5 新局停用遊戲配樂，改以 paplay 直接播放同一份完整 PCM。三語及原貌／4×／回切操作保持，兩段完整波形通過，GUI 10/10、110 PNG、三組完整來源相位。這只證明該次有 GUI 的獨立播放可行，不升格先前失敗。
+
+私人 overlay 僅替換 Oto 3.4.0 的 driver_unix.go，記錄真正的 Suspend／Resume、ALSA 寫入與完整寫入前 float32 緩衝，按 PID 分檔。沒有改即時合成或正式音訊來源。正常原版三語切換的兩段完整錄音通過，GUI 10/10、109 PNG、三組完整來源相位；沒有暫停或欠載，錄音時間內全部完整 ALSA 前緩衝最大差 0、無排除幀。本次沒有重現正式配樂中斷。
+
+第一個 OS 主動失焦正對照預期設錯。實際焦點已移到另建 X11 視窗並返回，但後端沒有 Suspend／Resume，分析斷言失敗。核對鎖定 SDK 的 run.go 與桌面初始化後確認背景執行預設 true；先前只讀到 false 條件分支，漏讀初值。保留原收據、原始標籤、PNG、分析腳本及失敗訂正紀錄，另存更正分析。這條預設 true 的控制實際三段完整波形均連續，最大差 0、無排除幀，沒有欠載；GUI 5/5、64 PNG。不能因正式程式沒有設定 SetRunnableOnUnfocused 就認定它會失焦停播。
+
+另以私人 SDK overlay 明確把桌面初始化改為 false，同樣失焦後返回。只此診斷版本採 false，正式來源及 SDK 原始檔保持。正對照命中一次 Suspend／Resume，間隔 1.751 秒；暫停段有 83,065 個連續零值幀及一次欠載，前後兩段完整參考通過。GUI 5/5、63 PNG。全部錄音時間內的完整 ALSA 前緩衝仍連續，證明此探針可記到真實暫停，也區分來源連續與實際輸出。該環境協商到 48 kHz、雙聲道、2,048 幀緩衝及 682 幀週期，沒有調整緩衝或建立新的效能門檻。
+
+四條路徑共 30/30 GUI 檢查、346 完整 PNG、六組整張來源相位與原生肖像已由 Go 獨立回讀；矩形外改一像素的負例拒收。四條的 CPU 節流計數皆為 0。530 項不可變輸入、382 項正式 Go 及兩份 SDK 原始碼雜湊保持。沒有用私人版本補寫正式音訊通過，R3 的正式配樂仍為 3/4，原始失敗段保持 false。
+
+訂正與完整證據為 workplace/hd-audio-v58-r1-correction.json、workplace/hd-audio-v58-backend-focus-r2-proof.json、workplace/hd-audio-v58-{independent,positive-independent,explicit-positive-independent}.json 與 workplace/audio/hd-v58-*。探針、兩份 overlay、原始後端緩衝與完整 WAV 僅留本機。021 §6.55.2 訂正失焦候選的前提，§6.55.3 收錄 SDK 契約與控制結果，並掛入既有索引；CONTEXT 及驗證矩陣同步現況。
+
+下一步核對渲染／載入與 ALSA 補給間隔，避免再調資源或重跑完整矩陣直到偶然通過。正式語音依 008 已知 base 映射另接最小正常使用端；不由人物 ID 猜語音索引，不跨版外推。英文姓名牌 A/B、其他使用端、GUI 存讀檔、效能與原生平台保持未完成。整份 HD READY、Goal ACTIVE，Issue 維持只讀，沒有新 Release。擁有權、文件連結、提交推送及 Docker 清理見 workplace/hd-audio-v58-{hygiene,delivery}.json。

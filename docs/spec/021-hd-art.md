@@ -2619,6 +2619,34 @@ R2 的 `plus-music-continuous.wav` 保存 2,615,193 幀，其中前 1,006,633 �
 
 同一設定的正式兩版三語 R3：GUI 68/68、630 PNG、六組整張回切及音效 30/30 通過，但配樂為 3/4。原版連續段的前 304,855 幀符合來源，隨後插入 1,508 個零值幀並偏移；容器節流計數仍為 0。因此 CPU 配額及渲染執行緒不能解釋全部中斷，設定不稱為完整修復。PCM 整批收據保持 false，個別音效通過另外列出。
 
-下一個最小控制以正常 GUI 負載配合獨立 PCM 播放，另記錄 SDK 的音訊暫停／恢復，分辨錄音後端與視窗焦點處理。現行程式沒有設定 `SetRunnableOnUnfocused`；鎖定 Ebitengine 2.9.9 的 `internal/ui/ui_glfw.go` 1394–1434 在失焦等待時呼叫 `SuspendAudio`，回來後呼叫 `ResumeAudio`。這是待查證路徑，尚未證明它造成此樣本中斷，不授權改玩家的背景執行方式。
+失焦分支原先列為候選；§6.55.3 已核對它的前提。現行程式沒有設定 `SetRunnableOnUnfocused`，鎖定 Ebitengine 2.9.9 的桌面預設為 true。`internal/ui/ui_glfw.go` 1394–1434 只在背景執行為 false 時，才會因失焦等待而呼叫 `SuspendAudio`。普通失焦不會啟用此候選分支，不能以「未設定背景執行」解釋中斷，也不據此改玩家設定。
 
 私人控制在 `workplace/audio/hd-v57-mesa2-plus-music/`，兩個失敗段的差異定位為 `workplace/hd-audio-v57-r2-gap.json` 與 `workplace/hd-audio-v57-r3-gap.json`。R3 完整收據見 §6.55。語音、動畫效能、最低硬體需求及原生平台仍不由本節證明。
+
+#### 6.55.3 桌面背景執行與暫停探針
+
+狀態：`READY`。本節是 Linux SDK 與 remake 的診斷契約，正常樣本均為 `[base]`，沒有新增原版 oracle。正式 Go、音訊入口預設、B 包與原貌預設保持。
+
+已證實的 SDK 事實：Ebitengine 2.9.9 的 `run.go` 486 行明示背景執行初值為 true，桌面 `internal/ui/ui_glfw.go` 135–136 行的初始化亦為 true。只有明確設成 false 才走失焦暫停分支。Oto 3.4.0 的 `driver_unix.go` 241–270 行管理 Suspend／Resume；私人 overlay 只在狀態真正改變時記錄，另保存 ALSA 寫入及完整寫入前 float32 緩衝，依 PID 分檔。
+
+來源位於本機 `workplace/gomodcache/`，以下行號均為 SDK 原始碼行號。
+
+| 鎖定來源 | SHA-256 |
+|---|---|
+| `github.com/hajimehoshi/ebiten/v2@v2.9.9/internal/ui/ui_glfw.go` | `a4f1eb2c51cc38348ce1da1389d0e733a499106f731523f375ac68c18cf324a9` |
+| `github.com/ebitengine/oto/v3@v3.4.0/driver_unix.go` | `6caf0ea96ffc9d5b8950975a1b3e7543083028a01fae1903bf7083d303580151` |
+
+已證實的隔離實跑結果：8 CPU、`LP_NUM_THREADS=2`、Go 執行緒設定保持原值。各條控制的 CPU 節流計數皆為 0，結果分列如下。
+
+| 控制 | 實際結果 | 限制 |
+|---|---|---|
+| 正式 GUI 關閉遊戲配樂，paplay 播相同完整 PCM；三語及原貌／HD 往返 | 兩段完整參考通過，110 PNG、三組完整相位恢復 | 只證明該次獨立播放與擷取可行 |
+| 正常 GUI 配樂，只在私人 Oto overlay 記錄後端；三語及原貌／HD 往返 | 兩段完整參考通過，109 PNG、三組完整相位恢復；沒有暫停或欠載 | 先前正式中斷未重現，不能宣稱修復 |
+| 同一探針、SDK 預設背景執行 true，OS 主動失焦後返回 | 三段完整 145,267／183,459／145,267 幀最大差 0、無排除；沒有暫停或欠載，64 PNG | 初次誤把這組當成應暫停的正對照，分析失敗與原始標籤保留 |
+| 私人 SDK 明確將背景執行設為 false，同樣主動失焦後返回 | 命中一次 Suspend／Resume，間隔 1.751 秒；預期暫停錄音有 83,065 個連續零值幀及一次欠載，前後兩段完整參考通過，63 PNG | 只驗證探針可命中；此設定不進正式程式 |
+
+上述有後端追蹤的三條路徑，錄音啟停時間之間的全部完整 ALSA 前緩衝均符合連續來源，最大差 0、沒有排除幀。這是後端緩衝的完整比較，其時間邊界與 WAV 首末樣本並非精確牆鐘對齊，不據此聲稱原版硬體時序。此環境協商到 48 kHz、雙聲道、2,048 幀裝置緩衝與 682 幀週期；約 42.67 ms 緩衝僅是此環境觀察，沒有改緩衝值或建立最低硬體要求。
+
+四條路徑共 30/30 GUI 檢查、346 PNG 與六組整張來源相位，另由 Go 完整解碼回讀；530 份不可變輸入及 382 份正式 Go 保持。初次正對照只讀條件分支、漏讀 SDK 初值，訂正見 `workplace/hd-audio-v58-r1-correction.json`；完整後端與波形證據見 `workplace/hd-audio-v58-backend-focus-r2-proof.json`。正常控制的 PCM 收據在 `workplace/audio/hd-v58-{paplay,focus}-gui/`，主動失焦兩組在 `hd-v58-focus-positive/` 與 `hd-v58-focus-explicit-pause/`；探針來源與 overlay 留在 `workplace/hd-audio-v58-probe/`。
+
+此證據排除正式桌面預設下的失焦暫停解釋，沒有解決先前偶發中斷。正式 R3 配樂仍為 3/4，失敗段與原收據保持；停止再調配額或重跑完整矩陣直到偶然通過。接續判準是渲染／載入與 ALSA 補給間隔，語音另依 008 的已知 base 映射接最小正常使用端。人耳、效能、存讀檔與原生平台仍未由本節驗證，整份 HD 保持 READY。
