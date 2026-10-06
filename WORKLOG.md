@@ -1127,3 +1127,44 @@ R4 誤認 remake 語音初值，實際畫面顯示關閉且整份 WAV 613,119 �
 平台另驗。整份 HD READY、Goal ACTIVE，Issue 只讀，沒有新 Release。提交推送、
 既有 530 份輸入保持、四份 Go 修改、三份正式測試新增、文件連結、擁有權與容器
 清理見 workplace/hd-voice-v59-{inputs,hygiene,delivery}.json。
+
+## 2026-10-06 配樂時間診斷與低音量回讀
+
+本輪為進度。以 HEAD 8ebb71f 為初始狀態，建立私人時間探針，同時記錄正常新局的
+來源讀取、Update、Draw、paint、uploadGame 與 ALSA 寫入；正式 Go、SDK 與素材保持。
+Issue #110 以主機 gh 認證後只讀核對，仍 OPEN、無留言，沒有 Issue 寫入。
+
+前兩次 Go 建置在 SDK importcfg 缺項。第一輪只移除新增 os import 不足以修正，
+第二輪依 Go 官方 overlay 不支援 GOMODCACHE 替換的契約改方法。逐檔核對 Oto 172
+份私人 SDK 副本，使用私人 workspace 與同一映像後通過；共用 SDK、專案 go.mod
+與 go.work 不修改。兩次失敗、來源與 overlay 均留本機。
+
+8 CPU、LP_NUM_THREADS=2、Go 執行緒維持預設，原版正常 001 劉備難度 5 新局，
+三語及原貌／HD 往返。完整閒置與連續 WAV 分別 145,267／2,099,197 幀相同；
+正常最長寫入間隔 24.52 ms，來源讀取最長 47.75 ms，高清 Draw／uploadGame
+最長 39.53／36.09 ms，沒有欠載。容器節流計數 0。這次沒有重現正式偶發中斷。
+
+程序暫停約 0.2 秒的正對照記到一次 EPIPE、206.71 ms 寫入間隔，錄音有 8,870
+近零幀且完整比對拒收；寫入前來源仍符合完整參考。其後 97,527 幀因 RMS 偏低
+被 GUI 工具拒收，整條收據 false 保持。103 PNG、三組完整原貌恢復與高清肖像
+另由 Go 獨立回讀，不以個別視覺通過補寫整條 GUI 通過。
+
+分析器首次及第二次斷言失敗均保留；R3 改成先保存旗標，確認問題只剩低音量
+來源定位。實際峰值 43 在第 80 幀，後半段最大值 1。舊定位器跳過前半秒並要求
+大於 100，第一次私人低音量修正仍跳過前半秒。補足峰值位置證據，先寫 READY
+契約，再維護正式波形工具：一般路徑保持，無定位點時只有整段 bytes 相同才
+通過；全靜音仍拒收。R4 曲尾精確通過，錯誤取樣、全靜音、實際中斷、重啟四種
+負例全拒收；舊正式矩陣逐項與原 JSON 完全相同，音效 30/30、配樂 3/4 不變。
+
+正常兩段及正對照後曲尾合計 2,341,991 完整幀通過，無排除；四段錄音時間內的
+全部完整寫入前緩衝亦符合來源。此診斷可區分來源持續合成與裝置中斷，仍不能
+判定先前正式失敗的原因。不重跑完整 GUI 矩陣或調參數直到偶然通過。
+
+規格 021 §6.55.4 限回讀維護 CONFORMED，CONTEXT、驗證矩陣及索引同步。重跑與
+完整資料在 workplace/hd-audio-v60-probe/、hd-audio-v60-quiet-regression.py、
+hd-audio-v60-analyze-r4.py、hd-audio-v60-independent.go；收據為對應 quiet-regression、
+timing-r4-proof、independent JSON。385 份正式 Go、530 份不可變輸入、README 四圖、
+B 包、原貌預設、規則及存檔保持。人耳、存讀檔、效能、其他使用端與原生平台待驗。
+整份 HD READY、Goal ACTIVE；沒有新 Release，完整素材及 SDK 副本不發布。
+文件連結與擁有權見 workplace/hd-audio-v60-hygiene-final.json；提交、推送與容器
+清理另存 workplace/hd-audio-v60-delivery.json。

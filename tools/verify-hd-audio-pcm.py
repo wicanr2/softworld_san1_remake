@@ -36,7 +36,21 @@ def music_alignment(reference_pcm, captured_pcm):
     # 避開 monitor 啟動時的留白，完整比較仍包含所有錄音樣本。
     anchor=next((i for i in range(24000,min(len(captured)-128,96000))
                  if abs(captured[i])>100),None)
-    if anchor is None:return None
+    if anchor is None:
+        # 曲尾可能只有前半秒留下低音量波形。此回退只接受整段 bytes 相同，
+        # 全靜音仍無法獨立定位；不放寬一般波形的容差或排除錄音幀。
+        peak=max(range(len(captured)),key=lambda i:abs(captured[i]))
+        if abs(captured[peak])<=2:return None
+        anchor=min(peak,len(captured)-128)
+        query=captured_pcm[anchor*4:(anchor+128)*4]
+        at=reference_pcm.find(query)
+        while at>=0:
+            begin=at-anchor*4
+            if begin>=0 and at%4==0 and reference_pcm.startswith(captured_pcm,begin):
+                return dict(reference_start_frame=begin//4,frames=len(captured),
+                            maximum_sample_delta=0,excluded_frames=0)
+            at=reference_pcm.find(query,at+1)
+        return None
     for at in positions(reference,captured[anchor:anchor+64]):
         begin=at-anchor
         if begin<0 or begin+len(captured)>len(reference):continue
