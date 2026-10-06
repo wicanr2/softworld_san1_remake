@@ -48,6 +48,7 @@ var releaseVersion = "dev"
 type app struct {
 	canvas *ui.Canvas
 	screen *ebiten.Image
+	upload ui.PixelUpload
 	s      *session.Session
 
 	view  ui.View
@@ -182,7 +183,7 @@ func (a *app) Update() error {
 		a.stepWipe()
 		return nil
 	}
-	if a.cursorTick++; a.cursorTick%ui.CursorTicksPerFrame == 0 && (a.s != nil || a.menuScreen != nil) {
+	if a.cursorTick++; a.cursorTick%ui.CursorTicksPerFrame == 0 && (a.s != nil || a.menuScreen != nil) && !(a.lure.of != nil && a.lure.step >= 0) {
 		a.dirty = true
 	}
 	// 統一之後播製作群。**要在其他輸入之前**：那一段自己收按鍵。
@@ -1614,23 +1615,25 @@ func (a *app) paint() {
 // 方向鍵移游標（查看與用計要先指目標），數字鍵是指令，
 // Esc 收起覆蓋頁——**Esc 不會離開戰役**：出兵是不能反悔的。
 func (a *app) updateBattle() error {
-	defer func() { a.dirty = true }()
 	if f := a.fight; f.view.SkirmishActing != nil {
 		f.blinkTick++
 		if f.blinkTick%blinkFrames == 0 {
 			f.view.Blink = !f.view.Blink
+			a.dirty = true
 		}
 	}
+	sp := a.fight.speech(a.artBattle != nil)
+	if sp != nil && sp.LureFlash {
+		// 播放器只在換相位及完成時標記重畫，等待同一相位沿用紋理。
+		if a.updateLureFlash(sp) {
+			a.fight.speeches = a.fight.speeches[1:]
+		}
+		return nil
+	}
+	defer func() { a.dirty = true }()
 	// 戰場對白（肖像＋泡泡）一次一格，按任意鍵收掉——與主畫面的訊息框
 	// 同一個做法（remake 差異：原版走延遲設定）。
-	if sp := a.fight.speech(a.artBattle != nil); sp != nil {
-		if sp.LureFlash {
-			// 誘敵的特效自己播完就收，不等鍵（原版不收鍵）。
-			if a.updateLureFlash(sp) {
-				a.fight.speeches = a.fight.speeches[1:]
-			}
-			return nil
-		}
+	if sp != nil {
 		if sp.Scene > 0 && a.scenePlayed != sp {
 			return nil // 場景圖先拉進來（Draw 那一層起頭），拉完才收鍵
 		}

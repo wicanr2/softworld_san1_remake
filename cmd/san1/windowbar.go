@@ -232,8 +232,12 @@ func (a *app) uploadGame() {
 			a.screen.Dispose()
 		}
 		a.screen = ebiten.NewImage(im.Bounds().Dx(), im.Bounds().Dy())
+		a.upload = ui.PixelUpload{}
 	}
-	a.screen.WritePixels(im.Pix)
+	r, pixels := a.upload.Changed(im)
+	if !r.Empty() {
+		a.screen.SubImage(r).(*ebiten.Image).WritePixels(pixels)
+	}
 }
 
 func (a *app) drawWindow(dst *ebiten.Image) {

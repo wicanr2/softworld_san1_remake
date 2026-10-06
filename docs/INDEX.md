@@ -54,6 +54,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 正式視窗配樂能否播放、如何重跑錄音驗證 | [spec/009 §6.1](spec/009-music.md#61-正式音訊串流契約)、[驗證入口](../tools/verify-music.sh) |
 | 保留原版版面的 AI HD 工作順序與驗收 | [GitHub 工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)；子項 #105–#110；[B 高清與視窗選項列規格 021](spec/021-hd-art.md)、[兩版素材盤點](formats/04-asset-inventory.md#6-hd-兩版盤點) |
 | 高清完成度與正常玩家驗證數字 | [驗證矩陣 §6.5](../VERIFICATION-MATRIX.md#65-高清驗證) |
+| 高清紋理上傳量與局部更新 | [021 §6.58](spec/021-hd-art.md#658-畫面紋理的局部上傳)、[像素封包](../internal/ui/pixelupload.go)、[封包回歸](../internal/ui/pixelupload_test.go)、[誘敵更新回歸](../cmd/san1/lure_redraw_test.go)、[正常玩家效能重跑](../tools/verify-hd-upload.sh)、[正常操作與對照建置](../tools/verify-hd-upload-inner.py)、[可丟棄計時器](../tools/hd-upload-trace.go)；限局部上傳及誘敵相位重畫 CONFORMED，117 項回歸、兩版正常八組、549 張 R3 獨立擷取及三輪 733 個現存檔回讀通過；舊片頭覆寫限制保留，其他動畫與平台效能另驗 |
 | 首批高清肖像、選君主與自然地震的正常操作收據 | [spec/021 §6.6](spec/021-hd-art.md#66-首批四圖的正常玩家路徑)、[重跑工具](../tools/verify-hd-player.sh) |
 | 高清自創君主的四個肖像槽與正常新局 | [spec/021 §6.7](spec/021-hd-art.md#67-自創君主肖像批次)；同一重跑工具加 `--custom` |
 | 高清白鬚、獨眼與側面肖像及採用版次 | [spec/021 §6.8](spec/021-hd-art.md#68-白鬚獨眼與側面肖像批次) |
