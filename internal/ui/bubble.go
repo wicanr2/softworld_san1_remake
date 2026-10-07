@@ -3,7 +3,10 @@ package ui
 import (
 	"image"
 	"image/color"
+	"image/draw"
 	"strings"
+
+	xdraw "golang.org/x/image/draw"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/battle"
@@ -175,7 +178,11 @@ func DrawBubbleAs(c *Canvas, a *ArtScreen, b *game.Bubble, name string, portrait
 		pad := (6 - w) / 2
 		label = cells.Pad(spaces(pad)+label, 6)
 	}
-	c.DrawTextPx(nx, ny, cells.Truncate(label, 6), ink)
+	if i18n.Current != i18n.En || cells.Width(name) <= 6 || !c.FitsSmall(name) {
+		c.DrawTextPx(nx, ny, cells.Truncate(label, 6), ink)
+	} else {
+		c.drawBubbleName(nx, ny, name, ink)
+	}
 
 	// 泡泡：白底、上下各多一條、左右各一條（四角因此是圓的），
 	// 再四條直線往肖像那邊收成尾巴。座標全是**含端點**的。
@@ -217,6 +224,40 @@ func DrawBubbleAs(c *Canvas, a *ArtScreen, b *game.Bubble, name string, portrait
 		for _, r := range line {
 			x += c.DrawRuneScaledPx(x, y, r, fg, 1, plan.sy)
 		}
+	}
+}
+
+// spec/021 §6.61：原寬姓名牌以完整小字縮排。高清直接使用 4× 字模。
+func (c *Canvas) drawBubbleName(x, y int, name string, ink color.RGBA) {
+	w := len([]rune(name)) * SmallW
+	text := image.NewRGBA(image.Rect(0, 0, w*4, SmallH*4))
+	for i, r := range []rune(name) {
+		g, _ := c.small.Glyph(r) // 呼叫端已核對完整字庫。
+		for gy := 0; gy < g.H; gy++ {
+			for gx := 0; gx < SmallW; gx++ {
+				if g.At(gx, gy) {
+					draw.Draw(text, image.Rect((i*SmallW+gx)*4, gy*4, (i*SmallW+gx+1)*4, (gy+1)*4), image.NewUniform(ink), image.Point{}, draw.Src)
+				}
+			}
+		}
+	}
+	high := image.NewRGBA(image.Rect(0, 0, 48*4, CellH*4))
+	draw.Draw(high, high.Bounds(), image.NewUniform(bubbleBlack), image.Point{}, draw.Src)
+	tw, th := text.Bounds().Dx(), text.Bounds().Dy()
+	if tw > high.Bounds().Dx() {
+		th = max(1, th*high.Bounds().Dx()/tw)
+		tw = high.Bounds().Dx()
+	}
+	left, top := (high.Bounds().Dx()-tw)/2, (high.Bounds().Dy()-th)/2
+	xdraw.NearestNeighbor.Scale(high, image.Rect(left, top, left+tw, top+th), text, text.Bounds(), draw.Over, nil)
+	// 原貌仍由 CPU 畫布供應，後續覆蓋保留同一圖層契約。
+	for gy := 0; gy < CellH; gy++ {
+		for gx := 0; gx < 48; gx++ {
+			c.setClipped(x+gx, y+gy, high.RGBAAt(gx*4, gy*4))
+		}
+	}
+	if c.HD != nil {
+		c.addHigh(high, image.Rect(x, y, x+48, y+CellH), image.Point{})
 	}
 }
 

@@ -15,6 +15,56 @@ import (
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 )
 
+// 姓名牌的整行字模由自由字型獨立重建，舊六格裁切必須被拒收。
+func TestEnglishBubbleNameplateKeepsWholeName(t *testing.T) {
+	old := i18n.Current
+	t.Cleanup(func() { i18n.Current = old })
+	i18n.Current = i18n.En
+	for _, name := range []string{"Chen Gong", "Gongsun Zan", "Xing Daorong", "Cao Cao"} {
+		for _, left := range []bool{false, true} {
+			c := testCanvasPx(t, 640, 408)
+			c.SetSmallFace(testSmallFace(t))
+			c.HD = &HDPack{}
+			b := &game.Bubble{X1: 448, Y1: 44, X2: 623, Y2: 139, Left: left}
+			DrawBubbleAs(c, nil, b, name, -1)
+			x, ink := 568, bubbleNameRight
+			if left {
+				x, ink = 456, bubbleNameLeft
+			}
+			high := c.Output(true)
+			w, h := len(name)*24, 40
+			if w > 192 {
+				h = h * 192 / w
+				w = 192
+			}
+			ox, oy := (192-w)/2, (64-h)/2
+			for y := 0; y < 64; y++ {
+				for xx := 0; xx < 192; xx++ {
+					want := bubbleBlack
+					if xx >= ox && xx < ox+w && y >= oy && y < oy+h {
+						sx := ((2*(xx-ox) + 1) * len(name) * 24) / (2 * w)
+						sy := ((2*(y-oy) + 1) * 40) / (2 * h)
+						g, ok := c.small.Glyph(rune(name[sx/24]))
+						if !ok {
+							t.Fatal("缺字")
+						}
+						if g.At((sx%24)/4, sy/4) {
+							want = ink
+						}
+					}
+					if high.RGBAAt(x*4+xx, 124*4+y) != want {
+						t.Fatalf("%s left=%t (%d,%d) 完整姓名字模不符", name, left, xx, y)
+					}
+				}
+			}
+			// 姓名原始字串、字區與對白的空白區都維持。
+			if len(c.Missing) != 0 || c.Clipped != 0 {
+				t.Fatal("姓名缺字或裁切")
+			}
+		}
+	}
+}
+
 // 句尾及整張畫布由固定完整句與自由字模重建，不能從實際墨點抄答案。
 func TestLongBubbleTranslationDrawsWholeSentence(t *testing.T) {
 	old := i18n.Current

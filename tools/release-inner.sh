@@ -82,6 +82,13 @@ case "$phase" in
 存檔不會寫回 -root 指定的原版目錄。
 執行 san1 -version 可核對完整版號；授權見 LICENSE 與 fonts/LICENSE-*.txt。
 EOF
+      python3 - "$dir" "$platform" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1]) / '如何開始.txt'
+if sys.argv[2].startswith('windows-'):
+    p.write_bytes(b'\xef\xbb\xbf' + p.read_text().replace('\n', '\r\n').encode('utf-8'))
+PY
       if [[ "$platform" == windows-* ]]; then
         chmod 755 "$dir/san1.exe"
       else
@@ -90,8 +97,21 @@ EOF
       # ZIP 的檔案時間不得早於 1980；來源時間由主機 wrapper 固定傳入。
       find "$dir" -exec touch -h -d "@${SOURCE_DATE_EPOCH:-315532800}" {} +
       if [[ "$platform" == windows-* ]]; then
-        (cd "$stage/packages" && find "${dir##*/}" -print | LC_ALL=C sort | \
-          zip -qX -@ "$stage/final/patch/$output")
+        python3 - "$dir" "$stage/final/patch/$output" <<'PY'
+from pathlib import Path
+import sys, zipfile
+root, output = map(Path, sys.argv[1:])
+with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+    for path in [root, *sorted(root.rglob('*'))]:
+        name = path.relative_to(root.parent).as_posix() + ('/' if path.is_dir() else '')
+        info = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
+        info.external_attr = (path.stat().st_mode & 0xffff) << 16
+        z.writestr(info, b'' if path.is_dir() else path.read_bytes(), compress_type=zipfile.ZIP_DEFLATED)
+with zipfile.ZipFile(output) as z:
+    assert z.testzip() is None
+    assert all(i.flag_bits & 0x800 for i in z.infolist() if not i.filename.isascii())
+    assert z.read(root.name + '/如何開始.txt').startswith(b'\xef\xbb\xbf')
+PY
       else
         tar -C "$stage/packages" --sort=name \
           --mtime="@${SOURCE_DATE_EPOCH:-315532800}" \
@@ -195,6 +215,7 @@ manifest = {'version': version, 'source_commit': os.environ['SAN1_SOURCE_COMMIT'
 PY
     mkdir -p /src/dist-all
     mv "$stage/final" "$final"
+    rm -rf -- "$stage"
     echo "已建立 $final"
     ;;
   *)

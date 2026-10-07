@@ -2,7 +2,7 @@
 
 `tools/release.sh` 是建置入口。它在主機上只檢查 Git 狀態、輸入目錄及 Docker image，
 並以有界、無網路的容器執行 `tools/release-inner.sh`；建置、封包、檢查及寫入都在容器內。
-使用者需明確提供符合 `v.<主版>.<次版>.<修訂版>-YYYYMMDD` 的完整版號：
+入口明確接受符合 `v.<主版>.<次版>.<修訂版>-YYYYMMDD` 的完整版號：
 
 ```sh
 tools/release.sh v.1.0.0-20260923
@@ -11,6 +11,16 @@ tools/release.sh v.1.0.0-20260923
 腳本要求所有受 Git 追蹤的檔案無差異，且 `dist-all/<版本>/` 尚不存在；
 已建立的交付不會覆寫。若建置失敗，`workplace/release-build/<版本>/`
 只保留可重建的中間產物。
+
+## 高清完整版與推廣片契約
+
+**狀態：READY。** 使用者於 2026-10-07 授權完成高清版、打包及 Release，並選定公開引擎包，完整版與有聲影片留本機。新版沿用既有四平台及 RRSAL-1.0。高清功能增加次版號，採 `v.1.1.0-20261007`，不覆寫既有 `v.1.0.3-20260924`。
+
+本機完整版另收經正式載入器驗證的 B／4× `hd-assets/`。兩版各 452 筆，合計 904 筆；PNG、manifest 與來源逐項核對，封包重讀後的檔案雜湊須相同。兩版啟動器明確指向此包，每次仍預設原貌，以 Esc 或滑鼠上緣切換 Theme。公開引擎包不包含這些素材。兩種包的 Windows 中文檔名須有 ZIP UTF-8 旗標，使用說明採 UTF-8 BOM 與 CRLF。
+
+推廣片須錄製當前正式封包中的正常玩家操作，清楚顯示實際選項列與原貌／高清切換，涵蓋主選單、人物卡與戰場。配樂從 DOSBox-X 執行本機原版的實際 OPL 輸出錄製，保存原版輸入、工具、設定、選曲畫面與 WAV 雜湊；不得用 remake 合成器轉出的 WAV 替代。影片、抽樣幀、字幕、音量、黑幀、預期停留區間、來源與權利收據收在 `promo/`。合成中間片段及解包目錄放容器 `/tmp`，用完即移除。真正的原生平台、人耳及簽章驗收限制須明示。
+
+公開 Release 只附四個 `patch/` 封包及由公開封包產生的公開 SHA-256 清單。完整版、高清素材、原版錄音、有聲影片與私人總清單不上傳。
 
 ## 平台與工具鏈
 
@@ -66,12 +76,9 @@ san1 -root /path/to/三國演義1加強版 -edition plus
 權利分類為 `local_only_original_assets`。這些封包只供本機保存，
 不加入 Git，也不附上 GitHub Release。
 
-`tools/promo-local.sh <完整版號>` 會從現行 remake 程式重生六張畫面，
-以本機原版配樂「風雲」製作 42 秒的繁中推廣片，輸出到 `promo/`。
-影片只供本機保存；它使用原版美術與音樂，不附上公開 Release。
-`promo/` 同時保留六格接觸表、影片抽樣幀、FFprobe 資訊、音量、
-黑幀與凍結檢測紀錄、來源及輸出 SHA-256、權利說明。這些收據用來
-確認影片可播放、非靜音、畫面和字幕沒有明顯裁切。
+`SAN1_PROMO_AUDIO=workplace/<原版錄音> tools/promo-local.sh <完整版號>` 從最終 Linux 完整版錄製主選單、人物卡、戰場的正常 Theme 切換及三語操作，再加上同停點比較與片尾。原版錄音入口是 [promo-original-audio.py](../../tools/promo-original-audio.py)，須在既有 `civ1-dosboxx-input:20260830` 內執行，原版唯讀掛載至 `/orig`，輸出掛載至 `/out`，命令為 `python3 /src/tools/promo-original-audio.py --out /out`。用 DOSBox-X 的 F12＋W 擷取內部 WAV；按 5 開音樂欣賞，再按 3 播風雲並回主選單，原版行為證據見 [005 §6.6](../spec/005-main-screen.md#66-音樂欣賞0x145cal0l1baseissue-70)。快捷鍵依 [DOSBox-X 官方說明](https://github.com/joncampbell123/dosbox-x/wiki)。
+
+影片只留本機。`promo/` 保留接觸表、抽樣幀、FFprobe、音量、黑幀與凍結檢測、操作時間線、來源與 SHA-256、權利說明。靜態比較、片尾與玩家停點須依分鏡審查，不為避開凍結檢測而假造畫面移動。解包、輪詢及合成中間段落使用容器 `/tmp`，退出即清理。
 
 ## 版本、雜湊與未完成驗收
 

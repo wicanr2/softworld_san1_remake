@@ -125,7 +125,31 @@ def face_name(original, left):
     raise RuntimeError('單挑說話者的完整原生肖像未匹配')
 
 
-def speech_expected(original, left):
+def nameplate_native(name, ink):
+    """從自由字模重建 A 的整行姓名，不抄正式畫面的墨點。"""
+    glyphs = {}
+    with gzip.open(ROOT / 'fonts/ascii6x10.hex.gz', 'rt') as stream:
+        for line in stream:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            key, value = line.split(':', 1)
+            glyphs[chr(int(key, 16))] = bytes.fromhex(value)
+    sw, sh = len(name)*24, 40
+    dw, dh = min(192, sw), 40 if sw <= 192 else 40*192//sw
+    ox, oy = (192-dw)//2, (64-dh)//2
+    expected = bytearray(192*64*3)
+    for y in range(dh):
+        sy = ((2*y+1)*sh)//(2*dh)
+        for x in range(dw):
+            sx = ((2*x+1)*sw)//(2*dw)
+            if glyphs[name[sx//24]][sy//4] & (1 << (7-(sx%24)//4)):
+                at = ((oy+y)*192+ox+x)*3
+                expected[at:at+3] = bytes(ink)
+    return bytes(expected)
+
+
+def speech_expected(original, left, locale):
     """從固定幾何、原字墨及原生 PNG 組出整塊可見面板。"""
     x1, y1, x2, y2 = (448, 44, 623, 139) if left else (448, 156, 623, 251)
     _, skin = asset('PANEL.BEVEL#1')
@@ -149,6 +173,13 @@ def speech_expected(original, left):
         raw = crop(original, 640, ax, ay, bx - ax, by - ay)
         blit(expected, 720, nearest(raw, bx - ax, by - ay), (bx - ax) * 4, (by - ay) * 4,
              (ax - (x1 - 2)) * 4, (ay - (y1 - 2)) * 4)
+    if locale == 'en' and not left:
+        native_name = nameplate_native('Chen Gong', (85, 255, 85))
+        logical_name = b''.join(native_name[(y*4*192+x*4)*3:(y*4*192+x*4)*3+3]
+                                for y in range(16) for x in range(48))
+        gui.check('english-complete-nameplate-original',
+                  crop(original, 640, nx, y1+80, 48, 16) == logical_name)
+        blit(expected, 720, native_name, 192, 64, (nx-(x1-2))*4, 82*4)
     return bytes(expected), [x1 - 2, y1 - 2, 180, 100], name
 
 
@@ -231,7 +262,7 @@ def sample(wid, stage, kind, value, text_key=None):
             rect = [448, 268, 176, 96]
             material = entry['name']
         else:
-            expected, rect, material = speech_expected(old, value)
+            expected, rect, material = speech_expected(old, value, locale)
         theme(wid, True)
         high = shot(wid, tag + '-hd')
         native = gui.rgb(high)

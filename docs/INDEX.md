@@ -120,7 +120,8 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 正常單挑的高清叫陣、被擒、戰死及左右對白面板 | [spec/021 §6.53](spec/021-hd-art.md#653-正常單挑的場景與對白面板)、[Docker 重跑入口](../tools/verify-hd-duel.sh)、[正常操作比較器](../tools/verify-hd-duel-inner.py)；限美術接入 CONFORMED，36 樣本、140 項檢查、489 PNG 與整張原貌恢復獨立回讀通過 |
 | 戰場對白換語言後的插入姓名 | [spec/021 §6.54.1](spec/021-hd-art.md#6541-戰場對白的原始姓名)；限十鍵資料契約及正常單挑 CONFORMED，222 項回歸、48 組修改前後控制、36 正常樣本、150 項檢查與 484 PNG 獨立回讀通過 |
 | 長對白在原框內縮排 | [spec/021 §6.54.2](spec/021-hd-art.md#6542-長對白在原框內縮排)；限顯示契約及正常單挑 CONFORMED，1,265 項回歸、96 完整控制、36 正常樣本、158 項檢查與 474 PNG 獨立回讀通過 |
-| 英文姓名牌 | [spec/021 §6.54](spec/021-hd-art.md#654-對白文字的裁切與插入姓名)；DRAFT，姓名牌原寬／肖像寬原型等使用者選擇。長對白另見 §6.54.2，主畫面佇列另見 [§6.54.3](spec/021-hd-art.md#6543-主畫面對白的語言佇列) |
+| 英文姓名牌 | [spec/021 §6.61](spec/021-hd-art.md#661-英文姓名牌保留原寬)、[獨立回讀](../tools/verify-hd-nameplate-independent.go)；A 原寬縮字限本節 CONFORMED，兩版正常三語 36 樣本、162 檢查與 486 PNG 回讀通過 |
+| 高清完整版與原版配樂推廣片 | [打包契約](release/01-packaging.md#高清完整版與推廣片契約)、[正式素材包檢查](../tools/hd-pack-check.go)、[本機完整版入口](../tools/full-local.sh)、[原版實際錄音](../tools/promo-original-audio.py)、[正式封包錄影](../tools/promo-capture-inner.py)、[合成與媒體驗收](../tools/promo-assemble-inner.py)、[影片入口](../tools/promo-local.sh) |
 | 對戰地圖的完整將領譯名 | [spec/021 §6.59](spec/021-hd-art.md#659-對戰地圖的完整將領譯名)；限本節 CONFORMED，兩版六劇本 347 姓名、166 項回歸、兩版正常三語 66 項檢查、258 PNG 與完整字模獨立回讀通過 |
 | 自創君主怎麼建、範本在哪 | `spec/013`、`re/08` §3 |
 | 主畫面上的指令表、子選單、分頁畫在哪 | `spec/014`（原版量自 `TestZZSubMenuScreens`）|

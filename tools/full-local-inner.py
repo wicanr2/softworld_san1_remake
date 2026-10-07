@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import zipfile
 
 
@@ -60,9 +61,10 @@ def main():
     version = sys.argv[1]
     release = ROOT / 'dist-all' / version
     dest = release / 'full-local'
-    stage = ROOT / 'workplace' / 'full-local-build' / version
+    temporary_stage = tempfile.TemporaryDirectory(prefix='san1-full-local-')
+    stage = Path(temporary_stage.name)
     manifest_path = release / 'SHA256SUMS.json'
-    for directory in (ROOT / 'workplace', stage.parent, release):
+    for directory in (ROOT / 'workplace', stage, release):
         owned(directory)
     if dest.exists():
         raise RuntimeError(f'拒絕覆寫已建立的本機完整版：{dest}')
@@ -84,9 +86,14 @@ def main():
         if not files or any(p.is_symlink() or not (p.is_file() or p.is_dir()) for p in entries):
             raise RuntimeError(f'原版目錄包含非一般檔案：{source}')
         originals[edition] = {str(p.relative_to(source)): sha(p) for p in files}
-    if stage.exists():
-        owned(stage)
-        shutil.rmtree(stage)
+    hd_source = Path('/hdpack')
+    hd_entries = sorted(hd_source.rglob('*'))
+    if any(p.is_symlink() or not (p.is_file() or p.is_dir()) for p in hd_entries):
+        raise RuntimeError('高清包包含非一般檔案')
+    hd_files = {p.relative_to(hd_source).as_posix(): sha(p) for p in hd_entries if p.is_file()}
+    hd_manifest = json.loads((hd_source / 'manifest.json').read_text())
+    if len(hd_manifest['entries']) != 904 or not hd_files:
+        raise RuntimeError('高清包分母不符')
     (stage / 'packages').mkdir(parents=True)
     (stage / 'output').mkdir()
     epoch = int(manifest['source_date_epoch'])
@@ -102,21 +109,26 @@ def main():
             raise RuntimeError(f'引擎包根目錄不存在：{top}')
         for edition, source in SOURCES.items():
             shutil.copytree(source, package_dir / 'game' / edition)
-        (package_dir / '本機完整版說明.txt').write_text(
+        shutil.copytree(hd_source, package_dir / 'hd-assets')
+        explanation = (
             f'三國演義 remake {version}\n此封包含原版與加強版遊戲資料，僅供本機保存，禁止公開上傳或再散布。\n'
             'Linux／macOS：執行 ./play-base.sh 或 ./play-plus.sh；Windows：執行 play-base.cmd 或 play-plus.cmd。\n'
-            '存檔寫在封包目錄的 saves/，不會改動 game/ 內的原版檔案。\n', encoding='utf-8')
+            '每次預設原貌。按 Esc 或把滑鼠移到視窗上緣，從選項列切換 B 高清、語言及 AI。\n'
+            '存檔寫在封包目錄的 saves/，不會改動 game/ 內的原版檔案。\n')
+        (package_dir / '本機完整版說明.txt').write_bytes(
+            (b'\xef\xbb\xbf' + explanation.replace('\n', '\r\n').encode('utf-8'))
+            if platform.startswith('windows-') else explanation.encode('utf-8'))
         for edition in SOURCES:
             if platform.startswith('windows-'):
                 launcher = package_dir / f'play-{edition}.cmd'
                 launcher.write_bytes(
                     ('@echo off\r\ncd /d "%~dp0"\r\n'
-                     f'san1.exe -root "game\\{edition}" -edition {edition} -saves "saves" %*\r\n').encode('ascii'))
+                     f'san1.exe -root "game\\{edition}" -edition {edition} -saves "saves" -hd-assets "hd-assets" %*\r\n').encode('ascii'))
             else:
                 launcher = package_dir / f'play-{edition}.sh'
                 launcher.write_text(
                     '#!/bin/sh\ncd "$(dirname "$0")" || exit 1\n'
-                    f'exec ./san1 -root ./game/{edition} -edition {edition} -saves ./saves "$@"\n',
+                    f'exec ./san1 -root ./game/{edition} -edition {edition} -saves ./saves -hd-assets ./hd-assets "$@"\n',
                     encoding='ascii')
                 launcher.chmod(0o755)
         output = stage / 'output' / (top + suffix)
@@ -141,6 +153,11 @@ def main():
             with zipfile.ZipFile(output) as z:
                 if z.testzip():
                     raise RuntimeError(f'ZIP CRC 失敗：{output}')
+                if any(not i.flag_bits & 0x800 for i in z.infolist() if not i.filename.isascii()):
+                    raise RuntimeError('Windows ZIP 非 ASCII 成員缺少 UTF-8 旗標')
+                assert z.read(top + '/本機完整版說明.txt').startswith(b'\xef\xbb\xbf')
+                for relative, digest in hd_files.items():
+                    assert hashlib.sha256(z.read(f'{top}/hd-assets/{relative}')).hexdigest() == digest
                 for edition, files in originals.items():
                     for relative, digest in files.items():
                         member = f'{top}/game/{edition}/{relative}'
@@ -148,6 +165,8 @@ def main():
                             raise RuntimeError(f'封包原版資料不符：{member}')
         else:
             with tarfile.open(output, 'r:gz') as t:
+                for relative, digest in hd_files.items():
+                    assert hashlib.sha256(t.extractfile(f'{top}/hd-assets/{relative}').read()).hexdigest() == digest
                 for edition, files in originals.items():
                     for relative, digest in files.items():
                         member = f'{top}/game/{edition}/{relative}'
@@ -178,6 +197,10 @@ def main():
     (dest / 'ORIGINAL-SHA256.json').write_text(
         json.dumps({'version': version, 'original_assets_sha256': originals}, ensure_ascii=False,
                    indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    (dest / 'HD-SHA256.json').write_text(json.dumps(
+        {'version': version, 'entries': 904, 'per_edition': 452, 'style': 'b', 'scale': 4,
+         'rights': 'local_only_original_derived_art', 'files': hd_files},
+        ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     smoke_dir = release / 'smoke'
     for edition in SOURCES:
         shutil.copy2(smoke / f'full-local-{edition}.log', smoke_dir)
@@ -189,6 +212,7 @@ def main():
     temporary.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
                          encoding='utf-8')
     temporary.replace(manifest_path)
+    temporary_stage.cleanup()
     print(f'本機完整版：{dest}；原版檔案 {sum(map(len, originals.values()))} 筆；四平台封包；Linux 兩版已啟動')
 
 
