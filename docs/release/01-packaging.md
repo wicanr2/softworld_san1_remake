@@ -163,7 +163,8 @@ macOS 原生啟動；後兩者以及簽章、公證仍待實測，見
 沿用上一輪定案版號，正式程式來源為
 `cecfd31d94adf6133813a3776c1e43eaf994dd17`。本機交付在
 [`dist-all/v.1.1.0-20261007/`](../../dist-all/v.1.1.0-20261007/)，
-公開 Release 尚未建立。四個引擎包與四個私人完整版均已從壓縮檔獨立回讀，
+[公開 Release](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.0-20261007)
+已發布並設為 latest。四個引擎包與四個私人完整版均已從壓縮檔獨立回讀，
 封包 SHA-256、LICENSE、啟動器、Windows UTF-8 旗標與說明編碼相符。
 每個私人包有兩版共 66 個原版檔、904 筆高清項目及 444 個高清包檔案，
 全部與本機來源相符。正式載入器兩版各 452/452、零警告。
@@ -173,7 +174,10 @@ Linux 引擎包兩版各持續啟動 25 秒，真正完整版解包後兩版各�
 格式及封包內容檢查，原生啟動、簽章與公證未驗。
 公開清單為 `patch/SHA256SUMS-public.json`，只列四個公開引擎包；
 包含私人產物的總清單 `SHA256SUMS.json` 不上傳。
-待發布說明已備於 `workplace/v66-release-notes.txt`，供公開 Release 建立前審閱。
+發行說明母本為 `workplace/v66-release-notes.txt`，遠端完整說明已核對相符。
+五個附件的大小及 GitHub 提供的 SHA-256 全部符合本機清單，公開收據為
+`workplace/v66-release-published.json`。annotated tag 的實際提交已回讀為
+`cecfd31d94adf6133813a3776c1e43eaf994dd17`，既有 tag／Release 未改動。
 
 | 公開平台 | SHA-256 |
 |---|---|

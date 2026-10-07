@@ -1425,3 +1425,22 @@ Noto 字型以唯讀素材掛入，未掛主機 Python 或 library。
 `workplace/v66-delivery.json`，公開 Release 與 tag 尚未建立；待發布說明為
 `workplace/v66-release-notes.txt`。主機 gh 的現行例外只涵蓋 Issue，建立 Release
 尚須取得該方法的例外授權；已完成產物、來源提交與公開附件範圍保持。
+
+## 2026-10-08 使用者授權公開 Release
+
+使用者授權主機 gh 的本次 Release 操作。先在主機確認 auth，重算四個公開
+引擎包與公開清單，確認遠端沒有同名 tag／Release，再建立 annotated tag。
+tag 的實際提交回讀為 `cecfd31d94adf6133813a3776c1e43eaf994dd17`，與封包一致。
+先建立草稿並逐項核對五個遠端附件的大小與 SHA-256，以及完整發行說明。
+published-tag API 不回傳草稿，改由 Release 清單讀取；沒有重建或覆寫附件。
+核對通過後正式發布並設為 latest，再回讀 published API 與 latest API 確認。
+
+Release：<https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.0-20261007>。
+遠端五個 SHA-256 相符，草稿與 prerelease 均為 false，收據保存於
+`workplace/v66-release-published.json`。`workplace/v66-delivery.json` 同步已發布狀態。
+私人完整版、高清素材、原版錄音、影片與私人總清單未上傳，舊發行保持。
+
+同輪使用者新增 matching decompilation 研究，允許獨立 repo，並指定舊工具鏈
+從 Internet Archive 尋找、集中於 `/home/anr2/cht/tools/`。已載入工具鏈指紋
+與共同決策契約，開始原版／加強版 MZ 模組及既有證據盤點。沒有改動 remake
+程式或宣稱完成原版 C 還原；編譯器、linker 與原封裝的精確版本仍待實驗確認。
