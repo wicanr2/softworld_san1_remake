@@ -1419,3 +1419,9 @@ Noto 字型以唯讀素材掛入，未掛主機 Python 或 library。
 位元碼暫存，保留唯一 DEB 工具鏈輸入、正常來源片段及失敗證據。
 `workplace/v66-hygiene.json` 已保存，所有 san1-* 容器均已自動移除。
 現行合成映像檔為 `sha256:29cdcf6fa5231df970a88ac8ced30b9d6913bf9495df9705d03b445105213302`。
+
+程式準備提交 `cecfd31` 與交付工具／文件提交 `f80ff1a` 均已推送 main。
+追蹤工作樹乾淨，使用者的 AGENTS.md 保持未追蹤。交付收據為
+`workplace/v66-delivery.json`，公開 Release 與 tag 尚未建立；待發布說明為
+`workplace/v66-release-notes.txt`。主機 gh 的現行例外只涵蓋 Issue，建立 Release
+尚須取得該方法的例外授權；已完成產物、來源提交與公開附件範圍保持。
