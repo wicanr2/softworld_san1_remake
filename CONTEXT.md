@@ -26,6 +26,11 @@
 repo，並授權到 Internet Archive 尋找舊工具鏈、集中於 `/home/anr2/cht/tools/`。
 目前先查證兩版模組、編譯器與封裝；精確 compiler／linker 版本及整檔重建仍未知。
 此工作不回溯改動已發布的 Release，也沒有宣稱目前已取得 matching C。
+本機獨立研究入口為 `/home/anr2/cht/softworld_san_matching/CONTEXT.md`。
+Internet Archive 工具媒體與來源校驗集中於 `/home/anr2/cht/tools/microsoft-c-6/`。
+七個候選媒體校驗通過；DOS 工具鏈已編譯出 271-byte OMF、重跑 SHA 相同，
+LINK 回報 5.10。八個原版 MZ 與六個嚴格比較控制已完成，matching C 仍為 0。
+第一批原版主程式優先或兩版全部模組同步，已詢問使用者，尚待選擇。
 
 本輪使用過的共用 Go／macOS／錄影映像檔目前已無法取得，既有建置、GUI
 與封包收據保持。影片合成改用 `san1-promo:ffmpeg5.1.9-r1`，來源為

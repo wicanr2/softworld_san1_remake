@@ -1444,3 +1444,14 @@ Release：<https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.0
 從 Internet Archive 尋找、集中於 `/home/anr2/cht/tools/`。已載入工具鏈指紋
 與共同決策契約，開始原版／加強版 MZ 模組及既有證據盤點。沒有改動 remake
 程式或宣稱完成原版 C 還原；編譯器、linker 與原封裝的精確版本仍待實驗確認。
+
+matching 研究已建立獨立本機 repo `/home/anr2/cht/softworld_san_matching/`。
+Internet Archive 官方 API 取得候選 metadata，C6 ZIP 與 6.0a 六片媒體原站
+SHA-1／MD5 均相符，另記 SHA-256；第六片 HTTP 500 改官方備援成功。
+工具與來源集中在 `/home/anr2/cht/tools/microsoft-c-6/`，未加入 remake Git。
+
+以成熟 libmspack 解安裝媒體，建置專用 DOSBox／mtools／libmspack 研究 image。
+新寫 C 程式編譯為 271-byte OMF，兩次 checksum及SHA相同，LINK實際回報5.10；
+原版兩版八個 MZ 盤點與六個嚴格比較控制組通過。這些只證明研究工具可用，
+matching C 與完整重建皆為0。SDK精確revision仍須比對生成碼，不能由媒體標題
+或CRT年份定案。第一批範圍已向使用者詢問；現階段維持DRAFT，不改remake規則。
