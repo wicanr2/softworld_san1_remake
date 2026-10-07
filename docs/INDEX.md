@@ -35,6 +35,8 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 某個數字是原版的還是 remake 選的 | `design/02`，或 `grep -rn Tune internal/` |
 | 現在完成到哪 | `VERIFICATION-MATRIX.md` |
 | 還剩哪些沒做、憑什麼說沒做 | GitHub open Issues；本機 worklist 只作歷史線索 |
+| 工作暫存的清理與保留 | [現行決定](../CONTEXT.md)、[Docker 清理入口](../tools/cleanup-workplace.sh)、[逐檔核對](../tools/cleanup-workplace.py)、[安全邊界測試](../tools/test_cleanup_workplace.py)。以 `--duplicate workplace/暫存=workplace/保留` 指定副本，`--report` 指定新的本機 JSON；預設只核對，`--apply` 才移除。拒絕不同內容、越界、重疊路徑及符號連結，保留現行包與唯一證據；輪詢暫存放在容器 `/tmp` |
+| Go 快取被清理後的依賴恢復 | [恢復入口](../tools/prepare-go-cache.sh)：執行 `bash tools/prepare-go-cache.sh`，只在容器下載 `go.mod`／`go.sum` 鎖定的依賴並驗證；不改版本與原始檔，後續建置維持無網路 |
 | 哪些斷言被推翻過 | `CONTEXT.md` §4 |
 | 原版某段文字在哪個位址 | `re/04`（檔案位移）、`re/05` §4（戰術層的 DS 位移）|
 | 戰場地圖、地形碼、軍團編成 | `re/05` |
@@ -54,6 +56,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 正式視窗配樂能否播放、如何重跑錄音驗證 | [spec/009 §6.1](spec/009-music.md#61-正式音訊串流契約)、[驗證入口](../tools/verify-music.sh) |
 | 保留原版版面的 AI HD 工作順序與驗收 | [GitHub 工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)；子項 #105–#110；[B 高清與視窗選項列規格 021](spec/021-hd-art.md)、[兩版素材盤點](formats/04-asset-inventory.md#6-hd-兩版盤點) |
 | 高清完成度與正常玩家驗證數字 | [驗證矩陣 §6.5](../VERIFICATION-MATRIX.md#65-高清驗證) |
+| 高清製作群的正常完結與返回 | [021 §6.60](spec/021-hd-art.md#660-現行製作群的連續播放與返回)、[Docker 重跑](../tools/verify-hd-credits.sh)、[正常視窗操作](../tools/verify-hd-credits-inner.py)、[自然結束頁參照](../tools/hd-credits-ending-reference.go)。預設兩版，可用 `--edition base`／`--edition plus` 補驗；原版採完整 SCG16，加強版採自身自然結束提示頁，不跨版套用場景 |
 | 高清紋理上傳量與局部更新 | [021 §6.58](spec/021-hd-art.md#658-畫面紋理的局部上傳)、[像素封包](../internal/ui/pixelupload.go)、[封包回歸](../internal/ui/pixelupload_test.go)、[誘敵更新回歸](../cmd/san1/lure_redraw_test.go)、[正常玩家效能重跑](../tools/verify-hd-upload.sh)、[正常操作與對照建置](../tools/verify-hd-upload-inner.py)、[可丟棄計時器](../tools/hd-upload-trace.go)；限局部上傳及誘敵相位重畫 CONFORMED，117 項回歸、兩版正常八組、549 張 R3 獨立擷取及三輪 733 個現存檔回讀通過；舊片頭覆寫限制保留，其他動畫與平台效能另驗 |
 | 首批高清肖像、選君主與自然地震的正常操作收據 | [spec/021 §6.6](spec/021-hd-art.md#66-首批四圖的正常玩家路徑)、[重跑工具](../tools/verify-hd-player.sh) |
 | 高清自創君主的四個肖像槽與正常新局 | [spec/021 §6.7](spec/021-hd-art.md#67-自創君主肖像批次)；同一重跑工具加 `--custom` |
