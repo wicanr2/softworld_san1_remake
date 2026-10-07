@@ -25,7 +25,7 @@ assert original['wav']['track'] == '風雲' and original['method'].startswith('D
 wav = Path('/audio')/original['wav']['file']
 sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
 assert sha(wav) == original['wav']['sha256']
-font = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
+font = os.environ.get('SAN1_PROMO_FONT', '/promo-font.ttc')
 assert Path(font).is_file()
 
 def run(args):
@@ -57,7 +57,7 @@ with tempfile.TemporaryDirectory(prefix='san1-promo-encode-') as temp:
     compare = stage/'compare.mp4'
     fc = f"[0:v]scale=832:530[a];[1:v]crop=1280:816:0:64,scale=832:530[b];color=c=0x122426:s=1920x1200:r=30[bg];[bg][a]overlay=80:320[x];[x][b]overlay=1008:320,drawtext=fontfile={font}:text='同一玩家停點':fontsize=48:fontcolor=0xeef2e2:x=(w-text_w)/2:y=150,drawtext=fontfile={font}:text='原貌':fontsize=40:fontcolor=white:x=440:y=250,drawtext=fontfile={font}:text='B 高清':fontsize=40:fontcolor=white:x=1330:y=250,{label('保留 640×408 邏輯版面　高清素材採 4×')},format=yuv420p[out]"
     ff(['-loop','1','-i',str(source/'main-card-original.png'),'-loop','1','-i',str(source/'main-card-hd-options.png'),
-        '-filter_complex',fc,'-map','[out]','-t','6','-threads','2','-c:v','libx264','-preset','veryfast','-crf','20',str(compare)])
+        '-filter_complex',fc,'-map','[out]','-t','6','-r','30','-threads','2','-c:v','libx264','-preset','veryfast','-crf','20',str(compare)])
     parts.append(compare)
     sequence.append({'scene':'same-stop-comparison','begin':duration,'duration':6,'intentional_still':True}); duration+=6
     outro = stage/'outro.mp4'
@@ -70,7 +70,8 @@ with tempfile.TemporaryDirectory(prefix='san1-promo-encode-') as temp:
     concat.write_text(''.join(f"file '{p}'\n" for p in parts))
     video = stage/f'san1-{version}-promo-local.mp4'
     ff(['-f','concat','-safe','0','-i',str(concat),'-stream_loop','-1','-i',str(wav),'-map','0:v','-map','1:a',
-        '-c:v','copy','-c:a','aac','-b:a','192k','-af',
+        '-vf','fps=30','-c:v','libx264','-preset','veryfast','-crf','20','-threads','2',
+        '-c:a','aac','-b:a','192k','-af',
         f'afade=t=in:st=0:d=0.3,afade=t=out:st={duration-2.5:.3f}:d=2.5',
         '-t',f'{duration:.3f}','-movflags','+faststart',str(video)])
     final.mkdir()
@@ -104,6 +105,7 @@ shutil.copy2(Path('/audio/receipt.json'),final/'original-audio-receipt.json')
 (final/'QA.json').write_text(json.dumps({'version':version,'technical_passed':True,'visual_review':'pending',
     'duration_seconds':actual_duration,'mean_volume_db':mean,'peak_volume_db':peak,'black_frames':False,
     'long_silence':False,'video_codec':'h264','audio_codec':'aac','fps':30,'audio_channels':2,
+    'font_sha256':sha(Path(font)),
     'sequence':sequence,'freeze_review':'玩家停點、靜態比較與片尾依分鏡逐段審查','human_listening':'not_claimed',
     'video_sha256':sha(video),'audio_sha256':sha(wav)},ensure_ascii=False,indent=2)+'\n')
 manifest_path=release/'SHA256SUMS.json'

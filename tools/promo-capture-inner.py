@@ -93,10 +93,19 @@ def demo(wid, name, languages=False):
         keep(wid, name + '-restored')
         time.sleep(.8)
     finally:
-        rec.send_signal(2)
+        was_running = rec.poll() is None
+        if was_running:
+            rec.send_signal(2)
         rec.wait(timeout=10)
-    assert rec.returncode == 0
-    probe = json.loads(gui.run(['ffprobe','-v','error','-show_format','-of','json',str(clip)]))
+        gui.receipt.setdefault('recording_stops', []).append(
+            {'clip':name, 'was_running':was_running, 'signal':'SIGINT', 'returncode':rec.returncode})
+    # FFmpeg 5.1 的主動 SIGINT 收尾回傳 255；另驗完整解碼，意外退出仍拒收。
+    assert was_running and rec.returncode in (0, 255)
+    probe = json.loads(gui.run(['ffprobe','-v','error','-show_format','-show_streams','-of','json',str(clip)]))
+    video = next(s for s in probe['streams'] if s['codec_type']=='video')
+    assert (video['width'], video['height'], video['codec_name']) == (1280, 880, 'h264')
+    assert video['avg_frame_rate']=='15/1' and int(video['nb_frames']) > 0
+    gui.run(['ffmpeg','-nostdin','-v','error','-xerror','-threads','2','-i',str(clip),'-an','-f','null','-'])
     gui.receipt.setdefault('clips',[]).append({'file':clip.name,'sha256':sha(clip),
         'duration':float(probe['format']['duration']),'events':events,'normal_input':True})
 

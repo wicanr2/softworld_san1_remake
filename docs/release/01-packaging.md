@@ -80,6 +80,15 @@ san1 -root /path/to/三國演義1加強版 -edition plus
 
 影片只留本機。`promo/` 保留接觸表、抽樣幀、FFprobe、音量、黑幀與凍結檢測、操作時間線、來源與 SHA-256、權利說明。靜態比較、片尾與玩家停點須依分鏡審查，不為避開凍結檢測而假造畫面移動。解包、輪詢及合成中間段落使用容器 `/tmp`，退出即清理。
 
+影片合成改用本專案 [Dockerfile.promo](../../docker/Dockerfile.promo)，映像檔為
+`san1-promo:ffmpeg5.1.9-r1`。Python base 固定 digest、FFmpeg 固定套件版號，
+完整 Debian 套件版本與下載的 DEB 雜湊保留在映像檔 `/opt/san1-promo/`。
+此映像檔只供合成及媒體驗收，不取代 Go、DOSBox-X 或正常 GUI 錄影工具鏈。
+建置入口為 `DOCKER_BUILDKIT=0 timeout 6m docker build --pull=false --force-rm --rm --memory 1g --cpu-period 100000 --cpu-quota 200000 --ulimit nproc=128:128 --network default -t san1-promo:ffmpeg5.1.9-r1 -f docker/Dockerfile.promo docker`。
+字幕使用唯讀掛載的 NotoSansCJK-Regular.ttc，`SAN1_PROMO_FONT` 可指定來源檔。
+已有通過收據的正式錄影時，以 `SAN1_PROMO_ASSEMBLE_ONLY=1` 接續合成；合成器仍
+核對版號、錄影通過狀態、片段雜湊與原版錄音，不用此選項跳過正常 GUI 驗收。
+
 ## 版本、雜湊與未完成驗收
 
 版號注入四支執行檔，並逐支檢查；檔名、目錄、`SHA256SUMS.json` 及
@@ -148,3 +157,48 @@ Windows amd64、macOS amd64／arm64 四個引擎封包，以及
 四個公開引擎包都未簽章。Linux 在容器中的兩版啟動，不等於 Windows、
 macOS 原生啟動；後兩者以及簽章、公證仍待實測，見
 [GitHub Issue #2](https://github.com/wicanr2/softworld_san1_remake/issues/2)。
+
+## `v.1.1.0-20261007` 本機交付
+
+沿用上一輪定案版號，正式程式來源為
+`cecfd31d94adf6133813a3776c1e43eaf994dd17`。本機交付在
+[`dist-all/v.1.1.0-20261007/`](../../dist-all/v.1.1.0-20261007/)，
+公開 Release 尚未建立。四個引擎包與四個私人完整版均已從壓縮檔獨立回讀，
+封包 SHA-256、LICENSE、啟動器、Windows UTF-8 旗標與說明編碼相符。
+每個私人包有兩版共 66 個原版檔、904 筆高清項目及 444 個高清包檔案，
+全部與本機來源相符。正式載入器兩版各 452/452、零警告。
+
+Linux 引擎包兩版各持續啟動 25 秒，真正完整版解包後兩版各啟動八秒，
+程式回傳相同完整版號。Windows amd64、macOS amd64／arm64 僅完成建置、
+格式及封包內容檢查，原生啟動、簽章與公證未驗。
+公開清單為 `patch/SHA256SUMS-public.json`，只列四個公開引擎包；
+包含私人產物的總清單 `SHA256SUMS.json` 不上傳。
+待發布說明已備於 `workplace/v66-release-notes.txt`，供公開 Release 建立前審閱。
+
+| 公開平台 | SHA-256 |
+|---|---|
+| Linux amd64 | `8b91b5e709a69cfe58ba13f29514a633c16b3f6c059de119f40fb14a544e8a8b` |
+| Windows amd64 | `5e13bc8f115cbc524e23b1cfca270c259c9e6524409004cd5570f3e30d7e32a5` |
+| macOS amd64 | `52ca245d7f25e6c6aaff4b0ddf753109f91cdb7236ec2e3925e7ca463fe3968c` |
+| macOS arm64 | `4938e309aa7bdfcc70b0b995d906d56b53a94b65bce10fc8d45d2308f04ecaa3` |
+
+推廣片從真正 Linux 完整版正常開機，錄製主選單、曹操人物卡、董卓出兵與
+合法紮寨後的戰場，實際切換 Theme 及三語，沒有狀態、seed 或時鐘注入。
+三段錄影、九張來源畫面及正式執行檔／高清 manifest 與封包相符。
+配樂為先前 DOSBox-X 執行原版 AA.EXE 的「風雲」實際 OPL 錄音。
+
+影片為 1920×1200 H.264、固定 30 fps、44.401 秒容器時長，AAC 雙聲道
+44,100 Hz；1,329 個視訊影格及整段影音獨立解碼通過。視訊時長 44.3 秒，
+與容器時長差 0.101 秒，在既定 0.2 秒界線內。平均音量 −19.5 dB、峰值
+−6.1 dB，沒有長靜音或黑幀；六個靜止區間符合四個玩家停點、六秒靜態比較
+與四秒片尾。五幕完整代表幀、英日兩張完整幀與九格接觸表已查看，字幕完整。
+影片 SHA-256 為 `793b3b8276728d9e2fb60aca52d1e8748822489f36821d2a689a5f8b61b50cfe`。
+人耳尚未驗，不擴大原版 oracle 或跨平台音訊聲明，影片只留本機。
+
+獨立收據為 `workplace/v66-packages-independent.json` 及
+`workplace/v66-promo-independent.json`；影片分鏡、原版音源、音量、黑幀、
+靜音、凍結、代表幀與權利紀錄位於該版本 `promo/`。
+錄影 R1 的主動 SIGINT 退出碼斷言、缺少字幕字型及時間戳候選均保留失敗證據。
+合成工具只修復這些工具問題，正式 Go 程式與已驗封包未重建或變更。
+使用過的共用工具映像檔目前已無法取得，合成改用本專案固定 revision；
+完整 Go／macOS 重建仍須先恢復原工具鏈。正式建置暫存及影片合成暫存已清理。

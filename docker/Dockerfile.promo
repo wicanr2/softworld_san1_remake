@@ -1,0 +1,16 @@
+# 取代已無法取得的共用映像檔之影片合成階段；不提供 Go／GUI 工具鏈。
+FROM python@sha256:933b46a028fd786c9c3d426ebabc237e29a15912231ea8de576e95f0e4f41a4c
+
+ARG FFMPEG_VERSION=7:5.1.9-0+deb12u1
+RUN rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg="${FFMPEG_VERSION}" \
+    && mkdir -p /opt/san1-promo/debs \
+    && cp /var/cache/apt/archives/*.deb /opt/san1-promo/debs/ \
+    && dpkg-query -W > /opt/san1-promo/package-versions.txt \
+    && cd /opt/san1-promo/debs && sha256sum *.deb > SHA256SUMS \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+
+USER 1000:1000
+WORKDIR /src
+ENTRYPOINT ["python3"]
