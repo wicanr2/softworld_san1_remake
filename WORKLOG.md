@@ -1472,3 +1472,10 @@ offset／segment 全比，不遮罩；兩次乾淨編譯／LINK 雜湊相同，�
 6.00 基線重生全部原版 bytes；32 個負對照拒收，兩次乾淨 OBJ／LINK 相同。
 RND 以同基線重跑通過，累計十函式、366 bytes，原版整檔仍為 0。詳細歷程
 與 compiler/hash 證據只存研究 repo WORKLOG 及 docs/003，正式 remake／Release 未改。
+
+## 2026-10-08 matching 研究兩个人事家族
+
+研究 repo 本輪完整重生指定軍師436 bytes與指定太守348 bytes，兩組各九函式，
+兩次乾淨物件及 LINK SHA相同，新增63個拒收控制。累計28 C函式、1150 bytes，
+原版整檔0。588序言候選全部標未證實且正對照找回28函式，原版函式總數仍未知。
+詳細來源與控制流證據在研究 repo docs/004、005、006，正式 remake／Release未改。
