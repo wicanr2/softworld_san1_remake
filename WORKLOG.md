@@ -1464,3 +1464,11 @@ offset／segment 全比，不遮罩；兩次乾淨編譯／LINK 雜湊相同，�
 來源與方法見 ../softworld_san_matching/docs/002-rnd.md；完整工具及失敗歷程只寫
 該 repo 的 WORKLOG。原始識別字、精確原版 compiler、CRT 全體、完整連結排列與
 封裝尚未恢復，整檔匹配仍為 0。沒有改正式 remake 程式、驗證規則、Issues 或 Release。
+
+## 2026-10-08 matching 研究訓練家族
+
+獨立研究 repo 已建立 private 遠端，原版訓練共用常式與八槽入口九函式的
+328-byte 連續 span 完整匹配。相同 C／flags 的 6.00A 候選有七個差異，MSC
+6.00 基線重生全部原版 bytes；32 個負對照拒收，兩次乾淨 OBJ／LINK 相同。
+RND 以同基線重跑通過，累計十函式、366 bytes，原版整檔仍為 0。詳細歷程
+與 compiler/hash 證據只存研究 repo WORKLOG 及 docs/003，正式 remake／Release 未改。

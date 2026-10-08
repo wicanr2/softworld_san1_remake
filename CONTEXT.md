@@ -25,7 +25,7 @@
 2026-10-08 使用者新增 matching decompilation 還原原版程式碼的研究，允許開新
 repo，並授權到 Internet Archive 尋找舊工具鏈、集中於 `/home/anr2/cht/tools/`。
 目前先查證兩版模組、編譯器與封裝；精確 compiler／linker 版本及整檔重建仍未知。
-本研究目前完成原版 RND 的局部 C 函式指令匹配，整檔原版匹配仍為 0。
+本研究目前完成 10 個原版 C 函式的局部指令匹配，整檔原版匹配仍為 0。
 本機獨立研究入口為 `/home/anr2/cht/softworld_san_matching/CONTEXT.md`。
 Internet Archive 工具媒體與來源校驗集中於 `/home/anr2/cht/tools/microsoft-c-6/`。
 七個候選媒體校驗通過；DOS 工具鏈已編譯出 271-byte OMF、重跑 SHA 相同，
@@ -34,6 +34,10 @@ LINK 回報 5.10。八個原版 MZ 與六個嚴格比較控制已完成。
 首個 [RND C 候選](../softworld_san_matching/src/base/rnd.c) 經 MSC 與 LINK 重建，
 37-byte 函式加 1-byte 對齊全對，含明示原版 call-target 繫結，九個負對照拒收。
 研究證據入口：[002](../softworld_san_matching/docs/002-rnd.md)。
+訓練家族含共用常式與八槽入口，MSC 6.00 連結後完整 328 bytes 全對。
+相同 C／flags 用 6.00A 有七個差異，嚴格拒收；目前累計 10 函式、366-byte spans。
+研究遠端為 private `https://github.com/wicanr2/softworld_san_matching`，每輪 commit 與 push。
+[訓練證據](../softworld_san_matching/docs/003-training.md)及目前數字在研究 repo。
 完整資料、CRT、link layout 與封裝仍未重建；正式 remake 驗證規則未改。
 
 本輪使用過的共用 Go／macOS／錄影映像檔目前已無法取得，既有建置、GUI
