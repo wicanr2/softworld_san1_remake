@@ -1455,3 +1455,12 @@ SHA-1／MD5 均相符，另記 SHA-256；第六片 HTTP 500 改官方備援成�
 原版兩版八個 MZ 盤點與六個嚴格比較控制組通過。這些只證明研究工具可用，
 matching C 與完整重建皆為0。SDK精確revision仍須比對生成碼，不能由媒體標題
 或CRT年份定案。第一批範圍已向使用者詢問；現階段維持DRAFT，不改remake規則。
+
+## 2026-10-08 matching 研究第一個 C 函式
+
+使用者確認原版 DATA5 主程式優先。獨立本機研究 repo 已完成 RND 的 37-byte
+函式與 1-byte 對齊匹配，C 經固定 MSC／LINK 5.10 重生，兩個 far call 的
+offset／segment 全比，不遮罩；兩次乾淨編譯／LINK 雜湊相同，九個負對照拒收。
+來源與方法見 ../softworld_san_matching/docs/002-rnd.md；完整工具及失敗歷程只寫
+該 repo 的 WORKLOG。原始識別字、精確原版 compiler、CRT 全體、完整連結排列與
+封裝尚未恢復，整檔匹配仍為 0。沒有改正式 remake 程式、驗證規則、Issues 或 Release。
