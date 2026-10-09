@@ -25,7 +25,7 @@
 2026-10-08 使用者新增 matching decompilation 還原原版程式碼的研究，允許開新
 repo，並授權到 Internet Archive 尋找舊工具鏈、集中於 `/home/anr2/cht/tools/`。
 目前先查證兩版模組、編譯器與封裝；精確 compiler／linker 版本及整檔重建仍未知。
-本研究目前完成 67 個原版 C 函式的局部指令匹配，整檔原版匹配仍為 0。
+本研究目前完成 75 個原版 C 函式的局部指令匹配，整檔原版匹配仍為 0。
 本機獨立研究入口為 `/home/anr2/cht/softworld_san_matching/CONTEXT.md`。
 Internet Archive 工具媒體與來源校驗集中於 `/home/anr2/cht/tools/microsoft-c-6/`。
 七個候選媒體校驗通過；DOS 工具鏈已編譯出 271-byte OMF、重跑 SHA 相同，
@@ -35,7 +35,7 @@ LINK 回報 5.10。八個原版 MZ 與六個嚴格比較控制已完成。
 37-byte 函式加 1-byte 對齊全對，含明示原版 call-target 繫結，九個負對照拒收。
 研究證據入口：[002](../softworld_san_matching/docs/002-rnd.md)。
 訓練家族含共用常式與八槽入口，MSC 6.00 連結後完整 328 bytes 全對。
-相同 C／flags 用 6.00A 有七個差異，嚴格拒收；目前累計 67 函式、3,526-byte spans。
+相同 C／flags 用 6.00A 有七個差異，嚴格拒收；目前累計 75 函式、3,862-byte spans。
 研究遠端為 private `https://github.com/wicanr2/softworld_san_matching`，每輪 commit 與 push。
 [訓練證據](../softworld_san_matching/docs/003-training.md)及目前數字在研究 repo。
 [指定軍師](../softworld_san_matching/docs/004-adviser.md)436 bytes與[指定太守](../softworld_san_matching/docs/005-governor.md)348 bytes完整匹配，含八槽入口與實際原版資料寫入。
@@ -45,6 +45,7 @@ LINK 回報 5.10。八個原版 MZ 與六個嚴格比較控制已完成。
 [徵兵入口與費用資料](../softworld_san_matching/docs/010-conscript.md)八完整入口128 bytes、六係數48 bytes已匹配。Conscript本體仍DRAFT，未計入；70-ai已補上原版等級0入口閘門及等級5剩餘預算ceil(B/4)的條件化靜態說明。正式引擎、動態驗證與Release未改。
 [完整內政](../softworld_san_matching/docs/011-affairs.md)十函式的878 bytes已匹配，兩次乾淨MSC與LINK相同，43個拒收控制通過。正確C與收據已推送研究repo，提交7684f02；金帛、賞賜物品與登用候選仍有差異，未計入完成；控制紀錄分別見研究docs/012、013、015。
 [完整尋訪](../softworld_san_matching/docs/014-search.md)九函式的518 bytes已匹配，含六個padding、最後合格者寫回及八槽入口。兩次最終MSC/LINK相同，35個拒收控制通過；正式引擎與Release未改。
+[米糧入口與常數池](../softworld_san_matching/docs/016-trade.md)八入口336 bytes及常數8 bytes已匹配；本體370 bytes仍有8 bytes不同、列DRAFT。新增GRPDEF/CONST與原LINK /DOSSEG驗證，錯常數即使CODE相同仍拒收；只更正既有除數的文件與AI註解，運算與Release未改。
 588 個 compiler 序言候選只作定位，不作函式總數或完成率分母。
 完整資料、CRT、link layout 與封裝仍未重建；正式 remake 驗證規則未改。
 

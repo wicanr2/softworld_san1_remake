@@ -1480,7 +1480,7 @@ func relief(g *game.State, prefecture int, id state.FactionID, budget int) (game
 
 // buyRice 是「買入米糧」（表 `0x55d4`，常式 `0xc634`，`L0`、`[base]`）。
 //
-//	量   ＝ (100 − 物價) ÷ 10                      ; 一金買到幾單位
+//	量   ＝ (100 − 物價) ÷ 除數[等級]                      ; 一金買到幾單位
 //	目標 ＝ min(兵士（百）× (RND(10) + 12), 30000)  ; 存糧跟著兵力走
 //	缺口 ＝ 目標 − 米
 //	剩金 ＝ clamp(金 − 缺口 ÷ 量, 0, 30000)
@@ -1488,6 +1488,7 @@ func relief(g *game.State, prefecture int, id state.FactionID, budget int) (game
 //
 // **下限是 0**——缺口夠大就把郡的金全部花光（`ds:[0xa5f2]` 讀出來是 0）。
 // 這一支不經過折扣常式 `0xec24`，所以電腦諸侯買米沒有折扣。
+// 米糧除數[0..5]為10、10、10、10、9、8；運算見 game.AIRicePerGold。
 func buyRice(g *game.State, prefecture int, id state.FactionID, purse int) (game.RiceTradeOrder, bool) {
 	p := g.Prefecture(prefecture)
 	if p == nil {
