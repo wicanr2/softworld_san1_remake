@@ -43,7 +43,7 @@ LINK 回報 5.10。八個原版 MZ 與六個嚴格比較控制已完成。
 [AI 付款](../softworld_san_matching/docs/008-spending.md)完整98-byte匹配，C來源與18個拒收控制已推送研究repo，提交f06c82e。使用者已確認該private遠端及後續成果推送。
 [魅力排序](../softworld_san_matching/docs/009-sorting.md)兩份完整406-byte匹配，已推送24a46f9。太守排序本體與付款callee已回填證據；前兩份謀略／戰力排序仍未匹配，不計成果。
 [徵兵入口與費用資料](../softworld_san_matching/docs/010-conscript.md)八完整入口128 bytes、六係數48 bytes已匹配。Conscript本體仍DRAFT，未計入；70-ai已補上原版等級0入口閘門及等級5剩餘預算ceil(B/4)的條件化靜態說明。正式引擎、動態驗證與Release未改。
-[完整內政](../softworld_san_matching/docs/011-affairs.md)十函式的878 bytes已匹配，兩次乾淨MSC與LINK相同，43個拒收控制通過。正確C與收據已推送研究repo，提交7684f02；金帛及賞賜物品候選仍有差異，未計入完成；控制紀錄分別見研究docs/012、013。
+[完整內政](../softworld_san_matching/docs/011-affairs.md)十函式的878 bytes已匹配，兩次乾淨MSC與LINK相同，43個拒收控制通過。正確C與收據已推送研究repo，提交7684f02；金帛、賞賜物品與登用候選仍有差異，未計入完成；控制紀錄分別見研究docs/012、013、015。
 [完整尋訪](../softworld_san_matching/docs/014-search.md)九函式的518 bytes已匹配，含六個padding、最後合格者寫回及八槽入口。兩次最終MSC/LINK相同，35個拒收控制通過；正式引擎與Release未改。
 588 個 compiler 序言候選只作定位，不作函式總數或完成率分母。
 完整資料、CRT、link layout 與封裝仍未重建；正式 remake 驗證規則未改。
@@ -3561,3 +3561,5 @@ tools/worklist.py render                         # 產生 VERIFICATION-MATRIX.md
 
 - `LICENSE` 的「灰色地帶」與「第三方素材」兩段目前是**照計畫填的**，
   發行前（M8）要用 `git ls-files` 對一次實際內容。
+
+登用靜態切片已匯出sub_CE8C與八入口，原版1142 bytes；最佳C候選多4 bytes，未計成果。原版第一RND(4)對謀略、第二對戰力，六組暫存控制保留研究015。
