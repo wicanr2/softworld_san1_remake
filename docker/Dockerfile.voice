@@ -1,0 +1,18 @@
+FROM python:3.12-slim@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f
+
+RUN mkdir -p /opt/voice /home/voice && chown 1000:1000 /opt/voice /home/voice
+USER 1000:1000
+ENV PYTHONUSERBASE=/opt/voice \
+    PATH=/opt/voice/bin:$PATH \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    TOKENIZERS_PARALLELISM=false
+
+COPY --chown=1000:1000 voice-requirements.lock /opt/voice/constraints.txt
+
+RUN pip install --user --no-cache-dir -c /opt/voice/constraints.txt --index-url https://download.pytorch.org/whl/cpu \
+        torch==2.9.1+cpu torchaudio==2.9.1+cpu && \
+    pip install --user --no-cache-dir -c /opt/voice/constraints.txt qwen-tts==0.1.1 transformers==4.57.3 \
+        soundfile==0.13.1 && \
+    pip freeze > /opt/voice/requirements-resolved.txt
+
+ENTRYPOINT ["python3"]

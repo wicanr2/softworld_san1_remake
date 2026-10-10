@@ -370,8 +370,9 @@ AppImage 依前節固定 runtime 與授權重包，從全新 AppDir 產生。
 
 ## 故事、交戰與人物語音推廣片
 
-現行影片為 `promo/san1-v.1.1.1-20261010-story-gameplay-r4-local.mp4`，
-72.8 秒，1920×1200、30 fps。開場交代漢末群雄並起與玩家扮演諸侯，
+現行影片為 `promo/san1-v.1.1.1-20261010-story-gameplay-r6-local.mp4`，
+87.9 秒，1920×1200、30 fps。先播放正式遊戲原版腳本的 B 高清帆船與逐字卷首詞，
+完整顯示「滾滾長江東逝水，浪花淘盡英雄」，再交代漢末群雄並起與玩家扮演諸侯，
 接片頭、曹操人物卡實際 HD 切換、李儒「兵者貴神速」、高清戰場行軍、
 呂布與陳宮叫陣／應戰及單挑。畫面不含工程完成率或 AI 實作限制文案。
 背景依 [故宮三國展覽研究](https://www.npm.gov.tw/NewChineseArtDownload.ashx?bid=3994)
@@ -385,15 +386,64 @@ AppImage 依前節固定 runtime 與授權重包，從全新 AppDir 產生。
 
 重跑入口：
 
-- [拍攝](../../tools/promo-gameplay-capture.py)：既有拍攝參數加 `--story`。
-- [合成](../../tools/promo-gameplay-assemble.py)：既有合成參數加 `--story --revision 4`。
+- [拍攝](../../tools/promo-gameplay-capture.py)：既有拍攝參數加 `--story`；船隊片頭另用
+  `--river-opening` 自然連續錄製，擷取關閉系統游標疊圖。來源與實際時間點在
+  `workplace/promo-river-opening-20261010-r2/receipt.json`、`edit-plan.json`。
+- [合成](../../tools/promo-gameplay-assemble.py)：既有合成參數加
+  `--story --revision 6 --river-source <片頭錄影目錄>`。
   字型使用唯讀 `NotoSerifCJK-Regular.ttc`，前版輸出不覆寫。
 - [語音參考](../../tools/promo-voice-reference.go)：在 Go 容器以
   `-root <原版目錄> -out <私人PCM檔>` 取原版 361／499／499 三段。
 - [完整波形與時間位置驗證](../../tools/promo-voice-check.py)：
   `--capture <錄影目錄> --video <成片> --out <新收據>`。
 
-QA 入口為 `promo/story-gameplay-20261010-r4/QA.json`、`voice-review.json`、
+QA 入口為 `promo/story-gameplay-20261010-r6/QA.json`、`voice-review.json`、
 `edit-plan.json` 及完整代表幀。舊 75.134 秒影片及故事首稿保留，現行清單改指
 修正版。人物語音仍未做人耳驗收；音訊波形檢查與畫面檢查分列。
 影片、原版音樂／語音與完整版都只留本機。
+
+## 高清重新配音樣音
+
+使用者確認全遊戲提供原版／高清語音切換，並要求先確認樣音。目前僅完成
+AI 重新配音試作，正式遊戲語音、設定、存檔與平台包保持原版。聲線方向尚待
+使用者選定，沒有把樣音當成正式配音或原版還原。
+
+交付集中於 `promo/redub-audition-20261010/`：
+
+| 檔案 | 內容 | 原生格式與時長 |
+|---|---|---|
+| `adviser-a.ogg` | 軍師聲線 A，「兵者貴神速」 | 24 kHz、單聲道 Vorbis，1.84 秒 |
+| `commander-b.ogg` | 武將聲線 B，同一句對白 | 24 kHz、單聲道 Vorbis，1.60 秒 |
+| `poem-narration.ogg` | 卷首詞前兩句朗誦 | 24 kHz、單聲道 Vorbis，6.16 秒 |
+| `san1-v.1.1.1-20261010-hd-redub-audition-local.mp4` | HD 帆船、寫詞與李儒對白配音示範 | 1920×1200、30 fps、16 秒 |
+
+示範片僅使用新的朗誦與軍師樣音，配樂為原版〈風雲〉；原始錄影對白沒有疊入。
+完整兩段生成波形在成片中的相關係數為 0.969／0.951，時間位置均差 0.005 秒。
+三段 OGG、示範片完整解碼與畫面已檢查；音色、口音、情感與逐字發音仍等人耳確認。
+主推廣片保留原版對白，重新配音另以本示範交付。
+
+模型使用官方 [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) 的
+`Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice`，固定修訂
+`0c0e3051f131929182e2c023b9537f8b1c68adfe`。模型卡列 Apache-2.0，權重下載以
+官方 LFS SHA-256 逐檔核對；來源在 `workplace/voice-model-qwen3-1.7b-20261010/SOURCES.json`。
+使用 Uncle_Fu 與 Dylan 預設聲線及明示表演指示，seed 20261010，CPU float32／SDPA
+離線生成。沒有把原演員錄音送入模型。
+
+工具入口：
+
+- [Dockerfile.voice](../../docker/Dockerfile.voice) 與 [完整依賴版本](../../docker/voice-requirements.lock)。
+  既有成功映像 `san1-voice:qwen3-tts-0.1.1-cpu-r1`，UID/GID 1000，Python 3.12、
+  PyTorch 2.9.1+cpu、qwen-tts 0.1.1、Transformers 4.57.3。完整 lock 與映像已逐字
+  相符、`pip check` 通過；Dockerfile 後續建置採該 lock，不宣稱 OCI digest 相同。
+- [prepare-voice-model.py](../../tools/prepare-voice-model.py)：固定公開模型修訂，
+  `--out <新私人目錄>`；只有下載工作開網路。
+- [redub-voice-samples.py](../../tools/redub-voice-samples.py)：
+  `--model <唯讀模型目錄> --out <新私人樣音目錄> --threads 8`。生成容器關閉網路，
+  三段試作約需 15、17、49 秒；聲線與文字逐段保存在收據。
+- [promo-redub-audition.py](../../tools/promo-redub-audition.py) 與
+  [verify-redub-audition.py](../../tools/verify-redub-audition.py)：以前述錄影與樣音合成，
+  分別核對完整來源波形及成片時間位置。
+
+生成 WAV 僅作來源，獨立樣音以 FFmpeg 5.1.9、Vorbis quality 6、原生 24 kHz
+轉成 OGG。收據為 `generation-receipt.json`、`voice-samples-QA.json`、
+`voice-waveform-review.json` 及 `QA.json`。素材與影片仍限本機，沒有新增公開 Release。

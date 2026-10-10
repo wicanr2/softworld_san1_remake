@@ -19,6 +19,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--version', required=True)
 parser.add_argument('--out', type=Path, required=True)
 parser.add_argument('--story', action='store_true', help='Record player-facing story, voiced advice and actual combat footage')
+parser.add_argument('--river-opening', action='store_true', help='Record the natural HD river, ships and poem opening')
 args = parser.parse_args()
 ROOT, OUT = Path('/src'), args.out
 assert not OUT.exists() and OUT.parent.stat().st_uid == os.getuid()
@@ -109,7 +110,8 @@ def start_recording(name):
     global active_recording
     path = OUT / (name + '.mp4')
     command = ['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
-        '-f', 'x11grab', '-framerate', '20', '-video_size', '1280x880', '-draw_mouse', '1',
+        '-f', 'x11grab', '-framerate', '20', '-video_size', '1280x880',
+        '-draw_mouse', '0' if args.river_opening else '1',
         '-i', ':99']
     if args.story:
         command += ['-f', 'pulse', '-sample_rate', '48000', '-channels', '2',
@@ -278,6 +280,23 @@ try:
         gui.wait(['pactl', 'info'])
         gui.run(['pactl', 'set-default-sink', 'san1'])
     assert gui.run([str(PACKAGE / 'san1'), '-version']) == args.version
+    if args.river_opening:
+        proc, wid = launch('river-opening')
+        gui.key(wid, 'Escape')
+        gui.choose_ready(wid, 1, 1)
+        gui.key(wid, 'Escape')
+        gui.run(['xdotool', 'windowsize', wid, '1280', '816'])
+        gui.run(['xdotool', 'windowmove', wid, '0', '0'])
+        gui.move(wid, 320, 200)
+        start_recording('river-opening')
+        event('高清片頭自然連續播放；船隊與逐字寫詞；無跳段或動畫拍注入')
+        time.sleep(90)
+        keep(wid, 'river-opening-final')
+        stop_recording()
+        gui.stop(proc)
+        receipt.update(passed=True, method='正式完整版：原版片頭腳本的 B 高清船隊與逐字寫詞自然播放',
+                       poem=['滾滾長江東逝水', '浪花淘盡英雄'])
+        raise SystemExit(0)
     if args.story:
         story_capture()
         receipt['passed'] = True

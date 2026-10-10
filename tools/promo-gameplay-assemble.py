@@ -19,11 +19,20 @@ p.add_argument('--font', type=Path, required=True)
 p.add_argument('--version', required=True)
 p.add_argument('--story', action='store_true', help='Story montage with genuine captured dialogue audio')
 p.add_argument('--revision', type=int, default=1, help='Preserve earlier editorial drafts')
+p.add_argument('--river-source', type=Path, help='Verified natural HD river and poem opening capture')
 a = p.parse_args()
 assert re.fullmatch(r'v\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}', a.version)
 capture = json.loads((a.source / 'receipt.json').read_text())
 audio = json.loads((a.audio / 'receipt.json').read_text())
 assert capture['passed'] and capture['version'] == a.version and audio['passed']
+river_capture = None
+river_plan = None
+if a.river_source:
+    assert a.story
+    river_capture = json.loads((a.river_source / 'receipt.json').read_text())
+    assert river_capture['passed'] and river_capture['version'] == a.version
+    assert river_capture['binary_sha256'] == capture['binary_sha256']
+    river_plan = json.loads((a.river_source / 'edit-plan.json').read_text())
 assert audio['method'].startswith('DOSBox-X') and audio['wav']['track'] == '風雲'
 sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
 wav = a.audio / audio['wav']['file']
@@ -90,6 +99,9 @@ with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
                   ('battle-march', None, 'live', '列陣交鋒，步步為營'),
                   ('battle-duel', None, 'live', '呂布迎戰陳宮　陣前單挑實錄'),
                   ('outro-card', 4, 'title', '')]
+        if river_capture:
+            scenes = [('river-ships', None, 'live', ''), ('river-poem', None, 'live', '')] + [
+                scene for scene in scenes if scene[0] != 'opening']
     clock = 0.0
     for name, seconds, kind, caption in scenes:
         part = stage / (name + '.mp4')
@@ -97,10 +109,13 @@ with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
             ff('-loop', '1', '-framerate', '30', '-i', stage / (name + '.png'),
                '-t', seconds, '-vf', 'format=yuv420p,setsar=1', *video_args(), part)
         else:
-            shot = json.loads((a.source / 'edit-plan.json').read_text())[name] if a.story else None
+            river = name in ('river-ships', 'river-poem')
+            shot = (river_plan[name] if river else
+                    json.loads((a.source / 'edit-plan.json').read_text())[name] if a.story else None)
             source_name = shot.get('source', name) if shot else name
-            info = next(x for x in capture['clips'] if x['file'] == source_name + '.mp4')
-            src = a.source / info['file']
+            source_receipt = river_capture if river else capture
+            info = next(x for x in source_receipt['clips'] if x['file'] == source_name + '.mp4')
+            src = (a.river_source if river else a.source) / info['file']
             assert sha(src) == info['sha256']
             caption_file = stage / (name + '-caption.txt')
             caption_file.write_text(caption)
@@ -109,6 +124,9 @@ with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
             filters = (f'scale=1600:1100,pad=1920:1200:160:0:color=0x122426,setsar=1,fps=30,'
                        f'drawtext=fontfile={a.font}:textfile={caption_file}:fontsize=34:'
                        'fontcolor=0xf4e8c8:x=(w-text_w)/2:y=1134,format=yuv420p')
+            if river:
+                filters = ('crop=1280:816:0:0,scale=1920:1200:force_original_aspect_ratio=decrease,'
+                           'pad=1920:1200:(ow-iw)/2:(oh-ih)/2:black,setsar=1,fps=30,format=yuv420p')
             trim = []
             if a.story:
                 # The shot plan is generated after reviewing real source frames.
@@ -122,7 +140,7 @@ with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
         clock += length
         if a.story:
             voice_part = stage / (name + '-voice.wav')
-            if kind == 'title':
+            if kind == 'title' or river:
                 ff('-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo',
                    '-t', f'{length:.9f}', '-c:a', 'pcm_s16le', voice_part)
             else:
@@ -193,6 +211,9 @@ ff('-i', final, '-vf', f'fps=1/{clock / 12:.6f},scale=480:300,tile=4x3',
 (qa / 'ffprobe.json').write_text(json.dumps(probe, indent=2) + '\n')
 shutil.copyfile(a.source / 'receipt.json', qa / 'capture-receipt.json')
 shutil.copyfile(a.audio / 'receipt.json', qa / 'original-audio-receipt.json')
+if river_capture:
+    shutil.copyfile(a.river_source / 'receipt.json', qa / 'river-capture-receipt.json')
+    shutil.copyfile(a.river_source / 'edit-plan.json', qa / 'river-edit-plan.json')
 (qa / 'RIGHTS.txt').write_text('僅供本機保存，含原版與衍生遊戲畫面及原版配樂，禁止公開上傳。\n')
 result = {'version': a.version, 'technical_passed': True, 'visual_review': 'pending',
     'file': 'promo/' + final.name, 'sha256': sha(final), 'bytes': final.stat().st_size,
@@ -215,5 +236,9 @@ if a.story:
         editorial_changes=['世界觀字卡與實機混剪', '遊戲木紋與青綠場景配色', '短鏡頭展示人物語音、行軍與單挑'])
     shutil.copyfile(a.source / 'edit-plan.json', qa / 'edit-plan.json')
     result['music']['editing'] = 'same verified original recording repeated with crossfade; start/end fade; sidechain ducking'
+    if river_capture:
+        result['opening'] = {'source': 'river-capture-receipt.json', 'natural_gameplay': True,
+            'theme': 'B HD', 'edit_plan': river_plan,
+            'text': ['滾滾長江東逝水', '浪花淘盡英雄']}
 (qa / 'QA.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
 print(json.dumps(result, ensure_ascii=False), flush=True)

@@ -14,6 +14,7 @@ p.add_argument('--capture',type=Path,required=True)
 p.add_argument('--video',type=Path,required=True)
 p.add_argument('--out',type=Path,required=True)
 p.add_argument('--full-search',action='store_true')
+p.add_argument('--qa',type=Path,help='QA timeline when the opening edit changes shot positions')
 a=p.parse_args()
 sha=lambda f:hashlib.sha256(f.read_bytes()).hexdigest()
 reference=a.capture/'adviser-361.pcm'
@@ -66,11 +67,15 @@ def locate(path,begin,end):
     return {'file':path.name,'sha256':sha(path),'start_seconds':best[1]/6000,
             'complete_reference_correlation':best[0],'reference_seconds':len(ref)/6000}
 raw=locate(a.capture/'war-advice.mp4',12,16)
-mixed=locate(a.video,0,72) if a.full_search else locate(a.video,27,31)
+movie_begin = next(s['begin'] for s in json.loads(a.qa.read_text())['sequence']
+                   if s['scene'] == 'war-advice') if a.qa else 27
+clip_begin = json.loads((a.capture/'edit-plan.json').read_text())['war-advice']['start']
+duration = float(json.loads(subprocess.check_output(['ffprobe','-v','error','-show_format','-of','json',str(a.video)]))['format']['duration'])
+mixed=locate(a.video,0,duration) if a.full_search else locate(a.video,movie_begin,movie_begin+4)
 print(json.dumps({'raw':raw,'mixed':mixed},ensure_ascii=False),flush=True)
 assert raw['complete_reference_correlation']>.90,raw
 assert mixed['complete_reference_correlation']>.80,mixed
-assert abs(mixed['start_seconds']-(27+raw['start_seconds']-12.2))<.10, 'voice must align with the same captured shot'
+assert abs(mixed['start_seconds']-(movie_begin+raw['start_seconds']-clip_begin))<.10, 'voice must align with the same captured shot'
 result={'passed':True,'text':'兵者  貴神速','indices':[361,499,499],
  'reference_sha256':sha(reference),'method':'complete waveform Pearson correlation at 6 kHz; lossy AAC capture and mixed soundtrack',
  'raw_capture':raw,'mixed_trailer':mixed,'human_listening':False}
