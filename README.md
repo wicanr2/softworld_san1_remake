@@ -149,6 +149,8 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 下載入口是 [GitHub 最新 Release](https://github.com/wicanr2/softworld_san1_remake/releases/latest)。
 公開下載的是引擎包；專案本機的現行交付與驗收清單在 `dist-all/<版本>/`，
 建置方式見[`發行包與本機驗收`](docs/release/01-packaging.md)。
+本機完整版另提供 Linux AppImage 與含 Windows、macOS 雙架構及實際遊玩影片的
+[三平台整合包](docs/release/01-packaging.md#三平台整合包與實錄推廣片)。
 
 ## 需要原版
 

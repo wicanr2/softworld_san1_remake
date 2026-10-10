@@ -206,3 +206,90 @@ Linux 引擎包兩版各持續啟動 25 秒，真正完整版解包後兩版各�
 合成工具只修復這些工具問題，正式 Go 程式與已驗封包未重建或變更。
 使用過的共用工具映像檔目前已無法取得，合成改用本專案固定 revision；
 完整 Go／macOS 重建仍須先恢復原工具鏈。正式建置暫存及影片合成暫存已清理。
+
+## 三平台整合包與實錄推廣片
+
+2026-10-10 依使用者要求追加本機交付。沿用 `v.1.1.0-20261007` 及正式引擎提交
+`cecfd31d94adf6133813a3776c1e43eaf994dd17`，從既有完整套件重新解包、核對並製作
+AppImage 與整合 ZIP，未重新編譯引擎。既有套件、44.401 秒舊影片與公開 tag／Release
+皆保持原檔。本節的完整版及影片含原版素材，只留本機。
+
+| 交付物 | 本機路徑 | 大小 |
+|---|---|---|
+| 三平台整合 ZIP | `full-local/san1-v.1.1.0-20261007-complete-all-platforms.zip` | 521,767,500 bytes |
+| Linux x86_64 AppImage | `full-local/san1-v.1.1.0-20261007-linux-x86_64.AppImage` | 122,124,792 bytes |
+| 新實錄推廣片 | `promo/san1-v.1.1.0-20261007-gameplay-hd-local.mp4` | 37,451,731 bytes |
+
+路徑相對於 `dist-all/v.1.1.0-20261007/`。整合 ZIP 另含既有 Windows x64 ZIP、
+macOS Intel／Apple Silicon tar.gz、RRSAL-1.0 `LICENSE`、UTF-8 BOM／CRLF 中文說明
+與內部 SHA-256 清單。Windows 啟動器為 `play-base.cmd`／`play-plus.cmd`，
+macOS 為 `play-base.sh`／`play-plus.sh`。四平台來源套件各有兩版共 66 個原版檔案、
+904 筆高清項目及 444 個高清包檔案，皆已逐檔核對。
+
+| 交付物 | SHA-256 |
+|---|---|
+| 整合 ZIP | `f359c22a45867f384c6b508f9d8cf7d43264aeb0a59d9623b2e1c90a22ab5e0b` |
+| AppImage | `028111c6dedd75b89d817feae06f84b929e0786b1d3da8aef83342740cfdb30e` |
+| 新影片 | `2e2e514ff24049abbd8808b6e4a26943dfd229b61c9354f86507724f60c6f176` |
+
+AppImage 內附兩版資料、高清素材、字型、必要 X11／ALSA 動態庫與授權文件。
+預設原版，加強版使用 `-edition plus`。存檔寫入
+`${XDG_DATA_HOME:-$HOME/.local/share}/softworld-san1/saves-base` 或 `saves-plus`。
+沒有 FUSE 的環境可用 `APPIMAGE_EXTRACT_AND_RUN=1`；需要 x86_64 Linux、glibc
+及可用的 OpenGL 顯示環境。驗收透過 type-2 runtime 解包後執行實際 `AppRun`，
+兩版視窗與可寫存檔目錄通過，未驗 FUSE 掛載。Windows 兩版在 Wine／Xvfb 建立
+視窗後各持續八秒；Windows 與 macOS 原生啟動、簽章及公證仍未驗。
+
+影片長 86.034 秒，1920×1200 H.264、固定 30 fps、2,581 幀，AAC 雙聲道。
+分鏡依序為四秒片頭、17.567 秒遊戲片頭、16.267 秒正常開局與人物卡、
+44.2 秒董卓出兵與紮寨、四秒片尾。三段使用正式 Linux 完整套件的真實 GUI，
+保留完整來源錄影，以正常輸入操作，沒有狀態、seed 或時鐘注入。
+三個場景實際操作 Esc 選項列，切到 B 高清再回原貌。
+
+配樂為 `workplace/promo-original-v66-r4/aa_000.wav`，從 DOSBox-X 執行原版
+AA.EXE 的音樂欣賞錄下〈風雲〉，SHA-256 為
+`3c0683f13741e7a84fd8cd341f0ff5084ec12111c32cd845ee71d0933d44b093`。
+同一原版錄音重複兩次，以 1.5 秒交叉淡化銜接，片頭淡入、片尾淡出。
+完整影音解碼通過，平均音量 −19.5 dB、峰值 −6.1 dB，沒有連續 0.5 秒黑幀或
+三秒長靜音。凍結檢測逐段對回片頭、原版字幕、玩家輸入與高清停點，沒有異常凍結。
+接觸表、完整片頭／片尾及三張最終影片高清幀已查看，遊戲畫面與字幕完整。
+人耳尚未驗收。
+
+重生工具與輸入如下，均在無網路、有界、UID 1000 的 Docker 容器執行。
+先建立全新的暫存與輸出目標，禁止覆寫本節既有交付物。
+Python 入口以容器內的 `python3` 執行；設定相稱的記憶體、CPU、程序數與外層逾時，
+使用 `--rm --network none --user 1000:1000 --log-opt max-size=10m --log-opt max-file=3`。
+
+| 工具入口 | 容器與參數 | 職責 |
+|---|---|---|
+| [complete-local-delivery.py](../../tools/complete-local-delivery.py) | `eob-audio-capture:20261009-r3`，`--root /src --stage /stage --version <完整版號>` | 原始資料及 repo 唯讀，`/stage` 可寫；核對四個來源套件並從 Linux tar 建立 AppDir，加入動態庫、字型及 runtime 授權 |
+| AppImage 封裝 | `hr-appimage:runtime-recovery-r1`，下方命令 | 將全新 AppDir 製成 SquashFS 並接上固定 runtime |
+| [appimage-smoke.py](../../tools/appimage-smoke.py) | `eob-audio-capture:20261009-r3`，`--image /stage/<AppImage> --out /out --version <完整版號>` | runtime 解包、兩版 AppRun 與存檔位置驗收 |
+| [windows-full-smoke.py](../../tools/windows-full-smoke.py) | `eob-remake-wine-verify:ubuntu-noble-20261008-r2`，`--package /src/dist-all/<版本>/full-local/<Windows ZIP> --out /out --version <完整版號>` | Wine／Xvfb 兩版啟動及截圖；不替代原生 Windows |
+| [promo-gameplay-capture.py](../../tools/promo-gameplay-capture.py) | `eob-audio-capture:20261009-r3`，`--version <完整版號> --out /out` | 正常遊戲片頭、開局、人物卡、出兵、紮寨與三組實際 HD 切換，輸出片段及操作收據 |
+| [promo-gameplay-assemble.py](../../tools/promo-gameplay-assemble.py) | `eob-audio-capture:20261009-r3`，`--source /capture --audio /audio --promo-out /out --font /promo-font.ttc --version <完整版號>` | 來源片段、原版 WAV 與 NotoSansCJK-Regular.ttc 唯讀，合成並驗收影片；輸出至 `promo/`，畫面審查另寫 QA |
+| [complete-local-bundle.py](../../tools/complete-local-bundle.py) | `san1-matching-tools:bookworm-20261008-r1`，`--root /src --release-out /release --stage /stage --version <完整版號>` | 要求套件、AppImage、Wine、影片及畫面 QA 通過；整合 ZIP、CRC、成員 SHA、中文說明編碼與總清單 |
+
+AppDir 準備前須把固定 runtime 授權放在 `/stage/runtime-licenses/`。
+來源與 SHA 記在 `workplace/complete-delivery-20261010/runtime-licenses/SOURCES.json`。
+type-2 runtime 為 `AppImage/type2-runtime` 提交 `75849dc`，位於容器
+`/opt/runtime-x86_64`，SHA-256 為
+`1cc49bcf1e2ccd593c379adb17c9f85a36d619088296504de95b1d06215aebbf`。
+容器內封裝命令為：
+
+```sh
+mksquashfs /stage/AppDir /stage/san1.squashfs -noappend -all-root -comp gzip \
+  -Xcompression-level 9 -processors 2 -mkfs-time 315532800 -all-time 315532800 -no-progress
+cat /opt/runtime-x86_64 /stage/san1.squashfs > /stage/san1-v.1.1.0-20261007-linux-x86_64.AppImage
+chmod 755 /stage/san1-v.1.1.0-20261007-linux-x86_64.AppImage
+```
+
+現行收據為 `smoke/complete-delivery.json`、`smoke/appimage-smoke.json`、
+`smoke/windows-wine-smoke.json` 及 `promo/gameplay-hd-20261010/QA.json`。
+來源核對在 `workplace/complete-delivery-20261010/package-verification.json`；
+原始三段錄影與失敗時間戳合成證據在 `workplace/promo-gameplay-20261010-r1/`。
+總清單保留原有套件及舊影片，另以 `complete_delivery` 與 `promo_gameplay_hd` 記錄新交付。
+`smoke/complete-toolchain.json` 保存本輪 image ID、工具與字幕字型 SHA；
+`smoke/complete-final-audit.json` 獨立回讀十二項新舊產物與擁有權，全部通過。
+AppDir、SquashFS 與重複暫存 AppImage 已在確認正式副本後移除，共釋放
+378,760,020 bytes；清單在 `workplace/complete-delivery-20261010/cleanup.json`。
