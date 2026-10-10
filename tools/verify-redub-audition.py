@@ -14,6 +14,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--samples', type=Path, required=True)
 p.add_argument('--video', type=Path, required=True)
 p.add_argument('--out', type=Path, required=True)
+p.add_argument('--qa', type=Path, help='Full-trailer QA containing redubbing insertion positions')
 a = p.parse_args()
 sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
 tool = Path(__file__).with_name('promo-voice-check.py')
@@ -22,7 +23,9 @@ functions = [n for n in ast.parse(tool.read_text()).body
 assert len(functions) == 2
 exec(compile(ast.Module(body=functions, type_ignores=[]), str(tool), 'exec'), globals())
 results = []
-for filename, begin in [('poem-narration.wav', 5.3), ('adviser-a.wav', 12.8)]:
+plan = [(row['file'], row['begin']) for row in json.loads(a.qa.read_text())['redubbing']['samples']] if a.qa else [
+    ('poem-narration.wav', 5.3), ('adviser-a.wav', 12.8)]
+for filename, begin in plan:
     reference = a.samples / filename
     ref = decode(reference)
     mean = sum(ref) / len(ref)
@@ -35,6 +38,7 @@ for filename, begin in [('poem-narration.wav', 5.3), ('adviser-a.wav', 12.8)]:
     results.append(match)
 assert not a.out.exists()
 result = {'passed': True, 'scope': 'complete AI generated source waveforms and movie positions',
-          'human_listening': 'pending user audition', 'production_approved': False, 'samples': results}
+          'human_listening': 'pending user audition', 'production_approved': False,
+          'movie_use_authorized': bool(a.qa), 'samples': results}
 a.out.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
 print(json.dumps(result, ensure_ascii=False))
