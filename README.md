@@ -151,6 +151,8 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 | M8 發行 | 本機封包的版號與驗收結果以 `dist-all/<版本>/SHA256SUMS.json` 為準；Windows／macOS 原生啟動與簽章仍待驗 |
 
 下載入口是 [GitHub 最新 Release](https://github.com/wicanr2/softworld_san1_remake/releases/latest)。
+本機現行修正版為 `v.1.1.1-20261010`；公開 Release 目前為 `v.1.1.0-20261007`。
+完整語音修正請使用本機新版或從目前原始碼建置。
 公開下載的是引擎包；專案本機的現行交付與驗收清單在 `dist-all/<版本>/`，
 建置方式見[`發行包與本機驗收`](docs/release/01-packaging.md)。
 本機完整版按平台分開提供 Linux AppImage、Windows ZIP 與 macOS 雙架構 tar.gz；

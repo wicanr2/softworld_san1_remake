@@ -209,6 +209,11 @@ Linux 引擎包兩版各持續啟動 25 秒，真正完整版解包後兩版各�
 
 ## 三平台整合包與實錄推廣片
 
+本節保存前一份交付紀錄。使用者改為各平台獨立包後，未公開的整合 ZIP 已在
+核對五個獨立副本後移除；其他舊包與影片保留。表內整合 ZIP 檔名及 SHA 僅為
+歷史索引，現行交付改看下方「各平台完整版與原版語音」。退休收據為
+`dist-all/v.1.1.0-20261007/smoke/aggregate-retired.json`。
+
 2026-10-10 依使用者要求追加本機交付。沿用 `v.1.1.0-20261007` 及正式引擎提交
 `cecfd31d94adf6133813a3776c1e43eaf994dd17`，從既有完整套件重新解包、核對並製作
 AppImage 與整合 ZIP，未重新編譯引擎。既有套件、44.401 秒舊影片與公開 tag／Release
@@ -297,13 +302,46 @@ AppDir、SquashFS 與重複暫存 AppImage 已在確認正式副本後移除，�
 ## 各平台完整版與原版語音
 
 使用者於 2026-10-10 明確改為各平台分開交付，並要求補齊正常原版對白語音後再交付。
-新修正版採 `v.1.1.1-20261010`。本節目前為建包準備，尚未產生新版交付；
-既有 `v.1.1.0-20261007` tag／Release 保持原提交。
+新修正版採 `v.1.1.1-20261010`，本機交付已完成。來源提交為
+`c3ee5a7ed3a271bbde7757e6b3f44a57d022ed20`，四個架構均從乾淨提交重編。
+既有 `v.1.1.0-20261007` tag／Release 保持原提交；公開 Release 仍維持該版。
 
-新版現行入口將為各自獨立的 Linux x86_64 AppImage、Windows x64 ZIP、
+新版現行入口為各自獨立的 Linux x86_64 AppImage、Windows x64 ZIP、
 macOS Intel tar.gz、macOS Apple Silicon tar.gz。每包獨立包含兩版遊戲、高清素材、
 字型、LICENSE 與啟動器，影片另存 `promo/`，不建立跨平台整合 ZIP。
 所有含原版資料、高清衍生素材與原版音樂的產物仍只留本機。
+
+下列路徑相對於 `dist-all/v.1.1.1-20261010/`。
+
+| 交付物 | 路徑 | 大小 |
+|---|---|---|
+| Linux AppImage | `full-local/san1-v.1.1.1-20261010-linux-x86_64.AppImage` | 122,128,888 bytes |
+| Windows x64 | `full-local/san1-v.1.1.1-20261010-windows-amd64.zip` | 120,943,177 bytes |
+| macOS Intel | `full-local/san1-v.1.1.1-20261010-darwin-amd64.tar.gz` | 120,775,843 bytes |
+| macOS Apple Silicon | `full-local/san1-v.1.1.1-20261010-darwin-arm64.tar.gz` | 120,441,622 bytes |
+| 推廣影片 | `promo/san1-v.1.1.1-20261010-gameplay-hd-local.mp4` | 32,065,456 bytes |
+
+| 交付物 | SHA-256 |
+|---|---|
+| AppImage | `23805ebb3b70a6853fdf7bcdde3ed023ef54d3d8a9f257c38412ebb5935a7dc1` |
+| Windows | `d162d7990088024b318acc7b659bc9b6b365c7b226d76977ff54a70be73e16b4` |
+| macOS Intel | `9d0591e3f7522753a31f80fcbd113415db6dd1988eed975cf9a7e84ff56a23cf` |
+| macOS Apple Silicon | `07a840cf286d91bd3942fe2d3811bcaadfe5e3cdc3414f0d89778c56746435b3` |
+| 影片 | `1892abf6d251d2d4326db8b6903d7d12a1c8ef47df8e0a20dcc930dff2bacbe1` |
+
+每個完整來源套件有 66 個原版檔、904 筆高清項目與 444 個高清檔，逐檔 SHA 相符。
+Linux 公開引擎兩版各 25 秒、最終完整版兩版各八秒啟動通過；AppImage 兩版實際
+AppRun 與可寫存檔目錄通過；Windows 兩版 Wine 各八秒通過。正式 Linux 執行檔
+SHA 為 `d6b8ba52bdaf795bd6a282cd9c47bcaa4f6124d8bfb648e15adccc933277786b`。
+此執行檔另從兩版正常新局錄下四段完整宣戰 PCM，全部相同。首次並行編碼且僅
+4 CPU 的加強版錄音有樣本缺口，原始 false 收據保留；依既有 8 CPU 流程隔離
+重跑加強版通過，未遮罩或排除音訊幀。這不宣稱偶發音訊問題永久消失。
+
+影片從新版完整套件實際錄影，75.134 秒、1920×1200 H.264、30 fps、AAC 雙聲道。
+包含片頭、開局、人物卡、出兵及紮寨，以及三組實際 HD 選單操作；原版〈風雲〉
+錄音來源沿用前節原始 WAV SHA。平均 −19.5 dB、峰值 −6.1 dB，整段解碼、
+無長靜音／黑幀、已知停點與代表完整幀檢查通過。人物卡切換中的短暫放大過渡
+保留，完成後完整恢復；字幕完整。原生 Windows／macOS、FUSE、簽章、公證與人耳未驗。
 
 正式語音使用 [008 §10](../spec/008-speaker-audio.md#10-正常遊戲完整對白語音) 的
 102 個模板與原始人物索引。兩版各 457 個必要原版片段可完整解碼，0–349 人物槽
@@ -322,3 +360,10 @@ AppImage 依前節固定 runtime 與授權重包，從全新 AppDir 產生。
 平台檔案，要求兩版 AppRun、Wine、影片技術與畫面審查通過，輸出
 `smoke/platform-delivery.json` 與總清單的 `complete_delivery.layout=separate_platform_packages`。
 它不再建立 ZIP，並拒收同一新版目錄內的跨平台整合 ZIP。
+
+收據入口為 `smoke/platform-delivery.json`、`smoke/final-delivery-audit.json`、
+`smoke/packaged-voice-summary.json`、`smoke/formal-regression-summary.json`、
+`smoke/normal-voice-summary.json` 及 `promo/gameplay-hd-20261010/QA.json`。
+四個可公開引擎包的清單另存 `patch/SHA256SUMS-public.json`，只含公開包。
+新版 AppDir、SquashFS 與重複 AppImage 在確認正式副本後移除，釋放
+378,772,312 bytes；`workplace/complete-delivery-v1.1.1-20261010/cleanup.json` 保存清單。
