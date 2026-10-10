@@ -1,5 +1,20 @@
 # 主程式（`DATA5.GRP`）的程式碼地圖
 
+## 當前郡號標記的執行期證據
+
+`L1 [both]`：`TestOriginalCurrentPrefectureBlink` 從兩版正常 001 曹操新局，
+在主命令等待期間取得相鄰相位。完整地圖只差陳留 `(280,158,16,9)`，
+144 個索引像素皆 XOR 15，與州郡 `MapX=200`、`MapY=114` 加 `(80,44)` 相符。
+原版圖在 `workplace/blink-normal-both-20261010/`；另一個原版載入局面的
+南海 `(260,328,16,9)` 同樣完整反白，僅作額外定位證據。
+
+輸入 AA.EXE SHA-256 為 `474780e5be697b3b4899da5e0dbadd2f327e0bbe7e56306ac3b732a15fc124ca`，
+ASV.EXE 為 `ad18a251fece9b7b8b0c5f2fd42565f4981883af4b55fd68ca2df00f1bc88be5`。
+本項以 dosgolem 的 640×408 執行期索引畫面為基準，不換算成 IDA 位址。
+IDA 9.4 候選匯出 [blink_markers.py](../../tools/ida/blink_markers.py) 保留原始
+名稱、EA、bytes 與 xref，語意仍為候選，沒有拿候選函式當成已證實定位。
+實作契約見 [005 閃爍](../spec/005-main-screen.md#當前選取標記的閃爍)。
+
 已經辨識出來的常式。位址有兩種寫法：
 
 - **映像位移**：把 `DATA5.GRP` 載到 `0110:0000` 之後，從 `0110:0000` 起算的

@@ -367,3 +367,33 @@ AppImage 依前節固定 runtime 與授權重包，從全新 AppDir 產生。
 四個可公開引擎包的清單另存 `patch/SHA256SUMS-public.json`，只含公開包。
 新版 AppDir、SquashFS 與重複 AppImage 在確認正式副本後移除，釋放
 378,772,312 bytes；`workplace/complete-delivery-v1.1.1-20261010/cleanup.json` 保存清單。
+
+## 故事、交戰與人物語音推廣片
+
+現行影片為 `promo/san1-v.1.1.1-20261010-story-gameplay-r4-local.mp4`，
+72.8 秒，1920×1200、30 fps。開場交代漢末群雄並起與玩家扮演諸侯，
+接片頭、曹操人物卡實際 HD 切換、李儒「兵者貴神速」、高清戰場行軍、
+呂布與陳宮叫陣／應戰及單挑。畫面不含工程完成率或 AI 實作限制文案。
+背景依 [故宮三國展覽研究](https://www.npm.gov.tw/NewChineseArtDownload.ashx?bid=3994)
+改寫；玩法用語依原版手冊 p.8–14、16–26、28–35。沒有使用館藏圖片。
+
+拍攝採既有 `game-promo-video-ffmpeg.md` 的實機混剪、故事字卡與分鏡節奏，
+配色與邊框取自本遊戲青綠地圖、木紋及騎兵花邊。影像由正式 v.1.1.1
+完整版正常操作錄下；人物對白取自同段 PulseAudio 錄音，配樂仍是原版〈風雲〉。
+說話時壓低配樂。每鏡頭依 48 kHz 的解碼樣本數裁切，補至與畫面同長度，
+再混音，避免 AAC 串接及 PulseAudio 封包時間缺口造成位移。
+
+重跑入口：
+
+- [拍攝](../../tools/promo-gameplay-capture.py)：既有拍攝參數加 `--story`。
+- [合成](../../tools/promo-gameplay-assemble.py)：既有合成參數加 `--story --revision 4`。
+  字型使用唯讀 `NotoSerifCJK-Regular.ttc`，前版輸出不覆寫。
+- [語音參考](../../tools/promo-voice-reference.go)：在 Go 容器以
+  `-root <原版目錄> -out <私人PCM檔>` 取原版 361／499／499 三段。
+- [完整波形與時間位置驗證](../../tools/promo-voice-check.py)：
+  `--capture <錄影目錄> --video <成片> --out <新收據>`。
+
+QA 入口為 `promo/story-gameplay-20261010-r4/QA.json`、`voice-review.json`、
+`edit-plan.json` 及完整代表幀。舊 75.134 秒影片及故事首稿保留，現行清單改指
+修正版。人物語音仍未做人耳驗收；音訊波形檢查與畫面檢查分列。
+影片、原版音樂／語音與完整版都只留本機。

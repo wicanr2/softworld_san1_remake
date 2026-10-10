@@ -84,11 +84,17 @@ type BattleView struct {
 	// 它第 0 槽那一位的肖像與資料（`ArtBattleInfo.Inspect`）。
 	Inspecting *battle.Unit
 
-	// SkirmishActing 是對戰子畫面裡輪到的那一位；Blink 為真時他那一格
+	// SkirmishActing 是對戰子畫面裡輪到的那一位；Blink 亦控制主戰場旗與兵力牌。
+	// Blink 為真時子畫面裡他那一格
 	// 反白（原版每 512 個時脈切換一次，`0x1538:0x58ac`）。
 	SkirmishActing *battle.SkirmishGeneral
 	Blink          bool
 }
+
+// SelectionTicksPerPhase 沿用視窗的選取標記節拍，非原版硬體時鐘聲明。
+const SelectionTicksPerPhase = 20
+
+func SelectionBlinkAt(tick int) bool { return tick/SelectionTicksPerPhase%2 == 0 }
 
 // Relocalize 更新已生成的顯示文字，不推進戰場或重新送出玩家輸入。
 // command 由目前隊伍的 typed 資料重建，包含新語系的姓名與隊伍名。

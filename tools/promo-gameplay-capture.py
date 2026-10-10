@@ -18,6 +18,7 @@ from PIL import Image, ImageChops
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--version', required=True)
 parser.add_argument('--out', type=Path, required=True)
+parser.add_argument('--story', action='store_true', help='Record player-facing story, voiced advice and actual combat footage')
 args = parser.parse_args()
 ROOT, OUT = Path('/src'), args.out
 assert not OUT.exists() and OUT.parent.stat().st_uid == os.getuid()
@@ -107,10 +108,17 @@ def keep(wid, tag):
 def start_recording(name):
     global active_recording
     path = OUT / (name + '.mp4')
-    proc = gui.start(['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
+    command = ['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
         '-f', 'x11grab', '-framerate', '20', '-video_size', '1280x880', '-draw_mouse', '1',
-        '-i', ':99', '-an', '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast',
-        '-crf', '18', '-pix_fmt', 'yuv420p', str(path)], name + '-record')
+        '-i', ':99']
+    if args.story:
+        command += ['-f', 'pulse', '-sample_rate', '48000', '-channels', '2',
+                    '-fragment_size', '4096', '-i', 'san1.monitor', '-c:a', 'aac', '-b:a', '256k']
+    else:
+        command += ['-an']
+    command += ['-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast',
+                '-crf', '18', '-pix_fmt', 'yuv420p', str(path)]
+    proc = gui.start(command, name + '-record')
     active_recording = (proc, path, time.monotonic())
     return active_recording[2]
 
@@ -138,7 +146,7 @@ def stop_recording():
 
 def launch(tag):
     command = [str(PACKAGE / 'san1'), '-root', str(PACKAGE / 'game/base'), '-edition', 'base',
-        '-ai', 'base', '-scale', '2', '-music=false', '-sound=false',
+        '-ai', 'base', '-scale', '2', '-music=false', '-sound=' + str(args.story).lower(),
         '-saves', '/tmp/san1-promo-saves-' + tag, '-font', str(PACKAGE / 'fonts/unifont.hex.gz'),
         '-hd-assets', str(PACKAGE / 'hd-assets')]
     receipt.setdefault('launch_commands', []).append(command)
@@ -183,11 +191,97 @@ def switch(wid, tag):
     gui.move(wid, 320, 200)
 
 
+def story_capture():
+    """Normal inputs only. Retain voice timing and the actual toolbar switch."""
+    proc, wid = launch('story-opening')
+    start_recording('opening')
+    event('遊戲片頭自然播放')
+    time.sleep(6)
+    stop_recording()
+    title(wid, 'story-main')
+    gui.key(wid, '1', '1', '1', '2', '5', '0', 'Return')
+    gui.key(wid, '1', '1', '1', '1', 'Return', '1', '3', '1', 'Return')
+    # Film the actual character inspection after setup; initial diagnostic logs
+    # are outside the recorded shot, rather than hidden by an editorial overlay.
+    start_recording('realm-card')
+    event('曹操正常新局；人物資料檢視')
+    time.sleep(3)
+    switch(wid, 'card-switch')
+    time.sleep(2)
+    stop_recording()
+    gui.stop(proc)
+
+    proc, wid = launch('story-battle')
+    title(wid, 'story-battle')
+    gui.key(wid, '1', '1', '1', '6', '5')
+    waiting, rested = reach_attack_turn(wid, 'story-battle', 'base')
+    start_recording('war-advice')
+    event('軍事出兵，正常觸發人物建議與原版語音')
+    gui.key(wid, '2', 'Return')
+    keep(wid, 'war-advice-shown')
+    time.sleep(4)
+    gui.key(wid, '2')
+    if waiting == 14:
+        gui.key(wid, '1', '5', 'Return')
+    gui.key(wid, '1', '1', 'Return', '2', 'Return', '1', 'Return', 'Return', 'y',
+            '0', 'Return', '1', '0', '0', '0', 'Return')
+    event('軍師完成出兵前建議：兵者貴神速')
+    time.sleep(1)
+    keep(wid, 'attack-adviser-voice')
+    time.sleep(3)
+    await_prompt(wid, 'story-camp', 'camp', 2)
+    stop_recording()
+    gui.key(wid, '3', '3', '6', '3', '0')
+    await_prompt(wid, 'story-command', 'command', 3)
+    start_recording('battle-combat')
+    event('主戰場實際選單切換高清')
+    switch(wid, 'battle-switch')
+    gui.key(wid, '2')
+    await_prompt(wid, 'story-engage-direction', 'engage-direction', 1, advance=False)
+    gui.key(wid, '2')
+    await_prompt(wid, 'story-skirmish', 'skirmish', 2)
+    event('對戰子畫面切換高清並續玩')
+    gui.key(wid, 'Escape')
+    gui.choose_ready(wid, 1, 1)
+    gui.key(wid, 'Escape')
+    time.sleep(1)
+    event('對戰子畫面：正常行軍與休息')
+    for keys in [('1', '5'), ('Return',), ('1', '5'), ('0', 'y'), ('1', '5')]:
+        gui.key(wid, *keys)
+        time.sleep(.5)
+    event('呂布向陳宮叫陣，正常單挑與人物語音')
+    gui.key(wid, '2', '5')
+    time.sleep(3)
+    keep(wid, 'duel-scene')
+    for n in range(10):
+        gui.key(wid, 'space')
+        time.sleep(4)
+        keep(wid, f'duel-stage-{n}')
+    stop_recording()
+    receipt['battle_route'] = {'waiting': waiting, 'rested': rested,
+        'normal_attack': True, 'skirmish': True, 'duel': True}
+    receipt['audio'] = 'PulseAudio san1.monitor; original in-game voices and effects; background music disabled'
+    gui.stop(proc)
+
+
 try:
     os.environ.update(DISPLAY=':99', LIBGL_ALWAYS_SOFTWARE='1', XDG_RUNTIME_DIR='/tmp', LP_NUM_THREADS='2')
     gui.start(['Xvfb', ':99', '-screen', '0', '1600x1000x24', '-nolisten', 'tcp', '-noreset', '-ac'], 'xvfb')
     gui.wait(['xdotool', 'getdisplaygeometry'])
+    if args.story:
+        runtime = Path('/tmp/san1-story-audio')
+        runtime.mkdir(mode=0o700)
+        os.environ.update(XDG_RUNTIME_DIR=str(runtime), PULSE_SERVER=f'unix:{runtime}/native')
+        gui.start(['pulseaudio', '-n', '--daemonize=no', '--exit-idle-time=-1',
+            '--load=module-null-sink sink_name=san1 rate=48000 channels=2',
+            f'--load=module-native-protocol-unix socket={runtime}/native auth-anonymous=1'], 'pulse')
+        gui.wait(['pactl', 'info'])
+        gui.run(['pactl', 'set-default-sink', 'san1'])
     assert gui.run([str(PACKAGE / 'san1'), '-version']) == args.version
+    if args.story:
+        story_capture()
+        receipt['passed'] = True
+        raise SystemExit(0)
     proc, wid = launch('opening-game')
     start_recording('opening')
     event('正式遊戲片頭自然播放')

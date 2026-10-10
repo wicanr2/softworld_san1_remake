@@ -53,6 +53,11 @@ const (
 type View struct {
 	Sel int // 訊息欄要顯示哪一個郡
 
+	// CurrentPrefecture 是政令模式下輪到下令的郡，與查看的 Sel 分開。
+	// SelectionBlink 為亮相時郡號的 16×9 矩形 XOR 15，見 005 閃爍契約。
+	CurrentPrefecture int
+	SelectionBlink    bool
+
 	// Menu 是目前展開的子選單；空字串表示在主選單。
 	Menu string
 

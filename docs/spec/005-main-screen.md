@@ -6,6 +6,33 @@ remake 的核心規則對齊原版，外殼允許現代化——但**畫面上�
 原版的**，由玩家自己那一份提供，執行時讀進來（`CLAUDE.md` §1）。
 這一份規定主畫面怎麼從原版的素材拼出來。
 
+## 當前選取標記的閃爍
+
+狀態：`CONFORMED`，限本節標記顯示與正常抽樣；版本：`[both]`；2026-10-10。
+
+- 大地圖的當前下令郡使用 `Session.Waiting()`，不跟隨查看中的其他郡。
+  郡號矩形為 `(MapX+80, MapY+44, 16, 9)`，亮相逐像素索引色 XOR 15。
+  `TestOriginalCurrentPrefectureBlink` 從兩版正常 001 曹操新局，各取得相鄰
+  相位，整張地圖只差陳留 `(280,158,16,9)`，144 格完整反白，`L1 [both]`。
+  原版收據在 `workplace/blink-normal-both-20261010/`；原版 AA.EXE 雜湊見
+  [主程式碼圖](../re/03-main-program-code-map.md)，加強版雜湊見原始素材清單。
+- 主戰場當前部隊的旗與兵力牌在原色／XOR 15 之間交替，沿用 §8 的原版
+  旗幟證據。對戰子畫面既有的整格反白保持。原貌與高清共用相位及標記。
+- 相位沿用 remake 的每 20 次更新切換，60 TPS 下約三分之一秒。
+  此為既有視窗節拍的延伸，不宣稱原版硬體時鐘完全一致。
+- 只改顯示，輸入、規則、亂數、部隊與郡狀態、存檔格式保持。
+  地圖在對白、結束與示範模式不新增當前玩家郡標記。
+- 驗收包含兩相位整張畫布、高清保護區及正常新局／戰場的連續畫面。
+  UI 相關回歸通過；正常兩版曹操新局與董卓出兵各走原貌／高清，八組均有
+  完整兩相位。郡號原貌差 144 格、高清差 2,304 格；旗與兵力牌原貌差
+  1,040 格、高清差 16,640 格。沒有改變遊戲狀態或注入 seed／時間。
+  GUI 工具：[verify-selection-blink-inner.py](../../tools/verify-selection-blink-inner.py)，
+  開發版收據 `workplace/selection-blink-gui-20261010-r3/receipt.json`。
+  重跑在 `eob-audio-capture:20261009-r3` 以 Python 執行該工具，唯讀掛入
+  `/orig` 與專案，只有 `/src/workplace` 可寫；先建
+  `workplace/san1-selection-blink-dev`，以 `SAN1_SELECTION_BLINK_OUT` 指定新輸出目錄。
+  現行 v.1.1.1 封包仍使用原固定提交，本節修正尚未另行建包。
+
 ## 1. 底圖：七張 `MAINMAP*`
 
 `DATA3` 裡的 `MAINMAP*.IMG` 各自畫到固定位置。位置讀自畫底圖那一段

@@ -267,7 +267,11 @@ func (ab *ArtBattle) drawHighTerrain(c *Canvas, b *battle.Battle, v BattleView, 
 	if info.Skirmish != nil {
 		ab.composeForeground(mask, b, v, info)
 	} else {
-		ab.drawHighUnits(c, b.Units, v.Acting)
+		var highlighted *battle.Unit
+		if v.Blink {
+			highlighted = v.Acting
+		}
+		ab.drawHighUnits(c, b.Units, highlighted)
 		ab.composePanels(mask, b, v, info)
 	}
 	c.coverIndexed(mask)
@@ -321,7 +325,7 @@ func (ab *ArtBattle) drawUnits(im *assets.Image, b *battle.Battle, v BattleView)
 		}
 		flag := ab.flags[army][form]
 		paper := byte(0)
-		if u == v.Acting {
+		if u == v.Acting && v.Blink {
 			flag, paper = flag.Complement(), 0x0F
 		}
 		col, row := battle.ToOffset(u.At)
@@ -344,7 +348,7 @@ func (ab *ArtBattle) drawPlates(c *Canvas, b *battle.Battle, v BattleView) {
 			continue
 		}
 		ink := assets.FlagPlateColour[army]
-		if u == v.Acting {
+		if u == v.Acting && v.Blink {
 			ink ^= 0x0F
 		}
 		col, row := battle.ToOffset(u.At)

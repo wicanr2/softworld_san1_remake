@@ -185,7 +185,7 @@ func (a *app) Update() error {
 		a.stepWipe()
 		return nil
 	}
-	if a.cursorTick++; a.cursorTick%ui.CursorTicksPerFrame == 0 && (a.s != nil || a.menuScreen != nil) && !(a.lure.of != nil && a.lure.step >= 0) {
+	if a.cursorTick++; (a.cursorTick%ui.CursorTicksPerFrame == 0 || a.cursorTick%ui.SelectionTicksPerPhase == 0) && (a.s != nil || a.menuScreen != nil) && !(a.lure.of != nil && a.lure.step >= 0) {
 		a.dirty = true
 	}
 	// 統一之後播製作群。**要在其他輸入之前**：那一段自己收按鍵。
@@ -1583,6 +1583,10 @@ func (a *app) paint() {
 			a.view.Over = a.s.Over
 			if a.art != nil {
 				v := a.view
+				if a.s.Bubble() == nil && !a.s.Over && len(a.s.G.Players) > 0 {
+					v.CurrentPrefecture = a.s.Waiting()
+					v.SelectionBlink = ui.SelectionBlinkAt(a.cursorTick)
+				}
 				// 等玩家輸入時下面板最後一行後面畫游標；對白與示範模式不讀鍵，不畫。
 				v.Input = ui.InputCursor{On: a.s.Bubble() == nil && !a.s.Over && len(a.s.G.Players) > 0,
 					Frame: ui.CursorFrameAt(a.cursorTick)}
@@ -1620,10 +1624,9 @@ func (a *app) paint() {
 // 方向鍵移游標（查看與用計要先指目標），數字鍵是指令，
 // Esc 收起覆蓋頁——**Esc 不會離開戰役**：出兵是不能反悔的。
 func (a *app) updateBattle() error {
-	if f := a.fight; f.view.SkirmishActing != nil {
-		f.blinkTick++
-		if f.blinkTick%blinkFrames == 0 {
-			f.view.Blink = !f.view.Blink
+	if f := a.fight; f.view.SkirmishActing != nil || f.view.Acting != nil {
+		if phase := ui.SelectionBlinkAt(a.cursorTick); f.view.Blink != phase {
+			f.view.Blink = phase
 			a.dirty = true
 		}
 	}

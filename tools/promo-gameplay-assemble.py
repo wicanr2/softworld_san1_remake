@@ -17,6 +17,8 @@ p.add_argument('--audio', type=Path, required=True)
 p.add_argument('--promo-out', type=Path, required=True)
 p.add_argument('--font', type=Path, required=True)
 p.add_argument('--version', required=True)
+p.add_argument('--story', action='store_true', help='Story montage with genuine captured dialogue audio')
+p.add_argument('--revision', type=int, default=1, help='Preserve earlier editorial drafts')
 a = p.parse_args()
 assert re.fullmatch(r'v\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}', a.version)
 capture = json.loads((a.source / 'receipt.json').read_text())
@@ -26,8 +28,9 @@ assert audio['method'].startswith('DOSBox-X') and audio['wav']['track'] == '風�
 sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
 wav = a.audio / audio['wav']['file']
 assert sha(wav) == audio['wav']['sha256']
-final = a.promo_out / f'san1-{a.version}-gameplay-hd-local.mp4'
-qa = a.promo_out / 'gameplay-hd-20261010'
+revision = f'-r{a.revision}' if a.revision > 1 else ''
+final = a.promo_out / f'san1-{a.version}-{"story-gameplay" if a.story else "gameplay-hd"}{revision}-local.mp4'
+qa = a.promo_out / (('story-gameplay-20261010' if a.story else 'gameplay-hd-20261010') + revision)
 assert not final.exists() and not qa.exists() and final.parent.stat().st_uid == os.getuid()
 qa.mkdir()
 
@@ -61,7 +64,7 @@ def card(background, title, subtitle, target):
 
 sequence = []
 with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
-    stage, parts = Path(tmp), []
+    stage, parts, voice_parts = Path(tmp), [], []
     for name, title, subtitle, background in [
         ('intro-card', '三國演義', '智冠 1991　原貌 × B 高清　實際遊玩', 'card-switch-hd.png'),
         ('outro-card', '原版・加強版　完整版', 'Linux AppImage　Windows　macOS Intel / Apple Silicon', 'battle-switch-hd.png')]:
@@ -71,6 +74,22 @@ with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
               ('new-game-card', None, 'live', '正常開新局與人物檢視　原貌 → B 高清 → 原貌'),
               ('battle-play', None, 'live', '董卓出兵・戰場紮寨　實際遊玩與 HD 切換'),
               ('outro-card', 4, 'title', '')]
+    if a.story:
+        card(a.source / 'card-switch-hd.png', '三國演義',
+             '智冠 1991　重返群雄逐鹿的年代', stage / 'intro-card.png')
+        card(a.source / 'battle-switch-hd.png', '東漢末年，群雄並起',
+             '執掌一方諸侯，招攬將才，征戰天下', stage / 'story-card.png')
+        card(a.source / 'battle-switch-hd.png', '運籌帷幄，逐鹿天下',
+             '原貌 × 高清　Linux・Windows・macOS', stage / 'outro-card.png')
+        scenes = [('intro-card', 4, 'title', ''),
+                  ('story-card', 6, 'title', ''),
+                  ('opening', 6, 'live', '滾滾長江東逝水，浪花淘盡英雄'),
+                  ('realm-card', None, 'live', '招攬將才，經營一方　原貌與高清實際切換'),
+                  ('war-advice', None, 'live', '兵者貴神速　聽將領獻策，揮軍出征'),
+                  ('battle-switch', None, 'live', '馳戰沙場　原貌與高清實際切換'),
+                  ('battle-march', None, 'live', '列陣交鋒，步步為營'),
+                  ('battle-duel', None, 'live', '呂布迎戰陳宮　陣前單挑實錄'),
+                  ('outro-card', 4, 'title', '')]
     clock = 0.0
     for name, seconds, kind, caption in scenes:
         part = stage / (name + '.mp4')
@@ -78,7 +97,9 @@ with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
             ff('-loop', '1', '-framerate', '30', '-i', stage / (name + '.png'),
                '-t', seconds, '-vf', 'format=yuv420p,setsar=1', *video_args(), part)
         else:
-            info = next(x for x in capture['clips'] if x['file'] == name + '.mp4')
+            shot = json.loads((a.source / 'edit-plan.json').read_text())[name] if a.story else None
+            source_name = shot.get('source', name) if shot else name
+            info = next(x for x in capture['clips'] if x['file'] == source_name + '.mp4')
             src = a.source / info['file']
             assert sha(src) == info['sha256']
             caption_file = stage / (name + '-caption.txt')
@@ -88,13 +109,32 @@ with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
             filters = (f'scale=1600:1100,pad=1920:1200:160:0:color=0x122426,setsar=1,fps=30,'
                        f'drawtext=fontfile={a.font}:textfile={caption_file}:fontsize=34:'
                        'fontcolor=0xf4e8c8:x=(w-text_w)/2:y=1134,format=yuv420p')
-            ff('-i', src, '-vf', filters, *video_args(), part)
+            trim = []
+            if a.story:
+                # The shot plan is generated after reviewing real source frames.
+                trim = ['-ss', shot['start'], '-t', shot['duration']]
+            ff('-i', src, *trim, '-vf', filters, *video_args(), part)
         probe = json.loads(run(['ffprobe', '-v', 'error', '-show_streams', '-of', 'json', str(part)]).stdout)
         length = int(probe['streams'][0]['nb_frames']) / 30
         sequence.append({'scene': name, 'begin': clock, 'duration': length, 'kind': kind,
-                         'source': None if kind == 'title' else name + '.mp4',
+                         'source': None if kind == 'title' else source_name + '.mp4',
                          'intentional_still': kind == 'title'})
         clock += length
+        if a.story:
+            voice_part = stage / (name + '-voice.wav')
+            if kind == 'title':
+                ff('-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo',
+                   '-t', f'{length:.9f}', '-c:a', 'pcm_s16le', voice_part)
+            else:
+                first_sample = round(shot['start'] * 48000)
+                sample_count = round(length * 48000)
+                ff('-i', src, '-vn', '-af',
+                   f'aresample=48000,atrim=start_sample={first_sample}:end_sample={first_sample+sample_count},'
+                   f'asetpts=N/SR/TB,apad=whole_len={sample_count},atrim=end_sample={sample_count}',
+                   '-ar', '48000', '-ac', '2', '-c:a', 'pcm_s16le', voice_part)
+            voice_info = json.loads(run(['ffprobe', '-v', 'error', '-show_format', '-of', 'json', str(voice_part)]).stdout)
+            assert abs(float(voice_info['format']['duration']) - length) < .001, (name, voice_info)
+            voice_parts.append(voice_part)
         parts.append(part)
         print(json.dumps({'encoded': name, 'seconds': length}), flush=True)
     concat = stage / 'concat.txt'
@@ -103,10 +143,24 @@ with tempfile.TemporaryDirectory(prefix='san1-live-promo-') as tmp:
     concat.write_text(''.join("file '" + str(part) + "'\nduration " +
                               f"{scene['duration']:.12f}\n"
                               for part, scene in zip(parts, sequence)))
+    if a.story:
+        voice_concat = stage / 'voice-concat.txt'
+        voice_concat.write_text(''.join("file '" + str(part) + "'\n" for part in voice_parts))
+        gameplay_audio = qa / 'gameplay-track.wav'
+        ff('-f', 'concat', '-safe', '0', '-i', voice_concat, '-c:a', 'copy', gameplay_audio)
+        voice_info = json.loads(run(['ffprobe', '-v', 'error', '-show_format', '-of', 'json', str(gameplay_audio)]).stdout)
+        assert abs(float(voice_info['format']['duration']) - clock) < .001
     sound = (f'[1:a][2:a]acrossfade=d=1.5:c1=tri:c2=tri,'
              f'afade=t=in:st=0:d=0.5,afade=t=out:st={clock - 3:.3f}:d=3[a]')
+    if a.story:
+        sound = (f'[1:a][2:a]acrossfade=d=1.5:c1=tri:c2=tri,atrim=0:{clock:.9f},'
+                 f'volume=0.55,afade=t=in:st=0:d=1,afade=t=out:st={clock - 3:.3f}:d=3[music];'
+                 '[3:a]asplit=2[voice][control];'
+                 '[music][control]sidechaincompress=threshold=0.012:ratio=12:attack=5:release=350[duck];'
+                 '[duck][voice]amix=inputs=2:duration=longest:normalize=0,alimiter=limit=0.90[a]')
     encoded = stage / final.name
     ff('-f', 'concat', '-safe', '0', '-i', concat, '-i', wav, '-i', wav,
+       *(['-i', gameplay_audio] if a.story else []),
        '-filter_complex', sound, '-map', '0:v', '-map', '[a]', '-c:v', 'copy',
        '-c:a', 'aac', '-b:a', '192k', '-t', f'{clock:.9f}', '-movflags', '+faststart', encoded)
     shutil.copyfile(encoded, final)
@@ -146,8 +200,20 @@ result = {'version': a.version, 'technical_passed': True, 'visual_review': 'pend
     'peak_volume_db': peak, 'sequence': sequence, 'music': {'track': '風雲',
         'source_sha256': audio['wav']['sha256'], 'method': audio['method'],
         'editing': 'two verified original recordings with 1.5-second crossfade; start/end fade'},
-    'footage': 'genuine packaged-binary GUI recording; complete source clips, normal input',
+    'footage': 'genuine packaged-binary GUI recording; reviewed montage, normal input' if a.story else
+               'genuine packaged-binary GUI recording; complete source clips, normal input',
     'freeze_review': 'title cards and genuine player/toolbar pauses; review against event timeline',
     'rights': 'local_only_original_art_and_music'}
+if a.story:
+    result.update(dialogue_audio='synchronous PulseAudio capture from normal packaged-gameplay; music ducked under voices',
+        story_sources=[{'source': 'docs/reference/01-manual-20-mechanics.md', 'pages': '8–14, 16–26, 28–35',
+                        'supports': '六個時期、扮演諸侯、內政人事及行軍單挑'},
+                       {'source': 'https://www.npm.gov.tw/NewChineseArtDownload.ashx?bid=3994',
+                        'supports': '東漢末年群雄崛起的歷史背景；僅改寫背景，不使用館藏圖片'}],
+        banned_promotional_copy=['18/18', '還原到', '其餘的電腦諸侯不會做'],
+        filming_guide='knowledge-base/sources/claude/retro-cht/game-promo-video-ffmpeg.md',
+        editorial_changes=['世界觀字卡與實機混剪', '遊戲木紋與青綠場景配色', '短鏡頭展示人物語音、行軍與單挑'])
+    shutil.copyfile(a.source / 'edit-plan.json', qa / 'edit-plan.json')
+    result['music']['editing'] = 'same verified original recording repeated with crossfade; start/end fade; sidechain ducking'
 (qa / 'QA.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
 print(json.dumps(result, ensure_ascii=False), flush=True)

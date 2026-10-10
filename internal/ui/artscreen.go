@@ -281,6 +281,12 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	upper, subLower := artUpperOf(c, v)
 
 	im := a.Compose(g, sel)
+	if v.SelectionBlink {
+		if current := g.Prefecture(v.CurrentPrefecture); current != nil {
+			im.XorRect(int(current.MapX)+assets.MapOriginX,
+				int(current.MapY)+assets.MapOriginY, 16, 9, 15)
+		}
+	}
 	// 右側兩塊面板：先拼外框與底色，再把肖像與它的框疊上去。
 	//
 	// **底圖的 `MAINMAPB`／`MAINMAPC` 會被整片蓋掉**——那兩張是黃色與
