@@ -1,0 +1,549 @@
+{
+  "schema": "san1-voice-catalog-v1",
+  "level": "L0",
+  "editions": [
+    "base",
+    "plus"
+  ],
+  "scope": "102 normal-game dialogue templates; copy-protection excluded by spec/004 and spec/005",
+  "name_token": -1,
+  "empty_token": 499,
+  "cues": {
+    "bub.adv.arms": [
+      367,
+      499,
+      499
+    ],
+    "bub.adv.attack": [
+      361,
+      499,
+      499
+    ],
+    "bub.adv.balance": [
+      369,
+      499,
+      499
+    ],
+    "bub.adv.buyHigh": [
+      378,
+      499,
+      499
+    ],
+    "bub.adv.buyLow": [
+      380,
+      499,
+      499
+    ],
+    "bub.adv.conscript": [
+      365,
+      499,
+      499
+    ],
+    "bub.adv.dismiss": [
+      396,
+      499,
+      499
+    ],
+    "bub.adv.flood": [
+      373,
+      499,
+      499
+    ],
+    "bub.adv.fort": [
+      375,
+      499,
+      499
+    ],
+    "bub.adv.headhuntNo": [
+      406,
+      499,
+      499
+    ],
+    "bub.adv.headhuntYes": [
+      407,
+      499,
+      499
+    ],
+    "bub.adv.jointFast": [
+      419,
+      499,
+      499
+    ],
+    "bub.adv.jointHelp": [
+      420,
+      499,
+      499
+    ],
+    "bub.adv.move": [
+      359,
+      499,
+      499
+    ],
+    "bub.adv.moveLast": [
+      358,
+      499,
+      499
+    ],
+    "bub.adv.plotDistant": [
+      413,
+      499,
+      499
+    ],
+    "bub.adv.plotEasy": [
+      -1,
+      417,
+      499
+    ],
+    "bub.adv.plotForge": [
+      414,
+      499,
+      499
+    ],
+    "bub.adv.plotHard": [
+      -1,
+      418,
+      499
+    ],
+    "bub.adv.plotIncite": [
+      415,
+      499,
+      499
+    ],
+    "bub.adv.plotJoint": [
+      416,
+      499,
+      499
+    ],
+    "bub.adv.plotTiger": [
+      412,
+      499,
+      499
+    ],
+    "bub.adv.reclaim": [
+      371,
+      499,
+      499
+    ],
+    "bub.adv.recruitNo": [
+      389,
+      499,
+      499
+    ],
+    "bub.adv.recruitYes": [
+      388,
+      499,
+      499
+    ],
+    "bub.adv.relief": [
+      382,
+      499,
+      499
+    ],
+    "bub.adv.rest": [
+      377,
+      499,
+      499
+    ],
+    "bub.adv.reward": [
+      395,
+      499,
+      499
+    ],
+    "bub.adv.searchMaybe": [
+      386,
+      499,
+      499
+    ],
+    "bub.adv.searchNone": [
+      387,
+      499,
+      499
+    ],
+    "bub.adv.searchYes": [
+      385,
+      499,
+      499
+    ],
+    "bub.adv.sellHigh": [
+      379,
+      499,
+      499
+    ],
+    "bub.adv.sellLow": [
+      381,
+      499,
+      499
+    ],
+    "bub.adv.train": [
+      363,
+      499,
+      499
+    ],
+    "bub.arrows": [
+      421,
+      499,
+      499
+    ],
+    "bub.atlas": [
+      356,
+      499,
+      499
+    ],
+    "bub.autonomyOrder": [
+      -1,
+      403,
+      499
+    ],
+    "bub.autonomyReply": [
+      -1,
+      404,
+      499
+    ],
+    "bub.burn": [
+      425,
+      499,
+      499
+    ],
+    "bub.camp": [
+      430,
+      499,
+      499
+    ],
+    "bub.captiveDie": [
+      454,
+      499,
+      499
+    ],
+    "bub.captiveJailed": [
+      453,
+      499,
+      499
+    ],
+    "bub.captiveRefuse": [
+      -1,
+      452,
+      499
+    ],
+    "bub.captiveRelease": [
+      455,
+      499,
+      499
+    ],
+    "bub.captiveYield": [
+      451,
+      499,
+      499
+    ],
+    "bub.chiefOrder": [
+      -1,
+      399,
+      499
+    ],
+    "bub.chiefReply": [
+      400,
+      499,
+      499
+    ],
+    "bub.death": [
+      458,
+      499,
+      499
+    ],
+    "bub.debut": [
+      461,
+      -1,
+      462
+    ],
+    "bub.debutBond": [
+      459,
+      -1,
+      460
+    ],
+    "bub.desert": [
+      431,
+      499,
+      499
+    ],
+    "bub.dismissed": [
+      398,
+      499,
+      499
+    ],
+    "bub.duelAccept": [
+      -1,
+      434,
+      499
+    ],
+    "bub.duelBlade": [
+      441,
+      499,
+      499
+    ],
+    "bub.duelBrave": [
+      436,
+      499,
+      499
+    ],
+    "bub.duelChallenge": [
+      -1,
+      433,
+      499
+    ],
+    "bub.duelDie": [
+      -1,
+      449,
+      499
+    ],
+    "bub.duelDied": [
+      450,
+      499,
+      499
+    ],
+    "bub.duelEqual": [
+      -1,
+      444,
+      499
+    ],
+    "bub.duelFamed": [
+      -1,
+      446,
+      499
+    ],
+    "bub.duelHundred": [
+      445,
+      499,
+      499
+    ],
+    "bub.duelKill": [
+      -1,
+      442,
+      499
+    ],
+    "bub.duelLater1": [
+      437,
+      499,
+      499
+    ],
+    "bub.duelLater2": [
+      438,
+      499,
+      499
+    ],
+    "bub.duelPraise": [
+      -1,
+      443,
+      499
+    ],
+    "bub.duelRefuse": [
+      435,
+      499,
+      499
+    ],
+    "bub.duelSeize": [
+      -1,
+      447,
+      499
+    ],
+    "bub.duelSeized": [
+      448,
+      499,
+      499
+    ],
+    "bub.duelShout1": [
+      440,
+      499,
+      499
+    ],
+    "bub.duelShout2": [
+      439,
+      499,
+      499
+    ],
+    "bub.epilogue": [
+      452,
+      499,
+      499
+    ],
+    "bub.fire": [
+      422,
+      499,
+      499
+    ],
+    "bub.flood": [
+      423,
+      499,
+      499
+    ],
+    "bub.found": [
+      383,
+      -1,
+      499
+    ],
+    "bub.giftThanks": [
+      -1,
+      405,
+      499
+    ],
+    "bub.governorOrder": [
+      -1,
+      401,
+      499
+    ],
+    "bub.governorReply": [
+      -1,
+      402,
+      499
+    ],
+    "bub.headhuntAsk": [
+      408,
+      499,
+      499
+    ],
+    "bub.headhuntNo": [
+      411,
+      499,
+      499
+    ],
+    "bub.headhuntYes": [
+      409,
+      -1,
+      410
+    ],
+    "bub.helperReturn": [
+      478,
+      499,
+      499
+    ],
+    "bub.kill": [
+      432,
+      499,
+      499
+    ],
+    "bub.lordDeath": [
+      463,
+      499,
+      499
+    ],
+    "bub.lure": [
+      426,
+      499,
+      499
+    ],
+    "bub.newLord": [
+      498,
+      499,
+      499
+    ],
+    "bub.notFound": [
+      384,
+      499,
+      499
+    ],
+    "bub.plotFailed": [
+      482,
+      499,
+      499
+    ],
+    "bub.plotGold": [
+      479,
+      499,
+      499
+    ],
+    "bub.plotIntel": [
+      480,
+      499,
+      499
+    ],
+    "bub.plotPlace": [
+      481,
+      499,
+      499
+    ],
+    "bub.plotWorked": [
+      483,
+      499,
+      499
+    ],
+    "bub.recruitAsk": [
+      390,
+      -1,
+      391
+    ],
+    "bub.recruitNo": [
+      392,
+      499,
+      499
+    ],
+    "bub.recruitYes": [
+      393,
+      -1,
+      394
+    ],
+    "bub.retreat": [
+      429,
+      499,
+      499
+    ],
+    "bub.rewardThanks": [
+      397,
+      499,
+      499
+    ],
+    "bub.seen": [
+      -1,
+      428,
+      499
+    ],
+    "bub.siege": [
+      427,
+      499,
+      499
+    ],
+    "bub.succeed": [
+      465,
+      499,
+      499
+    ],
+    "bub.trap": [
+      424,
+      499,
+      499
+    ],
+    "bub.warDeclare": [
+      -1,
+      456,
+      499
+    ],
+    "bub.warReply": [
+      -1,
+      457,
+      499
+    ]
+  },
+  "inputs": {
+    "base_runtime_sha256": "bc4163eac5c39db8e605efb4f7937fb14182636a2dbfae962eb0316ef3160f52",
+    "plus_runtime_sha256": "3f708e74aabf41c69c6c62789cf4e8dd2e8238728840555ba41c71ecabf88831",
+    "mother_sha256": "15cd1be3d98c0f210ad7870a4b2eb862acd7f847921cf0c297db0c07b27c9068"
+  },
+  "base": {
+    "message_linear": 206654,
+    "message_end_exclusive": 208377,
+    "code_segment": 12915,
+    "ds_base": 272352,
+    "table_displacement": 37762,
+    "caller_count": 111
+  },
+  "plus": {
+    "message_linear": 193382,
+    "message_end_exclusive": 194987,
+    "code_segment": 12086,
+    "ds_base": 258112,
+    "table_displacement": 38190,
+    "caller_count": 111
+  },
+  "evidence": [
+    "docs/re/12-message-box.md",
+    "docs/re/09-speech.md#10-完整對白語音目錄研究"
+  ],
+  "notes": "Derived from the shared text/audio indices; no translated text dispatch or human naming of R499."
+}

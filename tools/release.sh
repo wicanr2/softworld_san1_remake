@@ -8,8 +8,8 @@ if [[ $# -ne 1 || ! "$1" =~ ^v\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}$ ]]; then
   exit 2
 fi
 VER="$1"
-GO_IMAGE="eob-remake-release:1.26.7-ebiten2.9.9-audio"
-MAC_IMAGE="eob-remake-macos:1.26.7-ebiten2.9.9-audio"
+GO_IMAGE="${SAN1_RELEASE_IMAGE:-eob-remake-release:1.26.7-ebiten2.9.9-20261008-r2}"
+MAC_IMAGE="${SAN1_MAC_IMAGE:-eob-remake-macos:1.26.7-ebiten2.9.9-20261008-r2}"
 
 # 版號與內容必須可回查同一個 commit；AGENTS.md 等未加入版控的
 # 本機指示不進封包，追蹤檔案有差異則不能建立正式交付。
@@ -41,7 +41,7 @@ common=(--rm --network none --memory 4g --cpus 2 --pids-limit 256
   -v "$ROOT:/src"
   -v "$ROOT/org_game:/src/org_game:ro"
   -v "$ROOT/org_game:/orig:ro"
-  -e HOME=/tmp -e GOWORK=off
+  -e GOWORK=off
   -e GOCACHE=/src/workplace/gocache
   -e GOMODCACHE=/src/workplace/gomodcache
   -e GOPROXY=file:///src/workplace/gomodcache/cache/download

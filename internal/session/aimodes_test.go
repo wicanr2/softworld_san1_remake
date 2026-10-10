@@ -192,7 +192,7 @@ func TestZZGarrisonRatioSweep(t *testing.T) {
 // 長得一模一樣（`internal/game/options.go` 的同一句）。
 func TestZZAIOrdersSweep(t *testing.T) {
 	const months = 36
-	for _, n := range []int{1, 2, 3, 5} {
+	for _, n := range []int{1, 2, 3, 4, 5} {
 		sc := loadScenarioForAI(t)
 		g, err := game.New(sc, state.NoFaction, 5, state.EditionBase)
 		if err != nil {

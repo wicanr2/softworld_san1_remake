@@ -89,6 +89,7 @@ type app struct {
 	sfx *voicebox
 	// shownBubble 是實際畫出的對白；voicePlayed 防止換語言與重畫時重播。
 	shownBubble, voicePlayed *game.Bubble
+	shownSpeech              *battle.Speech
 
 	// wipe 非 nil 表示正在把一張場景圖拉進畫面（`docs/spec/010`）；
 	// scenePlayed 是拉過（或正在拉）的那一格，同一格不重播。
@@ -168,6 +169,7 @@ func (a *app) Update() error {
 		return ebiten.Termination
 	}
 	a.playShownBubbleVoice()
+	a.playShownSpeechVoice()
 	if a.updateWindowBar() {
 		return nil
 	}
@@ -1525,6 +1527,7 @@ func (a *app) Draw(dst *ebiten.Image) {
 // （`docs/spec/010`），而那張圖就是「照現在的狀態畫一次」。
 func (a *app) paint() {
 	a.shownBubble = nil
+	a.shownSpeech = nil
 	{
 		// 畫面內容在 internal/ui，Ebiten 這一層只負責貼上去——
 		// 同一張圖無頭環境也產得出來（cmd/san1dump -png）。
@@ -1551,6 +1554,7 @@ func (a *app) paint() {
 				} else if sp != nil && (sp.Scene == 0 || a.scenePlayed == sp) {
 					// 還沒拉過的場景圖先不畫：Draw 那一層要拿這張當拉幕的底。
 					ui.DrawBattleSpeech(a.canvas, a.art, a.s.G, a.fight.pending.Battle(), sp)
+					a.shownSpeech = sp
 				}
 			} else {
 				ui.DrawBattle(a.canvas, a.fight.pending.Battle(), a.fight.view)
@@ -1573,6 +1577,7 @@ func (a *app) paint() {
 			ui.DrawArtAtlas(a.canvas, a.artBattle, p.BattleField, a.s.G.Field(a.view.Atlas))
 			if b := a.view.AtlasBubble; b != nil {
 				ui.DrawBubble(a.canvas, a.art, a.s.G, b)
+				a.shownBubble = b
 			}
 		default:
 			a.view.Over = a.s.Over

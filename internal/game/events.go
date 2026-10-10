@@ -67,7 +67,8 @@ type Bubble struct {
 	Text           string
 	textKey        string // 顯示句型與原始姓名快照，不寫入存檔。
 	textName       string
-	voiceClips     [3]int // spec/008 §9 的已知映射；不寫入存檔。
+	textNamed      bool
+	voiceClips     [3]int // spec/008 §9–10 的原版三索引；不寫入存檔。
 	voiceKnown     bool
 
 	// FaceOnly 為真是「只亮一張肖像」的那一格：不畫名字、泡泡與字，
@@ -173,10 +174,10 @@ func (g *State) searchEvents(searcher, found *General) []Event {
 		return []Event{
 			{Prefecture: searcher.Location, Bubble: &Bubble{X1: SearchFaceX, Y1: SearchFaceY, Speaker: found.Index,
 				FaceOnly: true, WipeIn: true, Style: style}},
-			g.nameBubbleEvent(searcher, false, false, "bub.found", found.Name, searcher.Index),
+			g.nameBubbleEvent(searcher, false, false, "bub.found", found, searcher.Index),
 		}
 	}
-	return []Event{g.bubbleEvent(searcher, false, false, t("bub.notFound"), searcher.Index)}
+	return []Event{g.keyBubbleEvent(searcher, false, false, "bub.notFound", searcher.Index)}
 }
 
 // 原版訊息框固定用的兩個位置（右側面板那一塊）：上格與下格。
@@ -221,6 +222,12 @@ func (g *State) bubbleAt(x *General, upper, left bool, text string, color int) E
 	return Event{Prefecture: at, Bubble: b}
 }
 
+func (g *State) bubbleAtKey(x *General, upper, left bool, key string, color int) Event {
+	e := g.bubbleAt(x, upper, left, t_(key), color)
+	e.Bubble.setVoiceKey(key)
+	return e
+}
+
 // playerCommand 回報這一道命令是不是玩家自己下的（有畫面的那一條）：
 // 玩家的勢力、而且不是電腦代操。
 func (g *State) playerCommand(by state.FactionID) bool {
@@ -258,6 +265,7 @@ func (g *State) AtlasBubble(prefecture int) *Bubble {
 	b := &Bubble{X1: AtlasBubbleX1, Y1: AtlasBubbleY1, X2: AtlasBubbleX2, Y2: AtlasBubbleY2,
 		Speaker: x.Index, Text: t("bub.atlas")}
 	b.Color = g.Roll(MessageLines, prefecture, 0x18663)
+	b.setVoiceKey("bub.atlas")
 	return b
 }
 
@@ -278,8 +286,8 @@ func (g *State) WarDeclaration(from, to int, by state.FactionID) []Event {
 		def = g.Lord(p.Owner)
 	}
 	if att != nil && def != nil {
-		out = append(out, g.nameBubbleEvent(att, true, false, "bub.warDeclare", def.Name, from, 0x202e1))
-		out = append(out, g.nameBubbleEvent(def, false, true, "bub.warReply", att.Name, from, 0x20322))
+		out = append(out, g.nameBubbleEvent(att, true, false, "bub.warDeclare", def, from, 0x202e1))
+		out = append(out, g.nameBubbleEvent(def, false, true, "bub.warReply", att, from, 0x20322))
 	}
 	return out
 }
@@ -459,14 +467,14 @@ func (g *State) spring() []Event {
 		if x.Status != state.StatusLord {
 			// 君主那一則在繼承常式裡（`SucceedLord`）。下格、肖像在右
 			// （`0x14848`：(424,180)–(615,275)，side 0）。
-			out = append(out, g.bubbleEvent(x, false, false,
-				t("bub.death"), int(Spring), x.Index, 48))
+			out = append(out, g.keyBubbleEvent(x, false, false,
+				"bub.death", int(Spring), x.Index, 48))
 		}
 		g.retire(x)
 		out = append(out, g.PendingEvents()...)
 		if x.Index == DeathEpilogueSlot {
-			out = append(out, g.bubbleEvent(x, false, false,
-				t("bub.epilogue"), int(Spring), x.Index, 49))
+			out = append(out, g.keyBubbleEvent(x, false, false,
+				"bub.epilogue", int(Spring), x.Index, 49))
 		}
 	}
 	for i := range g.generals {
@@ -712,11 +720,11 @@ func (g *State) debut(x *General) []Event {
 		if b.Status != state.StatusLord {
 			// 上格、肖像在右，說話的是牽絆對象（`0x161c4`）。
 			bubbles = append(bubbles, g.nameBubbleEvent(b, true, false,
-				"bub.debutBond", x.Name, int(Spring), x.Index, 48))
+				"bub.debutBond", x, int(Spring), x.Index, 48))
 		}
 		// 下格、肖像在左，說話的是新人（`0x16270`）。
 		bubbles = append(bubbles, g.nameBubbleEvent(x, false, true,
-			"bub.debut", x.Name, int(Spring), x.Index, 49))
+			"bub.debut", x, int(Spring), x.Index, 49))
 		x.Location = at
 		x.Faction = id
 		x.Status = state.StatusOfficer
@@ -1521,8 +1529,8 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 	// 老死與戰死都走這一支。說話的是**死去的君主**（`es:0x24d6`，`0x147d9`
 	// 寫進去的），上格、肖像在右。
 	if dead := g.General(f.Lord); dead != nil {
-		g.pending = append(g.pending, g.bubbleEvent(dead, true, false,
-			t("bub.lordDeath"), int(id), 0x14a38))
+		g.pending = append(g.pending, g.keyBubbleEvent(dead, true, false,
+			"bub.lordDeath", int(id), 0x14a38))
 	} else {
 		g.Roll(MessageLines, int(id), 0x14a38)
 	}
@@ -1565,8 +1573,8 @@ func (g *State) SucceedLord(id state.FactionID) *General {
 			at, governor, autonomy, demoted, color)
 		return heir
 	}
-	g.pending = append(g.pending, g.bubbleAt(heir, false, true,
-		t("bub.succeed"), color))
+	g.pending = append(g.pending, g.bubbleAtKey(heir, false, true,
+		"bub.succeed", color))
 	return heir
 }
 

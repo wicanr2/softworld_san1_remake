@@ -24,7 +24,7 @@ func TestBubblePersonLocaleSnapshot(t *testing.T) {
 				g := &State{}
 				g.SeedRand(0x13579bdf)
 				x := &General{Index: 7, Name: "呂布", Location: 8}
-				g.sayName(x, true, false, key, "關羽", 8, 417)
+				g.sayName(x, true, false, key, &General{Name: "關羽", Index: -1}, 8, 417)
 				x.Name = "張飛"
 				b := g.PendingEvents()[0].Bubble
 				name := map[i18n.Locale]string{i18n.ZhHant: "關羽", i18n.Ja: "関羽", i18n.En: "Guan Yu"}
@@ -120,12 +120,12 @@ func TestBubbleLocaleFallback(t *testing.T) {
 	g := &State{}
 	g.SeedRand(1)
 	x := &General{Name: "呂布", Index: 6}
-	g.sayName(nil, true, false, "bub.chiefOrder", "關羽")
-	g.sayName(&General{}, true, false, "bub.chiefOrder", "關羽")
+	g.sayName(nil, true, false, "bub.chiefOrder", &General{Name: "關羽", Index: -1})
+	g.sayName(&General{}, true, false, "bub.chiefOrder", &General{Name: "關羽", Index: -1})
 	if len(g.pending) != 0 || g.RandDraws() != 0 {
 		t.Fatal("無說話者仍排入或擲骰")
 	}
-	e := g.nameBubbleEvent(x, true, false, "bub.chiefOrder", "名𠮷")
+	e := g.nameBubbleEvent(x, true, false, "bub.chiefOrder", &General{Name: "名𠮷", Index: -1})
 	e.Bubble.Relocalize(i18n.ZhHant, i18n.En)
 	if e.Bubble.Text != i18n.Tf(i18n.En, "bub.chiefOrder", "名𠮷") {
 		t.Fatal("未知姓名被猜譯")

@@ -10,7 +10,7 @@ fi
 VER="$1"
 PACK="${SAN1_HD_PACK:-workplace/hd-assets-mapcursor-v50-r1}"
 [[ "$PACK" == workplace/* && "$PACK" != *'..'* ]] || { echo '素材包必須在 workplace/ 內' >&2; exit 2; }
-IMAGE="eob-remake-release:1.26.7-ebiten2.9.9-audio"
+IMAGE="${SAN1_RELEASE_IMAGE:-eob-remake-release:1.26.7-ebiten2.9.9-20261008-r2}"
 for d in "$ROOT" "$ROOT/org_game" "$ROOT/dist-all/$VER" "$ROOT/dist-all/$VER/patch" "$ROOT/workplace" "$ROOT/$PACK" "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
   [[ -d "$d" ]] || { echo "缺少掛載目錄：$d" >&2; exit 1; }
 done
@@ -24,7 +24,7 @@ timeout 10m docker run --rm --network none --memory 2g --cpus 2 --pids-limit 128
   -u "$(id -u):$(id -g)" \
   -v "$ROOT:/src" -v "$ROOT/org_game:/src/org_game:ro" \
   --mount "type=bind,src=$ROOT/$PACK,dst=/hdpack,readonly" \
-  -e HOME=/tmp -e GOWORK=off -e GOMAXPROCS=2 \
+  -e GOWORK=off -e GOMAXPROCS=2 \
   -e GOCACHE=/src/workplace/gocache -e GOMODCACHE=/src/workplace/gomodcache \
   -e GOPROXY=file:///src/workplace/gomodcache/cache/download -e GOSUMDB=off \
   -w /src "$IMAGE" bash -c 'set -euo pipefail; go run tools/hd-pack-check.go /hdpack /src/org_game; python3 tools/full-local-inner.py "$1"' sh "$VER"

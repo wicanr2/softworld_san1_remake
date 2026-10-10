@@ -103,7 +103,7 @@ func (v *voicebox) Click() {
 }
 
 // Say 先驗證完整三段，再依序載入槽 1–3。缺段時整句省略。
-// 契約：spec/008 §9；取樣率沿用全域設定。
+// 契約：spec/008 §9–10；取樣率沿用全域設定。
 func (v *voicebox) Say(idx [3]int) {
 	if v == nil || v.mx == nil || v.bank == nil || len(v.voice) == 0 {
 		return
@@ -132,11 +132,24 @@ func (v *voicebox) Say(idx [3]int) {
 // 關閉開關或缺素材也記為已處理，不在重畫或重新開啟時補播舊對白。
 func (a *app) playShownBubbleVoice() {
 	b := a.shownBubble
-	if b == nil || a.s == nil || a.s.Bubble() != b || a.voicePlayed == b {
+	if b == nil || a.s == nil || a.voicePlayed == b {
+		return
+	}
+	if a.s.Bubble() != b && !(a.view.Atlas != 0 && a.view.AtlasBubble == b) {
 		return
 	}
 	a.voicePlayed = b
 	if clips, ok := b.VoiceClips(); ok {
+		a.sfx.Say(clips)
+	}
+}
+
+func (a *app) playShownSpeechVoice() {
+	s := a.shownSpeech
+	if s == nil || a.fight == nil || len(a.fight.speeches) == 0 || &a.fight.speeches[0] != s {
+		return
+	}
+	if clips, ok := s.ConsumeVoiceClips(); ok {
 		a.sfx.Say(clips)
 	}
 }

@@ -64,6 +64,10 @@ F-number 與 remake 逐次相同。
 正式視窗的選曲、靜音與恢復播放可用 [`tools/verify-music.sh`](tools/verify-music.sh)
 在隔離容器內錄音驗證，方法與收據見[配樂規格](docs/spec/009-music.md#61-正式音訊串流契約)。
 
+正常遊戲的 102 個對白模板已接回原版語音，涵蓋軍師、人物、事件、地理誌、
+戰場與單挑。三語介面都沿用原版中文語音；「其他 → 音效」與「其他 → 語音」
+需同時開啟。來源、近似範圍與驗收見[語音規格](docs/spec/008-speaker-audio.md#10-正常遊戲完整對白語音)。
+
 原版的點陣圖也解出來了（[點陣圖格式](docs/formats/07-images.md)）：613 張 `.IMG`／`.FAC`
 全部同一個格式，表頭是高與寬、本體是四個位元平面。平面與顏色的對應
 拿 dosgolem 跑出來的原版畫面逐像素比對確認——`F000.FAC` 與 `F005.FAC`
@@ -149,8 +153,8 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 下載入口是 [GitHub 最新 Release](https://github.com/wicanr2/softworld_san1_remake/releases/latest)。
 公開下載的是引擎包；專案本機的現行交付與驗收清單在 `dist-all/<版本>/`，
 建置方式見[`發行包與本機驗收`](docs/release/01-packaging.md)。
-本機完整版另提供 Linux AppImage 與含 Windows、macOS 雙架構及實際遊玩影片的
-[三平台整合包](docs/release/01-packaging.md#三平台整合包與實錄推廣片)。
+本機完整版按平台分開提供 Linux AppImage、Windows ZIP 與 macOS 雙架構 tar.gz；
+推廣影片另存。入口見[各平台完整版與原版語音](docs/release/01-packaging.md#各平台完整版與原版語音)。
 
 ## 需要原版
 

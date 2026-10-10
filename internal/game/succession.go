@@ -44,15 +44,15 @@ type heirAsk struct {
 	List    []int // 候選，魅力由高到低（`HeirCandidates`）
 	Applied int   // 現在坐在位子上的那一位
 
-	Prestige   int // 繼承之前的人望
-	Chief      int // 繼承之前的軍師欄
+	Prestige   int        // 繼承之前的人望
+	Chief      int        // 繼承之前的軍師欄
 	Rank       state.Rank // 繼承者原本的職位
 	Troop      state.TroopType
 	Status     state.Status
-	Prefecture int // 繼承者所在的郡（0 表示沒有）
-	Governor   int // 那一郡原本的主事者
+	Prefecture int      // 繼承者所在的郡（0 表示沒有）
+	Governor   int      // 那一郡原本的主事者
 	Autonomy   Autonomy // 那一郡原本的自冶
-	Demoted    int // 被降成一般武將的舊主事者（−1 表示沒有）
+	Demoted    int      // 被降成一般武將的舊主事者（−1 表示沒有）
 
 	// Color 是繼承對白預擲的字色（`RND(8)`，`0x14dd2`）。**擲在原版擲的
 	// 那一刻**，對白本身等玩家答完才排進佇列——不預擲的話那一擲會晚幾步，
@@ -113,8 +113,8 @@ func (g *State) AssignHeir(index int) error {
 		g.applySuccession(f, x, a.Prestige)
 	}
 	g.heirAsks = g.heirAsks[1:]
-	g.pending = append(g.pending, g.bubbleAt(x, false, true,
-		t("bub.succeed"), a.Color))
+	g.pending = append(g.pending, g.bubbleAtKey(x, false, true,
+		"bub.succeed", a.Color))
 	return nil
 }
 

@@ -72,7 +72,7 @@ func (b *Battle) duelLeaders(ca, ct *Leader, sa, st Side, answer func() bool, se
 	b.scene(assets.SceneDuel) // `0x30b40`
 	// 挑戰（`0x30be6`：「X 出來與我決一死戰」）；第二句是空的（`0x30c2e`，
 	// 只亮應戰者那一格），remake 不畫。
-	sayA("bub.duelChallenge", speechPerson(ct.Name))
+	sayA("bub.duelChallenge", namedSpeechPerson(ct.Name, ct.Index))
 	b.msg()
 	var accept bool
 	if answer == nil {
@@ -100,7 +100,7 @@ func (b *Battle) duelLeaders(ca, ct *Leader, sa, st Side, answer func() bool, se
 		return nil, nil
 	}
 	// 應戰（`0x30ff9`：「X 鼠輩 吾豈懼汝哉」）。
-	sayT("bub.duelAccept", speechPerson(ca.Name))
+	sayT("bub.duelAccept", namedSpeechPerson(ca.Name, ca.Index))
 	// 依戰力分高下，與兵力無關。**體能就是血條**，降到 0 即落敗。
 	cw, tw := int(ca.War), int(ct.War)
 	rounds := DuelRounds(cw, tw, b.roll(duelRoundSpread(cw, tw)))
@@ -131,17 +131,17 @@ func (b *Battle) duelLeaders(ca, ct *Leader, sa, st Side, answer func() bool, se
 		case next%20 == 15:
 			sayT("bub.duelShout2")
 		case next == 130:
-			sayA("bub.duelPraise", speechPerson(ct.Name))
+			sayA("bub.duelPraise", namedSpeechPerson(ct.Name, ct.Index))
 		case next == 150:
-			sayT("bub.duelEqual", speechPerson(ca.Name))
+			sayT("bub.duelEqual", namedSpeechPerson(ca.Name, ca.Index))
 		case next == 30:
-			sayA("bub.duelKill", speechPerson(ct.Name))
+			sayA("bub.duelKill", namedSpeechPerson(ct.Name, ct.Index))
 		case next == 60:
 			sayT("bub.duelBlade")
 		case next == 100:
 			sayA("bub.duelHundred")
 		case next == 80:
-			sayT("bub.duelFamed", speechPerson(ca.Name))
+			sayT("bub.duelFamed", namedSpeechPerson(ca.Name, ca.Index))
 		}
 		if ca.Stamina == 0 || ct.Stamina == 0 || round+1 > rounds {
 			break
@@ -364,10 +364,10 @@ func (b *Battle) defeatInDuel(loser, winner *Leader, sl, sw Side, seized func(*L
 		b.scene(assets.SceneDuelCapture) // `0x31b51`／`0x31e66`
 	}
 	if !kills {
-		b.say(winner, boxW, leftW, "bub.duelSeize", speechPerson(loser.Name))
+		b.say(winner, boxW, leftW, "bub.duelSeize", namedSpeechPerson(loser.Name, loser.Index))
 		b.say(loser, boxL, leftL, "bub.duelSeized")
 	} else {
-		b.say(winner, boxW, leftW, "bub.duelDie", speechPerson(loser.Name))
+		b.say(winner, boxW, leftW, "bub.duelDie", namedSpeechPerson(loser.Name, loser.Index))
 		b.say(loser, boxL, leftL, "bub.duelDied")
 	}
 	if !kills {
@@ -671,7 +671,7 @@ func (b *Battle) UseStratagem(u *Unit, s Stratagem, target Hex) error {
 	// 再擲效果的骰。
 	if !StratagemSucceeds(ci, vi, b.roll(s.Spread())) {
 		// 被看穿（`0x2ad72`）：目標的統帥說「X 汝計已被吾識破」，肖像在左。
-		b.say(t.Chief(), BoxThird, true, "bub.seen", speechPerson(u.Chief().Name))
+		b.say(t.Chief(), BoxThird, true, "bub.seen", namedSpeechPerson(u.Chief().Name, u.Chief().Index))
 		b.note("blog.seen", u.Name(), t.Name(), s.Label())
 		b.checkOver()
 		return nil

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
+	voice "github.com/wicanr2/softworld_san1_remake/internal/speaker"
 )
 
 // 戰場上的對白（原版的訊息常式 `0x3273e`，`docs/spec/005` §9.7，`L0`、`[base]`）。
@@ -40,8 +41,10 @@ type Speech struct {
 	Units   [2]*Unit
 
 	// 句型與原始參數只供換語言，不寫進存檔。人物參數保留來源姓名。
-	textKey  string
-	textArgs []any
+	textKey                  string
+	textArgs                 []any
+	voiceClips               [3]int
+	voiceKnown, voiceHandled bool
 
 	// Scene 不是 0 時這一格不是對白，是一張場景圖 `SCG%02d` 拉進第三塊
 	// 面板 (448,268)（`0x32dfa`，`docs/spec/010`）：Style 是 `RND(4)` 挑的
@@ -57,11 +60,40 @@ type Speech struct {
 // speechPerson 標明這個參數是原始人物姓名，避免猜譯普通字串。
 type speechPerson string
 
+type speechPersonIndex struct {
+	name  string
+	index int
+}
+
+func namedSpeechPerson(name string, index int) speechPersonIndex {
+	return speechPersonIndex{name: name, index: index}
+}
+
+// VoiceClips returns the original snapshot, independent of language and names.
+func (s *Speech) VoiceClips() ([3]int, bool) {
+	if s == nil || s.Scene != 0 || s.LureFlash {
+		return [3]int{}, false
+	}
+	return s.voiceClips, s.voiceKnown
+}
+
+// ConsumeVoiceClips is called after rendering. The flag survives slice growth
+// and queue copies; disabled audio or missing data must not replay old dialogue.
+func (s *Speech) ConsumeVoiceClips() ([3]int, bool) {
+	if s == nil || s.voiceHandled {
+		return [3]int{}, false
+	}
+	s.voiceHandled = true
+	return s.VoiceClips()
+}
+
 func speechText(locale i18n.Locale, key string, args []any) string {
 	display := make([]any, len(args))
 	for i, arg := range args {
 		if name, ok := arg.(speechPerson); ok {
 			display[i] = i18n.PersonNameFor(locale, string(name))
+		} else if person, ok := arg.(speechPersonIndex); ok {
+			display[i] = i18n.PersonNameFor(locale, person.name)
 		} else {
 			display[i] = arg
 		}
@@ -105,6 +137,13 @@ func (b *Battle) say(speaker *Leader, box SpeechBox, left bool, key string, a ..
 	}
 	sp := Speech{Speaker: speaker.Index, Box: box, Left: left, Color: c,
 		Text: speechText(i18n.Current, key, a), textKey: key, textArgs: append([]any(nil), a...)}
+	person := -1
+	for _, arg := range a {
+		if target, ok := arg.(speechPersonIndex); ok {
+			person = target.index
+		}
+	}
+	sp.voiceClips, sp.voiceKnown = voice.VoiceClipsFor(key, person)
 	if s := b.inSkirmish; s != nil {
 		for _, u := range s.Units {
 			if u.Side.Attacking() {

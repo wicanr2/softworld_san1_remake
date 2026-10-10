@@ -22,14 +22,16 @@ func TestBubbleVoiceUsesRawAddresseeSnapshot(t *testing.T) {
 				g := &State{}
 				g.SeedRand(0x13579bdf)
 				x := &General{Index: 99, Name: row.speaker}
-				b := g.nameBubbleEvent(x, true, false, row.key, row.addressee).Bubble
+				target := &General{Name: row.addressee, Index: row.clips[0]}
+				b := g.nameBubbleEvent(x, true, false, row.key, target).Bubble
 				x.Name = "曹操"
+				target.Name, target.Index = "改名", 349
 				seed, draws := g.RandSeed(), g.RandDraws()
 				for _, to := range i18n.Locales() {
 					b.Relocalize(locale, to)
 					got, ok := b.VoiceClips()
 					if !ok || got != row.clips || g.RandSeed() != seed || g.RandDraws() != draws {
-						t.Fatal("語音映射使用了顯示姓名、人物槽或額外亂數")
+						t.Fatal("語音映射沒有保留原始人物槽，或額外擲了亂數")
 					}
 				}
 			})
@@ -39,18 +41,22 @@ func TestBubbleVoiceUsesRawAddresseeSnapshot(t *testing.T) {
 
 func TestBubbleVoiceUnknownAndSpecialViewsStaySilent(t *testing.T) {
 	g := &State{}
-	for _, row := range []struct{ key, speaker, addressee string }{
-		{"bub.warDeclare", "曹操", "孔融"},
-		{"bub.warDeclare", "劉備", "曹操"},
-		{"bub.warReply", "劉備", "孔融"},
-		{"bub.chiefOrder", "劉備", "孔融"},
+	for _, row := range []struct {
+		key   string
+		index int
+	}{
+		{"bub.missing", 32},
+		{"bub.warDeclare", -1},
+		{"bub.warReply", 350},
+		{"bub.chiefOrder", 999},
 	} {
-		b := g.nameBubbleEvent(&General{Name: row.speaker}, true, false, row.key, row.addressee).Bubble
+		b := g.nameBubbleEvent(&General{Name: "說話者"}, true, false, row.key,
+			&General{Name: "孔融", Index: row.index}).Bubble
 		if _, ok := b.VoiceClips(); ok {
 			t.Fatalf("未知對白被套入已知片段：%+v", row)
 		}
 	}
-	known := g.nameBubbleEvent(&General{Name: "劉備"}, true, false, "bub.warDeclare", "孔融").Bubble
+	known := g.nameBubbleEvent(&General{Name: "劉備"}, true, false, "bub.warDeclare", &General{Name: "孔融", Index: 32}).Bubble
 	for _, mutate := range []func(*Bubble){
 		func(b *Bubble) { b.FaceOnly = true },
 		func(b *Bubble) { b.Card = true },

@@ -1064,7 +1064,7 @@ func (b *Battle) dispose(captor Side, x *Leader, fate Fate) bool {
 	case Defected:
 		c := b.surrenderChance(captor, x)
 		if c <= 0 {
-			b.say(x, BoxThird, false, "bub.captiveRefuse", speechPerson(x.Name)) // `0x25c0e`
+			b.say(x, BoxThird, false, "bub.captiveRefuse", namedSpeechPerson(x.Name, x.Index)) // `0x25c0e`
 			return false
 		}
 		b.say(x, BoxThird, false, "bub.captiveYield") // `0x25c82`

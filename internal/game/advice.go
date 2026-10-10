@@ -68,49 +68,49 @@ func (g *State) Advise(kind AdviceKind, at int, by state.FactionID, t AdviceTarg
 	}
 	intel := int(chief.Intel)
 	p := g.Prefecture(at)
-	say := func(text string, salt int) Event { return g.bubbleEvent(chief, false, true, text, at, salt) }
+	say := func(key string, salt int) Event { return g.keyBubbleEvent(chief, false, true, key, at, salt) }
 	var ev []Event
 	switch kind {
 	case AdviceAttack:
-		ev = append(ev, say(t_("bub.adv.attack"), 361))
+		ev = append(ev, say("bub.adv.attack", 361))
 	case AdviceMove:
 		// 郡裡的現役將就是要走的那一位 → 走了沒人守（`0x18ee6`）。
 		if p != nil && g.ActiveGenerals(at) <= 1 {
-			ev = append(ev, say(t_("bub.adv.moveLast"), 358))
+			ev = append(ev, say("bub.adv.moveLast", 358))
 		} else {
-			ev = append(ev, say(t_("bub.adv.move"), 359))
+			ev = append(ev, say("bub.adv.move", 359))
 		}
 	case AdviceTrain:
-		ev = append(ev, say(t_("bub.adv.train"), 363))
+		ev = append(ev, say("bub.adv.train", 363))
 	case AdviceConscript:
-		ev = append(ev, say(t_("bub.adv.conscript"), 365))
+		ev = append(ev, say("bub.adv.conscript", 365))
 	case AdviceArms:
-		ev = append(ev, say(t_("bub.adv.arms"), 367))
+		ev = append(ev, say("bub.adv.arms", 367))
 	case AdviceBalance:
-		ev = append(ev, say(t_("bub.adv.balance"), 369))
+		ev = append(ev, say("bub.adv.balance", 369))
 	case AdviceRest:
-		ev = append(ev, say(t_("bub.adv.rest"), 377))
+		ev = append(ev, say("bub.adv.rest", 377))
 	case AdviceReclaim:
-		ev = append(ev, say(t_("bub.adv.reclaim"), 371))
+		ev = append(ev, say("bub.adv.reclaim", 371))
 	case AdviceFlood:
-		ev = append(ev, say(t_("bub.adv.flood"), 373))
+		ev = append(ev, say("bub.adv.flood", 373))
 	case AdviceFort:
-		ev = append(ev, say(t_("bub.adv.fort"), 375))
+		ev = append(ev, say("bub.adv.fort", 375))
 	case AdviceBuy, AdviceSell:
 		// 軍師先評價行情（`0x1b112`／`0x1b3a0`）：物價 >= RND(5)+48 算高。
 		high := p != nil && int(p.PriceLevel) >= AdvicePriceFloor+g.Roll(AdvicePriceSpread, at, 0x1b112)
 		switch {
 		case kind == AdviceBuy && high:
-			ev = append(ev, say(t_("bub.adv.buyHigh"), 378))
+			ev = append(ev, say("bub.adv.buyHigh", 378))
 		case kind == AdviceBuy:
-			ev = append(ev, say(t_("bub.adv.buyLow"), 380))
+			ev = append(ev, say("bub.adv.buyLow", 380))
 		case high:
-			ev = append(ev, say(t_("bub.adv.sellHigh"), 379))
+			ev = append(ev, say("bub.adv.sellHigh", 379))
 		default:
-			ev = append(ev, say(t_("bub.adv.sellLow"), 381))
+			ev = append(ev, say("bub.adv.sellLow", 381))
 		}
 	case AdviceRelief:
-		ev = append(ev, say(t_("bub.adv.relief"), 382))
+		ev = append(ev, say("bub.adv.relief", 382))
 	case AdviceSearch:
 		// 郡裡有沒有可找的人（身分 9）決定 385 或 387；軍師不夠聰明就亂猜
 		// 385–387（`0x1ba51`–`0x1ba8c`）。
@@ -125,7 +125,7 @@ func (g *State) Advise(kind AdviceKind, at int, by state.FactionID, t AdviceTarg
 		if AdviceGuessSpread > 0 && g.Roll(AdviceGuessSpread, at, 0x1ba63)+AdvisorWarnFloor > intel {
 			key = []string{"bub.adv.searchYes", "bub.adv.searchMaybe", "bub.adv.searchNone"}[g.Roll(3, at, 0x1ba81)]
 		}
-		ev = append(ev, say(t_(key), 385))
+		ev = append(ev, say(key, 385))
 	case AdviceRecruit:
 		// 看得準的軍師照牽絆說（`0x1beed`）：目標的牽絆對象效力於我方就
 		// 「必會前來」、效力於別人就「不會加入」；其餘照能力值那一半的
@@ -137,11 +137,11 @@ func (g *State) Advise(kind AdviceKind, at int, by state.FactionID, t AdviceTarg
 		if g.Roll(AdviceGuessSpread, at, 0x1beff)+AdvisorWarnFloor > intel {
 			key = []string{"bub.adv.recruitYes", "bub.adv.recruitNo"}[g.Roll(2, at, 0x1bf1d)]
 		}
-		ev = append(ev, say(t_(key), 388))
+		ev = append(ev, say(key, 388))
 	case AdviceReward:
-		ev = append(ev, say(t_("bub.adv.reward"), 395))
+		ev = append(ev, say("bub.adv.reward", 395))
 	case AdviceDismiss:
-		ev = append(ev, say(t_("bub.adv.dismiss"), 396))
+		ev = append(ev, say("bub.adv.dismiss", 396))
 	case AdviceHeadhunt:
 		// `0x1d95d`：RND(18)+80 < 謀略才真的判（`0x1dc0a` > 0 → 必來投靠），
 		// 否則亂猜。
@@ -153,14 +153,14 @@ func (g *State) Advise(kind AdviceKind, at int, by state.FactionID, t AdviceTarg
 		} else if g.Roll(2, at, 0x1d97b) == 0 {
 			key = "bub.adv.headhuntYes"
 		}
-		ev = append(ev, say(t_(key), 406))
+		ev = append(ev, say(key, 406))
 	case AdvicePlot:
 		key := map[Plot]string{PlotTigerWolf: "bub.adv.plotTiger", PlotFarNear: "bub.adv.plotDistant",
 			PlotForgery: "bub.adv.plotForge", PlotIncite: "bub.adv.plotIncite", PlotJointAttack: "bub.adv.plotJoint"}[t.What]
 		if key == "" {
 			return nil
 		}
-		ev = append(ev, say(t_(key), 412))
+		ev = append(ev, say(key, 412))
 		// 再一則預測：目的郡的主事者「乃無用之輩 此計必成」或「深具謀略
 		// 此計不易成功」（`0x2c79d`，判定 `0x2dd66` 不擲骰）；聯合出兵那一支
 		// 預測的是守方求不求得到援軍（419／420）。不夠聰明就亂猜。
@@ -169,7 +169,7 @@ func (g *State) Advise(kind AdviceKind, at int, by state.FactionID, t AdviceTarg
 			if g.jointNeedsHelp(by, t.To) {
 				key = "bub.adv.jointHelp"
 			}
-			ev = append(ev, say(t_(key), 419))
+			ev = append(ev, say(key, 419))
 		} else if gov := g.Governor(t.To); gov != nil {
 			envoy := g.General(t.Target)
 			ok := envoy != nil && g.plotSucceeds(by, envoy, t.To)
@@ -180,7 +180,7 @@ func (g *State) Advise(kind AdviceKind, at int, by state.FactionID, t AdviceTarg
 			if ok {
 				key = "bub.adv.plotEasy"
 			}
-			ev = append(ev, g.nameBubbleEvent(chief, false, true, key, gov.Name, at, 417))
+			ev = append(ev, g.nameBubbleEvent(chief, false, true, key, gov, at, 417))
 		}
 	default:
 		return nil

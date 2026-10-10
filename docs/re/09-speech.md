@@ -344,3 +344,46 @@ R2 的新原版固定種子遇到既有密碼 helper 不能續行，沒有新原
 無速度校正入口 `0x5a70`，命中零次。比對原始 prologue 與浮點校正 bytes 後，
 R4 改攔 `0x5ad6` 通過。各版腳本、日誌與失敗均保留，沒有調 seed 選成功結果。
 正式接線契約見 [008 §9](../spec/008-speaker-audio.md#9-已知宣戰對白的正式觸發)。
+
+## 10. 完整對白語音目錄研究
+
+2026-10-10 使用者要求補齊其餘原版對白語音後才交付。目錄與索引為 `L0 [both]`；
+正式接線依 [008 §10](../spec/008-speaker-audio.md#10-正常遊戲完整對白語音) 的契約，
+已限目錄、接線與正常抽樣 CONFORMED。現有兩則已知宣戰原版收據保持。
+以 [voice_catalog.py](../../tools/ida/voice_catalog.py) 對唯讀 `.i64` 的一次性副本
+匯出原始函式、指令、bytes、段基底與交叉參照，不修改名稱或正式資料庫。
+私人輸出放在 `workplace/voice-catalog-20261010-r1/`。
+匯出先確認工具版本、函式數及輸入 SHA，再分析訊息常式與各呼叫端的三槽來源。
+原版及加強版分別取證；未確認的索引不接入正式播放器。
+加強版正常新局記憶體入口為
+[voice_catalog_oracle_test.go](../../internal/parity/voice_catalog_oracle_test.go) 的
+`TestVoiceCatalogSnapshotPlus`，設定 `SAN1_VOICE_CATALOG_OUT` 指向本機證據目錄，
+以 `-tags oracle` 執行。只在首次亂數入口前固定種子，不注入人物、州郡或語音開關。
+
+本輪新增加強版獨立證據，原版的完整片語與呼叫語意沿用
+[RE/12](12-message-box.md) 及 [005 §9](../spec/005-main-screen.md#9-訊息框)。
+原版 DATA5 解包輸入 SHA-256 為 `bc4163eac5c39db8e605efb4f7937fb14182636a2dbfae962eb0316ef3160f52`。
+加強版正常新局快照 SHA-256 為 `3f708e74aabf41c69c6c62789cf4e8dd2e8238728840555ba41c71ecabf88831`，
+來源 ASV.EXE 同第 9 節，dosgolem 為 `92f84f0`，固定種子 `0x13579bdf`。
+
+| L0 定位 | 原版 | 加強版 |
+|---|---|---|
+| 訊息入口，執行期線性 | `0x3273e` | `0x2f366` |
+| 訊息結尾，exclusive | `0x32df9` | `0x2f9ab` |
+| 原始 far-call 運算元 | `3273:000e` | `2f36:0006` |
+| 直接 far-call 數 | 111 | 111 |
+| 原生 DS 線性基底 | `0x427e0` | `0x3f040` |
+| 文字表，DS-relative | `0x9382 + index×4` | `0x952e + index×4` |
+
+兩個 IDA raw database 的載入基底均為 `0x1100`，IDA effective address 在此與
+各自快照的執行期線性相同，檔案位移另減 `0x1100`。不得套用 AA.EXE DB 的換算。
+原始 16-bit 單段會讓高位址近跳轉繞回低 64 KiB；副本依原始 far-call 的 CS
+建立分段並初始化 CS，函式邊界另以原始 prologue／epilogue 驗證。
+兩版各 111 處呼叫的參數準備都已由 IDA 解碼，原始名稱與 bytes 保持。
+
+`L0 [both]`：三個參數同時決定顯示文字與語音檔名，0–349 為人物索引，
+350–499 為片語索引。兩版 150 個片語槽逐項相同，現有 102 個 `bub.*` 母本模板
+都有唯一的三段分解。以 [voice-catalog-audit.py](../../tools/voice-catalog-audit.py)
+重生 [機器目錄](../../internal/speaker/voice_catalog.json)，記錄兩版輸入 SHA、位址與索引，不提交原始
+語音或快照。模板重建僅用於研究與驗證，正式遊戲依鍵與原始人物索引派送。
+防拷頁 350–355 的六則沿用 004／005 的排除範圍，不新增防拷玩家流程。

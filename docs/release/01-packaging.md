@@ -293,3 +293,32 @@ chmod 755 /stage/san1-v.1.1.0-20261007-linux-x86_64.AppImage
 `smoke/complete-final-audit.json` 獨立回讀十二項新舊產物與擁有權，全部通過。
 AppDir、SquashFS 與重複暫存 AppImage 已在確認正式副本後移除，共釋放
 378,760,020 bytes；清單在 `workplace/complete-delivery-20261010/cleanup.json`。
+
+## 各平台完整版與原版語音
+
+使用者於 2026-10-10 明確改為各平台分開交付，並要求補齊正常原版對白語音後再交付。
+新修正版採 `v.1.1.1-20261010`。本節目前為建包準備，尚未產生新版交付；
+既有 `v.1.1.0-20261007` tag／Release 保持原提交。
+
+新版現行入口將為各自獨立的 Linux x86_64 AppImage、Windows x64 ZIP、
+macOS Intel tar.gz、macOS Apple Silicon tar.gz。每包獨立包含兩版遊戲、高清素材、
+字型、LICENSE 與啟動器，影片另存 `promo/`，不建立跨平台整合 ZIP。
+所有含原版資料、高清衍生素材與原版音樂的產物仍只留本機。
+
+正式語音使用 [008 §10](../spec/008-speaker-audio.md#10-正常遊戲完整對白語音) 的
+102 個模板與原始人物索引。兩版各 457 個必要原版片段可完整解碼，0–349 人物槽
+皆可解析。語言與 Theme 不決定語音，畫出之後只播一次，保留既有音效／語音開關。
+AI 維持原版、加強版還原及強化 1–5 級；強化級數代表每郡每月 1–5 道指令，
+五級各跑 36 個月有不同實際結果，原版規則與存檔格式保持。
+
+建置入口仍是 `tools/release.sh <完整版號>`，使用現有
+`eob-remake-release:1.26.7-ebiten2.9.9-20261008-r2` 與
+`eob-remake-macos:1.26.7-ebiten2.9.9-20261008-r2`。
+`SAN1_RELEASE_IMAGE`／`SAN1_MAC_IMAGE` 可指定經驗證的替代版本。
+`tools/full-local.sh <完整版號>` 從新版公開引擎包另建四個私人完整版。
+AppImage 依前節固定 runtime 與授權重包，從全新 AppDir 產生。
+
+[complete-local-bundle.py](../../tools/complete-local-bundle.py) 已改為只核對與索引獨立
+平台檔案，要求兩版 AppRun、Wine、影片技術與畫面審查通過，輸出
+`smoke/platform-delivery.json` 與總清單的 `complete_delivery.layout=separate_platform_packages`。
+它不再建立 ZIP，並拒收同一新版目錄內的跨平台整合 ZIP。
