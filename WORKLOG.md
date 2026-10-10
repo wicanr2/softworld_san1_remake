@@ -1606,3 +1606,5 @@ ZIP 旗標通過，SHA 為 f359c22a45867f384c6b508f9d8cf7d43264aeb0a59d9623b2e1c
 確認正式 AppImage 與整合包保留後，移除本輪 AppDir、SquashFS 及重複暫存 AppImage，
 釋放 378,760,020 bytes。保留來源錄影、原版音源、失敗證據、授權來源及驗收收據。
 全專案擁有權與誤建 .md 目錄檢查為零問題，沒有 san1 遺留容器。
+工具與文件提交 `666e3cd` 已推送 `origin/main`，遠端回讀相符；正式 tag 仍指向
+`cecfd31`。使用者原有未追蹤 `AGENTS.md` 保持未修改、未暫存。
