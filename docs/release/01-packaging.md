@@ -303,7 +303,8 @@ AppDir、SquashFS 與重複暫存 AppImage 已在確認正式副本後移除，�
 
 ### 配樂與滑鼠修正版打包契約
 
-狀態：`READY`。使用者於 2026-10-11 授權將已驗證的配樂、滑鼠及選取標記
+狀態：`CONFORMED`，限封包內容、Linux 正常抽樣與 Windows Wine 啟動。
+使用者於 2026-10-11 授權將已驗證的配樂、滑鼠及選取標記
 修正打包。採 `v.1.1.2-20261011`，從乾淨提交重建四平台引擎，再建立各自包含
 兩版資料及既有 B／4× 高清素材的本機完整版。舊版套件、tag 及 Release 保持。
 
@@ -317,12 +318,46 @@ AppImage 與 Wine 收據通過，影片欄位記為未要求，不複製或重�
 含原版素材的完整版只留 `dist-all/v.1.1.2-20261011/full-local/`，不公開上傳。
 原生 Windows／macOS、FUSE、人耳、簽章及公證的既有限制保持。
 
+來源提交及本機 tag 固定於 `4a2709372e5216fb7280b3f89572b98c4d71e6f6`。
+四個架構均從乾淨提交重建。正式版號由執行檔及套件說明回讀，工具映像檔
+識別碼與輸入雜湊保存在 `dist-all/v.1.1.2-20261011/SHA256SUMS.json`。
+
+下列路徑相對於 `dist-all/v.1.1.2-20261011/`。
+
+| 平台 | 交付檔案 | 大小 |
+|---|---|---|
+| Linux x86_64 | `full-local/san1-v.1.1.2-20261011-linux-x86_64.AppImage` | 122,149,368 bytes |
+| Windows x64 | `full-local/san1-v.1.1.2-20261011-windows-amd64.zip` | 120,966,832 bytes |
+| macOS Intel | `full-local/san1-v.1.1.2-20261011-darwin-amd64.tar.gz` | 120,797,797 bytes |
+| macOS Apple Silicon | `full-local/san1-v.1.1.2-20261011-darwin-arm64.tar.gz` | 120,463,765 bytes |
+
+每包獨立含兩版共 66 個原版檔、904 筆高清項目、444 個高清檔、自由字型、
+授權及啟動器。四個公開引擎包只含引擎、文件及自由字型，其獨立清單為
+`patch/SHA256SUMS-public.json`，未上傳 GitHub。
+
+| 驗證 | 結果與收據 |
+|---|---|
+| 正式 cmd／internal 回歸 | 1,828 通過、27 略過、零失敗；28 套件中 17 個含測試，`smoke/regression-summary.json`。未啟用 oracle，略過不計通過 |
+| 四平台封包內容 | 版號、架構、原版及高清雜湊、字型與授權通過，`smoke/package-contents.json` |
+| Linux AppImage | runtime 解包後實際 AppRun 啟動兩版，存檔目錄可寫，`smoke/appimage-smoke.json`；未驗 FUSE 掛載 |
+| Windows ZIP | 兩版 Wine／Xvfb 各啟動八秒，`smoke/windows-wine-smoke.json`；未驗原生 Windows |
+| 正式 Linux 原貌／高清滑鼠 | 兩版正常開局、查閱與存檔；高清另驗人物卡、越界數字輸入與取消。四份存檔及 144 張 PNG 獨立回讀，`workplace/v112-packaged-{mouse-audio,hd}/receipt.json` |
+| 正式片頭及標題配樂 | 兩版各兩段約四秒錄音，非靜音且完整匹配各自參考 PCM；時間軸契約另見 009，未作人耳驗收 |
+| 最終獨立回讀 | 九個封包大小及 SHA-256、四段錄音、144 PNG、四份存檔與兩類啟動收據通過，`smoke/final-delivery-audit.json` |
+
+正式 Linux 執行檔 SHA-256 為
+`36e1f0c8e27433b236cb924133dc9e44024a97125ddea5a1a68bd1256cab8d41`。
+AppDir、SquashFS 與重複 AppImage 在核對最終副本後移除，釋放 378,865,080 bytes；
+收據為 `workplace/complete-delivery-v1.1.2-20261011/cleanup.json`。
+
+### v.1.1.1-20261010 語音修正版交付紀錄
+
 使用者於 2026-10-10 明確改為各平台分開交付，並要求補齊正常原版對白語音後再交付。
 新修正版採 `v.1.1.1-20261010`，本機交付已完成。來源提交為
 `c3ee5a7ed3a271bbde7757e6b3f44a57d022ed20`，四個架構均從乾淨提交重編。
 既有 `v.1.1.0-20261007` tag／Release 保持原提交；公開 Release 仍維持該版。
 
-新版現行入口為各自獨立的 Linux x86_64 AppImage、Windows x64 ZIP、
+該版入口為各自獨立的 Linux x86_64 AppImage、Windows x64 ZIP、
 macOS Intel tar.gz、macOS Apple Silicon tar.gz。每包獨立包含兩版遊戲、高清素材、
 字型、LICENSE 與啟動器，影片另存 `promo/`，不建立跨平台整合 ZIP。
 所有含原版資料、高清衍生素材與原版音樂的產物仍只留本機。

@@ -1871,3 +1871,41 @@ RMS 約 −24.45 至 −19.92 dBFS。正式播放器與參考共用合成器，�
 `--packages-only`，仍要求平台檔案、AppImage 與 Wine 通過；沒有影片時記為
 未要求，舊版預設的影片驗收閘門保持。完整版說明增加滑鼠操作，README
 保留同一操作入口。打包及正式包玩家路徑驗證進行中。
+
+四平台交付完成。乾淨建包來源為
+`4a2709372e5216fb7280b3f89572b98c4d71e6f6`，本機 tag
+`v.1.1.2-20261011` 固定於該提交。未 push、未建立 Release、未寫入 Issue。
+正式輸出集中於 `dist-all/v.1.1.2-20261011/`，四個現行完整版是 Linux
+AppImage、Windows x64 ZIP、macOS Intel 及 Apple Silicon tar.gz。
+每包獨立含兩版原版檔、高清素材、自由字型、LICENSE 與啟動器。
+
+| 驗證 | 結果與收據 |
+|---|---|
+| 四架構重建 | release.sh、full-local.sh 通過；Go 1.26.7、Ebiten 2.9.9，映像檔識別碼與輸入 SHA-256 在 manifest |
+| 套件內容與架構 | 四包各 66 原版檔、904 高清項目、444 高清檔；逐檔雜湊及授權通過，`smoke/package-contents.json` |
+| Linux AppImage | 兩版經 runtime 解包後實際 AppRun 啟動，存檔目錄可寫；`smoke/appimage-smoke.json`，FUSE 未驗 |
+| Windows ZIP | 兩版 Wine／Xvfb 各八秒通過；`smoke/windows-wine-smoke.json`。中文檔名 UTF-8 旗標、完整版說明 BOM／CRLF、ASCII 啟動器 CRLF 另經回讀 |
+| 正式回歸 | `go test -json -p 2 ./cmd/... ./internal/... -count=1 -timeout=18m`，28 套件中 17 個含測試，1,828 通過、27 略過、零失敗；`workplace/v112-regression.jsonl` 及 `smoke/regression-summary.json` |
+| 正式包原貌滑鼠與配樂 | 兩版從片頭正常滑鼠開局、查閱及存檔；片頭／標題四段約四秒錄音非靜音，完整 PCM 匹配各自參考；`workplace/v112-packaged-mouse-audio/receipt.json` |
+| 正式包高清滑鼠 | 兩版經設定列切 4× 高清，正常開局、郡清單、人物卡、越界金額重試、取消及存檔；`workplace/v112-packaged-hd/receipt.json` |
+| 獨立回讀 | 九個封包大小與 SHA-256、144 張 PNG、四段完整錄音、四份存檔及啟動收據通過；`smoke/final-delivery-audit.json` |
+
+正式 Linux 執行檔 SHA-256 為
+`36e1f0c8e27433b236cb924133dc9e44024a97125ddea5a1a68bd1256cab8d41`，
+操作、錄音及 AppImage 啟動收據均綁定此執行檔。公開清單
+`patch/SHA256SUMS-public.json` 只含四個引擎包；含原版素材的完整版只留本機。
+Windows／macOS 原生試玩、人耳聽辨、FUSE、簽章及公證尚未驗。
+27 項略過為既有測試前提未滿足，未算成通過；本輪未啟用 oracle。
+
+驗證工具的失敗另行分類。初次 `go test ./...` 掃入 gitignore 的 workplace
+實驗 Go 檔，造成無關建置失敗；停止該次執行後，明確限定正式 cmd／internal
+範圍並乾淨重跑通過。獨立回讀第一次把暫存目錄誤寫為
+`complete-delivery-v.1.1.2-20261011`，在同一容器映像修正為實際目錄
+`complete-delivery-v1.1.2-20261011` 後全數通過；未改正式封包。
+
+CONTEXT、README、文件索引、打包契約與驗證矩陣已更新至新版實際結果。
+舊版套件、tag、Release 與影片保持。AppDir、SquashFS 與重複 AppImage
+核對最終副本後清理，釋放 378,865,080 bytes；保留 runtime 授權、內容驗證
+及清理收據，入口為 `workplace/complete-delivery-v1.1.2-20261011/cleanup.json`。
+Docker 本專案容器均已移除，工作樹 root-owned 檔案及誤建 `.md` 目錄為零。
+交付物及文件 UID/GID 為 1000:1000，`git diff --check` 通過；AGENTS.md 保持未暫存。
