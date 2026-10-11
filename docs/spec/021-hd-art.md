@@ -3176,6 +3176,12 @@ HD 底圖縮小也使用相同取樣方式。16×16 字模的有限筆畫解析�
 199 張唯一 PNG 已完整解碼並核對 SHA，獨立回讀為
 `workplace/audio/audio-font-catalog-independent-20261011.json`。整份 HD 保持 READY。
 
+[README 字體比較](../../README.md#楷書與隸書)使用以上正常 Linux 基本版主選單的
+四張完整原生截圖，包含楷書／隸書及原貌／HD。來源為修正提交 `9d901dd` 的
+同一遊戲程式，沒有另繪字樣、裁切或重新縮圖；資料來源及四張 SHA-256 記在
+`workplace/audio/v113-readme-fonts-20261011.json`。比較只呈現 remake 的字體差異，
+不宣稱是原版字模或原版對拍。
+
 ### 6.64 HD 武將姓名總覽與獨立圖鑑
 
 狀態：`CONFORMED`，限文件及圖錄。使用者要求總覽在頭像下方標示姓名，

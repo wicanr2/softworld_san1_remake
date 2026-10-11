@@ -301,6 +301,25 @@ AppDir、SquashFS 與重複暫存 AppImage 已在確認正式副本後移除，�
 
 ## 各平台完整版與原版語音
 
+### 語音與字體修正版打包契約
+
+狀態：`READY`。使用者於 2026-10-11 要求重新打包，並將楷書與隸書截圖
+放到 README。新版本為 `v.1.1.3-20261011`，包含 008 §11 的 8,000 Hz 語音與
+接縫處理、021 §6.63 的最近鄰最終縮放，以及 README 的四張實際字體截圖。
+舊版封包、tag、Release 固定；影片沿用既有入口，不列入本輪重新驗收。
+
+從乾淨提交使用既有 `tools/release.sh` 重建四平台引擎，公開包加入四張字體
+截圖，逐包核對完整檔案清單及來源 SHA。完整版仍用 `tools/full-local.sh`
+包含兩版原版資料及既有高清包。沿用 Linux AppImage、Windows x64 ZIP、
+macOS Intel／Apple Silicon 各一 tar.gz，沒有跨平台整合 ZIP。
+
+驗收包含 cmd／internal 正式回歸、四包版號與架構、授權、字型及圖片、原版與
+高清素材 SHA；Linux 兩版 AppRun、Windows 兩版 Wine；正式 Linux 執行檔的
+兩版原貌／HD 楷書隸書縮放與完整三段語音。正常操作、不注入狀態或時鐘。
+含原版資料的完整版只留 `dist-all/v.1.1.3-20261011/full-local/`；可公開的引擎包
+與其清單置於 `patch/`。原生 Windows／macOS、FUSE、簽章及人耳另驗。
+重跑工具及固定 AppImage runtime 來源沿用上方「三平台整合包與實錄推廣片」。
+
 ### 配樂與滑鼠修正版打包契約
 
 狀態：`CONFORMED`，限封包內容、Linux 正常抽樣與 Windows Wine 啟動。

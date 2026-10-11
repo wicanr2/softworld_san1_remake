@@ -65,6 +65,7 @@ case "$phase" in
       fi
       cp /src/LICENSE /src/README.md "$dir/"
       cp /src/docs/images/remake-main.png "$dir/docs/images/"
+      cp /src/docs/images/remake-font-{kai,li}{,-hd}.png "$dir/docs/images/"
       cp /src/fonts/unifont.hex.gz /src/fonts/ascii6x10.hex.gz \
          /src/fonts/kai.hex.gz /src/fonts/li.hex.gz \
          /src/fonts/LICENSE-unifont.txt /src/fonts/LICENSE-x11-misc-fixed.txt \
@@ -136,6 +137,10 @@ PY
         "$name" "$name/$bin_name" "$name/LICENSE" "$name/README.md" \
         "$name/如何開始.txt" "$name/fonts" "$name/docs" "$name/docs/images" \
         "$name/docs/images/remake-main.png" \
+        "$name/docs/images/remake-font-kai.png" \
+        "$name/docs/images/remake-font-li.png" \
+        "$name/docs/images/remake-font-kai-hd.png" \
+        "$name/docs/images/remake-font-li-hd.png" \
         "$name/fonts/unifont.hex.gz" "$name/fonts/ascii6x10.hex.gz" \
         "$name/fonts/kai.hex.gz" "$name/fonts/li.hex.gz" \
         "$name/fonts/LICENSE-unifont.txt" \
@@ -200,6 +205,10 @@ for name in ('go.mod', 'go.sum', 'LICENSE', 'README.md',
              'fonts/unifont.hex.gz', 'fonts/ascii6x10.hex.gz',
              'fonts/kai.hex.gz', 'fonts/li.hex.gz'):
     inputs[name] = hashlib.sha256((pathlib.Path('/src') / name).read_bytes()).hexdigest()
+for name in ('remake-font-kai.png', 'remake-font-li.png',
+             'remake-font-kai-hd.png', 'remake-font-li-hd.png'):
+    path = 'docs/images/' + name
+    inputs[path] = hashlib.sha256((pathlib.Path('/src') / path).read_bytes()).hexdigest()
 manifest = {'version': version, 'source_commit': os.environ['SAN1_SOURCE_COMMIT'],
             'tool_images': {'release': os.environ['SAN1_GO_IMAGE_ID'],
                             'macos': os.environ['SAN1_MAC_IMAGE_ID']},

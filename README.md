@@ -37,6 +37,15 @@
 
 截圖使用劇本 001、單人曹操、難度 5。原貌讀取本機合法持有的原版美術，HD 使用本機高清素材包，文字使用重製版字庫。操作面板涵蓋主畫面、人物清單、資料卡、存檔及戰場指令，接入與驗證見[操作面板規格](docs/spec/021-hd-art.md#638-操作面板)。**HD 計畫仍在進行**；圖示呈現目前成果，驗收範圍見[高清規格](docs/spec/021-hd-art.md)與[畫面對拍紀錄](docs/playtest/03-screen-parity.md)。
 
+### 楷書與隸書
+
+主選單可直接切換「使用楷書字」與「使用隸書字」。以下是 Linux remake 實際操作後的完整截圖，原貌為 640×408，HD 為 2560×1632；點圖可看原生尺寸。兩種字體都保留點陣筆畫，縮放顯示採最近鄰取樣。[字體縮放驗證](docs/spec/021-hd-art.md#663-點陣字的最終顯示縮放)
+
+| 畫面 | 楷書 | 隸書 |
+|---|---|---|
+| 原貌 | <a href="docs/images/remake-font-kai.png"><img src="docs/images/remake-font-kai.png" width="360" alt="remake 原貌主選單：切換楷書後的實際完整畫面"></a> | <a href="docs/images/remake-font-li.png"><img src="docs/images/remake-font-li.png" width="360" alt="remake 原貌主選單：切換隸書後的實際完整畫面"></a> |
+| HD | <a href="docs/images/remake-font-kai-hd.png"><img src="docs/images/remake-font-kai-hd.png" width="360" alt="remake HD 主選單：切換楷書後的實際完整畫面"></a> | <a href="docs/images/remake-font-li-hd.png"><img src="docs/images/remake-font-li-hd.png" width="360" alt="remake HD 主選單：切換隸書後的實際完整畫面"></a> |
+
 ### 素材總覽
 
 原版圖錄收錄兩版各 613 張點陣圖與 36 張地形，兩版相同素材合併後共 650 格。HD 圖錄收錄目前素材包的全部 437 張 PNG，對應兩版各 452 筆資源。點圖可放大查看；兩份圖錄各自排列，面板拼件與共用圖片的數量不同。
