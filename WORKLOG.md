@@ -1975,5 +1975,14 @@ README、素材包說明、文件索引、目前狀態及打包文件已連結�
 重跑通過，未改動圖片。正式遊戲程式未修改，沿用已完成的遊戲及封包驗收，
 本輪只補素材載入與圖錄檢查。既有 tag、Release、附件與本機完整版保持。
 
-公開檔案 UID/GID 為 1000:1000，`git diff --check` 通過。遠端回讀於推送後補記；
-AGENTS.md 保持未暫存，全部一次性容器完成後移除。
+公開檔案 UID/GID 為 1000:1000，`git diff --check` 通過。素材提交
+`64de98ae5b95fa2808c2bca220443ffa9cc6a0e4` 已推送至 main；GitHub 完整樹的
+1,062 個檔案物件全部與本機 Git 相符，HD 目錄 439 檔、437 PNG 無缺漏。
+GitHub 渲染的 README 內兩張 420 像素預覽、替代文字、放大連結及素材包入口
+均已核對，收據為 `workplace/asset-overviews/remote-verification.json`。
+現有 v.1.1.2 tag 物件與原程式提交保持，021 §6.62 限本節 CONFORMED。
+
+本輪兩版原版匯出暫存共 1,302 檔、2,992,018 bytes 已移除，原始資料與正式
+HD 包保持。公開索引、重生工具及驗證收據全部保留；清理明細為
+`workplace/asset-overviews/cleanup.json`。AGENTS.md 保持未暫存，全部一次性容器
+已移除；全工作樹 root-owned 檔案及誤建 `.md` 目錄為零。

@@ -3106,7 +3106,7 @@ R1 驗證器未跳過自由字型註解行而中止，失敗收據保留；修�
 
 ### 6.62 HD 素材入庫與總覽
 
-狀態：`READY`。使用者於 2026-10-11 明確要求把 HD 素材上傳 GitHub repo，
+狀態：`CONFORMED`，限素材入庫與總覽。使用者於 2026-10-11 明確要求把 HD 素材上傳 GitHub repo，
 並在 README 顯示原版素材與 HD 素材總覽。本節取代先前限本機保存規則的
 對應範圍，不改遊戲行為、原版著作權歸屬或既有 Release。
 
@@ -3129,3 +3129,16 @@ R1 驗證器未跳過自由字型註解行而中止，失敗收據保留；修�
 - 驗證逐檔 PNG 完整解碼、尺寸與雜湊，正式載入器對兩版都須為
   452/452、警告零；查看總覽並核對全部項目，再核對遠端提交及檔案。
   本節驗收只涵蓋入庫與圖錄，整份 HD 保持 READY。
+
+兩版正式載入各 452/452、警告零；437 PNG 完整解碼、尺寸、雜湊與定版來源
+bytes 全部相符。兩版各 613 張 IMG／FAC 與 36 張地形合併為 650 格原版圖錄，
+HD 圖錄為 437 格；兩張圖均已查看，圖錄索引完整涵蓋全部來源及輸出。
+本機收據為 `workplace/asset-overviews/audit.json` 與 `hd-pack-check.log`。
+
+[素材提交 64de98a](https://github.com/wicanr2/softworld_san1_remake/commit/64de98ae5b95fa2808c2bca220443ffa9cc6a0e4)
+已推送至 main。GitHub 完整樹的 1,062 個檔案物件全部與本機相符，HD 目錄共
+439 檔，包含 437 PNG、manifest 與 README。GitHub 實際渲染的 README 內兩張
+總覽、420 像素預覽、替代文字、點圖放大及素材包連結均存在。
+遠端收據為 `workplace/asset-overviews/remote-verification.json`；原版單張匯出
+暫存已清，重生入口仍為 `bash tools/asset-overviews.sh`。本輪未修改遊戲程式、
+既有 tag／Release 或完成整份 HD 的剩餘驗收。
