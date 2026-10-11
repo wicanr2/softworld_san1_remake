@@ -3142,3 +3142,73 @@ HD 圖錄為 437 格；兩張圖均已查看，圖錄索引完整涵蓋全部來
 遠端收據為 `workplace/asset-overviews/remote-verification.json`；原版單張匯出
 暫存已清，重生入口仍為 `bash tools/asset-overviews.sh`。本輪未修改遊戲程式、
 既有 tag／Release 或完成整份 HD 的剩餘驗收。
+
+### 6.63 點陣字的最終顯示縮放
+
+狀態：`CONFORMED`，限使用者回報的楷書、隸書切換後模糊與下列抽樣。
+本節為 remake 顯示修正，適用 `[both]` 原貌與 HD，不新增原版機制斷言。
+
+正常片頭至主選單、楷書→隸書→楷書的字體區完整恢復，沒有殘影。
+原貌 640／2560 寬的文字區只有前景、背景兩色，960 寬變成六色。
+Ebiten 2.9.9 的 `DefaultDrawFinalScreen` 在非整數放大用 `FilterPixelated`，
+縮小用 `FilterLinear`，因此整數繪製的點陣字仍會在最終顯示混色。
+實作來源為鎖版 module 的 `gameforui.go:137–154`，
+介面契約見 [官方 FinalScreenDrawer 文件](https://pkg.go.dev/github.com/hajimehoshi/ebiten/v2@v2.9.9#FinalScreenDrawer)。
+本機基準為 `workplace/audio/font-switch-baseline-20261011-r2/`。
+
+由 `app.DrawFinalScreen` 沿用引擎提供的幾何矩陣，以 `FilterNearest` 顯示完整畫面。
+不改字庫、字寬、排版、點擊座標或存檔。原貌／HD 的最終顯示皆不混色；
+HD 底圖縮小也使用相同取樣方式。16×16 字模的有限筆畫解析度仍是既有限制。
+
+驗收從正常片頭至主選單，兩版皆在原貌／HD 切換楷書、隸書及回切；
+抽驗 640、960、1280、2560 寬，文字區對照原生畫面的最近鄰取樣。
+恰落來源像素邊界時，GPU 與 Pillow 的方向選擇可能不同；逐像素容許兩側
+任一原色，不容許混色，不排除邊界像素。修正前程式須在相同檢查失敗。
+操作入口為 [verify-font-scaling-inner.py](../../tools/verify-font-scaling-inner.py)，
+在 `eob-audio-capture:20261009-r3` 容器使用 `--out workplace/audio/<新名稱>`，
+沿用 `verify-voice.sh` 的建置輸出與唯讀原始素材掛載。字型與控制器回歸另驗。
+
+兩版、兩種 Theme、兩種字體及四種寬度共 32 組完整文字區通過，四組
+楷書→隸書→楷書原樣恢復。修正前程式的 960 寬負對照有 477 個不符原色
+像素。字型、語音及前端專項共 90 項通過、零略過；正常收據為
+`workplace/audio/font-scaling-fixed-20261011-r2/receipt.json`，舊程式負對照為
+`workplace/audio/font-scaling-negative-20261011-r2/receipt.json`。與語音合併的
+199 張唯一 PNG 已完整解碼並核對 SHA，獨立回讀為
+`workplace/audio/audio-font-catalog-independent-20261011.json`。整份 HD 保持 READY。
+
+### 6.64 HD 武將姓名總覽與獨立圖鑑
+
+狀態：`CONFORMED`，限文件及圖錄。使用者要求總覽在頭像下方標示姓名，
+另以 Markdown 並列頭像、姓名、表字與遊戲能力值。
+
+`L0 [both]`：姓名、人物槽、肖像、體能、戰力、謀略、魅力及兵種由
+[general-catalog.go](../../tools/general-catalog.go)透過正式 `state.LoadScenario`
+讀兩版劇本 001。346 位具名人物的以上欄位逐筆相同，對應 251 張共用肖像。
+未登場人物也列入；不把劇本 001 的值當成所有年代或即時狀態。
+原始輸入 DATA2.NAM／IDX／GRP 的兩版 SHA-256 保存於
+[人物資料](../reference/hd-generals.json)的 `source_data`，姓名保持 cp950 原文。
+
+表字是圖鑑的外部查考欄位，不寫入規則或存檔，也不宣稱來自原版。
+143 筆引用《三國志》原文，70 筆引用百科二手資料並在表中標示，133 位
+未核得或同名難辨者列「待考」。各列附來源；史書、演義及姓名異文另註。
+遊戲中的「嚴峻」、「文鴛」、「費褘」保留原名，外部人物對照另說明。
+不得把連至其他人物段落的重新導向當成同一人，或把「不詳」當作表字。
+原始查考檔 SHA-256 保存於資料的 `reference_input_sha256`，原始全文留本機。
+
+[獨立圖鑑](../hd-generals.md)逐人分列，即使共用肖像也保留各自姓名及能力。
+[姓名總覽](../images/hd-generals-overview.png)為 2608×5088，346 格；
+原有 HD 素材總覽仍為 437 格，256 張 FAC 各標示其對應姓名，
+五張未對應具名人物的肖像明示狀態。原版總覽保持原 SHA-256。
+兩種圖錄的索引保存姓名、位置、PNG 來源及輸出 SHA-256。
+
+重生入口為 `bash tools/asset-overviews.sh`，沿用唯讀原版掛載及 Docker 工具鏈，
+會重生三張總覽與獨立圖鑑；只更新 HD 時，可在同一合成容器先執行
+`python3 tools/render-general-catalog.py`，再執行
+`python3 tools/render-asset-overviews.py --hd-only`。
+能力匯出在相同 Go 容器用 `go run tools/general-catalog.go -root /orig -out <本機 JSON>`；
+表字來源資料由查考後維護，不從網路自動覆寫。
+
+346 列能力與兩版匯出、頭像連結、全部姓名標籤、213 筆表字出處、
+256 張肖像對照、三張總覽的解碼、尺寸及 SHA 全部回讀通過，三張圖已查看。
+收據為 `workplace/audio/audio-font-catalog-independent-20261011.json`。
+HD 原 PNG、manifest、遊戲行為與已發行套件不因圖鑑而改動。

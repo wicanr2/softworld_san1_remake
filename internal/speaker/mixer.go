@@ -33,7 +33,7 @@ func NewMixer(bank *Bank, rate int) *Mixer {
 }
 
 // SetGates 設兩個開關。**參數是「關掉了嗎」**，與原版的存檔欄位同向
-//（0 ＝ 開啟）。
+// （0 ＝ 開啟）。
 //
 // 關掉的時候把還沒播的丟掉：原版的開關是在 `speak()` 入口擋，
 // 沒有「播到一半繼續」這回事。
@@ -49,7 +49,7 @@ func (m *Mixer) SetGates(soundOff, voiceOff bool) {
 // Play 播一個槽。divisor 是分頻值（速度）。
 //
 // 門是**音效狀態**，四個槽都一樣——`speak()` 自己就是這樣擋的
-//（`docs/re/09` §6.1）。槽 1–3 另外過語音狀態那道門。
+// （`docs/re/09` §6.1）。槽 1–3 另外過語音狀態那道門。
 func (m *Mixer) Play(slot, divisor int) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -73,7 +73,12 @@ func (m *Mixer) enqueue(slot, divisor int) {
 	if slot >= VoiceLo && slot <= VoiceHi && m.voiceOff {
 		return
 	}
-	s := Render(m.bank.Clip(slot), Rate(divisor), m.rate)
+	var s []int16
+	if slot >= VoiceLo && slot <= VoiceHi {
+		s = RenderVoice(m.bank.Clip(slot), VoiceRate(divisor), m.rate)
+	} else {
+		s = Render(m.bank.Clip(slot), Rate(divisor), m.rate)
+	}
 	if len(s) == 0 {
 		return
 	}

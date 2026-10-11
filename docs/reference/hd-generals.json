@@ -1,0 +1,5523 @@
+{
+  "schema": 1,
+  "scenario": "001",
+  "note": "姓名與能力取自兩版劇本001；表字是外部查考資料，不是遊戲欄位。二手來源另標，未核得者保留待考。",
+  "source_data": {
+    "base": {
+      "DATA2.GRP": "98a2a7139bb4ad796121b7ede6ea854c964c8588a0424ca67fc7555d382428a7",
+      "DATA2.IDX": "be8fb9bf7b84ae041412933c5c7255575207875873e26028845df2bb83033e22",
+      "DATA2.NAM": "6da9e5833a94e705c9bc3c0dafde60a33e8621d163850a0704a07b507f3f2d58"
+    },
+    "plus": {
+      "DATA2.GRP": "97d5f9e5ab5cec3fb3aa4360844569ab210e19d69fc4f43beaf2013929755ec6",
+      "DATA2.IDX": "be8fb9bf7b84ae041412933c5c7255575207875873e26028845df2bb83033e22",
+      "DATA2.NAM": "6da9e5833a94e705c9bc3c0dafde60a33e8621d163850a0704a07b507f3f2d58"
+    }
+  },
+  "reference_input_sha256": {
+    "courtesy-sanguozhi-01-50.json": "68c6030614847110e565ef224b2a5462b0c3168a8eeaeea8e8580e9534591eba",
+    "courtesy-sanguozhi-51-65.json": "279ad6a26e0a32fcbc83dc56724aafcbf6ea52b837c85af92985e598af134709",
+    "courtesy-source-wikipedia.html": "919be4500eaf677a4092eff35ae695701d9fbc48c75ab77ad79aa4f0457ee755",
+    "courtesy-persons-reviewed.json": "5322fd68fe30cd210c77cad6758fa828c8d87de9a00ab85baa5c80c76673ba76",
+    "courtesy-persons-000.json": "9b3a4ac7bd0b099ed265b8b66cc6c6631df086c4f6bf13790a40d19ff0b5f29c",
+    "courtesy-persons-040.json": "b2840e2b9ccd2df396a0e9bc4b9751104b8611f4d57fffdfc6a46b72c84aeb2c",
+    "courtesy-persons-080.json": "650b050029cef13af7243cd3b6b79c19c83103615947aa9ffe3f8ba007ec14a3",
+    "courtesy-persons-120.json": "85cdde47874befb91276e11f8ed8dbb7a4c6b0d68b7d035f13cc327910a350a0",
+    "courtesy-persons-160.json": "427170abcc839df7c49a489ca0ce3b8bbc3729e582395e9ad114ce63ff720ff7",
+    "courtesy-persons-200.json": "491b2a5e9491dbb00f5632a7b52f93396a8835e03ea1b6788c973e69a60a289e",
+    "courtesy-persons-240.json": "ff39a7fd348915accbf660acabe37ea7faca1bdd242db2e54deec08c5de722f1",
+    "courtesy-persons-280.json": "ea733813c2038147535a3a189c0dd7aac18e1527519d618c2a7146a6248c92cb",
+    "courtesy-persons-320.json": "07fb366b2d8c494b1a9660802227fe14ef89dfc9a4f43443fe02be47a7309c2f",
+    "courtesy-persons-extra-000.json": "31492d869795d998df52a573ac73609e08ae16e7b3d7f5bdcce9876478523b2f",
+    "courtesy-persons-extra-020.json": "18b1fdde5df4a985b642ea2760627f2d133fbb337025afb9ce99b34d345450f0",
+    "courtesy-persons-extra-040.json": "2ab0056ec808bc07df279cbcbb851ee3f42ce6e31e9281075d690fe88c3b1982",
+    "courtesy-persons-extra-060.json": "a725345e1c725de77a6b8820cb25b73ebea41f7966c69a228bd3fe1b113e71d6",
+    "courtesy-persons-extra-080.json": "2169f77326127f6d95a9af4ba6690117d2f3837246f7d273bc7a35bf82ababa7",
+    "courtesy-persons-extra-100.json": "84dea8f53cee12859a22bae4c6017cd02c73b9980a7028a824c792af73b305e6",
+    "courtesy-persons-extra-120.json": "740ea84a6d2c12b7623c96bf06e809980f8541271279a3b9041c59ff3a69c119",
+    "courtesy-persons-extra-140.json": "94241fb77f55d912c8eaf47eb092f759f239aba050b170ac291efd5d0aa74dbe",
+    "courtesy-persons-extra-160.json": "8194a4d887fd05d0e96ae8a78377144d5ba8d56f014ecc8ec0cec6c358df6182"
+  },
+  "courtesy_counts": {
+    "primary": 143,
+    "unknown": 133,
+    "secondary": 70
+  },
+  "people": [
+    {
+      "charm": 100,
+      "index": 0,
+      "intel": 87,
+      "name": "劉備",
+      "portrait": 5,
+      "stamina": 85,
+      "troop": "強力",
+      "war": 73,
+      "courtesy": "玄德",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷32",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B732&oldid=2583378"
+        }
+      ]
+    },
+    {
+      "charm": 90,
+      "index": 1,
+      "intel": 83,
+      "name": "關羽",
+      "portrait": 2,
+      "stamina": 99,
+      "troop": "強力",
+      "war": 99,
+      "courtesy": "雲長",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷36",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B736&oldid=2583383"
+        }
+      ]
+    },
+    {
+      "charm": 28,
+      "index": 2,
+      "intel": 41,
+      "name": "張飛",
+      "portrait": 12,
+      "stamina": 100,
+      "troop": "強力",
+      "war": 99,
+      "courtesy": "益德",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷36",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B736&oldid=2583383"
+        }
+      ],
+      "courtesy_note": "史書作益德；演義作翼德",
+      "courtesy_variants": [
+        "益德，演義字翼德"
+      ]
+    },
+    {
+      "charm": 82,
+      "index": 3,
+      "intel": 88,
+      "name": "趙雲",
+      "portrait": 13,
+      "stamina": 98,
+      "troop": "強力",
+      "war": 99,
+      "courtesy": "子龍",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷36",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B736&oldid=2583383"
+        }
+      ]
+    },
+    {
+      "charm": 84,
+      "index": 4,
+      "intel": 51,
+      "name": "馬超",
+      "portrait": 255,
+      "stamina": 99,
+      "troop": "強力",
+      "war": 98,
+      "courtesy": "孟起",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷36",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B736&oldid=2583383"
+        }
+      ]
+    },
+    {
+      "charm": 80,
+      "index": 5,
+      "intel": 68,
+      "name": "黃忠",
+      "portrait": 62,
+      "stamina": 94,
+      "troop": "強力",
+      "war": 96,
+      "courtesy": "漢升",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷36",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B736&oldid=2583383"
+        }
+      ]
+    },
+    {
+      "charm": 98,
+      "index": 6,
+      "intel": 100,
+      "name": "諸葛亮",
+      "portrait": 4,
+      "stamina": 73,
+      "troop": "強力",
+      "war": 72,
+      "courtesy": "孔明",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷35",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B735&oldid=2115776"
+        }
+      ]
+    },
+    {
+      "charm": 83,
+      "index": 7,
+      "intel": 99,
+      "name": "龐統",
+      "portrait": 7,
+      "stamina": 75,
+      "troop": "強力",
+      "war": 76,
+      "courtesy": "士元",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷37",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B737&oldid=2583384"
+        }
+      ]
+    },
+    {
+      "charm": 69,
+      "index": 8,
+      "intel": 65,
+      "name": "魏延",
+      "portrait": 61,
+      "stamina": 92,
+      "troop": "強力",
+      "war": 94,
+      "courtesy": "文長",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷40",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B740&oldid=2583390"
+        }
+      ]
+    },
+    {
+      "charm": 66,
+      "index": 9,
+      "intel": 68,
+      "name": "馬岱",
+      "portrait": 30,
+      "stamina": 90,
+      "troop": "山陸",
+      "war": 87,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 78,
+      "index": 10,
+      "intel": 91,
+      "name": "法正",
+      "portrait": 198,
+      "stamina": 68,
+      "troop": "山陸",
+      "war": 54,
+      "courtesy": "孝直",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷37",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B737&oldid=2583384"
+        }
+      ]
+    },
+    {
+      "charm": 68,
+      "index": 11,
+      "intel": 77,
+      "name": "孟達",
+      "portrait": 36,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 64,
+      "courtesy": "子度",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        },
+        {
+          "kind": "secondary",
+          "title": "孟達",
+          "url": "https://zh.wikipedia.org/zh-tw/%E5%AD%9F%E9%81%94"
+        }
+      ],
+      "courtesy_note": "初字子敬，後改子度"
+    },
+    {
+      "charm": 95,
+      "index": 12,
+      "intel": 84,
+      "name": "劉焉",
+      "portrait": 142,
+      "stamina": 57,
+      "troop": "強力",
+      "war": 32,
+      "courtesy": "君郎",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷31",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B731&oldid=2471750"
+        }
+      ]
+    },
+    {
+      "charm": 99,
+      "index": 13,
+      "intel": 95,
+      "name": "曹操",
+      "portrait": 0,
+      "stamina": 90,
+      "troop": "強力",
+      "war": 82,
+      "courtesy": "孟德",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷01",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B701&oldid=2585429"
+        }
+      ]
+    },
+    {
+      "charm": 24,
+      "index": 14,
+      "intel": 55,
+      "name": "董卓",
+      "portrait": 77,
+      "stamina": 93,
+      "troop": "強力",
+      "war": 90,
+      "courtesy": "仲穎",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷06",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B706&oldid=2132349"
+        }
+      ]
+    },
+    {
+      "charm": 94,
+      "index": 15,
+      "intel": 84,
+      "name": "孫堅",
+      "portrait": 41,
+      "stamina": 82,
+      "troop": "強力",
+      "war": 89,
+      "courtesy": "文臺",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷46",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B746&oldid=2629010"
+        }
+      ]
+    },
+    {
+      "charm": 90,
+      "index": 16,
+      "intel": 80,
+      "name": "袁紹",
+      "portrait": 53,
+      "stamina": 80,
+      "troop": "強力",
+      "war": 86,
+      "courtesy": "本初",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷06",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B706&oldid=2132349"
+        }
+      ]
+    },
+    {
+      "charm": 26,
+      "index": 17,
+      "intel": 43,
+      "name": "李傕",
+      "portrait": 97,
+      "stamina": 83,
+      "troop": "山陸",
+      "war": 68,
+      "courtesy": "稚然",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 25,
+      "index": 18,
+      "intel": 42,
+      "name": "郭汜",
+      "portrait": 96,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 69,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 66,
+      "index": 19,
+      "intel": 60,
+      "name": "張濟",
+      "portrait": 185,
+      "stamina": 85,
+      "troop": "山陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 44,
+      "index": 20,
+      "intel": 28,
+      "name": "樊稠",
+      "portrait": 179,
+      "stamina": 89,
+      "troop": "山陸",
+      "war": 72,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 33,
+      "index": 21,
+      "intel": 91,
+      "name": "李儒",
+      "portrait": 76,
+      "stamina": 51,
+      "troop": "山陸",
+      "war": 20,
+      "courtesy": "文優",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 62,
+      "index": 22,
+      "intel": 64,
+      "name": "袁術",
+      "portrait": 54,
+      "stamina": 81,
+      "troop": "強力",
+      "war": 80,
+      "courtesy": "公路",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷06",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B706&oldid=2132349"
+        }
+      ]
+    },
+    {
+      "charm": 45,
+      "index": 23,
+      "intel": 28,
+      "name": "呂布",
+      "portrait": 6,
+      "stamina": 97,
+      "troop": "強力",
+      "war": 100,
+      "courtesy": "奉先",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷07",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B707&oldid=2452141"
+        }
+      ]
+    },
+    {
+      "charm": 60,
+      "index": 24,
+      "intel": 54,
+      "name": "李肅",
+      "portrait": 32,
+      "stamina": 71,
+      "troop": "陸",
+      "war": 38,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 64,
+      "index": 25,
+      "intel": 34,
+      "name": "董旻",
+      "portrait": 134,
+      "stamina": 87,
+      "troop": "陸",
+      "war": 31,
+      "courtesy": "叔穎",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "董旻",
+          "url": "https://zh.wikipedia.org/zh-tw/%E8%91%A3%E6%97%BB"
+        }
+      ]
+    },
+    {
+      "charm": 56,
+      "index": 26,
+      "intel": 89,
+      "name": "陳宮",
+      "portrait": 112,
+      "stamina": 52,
+      "troop": "山陸",
+      "war": 28,
+      "courtesy": "公臺",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷07",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B707&oldid=2452141"
+        }
+      ],
+      "courtesy_variants": [
+        "公台"
+      ]
+    },
+    {
+      "charm": 40,
+      "index": 27,
+      "intel": 33,
+      "name": "樂進",
+      "portrait": 125,
+      "stamina": 79,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": "文謙",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷17",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B717&oldid=2390639"
+        }
+      ]
+    },
+    {
+      "charm": 51,
+      "index": 28,
+      "intel": 61,
+      "name": "李典",
+      "portrait": 248,
+      "stamina": 87,
+      "troop": "山陸",
+      "war": 80,
+      "courtesy": "曼成",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷18",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B718&oldid=2579680"
+        }
+      ]
+    },
+    {
+      "charm": 79,
+      "index": 29,
+      "intel": 70,
+      "name": "夏侯惇",
+      "portrait": 184,
+      "stamina": 94,
+      "troop": "強力",
+      "war": 94,
+      "courtesy": "元讓",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷09",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283"
+        }
+      ]
+    },
+    {
+      "charm": 74,
+      "index": 30,
+      "intel": 67,
+      "name": "夏侯淵",
+      "portrait": 155,
+      "stamina": 92,
+      "troop": "強力",
+      "war": 93,
+      "courtesy": "妙才",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷09",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283"
+        }
+      ]
+    },
+    {
+      "charm": 74,
+      "index": 31,
+      "intel": 45,
+      "name": "張邈",
+      "portrait": 131,
+      "stamina": 82,
+      "troop": "陸",
+      "war": 34,
+      "courtesy": "孟卓",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷07",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B707&oldid=2452141"
+        }
+      ]
+    },
+    {
+      "charm": 82,
+      "index": 32,
+      "intel": 81,
+      "name": "孔融",
+      "portrait": 117,
+      "stamina": 84,
+      "troop": "強力",
+      "war": 37,
+      "courtesy": "文舉",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷12",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B712&oldid=2085067"
+        }
+      ]
+    },
+    {
+      "charm": 80,
+      "index": 33,
+      "intel": 76,
+      "name": "陶謙",
+      "portrait": 114,
+      "stamina": 28,
+      "troop": "強力",
+      "war": 15,
+      "courtesy": "恭祖",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷08",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B708&oldid=2086403"
+        }
+      ]
+    },
+    {
+      "charm": 81,
+      "index": 34,
+      "intel": 38,
+      "name": "馬騰",
+      "portrait": 192,
+      "stamina": 95,
+      "troop": "強力",
+      "war": 87,
+      "courtesy": "壽成",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 62,
+      "index": 35,
+      "intel": 67,
+      "name": "公孫瓚",
+      "portrait": 63,
+      "stamina": 83,
+      "troop": "強力",
+      "war": 75,
+      "courtesy": "伯珪",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷08",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B708&oldid=2086403"
+        }
+      ]
+    },
+    {
+      "charm": 69,
+      "index": 36,
+      "intel": 17,
+      "name": "華雄",
+      "portrait": 52,
+      "stamina": 90,
+      "troop": "強力",
+      "war": 94,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 76,
+      "index": 37,
+      "intel": 88,
+      "name": "程普",
+      "portrait": 241,
+      "stamina": 74,
+      "troop": "強力",
+      "war": 78,
+      "courtesy": "德謀",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 59,
+      "index": 38,
+      "intel": 37,
+      "name": "韓當",
+      "portrait": 94,
+      "stamina": 82,
+      "troop": "水陸",
+      "war": 74,
+      "courtesy": "義公",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 73,
+      "index": 39,
+      "intel": 70,
+      "name": "黃蓋",
+      "portrait": 55,
+      "stamina": 92,
+      "troop": "強力",
+      "war": 88,
+      "courtesy": "公覆",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 60,
+      "index": 40,
+      "intel": 16,
+      "name": "祖茂",
+      "portrait": 244,
+      "stamina": 84,
+      "troop": "水陸",
+      "war": 63,
+      "courtesy": "大榮",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 48,
+      "index": 41,
+      "intel": 36,
+      "name": "顏良",
+      "portrait": 47,
+      "stamina": 95,
+      "troop": "強力",
+      "war": 91,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 57,
+      "index": 42,
+      "intel": 35,
+      "name": "文醜",
+      "portrait": 102,
+      "stamina": 96,
+      "troop": "強力",
+      "war": 94,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 62,
+      "index": 43,
+      "intel": 79,
+      "name": "徐榮",
+      "portrait": 116,
+      "stamina": 78,
+      "troop": "陸",
+      "war": 28,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 92,
+      "index": 44,
+      "intel": 85,
+      "name": "劉表",
+      "portrait": 81,
+      "stamina": 43,
+      "troop": "強力",
+      "war": 54,
+      "courtesy": "景升",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷06",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B706&oldid=2132349"
+        }
+      ]
+    },
+    {
+      "charm": 71,
+      "index": 45,
+      "intel": 89,
+      "name": "蒯良",
+      "portrait": 91,
+      "stamina": 62,
+      "troop": "水陸",
+      "war": 22,
+      "courtesy": "子柔",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 77,
+      "index": 46,
+      "intel": 88,
+      "name": "蒯越",
+      "portrait": 92,
+      "stamina": 64,
+      "troop": "水陸",
+      "war": 20,
+      "courtesy": "異度",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 61,
+      "index": 47,
+      "intel": 65,
+      "name": "蔡瑁",
+      "portrait": 246,
+      "stamina": 87,
+      "troop": "水陸",
+      "war": 78,
+      "courtesy": "德珪",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 54,
+      "index": 48,
+      "intel": 85,
+      "name": "逢紀",
+      "portrait": 111,
+      "stamina": 74,
+      "troop": "陸",
+      "war": 31,
+      "courtesy": "元圖",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 60,
+      "index": 49,
+      "intel": 75,
+      "name": "荀諶",
+      "portrait": 93,
+      "stamina": 76,
+      "troop": "陸",
+      "war": 24,
+      "courtesy": "友若",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 43,
+      "index": 50,
+      "intel": 82,
+      "name": "辛評",
+      "portrait": 80,
+      "stamina": 75,
+      "troop": "陸",
+      "war": 29,
+      "courtesy": "仲治",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 70,
+      "index": 51,
+      "intel": 93,
+      "name": "田豐",
+      "portrait": 249,
+      "stamina": 64,
+      "troop": "強力",
+      "war": 70,
+      "courtesy": "元皓",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 56,
+      "index": 52,
+      "intel": 86,
+      "name": "沮授",
+      "portrait": 113,
+      "stamina": 75,
+      "troop": "陸",
+      "war": 40,
+      "courtesy": "公與",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 67,
+      "index": 53,
+      "intel": 87,
+      "name": "許攸",
+      "portrait": 168,
+      "stamina": 71,
+      "troop": "山陸",
+      "war": 32,
+      "courtesy": "子遠",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 34,
+      "index": 54,
+      "intel": 43,
+      "name": "公孫越",
+      "portrait": 199,
+      "stamina": 80,
+      "troop": "陸",
+      "war": 40,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 91,
+      "index": 55,
+      "intel": 88,
+      "name": "孫策",
+      "portrait": 164,
+      "stamina": 92,
+      "troop": "強力",
+      "war": 93,
+      "courtesy": "伯符",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷46",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B746&oldid=2629010"
+        }
+      ]
+    },
+    {
+      "charm": 99,
+      "index": 56,
+      "intel": 80,
+      "name": "孫權",
+      "portrait": 8,
+      "stamina": 93,
+      "troop": "水陸",
+      "war": 80,
+      "courtesy": "仲謀",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷47",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B747&oldid=2602668"
+        }
+      ]
+    },
+    {
+      "charm": 54,
+      "index": 57,
+      "intel": 23,
+      "name": "孫翊",
+      "portrait": 110,
+      "stamina": 76,
+      "troop": "水陸",
+      "war": 57,
+      "courtesy": "叔弼",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷51",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B751&oldid=2457446"
+        }
+      ]
+    },
+    {
+      "charm": 65,
+      "index": 58,
+      "intel": 34,
+      "name": "孫匡",
+      "portrait": 150,
+      "stamina": 80,
+      "troop": "水陸",
+      "war": 45,
+      "courtesy": "季佐",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷51",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B751&oldid=2457446"
+        }
+      ]
+    },
+    {
+      "charm": 46,
+      "index": 59,
+      "intel": 43,
+      "name": "黃祖",
+      "portrait": 169,
+      "stamina": 79,
+      "troop": "水陸",
+      "war": 50,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 29,
+      "index": 60,
+      "intel": 13,
+      "name": "陳生",
+      "portrait": 243,
+      "stamina": 80,
+      "troop": "水陸",
+      "war": 66,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 23,
+      "index": 61,
+      "intel": 43,
+      "name": "呂公",
+      "portrait": 240,
+      "stamina": 89,
+      "troop": "水陸",
+      "war": 61,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 54,
+      "index": 62,
+      "intel": 24,
+      "name": "董璜",
+      "portrait": 170,
+      "stamina": 64,
+      "troop": "陸",
+      "war": 39,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 76,
+      "index": 63,
+      "intel": 95,
+      "name": "賈詡",
+      "portrait": 160,
+      "stamina": 55,
+      "troop": "山陸",
+      "war": 46,
+      "courtesy": "文和",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷10",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B710&oldid=2274279"
+        }
+      ]
+    },
+    {
+      "charm": 54,
+      "index": 64,
+      "intel": 47,
+      "name": "韓遂",
+      "portrait": 188,
+      "stamina": 71,
+      "troop": "山陸",
+      "war": 72,
+      "courtesy": "文約",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 78,
+      "index": 65,
+      "intel": 97,
+      "name": "荀彧",
+      "portrait": 172,
+      "stamina": 73,
+      "troop": "強力",
+      "war": 49,
+      "courtesy": "文若",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷10",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B710&oldid=2274279"
+        }
+      ]
+    },
+    {
+      "charm": 75,
+      "index": 66,
+      "intel": 92,
+      "name": "荀攸",
+      "portrait": 215,
+      "stamina": 66,
+      "troop": "山陸",
+      "war": 45,
+      "courtesy": "公達",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷10",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B710&oldid=2274279"
+        }
+      ]
+    },
+    {
+      "charm": 76,
+      "index": 67,
+      "intel": 92,
+      "name": "程昱",
+      "portrait": 176,
+      "stamina": 57,
+      "troop": "強力",
+      "war": 46,
+      "courtesy": "仲德",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷14",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B714&oldid=2374427"
+        }
+      ]
+    },
+    {
+      "charm": 83,
+      "index": 68,
+      "intel": 97,
+      "name": "郭嘉",
+      "portrait": 143,
+      "stamina": 52,
+      "troop": "強力",
+      "war": 65,
+      "courtesy": "奉孝",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷14",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B714&oldid=2374427"
+        }
+      ]
+    },
+    {
+      "charm": 74,
+      "index": 69,
+      "intel": 88,
+      "name": "劉曄",
+      "portrait": 180,
+      "stamina": 75,
+      "troop": "強力",
+      "war": 54,
+      "courtesy": "子揚",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷14",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B714&oldid=2374427"
+        }
+      ],
+      "courtesy_note": "史書作子揚；演義作子陽",
+      "courtesy_variants": [
+        "子揚，演義字子陽"
+      ]
+    },
+    {
+      "charm": 75,
+      "index": 70,
+      "intel": 63,
+      "name": "滿寵",
+      "portrait": 162,
+      "stamina": 74,
+      "troop": "陸",
+      "war": 41,
+      "courtesy": "伯寧",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷26",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B726&oldid=2085108"
+        }
+      ]
+    },
+    {
+      "charm": 45,
+      "index": 71,
+      "intel": 60,
+      "name": "呂虔",
+      "portrait": 196,
+      "stamina": 87,
+      "troop": "山陸",
+      "war": 53,
+      "courtesy": "子恪",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷18",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B718&oldid=2579680"
+        }
+      ]
+    },
+    {
+      "charm": 35,
+      "index": 72,
+      "intel": 60,
+      "name": "于禁",
+      "portrait": 49,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 70,
+      "courtesy": "文則",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷17",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B717&oldid=2390639"
+        }
+      ]
+    },
+    {
+      "charm": 24,
+      "index": 73,
+      "intel": 43,
+      "name": "毛玠",
+      "portrait": 58,
+      "stamina": 82,
+      "troop": "水陸",
+      "war": 64,
+      "courtesy": "孝先",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷12",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B712&oldid=2085067"
+        }
+      ]
+    },
+    {
+      "charm": 56,
+      "index": 74,
+      "intel": 28,
+      "name": "典韋",
+      "portrait": 146,
+      "stamina": 95,
+      "troop": "強力",
+      "war": 97,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 74,
+      "index": 75,
+      "intel": 77,
+      "name": "麋竺",
+      "portrait": 173,
+      "stamina": 80,
+      "troop": "陸",
+      "war": 23,
+      "courtesy": "子仲",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷38",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B738&oldid=8737777"
+        }
+      ]
+    },
+    {
+      "charm": 79,
+      "index": 76,
+      "intel": 86,
+      "name": "陳登",
+      "portrait": 181,
+      "stamina": 65,
+      "troop": "水陸",
+      "war": 60,
+      "courtesy": "元龍",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 68,
+      "index": 77,
+      "intel": 40,
+      "name": "太史慈",
+      "portrait": 21,
+      "stamina": 91,
+      "troop": "強力",
+      "war": 94,
+      "courtesy": "子義",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷49",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B749&oldid=2075209"
+        }
+      ]
+    },
+    {
+      "charm": 35,
+      "index": 78,
+      "intel": 55,
+      "name": "劉繇",
+      "portrait": 166,
+      "stamina": 70,
+      "troop": "強力",
+      "war": 20,
+      "courtesy": "正禮",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷49",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B749&oldid=2075209"
+        }
+      ]
+    },
+    {
+      "charm": 73,
+      "index": 79,
+      "intel": 88,
+      "name": "張遼",
+      "portrait": 101,
+      "stamina": 95,
+      "troop": "強力",
+      "war": 94,
+      "courtesy": "文遠",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷17",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B717&oldid=2390639"
+        }
+      ]
+    },
+    {
+      "charm": 42,
+      "index": 80,
+      "intel": 19,
+      "name": "臧霸",
+      "portrait": 57,
+      "stamina": 88,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": "宣高",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷18",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B718&oldid=2579680"
+        }
+      ]
+    },
+    {
+      "charm": 46,
+      "index": 81,
+      "intel": 30,
+      "name": "郝萌",
+      "portrait": 238,
+      "stamina": 71,
+      "troop": "山陸",
+      "war": 73,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 31,
+      "index": 82,
+      "intel": 53,
+      "name": "曹性",
+      "portrait": 73,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 26,
+      "index": 83,
+      "intel": 24,
+      "name": "成廉",
+      "portrait": 234,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 75,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 40,
+      "index": 84,
+      "intel": 19,
+      "name": "魏續",
+      "portrait": 228,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 57,
+      "index": 85,
+      "intel": 35,
+      "name": "宋憲",
+      "portrait": 99,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 73,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 51,
+      "index": 86,
+      "intel": 37,
+      "name": "侯成",
+      "portrait": 85,
+      "stamina": 89,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 78,
+      "index": 87,
+      "intel": 79,
+      "name": "孫乾",
+      "portrait": 186,
+      "stamina": 72,
+      "troop": "陸",
+      "war": 24,
+      "courtesy": "公佑",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷38",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B738&oldid=8737777"
+        }
+      ],
+      "courtesy_variants": [
+        "公祐"
+      ]
+    },
+    {
+      "charm": 53,
+      "index": 88,
+      "intel": 26,
+      "name": "許褚",
+      "portrait": 156,
+      "stamina": 99,
+      "troop": "強力",
+      "war": 98,
+      "courtesy": "仲康",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷18",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B718&oldid=2579680"
+        }
+      ]
+    },
+    {
+      "charm": 78,
+      "index": 89,
+      "intel": 89,
+      "name": "審配",
+      "portrait": 178,
+      "stamina": 65,
+      "troop": "山陸",
+      "war": 60,
+      "courtesy": "正南",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "審配",
+          "url": "https://zh.wikipedia.org/zh-tw/%E5%AF%A9%E9%85%8D"
+        }
+      ]
+    },
+    {
+      "charm": 61,
+      "index": 90,
+      "intel": 56,
+      "name": "楊奉",
+      "portrait": 128,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 50,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 66,
+      "index": 91,
+      "intel": 61,
+      "name": "徐晃",
+      "portrait": 29,
+      "stamina": 90,
+      "troop": "強力",
+      "war": 91,
+      "courtesy": "公明",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷17",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B717&oldid=2390639"
+        }
+      ]
+    },
+    {
+      "charm": 53,
+      "index": 92,
+      "intel": 81,
+      "name": "董昭",
+      "portrait": 181,
+      "stamina": 72,
+      "troop": "陸",
+      "war": 24,
+      "courtesy": "公仁",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷14",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B714&oldid=2374427"
+        }
+      ]
+    },
+    {
+      "charm": 59,
+      "index": 93,
+      "intel": 31,
+      "name": "紀靈",
+      "portrait": 165,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 36,
+      "index": 94,
+      "intel": 48,
+      "name": "朱治",
+      "portrait": 189,
+      "stamina": 74,
+      "troop": "水陸",
+      "war": 40,
+      "courtesy": "君理",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷56",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B756&oldid=2627183"
+        }
+      ]
+    },
+    {
+      "charm": 64,
+      "index": 95,
+      "intel": 76,
+      "name": "呂範",
+      "portrait": 177,
+      "stamina": 71,
+      "troop": "水陸",
+      "war": 31,
+      "courtesy": "子衡",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷56",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B756&oldid=2627183"
+        }
+      ]
+    },
+    {
+      "charm": 94,
+      "index": 96,
+      "intel": 97,
+      "name": "周瑜",
+      "portrait": 14,
+      "stamina": 83,
+      "troop": "強力",
+      "war": 84,
+      "courtesy": "公瑾",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷54",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B754&oldid=2387393"
+        }
+      ]
+    },
+    {
+      "charm": 82,
+      "index": 97,
+      "intel": 96,
+      "name": "張昭",
+      "portrait": 144,
+      "stamina": 63,
+      "troop": "水陸",
+      "war": 38,
+      "courtesy": "子布",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷52",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B752&oldid=2085149"
+        }
+      ]
+    },
+    {
+      "charm": 83,
+      "index": 98,
+      "intel": 93,
+      "name": "張紘",
+      "portrait": 216,
+      "stamina": 45,
+      "troop": "水陸",
+      "war": 58,
+      "courtesy": "子綱",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷53",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B753&oldid=2086397"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 99,
+      "intel": 29,
+      "name": "蔣欽",
+      "portrait": 84,
+      "stamina": 89,
+      "troop": "水陸",
+      "war": 73,
+      "courtesy": "公弈",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ],
+      "courtesy_variants": [
+        "公奕"
+      ]
+    },
+    {
+      "charm": 60,
+      "index": 100,
+      "intel": 22,
+      "name": "周泰",
+      "portrait": 31,
+      "stamina": 90,
+      "troop": "強力",
+      "war": 87,
+      "courtesy": "幼平",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 23,
+      "index": 101,
+      "intel": 32,
+      "name": "陳武",
+      "portrait": 226,
+      "stamina": 85,
+      "troop": "水陸",
+      "war": 70,
+      "courtesy": "子烈",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 34,
+      "index": 102,
+      "intel": 43,
+      "name": "凌操",
+      "portrait": 204,
+      "stamina": 80,
+      "troop": "水陸",
+      "war": 58,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 74,
+      "index": 103,
+      "intel": 82,
+      "name": "王朗",
+      "portrait": 209,
+      "stamina": 65,
+      "troop": "強力",
+      "war": 12,
+      "courtesy": "景興",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷13",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B713&oldid=2331498"
+        }
+      ]
+    },
+    {
+      "charm": 82,
+      "index": 104,
+      "intel": 84,
+      "name": "虞翻",
+      "portrait": 213,
+      "stamina": 74,
+      "troop": "水陸",
+      "war": 32,
+      "courtesy": "仲翔",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷57",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B757&oldid=2638131"
+        }
+      ]
+    },
+    {
+      "charm": 24,
+      "index": 105,
+      "intel": 33,
+      "name": "董襲",
+      "portrait": 195,
+      "stamina": 74,
+      "troop": "水陸",
+      "war": 65,
+      "courtesy": "元代",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 40,
+      "index": 106,
+      "intel": 13,
+      "name": "張勳",
+      "portrait": 191,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 50,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 30,
+      "index": 107,
+      "intel": 32,
+      "name": "雷薄",
+      "portrait": 188,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 34,
+      "index": 108,
+      "intel": 25,
+      "name": "陳蘭",
+      "portrait": 185,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 67,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 45,
+      "index": 109,
+      "intel": 26,
+      "name": "橋蕤",
+      "portrait": 69,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 80,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 68,
+      "index": 110,
+      "intel": 89,
+      "name": "陳珪",
+      "portrait": 236,
+      "stamina": 38,
+      "troop": "陸",
+      "war": 12,
+      "courtesy": "漢瑜",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 80,
+      "index": 111,
+      "intel": 80,
+      "name": "張繡",
+      "portrait": 147,
+      "stamina": 81,
+      "troop": "山陸",
+      "war": 51,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 36,
+      "index": 112,
+      "intel": 25,
+      "name": "曹純",
+      "portrait": 190,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 51,
+      "courtesy": "子和",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 68,
+      "index": 113,
+      "intel": 82,
+      "name": "簡雍",
+      "portrait": 154,
+      "stamina": 70,
+      "troop": "陸",
+      "war": 20,
+      "courtesy": "憲和",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷38",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B738&oldid=8737777"
+        }
+      ]
+    },
+    {
+      "charm": 94,
+      "index": 114,
+      "intel": 63,
+      "name": "劉璋",
+      "portrait": 237,
+      "stamina": 71,
+      "troop": "山陸",
+      "war": 64,
+      "courtesy": "季玉",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷31",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B731&oldid=2471750"
+        }
+      ]
+    },
+    {
+      "charm": 88,
+      "index": 115,
+      "intel": 80,
+      "name": "張魯",
+      "portrait": 227,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 73,
+      "courtesy": "公祺",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷08",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B708&oldid=2086403"
+        }
+      ]
+    },
+    {
+      "charm": 78,
+      "index": 116,
+      "intel": 86,
+      "name": "郭圖",
+      "portrait": 129,
+      "stamina": 78,
+      "troop": "陸",
+      "war": 34,
+      "courtesy": "公則",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 69,
+      "index": 117,
+      "intel": 72,
+      "name": "陳琳",
+      "portrait": 148,
+      "stamina": 65,
+      "troop": "陸",
+      "war": 13,
+      "courtesy": "孔璋",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 34,
+      "index": 118,
+      "intel": 26,
+      "name": "高覽",
+      "portrait": 179,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 68,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 43,
+      "index": 119,
+      "intel": 71,
+      "name": "張郃",
+      "portrait": 233,
+      "stamina": 94,
+      "troop": "強力",
+      "war": 94,
+      "courtesy": "雋乂",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷17",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B717&oldid=2390639"
+        }
+      ],
+      "courtesy_variants": [
+        "儁乂"
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 120,
+      "intel": 46,
+      "name": "麋芳",
+      "portrait": 103,
+      "stamina": 81,
+      "troop": "山陸",
+      "war": 70,
+      "courtesy": "子方",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "麋芳",
+          "url": "https://zh.wikipedia.org/zh-tw/%E9%BA%8B%E8%8A%B3"
+        }
+      ]
+    },
+    {
+      "charm": 30,
+      "index": 121,
+      "intel": 34,
+      "name": "蔡陽",
+      "portrait": 171,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 75,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 40,
+      "index": 122,
+      "intel": 54,
+      "name": "廖化",
+      "portrait": 243,
+      "stamina": 85,
+      "troop": "山陸",
+      "war": 77,
+      "courtesy": "元儉",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷45",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B745&oldid=2085136"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 123,
+      "intel": 28,
+      "name": "周倉",
+      "portrait": 39,
+      "stamina": 91,
+      "troop": "山陸",
+      "war": 88,
+      "courtesy": "元福",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "周倉",
+          "url": "https://zh.wikipedia.org/zh-tw/%E5%91%A8%E5%80%89"
+        }
+      ]
+    },
+    {
+      "charm": 69,
+      "index": 124,
+      "intel": 62,
+      "name": "關平",
+      "portrait": 252,
+      "stamina": 87,
+      "troop": "山陸",
+      "war": 81,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 79,
+      "index": 125,
+      "intel": 83,
+      "name": "華歆",
+      "portrait": 118,
+      "stamina": 65,
+      "troop": "陸",
+      "war": 23,
+      "courtesy": "子魚",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷13",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B713&oldid=2331498"
+        }
+      ]
+    },
+    {
+      "charm": 89,
+      "index": 126,
+      "intel": 95,
+      "name": "魯肅",
+      "portrait": 132,
+      "stamina": 80,
+      "troop": "強力",
+      "war": 68,
+      "courtesy": "子敬",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷54",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B754&oldid=2387393"
+        }
+      ]
+    },
+    {
+      "charm": 61,
+      "index": 127,
+      "intel": 90,
+      "name": "諸葛瑾",
+      "portrait": 159,
+      "stamina": 72,
+      "troop": "強力",
+      "war": 43,
+      "courtesy": "子瑜",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷52",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B752&oldid=2085149"
+        }
+      ]
+    },
+    {
+      "charm": 72,
+      "index": 128,
+      "intel": 81,
+      "name": "顧雍",
+      "portrait": 153,
+      "stamina": 63,
+      "troop": "水陸",
+      "war": 24,
+      "courtesy": "元歎",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷52",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B752&oldid=2085149"
+        }
+      ]
+    },
+    {
+      "charm": 86,
+      "index": 129,
+      "intel": 63,
+      "name": "袁譚",
+      "portrait": 126,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 71,
+      "courtesy": "顯思",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "袁譚",
+          "url": "https://zh.wikipedia.org/zh-tw/%E8%A2%81%E8%AD%9A"
+        }
+      ]
+    },
+    {
+      "charm": 80,
+      "index": 130,
+      "intel": 32,
+      "name": "袁熙",
+      "portrait": 89,
+      "stamina": 73,
+      "troop": "陸",
+      "war": 46,
+      "courtesy": "顯奕",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "袁熙",
+          "url": "https://zh.wikipedia.org/zh-tw/%E8%A2%81%E7%86%99"
+        }
+      ]
+    },
+    {
+      "charm": 89,
+      "index": 131,
+      "intel": 55,
+      "name": "袁尚",
+      "portrait": 22,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 85,
+      "courtesy": "顯甫",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "袁尚",
+          "url": "https://zh.wikipedia.org/zh-tw/%E8%A2%81%E5%B0%9A"
+        }
+      ]
+    },
+    {
+      "charm": 24,
+      "index": 132,
+      "intel": 36,
+      "name": "呂曠",
+      "portrait": 190,
+      "stamina": 79,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 76,
+      "index": 133,
+      "intel": 79,
+      "name": "辛毗",
+      "portrait": 151,
+      "stamina": 65,
+      "troop": "山陸",
+      "war": 34,
+      "courtesy": "佐治",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷25",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B725&oldid=2074129"
+        }
+      ]
+    },
+    {
+      "charm": 28,
+      "index": 134,
+      "intel": 23,
+      "name": "呂翔",
+      "portrait": 197,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 95,
+      "index": 135,
+      "intel": 87,
+      "name": "曹丕",
+      "portrait": 229,
+      "stamina": 85,
+      "troop": "強力",
+      "war": 85,
+      "courtesy": "子桓",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 85,
+      "index": 136,
+      "intel": 89,
+      "name": "曹植",
+      "portrait": 127,
+      "stamina": 75,
+      "troop": "山陸",
+      "war": 22,
+      "courtesy": "子建",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷19",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B719&oldid=2347417"
+        }
+      ]
+    },
+    {
+      "charm": 75,
+      "index": 137,
+      "intel": 87,
+      "name": "伊籍",
+      "portrait": 130,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 36,
+      "courtesy": "機伯",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷38",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B738&oldid=8737777"
+        }
+      ]
+    },
+    {
+      "charm": 85,
+      "index": 138,
+      "intel": 76,
+      "name": "劉琦",
+      "portrait": 141,
+      "stamina": 84,
+      "troop": "水陸",
+      "war": 69,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 84,
+      "index": 139,
+      "intel": 77,
+      "name": "劉琮",
+      "portrait": 122,
+      "stamina": 74,
+      "troop": "水陸",
+      "war": 34,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 25,
+      "index": 140,
+      "intel": 21,
+      "name": "蔡和",
+      "portrait": 205,
+      "stamina": 76,
+      "troop": "水陸",
+      "war": 43,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 20,
+      "index": 141,
+      "intel": 22,
+      "name": "蔡中",
+      "portrait": 206,
+      "stamina": 76,
+      "troop": "水陸",
+      "war": 39,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 23,
+      "index": 142,
+      "intel": 18,
+      "name": "蔡勳",
+      "portrait": 207,
+      "stamina": 75,
+      "troop": "水陸",
+      "war": 36,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 48,
+      "index": 143,
+      "intel": 51,
+      "name": "文聘",
+      "portrait": 167,
+      "stamina": 88,
+      "troop": "強力",
+      "war": 86,
+      "courtesy": "仲業",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷18",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B718&oldid=2579680"
+        }
+      ]
+    },
+    {
+      "charm": 80,
+      "index": 144,
+      "intel": 85,
+      "name": "闞澤",
+      "portrait": 157,
+      "stamina": 58,
+      "troop": "水陸",
+      "war": 22,
+      "courtesy": "德潤",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷53",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B753&oldid=2086397"
+        }
+      ]
+    },
+    {
+      "charm": 63,
+      "index": 145,
+      "intel": 52,
+      "name": "劉封",
+      "portrait": 45,
+      "stamina": 85,
+      "troop": "山陸",
+      "war": 71,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 81,
+      "index": 146,
+      "intel": 95,
+      "name": "徐庶",
+      "portrait": 120,
+      "stamina": 81,
+      "troop": "強力",
+      "war": 76,
+      "courtesy": "元直",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 59,
+      "index": 147,
+      "intel": 76,
+      "name": "程秉",
+      "portrait": 152,
+      "stamina": 72,
+      "troop": "水陸",
+      "war": 22,
+      "courtesy": "德樞",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷53",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B753&oldid=2086397"
+        }
+      ]
+    },
+    {
+      "charm": 41,
+      "index": 148,
+      "intel": 81,
+      "name": "朱桓",
+      "portrait": 135,
+      "stamina": 84,
+      "troop": "水陸",
+      "war": 82,
+      "courtesy": "休穆",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷56",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B756&oldid=2627183"
+        }
+      ]
+    },
+    {
+      "charm": 73,
+      "index": 149,
+      "intel": 68,
+      "name": "張溫",
+      "portrait": 87,
+      "stamina": 73,
+      "troop": "水陸",
+      "war": 20,
+      "courtesy": "惠恕",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷57",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B757&oldid=2638131"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 150,
+      "intel": 43,
+      "name": "凌統",
+      "portrait": 51,
+      "stamina": 85,
+      "troop": "水陸",
+      "war": 75,
+      "courtesy": "公績",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ],
+      "courtesy_variants": [
+        "公績/公續"
+      ]
+    },
+    {
+      "charm": 63,
+      "index": 151,
+      "intel": 91,
+      "name": "呂蒙",
+      "portrait": 28,
+      "stamina": 79,
+      "troop": "強力",
+      "war": 78,
+      "courtesy": "子明",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷54",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B754&oldid=2387393"
+        }
+      ]
+    },
+    {
+      "charm": 78,
+      "index": 152,
+      "intel": 96,
+      "name": "陸遜",
+      "portrait": 254,
+      "stamina": 84,
+      "troop": "強力",
+      "war": 80,
+      "courtesy": "伯言",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷58",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B758&oldid=2131313"
+        }
+      ]
+    },
+    {
+      "charm": 54,
+      "index": 153,
+      "intel": 75,
+      "name": "徐盛",
+      "portrait": 234,
+      "stamina": 88,
+      "troop": "強力",
+      "war": 74,
+      "courtesy": "文嚮",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 32,
+      "index": 154,
+      "intel": 29,
+      "name": "潘璋",
+      "portrait": 174,
+      "stamina": 84,
+      "troop": "水陸",
+      "war": 76,
+      "courtesy": "文珪",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 68,
+      "index": 155,
+      "intel": 79,
+      "name": "丁奉",
+      "portrait": 100,
+      "stamina": 81,
+      "troop": "水陸",
+      "war": 62,
+      "courtesy": "承淵",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 70,
+      "index": 156,
+      "intel": 67,
+      "name": "甘寧",
+      "portrait": 251,
+      "stamina": 92,
+      "troop": "強力",
+      "war": 94,
+      "courtesy": "興霸",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷55",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B755&oldid=2603286"
+        }
+      ]
+    },
+    {
+      "charm": 91,
+      "index": 157,
+      "intel": 98,
+      "name": "司馬懿",
+      "portrait": 10,
+      "stamina": 88,
+      "troop": "強力",
+      "war": 74,
+      "courtesy": "仲達",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 60,
+      "index": 158,
+      "intel": 74,
+      "name": "傅巽",
+      "portrait": 75,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 18,
+      "courtesy": "公悌",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 77,
+      "index": 159,
+      "intel": 85,
+      "name": "王粲",
+      "portrait": 74,
+      "stamina": 82,
+      "troop": "陸",
+      "war": 20,
+      "courtesy": "仲宣",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷21",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B721&oldid=2333888"
+        }
+      ]
+    },
+    {
+      "charm": 25,
+      "index": 160,
+      "intel": 34,
+      "name": "韓玄",
+      "portrait": 46,
+      "stamina": 71,
+      "troop": "山陸",
+      "war": 26,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 72,
+      "index": 161,
+      "intel": 75,
+      "name": "步騭",
+      "portrait": 175,
+      "stamina": 71,
+      "troop": "水陸",
+      "war": 43,
+      "courtesy": "子山",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "步騭",
+          "url": "https://zh.wikipedia.org/zh-tw/%E6%AD%A5%E9%A8%AD"
+        }
+      ]
+    },
+    {
+      "charm": 56,
+      "index": 162,
+      "intel": 70,
+      "name": "蔣幹",
+      "portrait": 67,
+      "stamina": 78,
+      "troop": "水陸",
+      "war": 16,
+      "courtesy": "子翼",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 163,
+      "intel": 21,
+      "name": "牛金",
+      "portrait": 33,
+      "stamina": 87,
+      "troop": "山陸",
+      "war": 80,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 76,
+      "index": 164,
+      "intel": 86,
+      "name": "陳矯",
+      "portrait": 202,
+      "stamina": 84,
+      "troop": "山陸",
+      "war": 23,
+      "courtesy": "季弼",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷22",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B722&oldid=2085105"
+        }
+      ]
+    },
+    {
+      "charm": 77,
+      "index": 165,
+      "intel": 92,
+      "name": "馬良",
+      "portrait": 214,
+      "stamina": 54,
+      "troop": "強力",
+      "war": 39,
+      "courtesy": "季常",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷39",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B739&oldid=2583389"
+        }
+      ]
+    },
+    {
+      "charm": 78,
+      "index": 166,
+      "intel": 83,
+      "name": "馬謖",
+      "portrait": 60,
+      "stamina": 88,
+      "troop": "強力",
+      "war": 57,
+      "courtesy": "幼常",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 60,
+      "index": 167,
+      "intel": 42,
+      "name": "劉度",
+      "portrait": 78,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 18,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 54,
+      "index": 168,
+      "intel": 34,
+      "name": "劉賢",
+      "portrait": 70,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 35,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 31,
+      "index": 169,
+      "intel": 43,
+      "name": "刑道榮",
+      "portrait": 64,
+      "stamina": 85,
+      "troop": "山陸",
+      "war": 87,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 46,
+      "index": 170,
+      "intel": 60,
+      "name": "趙範",
+      "portrait": 98,
+      "stamina": 67,
+      "troop": "山陸",
+      "war": 42,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 35,
+      "index": 171,
+      "intel": 21,
+      "name": "陳應",
+      "portrait": 165,
+      "stamina": 89,
+      "troop": "水陸",
+      "war": 73,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 26,
+      "index": 172,
+      "intel": 23,
+      "name": "鮑龍",
+      "portrait": 177,
+      "stamina": 85,
+      "troop": "水陸",
+      "war": 70,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 36,
+      "index": 173,
+      "intel": 43,
+      "name": "金旋",
+      "portrait": 24,
+      "stamina": 71,
+      "troop": "山陸",
+      "war": 44,
+      "courtesy": "元機",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷32",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B732&oldid=2583378"
+        }
+      ]
+    },
+    {
+      "charm": 70,
+      "index": 174,
+      "intel": 73,
+      "name": "鞏志",
+      "portrait": 72,
+      "stamina": 68,
+      "troop": "山陸",
+      "war": 33,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 53,
+      "index": 175,
+      "intel": 60,
+      "name": "劉磐",
+      "portrait": 196,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 37,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 32,
+      "index": 176,
+      "intel": 43,
+      "name": "楊齡",
+      "portrait": 108,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 71,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 24,
+      "index": 177,
+      "intel": 32,
+      "name": "宋謙",
+      "portrait": 171,
+      "stamina": 80,
+      "troop": "水陸",
+      "war": 68,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 36,
+      "index": 178,
+      "intel": 39,
+      "name": "賈華",
+      "portrait": 43,
+      "stamina": 83,
+      "troop": "水陸",
+      "war": 72,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 71,
+      "index": 179,
+      "intel": 56,
+      "name": "曹休",
+      "portrait": 167,
+      "stamina": 88,
+      "troop": "山陸",
+      "war": 64,
+      "courtesy": "文烈",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷09",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283"
+        }
+      ]
+    },
+    {
+      "charm": 58,
+      "index": 180,
+      "intel": 79,
+      "name": "鍾繇",
+      "portrait": 201,
+      "stamina": 61,
+      "troop": "山陸",
+      "war": 21,
+      "courtesy": "元常",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷13",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B713&oldid=2331498"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 181,
+      "intel": 24,
+      "name": "馬鐵",
+      "portrait": 194,
+      "stamina": 83,
+      "troop": "山陸",
+      "war": 69,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 41,
+      "index": 182,
+      "intel": 26,
+      "name": "馬休",
+      "portrait": 195,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 82,
+      "index": 183,
+      "intel": 94,
+      "name": "陳群",
+      "portrait": 68,
+      "stamina": 70,
+      "troop": "山陸",
+      "war": 35,
+      "courtesy": "長文",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 47,
+      "index": 184,
+      "intel": 66,
+      "name": "龐德",
+      "portrait": 138,
+      "stamina": 95,
+      "troop": "強力",
+      "war": 95,
+      "courtesy": "令明",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷18",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B718&oldid=2579680"
+        }
+      ]
+    },
+    {
+      "charm": 24,
+      "index": 185,
+      "intel": 43,
+      "name": "侯選",
+      "portrait": 185,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 77,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 46,
+      "index": 186,
+      "intel": 53,
+      "name": "程銀",
+      "portrait": 191,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 60,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 48,
+      "index": 187,
+      "intel": 56,
+      "name": "李堪",
+      "portrait": 162,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 70,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 34,
+      "index": 188,
+      "intel": 31,
+      "name": "張橫",
+      "portrait": 161,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 72,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 42,
+      "index": 189,
+      "intel": 21,
+      "name": "梁興",
+      "portrait": 197,
+      "stamina": 84,
+      "troop": "山陸",
+      "war": 58,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 22,
+      "index": 190,
+      "intel": 35,
+      "name": "成宜",
+      "portrait": 166,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 40,
+      "index": 191,
+      "intel": 30,
+      "name": "馬玩",
+      "portrait": 150,
+      "stamina": 81,
+      "troop": "山陸",
+      "war": 61,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 21,
+      "index": 192,
+      "intel": 50,
+      "name": "楊秋",
+      "portrait": 151,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 52,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 32,
+      "index": 193,
+      "intel": 43,
+      "name": "鍾進",
+      "portrait": 157,
+      "stamina": 76,
+      "troop": "陸",
+      "war": 41,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 60,
+      "index": 194,
+      "intel": 83,
+      "name": "楊阜",
+      "portrait": 159,
+      "stamina": 72,
+      "troop": "陸",
+      "war": 23,
+      "courtesy": "義山",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷25",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B725&oldid=2074129"
+        }
+      ]
+    },
+    {
+      "charm": 34,
+      "index": 195,
+      "intel": 38,
+      "name": "張衛",
+      "portrait": 96,
+      "stamina": 88,
+      "troop": "山陸",
+      "war": 77,
+      "courtesy": "公則",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "張衛",
+          "url": "https://zh.wikipedia.org/zh-tw/%E5%BC%A0%E5%8D%AB"
+        }
+      ]
+    },
+    {
+      "charm": 42,
+      "index": 196,
+      "intel": 92,
+      "name": "張松",
+      "portrait": 163,
+      "stamina": 73,
+      "troop": "山陸",
+      "war": 50,
+      "courtesy": "子喬",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ],
+      "courtesy_note": "史書作子喬；演義作永年"
+    },
+    {
+      "charm": 77,
+      "index": 197,
+      "intel": 91,
+      "name": "楊修",
+      "portrait": 56,
+      "stamina": 54,
+      "troop": "陸",
+      "war": 12,
+      "courtesy": "德祖",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 63,
+      "index": 198,
+      "intel": 70,
+      "name": "黃權",
+      "portrait": 88,
+      "stamina": 79,
+      "troop": "山陸",
+      "war": 70,
+      "courtesy": "公衡",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷43",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B743&oldid=2085132"
+        }
+      ]
+    },
+    {
+      "charm": 81,
+      "index": 199,
+      "intel": 90,
+      "name": "李恢",
+      "portrait": 71,
+      "stamina": 66,
+      "troop": "山陸",
+      "war": 33,
+      "courtesy": "德昂",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷43",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B743&oldid=2085132"
+        }
+      ]
+    },
+    {
+      "charm": 42,
+      "index": 200,
+      "intel": 66,
+      "name": "王累",
+      "portrait": 225,
+      "stamina": 63,
+      "troop": "山陸",
+      "war": 27,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 60,
+      "index": 201,
+      "intel": 46,
+      "name": "劉貴",
+      "portrait": 73,
+      "stamina": 73,
+      "troop": "山陸",
+      "war": 59,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 31,
+      "index": 202,
+      "intel": 56,
+      "name": "冷苞",
+      "portrait": 27,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 34,
+      "index": 203,
+      "intel": 79,
+      "name": "張任",
+      "portrait": 218,
+      "stamina": 91,
+      "troop": "強力",
+      "war": 91,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 27,
+      "index": 204,
+      "intel": 43,
+      "name": "鄧賢",
+      "portrait": 126,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 69,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 45,
+      "index": 205,
+      "intel": 56,
+      "name": "楊懷",
+      "portrait": 90,
+      "stamina": 84,
+      "troop": "強力",
+      "war": 74,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 36,
+      "index": 206,
+      "intel": 40,
+      "name": "高沛",
+      "portrait": 161,
+      "stamina": 79,
+      "troop": "強力",
+      "war": 73,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 73,
+      "index": 207,
+      "intel": 86,
+      "name": "劉巴",
+      "portrait": 121,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 24,
+      "courtesy": "子初",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷39",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B739&oldid=2583389"
+        }
+      ]
+    },
+    {
+      "charm": 44,
+      "index": 208,
+      "intel": 56,
+      "name": "張肅",
+      "portrait": 133,
+      "stamina": 75,
+      "troop": "陸",
+      "war": 17,
+      "courtesy": "君矯",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 61,
+      "index": 209,
+      "intel": 43,
+      "name": "劉循",
+      "portrait": 125,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 62,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 76,
+      "index": 210,
+      "intel": 70,
+      "name": "吳懿",
+      "portrait": 187,
+      "stamina": 58,
+      "troop": "山陸",
+      "war": 53,
+      "courtesy": "子遠",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "吳懿",
+          "url": "https://zh.wikipedia.org/zh-tw/%E5%90%B3%E6%87%BF"
+        }
+      ]
+    },
+    {
+      "charm": 51,
+      "index": 211,
+      "intel": 53,
+      "name": "吳蘭",
+      "portrait": 79,
+      "stamina": 86,
+      "troop": "山陸",
+      "war": 81,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 31,
+      "index": 212,
+      "intel": 43,
+      "name": "雷同",
+      "portrait": 204,
+      "stamina": 89,
+      "troop": "山陸",
+      "war": 87,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 53,
+      "index": 213,
+      "intel": 64,
+      "name": "霍峻",
+      "portrait": 182,
+      "stamina": 68,
+      "troop": "山陸",
+      "war": 45,
+      "courtesy": "仲邈",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷41",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B741&oldid=2085129"
+        }
+      ]
+    },
+    {
+      "charm": 53,
+      "index": 214,
+      "intel": 85,
+      "name": "彭羕",
+      "portrait": 86,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 43,
+      "courtesy": "永年",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷40",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B740&oldid=2583390"
+        }
+      ]
+    },
+    {
+      "charm": 74,
+      "index": 215,
+      "intel": 78,
+      "name": "向朗",
+      "portrait": 109,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 26,
+      "courtesy": "巨達",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷41",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B741&oldid=2085129"
+        }
+      ]
+    },
+    {
+      "charm": 78,
+      "index": 216,
+      "intel": 88,
+      "name": "蔣琬",
+      "portrait": 140,
+      "stamina": 61,
+      "troop": "山陸",
+      "war": 26,
+      "courtesy": "公琰",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷44",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B744&oldid=8735594"
+        }
+      ],
+      "courtesy_variants": [
+        "公琬"
+      ]
+    },
+    {
+      "charm": 36,
+      "index": 217,
+      "intel": 69,
+      "name": "嚴顏",
+      "portrait": 20,
+      "stamina": 85,
+      "troop": "強力",
+      "war": 88,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 63,
+      "index": 218,
+      "intel": 75,
+      "name": "費觀",
+      "portrait": 131,
+      "stamina": 62,
+      "troop": "山陸",
+      "war": 27,
+      "courtesy": "賓伯",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "費觀",
+          "url": "https://zh.wikipedia.org/zh-tw/%E8%B4%B9%E8%A7%82"
+        }
+      ]
+    },
+    {
+      "charm": 44,
+      "index": 219,
+      "intel": 68,
+      "name": "李嚴",
+      "portrait": 106,
+      "stamina": 88,
+      "troop": "強力",
+      "war": 85,
+      "courtesy": "正方",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷40",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B740&oldid=2583390"
+        }
+      ]
+    },
+    {
+      "charm": 33,
+      "index": 220,
+      "intel": 36,
+      "name": "楊柏",
+      "portrait": 134,
+      "stamina": 69,
+      "troop": "山陸",
+      "war": 50,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 65,
+      "index": 221,
+      "intel": 46,
+      "name": "楊松",
+      "portrait": 145,
+      "stamina": 69,
+      "troop": "陸",
+      "war": 21,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 64,
+      "index": 222,
+      "intel": 83,
+      "name": "譙周",
+      "portrait": 183,
+      "stamina": 85,
+      "troop": "陸",
+      "war": 22,
+      "courtesy": "允南",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷42",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B742&oldid=2589674"
+        }
+      ]
+    },
+    {
+      "charm": 79,
+      "index": 223,
+      "intel": 86,
+      "name": "秦宓",
+      "portrait": 95,
+      "stamina": 62,
+      "troop": "山陸",
+      "war": 35,
+      "courtesy": "子敕",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷38",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B738&oldid=8737777"
+        }
+      ]
+    },
+    {
+      "charm": 62,
+      "index": 224,
+      "intel": 80,
+      "name": "許靖",
+      "portrait": 83,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 41,
+      "courtesy": "文休",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷38",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B738&oldid=8737777"
+        }
+      ]
+    },
+    {
+      "charm": 37,
+      "index": 225,
+      "intel": 43,
+      "name": "張翼",
+      "portrait": 149,
+      "stamina": 83,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": "伯恭",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷45",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B745&oldid=2085136"
+        }
+      ]
+    },
+    {
+      "charm": 82,
+      "index": 226,
+      "intel": 87,
+      "name": "鄧芝",
+      "portrait": 239,
+      "stamina": 71,
+      "troop": "山陸",
+      "war": 58,
+      "courtesy": "伯苗",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷45",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B745&oldid=2085136"
+        }
+      ]
+    },
+    {
+      "charm": 46,
+      "index": 227,
+      "intel": 54,
+      "name": "楊洪",
+      "portrait": 128,
+      "stamina": 62,
+      "troop": "山陸",
+      "war": 49,
+      "courtesy": "季休",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷41",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B741&oldid=2085129"
+        }
+      ]
+    },
+    {
+      "charm": 76,
+      "index": 228,
+      "intel": 87,
+      "name": "費褘",
+      "portrait": 107,
+      "stamina": 63,
+      "troop": "山陸",
+      "war": 24,
+      "courtesy": "文偉",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "費禕",
+          "url": "https://zh.wikipedia.org/zh-tw/%E8%B2%BB%E7%A6%95"
+        }
+      ],
+      "courtesy_note": "史料條目作費禕，遊戲姓名保留原文"
+    },
+    {
+      "charm": 56,
+      "index": 229,
+      "intel": 74,
+      "name": "費詩",
+      "portrait": 44,
+      "stamina": 64,
+      "troop": "山陸",
+      "war": 28,
+      "courtesy": "公舉",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷41",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B741&oldid=2085129"
+        }
+      ]
+    },
+    {
+      "charm": 67,
+      "index": 230,
+      "intel": 82,
+      "name": "閻圃",
+      "portrait": 104,
+      "stamina": 65,
+      "troop": "山陸",
+      "war": 31,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 80,
+      "index": 231,
+      "intel": 43,
+      "name": "曹彰",
+      "portrait": 244,
+      "stamina": 90,
+      "troop": "強力",
+      "war": 91,
+      "courtesy": "子文",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷19",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B719&oldid=2347417"
+        }
+      ]
+    },
+    {
+      "charm": 73,
+      "index": 232,
+      "intel": 45,
+      "name": "曹熊",
+      "portrait": 127,
+      "stamina": 62,
+      "troop": "陸",
+      "war": 60,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 46,
+      "index": 233,
+      "intel": 78,
+      "name": "郭淮",
+      "portrait": 139,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": "伯濟",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷26",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B726&oldid=2085108"
+        }
+      ]
+    },
+    {
+      "charm": 40,
+      "index": 234,
+      "intel": 40,
+      "name": "夏侯尚",
+      "portrait": 103,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 62,
+      "courtesy": "伯仁",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷09",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 235,
+      "intel": 49,
+      "name": "夏侯德",
+      "portrait": 115,
+      "stamina": 73,
+      "troop": "山陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 27,
+      "index": 236,
+      "intel": 36,
+      "name": "陳式",
+      "portrait": 106,
+      "stamina": 73,
+      "troop": "山陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 30,
+      "index": 237,
+      "intel": 31,
+      "name": "張著",
+      "portrait": 105,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 74,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 24,
+      "index": 238,
+      "intel": 75,
+      "name": "王平",
+      "portrait": 238,
+      "stamina": 86,
+      "troop": "強力",
+      "war": 80,
+      "courtesy": "子均",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷43",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B743&oldid=2085132"
+        }
+      ]
+    },
+    {
+      "charm": 99,
+      "index": 239,
+      "intel": 22,
+      "name": "劉禪",
+      "portrait": 253,
+      "stamina": 71,
+      "troop": "陸",
+      "war": 12,
+      "courtesy": "公嗣",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷33",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B733&oldid=2583379"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 240,
+      "intel": 54,
+      "name": "傅士仁",
+      "portrait": 193,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 62,
+      "courtesy": "君義",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 49,
+      "index": 241,
+      "intel": 52,
+      "name": "關興",
+      "portrait": 17,
+      "stamina": 82,
+      "troop": "強力",
+      "war": 82,
+      "courtesy": "安國",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 60,
+      "index": 242,
+      "intel": 52,
+      "name": "孫皎",
+      "portrait": 112,
+      "stamina": 74,
+      "troop": "水陸",
+      "war": 34,
+      "courtesy": "叔朗",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷51",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B751&oldid=2457446"
+        }
+      ],
+      "courtesy_note": "史書作叔朗；演義作叔明",
+      "courtesy_variants": [
+        "叔朗，演義字叔明"
+      ]
+    },
+    {
+      "charm": 53,
+      "index": 243,
+      "intel": 68,
+      "name": "朱然",
+      "portrait": 113,
+      "stamina": 62,
+      "troop": "水陸",
+      "war": 25,
+      "courtesy": "義封",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷56",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B756&oldid=2627183"
+        }
+      ]
+    },
+    {
+      "charm": 65,
+      "index": 244,
+      "intel": 78,
+      "name": "賈逵",
+      "portrait": 82,
+      "stamina": 67,
+      "troop": "山陸",
+      "war": 25,
+      "courtesy": "梁道",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷15",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B715&oldid=2085075"
+        }
+      ]
+    },
+    {
+      "charm": 50,
+      "index": 245,
+      "intel": 36,
+      "name": "張裔",
+      "portrait": 124,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 75,
+      "courtesy": "君嗣",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷41",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B741&oldid=2085129"
+        }
+      ]
+    },
+    {
+      "charm": 35,
+      "index": 246,
+      "intel": 63,
+      "name": "傅彤",
+      "portrait": 34,
+      "stamina": 88,
+      "troop": "山陸",
+      "war": 79,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 21,
+      "index": 247,
+      "intel": 24,
+      "name": "范疆",
+      "portrait": 89,
+      "stamina": 70,
+      "troop": "山陸",
+      "war": 72,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 22,
+      "index": 248,
+      "intel": 30,
+      "name": "張達",
+      "portrait": 94,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 36,
+      "index": 249,
+      "intel": 64,
+      "name": "吳班",
+      "portrait": 124,
+      "stamina": 85,
+      "troop": "山陸",
+      "war": 70,
+      "courtesy": "元雄",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "吳班",
+          "url": "https://zh.wikipedia.org/zh-tw/%E5%90%B3%E7%8F%AD"
+        }
+      ]
+    },
+    {
+      "charm": 42,
+      "index": 250,
+      "intel": 30,
+      "name": "張苞",
+      "portrait": 235,
+      "stamina": 94,
+      "troop": "強力",
+      "war": 92,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 71,
+      "index": 251,
+      "intel": 32,
+      "name": "孫桓",
+      "portrait": 112,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 70,
+      "courtesy": "叔武",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷51",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B751&oldid=2457446"
+        }
+      ]
+    },
+    {
+      "charm": 20,
+      "index": 252,
+      "intel": 20,
+      "name": "王雙",
+      "portrait": 194,
+      "stamina": 93,
+      "troop": "山陸",
+      "war": 93,
+      "courtesy": "子全",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ],
+      "courtesy_note": "演義所載表字"
+    },
+    {
+      "charm": 43,
+      "index": 253,
+      "intel": 53,
+      "name": "孟獲",
+      "portrait": 119,
+      "stamina": 96,
+      "troop": "強力",
+      "war": 91,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 74,
+      "index": 254,
+      "intel": 76,
+      "name": "曹真",
+      "portrait": 48,
+      "stamina": 84,
+      "troop": "強力",
+      "war": 79,
+      "courtesy": "子丹",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷09",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283"
+        }
+      ]
+    },
+    {
+      "charm": 63,
+      "index": 255,
+      "intel": 64,
+      "name": "蔣濟",
+      "portrait": 117,
+      "stamina": 62,
+      "troop": "山陸",
+      "war": 21,
+      "courtesy": "子通",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷14",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B714&oldid=2374427"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 256,
+      "intel": 35,
+      "name": "雍闓",
+      "portrait": 109,
+      "stamina": 73,
+      "troop": "山陸",
+      "war": 54,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 21,
+      "index": 257,
+      "intel": 18,
+      "name": "朱褒",
+      "portrait": 85,
+      "stamina": 87,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 23,
+      "index": 258,
+      "intel": 20,
+      "name": "高定",
+      "portrait": 98,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 79,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 60,
+      "index": 259,
+      "intel": 76,
+      "name": "王伉",
+      "portrait": 158,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 34,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 63,
+      "index": 260,
+      "intel": 76,
+      "name": "呂凱",
+      "portrait": 38,
+      "stamina": 88,
+      "troop": "山陸",
+      "war": 21,
+      "courtesy": "季平",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷43",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B743&oldid=2085132"
+        }
+      ]
+    },
+    {
+      "charm": 69,
+      "index": 261,
+      "intel": 81,
+      "name": "關索",
+      "portrait": 42,
+      "stamina": 87,
+      "troop": "山陸",
+      "war": 71,
+      "courtesy": "維之",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "关索",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E5%85%B3%E7%B4%A2&oldid=93902741"
+        }
+      ],
+      "courtesy_note": "傳說人物的表字，非史書記載"
+    },
+    {
+      "charm": 26,
+      "index": 262,
+      "intel": 43,
+      "name": "張嶷",
+      "portrait": 64,
+      "stamina": 83,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": "伯岐",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷43",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B743&oldid=2085132"
+        }
+      ]
+    },
+    {
+      "charm": 27,
+      "index": 263,
+      "intel": 9,
+      "name": "鄂煥",
+      "portrait": 195,
+      "stamina": 85,
+      "troop": "山陸",
+      "war": 88,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 34,
+      "index": 264,
+      "intel": 12,
+      "name": "孟優",
+      "portrait": 105,
+      "stamina": 84,
+      "troop": "山陸",
+      "war": 80,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 86,
+      "index": 265,
+      "intel": 70,
+      "name": "曹叡",
+      "portrait": 40,
+      "stamina": 81,
+      "troop": "山陸",
+      "war": 23,
+      "courtesy": "元仲",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 74,
+      "index": 266,
+      "intel": 74,
+      "name": "向寵",
+      "portrait": 23,
+      "stamina": 89,
+      "troop": "強力",
+      "war": 88,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 65,
+      "index": 267,
+      "intel": 82,
+      "name": "楊儀",
+      "portrait": 136,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 36,
+      "courtesy": "威公",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷40",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B740&oldid=2583390"
+        }
+      ]
+    },
+    {
+      "charm": 69,
+      "index": 268,
+      "intel": 53,
+      "name": "夏侯楙",
+      "portrait": 240,
+      "stamina": 62,
+      "troop": "山陸",
+      "war": 42,
+      "courtesy": "子林",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "夏侯楙",
+          "url": "https://zh.wikipedia.org/zh-tw/%E5%A4%8F%E4%BE%AF%E6%A5%99"
+        }
+      ]
+    },
+    {
+      "charm": 24,
+      "index": 269,
+      "intel": 31,
+      "name": "韓德",
+      "portrait": 94,
+      "stamina": 88,
+      "troop": "山陸",
+      "war": 79,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 79,
+      "index": 270,
+      "intel": 88,
+      "name": "程武",
+      "portrait": 200,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 60,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 85,
+      "index": 271,
+      "intel": 97,
+      "name": "姜維",
+      "portrait": 19,
+      "stamina": 92,
+      "troop": "強力",
+      "war": 91,
+      "courtesy": "伯約",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷44",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B744&oldid=8735594"
+        }
+      ]
+    },
+    {
+      "charm": 78,
+      "index": 272,
+      "intel": 43,
+      "name": "曹遵",
+      "portrait": 81,
+      "stamina": 62,
+      "troop": "山陸",
+      "war": 21,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 87,
+      "index": 273,
+      "intel": 82,
+      "name": "司馬師",
+      "portrait": 37,
+      "stamina": 79,
+      "troop": "強力",
+      "war": 82,
+      "courtesy": "子元",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 86,
+      "index": 274,
+      "intel": 94,
+      "name": "司馬昭",
+      "portrait": 208,
+      "stamina": 85,
+      "troop": "山陸",
+      "war": 73,
+      "courtesy": "子上",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 63,
+      "index": 275,
+      "intel": 80,
+      "name": "郝昭",
+      "portrait": 242,
+      "stamina": 88,
+      "troop": "強力",
+      "war": 86,
+      "courtesy": "伯道",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "郝昭",
+          "url": "https://zh.wikipedia.org/zh-tw/%E9%83%9D%E6%98%AD"
+        }
+      ]
+    },
+    {
+      "charm": 80,
+      "index": 276,
+      "intel": 91,
+      "name": "周魴",
+      "portrait": 230,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 33,
+      "courtesy": "子魚",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷60",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B760&oldid=2120830"
+        }
+      ]
+    },
+    {
+      "charm": 67,
+      "index": 277,
+      "intel": 78,
+      "name": "趙統",
+      "portrait": 247,
+      "stamina": 88,
+      "troop": "山陸",
+      "war": 87,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 80,
+      "index": 278,
+      "intel": 95,
+      "name": "諸葛恪",
+      "portrait": 35,
+      "stamina": 80,
+      "troop": "強力",
+      "war": 63,
+      "courtesy": "元遜",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷64",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B764&oldid=2263487"
+        }
+      ]
+    },
+    {
+      "charm": 76,
+      "index": 279,
+      "intel": 53,
+      "name": "曹爽",
+      "portrait": 137,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": "昭伯",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 80,
+      "index": 280,
+      "intel": 65,
+      "name": "曹芳",
+      "portrait": 107,
+      "stamina": 62,
+      "troop": "陸",
+      "war": 20,
+      "courtesy": "蘭卿",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 74,
+      "index": 281,
+      "intel": 95,
+      "name": "鍾會",
+      "portrait": 26,
+      "stamina": 84,
+      "troop": "強力",
+      "war": 83,
+      "courtesy": "士季",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷28",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B728&oldid=2386518"
+        }
+      ]
+    },
+    {
+      "charm": 70,
+      "index": 282,
+      "intel": 86,
+      "name": "鍾毓",
+      "portrait": 212,
+      "stamina": 62,
+      "troop": "山陸",
+      "war": 23,
+      "courtesy": "稚叔",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "鍾毓",
+          "url": "https://zh.wikipedia.org/zh-tw/%E9%8D%BE%E6%AF%93"
+        }
+      ]
+    },
+    {
+      "charm": 41,
+      "index": 283,
+      "intel": 96,
+      "name": "鄧艾",
+      "portrait": 16,
+      "stamina": 84,
+      "troop": "強力",
+      "war": 88,
+      "courtesy": "士載",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷28",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B728&oldid=2386518"
+        }
+      ]
+    },
+    {
+      "charm": 86,
+      "index": 284,
+      "intel": 52,
+      "name": "曹髦",
+      "portrait": 80,
+      "stamina": 72,
+      "troop": "陸",
+      "war": 34,
+      "courtesy": "彥士",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 32,
+      "index": 285,
+      "intel": 21,
+      "name": "文欽",
+      "portrait": 59,
+      "stamina": 83,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": "仲若",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "文欽",
+          "url": "https://zh.wikipedia.org/zh-tw/%E6%96%87%E6%AC%BD"
+        }
+      ]
+    },
+    {
+      "charm": 52,
+      "index": 286,
+      "intel": 40,
+      "name": "文鴛",
+      "portrait": 245,
+      "stamina": 90,
+      "troop": "山陸",
+      "war": 91,
+      "courtesy": "次騫",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "文鴦",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E6%96%87%E9%B4%A6&oldid=94828306"
+        }
+      ],
+      "courtesy_note": "依文鴦對照；遊戲姓名保留「文鴛」"
+    },
+    {
+      "charm": 70,
+      "index": 287,
+      "intel": 83,
+      "name": "諸葛誕",
+      "portrait": 203,
+      "stamina": 84,
+      "troop": "山陸",
+      "war": 62,
+      "courtesy": "公休",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷28",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B728&oldid=2386518"
+        }
+      ]
+    },
+    {
+      "charm": 34,
+      "index": 288,
+      "intel": 23,
+      "name": "文虎",
+      "portrait": 84,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 43,
+      "index": 289,
+      "intel": 23,
+      "name": "牛輔",
+      "portrait": 73,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 45,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 54,
+      "index": 290,
+      "intel": 46,
+      "name": "淳于瓊",
+      "portrait": 50,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": "仲簡",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "淳于瓊",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E6%B7%B3%E4%BA%8E%E7%93%8A&oldid=82512012"
+        }
+      ]
+    },
+    {
+      "charm": 59,
+      "index": 291,
+      "intel": 73,
+      "name": "楊彪",
+      "portrait": 231,
+      "stamina": 78,
+      "troop": "陸",
+      "war": 18,
+      "courtesy": "文先",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 36,
+      "index": 292,
+      "intel": 44,
+      "name": "鮑信",
+      "portrait": 211,
+      "stamina": 74,
+      "troop": "陸",
+      "war": 55,
+      "courtesy": "允誠",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 23,
+      "index": 293,
+      "intel": 54,
+      "name": "劉岱",
+      "portrait": 92,
+      "stamina": 80,
+      "troop": "陸",
+      "war": 56,
+      "courtesy": "公山",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 27,
+      "index": 294,
+      "intel": 36,
+      "name": "胡軫",
+      "portrait": 93,
+      "stamina": 63,
+      "troop": "陸",
+      "war": 54,
+      "courtesy": "文才",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 28,
+      "index": 295,
+      "intel": 24,
+      "name": "趙岑",
+      "portrait": 223,
+      "stamina": 85,
+      "troop": "陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 27,
+      "index": 296,
+      "intel": 43,
+      "name": "鮑忠",
+      "portrait": 228,
+      "stamina": 70,
+      "troop": "陸",
+      "war": 59,
+      "courtesy": "叔義",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 32,
+      "index": 297,
+      "intel": 42,
+      "name": "麴義",
+      "portrait": 175,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 70,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 51,
+      "index": 298,
+      "intel": 42,
+      "name": "嚴綱",
+      "portrait": 73,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 34,
+      "index": 299,
+      "intel": 53,
+      "name": "張闓",
+      "portrait": 50,
+      "stamina": 82,
+      "troop": "水陸",
+      "war": 68,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 17,
+      "index": 300,
+      "intel": 43,
+      "name": "曹豹",
+      "portrait": 66,
+      "stamina": 67,
+      "troop": "陸",
+      "war": 36,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 26,
+      "index": 301,
+      "intel": 24,
+      "name": "薛蘭",
+      "portrait": 18,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 68,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 36,
+      "index": 302,
+      "intel": 31,
+      "name": "李封",
+      "portrait": 32,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 68,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 43,
+      "index": 303,
+      "intel": 40,
+      "name": "高順",
+      "portrait": 41,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 70,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 56,
+      "index": 304,
+      "intel": 72,
+      "name": "任峻",
+      "portrait": 207,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 53,
+      "courtesy": "伯達",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷16",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B716&oldid=2610840"
+        }
+      ]
+    },
+    {
+      "charm": 21,
+      "index": 305,
+      "intel": 20,
+      "name": "荀正",
+      "portrait": 66,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 68,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 24,
+      "index": 306,
+      "intel": 26,
+      "name": "陳紀",
+      "portrait": 205,
+      "stamina": 81,
+      "troop": "陸",
+      "war": 45,
+      "courtesy": null,
+      "courtesy_sources": [],
+      "courtesy_note": "同名人物待辨，不套用其他人物的表字"
+    },
+    {
+      "charm": 21,
+      "index": 307,
+      "intel": 25,
+      "name": "梁剛",
+      "portrait": 33,
+      "stamina": 78,
+      "troop": "陸",
+      "war": 65,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 38,
+      "index": 308,
+      "intel": 28,
+      "name": "李豐",
+      "portrait": 67,
+      "stamina": 79,
+      "troop": "山陸",
+      "war": 54,
+      "courtesy": null,
+      "courtesy_sources": [],
+      "courtesy_note": "同名人物待辨，不套用其他人物的表字"
+    },
+    {
+      "charm": 25,
+      "index": 309,
+      "intel": 22,
+      "name": "雷敘",
+      "portrait": 49,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 68,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 33,
+      "index": 310,
+      "intel": 18,
+      "name": "張先",
+      "portrait": 30,
+      "stamina": 74,
+      "troop": "山陸",
+      "war": 61,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 44,
+      "index": 311,
+      "intel": 46,
+      "name": "李通",
+      "portrait": 99,
+      "stamina": 84,
+      "troop": "山陸",
+      "war": 83,
+      "courtesy": "文達",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷18",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B718&oldid=2579680"
+        }
+      ]
+    },
+    {
+      "charm": 50,
+      "index": 312,
+      "intel": 78,
+      "name": "許氾",
+      "portrait": 206,
+      "stamina": 65,
+      "troop": "陸",
+      "war": 23,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 51,
+      "index": 313,
+      "intel": 79,
+      "name": "王楷",
+      "portrait": 210,
+      "stamina": 72,
+      "troop": "陸",
+      "war": 25,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 47,
+      "index": 314,
+      "intel": 46,
+      "name": "劉延",
+      "portrait": 48,
+      "stamina": 79,
+      "troop": "山陸",
+      "war": 51,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 39,
+      "index": 315,
+      "intel": 53,
+      "name": "劉辟",
+      "portrait": 74,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 60,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 40,
+      "index": 316,
+      "intel": 40,
+      "name": "龔都",
+      "portrait": 22,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 72,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 52,
+      "index": 317,
+      "intel": 30,
+      "name": "高幹",
+      "portrait": 137,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": "元才",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "高幹",
+          "url": "https://zh.wikipedia.org/zh-tw/%E9%AB%98%E5%B9%B9"
+        }
+      ]
+    },
+    {
+      "charm": 72,
+      "index": 318,
+      "intel": 87,
+      "name": "王修",
+      "portrait": 224,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 24,
+      "courtesy": "叔治",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 31,
+      "index": 319,
+      "intel": 40,
+      "name": "馬延",
+      "portrait": 45,
+      "stamina": 73,
+      "troop": "山陸",
+      "war": 71,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 24,
+      "index": 320,
+      "intel": 44,
+      "name": "張顗",
+      "portrait": 71,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 75,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 59,
+      "index": 321,
+      "intel": 80,
+      "name": "崔琰",
+      "portrait": 232,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 26,
+      "courtesy": "季珪",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷12",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B712&oldid=2085067"
+        }
+      ]
+    },
+    {
+      "charm": 43,
+      "index": 322,
+      "intel": 23,
+      "name": "焦觸",
+      "portrait": 128,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 32,
+      "index": 323,
+      "intel": 32,
+      "name": "張南",
+      "portrait": 60,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": [],
+      "courtesy_note": "同名人物待辨，不套用其他人物的表字"
+    },
+    {
+      "charm": 23,
+      "index": 324,
+      "intel": 17,
+      "name": "張燕",
+      "portrait": 57,
+      "stamina": 80,
+      "troop": "山陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 27,
+      "index": 325,
+      "intel": 25,
+      "name": "張武",
+      "portrait": 31,
+      "stamina": 81,
+      "troop": "水陸",
+      "war": 68,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 32,
+      "index": 326,
+      "intel": 43,
+      "name": "陳孫",
+      "portrait": 208,
+      "stamina": 72,
+      "troop": "水陸",
+      "war": 60,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 40,
+      "index": 327,
+      "intel": 64,
+      "name": "王威",
+      "portrait": 51,
+      "stamina": 72,
+      "troop": "水陸",
+      "war": 56,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 72,
+      "index": 328,
+      "intel": 76,
+      "name": "陸績",
+      "portrait": 217,
+      "stamina": 74,
+      "troop": "水陸",
+      "war": 24,
+      "courtesy": "公紀",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷57",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B757&oldid=2638131"
+        }
+      ]
+    },
+    {
+      "charm": 67,
+      "index": 329,
+      "intel": 71,
+      "name": "嚴峻",
+      "portrait": 219,
+      "stamina": 81,
+      "troop": "水陸",
+      "war": 29,
+      "courtesy": "曼才",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷53",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B753&oldid=2086397"
+        }
+      ],
+      "courtesy_note": "依東吳嚴畯對照；遊戲姓名保留「嚴峻」"
+    },
+    {
+      "charm": 76,
+      "index": 330,
+      "intel": 73,
+      "name": "薛綜",
+      "portrait": 72,
+      "stamina": 53,
+      "troop": "水陸",
+      "war": 18,
+      "courtesy": "敬文",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷53",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B753&oldid=2086397"
+        }
+      ]
+    },
+    {
+      "charm": 43,
+      "index": 331,
+      "intel": 21,
+      "name": "陳就",
+      "portrait": 228,
+      "stamina": 82,
+      "troop": "水陸",
+      "war": 78,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 32,
+      "index": 332,
+      "intel": 25,
+      "name": "鄧龍",
+      "portrait": 34,
+      "stamina": 84,
+      "troop": "水陸",
+      "war": 77,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 42,
+      "index": 333,
+      "intel": 70,
+      "name": "韓浩",
+      "portrait": 123,
+      "stamina": 72,
+      "troop": "山陸",
+      "war": 73,
+      "courtesy": "元嗣",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷09",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283"
+        }
+      ]
+    },
+    {
+      "charm": 58,
+      "index": 334,
+      "intel": 86,
+      "name": "夏侯霸",
+      "portrait": 25,
+      "stamina": 88,
+      "troop": "強力",
+      "war": 88,
+      "courtesy": "仲權",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "夏侯霸",
+          "url": "https://zh.wikipedia.org/zh-tw/%E5%A4%8F%E4%BE%AF%E9%9C%B8"
+        }
+      ]
+    },
+    {
+      "charm": 41,
+      "index": 335,
+      "intel": 70,
+      "name": "張允",
+      "portrait": 105,
+      "stamina": 73,
+      "troop": "水陸",
+      "war": 71,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 69,
+      "index": 336,
+      "intel": 81,
+      "name": "傅幹",
+      "portrait": 222,
+      "stamina": 76,
+      "troop": "山陸",
+      "war": 28,
+      "courtesy": "彥才",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    },
+    {
+      "charm": 54,
+      "index": 337,
+      "intel": 43,
+      "name": "楊昂",
+      "portrait": 59,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 63,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 52,
+      "index": 338,
+      "intel": 21,
+      "name": "楊任",
+      "portrait": 58,
+      "stamina": 78,
+      "troop": "山陸",
+      "war": 72,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 80,
+      "index": 339,
+      "intel": 90,
+      "name": "郭攸之",
+      "portrait": 220,
+      "stamina": 62,
+      "troop": "山陸",
+      "war": 40,
+      "courtesy": "演長",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "郭攸之",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E9%83%AD%E6%94%B8%E4%B9%8B&oldid=85584784"
+        }
+      ]
+    },
+    {
+      "charm": 67,
+      "index": 340,
+      "intel": 79,
+      "name": "董允",
+      "portrait": 221,
+      "stamina": 82,
+      "troop": "山陸",
+      "war": 20,
+      "courtesy": "休昭",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷39",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B739&oldid=2583389"
+        }
+      ]
+    },
+    {
+      "charm": 56,
+      "index": 341,
+      "intel": 64,
+      "name": "全琮",
+      "portrait": 226,
+      "stamina": 73,
+      "troop": "山陸",
+      "war": 64,
+      "courtesy": "子璜",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷60",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B760&oldid=2120830"
+        }
+      ]
+    },
+    {
+      "charm": 82,
+      "index": 342,
+      "intel": 43,
+      "name": "袁胤",
+      "portrait": 205,
+      "stamina": 71,
+      "troop": "陸",
+      "war": 61,
+      "courtesy": null,
+      "courtesy_sources": []
+    },
+    {
+      "charm": 51,
+      "index": 343,
+      "intel": 69,
+      "name": "曹仁",
+      "portrait": 250,
+      "stamina": 84,
+      "troop": "山陸",
+      "war": 84,
+      "courtesy": "子孝",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷09",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283"
+        }
+      ]
+    },
+    {
+      "charm": 43,
+      "index": 344,
+      "intel": 34,
+      "name": "曹洪",
+      "portrait": 18,
+      "stamina": 81,
+      "troop": "山陸",
+      "war": 76,
+      "courtesy": "子廉",
+      "courtesy_sources": [
+        {
+          "kind": "primary",
+          "title": "三國志/卷09",
+          "url": "https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283"
+        }
+      ]
+    },
+    {
+      "charm": 72,
+      "index": 345,
+      "intel": 87,
+      "name": "王允",
+      "portrait": 65,
+      "stamina": 51,
+      "troop": "陸",
+      "war": 12,
+      "courtesy": "子師",
+      "courtesy_sources": [
+        {
+          "kind": "secondary",
+          "title": "三國演義角色列表",
+          "url": "https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572"
+        }
+      ]
+    }
+  ]
+}

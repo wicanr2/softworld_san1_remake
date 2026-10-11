@@ -47,7 +47,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 主畫面左側年月的位置、空白槽與重生收據 | [spec/005 §2.2](spec/005-main-screen.md#22-左側年月直排)、[re/03 §8.1](re/03-main-program-code-map.md)、[playtest/03](playtest/03-screen-parity.md) |
 | 畫面幾列高、憑什麼是 408 不是 350 | `spec/006` |
 | 主戰場、開場詞、主選單怎麼拼 | `spec/005`（版面）、`re/05` §2.5–2.6（畫的那一端）|
-| 音效與語音怎麼播、槽怎麼分 | [RE/09](re/09-speech.md)、[008](spec/008-speaker-audio.md)、[兩版已知宣戰的正式觸發](spec/008-speaker-audio.md#9-已知宣戰對白的正式觸發) |
+| 音效與語音怎麼播、槽怎麼分 | [RE/09](re/09-speech.md)、[008](spec/008-speaker-audio.md)、[兩版已知宣戰的正式觸發](spec/008-speaker-audio.md#9-已知宣戰對白的正式觸發)、[8 kHz 速度與接縫修正](spec/008-speaker-audio.md#11-pc-喇叭語音速度與接縫修正) |
 | 訊息框（肖像＋對白泡泡）的版面、片語表 350–499 | `spec/005` §9、`re/12` |
 | 主畫面對白的即時換語言、姓名快照及存檔隔離 | [021 §6.54.3](spec/021-hd-art.md#6543-主畫面對白的語言佇列)、[顯示實作](../internal/game/bubble_locale.go)、[對白測試](../internal/game/bubble_locale_test.go)、[視窗與存檔測試](../cmd/san1/main_bubble_locale_test.go)、[正常 GUI 重跑](../tools/verify-hd-main-bubbles.sh)、[畫面比較器](../tools/verify-hd-main-bubbles-inner.py) |
 | 現行高清包的音訊接線 | [021 §6.55](spec/021-hd-art.md#655-現行完整包的音訊接線)、[驗證容器 CPU 配額](spec/021-hd-art.md#6551-音訊驗證容器的-cpu-配額)、[Mesa 執行緒](spec/021-hd-art.md#6552-音訊驗證的-mesa-執行緒)、[桌面背景執行與暫停探針](spec/021-hd-art.md#6553-桌面背景執行與暫停探針)、[補給時間與低音量回讀](spec/021-hd-art.md#6554-音訊補給時間與低音量波形)、[現行配樂補驗](spec/021-hd-art.md#6555-渲染效能修正後的配樂補驗)、[GUI 入口](../tools/verify-hd-audio.sh)、[音訊擷取](../tools/verify-hd-audio-inner.py)、[本機 PCM 參考](../tools/hd-audio-reference.go)、[波形回讀](../tools/verify-hd-audio-pcm.py)；現行補驗 4/4，先前 R3 配樂 3/4 保持，配樂、音效及語音分開驗收 |
@@ -126,6 +126,9 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 配樂與滑鼠修正版四平台封包 | [v.1.1.2 打包契約與驗收](release/01-packaging.md#配樂與滑鼠修正版打包契約)；四個獨立本機完整版、正式 Linux 兩版原貌／高清滑鼠流程、四段完整配樂錄音與 Windows Wine 啟動通過 |
 | 對戰地圖的完整將領譯名 | [spec/021 §6.59](spec/021-hd-art.md#659-對戰地圖的完整將領譯名)；限本節 CONFORMED，兩版六劇本 347 姓名、166 項回歸、兩版正常三語 66 項檢查、258 PNG 與完整字模獨立回讀通過 |
 | HD 素材入庫與原版／HD 完整總覽 | [素材包說明](../hd-assets/README.md)、[021 §6.62](spec/021-hd-art.md#662-hd-素材入庫與總覽)、[Docker 重生入口](../tools/asset-overviews.sh)、[原版地形匯出](../tools/asset-overview-tiles.go)、[縮圖合成](../tools/render-asset-overviews.py)、[完整圖錄索引](images/asset-overviews.json) |
+| 楷書／隸書在視窗縮放後模糊 | [021 §6.63](spec/021-hd-art.md#663-點陣字的最終顯示縮放)、[正常主選單驗證](../tools/verify-font-scaling-inner.py) |
+| HD 武將圖鑑的原始姓名與能力匯出 | [general-catalog.go](../tools/general-catalog.go)，從兩版劇本 001 讀取姓名、肖像與能力 |
+| HD 武將姓名、表字、能力與總覽 | [021 §6.64](spec/021-hd-art.md#664-hd-武將姓名總覽與獨立圖鑑)、[獨立圖鑑](hd-generals.md)、[人物資料與來源](reference/hd-generals.json)、[總覽圖](images/hd-generals-overview.png)、[圖錄索引](images/hd-generals-overview.json)、[產生工具](../tools/render-general-catalog.py) |
 | 自創君主怎麼建、範本在哪 | `spec/013`、`re/08` §3 |
 | 主畫面上的指令表、子選單、分頁畫在哪 | `spec/014`（原版量自 `TestZZSubMenuScreens`）|
 | 原版 oracle 如何不用固定指令數開到主畫面 | `spec/015`（執行期輸入位址、行為停點與失敗上限）|

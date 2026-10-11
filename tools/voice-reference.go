@@ -44,7 +44,7 @@ func main() {
 	if err := os.Mkdir(*out, 0755); err != nil {
 		panic(err)
 	}
-	meta := map[string]any{"rate": 48000, "channels": 2, "sample_bytes": 2, "voice_divisor": speaker.VoiceDivisor, "method": "既有 remake 取樣率模型；不宣稱原版牆鐘或波形一致"}
+	meta := map[string]any{"rate": 48000, "channels": 2, "sample_bytes": 2, "voice_divisor": speaker.VoiceDivisor, "voice_sample_rate": speaker.VoiceSampleRate, "method": "使用者試聽選定 8 kHz；去直流與 3 ms 淡化；不宣稱原版牆鐘或波形一致"}
 	for _, edition := range []state.Edition{state.EditionBase, state.EditionPlus} {
 		folder := "三國演義"
 		if edition == state.EditionPlus {
@@ -76,7 +76,7 @@ func main() {
 					panic(name + " 缺漏或越界")
 				}
 				clips = append(clips, map[string]any{"name": name, "bytes": len(raw), "sha256": fmt.Sprintf("%x", sha256.Sum256(raw))})
-				for _, x := range speaker.Render(speaker.NewClip(raw), speaker.Rate(speaker.VoiceDivisor), 48000) {
+				for _, x := range speaker.RenderVoice(speaker.NewClip(raw), speaker.VoiceRate(speaker.VoiceDivisor), 48000) {
 					var f [4]byte
 					binary.LittleEndian.PutUint16(f[:2], uint16(x))
 					binary.LittleEndian.PutUint16(f[2:], uint16(x))

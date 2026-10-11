@@ -77,6 +77,46 @@ func TestRateFollowsTheDelayLoop(t *testing.T) {
 	}
 }
 
+func TestVoiceTimingAndEndpoints(t *testing.T) {
+	// 2,604 bytes 的三段宣戰素材，在使用者選定的 8 kHz 下為 2.604 秒。
+	got := RenderVoice(NewClip(bytes.Repeat([]byte{0xF0}, 2604)), VoiceRate(VoiceDivisor), 48000)
+	if len(got) != 124992 {
+		t.Fatalf("宣戰時長：%d frames，預期 124992", len(got))
+	}
+	if got[0] != 0 || got[len(got)-1] != 0 {
+		t.Fatal("語音頭尾沒有回到零，會與靜音形成接縫")
+	}
+	var sum int64
+	var lo, hi int
+	for _, v := range got {
+		sum += int64(v)
+		if v < 0 {
+			lo++
+		}
+		if v > 0 {
+			hi++
+		}
+	}
+	if math.Abs(float64(sum)/float64(len(got))) > 2 || lo == 0 || hi == 0 {
+		t.Fatal("語音未移除直流，或有效波形消失")
+	}
+	if VoiceRate(VoiceDivisor*2) >= VoiceRate(VoiceDivisor) {
+		t.Fatal("較大的分頻值沒有放慢語音")
+	}
+}
+
+func TestVoiceRemovesConstantBias(t *testing.T) {
+	got := RenderVoice(NewClip(make([]byte, 2000)), 8000, 48000)
+	for _, v := range got[1000 : len(got)-1000] {
+		if v < -2 || v > 2 {
+			t.Fatal("恆定的一位元波形仍保留直流偏移")
+		}
+	}
+	if RenderVoice(Clip{}, 8000, 48000) != nil {
+		t.Fatal("空片段產生聲音")
+	}
+}
+
 func TestRenderResamplesAndSmooths(t *testing.T) {
 	c := NewClip(bytes.Repeat([]byte{0xF0}, 16)) // 四高四低
 	src, dst := 10000.0, 40000.0

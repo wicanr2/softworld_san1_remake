@@ -256,6 +256,13 @@ func (a *app) drawWindow(dst *ebiten.Image) {
 	}
 }
 
+// DrawFinalScreen 保留點陣字的顏色邊界，避免最終縮放再次混合筆畫與底色。
+// 幾何矩陣由 Ebiten 提供，視窗比例與輸入座標沿用原有換算（spec/021 §6.63）。
+func (a *app) DrawFinalScreen(dst ebiten.FinalScreen, src *ebiten.Image, geo ebiten.GeoM) {
+	op := &ebiten.DrawImageOptions{GeoM: geo, Filter: ebiten.FilterNearest}
+	dst.DrawImage(src, op)
+}
+
 func (a *app) relocalizeWindow(old i18n.Locale) {
 	f := func(s string) string { return i18n.Relocalize(s, old, i18n.Current) }
 	if n := a.numPrompt; a.num == nil && n != nil && a.view.Prompt == n.shown {

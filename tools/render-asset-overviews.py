@@ -115,7 +115,8 @@ def render(rows, output, title, note, labels, high=False):
     groups = defaultdict(list)
     for row in rows:
         groups[category(row["name"])].append(row)
-    height = 128 + MARGIN + sum(52 + math.ceil(len(groups[c]) / COLS) * CELL_H for c in CATEGORIES if groups[c])
+    cell_height = lambda c: 184 if high and c == CATEGORIES[0] else CELL_H
+    height = 128 + MARGIN + sum(52 + math.ceil(len(groups[c]) / COLS) * cell_height(c) for c in CATEGORIES if groups[c])
     canvas = Image.new("RGB", (MARGIN * 2 + COLS * CELL_W, height), "#131a23")
     draw = ImageDraw.Draw(canvas)
     labels.heading(canvas, (MARGIN, 22), title, scale=3)
@@ -129,10 +130,11 @@ def render(rows, output, title, note, labels, high=False):
         draw.rectangle((MARGIN, y, canvas.width - MARGIN, y + 42), fill="#253342")
         labels.heading(canvas, (MARGIN + 12, y + 5), f"{c}  {len(items)}", scale=2)
         y += 52
+        cell_h = cell_height(c)
         for i, row in enumerate(items):
-            x, top = MARGIN + (i % COLS) * CELL_W, y + (i // COLS) * CELL_H
+            x, top = MARGIN + (i % COLS) * CELL_W, y + (i // COLS) * cell_h
             box = (x + 4, top + 4, x + CELL_W - 4, top + 118)
-            draw.rectangle((x + 1, top + 1, x + CELL_W - 1, top + CELL_H - 3), fill="#1c2632")
+            draw.rectangle((x + 1, top + 1, x + CELL_W - 1, top + cell_h - 3), fill="#1c2632")
             for sy in range(box[1], box[3], 8):
                 for sx in range(box[0], box[2], 8):
                     fill = "#354251" if ((sx - box[0]) // 8 + (sy - box[1]) // 8) % 2 else "#2c3744"
@@ -147,13 +149,27 @@ def render(rows, output, title, note, labels, high=False):
             if high and len({e["name"] for e in row["sources"]}) > 1:
                 name += "+"
             assert draw.textlength(name, font=labels.small) <= CELL_W - 6, name
-            draw.text((x + 4, top + 122), name, font=labels.small, fill="#f2ead6")
             edition = "both" if len(row["editions"]) == 2 else row["editions"][0]
-            draw.text((x + 4, top + 139), f"{size[0]}x{size[1]} / {edition}", font=labels.small, fill="#a9bacb")
+            if high and c == CATEGORIES[0]:
+                lines = []
+                for person in row['people']:
+                    if lines and len(lines[-1] + '／' + person) <= 7:
+                        lines[-1] += '／' + person
+                    else:
+                        lines.append(person)
+                if not lines:
+                    lines = ['未對應具名人物']
+                assert len(lines) <= 3
+                for n, line in enumerate(lines):
+                    labels.heading(canvas, (x + 4, top + 121 + n * 16), line, scale=1)
+                draw.text((x + 4, top + 169), name + ' / ' + edition, font=labels.small, fill='#a9bacb')
+            else:
+                draw.text((x + 4, top + 122), name, font=labels.small, fill="#f2ead6")
+                draw.text((x + 4, top + 139), f"{size[0]}x{size[1]} / {edition}", font=labels.small, fill="#a9bacb")
             record = {k: v for k, v in row.items() if k != "path"}
-            record.update(category=c, width=size[0], height=size[1], tile=[x, top, CELL_W, CELL_H])
+            record.update(category=c, width=size[0], height=size[1], tile=[x, top, CELL_W, cell_h])
             records.append(record)
-        y += math.ceil(len(items) / COLS) * CELL_H
+        y += math.ceil(len(items) / COLS) * cell_h
     canvas.save(output, optimize=True)
     with Image.open(output) as check:
         check.load()
@@ -165,16 +181,32 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path("/src"))
     parser.add_argument("--extracted", type=Path, default=Path("/src/workplace/asset-overviews"))
+    parser.add_argument('--hd-only', action='store_true', help='保留原版總覽，只更新 HD 姓名與圖錄')
     args = parser.parse_args()
     output = args.root / "docs/images"
     assert output.is_dir() and output.stat().st_uid == os.getuid()
     for name in ("assets-original-overview.png", "assets-hd-overview.png", "asset-overviews.json"):
         dest = output / name
         assert not dest.exists() or dest.stat().st_uid == os.getuid(), dest
-    original, counts = read_original(args.extracted)
+    if args.hd_only:
+        previous = json.loads((output / 'asset-overviews.json').read_text())
+        a, counts = previous['original'], previous['original_exports']
+        assert sha(output / a['file']) == a['sha256']
+    else:
+        original, counts = read_original(args.extracted)
     hd, pack = read_hd(args.root / "hd-assets")
+    catalog_path = args.root / 'docs/reference/hd-generals.json'
+    people = json.loads(catalog_path.read_text())['people']
+    by_portrait = defaultdict(list)
+    for person in people:
+        by_portrait[person['portrait']].append(person['name'])
+    for row in hd:
+        if row['name'].endswith('.FAC'):
+            row['people'] = by_portrait[int(row['name'][1:4])]
+    pack['portrait_catalog_sha256'] = sha(catalog_path)
     labels = Labels(args.root / "fonts/unifont.hex.gz")
-    a = render(original, output / "assets-original-overview.png", "三國演義　原版素材總覽", "原版與加強版　相同素材合併展示　保留全部圖像與地形槽位　原始像素採最近鄰縮放", labels)
+    if not args.hd_only:
+        a = render(original, output / "assets-original-overview.png", "三國演義　原版素材總覽", "原版與加強版　相同素材合併展示　保留全部圖像與地形槽位　原始像素採最近鄰縮放", labels)
     b = render(hd, output / "assets-hd-overview.png", "三國演義　HD 素材總覽", "寫實手繪　四倍高清　正式素材包全部圖片　透明區採棋盤底　不同資源可能共用同一張圖", labels, high=True)
     index = {"schema": 1, "original_exports": counts, "hd_pack": pack, "original": a, "hd": b}
     (output / "asset-overviews.json").write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n")

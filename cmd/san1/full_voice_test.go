@@ -45,7 +45,7 @@ func TestFullVoiceCatalogCanReadAndRenderBothOriginalBanks(t *testing.T) {
 				if len(clip) == 0 || len(clip) > speaker.MaxVoiceBytes {
 					t.Fatalf("missing/invalid R%03d.OKR: %d bytes", index, len(clip))
 				}
-				pcm := speaker.Render(speaker.NewClip(clip), speaker.Rate(v.voiceDiv), audioRate)
+				pcm := speaker.RenderVoice(speaker.NewClip(clip), speaker.VoiceRate(v.voiceDiv), audioRate)
 				if len(pcm) == 0 {
 					t.Fatalf("empty decoded R%03d.OKR", index)
 				}

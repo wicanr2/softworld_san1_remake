@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# 重生 README 的兩張完整素材總覽。原版單張圖只寫到 gitignore 的 workplace。
+# 重生素材總覽與武將圖鑑。原版單張圖只寫到 gitignore 的 workplace。
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ORIGINAL="${SAN1_ORIG:-$ROOT/org_game}"
 GO_IMAGE="${SAN1_GO_IMAGE:-eob-remake-go:1.26.7-ebiten2.9.9-20261008-r2}"
 ART_IMAGE="${SAN1_ART_IMAGE:-eob-audio-capture:20261009-r3}"
-for p in "$ROOT/workplace" "$ROOT/hd-assets" "$ROOT/docs/images" \
+for p in "$ROOT/workplace" "$ROOT/hd-assets" "$ROOT/docs" "$ROOT/docs/images" \
     "$ORIGINAL/三國演義" "$ORIGINAL/三國演義1加強版"; do
     test -d "$p" || { echo "缺少目錄：$p" >&2; exit 1; }
 done
+test -f "$ROOT/docs/reference/hd-generals.json"
 docker image inspect "$GO_IMAGE" "$ART_IMAGE" >/dev/null
 timeout 180s docker run --rm --name "san1-overviews-export-$$" --network none \
     --memory 3g --cpus 2 --pids-limit 256 \
@@ -29,5 +30,9 @@ timeout 180s docker run --rm --name "san1-overviews-render-$$" --network none \
     --memory 2g --cpus 2 --pids-limit 128 \
     --log-opt max-size=10m --log-opt max-file=3 --user "$(id -u):$(id -g)" \
     --mount "type=bind,src=$ROOT,dst=/src,readonly" \
-    --mount "type=bind,src=$ROOT/docs/images,dst=/src/docs/images" \
-    --entrypoint python3 "$ART_IMAGE" /src/tools/render-asset-overviews.py
+    --mount "type=bind,src=$ROOT/docs,dst=/src/docs" \
+    -w /src --entrypoint bash "$ART_IMAGE" -c '
+        set -euo pipefail
+        python3 tools/render-general-catalog.py
+        python3 tools/render-asset-overviews.py
+    '

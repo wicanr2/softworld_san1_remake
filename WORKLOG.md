@@ -1986,3 +1986,47 @@ GitHub 渲染的 README 內兩張 420 像素預覽、替代文字、放大連結
 HD 包保持。公開索引、重生工具及驗證收據全部保留；清理明細為
 `workplace/asset-overviews/cleanup.json`。AGENTS.md 保持未暫存，全部一次性容器
 已移除；全工作樹 root-owned 檔案及誤建 `.md` 目錄為零。
+
+## 2026-10-11 PC 語音速度、字體縮放與 HD 武將圖鑑
+
+使用者回報兩版 PC 喇叭語音過快，試聽原模型、11,025 Hz 與 8,000 Hz 後，
+選定第一句 2.604 秒的 8,000 Hz，並要求稍微優化。本輪依平台規格停止線，
+只核對既有加強版宣戰呼叫參數，不深入硬體 driver／ISR／busy-wait。
+GitHub Issue #14、#71 最新內容與狀態已讀，沒有寫入 Issue。
+
+語音槽 1–3 改用 8,000 Hz 基準，保留分頻調速；去除平均直流偏移及各段
+3 ms 頭尾淡化，不裁切、不插靜音。音效槽 0 維持原模型。
+人耳已確認的是優化前 8,000 Hz；優化後本機試聽檔為
+`workplace/audio/voice-optimized-20261011-reference/plus-declarations-optimized.wav`。
+原版語音及衍生 WAV 留本機。自動審查曾拒絕將原版語音附至對話介面，
+改提供本機連結完成試聽，沒有重試上傳。
+
+字體回切沒有殘影。主因為 Ebiten 最終顯示在非整數放大與縮小時混色；
+沿用引擎幾何矩陣，改以最近鄰呈現。字庫、16×16 字模與點擊換算保持。
+GPU 在恰落像素邊界時與 Pillow 的選邊不同，驗證容許邊界兩側原色，
+不容許混色、不排除任何像素。舊程式負對照仍驗出 477 個不符像素。
+
+使用者確認獨立武將圖鑑包含姓名、表字及遊戲能力值。兩版劇本 001 共
+346 位具名人物，姓名、肖像及能力逐筆相同，使用 251 張共用 HD 肖像。
+新增[獨立 Markdown](docs/hd-generals.md)與[姓名總覽](docs/images/hd-generals-overview.png)，
+原有 HD 素材總覽也補上肖像姓名。表字另查外部資料，143 筆採史書原文、
+70 筆二手來源另標，133 位待考；遊戲姓名保持原文，異體字與演義差異另註。
+排除連至其他人物段落的重新導向，以及李豐、張南、陳紀等同名誤配。
+README、素材包說明、文件索引及現況表均已加入入口，Docker 重生工具已整合圖鑑。
+
+| 驗證 | 結果與入口 |
+|---|---|
+| 專項回歸 | `internal/speaker`、`internal/font`、`cmd/san1` 共 90 通過、零略過及失敗；`workplace/audio/audio-font-tests-20261011.jsonl` |
+| 正常字體切換 | 兩版、兩種 Theme、兩種字體與四種寬度共 32 組，四次回切恢復；`workplace/audio/font-scaling-fixed-20261011-r2/receipt.json` |
+| 正常語音錄音 | 兩版繁中宣戰共四段完整 PCM，2.604／2.354 秒、零排除幀、只播一次；`workplace/audio/voice-optimized-20261011/receipt.json` |
+| 圖鑑與總覽 | 346 列能力、頭像、姓名與來源，256 個 FAC 對照及三張總覽尺寸／SHA 通過，圖片已查看；原版總覽及 HD manifest SHA 保持 |
+| 獨立回讀 | 上述 PCM、32 組文字區、199 張唯一 PNG 完整解碼與 SHA、圖鑑資料均通過；`workplace/audio/audio-font-catalog-independent-20261011.json` |
+
+首次較廣的 UI 回歸超過容器四分鐘上限，674 項通過、8 項略過，未完成整包，
+不列為全庫通過。字體擷取初次超出虛擬桌面邊界，修正視窗位置後乾淨重跑；
+兩者均為驗證環境問題，未改產品行為以迴避檢查。
+008 §11、021 §6.63／6.64 分別限本輪抽樣及圖鑑為 CONFORMED，整份 HD 保持 READY。
+本輪沒有重包或更新 Release；既有 v.1.1.2 套件、tag 與附件保持。
+一次性容器均已移除；工作樹 root-owned 檔案及誤建 `.md` 目錄為零，新增文件與
+工具 UID/GID 為 1000:1000。Git 作者信箱及全部歷史均為 `wicanr2@gmail.com`，
+`git diff --check` 通過；AGENTS.md 保持未暫存。

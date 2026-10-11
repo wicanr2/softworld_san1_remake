@@ -50,10 +50,10 @@ const (
 
 	// SFXDivisor 是音效那一段實測到的分頻值（`L1`，`speak(0, 10)`）。
 	SFXDivisor = 13
-	// VoiceDivisor 是語音的全域暫用值。兩則宣戰訊息已量到 148／137，
-	// 證明速度會隨訊息而異；其餘訊息與 runtime 目錄還沒接上
-	//（`docs/spec/008` §5、§7 R8）。
-	VoiceDivisor = 130
+	// VoiceDivisor 保留命令列的分頻設定，預設經 VoiceRate 換算為 8 kHz。
+	// 這是使用者試聽選定的 remake 近似（spec/008 §11）。
+	VoiceDivisor    = 130
+	VoiceSampleRate = 8000
 )
 
 // Rate 是分頻值對應的取樣率（Hz）。
@@ -62,6 +62,12 @@ func Rate(divisor int) float64 {
 		divisor = 10 // 原版自己夾的下限（`docs/re/09` §6.1）
 	}
 	return float64(RefCPUHz) / float64(loopCost*divisor+bitFixed)
+}
+
+// VoiceRate 以選定的 8 kHz 為語音基準，保留分頻值越大越慢的調整方向。
+// 音效繼續使用 Rate，不受語音速度影響。
+func VoiceRate(divisor int) float64 {
+	return VoiceSampleRate * (Rate(divisor) / Rate(VoiceDivisor))
 }
 
 // Clip 是一段一位元取樣。
@@ -163,6 +169,29 @@ func Render(c Clip, srcRate, dstRate float64) []int16 {
 		}
 		y += (x - y) * alpha
 		out[i] = int16(y)
+	}
+	return out
+}
+
+// RenderVoice 保留取樣數與音高，去除直流偏移並淡化每段頭尾，減少接縫爆音。
+func RenderVoice(c Clip, srcRate, dstRate float64) []int16 {
+	out := Render(c, srcRate, dstRate)
+	if len(out) == 0 {
+		return out
+	}
+	var sum int64
+	for _, v := range out {
+		sum += int64(v)
+	}
+	mean := float64(sum) / float64(len(out))
+	fade := min(int(dstRate*0.003), len(out)/2)
+	for i, v := range out {
+		x := float64(v) - mean
+		if fade > 1 {
+			gain := min(1, float64(min(i, len(out)-1-i))/float64(fade-1))
+			x *= gain
+		}
+		out[i] = int16(x)
 	}
 	return out
 }

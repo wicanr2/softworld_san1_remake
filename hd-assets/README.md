@@ -17,6 +17,8 @@ Windows 執行 `san1.exe`。啟動後按 Esc 展開選項列，將 Theme 切成 
 
 完整預覽見 [README 素材總覽](../README.md#素材總覽)，逐張來源與輸出雜湊見
 [manifest](manifest.json)。[圖錄索引](../docs/images/asset-overviews.json) 另列縮圖的位置與版本。
+[獨立武將圖鑑](../docs/hd-generals.md)列出 346 位人物的頭像、姓名、表字與遊戲能力值；
+[武將姓名總覽](../docs/images/hd-generals-overview.png)在各張頭像下方標示姓名。
 素材製作及玩家路徑的驗收範圍見 [021 高清規格](../docs/spec/021-hd-art.md)，
 入庫範圍見 [§6.62](../docs/spec/021-hd-art.md#662-hd-素材入庫與總覽)。
 
@@ -28,7 +30,9 @@ bash tools/asset-overviews.sh
 
 此工具只在 Docker 匯出及合成。預設讀取專案 `org_game/`，可用 `SAN1_ORIG`
 指定包含兩版目錄的其他路徑。原版單張 PNG 保存在被 Git 忽略的
-`workplace/asset-overviews/`；公開輸出是 `docs/images/` 的兩張總覽與 JSON 索引。
+`workplace/asset-overviews/`；公開輸出包含 `docs/images/` 的三張總覽與 JSON 索引，
+以及 `docs/hd-generals.md`。武將圖鑑讀取已核對的
+[`docs/reference/hd-generals.json`](../docs/reference/hd-generals.json)，表字不寫入遊戲。
 映像檔預設為 `eob-remake-go:1.26.7-ebiten2.9.9-20261008-r2` 及
 `eob-audio-capture:20261009-r3`，可用 `SAN1_GO_IMAGE`、`SAN1_ART_IMAGE` 指定既有相容映像檔。
 

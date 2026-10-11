@@ -43,7 +43,7 @@ func main() {
 		if len(data) == 0 {
 			panic("missing original clip")
 		}
-		for _, sample := range speaker.Render(speaker.NewClip(data), speaker.Rate(speaker.VoiceDivisor), 48000) {
+		for _, sample := range speaker.RenderVoice(speaker.NewClip(data), speaker.VoiceRate(speaker.VoiceDivisor), 48000) {
 			var frame [4]byte
 			binary.LittleEndian.PutUint16(frame[:2], uint16(sample))
 			binary.LittleEndian.PutUint16(frame[2:], uint16(sample))

@@ -60,7 +60,7 @@ func bubbleVoiceFixture(t *testing.T, edition state.Edition) (*session.Session, 
 func voiceExpectedPCM(v *voicebox, clips [3]int) []byte {
 	var result []byte
 	for _, n := range clips {
-		for _, x := range speaker.Render(speaker.NewClip(v.clip(n)), speaker.Rate(v.voiceDiv), audioRate) {
+		for _, x := range speaker.RenderVoice(speaker.NewClip(v.clip(n)), speaker.VoiceRate(v.voiceDiv), audioRate) {
 			var frame [4]byte
 			binary.LittleEndian.PutUint16(frame[:2], uint16(x))
 			binary.LittleEndian.PutUint16(frame[2:], uint16(x))
