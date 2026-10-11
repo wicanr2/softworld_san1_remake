@@ -53,13 +53,13 @@ func (a *app) updateCredits() bool {
 	}
 	if cp.hall {
 		// 朝堂圖停著等按鍵——**不自動跳過**：那是結局的定格。
-		if anyKeyPressed() {
+		if a.anyKeyPressed() {
 			cp.hall = false
 			a.dirty = true
 		}
 		return true
 	}
-	if anyKeyPressed() {
+	if a.anyKeyPressed() {
 		a.endCredits()
 		return true
 	}

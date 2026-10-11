@@ -3,6 +3,7 @@ package ui
 import (
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
+	"image"
 )
 
 // SaveScreen 是「其他 → 儲存進度」那一格（`0x1e440`–`0x1e668`，`docs/spec/005` §9.9，
@@ -26,11 +27,15 @@ const (
 // DrawSaveScreen 畫存檔那一格的右側面板：外框裡清成藍（`0x1058:0x27e8(…, 1)`），
 // 外框重拼成樣式 2（`0x262c`，`(2＋500) mod 5` → `SIDEC`，與人物卡同一組）。
 func DrawSaveScreen(c *Canvas, a *ArtScreen, s *SaveScreen) {
+	c.PointerTargets = nil
 	ClearPanel(c, 408, 36, 631, 291, assets.EGAPalette[saveBG])
 	if a != nil && a.havePanel {
 		drawSideFrame(c, a.cardPanel, 408, 36, 224, 256, saveBG)
 	}
 	for k, name := range s.Names {
+		if s.Slot == 0 {
+			c.AddPointer(image.Rect(saveRowX, saveRowY+k*CellH, saveRowX+saveRowCells*CellW, saveRowY+(k+1)*CellH), PointerKey, int('1'+k))
+		}
 		ink := saveInk
 		if k == s.Slot-1 {
 			ink = savePick

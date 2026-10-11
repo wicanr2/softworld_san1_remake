@@ -22,14 +22,15 @@ func main() {
 	out := flag.String("out", "", "既有本機輸出目錄")
 	cursorsOnly := flag.Bool("cursors-only", false, "只重生游標來源")
 	seconds := flag.Int("seconds", 240, "配樂參考秒數")
+	opening := flag.Bool("opening", false, "輸出片頭 MUSV 長曲參考")
 	flag.Parse()
-	if err := reference(*root, *out, *cursorsOnly, *seconds); err != nil {
+	if err := reference(*root, *out, *cursorsOnly, *seconds, *opening); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func reference(root, out string, cursorsOnly bool, seconds int) error {
+func reference(root, out string, cursorsOnly bool, seconds int, opening bool) error {
 	if seconds < 1 || seconds > 600 {
 		return fmt.Errorf("秒數須在 1–600")
 	}
@@ -82,14 +83,18 @@ func reference(root, out string, cursorsOnly bool, seconds int) error {
 		}
 		return c.Data(i)
 	}
-	tracks, err := music.ParseAll(get(music.SongIndex), get(music.SongData))
+	index, data, name, count := music.SongIndex, music.SongData, "music-reference.pcm", 5
+	if opening {
+		index, data, name, count = music.LongIndex, music.LongData, "opening-reference.pcm", 1
+	}
+	tracks, err := music.ParseAll(get(index), get(data))
 	if err != nil {
 		return err
 	}
-	if len(tracks) != 5 {
-		return fmt.Errorf("曲數不是五首：%d", len(tracks))
+	if len(tracks) != count {
+		return fmt.Errorf("曲數 %d，預期 %d", len(tracks), count)
 	}
-	f, err := os.OpenFile(filepath.Join(out, "music-reference.pcm"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filepath.Join(out, name), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}

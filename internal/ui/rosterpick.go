@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"image"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/cells"
@@ -54,6 +55,7 @@ func RosterRange(p *RosterPick) (lo, hi int) {
 
 // DrawRosterPick 畫右側面板的名單。
 func DrawRosterPick(c *Canvas, a *ArtScreen, g *game.State, p *RosterPick) {
+	c.PointerTargets = nil
 	bg := assets.EGAPalette[rosterBG]
 	c.FillRect(rosterX0, rosterY0, rosterX1+1, rosterY1+1, bg)
 	if a != nil && a.havePanel {
@@ -79,6 +81,7 @@ func DrawRosterPick(c *Canvas, a *ArtScreen, g *game.State, p *RosterPick) {
 			continue
 		}
 		y := rosterRowY + i*CellH
+		c.AddPointer(image.Rect(rosterEmptyX, y, rosterX1-7, y+CellH), PointerRoster, n+1)
 		if p.Multi && n < len(p.Marked) && p.Marked[n] {
 			c.DrawTextPx(rosterEmptyX, y, "*", assets.EGAPalette[rosterHeadInk])
 		}

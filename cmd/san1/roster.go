@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/game"
 	"github.com/wicanr2/softworld_san1_remake/internal/ui"
@@ -132,7 +131,7 @@ func (a *app) updateRoster() {
 	a.dirty = true
 	if len(r.pick.List) == 0 {
 		// 「沒有任何將軍」＋「請按任一鍵」，按了就取消（`0x180a9`）。
-		if anyKeyPressed() {
+		if a.anyKeyPressed() {
 			a.closeRoster()
 			if r.cancel != nil {
 				r.cancel()
@@ -142,17 +141,17 @@ func (a *app) updateRoster() {
 	}
 	lo, hi := ui.RosterRange(&r.pick)
 	switch {
-	case inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+	case a.keyPressed(ebiten.KeyEscape):
 		a.closeRoster()
 		if r.cancel != nil {
 			r.cancel()
 		}
-	case inpututil.IsKeyJustPressed(ebiten.KeyBackspace):
+	case a.keyPressed(ebiten.KeyBackspace):
 		if n := len(r.typed); n > 0 {
 			r.typed = r.typed[:n-1]
 		}
 		a.showRoster()
-	case inpututil.IsKeyJustPressed(ebiten.KeySpace):
+	case a.keyPressed(ebiten.KeySpace):
 		if r.typed == "" {
 			r.pick.Page += ui.RosterPageRows
 			if r.pick.Page >= len(r.pick.List) {
@@ -160,7 +159,7 @@ func (a *app) updateRoster() {
 			}
 		}
 		a.showRoster()
-	case inpututil.IsKeyJustPressed(ebiten.KeyEnter), inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter):
+	case a.keyPressed(ebiten.KeyEnter), a.keyPressed(ebiten.KeyNumpadEnter):
 		if r.typed == "" {
 			if r.thenMulti != nil {
 				var chosen []int
@@ -211,7 +210,7 @@ func (a *app) updateRoster() {
 	default:
 		width := len(fmt.Sprint(hi))
 		for k := ebiten.Key0; k <= ebiten.Key9; k++ {
-			if inpututil.IsKeyJustPressed(k) && len(r.typed) < width {
+			if a.keyPressed(k) && len(r.typed) < width {
 				r.typed += string(rune('0' + (k - ebiten.Key0)))
 				a.showRoster()
 			}

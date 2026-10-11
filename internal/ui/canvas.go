@@ -48,7 +48,8 @@ type Canvas struct {
 	// **溢出在畫面上是少了幾個字，而少了幾個字看起來像譯文本來就這樣。**
 	// 貼著右緣的那一欄（文字版的資料欄與指令欄）一溢出就是在這裡被丟掉，
 	// 累計起來才問得到「這一畫面有沒有字被截」。
-	Clipped int
+	Clipped        int
+	PointerTargets []PointerTarget
 
 	HD              *HDPack
 	highOps         []*highOp

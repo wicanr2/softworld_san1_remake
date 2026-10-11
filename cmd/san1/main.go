@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/ai"
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
@@ -160,6 +159,7 @@ type app struct {
 	opening    *openingPlayer
 	openingArt *opening.Art
 
+	pointer   pointerInput
 	windowBar *windowBar
 	hdTheme   bool
 }
@@ -168,11 +168,13 @@ func (a *app) Update() error {
 	if a.quit {
 		return ebiten.Termination
 	}
+	a.pointer.pressed = false
 	a.playShownBubbleVoice()
 	a.playShownSpeechVoice()
 	if a.updateWindowBar() {
 		return nil
 	}
+	a.updatePointerInput()
 	// iter.Pull 必須在之後呼叫 next 的執行緒狀態下建立。Ebiten 的主迴圈
 	// 會從初始化時的鎖定執行緒切到更新執行緒，因此在第一幀才啟動片頭。
 	if a.openingArt != nil {
@@ -196,10 +198,15 @@ func (a *app) Update() error {
 		return nil
 	}
 	if a.opening != nil {
-		changed, done := a.opening.update(anyKeyPressed())
+		changed, done := a.opening.update(a.anyKeyPressed())
+		if !a.opening.musicStarted && a.opening.beat.Site >= opening.SiteSea && a.opening.beat.Site < opening.SiteLoading {
+			a.jb.PlayOpening()
+			a.opening.musicStarted = true
+		}
 		if done {
 			a.opening.stop()
 			a.opening = nil
+			a.jb.Play(0)
 		}
 		if changed || done {
 			a.dirty = true
@@ -218,7 +225,7 @@ func (a *app) Update() error {
 	// 沒有原版素材的文字版面畫不出肖像，直接把它們寫進訊息列。
 	if a.s != nil && a.s.Bubble() != nil {
 		demo := len(a.s.G.Players) == 0
-		if demo && anyKeyPressed() && a.endDemo() {
+		if demo && a.anyKeyPressed() && a.endDemo() {
 			return nil
 		}
 		if a.art == nil {
@@ -248,7 +255,7 @@ func (a *app) Update() error {
 			}
 			return nil
 		}
-		if anyKeyPressed() {
+		if a.anyKeyPressed() {
 			a.s.PopBubble()
 			a.dirty = true
 		}
@@ -263,12 +270,12 @@ func (a *app) Update() error {
 	// Y/N（軍師勸諫之後的「主公是否繼續呢」）：Y 做下去，N 或 Esc 取消。
 	if a.confirm != nil {
 		switch {
-		case inpututil.IsKeyJustPressed(ebiten.KeyY):
+		case a.keyPressed(ebiten.KeyY):
 			then := a.confirm.then
 			a.confirm, a.view.Prompt = nil, ""
 			then()
 			a.dirty = true
-		case inpututil.IsKeyJustPressed(ebiten.KeyN), inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+		case a.keyPressed(ebiten.KeyN), a.keyPressed(ebiten.KeyEscape):
 			no := a.confirm.no
 			a.confirm, a.view.Prompt = nil, ""
 			if no != nil {
@@ -285,7 +292,7 @@ func (a *app) Update() error {
 	}
 	// 0 人的電腦自動示範模式：一幀推一格，按任意鍵回主選單（`docs/spec/019` §2）。
 	if a.s != nil && len(a.s.G.Players) == 0 {
-		if anyKeyPressed() && a.endDemo() {
+		if a.anyKeyPressed() && a.endDemo() {
 			return nil
 		}
 		a.s.AdvanceToHuman(1)
@@ -364,14 +371,14 @@ func (a *app) Update() error {
 		}
 	}
 	if a.treasuryWait {
-		if anyKeyPressed() {
+		if a.anyKeyPressed() {
 			a.treasuryWait, a.view.Treasury, a.view.Prompt = false, nil, ""
 			a.dirty = true
 		}
 		return nil
 	}
 	if a.view.HasCard || a.view.Atlas != 0 {
-		if anyKeyPressed() {
+		if a.anyKeyPressed() {
 			a.view.HasCard, a.view.Atlas, a.view.AtlasBubble = false, 0, nil
 			a.view.Prompt = ""
 			a.dirty = true
@@ -383,9 +390,9 @@ func (a *app) Update() error {
 		return nil
 	}
 	if next := a.cancel; next != nil && (len(a.pick) > 0 || a.num != nil) &&
-		(inpututil.IsKeyJustPressed(ebiten.KeyEscape) || (len(a.pick) > 0 &&
-			(inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-				inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))) {
+		(a.keyPressed(ebiten.KeyEscape) || (len(a.pick) > 0 &&
+			(a.keyPressed(ebiten.KeyEnter) ||
+				a.keyPressed(ebiten.KeyNumpadEnter)))) {
 		a.cancel = nil
 		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
 		a.view.Page, a.view.Treasury = nil, nil
@@ -393,14 +400,14 @@ func (a *app) Update() error {
 		a.dirty = true
 		return nil
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+	if a.keyPressed(ebiten.KeyEscape) {
 		a.menu, a.view.Menu, a.view.Items, a.pick, a.num = 0, "", nil, nil, nil
 		a.view.Prompt, a.view.Page, a.view.Treasury = "", nil, nil
 		a.dirty = true
 		return nil
 	}
 	if a.num != nil {
-		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
+		if a.keyPressed(ebiten.KeyBackspace) {
 			if d := a.num.digits; d != "" {
 				a.num.digits = d[:len(d)-1]
 			}
@@ -410,8 +417,8 @@ func (a *app) Update() error {
 			a.dirty = true
 			return nil
 		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
+		if a.keyPressed(ebiten.KeyEnter) ||
+			a.keyPressed(ebiten.KeyNumpadEnter) {
 			n := a.num
 			cancel := a.cancel
 			a.num, a.cancel = nil, nil
@@ -434,7 +441,7 @@ func (a *app) Update() error {
 			return nil
 		}
 		for k := ebiten.Key0; k <= ebiten.Key9; k++ {
-			if inpututil.IsKeyJustPressed(k) {
+			if a.keyPressed(k) {
 				a.numberKey(byte('0' + (k - ebiten.Key0)))
 				a.dirty = true
 				return nil
@@ -445,14 +452,14 @@ func (a *app) Update() error {
 	// 分頁打開時 ↑↓ 捲一行、PgUp／PgDn 翻一頁——先前沒有捲動，
 	// 一頁放不下的戰報與將軍列表，其餘的部分玩家讀不到。
 	if len(a.view.Page) > 0 {
-		if d := pageScrollKey(ui.PageSize(a.art != nil)); d != 0 {
+		if d := a.pageScrollKey(ui.PageSize(a.art != nil)); d != 0 {
 			a.view.ScrollPage(d, a.art != nil)
 			a.dirty = true
 			return nil
 		}
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-		inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
+	if a.keyPressed(ebiten.KeyEnter) ||
+		a.keyPressed(ebiten.KeyNumpadEnter) {
 		// 這個郡這個月不下令，換下一個郡（原版主命令的「休息」）。
 		if a.s.Waiting() != 0 {
 			a.s.EndTurn()
@@ -462,20 +469,20 @@ func (a *app) Update() error {
 		a.dirty = true
 		return nil
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) ||
-		inpututil.IsKeyJustPressed(ebiten.KeyRight) ||
-		inpututil.IsKeyJustPressed(ebiten.KeyDown) {
+	if a.keyPressed(ebiten.KeyTab) ||
+		a.keyPressed(ebiten.KeyRight) ||
+		a.keyPressed(ebiten.KeyDown) {
 		a.cycle(+1)
 		return nil
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyLeft) ||
-		inpututil.IsKeyJustPressed(ebiten.KeyUp) {
+	if a.keyPressed(ebiten.KeyLeft) ||
+		a.keyPressed(ebiten.KeyUp) {
 		a.cycle(-1)
 		return nil
 	}
 	// M 換下一首配樂。原版的「其他」底下沒有這一格——那是主選單的
 	// 「音樂欣賞」，開局之後回不去——所以放在鍵盤上。
-	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
+	if a.keyPressed(ebiten.KeyM) {
 		a.jb.Play(a.jb.Next())
 		if name := a.jb.Name(); name != "" {
 			a.view.Prompt = tf("msg.music", name)
@@ -486,7 +493,7 @@ func (a *app) Update() error {
 		return nil
 	}
 	for k := ebiten.Key0; k <= ebiten.Key9; k++ {
-		if inpututil.IsKeyJustPressed(k) {
+		if a.keyPressed(k) {
 			a.press(byte('0' + (k - ebiten.Key0)))
 			return nil
 		}
@@ -495,7 +502,7 @@ func (a *app) Update() error {
 	// 只在子選單裡收，主選單按字母仍然什麼都不做。
 	if a.menu != 0 {
 		for k := ebiten.KeyA; k <= ebiten.KeyZ; k++ {
-			if inpututil.IsKeyJustPressed(k) {
+			if a.keyPressed(k) {
 				a.press(byte('A' + (k - ebiten.KeyA)))
 				return nil
 			}
@@ -506,15 +513,15 @@ func (a *app) Update() error {
 
 // cycle 在玩家自己的郡之間移動選取。
 // pageScrollKey 是分頁的捲動量：↑↓ 一行、PgUp／PgDn 一頁；沒按回 0。
-func pageScrollKey(_, rows int) int {
+func (a *app) pageScrollKey(_, rows int) int {
 	switch {
-	case inpututil.IsKeyJustPressed(ebiten.KeyUp):
+	case a.keyPressed(ebiten.KeyUp):
 		return -1
-	case inpututil.IsKeyJustPressed(ebiten.KeyDown):
+	case a.keyPressed(ebiten.KeyDown):
 		return 1
-	case inpututil.IsKeyJustPressed(ebiten.KeyPageUp):
+	case a.keyPressed(ebiten.KeyPageUp):
 		return -rows
-	case inpututil.IsKeyJustPressed(ebiten.KeyPageDown):
+	case a.keyPressed(ebiten.KeyPageDown):
 		return rows
 	}
 	return 0
@@ -551,6 +558,7 @@ func (a *app) mainAsk(at int) {
 	a.askBare(tf("ask.main", lord, at, prefName(g, at)), 0, 9, func(n int) {
 		a.press(byte('0' + n))
 	})
+	a.num.main = true
 }
 
 func (a *app) press(k byte) {
@@ -595,6 +603,7 @@ func (a *app) press(k byte) {
 // 原版問數字的地方很多：徵兵幾人、賞賜多少金、攜帶多少金米、
 // 延遲時間。**那些都不是固定量**，用固定量等於把玩家的決定拿掉了。
 type numEntry struct {
+	main  bool // 主命令可直接點指令，其餘數值顯示數字鍵盤。
 	title string
 	hint  string
 	lo    int
@@ -1167,26 +1176,26 @@ func (a *app) updateFortSpot() {
 		return
 	}
 	if s.confirm {
-		if !anyKeyPressed() {
+		if !a.anyKeyPressed() {
 			return
 		}
 		s.confirm = false
-		if inpututil.IsKeyJustPressed(ebiten.KeyY) {
+		if a.keyPressed(ebiten.KeyY) {
 			a.fortSpot = nil
 			a.fortBuild(s.at, s.general, s.row*12+s.col+1)
 		}
 		a.dirty = true
 		return
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+	if a.keyPressed(ebiten.KeyEscape) {
 		a.fortSpot = nil
 		a.view.Prompt = t("msg.cancel")
 		a.dirty = true
 		return
 	}
 	for k := byte('0'); k <= '6'; k++ {
-		if !inpututil.IsKeyJustPressed(ebiten.Key0+ebiten.Key(k-'0')) &&
-			!inpututil.IsKeyJustPressed(ebiten.KeyNumpad0+ebiten.Key(k-'0')) {
+		if !a.keyPressed(ebiten.Key0+ebiten.Key(k-'0')) &&
+			!a.keyPressed(ebiten.KeyNumpad0+ebiten.Key(k-'0')) {
 			continue
 		}
 		if k == '0' {
@@ -1526,6 +1535,7 @@ func (a *app) Draw(dst *ebiten.Image) {
 // 從 Draw 抽出來是為了**轉場**：拉幕要先有「新畫面」才有東西可以露出來
 // （`docs/spec/010`），而那張圖就是「照現在的狀態畫一次」。
 func (a *app) paint() {
+	a.canvas.PointerTargets = nil
 	a.shownBubble = nil
 	a.shownSpeech = nil
 	{
@@ -1617,6 +1627,7 @@ func (a *app) paint() {
 			}
 		}
 	}
+	a.drawPointerControls()
 }
 
 // updateBattle 是戰場上的輸入。
@@ -1645,7 +1656,7 @@ func (a *app) updateBattle() error {
 		if sp.Scene > 0 && a.scenePlayed != sp {
 			return nil // 場景圖先拉進來（Draw 那一層起頭），拉完才收鍵
 		}
-		if anyKeyPressed() {
+		if a.anyKeyPressed() {
 			a.fight.speeches = a.fight.speeches[1:]
 		}
 		return nil
@@ -1654,7 +1665,7 @@ func (a *app) updateBattle() error {
 		a.endBattle()
 		return nil
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+	if a.keyPressed(ebiten.KeyEscape) {
 		a.fight.view.ClosePage()
 		// 查看收起之後回到命令提示的文字視窗。
 		if f := a.fight; f.acting != nil && f.waiting == waitCommand && f.asking == nil {
@@ -1664,7 +1675,7 @@ func (a *app) updateBattle() error {
 	}
 	// 分頁（查看部隊）打開時方向鍵捲動，不移游標。
 	if len(a.fight.view.Page) > 0 {
-		if d := pageScrollKey(ui.BattlePageSize(a.artBattle != nil)); d != 0 {
+		if d := a.pageScrollKey(ui.BattlePageSize(a.artBattle != nil)); d != 0 {
 			a.fight.view.ScrollPage(d, a.artBattle != nil)
 			return nil
 		}
@@ -1675,20 +1686,20 @@ func (a *app) updateBattle() error {
 		ebiten.KeyLeft:  battle.DirUpLeft,
 		ebiten.KeyRight: battle.DirDownRight,
 	} {
-		if inpututil.IsKeyJustPressed(key) {
+		if a.keyPressed(key) {
 			a.battleMove(d)
 			return nil
 		}
 	}
 	for k := ebiten.Key0; k <= ebiten.Key9; k++ {
-		if inpututil.IsKeyJustPressed(k) {
+		if a.keyPressed(k) {
 			a.battleKey(byte('0' + (k - ebiten.Key0)))
 			return nil
 		}
 	}
 	// 子畫面的休息確認、叫陣的接受與行軍結束要 Y／N／Enter（`docs/re/05` §10.6）。
 	for key, k := range map[ebiten.Key]byte{ebiten.KeyY: 'Y', ebiten.KeyN: 'N', ebiten.KeyEnter: '\r'} {
-		if inpututil.IsKeyJustPressed(key) && (a.fight.asking != nil || a.fight.waiting.takesYN()) {
+		if a.keyPressed(key) && (a.fight.asking != nil || a.fight.waiting.takesYN()) {
 			a.battleKey(k)
 			return nil
 		}
@@ -1912,7 +1923,6 @@ func main() {
 	}
 	if *music {
 		a.jb = newJukebox(*root)
-		a.jb.Play(0)
 	}
 	if *sound {
 		a.sfx = newVoicebox(*root)
@@ -1943,6 +1953,9 @@ func main() {
 		if openArt != nil {
 			a.openingArt = openArt
 		}
+	}
+	if a.openingArt == nil {
+		a.jb.Play(0)
 	}
 	if *calendar == "西曆" {
 		g.Options.Calendar = game.Western
@@ -1995,30 +2008,30 @@ func (a *app) startSaving() {
 // Enter 寫檔（`0x35e9e`–`0x35f43`）。Esc 取消是 remake 加的。
 func (a *app) updateSaving() {
 	sv := a.saving
-	enter := inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)
+	enter := a.keyPressed(ebiten.KeyEnter) || a.keyPressed(ebiten.KeyNumpadEnter)
 	at := a.s.Waiting()
 	if at == 0 {
 		at = a.view.Sel
 	}
 	if sv.Slot == 0 {
 		for k := ebiten.Key1; k <= ebiten.Key6; k++ {
-			if inpututil.IsKeyJustPressed(k) {
+			if a.keyPressed(k) {
 				sv.Slot = int(k-ebiten.Key1) + 1
 				sv.Names[sv.Slot-1] = a.s.SaveName(sv.Slot, at, "")
 				a.dirty = true
 				return
 			}
 		}
-		if anyKeyPressed() {
+		if a.anyKeyPressed() {
 			a.stopSaving(t("msg.saveCancel"))
 		}
 		return
 	}
 	switch {
-	case inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+	case a.keyPressed(ebiten.KeyEscape):
 		a.stopSaving(t("msg.saveCancel"))
 		return
-	case inpututil.IsKeyJustPressed(ebiten.KeyBackspace):
+	case a.keyPressed(ebiten.KeyBackspace):
 		if r := []rune(a.saveMemo); len(r) > 0 {
 			a.saveMemo = string(r[:len(r)-1])
 		}

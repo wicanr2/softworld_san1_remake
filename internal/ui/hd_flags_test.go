@@ -210,7 +210,7 @@ func TestHDFlagBattleLayersAndFallback(t *testing.T) {
 						if selected {
 							acting = u
 						}
-						v := BattleView{Acting: acting}
+						v := BattleView{Acting: acting, Blink: selected}
 						info := ArtBattleInfo{Field: pref.BattleField, Portrait: [2]int{-1, -1}}
 						original, hd := testCanvasPx(t, 640, 408), testCanvasPx(t, 640, 408)
 						hd.HD = pack

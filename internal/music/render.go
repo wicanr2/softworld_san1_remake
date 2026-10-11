@@ -100,6 +100,8 @@ type Player struct {
 	perTick   float64
 	next      int     // 下一個要送的事件
 	pos       float64 // 已經產生幾個取樣
+	eventAt   float64 // 上一事件的取樣位置
+	tick      int     // 上一事件的絕對刻度
 }
 
 // NewPlayer 起一個播放狀態。沒有音色庫就沒有東西可發聲，回 nil。
@@ -108,7 +110,7 @@ func NewPlayer(s *Song, b *Bank) *Player {
 		return nil
 	}
 	p := &Player{song: s, bank: b, chip: NewOPL2(),
-		perTick: float64(OPLRate) * 60 / (float64(s.Tempo) * TicksPerBeat)}
+		perTick: float64(OPLRate) * 60 / (float64(s.Tempo) * float64(s.Division()))}
 	for i := range p.voices {
 		p.voices[i].inst = -1
 	}
@@ -131,10 +133,15 @@ func (p *Player) Done() bool { return p.next >= len(p.song.Events) }
 func (p *Player) Sample() float64 {
 	for p.next < len(p.song.Events) {
 		e := p.song.Events[p.next]
-		if float64(e.At)*p.perTick > p.pos {
+		when := p.eventAt + float64(e.At-p.tick)*p.perTick
+		if when > p.pos {
 			break
 		}
 		p.next++
+		p.eventAt, p.tick = when, e.At
+		if tempo, ok := tempoChange(e, p.song.Tempo); ok {
+			p.perTick = float64(OPLRate) * 60 / float64(tempo*p.song.Division())
+		}
 		if v := e.Channel(); v >= 0 && v < len(p.voices) {
 			apply(p.chip, &p.voices[v], v, e, p.bank, p.song.Percussive, &p.rhythmReg)
 		}

@@ -38,13 +38,18 @@ func (s *Song) MIDI() []byte {
 
 	prev := 0
 	for _, e := range s.Events {
-		// 即時訊息（0xF8 時脈、0xFC 停止…）不能放進 MIDI 檔，跳過。
-		// 它們在原版是給播放器用的，不影響音符。
+		// MUS 的延遲溢位與停止不直接寫入 MIDI；其絕對時間仍由後續
+		// 事件與 end of track 保留。
 		if e.Status >= 0xF8 || e.Status == 0xF6 || e.Status == 0xF7 {
 			continue
 		}
 		putVar(e.At - prev)
 		prev = e.At
+		if tempo, ok := tempoChange(e, s.Tempo); ok {
+			us := 60000000 / tempo
+			put(0xFF, 0x51, 3, byte(us>>16), byte(us>>8), byte(us))
+			continue
+		}
 		if e.Status == SysEx {
 			put(0xF0)
 			putVar(len(e.Data) + 1)
@@ -55,7 +60,7 @@ func (s *Song) MIDI() []byte {
 		put(e.Status)
 		put(e.Data...)
 	}
-	putVar(0)
+	putVar(s.Ticks - prev)
 	put(0xFF, 0x2F, 0x00) // end of track
 
 	out := make([]byte, 0, len(track)+22)
@@ -63,7 +68,7 @@ func (s *Song) MIDI() []byte {
 	out = appendU32(out, 6)
 	out = appendU16(out, midiFormat0)
 	out = appendU16(out, midiTracks)
-	out = appendU16(out, TicksPerBeat)
+	out = appendU16(out, uint16(s.Division()))
 	out = append(out, 'M', 'T', 'r', 'k')
 	out = appendU32(out, uint32(len(track)))
 	return append(out, track...)

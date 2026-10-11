@@ -119,6 +119,10 @@ tools/go.sh run ./cmd/san1dump -root /path/to/三國演義 \
     -screen main -faction 0 -months 14 -png out.png
 ```
 
+支援滑鼠：左鍵點選選單、人物、郡清單與地圖，右鍵返回，滾輪翻頁。
+金額、兵數、人數與難度可用畫面上的數字鍵盤輸入。查看郡資料時按「指令」
+回到命令表。原有鍵盤操作保留，原貌與 HD 共用操作方式。
+
 `-screen` 可以挑：`list`（州郡一覽）、`main`／`art`（主畫面，`art` 接原版
 素材）、`title`（主選單）、`titleart`（開場的三英圖）、`poem`（開場詞）、
 `artfield`（戰場地形）、`artbattle`（整張主戰場）、`battle`（文字版主戰場）。

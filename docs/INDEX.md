@@ -53,6 +53,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 現行高清包的音訊接線 | [021 §6.55](spec/021-hd-art.md#655-現行完整包的音訊接線)、[驗證容器 CPU 配額](spec/021-hd-art.md#6551-音訊驗證容器的-cpu-配額)、[Mesa 執行緒](spec/021-hd-art.md#6552-音訊驗證的-mesa-執行緒)、[桌面背景執行與暫停探針](spec/021-hd-art.md#6553-桌面背景執行與暫停探針)、[補給時間與低音量回讀](spec/021-hd-art.md#6554-音訊補給時間與低音量波形)、[現行配樂補驗](spec/021-hd-art.md#6555-渲染效能修正後的配樂補驗)、[GUI 入口](../tools/verify-hd-audio.sh)、[音訊擷取](../tools/verify-hd-audio-inner.py)、[本機 PCM 參考](../tools/hd-audio-reference.go)、[波形回讀](../tools/verify-hd-audio-pcm.py)；現行補驗 4/4，先前 R3 配樂 3/4 保持，配樂、音效及語音分開驗收 |
 | 已知宣戰語音的正式使用端 | [008 §9](spec/008-speaker-audio.md#9-已知宣戰對白的正式觸發)、[021 §6.56](spec/021-hd-art.md#656-已知宣戰語音的正常使用端)、[GUI 入口](../tools/verify-voice.sh)、[正常語音擷取](../tools/verify-voice-inner.py)、[完整 PCM 參考](../tools/voice-reference.go)、[加強版 oracle](../internal/parity/voice_declaration_oracle_test.go)；限兩則已知對白 |
 | 配樂怎麼解、怎麼合成 | `formats/06`、`spec/009` |
+| 片頭選曲、音樂速度與完整滑鼠操作 | [配樂勘誤](spec/009-music.md#7-曲檔時序與片頭曲勘誤2026-10-11)、[滑鼠契約](spec/005-main-screen.md#滑鼠操作外殼2026-10-11)、[正常視窗驗證](../tools/verify-mouse-audio-inner.py)、[PCM 參考產生器](../tools/hd-audio-reference.go) 的 `-opening` 選項；原始曲檔及錄音只留 `workplace/` |
 | 正式視窗配樂能否播放、如何重跑錄音驗證 | [spec/009 §6.1](spec/009-music.md#61-正式音訊串流契約)、[驗證入口](../tools/verify-music.sh) |
 | 保留原版版面的 AI HD 工作順序與驗收 | [GitHub 工作總表 #104](https://github.com/wicanr2/softworld_san1_remake/issues/104)；子項 #105–#110；[B 高清與視窗選項列規格 021](spec/021-hd-art.md)、[兩版素材盤點](formats/04-asset-inventory.md#6-hd-兩版盤點) |
 | 高清完成度與正常玩家驗證數字 | [驗證矩陣 §6.5](../VERIFICATION-MATRIX.md#65-高清驗證) |

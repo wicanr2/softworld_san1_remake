@@ -558,6 +558,7 @@ func drawArtCommands(c *Canvas) {
 		if i >= 5 {
 			x, limit = artCmdRightX, artCmdEdge
 		}
+		c.AddPointer(image.Rect(x, y, limit, y+32), PointerCommand, int(cmd.Key))
 		x += c.DrawTextPx(x, y+CellH, string(cmd.Key)+".", artInkCmdKey)
 		ink := artInkCmdEven
 		if i%2 == 1 {
@@ -593,6 +594,7 @@ func drawArtList(c *Canvas, title string, items []Command) bool {
 			break
 		}
 		c.DrawTextPx(artUpperX, artUpperY+(1+i)*CellH, l, artInkList)
+		c.pointerLine(artUpperX, artUpperY+(1+i)*CellH, l, CellW, CellH)
 	}
 	return true
 }
@@ -629,6 +631,7 @@ func drawArtLower(c *Canvas, log []string, v View, subLower bool,
 		if lay := subMenuLayout(c, k, v.Items); lay.small {
 			for i, line := range lay.lines {
 				c.DrawSmallTextPx(artMsgX, artMsgY+i*SmallH, line, artInkMsg)
+				c.pointerLine(artMsgX, artMsgY+i*SmallH, line, SmallW, SmallH)
 			}
 			return
 		} else {
@@ -656,6 +659,9 @@ func drawArtLower(c *Canvas, log []string, v View, subLower bool,
 	}
 	for i, line := range lines {
 		c.DrawTextPx(artMsgX, artMsgY+i*artMsgDY, line, artInkMsg)
+		if subLower {
+			c.pointerLine(artMsgX, artMsgY+i*artMsgDY, line, CellW, CellH)
+		}
 	}
 	// 游標接在最後一行字後面（主命令「南海下您的命令:」之後是 (544,316)）。
 	if x, y, ok := cursorAfterLines(artMsgX, artMsgY, artMsgDY, lines); ok {
@@ -672,6 +678,7 @@ func drawArtOverlay(c *Canvas, title string, body []string, hint string, top int
 // 標題黃、內容白，最後一行是提示。長的一行折下去（`PageLines`），
 // 一頁放不下時從 top 那一行開始畫，標題帶位置、提示換成怎麼捲。
 func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hint string, top int) {
+	c.PointerTargets = nil
 	c.FillRect(x0, y0, x1, y1, artInkPageBG)
 	c.drawHighPaper(image.Rect(x0, y0, x1, y1), 1)
 	cols := (x1-x0)/CellW - 2
@@ -684,6 +691,7 @@ func drawOverlay(c *Canvas, x0, y0, x1, y1 int, title string, body []string, hin
 	c.DrawTextPx(x, y0, cells.Truncate(head, cols), artInkName)
 	for i := 0; i < rows && top+i < len(lines); i++ {
 		c.DrawTextPx(x, y0+(1+i)*CellH, lines[top+i], artInkList)
+		c.pointerLine(x, y0+(1+i)*CellH, lines[top+i], CellW, CellH)
 	}
 	if hint != "" {
 		c.DrawTextPx(x, y0+(rows+1)*CellH, cells.Truncate(hint, cols), artInkPageDim)
@@ -943,6 +951,7 @@ func DrawTitleFrame(c *Canvas, ts *TitleScreen, sel, frame int) {
 	DrawMenuLabel(c, t("title.mainPlate"), label)
 	for i, s := range TitleItems() {
 		b := assets.MenuButtons()[i]
+		c.AddPointer(image.Rect(b[0], b[1], b[0]+192, b[1]+34), PointerTitle, i)
 		col := ink
 		if i == sel {
 			col = hot
@@ -1273,6 +1282,7 @@ const TitleListCols = 40
 
 func DrawTitleList(c *Canvas, ts *TitleScreen, title string, items []string, sel int) {
 	DrawTitle(c, ts, -1)
+	c.PointerTargets = nil
 	// 蓋在六個按鈕那一片上，標題牌留著看得見。
 	const col, row, cols = 18, 9, TitleListCols + 4
 	// 放得下幾項就顯示幾項，其餘捲動——**選君主可以有十六個**，
@@ -1309,6 +1319,7 @@ func DrawTitleList(c *Canvas, ts *TitleScreen, title string, items []string, sel
 	}
 	c.DrawText(col+2, row+1, cells.Truncate(head, cols-4), ColSel)
 	for i, s := range shown {
+		c.AddPointer(image.Rect((col+2)*CellW, (row+3+i)*CellH, (col+cols-2)*CellW, (row+4+i)*CellH), PointerTitle, first+i)
 		ink := ColFG
 		if first+i == sel {
 			ink = ColSel
@@ -1346,6 +1357,9 @@ func DrawTitleLayer(c *Canvas, ts *TitleScreen, frame int, label string, labelIn
 	ts.drawBackground(c, frame)
 	DrawMenuLabel(c, label, assets.EGAPalette[labelInk&15])
 	for i, b := range assets.MenuButtons() {
+		if i < len(items) && strings.TrimSpace(items[i]) != "" {
+			c.AddPointer(image.Rect(b[0], b[1], b[0]+192, b[1]+34), PointerTitle, i)
+		}
 		x, y := b[0]+TitleLayerTextX, b[1]+TitleLayerTextY
 		c.FillRect(x, y, x+TitleLayerTextCells*CellW, y+CellH, assets.EGAPalette[TitleLayerTextBG])
 		// 清字只留在原貌；高清重畫空白按鈕後再疊文字。

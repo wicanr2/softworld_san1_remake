@@ -558,6 +558,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		if len(lines) <= BattleWindowRows {
 			for k, s := range lines {
 				c.DrawTextPx(ordX, ordY+k*CellH, s, ink)
+				c.pointerLine(ordX, ordY+k*CellH, s, CellW, CellH)
 			}
 			// 游標接在最後一行字後面（休息確認之後是 (568,268)）。
 			if x, y, ok := cursorAfterLines(ordX, ordY, CellH, lines); ok {
@@ -566,11 +567,13 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		} else if small := BattleWindowLines(v.Window, assets.BattlePanelW/SmallW, 1<<16); len(small) <= assets.BattlePanelH/SmallH {
 			for k, s := range small {
 				c.DrawSmallTextPx(ordX, ordY+k*SmallH, s, ink)
+				c.pointerLine(ordX, ordY+k*SmallH, s, SmallW, SmallH)
 			}
 		} else {
 			rows := BattleWindowLines(v.Window, BattleWindowCols, BattleWindowRows)
 			for k, s := range rows {
 				c.DrawTextPx(ordX, ordY+k*CellH, s, ink)
+				c.pointerLine(ordX, ordY+k*CellH, s, CellW, CellH)
 			}
 			if x, y, ok := cursorAfterLines(ordX, ordY, CellH, rows); ok {
 				drawInputCursor(c, ab.cursor, v.Input, x, y)
@@ -597,6 +600,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 	case large:
 		for k, s := range opts {
 			c.DrawTextPx(ordX, ordY+k*CellH, cells.Truncate(s, w), ord)
+			c.pointerLine(ordX, ordY+k*CellH, cells.Truncate(s, w), CellW, CellH)
 		}
 	case small != nil:
 		// 英文九個指令原尺寸要五行以上：**整塊改用小字**留在面板裡
@@ -609,6 +613,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 				ink = assets.EGAPalette[15]
 			}
 			c.DrawSmallTextPx(ordX, ordY+k*SmallH, cells.Truncate(s, cols), ink)
+			c.pointerLine(ordX, ordY+k*SmallH, cells.Truncate(s, cols), SmallW, SmallH)
 		}
 		if len(v.Page) > 0 {
 			drawOverlay(c, battlePageX0, battlePageY0, battlePageX1, battlePageY1,
@@ -625,6 +630,7 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		c.FillRect(x0, y0, x1, y1, artInkPageBG)
 		for k, s := range opts {
 			c.DrawTextPx(ordX+4, y0+4+k*CellH, cells.Truncate(s, w-1), ord)
+			c.pointerLine(ordX+4, y0+4+k*CellH, cells.Truncate(s, w-1), CellW, CellH)
 		}
 	}
 	row := battleOptRows

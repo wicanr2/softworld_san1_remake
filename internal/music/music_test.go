@@ -189,7 +189,7 @@ func TestBadDataIsRejected(t *testing.T) {
 
 // TestLongSongParses 釘住 `MUSV` 那一首長曲解得乾淨。
 //
-// 它是唯一用得到兩件事的曲子：**時間差超過 127**，以及**即時訊息插在
+// 它是唯一用得到兩件事的曲子：**時間差超過 127**，以及**延遲溢位插在
 // 事件中間**。五首短曲兩件都沒有，所以短曲全部吻合不代表解析器對——
 // 這一條才擋得住那兩個坑（`docs/formats/06` §3）。
 func TestLongSongParses(t *testing.T) {
@@ -216,7 +216,7 @@ func TestLongSongParses(t *testing.T) {
 	if big == 0 {
 		t.Error("沒有超過 127 的時間差——這一條就擋不住可變長度那個讀法了")
 	}
-	// 即時訊息要有，而且要有插在事件中間的（不在開頭也不在結尾）。
+	// 延遲溢位要有，而且要有出現在事件流中間的（不在開頭也不在結尾）。
 	rt := 0
 	for i, e := range s.Events {
 		if e.Status >= 0xF8 && i > 0 && i < len(s.Events)-1 {
@@ -224,9 +224,9 @@ func TestLongSongParses(t *testing.T) {
 		}
 	}
 	if rt == 0 {
-		t.Error("沒有插在中間的即時訊息——這一條就擋不住「每個事件都有時間差」那個讀法了")
+		t.Error("沒有延遲溢位樣本")
 	}
-	t.Logf("  超過 127 的時間差 %d 個、插在中間的即時訊息 %d 個", big, rt)
+	t.Logf("  超過 127 的時間差 %d 個、延遲溢位 %d 個", big, rt)
 
 	// 最後一個事件不能超過表頭說的全曲長度。
 	if last := s.Events[len(s.Events)-1].At; last > s.Ticks {

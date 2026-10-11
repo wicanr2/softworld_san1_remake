@@ -1790,3 +1790,84 @@ README 改標題為「三國演義 (智冠) Remastered」，以楊慎〈臨江�
 README 標題、詩詞順序與本機文件連結、兩支 Python 工具語法檢查通過。
 收尾無 san1 容器遺留，root-owned 檔案及誤建 `.md` 目錄皆為零。
 Git 作者信箱均為 `wicanr2@gmail.com`，使用者 AGENTS.md 保持未暫存。
+
+## 2026-10-11 修正片頭配樂、播放速度與完整滑鼠操作
+
+使用者回報兩版片頭誤播標題曲及配樂偏慢，並確認完整滑鼠方案：選單、人物、
+地圖可點選，右鍵返回，金額與兵數提供數字鍵盤，保留原版畫面與鍵盤操作。
+先讀 CONTEXT、知識路由及 GUI 還原、平台規格、文件職責入口；套用
+reverse-engineer-retro-game-remake 與 grilling 技能。契約先寫入 009 §7 及
+005 滑鼠外殼並達 READY，再接正式輸入與播放器。沒有另開 agent。
+
+兩版 DATA1.GRP 相同。六首曲檔表頭的每拍刻度是 240，舊程式固定 120，
+因此播放時長變成兩倍。AdPlug MUS 格式另規定 F8 在延遲欄累加 240 tick，
+長曲的六筆延遲原先被忽略。修正表頭、延遲、速度事件、串流排程與 MIDI 匯出，
+五首時長為 38.4、48、48、32、25.6 秒，MUSV 為 165.6 秒，不含釋放尾音。
+依公開成熟播放器契約處理，不深入 PIT／ISR，也不宣稱原版硬體逐週期一致。
+原推論保存在 CONTEXT R91，格式文件同步勘誤。
+
+兩版原始 EXE 在 dosgolem 開機均讀 MUSV.IDX／GRP，
+`TestOpeningLoadsLongMusic` 的兩個子測試通過，收據為
+`workplace/music-boot-20261011.log`。原版及 dosgolem 輸入掛載唯讀，
+未改 dosgolem 工作樹。remake 在海景第一拍播獨立長曲，進主選單後重新播
+MUS 第 0 首；商標及製作名單維持無配樂，五首欣賞曲的編號保持。
+
+滑鼠點選區與正式文字、人物、郡清單及存檔格共用渲染位置。點選送進原有
+選單、數字範圍、取消及戰場方向指令；不直接改遊戲狀態。第一次使用滑鼠
+才顯示新增按鈕。補上確認／取消、翻頁、數字鍵盤、部隊紮寨、相鄰格行軍、
+結束行軍及對戰六方向。高清倍率及設定列高度各換算一次，確認框與資料頁優先。
+窄圖的右側人物面板不轉成場地點擊，另有回歸保護。
+
+| 驗證 | 結果及收據 |
+|---|---|
+| 配樂、選單、多語及主程式回歸；相關 UI 抽樣 | 通過，`workplace/mouse-audio-final-regression-20261011.log` |
+| 窄圖面板點擊邊界與主程式完整回歸 | 通過，`workplace/mouse-final-boundary-20261011.log` |
+| 兩版正常片頭及標題各約四秒實際錄音 | 四段完整 PCM 匹配各自曲子參考，`workplace/mouse-audio-final-20261011/receipt.json` |
+| 兩版原貌，滑鼠正常開局、郡清單、人物卡、越界金額、取消與存檔 | 通過，`workplace/mouse-audio-20261011-r3/receipt.json` |
+| 兩版高清，經滑鼠切 Theme，以 4× 座標完成同一流程 | 通過，`workplace/mouse-audio-hd-20261011-r3/receipt.json` |
+| 基本版正常出兵、整編、錢糧、紮寨、移動及結束行軍 | 通過，`workplace/mouse-battle-20261011-r3/receipt.json`；陳留 11 攻鄴郡 4，曹操中軍 800 兵，帶米 1000 |
+| 最後開發執行檔正常開局、存檔及內政開墾 | 通過，`workplace/mouse-affair-20261011/receipt.json`；點曹操後主畫面顯示「開墾 11 陳留（曹操）」，畫面另經目視核對 |
+
+錄音使用 PulseAudio 16.1、FFmpeg 5.1.9、48000 Hz 雙聲道 16-bit PCM，
+RMS 約 −24.45 至 −19.92 dBFS。正式播放器與參考共用合成器，此處驗證
+輸出接線；格式時間另由原始表頭、AdPlug 及六首時間軸測試驗證。錄音、高清及
+戰場收據的執行檔 SHA-256 為
+`21796a2aabd7cd57219d755eaaa73d52eb6ba9affd267e7b1a1b1ce97b066a62`。
+其後只補窄圖面板的輸入邊界及回歸；目前開發執行檔為
+`workplace/san1-mouse-audio-check`，SHA-256
+`a52f1d541e6df3c3e1e6c435de7b76c2a5a51d6b421886782ae1f05ef351b14b`。
+
+測試腳本的失敗另行分類。高清前兩次在設定列自動收起的同一幀點擊，
+導致按鍵被設定列攔截；記錄原始及邏輯座標證實換算正確，腳本改成先移出
+設定列再點擊。戰場第一次選了無主的潁川，原規則不允許發動戰役；第二次
+已到紮寨，但畫面辨識含另一名將軍姓名。改讀正式挑郡清單的合法顏色，
+以共用提示文字辨識紮寨，再完成正常行軍。兩輪同類失敗後重查路由並讀
+40-learning-loop、41-whack-a-mole-stop-rethink，沒有為測試修改遊戲規則。
+
+完整 UI 套件曾有兩個高清旗幟測試失敗；在 HEAD 的獨立唯讀匯出重跑也同樣
+失敗，收據為 `workplace/mouse-audio-ui-baseline-20261011.log`。測試期望閃爍
+反相卻未指定 Blink，已補測試相位，相關套件抽樣通過。新增多語字串的排序
+檢查也已修正。未宣稱本輪重新通過整個儲存庫的長時間測試。
+
+可重跑工具為 `tools/verify-mouse-audio-inner.py`，參數及收據入口已加入
+005、009 與 docs/INDEX。PCM 參考產生器增加 `-opening`，原有預設不變。
+兩份規格的 CONFORMED 限本次 Linux 抽樣及格式契約；人耳、Windows／macOS
+原生輸入與音訊仍未驗。未修改既有 `v.1.1.1-20261010` 套件、tag 或 Release，
+未寫入 GitHub Issues，未更改遊戲規則、存檔格式或正式語音。
+
+收尾 `git diff --check` 通過；本輪 Docker 容器均已移除，工作樹 root-owned
+檔案及誤建 `.md` 目錄皆為零。修改檔及開發執行檔 UID/GID 皆為 1000:1000，
+使用者提供的 AGENTS.md 保持未暫存。
+
+## 2026-10-11 配樂與滑鼠修正版四平台打包
+
+使用者明確要求打包。重查版號、dist-all、Windows ZIP 編碼與文件職責路由，
+沿用既有四平台本機完整版、未簽章與不公開原版素材的邊界。採
+`v.1.1.2-20261011`，舊版保持。原始碼先提交為乾淨建包輸入，
+使用者 AGENTS.md 不加入提交。GitHub Issues 只讀，簽章 Issue #2 保持開啟。
+
+建包工具沿用 release.sh、full-local.sh、complete-local-delivery.py、AppImage
+固定 runtime 及兩版 AppRun／Wine 驗收。這輪只打遊戲包，平台索引器增加明示
+`--packages-only`，仍要求平台檔案、AppImage 與 Wine 通過；沒有影片時記為
+未要求，舊版預設的影片驗收閘門保持。完整版說明增加滑鼠操作，README
+保留同一操作入口。打包及正式包玩家路徑驗證進行中。

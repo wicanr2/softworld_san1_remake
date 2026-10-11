@@ -22,32 +22,27 @@ import (
 // （`docs/formats/06`）：整批只有這幾個位移非零，而且 `dataLen`
 // 對每一首都等於「項目長度 − 0x46」。
 const (
-	hdrVersion = 0x00 // uint16，全部是 1
-	hdrMagic   = 0x24 // uint16，全部是 0x04F0
-	hdrTicks   = 0x26 // uint32，全曲長度（tick）
-	hdrDataLen = 0x2A // uint32，MIDI 資料的位元組數
-	hdrEvents  = 0x2E // uint32，事件數
-	hdrPercuss = 0x3A // uint8，1 ＝ 節奏模式
-	hdrTempo   = 0x3C // uint8，速度（BPM）
-	hdrSize    = 0x46 // MIDI 資料的起點
+	hdrVersion  = 0x00 // uint16，全部是 1
+	hdrDivision = 0x24 // uint8，每拍刻度數
+	hdrMeasure  = 0x25 // uint8，每小節拍數
+	hdrTicks    = 0x26 // uint32，全曲長度（tick）
+	hdrDataLen  = 0x2A // uint32，MIDI 資料的位元組數
+	hdrEvents   = 0x2E // uint32，事件數
+	hdrPercuss  = 0x3A // uint8，1 ＝ 節奏模式
+	hdrTempo    = 0x3C // uint16，速度（BPM）
+	hdrSize     = 0x46 // MIDI 資料的起點
 
-	// TicksPerBeat 是一拍幾個 tick。
-	//
-	// **這是推出來的**：事件流裡最常見的間隔是 0x78＝120，而 120 是
-	// MIDI 檔常用的每四分音符 tick 數。用它換算出來的曲長（一分多鐘到
-	// 五分半）也合理。要確認得聽原版。
-	TicksPerBeat = 120
-
-	// magic 是每一首都有的固定值。**對不上就不要硬解**——
-	// 一個把別的資料當成曲子解的程式會吐出一堆看似合理的音符。
-	magic = 0x04F0
+	// TicksPerBeat 是本作六首表頭的值，也供手建 Song 的預設值使用。
+	// 檔案解析與播放採該首的 BeatTicks。見 docs/spec/009 §7。
+	TicksPerBeat = 240
 )
 
 // Song 是一首曲子。
 type Song struct {
 	// Tempo 是速度（BPM），Ticks 是全曲長度。
-	Tempo int
-	Ticks int
+	Tempo     int
+	Ticks     int
+	BeatTicks int
 
 	// Percussive 是 AdLib 的節奏模式：OPL2 的三個頻道改成五件打擊樂器，
 	// 旋律聲部從九個減成六個。
@@ -104,7 +99,37 @@ func (s *Song) Duration() float64 {
 	if s.Tempo <= 0 {
 		return 0
 	}
-	return float64(s.Ticks) / TicksPerBeat * 60 / float64(s.Tempo)
+	at, seconds, tempo := 0, 0.0, s.Tempo
+	for _, e := range s.Events {
+		if e.At > s.Ticks {
+			break
+		}
+		seconds += float64(e.At-at) * 60 / float64(s.Division()*tempo)
+		at = e.At
+		if next, ok := tempoChange(e, s.Tempo); ok {
+			tempo = next
+		}
+	}
+	return seconds + float64(s.Ticks-at)*60/float64(s.Division()*tempo)
+}
+
+// Division 是該首每拍刻度數；手建 Song 沿用本作預設值。
+func (s *Song) Division() int {
+	if s.BeatTicks > 0 {
+		return s.BeatTicks
+	}
+	return TicksPerBeat
+}
+
+func tempoChange(e Event, basic int) (int, bool) {
+	if e.Status != SysEx || len(e.Data) != 4 || e.Data[0] != 0x7F || e.Data[1] != 0 {
+		return 0, false
+	}
+	tempo := basic*int(e.Data[2]) + (basic * int(e.Data[3]) >> 7)
+	if tempo == 0 {
+		tempo = basic
+	}
+	return tempo, true
 }
 
 // Instrument 是一個音色。
@@ -294,15 +319,16 @@ func ParseSong(b []byte) (*Song, error) {
 	if len(b) < hdrSize {
 		return nil, fmt.Errorf("music: 曲子只有 %d 個位元組", len(b))
 	}
-	if m := binary.LittleEndian.Uint16(b[hdrMagic:]); m != magic {
-		return nil, fmt.Errorf("music: 表頭的固定值是 %#04x，應該是 %#04x", m, magic)
+	if b[0] != 1 || b[1] != 0 || b[hdrDivision] == 0 || b[hdrMeasure] == 0 || binary.LittleEndian.Uint16(b[hdrTempo:]) == 0 {
+		return nil, fmt.Errorf("music: 曲子版本或時序表頭不合法")
 	}
 	dataLen := int(binary.LittleEndian.Uint32(b[hdrDataLen:]))
 	if want := len(b) - hdrSize; dataLen != want {
 		return nil, fmt.Errorf("music: 表頭說資料有 %d 個位元組，實際有 %d", dataLen, want)
 	}
 	s := &Song{
-		Tempo:      int(b[hdrTempo]),
+		Tempo:      int(binary.LittleEndian.Uint16(b[hdrTempo:])),
+		BeatTicks:  int(b[hdrDivision]),
 		Ticks:      int(binary.LittleEndian.Uint32(b[hdrTicks:])),
 		Percussive: b[hdrPercuss] != 0,
 	}
@@ -314,111 +340,72 @@ func ParseSong(b []byte) (*Song, error) {
 	if len(events) != want {
 		return nil, fmt.Errorf("music: 表頭說有 %d 個事件，走出來 %d 個", want, len(events))
 	}
+	if len(events) == 0 || events[len(events)-1].At != s.Ticks || events[len(events)-1].Status != 0xFC {
+		return nil, fmt.Errorf("music: 停止事件與表頭總刻度 %d 不符", s.Ticks)
+	}
 	s.Events = events
 	return s, nil
 }
 
-// parseEvents 走一段 MIDI 事件流。
-//
-// 每個事件是「可變長度的時間差 ＋ 狀態位元組 ＋ 參數」。
-// **running status 要支援**：省略狀態位元組沿用上一個，是 MIDI 的常規，
-// 不支援的話會把資料位元組當成狀態而整串走歪。
-//
-// **時間差是一個位元組，不是 MIDI 的可變長度數值。** 兩種讀法在 0–127
-// 完全一致，所以五首短曲怎麼讀都對；`MUSV` 那一首長曲有 0x96、0xB4
-// 這種一百多個 tick 的間隔，照可變長度讀就會把下一個位元組併進來。
-//
-// **即時訊息（0xF8–0xFF）可以插在任何地方**，包括時間差的中間、狀態
-// 位元組與參數之間、兩個參數之間；它們自己前面沒有時間差。這是 MIDI
-// 的規矩，`MUSV` 那一首長曲真的用上了。
-//
-// ⚠ 照「每個事件都以時間差開頭、參數是接下來的 n 個位元組」讀的話，
-// 一個插在中間的 `0xF8` 會被當成可變長度數字的第一個位元組或是一個
-// 力度值吃掉，**而且不會報錯**——吃進去的仍然是合法的數字，只是後面
-// 整串位移一格。錯法很安靜：事件數只少幾個，時間軸卻整個歪掉。
+// parseEvents 讀 AdLib MUS 的延遲與指令。0xF8 在延遲欄累加 240，
+// 同時保留為一筆計數事件，讓 nrCommand 與原始資料可對帳。
 func parseEvents(b []byte) ([]Event, error) {
 	var out []Event
 	at, i := 0, 0
 	var running byte
-
-	// realtime 把游標推過插進來的即時訊息，順手把它們收成事件，
-	// 回傳收了幾個。
-	realtime := func() int {
-		n := 0
-		for i < len(b) && b[i] >= 0xF8 {
-			out = append(out, Event{At: at, Status: b[i]})
+	for i < len(b) {
+		for i < len(b) && b[i] == 0xF8 {
+			at += 240
+			out = append(out, Event{At: at, Status: 0xF8})
 			i++
-			n++
 		}
-		return n
-	}
-
-	for {
-		realtime()
 		if i >= len(b) {
-			break
+			return nil, fmt.Errorf("music: overflow 後缺少延遲")
 		}
 		at += int(b[i])
 		i++
-		// 曲子以「時間差 ＋ 停止」收尾，最後一個時間差後面就沒有事件了。
-		if realtime() > 0 && i >= len(b) {
-			break
-		}
 		if i >= len(b) {
-			return nil, fmt.Errorf("music: 位移 %d 之後沒有事件了", i)
+			return nil, fmt.Errorf("music: 延遲後缺少指令")
 		}
 		status := b[i]
 		if status&0x80 != 0 {
 			i++
 			if status < 0xF0 {
 				running = status
-			} else {
-				running = 0
 			}
 		} else {
 			if running == 0 {
-				return nil, fmt.Errorf("music: 位移 %d 是 %#02x，而且沒有可沿用的狀態", i, status)
+				return nil, fmt.Errorf("music: 位移 %d 沒有 running status", i)
 			}
 			status = running
 		}
+		if status == SysEx {
+			start := i
+			for i < len(b) && b[i] != 0xF7 {
+				i++
+			}
+			if i == len(b) {
+				return nil, fmt.Errorf("music: SysEx 沒有結尾")
+			}
+			out = append(out, Event{At: at, Status: status, Data: append([]byte(nil), b[start:i]...)})
+			i++
+			continue
+		}
 		size, err := eventSize(status)
 		if err != nil {
-			return nil, fmt.Errorf("music: 位移 %d：%w", i, err)
+			return nil, err
 		}
-		if status == 0xF6 {
-			out = append(out, Event{At: at, Status: status})
-			continue
+		if i+size > len(b) {
+			return nil, fmt.Errorf("music: 位移 %d 的指令缺少參數", i)
 		}
-		if status == SysEx {
-			var data []byte
-			for {
-				if i >= len(b) {
-					return nil, fmt.Errorf("music: 位移 %d 起的 SysEx 沒有結尾", i)
-				}
-				c := b[i]
-				i++
-				if c == 0xF7 {
-					break
-				}
-				if c >= 0xF8 {
-					out = append(out, Event{At: at, Status: c})
-					continue
-				}
-				data = append(data, c)
+		out = append(out, Event{At: at, Status: status, Data: append([]byte(nil), b[i:i+size]...)})
+		i += size
+		if status == 0xFC {
+			if i != len(b) {
+				return nil, fmt.Errorf("music: 停止指令後還有資料")
 			}
-			out = append(out, Event{At: at, Status: status, Data: data})
-			continue
+			break
 		}
-		data := make([]byte, 0, size)
-		for len(data) < size {
-			realtime()
-			if i >= len(b) {
-				return nil, fmt.Errorf("music: 位移 %d 的事件 %#02x 少了參數", i, status)
-			}
-			data = append(data, b[i])
-			i++
-		}
-		out = append(out, Event{At: at, Status: status, Data: data})
 	}
 	return out, nil
 }

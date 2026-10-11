@@ -301,6 +301,22 @@ AppDir、SquashFS 與重複暫存 AppImage 已在確認正式副本後移除，�
 
 ## 各平台完整版與原版語音
 
+### 配樂與滑鼠修正版打包契約
+
+狀態：`READY`。使用者於 2026-10-11 授權將已驗證的配樂、滑鼠及選取標記
+修正打包。採 `v.1.1.2-20261011`，從乾淨提交重建四平台引擎，再建立各自包含
+兩版資料及既有 B／4× 高清素材的本機完整版。舊版套件、tag 及 Release 保持。
+
+沿用 Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon 各一 tar.gz。
+逐包重讀版號、架構、授權、字型、原版及高清檔案雜湊，驗證 Linux 兩版 AppRun、
+Windows 兩版 Wine，以及正式 Linux 執行檔的滑鼠新局、存檔與片頭／標題錄音。
+Windows 中文說明採 BOM／CRLF，非 ASCII ZIP 成員具 UTF-8 旗標。
+
+本次只更新遊戲套件。`complete-local-bundle.py --packages-only` 仍要求套件、
+AppImage 與 Wine 收據通過，影片欄位記為未要求，不複製或重標舊片為新版驗收。
+含原版素材的完整版只留 `dist-all/v.1.1.2-20261011/full-local/`，不公開上傳。
+原生 Windows／macOS、FUSE、人耳、簽章及公證的既有限制保持。
+
 使用者於 2026-10-10 明確改為各平台分開交付，並要求補齊正常原版對白語音後再交付。
 新修正版採 `v.1.1.1-20261010`，本機交付已完成。來源提交為
 `c3ee5a7ed3a271bbde7757e6b3f44a57d022ed20`，四個架構均從乾淨提交重編。

@@ -22,6 +22,7 @@ p.add_argument('--root', type=Path, required=True)
 p.add_argument('--release-out', type=Path, required=True)
 p.add_argument('--stage', type=Path, required=True)
 p.add_argument('--version', required=True)
+p.add_argument('--packages-only', action='store_true', help='只交付平台包；影片不列為本輪驗收')
 a = p.parse_args()
 assert re.fullmatch(r'v\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}', a.version)
 release = a.release_out
@@ -32,13 +33,16 @@ manifest = json.loads(manifest_file.read_text())
 verified = json.loads((a.stage / 'package-verification.json').read_text())
 appimage = json.loads((release / 'smoke/appimage-smoke.json').read_text())
 wine = json.loads((release / 'smoke/windows-wine-smoke.json').read_text())
-qa_files = list((release / 'promo').glob('gameplay-hd-*/QA.json'))
-assert len(qa_files) == 1
-qa = json.loads(qa_files[0].read_text())
+qa = None
+if not a.packages_only:
+    qa_files = list((release / 'promo').glob('gameplay-hd-*/QA.json'))
+    assert len(qa_files) == 1
+    qa = json.loads(qa_files[0].read_text())
 assert manifest['version'] == a.version
-assert all(x['version'] == a.version for x in [verified, appimage, wine, qa])
+assert all(x['version'] == a.version for x in [verified, appimage, wine])
 assert verified['passed'] and appimage['passed'] and wine['passed']
-assert qa['technical_passed'] and qa['visual_review'] == 'passed'
+if qa is not None:
+    assert qa['version'] == a.version and qa['technical_passed'] and qa['visual_review'] == 'passed'
 assert verified['source_commit'] == manifest['source_commit']
 image = release / 'full-local' / f'san1-{a.version}-linux-x86_64.AppImage'
 if image.exists():
@@ -62,21 +66,23 @@ for platform in ['windows-amd64', 'darwin-amd64', 'darwin-arm64']:
     assert sha(path) == checked['sha256'] == row['sha256']
     assert path.stat().st_size == row['bytes']
     platforms.append({'platform': platform, **row})
-movie = release / qa['file']
-assert sha(movie) == qa['sha256'] and movie.stat().st_size == qa['bytes']
+if qa is not None:
+    movie = release / qa['file']
+    assert sha(movie) == qa['sha256'] and movie.stat().st_size == qa['bytes']
 for row in manifest['packages']:
     assert sha(release / row['file']) == row['sha256']
 delivery = {'version': a.version, 'passed': True, 'source_commit': manifest['source_commit'],
     'layout': 'separate_platform_packages', 'platforms': platforms,
-    'promo': {key: qa[key] for key in ['file', 'bytes', 'sha256', 'duration_seconds', 'rights']},
+    'promo': {key: qa[key] for key in ['file', 'bytes', 'sha256', 'duration_seconds', 'rights']} if qa else None,
     'voice_templates': len(json.loads((a.root / 'internal/speaker/voice_catalog.json').read_text())['cues']),
     'signing': 'unsigned', 'verification': {'package_contents': 'passed',
         'linux_appimage': 'base_plus_extracted_runtime_passed',
         'windows': 'base_plus_wine_passed_not_native', 'macos_native': 'not_run',
-        'promo': 'technical_and_visual_passed'}}
+        'promo': 'technical_and_visual_passed' if qa else 'not_requested'}}
 assert not list((release / 'full-local').glob('*complete-all-platforms.zip'))
 manifest['complete_delivery'] = delivery
-manifest['promo_gameplay_hd'] = delivery['promo']
+if qa is not None:
+    manifest['promo_gameplay_hd'] = delivery['promo']
 manifest['full_local_smoke']['windows-amd64'] = 'base_and_plus_passed_wine_8s_not_native'
 manifest_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 receipt = release / 'smoke/platform-delivery.json'

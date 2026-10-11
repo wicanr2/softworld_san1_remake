@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
 	"github.com/wicanr2/softworld_san1_remake/internal/menu"
@@ -125,45 +124,45 @@ func (a *app) updateTitle() error {
 		}
 	}
 	switch {
-	case inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+	case a.keyPressed(ebiten.KeyEscape):
 		m.Back()
 		a.dirty = true
 		return nil
-	case inpututil.IsKeyJustPressed(ebiten.KeyUp):
+	case a.keyPressed(ebiten.KeyUp):
 		m.Move(-1)
 		a.dirty = true
 		return nil
-	case inpututil.IsKeyJustPressed(ebiten.KeyDown):
+	case a.keyPressed(ebiten.KeyDown):
 		m.Move(1)
 		a.dirty = true
 		return nil
-	case inpututil.IsKeyJustPressed(ebiten.KeyLeft):
+	case a.keyPressed(ebiten.KeyLeft):
 		// 左右鍵：新君主那一層加減點數、換領地；選君主那一格（原版素材）翻頁。
 		if m.Adjust(-1) || a.lordPickTurn(-1) {
 			a.dirty = true
 		}
 		return nil
-	case inpututil.IsKeyJustPressed(ebiten.KeyRight):
+	case a.keyPressed(ebiten.KeyRight):
 		if m.Adjust(1) || a.lordPickTurn(1) {
 			a.dirty = true
 		}
 		return nil
-	case inpututil.IsKeyJustPressed(ebiten.KeyEnter),
-		inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter):
+	case a.keyPressed(ebiten.KeyEnter),
+		a.keyPressed(ebiten.KeyNumpadEnter):
 		a.titleConfirm(m.Sel())
 		return nil
 	}
 	// 幾人玩那一層：數字鍵就是人數（0 起）。
 	if m.Stage() == menu.PlayerCount {
 		for k := ebiten.Key0; k <= ebiten.Key9; k++ {
-			if d := int(k - ebiten.Key0); inpututil.IsKeyJustPressed(k) && d < m.Len() {
+			if d := int(k - ebiten.Key0); a.keyPressed(k) && d < m.Len() {
 				a.titleConfirm(d)
 				return nil
 			}
 		}
 	}
 	for k := ebiten.Key1; k <= ebiten.Key9; k++ {
-		if inpututil.IsKeyJustPressed(k) {
+		if a.keyPressed(k) {
 			i := int(k - ebiten.Key1)
 			// 選君主那一格（原版素材）的數字鍵是這一頁的第幾位。
 			if m.Stage() == menu.Lord && a.art != nil {
@@ -178,12 +177,12 @@ func (a *app) updateTitle() error {
 			return nil
 		}
 	}
-	if m.Stage() == menu.Note && anyKeyPressed() {
+	if m.Stage() == menu.Note && a.anyKeyPressed() {
 		m.Back()
 		a.dirty = true
 	}
 	// 「新君主出現!!」與「電腦自動示範模式」按任意鍵往下（原版等一個鍵）。
-	if (m.Stage() == menu.LordBorn || m.Stage() == menu.Demo) && anyKeyPressed() {
+	if (m.Stage() == menu.LordBorn || m.Stage() == menu.Demo) && a.anyKeyPressed() {
 		a.titleConfirm(0)
 		a.dirty = true
 	}
@@ -224,9 +223,4 @@ func (a *app) titleConfirm(i int) {
 	if a.menuScreen.Quit() {
 		a.quit = true
 	}
-}
-
-// anyKeyPressed 回報這一格有沒有按下任何鍵。
-func anyKeyPressed() bool {
-	return len(inpututil.AppendJustPressedKeys(nil)) > 0
 }

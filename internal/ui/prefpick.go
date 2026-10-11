@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"image"
 	"strings"
 
 	"github.com/wicanr2/softworld_san1_remake/internal/assets"
@@ -30,6 +31,7 @@ const (
 
 // DrawPrefPick 畫挑郡清單。
 func DrawPrefPick(c *Canvas, a *ArtScreen, g *game.State, p *PrefPick) {
+	c.PointerTargets = nil
 	c.FillRect(rosterX0, rosterY0, rosterX1+1, rosterY1+1, assets.EGAPalette[rosterBG])
 	if a != nil && a.havePanel {
 		drawSideFrame(c, a.prefBox, rosterX0, rosterY0, rosterX1-rosterX0+1, rosterY1-rosterY0+1, rosterBG)
@@ -73,6 +75,13 @@ func DrawPrefPick(c *Canvas, a *ArtScreen, g *game.State, p *PrefPick) {
 		x := prefPickX0 + (id-1)/prefPickRows*prefPickDX
 		y := prefPickY0 + (id-1)%prefPickRows*CellH
 		s := fmt.Sprintf("%2d", id) + PlaceName(q.Name)
+		px, pw := x, prefPickDX
+		if compact {
+			px, pw = prefPickCompactX+(id-1)/prefPickRows*prefPickCompactDX, prefPickCompactDX
+		}
+		if p.Valid[id] {
+			c.AddPointer(image.Rect(px, y, px+pw, y+CellH), PointerPref, id)
+		}
 		if compact {
 			x = prefPickCompactX + (id-1)/prefPickRows*prefPickCompactDX
 			if c.FitsSmall(s) && cells.Width(s)*SmallW <= prefPickCompactDX {

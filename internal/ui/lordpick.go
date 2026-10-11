@@ -75,6 +75,9 @@ func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, 
 		}
 		x := lordPickX0 + lordPickDX*(i%3)
 		y := lordPickY0 + lordPickDY*(i/3)
+		if sel >= 0 {
+			c.AddPointer(image.Rect(x-1, y-1, x+65, y+116), PointerTitle, i)
+		}
 		portrait := s.Portrait
 		if s.Lord != nil {
 			portrait = int(s.Lord.Portrait)
@@ -202,6 +205,7 @@ func DrawCustomLord(c *Canvas, a *ArtScreen, g *game.State, faction, portrait in
 		x += c.DrawRuneOutlinedPx(x, customNameY+(2-sy)*CellH/2, r, nameInk, black, sy, sy)
 	}
 	for i, line := range lines {
+		c.AddPointer(image.Rect(customTextX, customLineY[i], customFaceX-8, customLineY[i]+CellH), PointerTitle, i)
 		col := ink(customLineInk[i])
 		if i == sel {
 			col = ink(15)

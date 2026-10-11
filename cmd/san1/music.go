@@ -34,11 +34,12 @@ var audioContext = sync.OnceValue(func() *audio.Context {
 
 // jukebox 管一首正在播的曲子。
 type jukebox struct {
-	ctx    *audio.Context
-	tracks []music.Track
-	player *audio.Player
-	stream *music.Stream
-	cur    int
+	ctx     *audio.Context
+	tracks  []music.Track
+	player  *audio.Player
+	stream  *music.Stream
+	cur     int
+	opening *music.Track
 }
 
 // newJukebox 從 DATA1 讀出配樂。讀不到就回 nil——沒有音樂不該擋著開遊戲。
@@ -60,7 +61,13 @@ func newJukebox(root string) *jukebox {
 		fmt.Fprintln(os.Stderr, "san1: 配樂解不開：", err)
 		return nil
 	}
-	return &jukebox{ctx: audioContext(), tracks: tracks, cur: -1}
+	j := &jukebox{ctx: audioContext(), tracks: tracks, cur: -1}
+	if intro, err := music.ParseAll(get(music.LongIndex), get(music.LongData)); err == nil && len(intro) == 1 {
+		j.opening = &intro[0]
+	} else {
+		fmt.Fprintln(os.Stderr, "san1: 片頭配樂解不開：", err)
+	}
+	return j
 }
 
 // Play 換一首。編號超出範圍就取模，所以呼叫端不必自己算。
@@ -69,11 +76,26 @@ func (j *jukebox) Play(i int) {
 		return
 	}
 	i = ((i % len(j.tracks)) + len(j.tracks)) % len(j.tracks)
+	j.play(j.tracks[i], i)
+}
+
+// PlayOpening 只播放獨立的 MUSV 長曲，不佔用五首欣賞曲的編號。
+func (j *jukebox) PlayOpening() {
+	if j == nil {
+		return
+	}
+	if j.opening == nil {
+		j.Stop()
+		return
+	}
+	j.play(*j.opening, -2)
+}
+
+func (j *jukebox) play(tr music.Track, i int) {
 	if i == j.cur && j.player != nil {
 		return
 	}
 	j.Stop()
-	tr := j.tracks[i]
 	s := music.NewStream(tr.Song, tr.Bank, audioRate)
 	if s == nil {
 		return

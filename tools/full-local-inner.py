@@ -114,6 +114,7 @@ def main():
             f'三國演義 remake {version}\n此封包含原版與加強版遊戲資料，僅供本機保存，禁止公開上傳或再散布。\n'
             'Linux／macOS：執行 ./play-base.sh 或 ./play-plus.sh；Windows：執行 play-base.cmd 或 play-plus.cmd。\n'
             '每次預設原貌。按 Esc 或把滑鼠移到視窗上緣，從選項列切換 B 高清、語言及 AI。\n'
+            '左鍵點選選單、人物、郡與戰場；右鍵返回；金額與兵數使用畫面數字鍵盤，鍵盤操作仍可使用。\n'
             '存檔寫在封包目錄的 saves/，不會改動 game/ 內的原版檔案。\n')
         (package_dir / '本機完整版說明.txt').write_bytes(
             (b'\xef\xbb\xbf' + explanation.replace('\n', '\r\n').encode('utf-8'))

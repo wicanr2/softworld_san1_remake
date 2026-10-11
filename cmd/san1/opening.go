@@ -22,11 +22,12 @@ import (
 // 按鍵照原版：等待中按鍵只結束那一段等待；動畫那一步收到按鍵就放棄片頭
 // 剩下的部分，直接到「程式載入中」；三英圖停住之後等一個鍵。
 type openingPlayer struct {
-	script *opening.Script
-	next   func() (opening.Beat, bool)
-	stop   func()
-	beat   opening.Beat
-	left   int // 這一拍還要停幾幀
+	script       *opening.Script
+	next         func() (opening.Beat, bool)
+	stop         func()
+	beat         opening.Beat
+	left         int // 這一拍還要停幾幀
+	musicStarted bool
 }
 
 // newOpeningPlayer 從第一拍開始；片頭一拍都沒有時回 nil。
