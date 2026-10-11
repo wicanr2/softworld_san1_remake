@@ -1909,3 +1909,33 @@ CONTEXT、README、文件索引、打包契約與驗證矩陣已更新至新版�
 及清理收據，入口為 `workplace/complete-delivery-v1.1.2-20261011/cleanup.json`。
 Docker 本專案容器均已移除，工作樹 root-owned 檔案及誤建 `.md` 目錄為零。
 交付物及文件 UID/GID 為 1000:1000，`git diff --check` 通過；AGENTS.md 保持未暫存。
+
+## 2026-10-11 v.1.1.2 提交推送與公開 Release
+
+使用者明確要求 commit、push 及建立 Release。重讀版號、封包權利邊界與
+發行驗證路由；GitHub 登入有效，遠端原 main 為 64d2b65，新版 tag 及 Release
+均尚不存在。Issue #2 與 #110 的最新內文、留言及狀態已讀，維持開啟，未寫入 Issue。
+
+已以 atomic push 推送 main 至 `c82a9a201112d4d88d611028a47c5092b8ac6f43`，
+包含程式提交 4a27093 與封包驗收文件 c82a9a2。同時推送
+`v.1.1.2-20261011` annotated tag，其物件為
+`46ab6079bf621876c6fcc05d050520a022d0f3c9`，實際程式提交為
+`4a2709372e5216fb7280b3f89572b98c4d71e6f6`，與 manifest 來源一致。
+
+發布前重讀四個公開引擎包的大小、SHA-256、LICENSE 及執行檔雜湊，全部相符。
+沿用已完成的 1,828 通過、27 略過、零失敗與正式包玩家路徑收據，未重跑相同測試。
+發行說明母本為 `workplace/v112-release-notes.txt`，涵蓋配樂速度及片頭選曲、
+完整滑鼠操作、選取標記閃爍及完整原版對白語音接線，明示原生平台及簽章限制。
+
+先建立 Release 草稿並上傳四個 patch 封包與 SHA256SUMS-public.json，再回讀
+五個附件的檔名、大小、GitHub SHA-256 及完整說明。草稿的 tag 查詢回傳 404，
+改由有權限的 Release 清單找到草稿，所有內容相符後發布並設為 latest。
+發布後 tag 查詢及 latest 查詢均成功，版本、說明及五個附件再次相符。
+Release ID 為 409478204，發布時間為 2026-10-11T06:43:06Z，網址為
+https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.2-20261011 。
+
+完整遠端收據為 `workplace/v112-release-published.json`。完整版、高清素材、
+影片與私人總清單保持本機；舊版 tag 及 Release 未更改。README、CONTEXT
+與打包文件已回填公開入口，隨本輪文件提交推送。AGENTS.md 保持未暫存。
+本輪沒有建置或測試程序留在背景；一次性驗證容器均已移除，檔案 UID/GID
+為 1000:1000。收尾檢查包含 diff、遠端主線及 tag、Docker 與擁有權。

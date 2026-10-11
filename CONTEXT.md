@@ -7,7 +7,7 @@
 | 項目 | 目前狀態 |
 |---|---|
 | 現行交付 | `v.1.1.2-20261011` 四個獨立本機完整版，包含配樂、滑鼠與選取標記修正；舊 tag、Release 與套件保持固定 |
-| 封包驗證 | 四平台內容及雜湊通過；Linux 兩版 AppRun、Windows 兩版 Wine 通過。正式回歸 1,828 通過、27 略過、零失敗 |
+| 封包驗證 | 四平台內容及雜湊通過；Linux 兩版 AppRun、Windows 兩版 Wine 通過。正式回歸 1,828 通過、27 略過、零失敗；同版 Release 已發布並設為 latest，五個公開附件相符 |
 | 配樂 | 每拍刻度改讀表頭 240，補長延遲與速度事件；片頭使用 MUSV，標題使用 MUS 第 0 首 |
 | 配樂驗證 | 兩版原版開機選曲觀測通過；六首時間軸通過；兩版片頭、標題四段正式錄音完整匹配參考 PCM |
 | 滑鼠 | 選單、人物、郡、戰場與數字鍵盤已接入；兩版原貌及高清正常開局、查閱、越界取消與存檔通過，基本版紮寨及行軍通過 |
@@ -59,7 +59,9 @@ README 已依使用者稿件整合故事背景、玩法及保存理念，改標�
 本輪 AppDir、SquashFS 與重複 AppImage 已清理，釋放 378,865,080 bytes，
 收據為 `workplace/complete-delivery-v1.1.2-20261011/cleanup.json`。
 完整版與影片留本機，原版資料不入 Git。Windows／macOS 原生啟動、簽章、公證、
-FUSE 掛載與人耳仍未驗。公開 GitHub Release 目前維持 `v.1.1.0-20261007`。
+FUSE 掛載與人耳仍未驗。[公開 GitHub Release](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.2-20261011)
+已更新為 `v.1.1.2-20261011` 並設為 latest，四個引擎包與公開雜湊清單的遠端
+大小及 SHA-256 全部相符；收據為 `workplace/v112-release-published.json`。
 
 上一輪已發布高清版的既有證據如下。英文姓名牌已選 A 原寬縮字，契約見
 [021 §6.61](docs/spec/021-hd-art.md#661-英文姓名牌保留原寬)。交付採

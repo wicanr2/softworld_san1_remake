@@ -333,7 +333,11 @@ AppImage 與 Wine 收據通過，影片欄位記為未要求，不複製或重�
 
 每包獨立含兩版共 66 個原版檔、904 筆高清項目、444 個高清檔、自由字型、
 授權及啟動器。四個公開引擎包只含引擎、文件及自由字型，其獨立清單為
-`patch/SHA256SUMS-public.json`，未上傳 GitHub。
+`patch/SHA256SUMS-public.json`。[公開 Release](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.2-20261011)
+已依使用者授權發布並設為 latest，只附上述四個引擎包與公開清單。五個遠端
+附件的檔名、大小及 SHA-256 均與本機相符，完整發行說明也已回讀核對。
+收據為 `workplace/v112-release-published.json`，發行說明母本為
+`workplace/v112-release-notes.txt`；tag 保持建包來源提交，文件提交另在 main 推送。
 
 | 驗證 | 結果與收據 |
 |---|---|
