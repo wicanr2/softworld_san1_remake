@@ -37,7 +37,15 @@
 
 截圖使用劇本 001、單人曹操、難度 5。原貌讀取本機合法持有的原版美術，HD 使用本機高清素材包，文字使用重製版字庫。操作面板涵蓋主畫面、人物清單、資料卡、存檔及戰場指令，接入與驗證見[操作面板規格](docs/spec/021-hd-art.md#638-操作面板)。**HD 計畫仍在進行**；圖示呈現目前成果，驗收範圍見[高清規格](docs/spec/021-hd-art.md)與[畫面對拍紀錄](docs/playtest/03-screen-parity.md)。
 
-公開原始碼與引擎封包不包含原版執行檔、資料、美術、音樂或字型。遊玩時需自行提供合法持有的原版資料，使用方式見下方「需要原版」。
+### 素材總覽
+
+原版圖錄收錄兩版各 613 張點陣圖與 36 張地形，兩版相同素材合併後共 650 格。HD 圖錄收錄目前素材包的全部 437 張 PNG，對應兩版各 452 筆資源。點圖可放大查看；兩份圖錄各自排列，面板拼件與共用圖片的數量不同。
+
+| 原版素材 | HD 素材 |
+|---|---|
+| <a href="docs/images/assets-original-overview.png"><img src="docs/images/assets-original-overview.png" width="420" alt="原版及加強版完整素材總覽：人物、場景、地形、旗幟、選單、圖框、片頭與游標"></a> | <a href="docs/images/assets-hd-overview.png"><img src="docs/images/assets-hd-overview.png" width="420" alt="B 寫實手繪四倍高清素材總覽，包含全部 437 張正式 PNG"></a> |
+
+HD 素材已收錄於 [`hd-assets/`](hd-assets/README.md)，可搭配下載的引擎使用。逐張來源與雜湊見 [manifest](hd-assets/manifest.json)，總覽的資源鍵與位置見[圖錄索引](docs/images/asset-overviews.json)。原版單張圖片、執行檔、完整資料、音樂及字型未收錄；遊玩仍需自備合法原版資料，使用方式見下方「需要原版」。
 
 ## 現在做到哪裡
 
@@ -111,7 +119,7 @@ JSON、配樂轉成 OGG。
 ```sh
 # Ebiten 視窗：← → 選郡、0–9 指令、Enter 結束這個月、Shift＋Esc 返回
 # 存檔：其他（9）→ 儲存（2）→ 選一格；開場讀檔用 -load
-tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -faction 0 -ai enhanced \
+tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -faction 0 -ai enhanced -hd-assets hd-assets \
     -saves ~/.local/share/san1-remake/saves
 
 # 無頭：讓電腦跑 14 個月再把畫面存成 PNG
@@ -151,8 +159,8 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 同版本還原 AI／強化 AI 1–5。滑鼠展開後移開會收起；Esc 展開後再按 Esc 收起。
 遊戲內返回或取消使用 Shift＋Esc。AI 設定沿用既有存檔欄位，外觀每次啟動回到原貌。
 
-高清模式需提供符合[高清規格](docs/spec/021-hd-art.md)的素材包，以 `-hd-assets <目錄>`
-指定，或放在執行檔旁的 `hd-assets/`。缺包時仍可玩原貌；缺圖或錯誤素材逐項回退。
+高清素材可從本儲存庫的 [`hd-assets/`](hd-assets/README.md) 取得，以 `-hd-assets <目錄>`
+指定，或把整個目錄複製到執行檔旁。缺包時仍可玩原貌；缺圖或錯誤素材逐項回退。
 主選單、新局、主畫面及戰場的[六幀輸入游標](docs/spec/021-hd-art.md#650-四組輸入游標的六幀材質)
 也已接入高清材質，沿用既有遮罩、位置與動畫節拍。
 建寨位置的[反白標記](docs/spec/021-hd-art.md#651-建寨位置標記的高清反白)也保留高清地形細節，沿用原選取範圍與閃爍節拍。
@@ -181,8 +189,8 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 
 ## 需要原版
 
-本儲存庫**不含**任何原版檔案——執行檔、資料檔、美術、音樂、字型、說明書都不散布。
-要遊玩需自備合法持有的原版或加強版資料，解壓時保留各自原有的檔名，
+本儲存庫提供 HD 素材及原版對照總覽。要遊玩需自備合法持有的原版或加強版資料，
+解壓時保留各自原有的檔名，
 再從下載的封包執行：
 
 ```sh
@@ -254,3 +262,4 @@ DOSBox-X 作為交叉驗證。
 | [cmd/san1turndiff/](cmd/san1turndiff/) | 讀兩份原版執行期盤面，說出中間那個月動了什麼 |
 | [docs/reference/](docs/reference/) | 說明書整理、社群資料 |
 | [docs/release/](docs/release/) | 發行包與本機驗收 |
+| [hd-assets/](hd-assets/README.md) | 正式 HD 素材包、來源清單與使用方式 |

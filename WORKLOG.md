@@ -1939,3 +1939,41 @@ https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.2-20261011 �
 與打包文件已回填公開入口，隨本輪文件提交推送。AGENTS.md 保持未暫存。
 本輪沒有建置或測試程序留在背景；一次性驗證容器均已移除，檔案 UID/GID
 為 1000:1000。收尾檢查包含 diff、遠端主線及 tag、Docker 與擁有權。
+
+## 2026-10-11 HD 素材入庫與 README 總覽
+
+使用者明確要求將 HD 素材上傳 GitHub repo，並在 README 顯示原版與 HD
+素材總覽。本輪命中 README、素材公開及文件職責路由，載入 README 規範與
+grilling 技能；本次公開範圍已由使用者指定，依 021 §6.62 執行。
+Issue #104 最新標題、內文及狀態已讀，沒有留言；維持 OPEN，未修改 Issue。
+
+現行包 `workplace/hd-assets-mapcursor-v50-r1/` 中 manifest 引用的 437 張 PNG
+與原 manifest 複製到 `hd-assets/`，另加使用說明，共 439 檔。
+圖與 manifest 共 107,902,422 bytes，manifest SHA-256 為
+`fcbe0d0af17840bdb68647a03fa6e31585f9b19f4e3bb068018f86c8d9215843`。
+每份輸出與定版來源逐位元組相同；六份製作 JSON、生成母圖、提示詞、候選、
+原版單張圖片、容器及音訊仍留本機。沿用程式已有的 `hd-assets/` 名稱，
+沒有另建交付根目錄或更換既有 Release。
+
+[Docker 重生工具](tools/asset-overviews.sh) 呼叫既有 `san1assets`，兩版各匯出
+613 張 IMG／FAC，再由正式 `BattleTiles` 補出各 36 張地形。合併兩版相同槽位
+與來源雜湊後得到 650 格原版總覽，ENDO2 的版本差異分列；HD 總覽包含全部
+437 張獨立 PNG。兩張圖尺寸分別為 3120×5740、3120×4088，原版採最近鄰，
+HD 採 Lanczos 縮圖，完整保留長寬比並標示資源鍵、尺寸及版本。
+README、素材包說明、文件索引、目前狀態及打包文件已連結新入口。
+圖錄索引保存全部來源鍵、版本、尺寸、來源／輸出 SHA-256 與縮圖位置。
+
+| 驗證 | 結果與入口 |
+|---|---|
+| 正式 HD 載入器 | 兩版各 452/452，警告零；`workplace/asset-overviews/hd-pack-check.log` |
+| 獨立回讀 | 437 PNG 完整解碼、原包 bytes、兩版 1298 個來源槽位覆蓋、650／437 縮圖數與位置、圖錄雜湊及連結全通過；`workplace/asset-overviews/audit.json` |
+| 圖片查看 | 原版與 HD 完整總覽均已查看，分類、資源標籤、透明底與邊界正常；原有四張 README 遊戲截圖保持 |
+| 公開範圍及容量 | HD 目錄只含 manifest、437 PNG 與 README；最大公開新增檔 8,436,373 bytes，全部小於 GitHub 單檔限制 |
+
+獨立回讀初次把 README 連結的 `docs/images/` 截成 `images/`，因此錯誤拒收；
+修正驗證腳本為解析完整 Markdown／HTML 相對路徑後，在同一容器與輸入乾淨
+重跑通過，未改動圖片。正式遊戲程式未修改，沿用已完成的遊戲及封包驗收，
+本輪只補素材載入與圖錄檢查。既有 tag、Release、附件與本機完整版保持。
+
+公開檔案 UID/GID 為 1000:1000，`git diff --check` 通過。遠端回讀於推送後補記；
+AGENTS.md 保持未暫存，全部一次性容器完成後移除。
