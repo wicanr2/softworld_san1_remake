@@ -2030,3 +2030,47 @@ README、素材包說明、文件索引及現況表均已加入入口，Docker �
 一次性容器均已移除；工作樹 root-owned 檔案及誤建 `.md` 目錄為零，新增文件與
 工具 UID/GID 為 1000:1000。Git 作者信箱及全部歷史均為 `wicanr2@gmail.com`，
 `git diff --check` 通過；AGENTS.md 保持未暫存。
+
+## 2026-10-11 語音與字體修正版重新打包
+
+使用者要求重新打包，並在 README 放入楷書及隸書截圖。命中復古重製發行、
+版號、交付目錄及文件職責路由，沿用重製技能與驗收 reference。開始時讀取
+GitHub #2、#110 最新內文、留言與狀態，未修改 Issue；簽章及原生平台驗收限制保持。
+本輪唯一交付為 `v.1.1.3-20261011`，舊版套件、tag、Release 及影片保持。
+
+README 加入原貌與 HD 的楷書／隸書四張完整主選單截圖，可點選原生尺寸。
+圖片直接複製正常操作收據，未裁切、重畫或縮圖；來源為 `9d901dd` 的修正程式。
+`tools/release-inner.sh` 將四圖加入每個公開引擎包並記錄輸入 SHA。
+圖鑑與既有素材總覽保持，索引及 021 §6.63 加入來源入口。
+
+打包輸入提交為 `ca0229e039bf15a5560090d7e9a1fb2637a71058`。從乾淨提交執行
+`tools/release.sh`、`tools/full-local.sh`，四個架構均重編，兩版高清各 452／452 項、
+載入零警告。使用既有完整交付工具建立 AppImage、Windows ZIP 及 macOS 雙架構 tar.gz，
+每包含兩版共 66 個原版檔與 444 個高清檔。未合併跨平台 ZIP，未重製影片。
+完整包僅保存在 `dist-all/v.1.1.3-20261011/full-local/`，公開引擎包另在 `patch/`。
+
+| 驗證 | 結果與入口 |
+|---|---|
+| 正式回歸 | 無網路 Docker／Xvfb 執行 `go test -count=1 -p 2 -timeout 15m -json ./cmd/... ./internal/...`；28 套件、1,830 通過、27 略過、零失敗，未啟用 oracle；`workplace/audio/v113-regression-20261011.jsonl` |
+| 四平台封包 | 版號、架構、授權、字型、兩版原版及高清素材 SHA、README 四圖通過；`smoke/package-contents.json`、`smoke/public-package-contents.json` |
+| 正常啟動 | AppImage 解包後實際 AppRun 兩版及可寫存檔目錄；Windows Wine 兩版各八秒通過；`smoke/appimage-smoke.json`、`smoke/windows-wine-smoke.json` |
+| 正式字體 | 兩版原貌／HD、楷書／隸書與四種寬度共 32 組、四次回切恢復通過；`workplace/audio/v113-packaged-fonts-20261011/receipt.json` |
+| 正式語音 | 正常 001 劉備難度 5 宣戰，兩版四則完整三片段 PCM、2.604／2.354 秒、零排除幀、只播一次及 HD 回切通過；`workplace/audio/v113-packaged-voice-20261011/receipt.json` |
+| 獨立回讀 | 九個封包 SHA 與大小、32 組文字區、四則完整 PCM、210 張唯一 PNG、README 四圖及啟動收據通過；`smoke/final-delivery-audit.json`。舊字體負對照仍有 477 個不符像素 |
+
+表中 `smoke/` 位於 `dist-all/v.1.1.3-20261011/`。建包及正常 GUI 使用的正式 Linux
+執行檔 SHA 為 `721561d4c15131ac71d0a013aaca5c07cba895c1b114995c51ea7a208ec6ba1e`。
+測試開始時的提交至建包提交，`cmd/`、`internal/`、`fonts/` 及 Go 依賴檔差異為零。
+008 §11 的 8 kHz 為使用者試聽選定的 remake 近似；PCM 技術通過不代表人耳或
+原版硬體逐波形一致。Windows／macOS 原生、FUSE、簽章、公證及人耳仍未驗。
+
+封包規格限本輪內容、Linux 正常抽樣及 Wine 啟動改為 CONFORMED。
+README、CONTEXT、驗證矩陣與文件索引已更新；發行細節集中於
+[打包契約](docs/release/01-packaging.md#語音與字體修正版打包契約)。
+本輪不新建 GitHub Release，既有 v.1.1.2 公開附件保持；四個完整版留本機。
+來源及收尾文件依既有 commit／push 授權推送 main，建包來源仍固定於 ca0229e。
+
+核對正式 AppImage 副本後移除本輪 AppDir、SquashFS 與重複 AppImage，
+釋放 401,168,448 bytes；清單為 `workplace/complete-delivery-v1.1.3-20261011/cleanup.json`。
+正式包、完整 GUI 證據、runtime 授權及工具紀錄均保留；一次性容器已移除。
+AGENTS.md 保持未暫存，未加入含原版資料的本機產物。

@@ -303,7 +303,8 @@ AppDir、SquashFS 與重複暫存 AppImage 已在確認正式副本後移除，�
 
 ### 語音與字體修正版打包契約
 
-狀態：`READY`。使用者於 2026-10-11 要求重新打包，並將楷書與隸書截圖
+狀態：`CONFORMED`，限封包內容、Linux 正常抽樣與 Windows Wine 啟動。
+使用者於 2026-10-11 要求重新打包，並將楷書與隸書截圖
 放到 README。新版本為 `v.1.1.3-20261011`，包含 008 §11 的 8,000 Hz 語音與
 接縫處理、021 §6.63 的最近鄰最終縮放，以及 README 的四張實際字體截圖。
 舊版封包、tag、Release 固定；影片沿用既有入口，不列入本輪重新驗收。
@@ -319,6 +320,43 @@ macOS Intel／Apple Silicon 各一 tar.gz，沒有跨平台整合 ZIP。
 含原版資料的完整版只留 `dist-all/v.1.1.3-20261011/full-local/`；可公開的引擎包
 與其清單置於 `patch/`。原生 Windows／macOS、FUSE、簽章及人耳另驗。
 重跑工具及固定 AppImage runtime 來源沿用上方「三平台整合包與實錄推廣片」。
+
+來源提交為 `ca0229e039bf15a5560090d7e9a1fb2637a71058`。四個架構均從乾淨提交
+重建，版號由正式執行檔及套件說明回讀。README 四張截圖來自正常主選單，
+來源為修正提交 `9d901dd`，逐位元組複製；該提交至建包提交的 Go 與字型輸入相同。
+來源與雜湊記在 `smoke/README-fonts.json`，正式包的字體另由下表補驗。
+
+下列路徑相對於 `dist-all/v.1.1.3-20261011/`。
+
+| 平台 | 交付檔案 | 大小 |
+|---|---|---|
+| Linux x86_64 | `full-local/san1-v.1.1.3-20261011-linux-x86_64.AppImage` | 129,571,320 bytes |
+| Windows x64 | `full-local/san1-v.1.1.3-20261011-windows-amd64.zip` | 128,389,061 bytes |
+| macOS Intel | `full-local/san1-v.1.1.3-20261011-darwin-amd64.tar.gz` | 128,217,042 bytes |
+| macOS Apple Silicon | `full-local/san1-v.1.1.3-20261011-darwin-arm64.tar.gz` | 127,881,015 bytes |
+
+每包包含兩版共 66 個原版檔、904 筆高清項目、444 個高清檔、自由字型、
+授權及啟動器。四個公開引擎包另在 `patch/`，均含 README 的四張字體截圖；
+獨立清單為 `patch/SHA256SUMS-public.json`。完整 SHA-256、工具映像檔及輸入雜湊
+保存在 `SHA256SUMS.json`。本輪完成本機打包，公開 Release 仍為 v.1.1.2。
+
+| 驗證 | 結果與收據 |
+|---|---|
+| 正式 cmd／internal 回歸 | 1,830／1,857 測試事件通過、27 略過、零失敗，28 套件；`smoke/regression-summary.json`。未啟用 oracle，略過不計通過 |
+| 四平台封包內容 | 版號、架構、原版及高清 SHA、字型、授權及 README 圖片通過；`smoke/package-contents.json`、`smoke/public-package-contents.json` |
+| Linux AppImage | runtime 解包後實際 AppRun 啟動兩版，存檔目錄可寫；`smoke/appimage-smoke.json`，未驗 FUSE |
+| Windows ZIP | 兩版 Wine／Xvfb 各啟動八秒；`smoke/windows-wine-smoke.json`，未驗原生 Windows |
+| 正式 Linux 字體 | 兩版、原貌／HD、楷書／隸書、640／960／1280／2560 寬度共 32 組及四次回切通過；`smoke/packaged-font-summary.json` |
+| 正式 Linux 語音 | 正常劇本 001 劉備難度 5 宣戰，兩版共四則完整三片段 PCM，2.604／2.354 秒、零排除幀、各播一次，HD 回切不重播；`smoke/packaged-voice-summary.json`。同一合成器參考不代表原版硬體波形一致，人耳另驗 |
+| 最終獨立回讀 | 九個封包大小與 SHA、32 組文字區、四則完整 PCM、210 張唯一 PNG、四張 README 圖片及兩類啟動收據通過；`smoke/final-delivery-audit.json` |
+
+正常操作使用 [字體驗證工具](../../tools/verify-font-scaling-inner.py) 與
+[語音驗證工具](../../tools/verify-voice-inner.py)，不注入狀態、種子或時鐘。
+完整操作收據為 `workplace/audio/v113-packaged-fonts-20261011/receipt.json` 及
+`workplace/audio/v113-packaged-voice-20261011/receipt.json`。正式 Linux 執行檔 SHA-256
+為 `721561d4c15131ac71d0a013aaca5c07cba895c1b114995c51ea7a208ec6ba1e`。
+AppDir、SquashFS 與重複 AppImage 在核對最終副本後移除，釋放 401,168,448 bytes；
+收據為 `workplace/complete-delivery-v1.1.3-20261011/cleanup.json`。
 
 ### 配樂與滑鼠修正版打包契約
 

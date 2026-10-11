@@ -124,6 +124,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 英文姓名牌 | [spec/021 §6.61](spec/021-hd-art.md#661-英文姓名牌保留原寬)、[獨立回讀](../tools/verify-hd-nameplate-independent.go)；A 原寬縮字限本節 CONFORMED，兩版正常三語 36 樣本、162 檢查與 486 PNG 回讀通過 |
 | 高清完整版與原版配樂推廣片 | [打包契約](release/01-packaging.md#高清完整版與推廣片契約)、[正式素材包檢查](../tools/hd-pack-check.go)、[本機完整版入口](../tools/full-local.sh)、[原版實際錄音](../tools/promo-original-audio.py)、[正式封包錄影](../tools/promo-capture-inner.py)、[合成與媒體驗收](../tools/promo-assemble-inner.py)、[父端完整回讀](../tools/verify-promo-independent.py)、[合成映像檔來源](../docker/Dockerfile.promo)、[影片入口](../tools/promo-local.sh) |
 | 配樂與滑鼠修正版四平台封包 | [v.1.1.2 打包契約與驗收](release/01-packaging.md#配樂與滑鼠修正版打包契約)；四個獨立本機完整版、正式 Linux 兩版原貌／高清滑鼠流程、四段完整配樂錄音與 Windows Wine 啟動通過 |
+| 語音與字體修正版四平台封包 | [v.1.1.3 打包契約與驗收](release/01-packaging.md#語音與字體修正版打包契約)；四個獨立本機完整版、32 組正式字體、四則完整語音與 README 四張字體截圖，1,830 項回歸通過、27 略過 |
 | 對戰地圖的完整將領譯名 | [spec/021 §6.59](spec/021-hd-art.md#659-對戰地圖的完整將領譯名)；限本節 CONFORMED，兩版六劇本 347 姓名、166 項回歸、兩版正常三語 66 項檢查、258 PNG 與完整字模獨立回讀通過 |
 | HD 素材入庫與原版／HD 完整總覽 | [素材包說明](../hd-assets/README.md)、[021 §6.62](spec/021-hd-art.md#662-hd-素材入庫與總覽)、[Docker 重生入口](../tools/asset-overviews.sh)、[原版地形匯出](../tools/asset-overview-tiles.go)、[縮圖合成](../tools/render-asset-overviews.py)、[完整圖錄索引](images/asset-overviews.json) |
 | 楷書／隸書在視窗縮放後模糊 | [021 §6.63](spec/021-hd-art.md#663-點陣字的最終顯示縮放)、[正常主選單驗證](../tools/verify-font-scaling-inner.py) |
