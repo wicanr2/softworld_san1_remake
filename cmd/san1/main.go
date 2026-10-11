@@ -1906,6 +1906,7 @@ func main() {
 	a.windowBar.mode, a.windowBar.orders = brain.Mode(), g.Options.AIOrders()
 	// 主選單那兩項字型（Issue #71）與存檔裡記的那一套。
 	a.fontDir = filepath.Dir(*fontPath)
+	a.fontCache = map[int]*font.Face{game.FontDefault: face}
 	if s != nil {
 		a.setFont(s.G.Options.Font)
 	}
@@ -2195,15 +2196,21 @@ func (a *app) setMenuFont(choice int) {
 
 func (a *app) setFont(kind int) {
 	if kind == a.fontKind {
+		if a.s != nil {
+			a.s.G.Options.Font = kind
+		}
 		a.dirty = true
 		return
 	}
 	name := game.FontFile(kind)
-	if name == "" {
+	if name == "" && kind != game.FontDefault {
 		return
 	}
 	f := a.fontCache[kind]
 	if f == nil {
+		if kind == game.FontDefault {
+			return
+		}
 		fh, err := os.Open(filepath.Join(a.fontDir, name))
 		if err == nil {
 			f, err = font.ParseHexGz(fh, 16)
@@ -2212,6 +2219,14 @@ func (a *app) setFont(kind int) {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "san1: %s 讀不進來，字型不換：%v\n", name, err)
 			return
+		}
+		vectorPath := filepath.Join(a.fontDir, strings.TrimSuffix(name, ".hex.gz")+".ttf")
+		if vh, err := os.Open(vectorPath); err == nil {
+			err = f.LoadVector(vh)
+			vh.Close()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "san1: %s 向量字型讀不進來，沿用點陣：%v\n", vectorPath, err)
+			}
 		}
 		if a.fontCache == nil {
 			a.fontCache = map[int]*font.Face{}

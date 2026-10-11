@@ -68,6 +68,7 @@ case "$phase" in
       cp /src/docs/images/remake-font-{kai,li}{,-hd}.png "$dir/docs/images/"
       cp /src/fonts/unifont.hex.gz /src/fonts/ascii6x10.hex.gz \
          /src/fonts/kai.hex.gz /src/fonts/li.hex.gz \
+         /src/fonts/kai.ttf /src/fonts/li.ttf \
          /src/fonts/LICENSE-unifont.txt /src/fonts/LICENSE-x11-misc-fixed.txt \
          /src/fonts/LICENSE-wangfonts.txt "$dir/fonts/"
       cat > "$dir/如何開始.txt" <<EOF
@@ -143,6 +144,7 @@ PY
         "$name/docs/images/remake-font-li-hd.png" \
         "$name/fonts/unifont.hex.gz" "$name/fonts/ascii6x10.hex.gz" \
         "$name/fonts/kai.hex.gz" "$name/fonts/li.hex.gz" \
+        "$name/fonts/kai.ttf" "$name/fonts/li.ttf" \
         "$name/fonts/LICENSE-unifont.txt" \
         "$name/fonts/LICENSE-x11-misc-fixed.txt" \
         "$name/fonts/LICENSE-wangfonts.txt" | LC_ALL=C sort > "$expected"
@@ -203,7 +205,7 @@ for path in sorted((root / 'patch').iterdir()):
 inputs = {}
 for name in ('go.mod', 'go.sum', 'LICENSE', 'README.md',
              'fonts/unifont.hex.gz', 'fonts/ascii6x10.hex.gz',
-             'fonts/kai.hex.gz', 'fonts/li.hex.gz'):
+             'fonts/kai.hex.gz', 'fonts/li.hex.gz', 'fonts/kai.ttf', 'fonts/li.ttf'):
     inputs[name] = hashlib.sha256((pathlib.Path('/src') / name).read_bytes()).hexdigest()
 for name in ('remake-font-kai.png', 'remake-font-li.png',
              'remake-font-kai-hd.png', 'remake-font-li-hd.png'):

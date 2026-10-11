@@ -128,7 +128,8 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 對戰地圖的完整將領譯名 | [spec/021 §6.59](spec/021-hd-art.md#659-對戰地圖的完整將領譯名)；限本節 CONFORMED，兩版六劇本 347 姓名、166 項回歸、兩版正常三語 66 項檢查、258 PNG 與完整字模獨立回讀通過 |
 | HD 素材入庫與原版／HD 完整總覽 | [素材包說明](../hd-assets/README.md)、[021 §6.62](spec/021-hd-art.md#662-hd-素材入庫與總覽)、[Docker 重生入口](../tools/asset-overviews.sh)、[原版地形匯出](../tools/asset-overview-tiles.go)、[縮圖合成](../tools/render-asset-overviews.py)、[完整圖錄索引](images/asset-overviews.json) |
 | 楷書／隸書在視窗縮放後模糊 | [021 §6.63](spec/021-hd-art.md#663-點陣字的最終顯示縮放)、[正常主選單驗證](../tools/verify-font-scaling-inner.py) |
-| README 楷書與隸書實際截圖 | [字體比較](../README.md#楷書與隸書)、[原貌楷書](images/remake-font-kai.png)、[原貌隸書](images/remake-font-li.png)、[HD 楷書](images/remake-font-kai-hd.png)、[HD 隸書](images/remake-font-li-hd.png)；來源見 021 §6.63 |
+| README 楷書與隸書實際截圖 | [字體比較](../README.md#楷書與隸書)、[原貌楷書](images/remake-font-kai.png)、[原貌隸書](images/remake-font-li.png)、[HD 楷書](images/remake-font-kai-hd.png)、[HD 隸書](images/remake-font-li-hd.png)；原貌來源見 021 §6.63，現行 HD 向量圖見 §6.65 |
+| HD 楷書與隸書的向量文字 | [021 §6.65](spec/021-hd-art.md#665-hd-楷書與隸書的向量文字)、[使用者選定樣張](images/hd-font-approved-20261011.png)、[來源與決定](reference/hd-font-approved-20261011.json)、[正常開局／人物卡／對白及存讀檔工具](../tools/verify-hd-vector-inner.py)；向量檔為 `fonts/kai.ttf`、`fonts/li.ttf`，授權沿用 `fonts/LICENSE-wangfonts.txt` |
 | HD 武將圖鑑的原始姓名與能力匯出 | [general-catalog.go](../tools/general-catalog.go)，從兩版劇本 001 讀取姓名、肖像與能力 |
 | HD 武將姓名、表字、能力與總覽 | [021 §6.64](spec/021-hd-art.md#664-hd-武將姓名總覽與獨立圖鑑)、[獨立圖鑑](hd-generals.md)、[人物資料與來源](reference/hd-generals.json)、[總覽圖](images/hd-generals-overview.png)、[圖錄索引](images/hd-generals-overview.json)、[產生工具](../tools/render-general-catalog.py) |
 | 自創君主怎麼建、範本在哪 | `spec/013`、`re/08` §3 |

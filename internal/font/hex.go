@@ -37,6 +37,7 @@ type Face struct {
 	// H 是所有字的共同高度。HEX 格式一份字型只有一種高度。
 	H      int
 	glyphs map[rune]Glyph
+	vector *vectorFace
 }
 
 // Glyph 取一個字的點陣；沒有就回 false。

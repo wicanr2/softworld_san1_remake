@@ -1075,6 +1075,11 @@ func DrawMenuLabel(c *Canvas, s string, fg color.RGBA) {
 			continue
 		}
 		if l.rotated {
+			var bg *image.RGBA
+			var mask *image.Alpha
+			if !l.small {
+				bg, mask = c.vectorRotatedBackground(r, image.Pt(l.x, y), g.W, g.H)
+			}
 			for gy := 0; gy < g.H; gy++ {
 				for gx := 0; gx < g.W; gx++ {
 					if g.At(gx, gy) {
@@ -1082,6 +1087,7 @@ func DrawMenuLabel(c *Canvas, s string, fg color.RGBA) {
 					}
 				}
 			}
+			c.finishVectorText(bg, mask, image.Pt(l.x, y), fg)
 			if l.small {
 				y += SmallW
 			} else {

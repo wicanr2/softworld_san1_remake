@@ -144,6 +144,7 @@ func (c *Canvas) DrawSmallTextPx(x, y int, s string, fg color.RGBA) int {
 
 // Fill 把整張畫布塗成單色。
 func (c *Canvas) Fill(col color.RGBA) {
+	c.highOps = nil
 	b := c.Img.Bounds()
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
@@ -279,6 +280,7 @@ func (c *Canvas) drawRuneScaledPx(px, py int, r rune, fg color.RGBA, sx, sy int)
 		c.Missing[r]++
 		return
 	}
+	bg, mask := c.vectorRuneBackground(r, image.Rect(px, py, px+g.W*sx, py+CellH*sy))
 
 	// 字型的高度可能與列高不同（例如 6×10 的小字級放進 16 像素的列）。
 	// 垂直置底對齊，讓基線一致。
@@ -306,6 +308,7 @@ func (c *Canvas) drawRuneScaledPx(px, py int, r rune, fg color.RGBA, sx, sy int)
 			}
 		}
 	}
+	c.finishVectorText(bg, mask, image.Pt(px, py), fg)
 }
 
 // DrawTextRotatedPx 把一行字順時針轉 90° 畫：字頂朝右、由上往下讀，
@@ -328,6 +331,7 @@ func (c *Canvas) DrawTextRotatedPx(x, y int, s string, fg color.RGBA) int {
 			y += w * CellW
 			continue
 		}
+		bg, mask := c.vectorRotatedBackground(r, image.Pt(x, y), g.W, CellH)
 		off := CellH - g.H
 		if off < 0 {
 			off = 0
@@ -344,6 +348,7 @@ func (c *Canvas) DrawTextRotatedPx(x, y int, s string, fg color.RGBA) int {
 				}
 			}
 		}
+		c.finishVectorText(bg, mask, image.Pt(x, y), fg)
 		y += w * CellW
 	}
 	return y - y0
@@ -417,6 +422,7 @@ func (c *Canvas) DrawRuneBoxDitherPx(px, py, w, h int, r rune, a, b color.RGBA) 
 	if g.W <= 0 || g.H <= 0 {
 		return
 	}
+	bg, mask := c.vectorRuneBackground(r, image.Rect(px, py, px+w, py+h))
 	for dy := 0; dy < h; dy++ {
 		yy := py + dy
 		if yy < 0 || yy >= c.Img.Bounds().Dy() {
@@ -438,4 +444,5 @@ func (c *Canvas) DrawRuneBoxDitherPx(px, py, w, h int, r rune, a, b color.RGBA) 
 			c.setClipped(xx, yy, fg)
 		}
 	}
+	c.finishVectorDither(bg, mask, image.Pt(px, py), a, b)
 }

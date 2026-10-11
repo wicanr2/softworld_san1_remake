@@ -72,8 +72,9 @@ type highFlag struct {
 }
 
 type highFlagTextKey struct {
-	flag highFlag
-	face *font.Face
+	flag   highFlag
+	face   *font.Face
+	vector any
 }
 
 // LoadHDPack 逐項驗證玩家自己的來源，錯項回退原圖。
@@ -458,16 +459,20 @@ func (c *Canvas) highFlagImage(flag highFlag) *image.RGBA {
 	if !ok || glyph.W != 16 || glyph.H != 16 {
 		return nil
 	}
-	key := highFlagTextKey{flag: flag, face: c.face}
+	key := highFlagTextKey{flag: flag, face: c.face, vector: c.face.VectorIdentity()}
 	if cached := c.HD.flagText[key]; cached != nil {
 		return cached
 	}
 	out := image.NewRGBA(flag.image.Bounds())
 	draw.Draw(out, out.Bounds(), flag.image, flag.image.Bounds().Min, draw.Src)
-	for y := 0; y < glyph.H; y++ {
-		for x := 0; x < glyph.W; x++ {
-			if glyph.At(x, y) {
-				draw.Draw(out, image.Rect(10+x*3, 6+y*3, 13+x*3, 9+y*3), image.Black, image.Point{}, draw.Src)
+	if mask, ok := c.face.VectorGlyph(flag.label, 48, 48); ok {
+		draw.DrawMask(out, image.Rect(10, 6, 58, 54), image.Black, image.Point{}, mask, image.Point{}, draw.Over)
+	} else {
+		for y := 0; y < glyph.H; y++ {
+			for x := 0; x < glyph.W; x++ {
+				if glyph.At(x, y) {
+					draw.Draw(out, image.Rect(10+x*3, 6+y*3, 13+x*3, 9+y*3), image.Black, image.Point{}, draw.Src)
+				}
 			}
 		}
 	}
@@ -538,6 +543,10 @@ func (c *Canvas) trackPixel(x, y int) {
 }
 
 func (c *Canvas) trackRect(r image.Rectangle) {
+	if c.Img.Bounds().In(r) {
+		c.highOps = nil
+		return
+	}
 	for _, op := range c.highOps {
 		sub := r.Intersect(op.rect)
 		for y := sub.Min.Y; y < sub.Max.Y; y++ {

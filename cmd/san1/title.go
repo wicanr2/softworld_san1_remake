@@ -211,8 +211,14 @@ func (a *app) lordPickTurn(d int) bool {
 // titleConfirm 把「選了第 i 項」交給狀態機，再處理它要的副作用。
 func (a *app) titleConfirm(i int) {
 	a.dirty = true
+	stage := a.menuScreen.Stage()
 	if s := a.menuScreen.Confirm(i); s != nil {
 		a.s = s
+		if stage == menu.Load {
+			a.setFont(s.G.Options.Font)
+		} else {
+			s.G.Options.Font = a.fontKind
+		}
 		a.view = ui.View{}
 		a.menuScreen = nil
 		return

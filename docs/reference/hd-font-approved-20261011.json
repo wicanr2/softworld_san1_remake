@@ -1,0 +1,23 @@
+{
+  "decision_date": "2026-10-11",
+  "user_confirmation": "用向量字重新製作",
+  "scope": "HD 楷書及隸書；選單、人物資料與對白；沿用現有字格，原貌維持點陣",
+  "approved_preview": "docs/images/hd-font-approved-20261011.png",
+  "approved_preview_sha256": "3c8e3f41993fee0ec9fc98d77a74dd7d3f2b391d0a997d932766789babe7ec3c",
+  "preview_kind": "可丟棄靜態試作，使用者選定樣式；不當作正式玩家驗收",
+  "source_prototype_sha256": "86b3ba9d8e834e4486ae754ae1260707ca67d326f8f78ef659293c19aada08b6",
+  "sources": {
+    "kai.ttf": {
+      "original": "wt064.ttf",
+      "sha256": "5567cc7ae20d11fd972a83daa0d364baba6867014a25a91b4aedcb0dbbdf1e55",
+      "license": "GPL-2.0-or-later, no font exception",
+      "license_file": "fonts/LICENSE-wangfonts.txt"
+    },
+    "li.ttf": {
+      "original": "wt021.ttf",
+      "sha256": "c33a5244e6c1dae686f9828052708516b589f12480cc1b04b46497e4892d3fe6",
+      "license": "GPL-2.0-or-later, no font exception",
+      "license_file": "fonts/LICENSE-wangfonts.txt"
+    }
+  }
+}

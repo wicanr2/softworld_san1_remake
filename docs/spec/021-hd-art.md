@@ -3218,3 +3218,90 @@ HD 底圖縮小也使用相同取樣方式。16×16 字模的有限筆畫解析�
 256 張肖像對照、三張總覽的解碼、尺寸及 SHA 全部回讀通過，三張圖已查看。
 收據為 `workplace/audio/audio-font-catalog-independent-20261011.json`。
 HD 原 PNG、manifest、遊戲行為與已發行套件不因圖鑑而改動。
+
+### 6.65 HD 楷書與隸書的向量文字
+
+狀態：限本節 `CONFORMED`，整份 021 保持 `READY`。2026-10-11 使用者看過[並列試作](../images/hd-font-approved-20261011.png)
+後確認「用向量字重新製作」。本節為 `[both]` remake 美化差異，
+範圍為 HD 的楷書／隸書選單、人物資料、對白及沿用目前字型的文字。
+原貌 640×408 畫布、文字字格、字距、顏色、選項、規則及存檔格式保持。
+
+| 依據 | 等級與來源 |
+|---|---|
+| 目前字體來源 | 已證實：`fonts/README.md`、`tools/mkhexfont/main.go`；楷書為王漢宗顏楷 wt064，隸書為中隸書 wt021，現行 HEX 為 16×16 點陣 |
+| 向量楷書 | 已證實：`fonts/kai.ttf` 原 bytes SHA-256 `5567cc7ae20d11fd972a83daa0d364baba6867014a25a91b4aedcb0dbbdf1e55` |
+| 向量隸書 | 已證實：`fonts/li.ttf` 原 bytes SHA-256 `c33a5244e6c1dae686f9828052708516b589f12480cc1b04b46497e4892d3fe6` |
+| 選定樣式 | 使用者決定：上述原圖 SHA-256 `3c8e3f41993fee0ec9fc98d77a74dd7d3f2b391d0a997d932766789babe7ec3c`；[來源紀錄](../reference/hd-font-approved-20261011.json) |
+| 試作 | 已證實：兩版兩字體共四組靜態畫面，字格外零變動；`workplace/audio/hd-font-prototype-20261011-audit.json`。試作不代替正常玩家路徑 |
+| 工具 | Go 1.26.7、鎖版 `golang.org/x/image v0.31.0`，`opentype` 無 hinting，72 DPI。字形為 remake 選用字型，沒有原版位址或硬體 parity 主張 |
+
+輸入仍為既有 `font.Face` 點陣字庫；楷書／隸書可附帶同名 TTF，
+在執行時從字型目錄讀取，不內嵌。TTF 解析失敗或未涵蓋該字時沿用目前點陣字，
+不畫空白或豆腐字。TTF 大小上限 32 MiB；字模及字級快取有界。
+向量檔與既有王漢宗點陣檔共用 GPL v2 或更新版授權，沒有字型例外。
+程式自身 RRSAL-1.0 保持，未引入原版字模或新的素材供應商。
+
+HD 字形在 4× 字格繪製：一般全形 64×64、半形 32×64，
+基線為 52；橫向加寬與任意字框沿用目前幾何。像試作一樣以
+原字型的 advance 置中，再將覆蓋率限定於目前字格。直牌、旋轉、
+描邊及雙色字沿用既有排法，缺字與專用 ASCII 小字保留點陣退路。
+
+HD 合成須記錄文字繪製順序：畫字前取出該字格的完整既有背景，
+在高解析字格內合成向量覆蓋率，再以獨立圖層加入目前高清操作。
+CPU 原貌畫布仍畫原來的點陣字。後繪的圖片、填色與文字照原順序覆蓋，
+避免舊點陣筆畫、殘影或文字蓋過較後的前景。完整清屏可移除舊圖層。
+隊伍旗的字另按目前字型重繪，快取包含字型與向量來源身份，
+反白在完整合成後取 RGB 補數，alpha 保持。
+
+垂直鏈為既有遊戲原文／翻譯 → 字格與字型設定 → 點陣及可選 TTF →
+UI 原貌／HD 合成 → 正常字體切換與存讀檔。存檔仍只記既有楷書／隸書選項，
+不保存向量資料或新增格式欄位。TTF 隨引擎封包與授權檔一起交付；
+既有 v.1.1.3 封包及已發布 tag／Release 不覆寫。
+
+正常抽測確認目前新局交接會遺失主選單的字體選擇：`setFont` 寫入舊 session，
+`titleConfirm` 接到新 session 時未帶入。`internal/save/save.go` 已有 `options.font`，
+不需要新增存檔欄位。修正交接時，新局沿用主選單選擇，載入進度採存檔設定；
+未選字體的進度回到啟動時的預設字型。此修正屬同一字體設定垂直鏈。
+
+驗收先測字形、缺字退路、同字格與原貌完全保持、前後景順序、清屏、
+旗字及快取；靜態主選單須與使用者選定樣張的同狀態輸出相同。
+再以正常片頭／主選單切換、人物資料、宣戰對白與存讀檔抽測兩版楷隸，
+補驗原貌／HD 回切及視窗縮放；圖片完整回讀及來源 SHA 另驗。
+既有最近鄰最終顯示保持，避免將整張畫布平滑模糊。未驗的語言或特殊演出
+明示限制，不以靜態試作、單元測試或既有 PCM 聲稱全遊戲或原版 parity。
+
+實作為 `internal/font/vector.go`、`internal/ui/hdtext.go` 與既有文字使用端。
+`cmd/san1` 於切換楷隸時讀取同名 TTF，並在新局交接及載入進度時保存／恢復既有選項。
+`tools/release-inner.sh` 已將 TTF 加入複製清單、封包白名單與輸入雜湊；
+本節沒有重建或覆寫既有 v.1.1.3 封包。
+
+| 驗證 | 結果與可重跑入口 |
+|---|---|
+| 同狀態樣張 | 兩版楷隸共 4/4 靜態 2560×1632 完整畫面與選定試作零像素差；`workplace/audio/hd-vector-title-20261011.go`、`hd-vector-title-20261011.json`。此項只證明樣式一致 |
+| 回歸 | cmd／internal 正式範圍合併後 1,842 個不重複測試事件通過、27 既有前提略過。`hd-vector-regression-20261011.jsonl` 的 internal 部分、Xvfb 下乾淨重跑的 `hd-vector-cmd-final-20261011.jsonl` 及 `hd-vector-font-final-20261011.jsonl`；不將重複或略過計入通過 |
+| 正常主選單 | [縮放工具](../../tools/verify-font-scaling-inner.py) 的兩版原貌／HD、楷隸及四種寬度共 32/32，四次字體回切通過；`workplace/audio/hd-vector-scaling-20261011/receipt.json` |
+| 正常玩家畫面 | [玩家工具](../../tools/verify-hd-vector-inner.py) 從片頭開 001 劉備、難度 5，查看第一位劉備人物卡，再由原有命令向北海宣戰。兩版楷隸共 12/12 主畫面／人物卡／對白向量顯示及原貌恢復；4/4 人物卡肖像另對原版 F005 相符。比較完整右上面板，排除地圖及下方輸入游標動畫；`workplace/audio/hd-vector-player-20261011-r8/receipt.json` |
+| 正常存讀檔 | 同一玩家流程由 UI 寫出 4/4 `options.font`；重啟使用正式 `-load 1`，原貌／HD 共 8/8 的穩定文字區與存前相同。沒有注入人物、日期或 seed，沒有改存檔格式 |
+| 獨立回讀 | `workplace/audio/hd-vector-independent-20261011.py`：189/189 唯一保留 PNG 完整解碼、尺寸及最後擷取 SHA；32 組縮放、12 組回切與 8 組讀檔字形重算通過；兩 TTF 來源、README 兩 HD 原圖、執行檔及打包腳本語法通過。收據為同名 JSON |
+
+玩家工具在 `eob-audio-capture:20261009-r3` 無網路容器內執行，專案與原版唯讀，
+只掛載 `workplace/` 可寫，使用目前 UID/GID、4 GiB、6 CPU、256 pids 及 720 秒外層上限。
+容器工作目錄 `/src`，原版掛 `/orig`，執行：
+
+```sh
+python3 tools/verify-hd-vector-inner.py \
+  --out workplace/audio/hd-vector-player-20261011-r8 \
+  --binary workplace/voice-check-build/san1-hd-vector
+```
+
+重跑時指定尚不存在的輸出子目錄。圖形工具的 Xvfb、遊戲與記錄程序均由有界擁有程序清理。
+最終玩家執行檔 SHA-256 為 `9a566b4f4125dd51e04785f03ee643853c1e9ce4c72358a0f205d1b9f49985eb`。
+縮放擷取使用接入向量字後、修正新局交接前的執行檔
+`27e49fb311b74d8b13e88015f14c38396641d8bde692310d110116433458094b`，
+該修正不改主選單的文字繪製；新局及存讀檔只採最終執行檔收據。
+
+README 兩張 HD 圖直接複製上述縮放擷取的 `base-hd-kai-native.png`／`base-hd-li-native.png`，
+未裁切或重畫；SHA-256 分別為 `4d8a08fe022dba52ba34758184d37e0eb20a1c6721e9c004980a265a00a844b0`
+與 `ae6754056ff35f8d5591aa1d557ba3a569c727ffc0912b9bfe10b99feb0a94f2`。
+原貌兩圖保持。最終主選單、人物卡及對白已目視；兩版繁中抽樣之外的語言、特殊演出、
+新封包及 Windows／macOS 原生仍未驗，本節不增加音訊或原版硬體 parity 聲明。
