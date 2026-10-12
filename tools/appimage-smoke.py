@@ -60,6 +60,8 @@ try:
                     run(['xdotool', 'key', '--clearmodifiers', 'space'], env=env)
                     time.sleep(.15)
                 time.sleep(2)
+                run(['xdotool', 'windowmove', '--sync', wid, '0', '0'], env=env)
+                time.sleep(.3)
                 picture = a.out / f'appimage-{edition}.png'
                 run(['ffmpeg', '-nostdin', '-v', 'error', '-y', '-f', 'x11grab', '-video_size', '640x408',
                      '-i', ':98', '-frames:v', '1', '-threads', '1', str(picture)], env=env)
