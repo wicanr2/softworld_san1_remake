@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--root', type=Path, default=Path('/src'))
     parser.add_argument('--stage', type=Path, required=True)
     parser.add_argument('--version', required=True)
+    parser.add_argument('--include-overviews', action='store_true', help='另將兩張武將總覽及索引交付至 full-local，並更新總清單')
     args = parser.parse_args()
     assert re.fullmatch(r'v\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}', args.version)
     root, stage = args.root, args.stage
@@ -41,6 +42,21 @@ def main():
         hd = hd['files']
     assert isinstance(hd, dict)
     generals = json.loads((release / 'full-local/GENERALS-SHA256.json').read_text()) if (release / 'full-local/GENERALS-SHA256.json').exists() else None
+    if args.include_overviews:
+        assert generals and generals['count'] == 566
+        assert (release / 'full-local').stat().st_uid == os.getuid()
+        delivered = []
+        for p in [root / 'docs/images/hd-generals-overview.png', root / 'workplace/asset-overviews/generals-source-overview.png']:
+            for source in [p, p.with_suffix('.json')]:
+                relative = 'full-local/' + source.name
+                target = release / relative
+                assert not target.exists() or (target.stat().st_uid == os.getuid() and sha(target) == sha(source))
+                shutil.copy2(source, target)
+                delivered.append({'file': relative, 'bytes': target.stat().st_size, 'sha256': sha(target), 'rights': 'local_only_original_assets'})
+        manifest['general_overviews'] = {'count': 566, 'files': delivered, 'tool_sha256': sha(Path(__file__))}
+        temporary = release / 'SHA256SUMS.json.tmp'
+        temporary.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n')
+        temporary.replace(release / 'SHA256SUMS.json')
     rows = []
     for platform in ['linux-amd64', 'windows-amd64', 'darwin-amd64', 'darwin-arm64']:
         top = f'san1-{args.version}-{platform}'
