@@ -369,5 +369,8 @@ SHA-256 為 c11fd2bf57f48d12733c86826596717e067da2b560361a4bfc21fe8f0839e1ab。
 最終彙整為 workplace/audio/expanded-final-checks-20261012.json，另核對 33 張唯一 GUI PNG、
 正常介面寫出的兩份存檔及 310 個本機文件連結；沒有 root-owned 檔案或誤建的 .md 目錄。
 原有素材、舊存檔及兩版六劇本以規則測試核對，正常 GUI 抽樣範圍如上。
-本輪完成素材組裝及正式載入，未重建既有四平台套件、建立 tag 或更新 Release；
-也未宣稱 Windows／macOS 原生驗收、全遊戲原版 parity 或 San5 未解候補邏輯已還原。
+上述開發階段完成素材組裝及正式載入。後續 `v.1.2.0-20261012` 四平台本機包、
+原版＋San5 與 HD 兩張 566 人總覽已完成，正式封包正常路徑及回讀收據見
+[打包契約](../release/01-packaging.md#v120-擴充武將與總覽打包契約)。
+既有套件、tag 及 Release 保持；未宣稱 Windows／macOS 原生驗收、全遊戲原版 parity
+或 San5 未解候補邏輯已還原。

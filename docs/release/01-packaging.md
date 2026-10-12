@@ -528,7 +528,7 @@ QA 入口為 `promo/story-gameplay-20261010-r9/QA.json`、`redub-voice-review.js
 
 ## v.1.2.0 擴充武將與總覽打包契約
 
-狀態：`READY`。使用者於 2026-10-12 明確選定 `v.1.2.0-20261012`，要求重建
+狀態：`CONFORMED`，限封包內容、Linux 正常抽樣及 Windows Wine 啟動。使用者於 2026-10-12 明確選定 `v.1.2.0-20261012`，要求重建
 四平台本機包，另要求更新「原版＋San5 與 HD」武將總覽。正式來源包含已驗收的
 021 §6.65 向量楷書／隸書、022 擴充名單、220 張原創肖像及格式 2 存檔。
 
@@ -547,6 +547,39 @@ runtime。總覽重生與來源界線見 [RE 14](../re/14-san5-roster.md#原版�
 完整包由 `full-local-inner.py` 逐包回讀圖檔與文件雜湊，另存
 `full-local/GENERALS-SHA256.json`。原版素材、San5 原圖總覽及完整包只留本機。
 本輪不新增公開 tag／Release，不覆寫既有交付。
+
+驗收完成。引擎來源 `b92f5108f49c21b021f68eeaebadca2135614150`，
+本機封包來源 `2ef8ec2bf858bae2609821d05f0db640ec734024`；後續總覽交付與
+截圖工具以清單內 SHA-256 定位。每包有 667 個高清檔、兩版 66 個原版檔、
+220 張新增肖像與兩張 566 人總覽。來源合併回歸 1,891 通過、27 略過，
+四項原版 oracle 通過，限規格 022 已列範圍。
+
+| 本機交付檔名 | bytes |
+|---|---:|
+| `san1-v.1.2.0-20261012-linux-x86_64.AppImage` | 794,126,840 |
+| `san1-v.1.2.0-20261012-windows-amd64.zip` | 792,814,965 |
+| `san1-v.1.2.0-20261012-darwin-amd64.tar.gz` | 791,454,805 |
+| `san1-v.1.2.0-20261012-darwin-arm64.tar.gz` | 791,109,134 |
+
+檔案位於本版本的 `full-local/`，完整雜湊、來源及權利見 `SHA256SUMS.json`。
+兩張獨立圖為同目錄的 `generals-source-overview.png`、
+`hd-generals-overview.png` 及同名 JSON；由
+`complete-local-delivery.py --include-overviews` 交付。
+
+Linux 兩版使用正式包內程式、資料、高清素材及字型，從正常選單開 189 年難度 1，
+選張角、查人物、切 HD、存檔及重啟載入。肖像逐像素相符，格式 2 保留完整
+570 槽及玩家勢力 16，沒有狀態或 seed 注入。AppImage 兩版實際 AppRun、
+存檔位置及完整視窗通過；Windows 兩版 Wine 各持續八秒。
+九個封包、AppImage 全部素材及 38 張 PNG 獨立回讀通過；未驗範圍沿用契約表。
+
+收據為 `smoke/final-audit.json`、`smoke/package-verification.json`、
+`smoke/generals-verification.json`、`smoke/expanded-package-gui/receipt.json`、
+`smoke/appimage-smoke.json` 與 `smoke/windows-wine-smoke.json`。
+兩張總覽共 1,132 格逐格核對；San5 色盤維持外部格式參考等級。
+Xvfb 的 PID 1 就緒等待及 AppImage 擷取桌面原點裁切均修正工具並乾淨重跑，
+不列為遊戲缺陷。重複 AppDir、SquashFS 及暫存 AppImage 清除後釋放
+2,411,536,952 bytes，收據為
+`workplace/complete-delivery-v1.2.0-20261012/cleanup.json`。
 
 ## 高清重新配音樣音
 
