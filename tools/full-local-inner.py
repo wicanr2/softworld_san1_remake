@@ -290,6 +290,8 @@ def main():
     for edition in SOURCES:
         shutil.copy2(smoke / f'full-local-{edition}.log', smoke_dir)
     manifest['packages'].extend(new_items)
+    manifest['full_local_source_commit'] = os.environ.get('SAN1_FULL_LOCAL_SOURCE_COMMIT', '')
+    manifest['full_local_tool_sha256'] = {name: sha(ROOT / 'tools' / name) for name in ['full-local.sh', 'full-local-inner.py']}
     manifest['full_local_smoke'] = {'linux-amd64': 'base_and_plus_passed_8s',
                                     'windows-amd64': 'not_run', 'darwin-amd64': 'not_run',
                                     'darwin-arm64': 'not_run'}

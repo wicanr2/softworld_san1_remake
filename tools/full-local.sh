@@ -19,7 +19,7 @@ for d in "$ROOT/org_game/三國演義" "$ROOT/org_game/三國演義1加強版"; 
 done
 [[ -f "$ROOT/tools/full-local-inner.py" ]] || exit 1
 docker image inspect "$IMAGE" >/dev/null
-timeout 30m docker run --rm --name "san1-full-local-$$" --network none --memory 3g --cpus 2 --pids-limit 256 \
+timeout 30m docker run --rm --init --name "san1-full-local-$$" --network none --memory 3g --cpus 2 --pids-limit 256 \
   --log-opt max-size=10m --log-opt max-file=3 \
   -u "$(id -u):$(id -g)" \
   -v "$ROOT:/src" -v "$ROOT/org_game:/src/org_game:ro" \
@@ -27,5 +27,6 @@ timeout 30m docker run --rm --name "san1-full-local-$$" --network none --memory 
   -e GOWORK=off -e GOMAXPROCS=2 \
   -e GOCACHE=/src/workplace/gocache -e GOMODCACHE=/src/workplace/gomodcache \
   -e GOPROXY=file:///src/workplace/gomodcache/cache/download -e GOSUMDB=off \
+  -e "SAN1_FULL_LOCAL_SOURCE_COMMIT=$(git -C "$ROOT" rev-parse HEAD)" \
   -e LIBGL_ALWAYS_SOFTWARE=1 \
   -w /src "$IMAGE" xvfb-run -a bash -c 'set -euo pipefail; go run tools/hd-pack-check.go /hdpack /src/org_game; python3 tools/full-local-inner.py "$1"' sh "$VER"
