@@ -59,6 +59,7 @@ type meta struct {
 	Rewarded    []int               `json:"rewarded"`
 	Factions    map[string]factMeta `json:"factions"`
 	Options     optMeta             `json:"options"`
+	Snapshot    *game.Snapshot      `json:"snapshot,omitempty"`
 }
 
 // optMeta 是「其他」底下的開關。
@@ -110,6 +111,7 @@ type factMeta struct {
 
 // version 是目前寫出來的格式版本。
 const version = 1
+const expandedVersion = 2
 
 // Info 是一個存檔槽的概況，給讀檔選單用。
 type Info struct {
@@ -165,6 +167,10 @@ func write(root string, slot int, g *game.State, name string, current *state.Pro
 		return err
 	}
 	e := g.CaptureExtra()
+	snapshot, err := g.CaptureSnapshot()
+	if err != nil {
+		return err
+	}
 	m := meta{
 		Version: version, Name: name, Slot: string(g.Slot),
 		SavedAt:    time.Now().Format(time.RFC3339),
@@ -175,6 +181,10 @@ func write(root string, slot int, g *game.State, name string, current *state.Pro
 		Edition:    e.Edition,
 		Difficulty: e.Difficulty,
 		Factions:   map[string]factMeta{},
+		Snapshot:   snapshot,
+	}
+	if snapshot != nil {
+		m.Version = expandedVersion
 	}
 	for _, p := range e.Prefectures {
 		m.Prefectures = append(m.Prefectures, prefMeta{
@@ -235,7 +245,11 @@ func write(root string, slot int, g *game.State, name string, current *state.Pro
 	if err := os.Rename(tmp, dir); err != nil {
 		return err
 	}
-	return writeName(root, slot, name)
+	legacyName := name
+	if m.Version == expandedVersion {
+		legacyName = fmt.Sprintf("%d.擴充進度", slot)
+	}
+	return writeName(root, slot, legacyName)
 }
 
 // writeName 把名稱寫進共用的 `SAVENAME.SVP`。
@@ -349,10 +363,13 @@ func Read(root string, slot int) (*game.State, error) {
 		return nil, fmt.Errorf("save: 讀存檔 %d：%w", slot, err)
 	}
 	var m meta
+	if len(blob) > 8<<20 {
+		return nil, fmt.Errorf("save: REMAKE.JSON 過大")
+	}
 	if err := json.Unmarshal(blob, &m); err != nil {
 		return nil, fmt.Errorf("save: 存檔 %d 的 REMAKE.JSON 解不開：%w", slot, err)
 	}
-	if m.Version != version {
+	if m.Version != version && m.Version != expandedVersion {
 		return nil, fmt.Errorf("save: 存檔 %d 是格式第 %d 版，這個程式讀第 %d 版",
 			slot, m.Version, version)
 	}
@@ -424,7 +441,15 @@ func Read(root string, slot int) (*game.State, error) {
 		copy(fx.Treasury[:], f.Treasury)
 		e.Factions[state.FactionID(id)] = fx
 	}
-	g, err := game.Restore(sc, e)
+	var g *game.State
+	if m.Version == expandedVersion {
+		g, err = game.RestoreSnapshot(sc, e, m.Snapshot)
+	} else {
+		if m.Snapshot != nil {
+			return nil, fmt.Errorf("save: 舊格式不可帶擴充快照")
+		}
+		g, err = game.Restore(sc, e)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -447,7 +472,7 @@ func List(root string) []Info {
 		blob, err := os.ReadFile(filepath.Join(dirFor(root, slot), "REMAKE.JSON"))
 		if err == nil {
 			var m meta
-			if json.Unmarshal(blob, &m) == nil && m.Version == version {
+			if json.Unmarshal(blob, &m) == nil && (m.Version == version || m.Version == expandedVersion) {
 				info.Exists = true
 				info.Name = m.Name
 				info.Year, info.Month = m.Year, m.Month
@@ -455,7 +480,7 @@ func List(root string) []Info {
 				if p := readProgress(dirFor(root, slot), slot); p != nil {
 					info.Year, info.Month = p.Year, p.Month
 				}
-				if n := names[slot-1]; n != "" {
+				if n := names[slot-1]; n != "" && m.Version == version {
 					info.Name = n
 				}
 			}

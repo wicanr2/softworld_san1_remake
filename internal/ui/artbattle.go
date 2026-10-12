@@ -450,14 +450,18 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		// 三字名從 y+0 起。ASCII 統帥名改放在完整資料區的第一行，
 		// 與君主名分開保留（remake 差異）。
 		bigName := false
-		if name := []rune(commander); artAllWide(commander) && len(name) <= 3 {
+		if name := []rune(commander); artAllWide(commander) && len(name) <= 4 {
 			bigName = true
 			y := l.PanelY[i]
+			sy, step := 2, 32
+			if len(name) == 4 {
+				sy, step = 1, 24
+			}
 			if len(name) == 2 {
 				y += 16
 			}
 			for k, r := range name {
-				c.DrawRuneScaledPx(l.NameX(i), y+k*32, r, ink, 2, 2)
+				c.DrawRuneScaledPx(l.NameX(i), y+k*step, r, ink, 2, sy)
 			}
 		}
 		// 六行資料：原版的第一行是 6 個位元組的姓名欄接「軍」（兩字名前後
@@ -516,13 +520,17 @@ func (ab *ArtBattle) drawText(c *Canvas, b *battle.Battle, v BattleView, info Ar
 		}
 		ink := assets.EGAPalette[assets.FlagPlateColour[ins.Side.OriginalIndex()]]
 		displayName := battleDisplayName(ins.Leader.Name)
-		if name := []rune(displayName); artAllWide(displayName) && len(name) <= 3 {
+		if name := []rune(displayName); artAllWide(displayName) && len(name) <= 4 {
 			y := y0
+			sy, step := 2, 32
+			if len(name) == 4 {
+				sy, step = 1, 24
+			}
 			if len(name) == 2 {
 				y += 16
 			}
 			for k, r := range name {
-				c.DrawRuneScaledPx(inspectNameX, y+k*32, r, ink, 2, 2)
+				c.DrawRuneScaledPx(inspectNameX, y+k*step, r, ink, 2, sy)
 			}
 		} else {
 			// 拉丁字母的名字 32×32 直排讀不下去：小字折進那 32 像素寬的
@@ -845,6 +853,9 @@ const (
 
 // face 取一張肖像；沒有就回 nil。
 func (ab *ArtBattle) face(n int) *assets.Image {
+	if n >= 1000 {
+		return assets.ExpandedPortrait(n - 1000)
+	}
 	if n < 0 || ab.faces == nil {
 		return nil
 	}

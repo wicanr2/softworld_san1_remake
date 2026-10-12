@@ -1,18 +1,23 @@
 {
-  "schema": 1,
+  "schema": 2,
   "data_sha256": "9d3d9fb39ca1b1b2fc004b770ac385579c89bbe839b8ac17b72231c9ded8bda6",
-  "image_sha256": "a615324a244f059c59ebab9ce0158b2848b41db3cb3e85ee83e3c30ec4bf95ad",
-  "markdown_sha256": "c57fdf1caa29b698282cc65c1771b86755f9aeba15f909094cee5e9389ff87d0",
-  "count": 346,
-  "portraits": 251,
+  "expanded_data_sha256": "0ac18160b0ebac11df19b6d5e8bae6e4786998965c3f701f4bd0101d2174dcec",
+  "image_sha256": "3fee1e08d58c79eb98125a9011716afdeecdbdd2adf2079ef684cc1bcca022f8",
+  "markdown_sha256": "f4b483205a4f0c3af514c262accec3570ae9b800898f090531a2f689bb28bab1",
+  "count": 566,
+  "original_count": 346,
+  "expanded_count": 220,
+  "portraits": 471,
   "width": 2608,
-  "height": 5088,
+  "height": 8224,
   "items": [
     {
+      "key": "base:000",
+      "source": "base",
       "index": 0,
       "name": "劉備",
       "portrait": 5,
-      "file": "F005.png",
+      "file": "hd-assets/F005.png",
       "sha256": "a8ebf25dc85aad63884a3a9535f2a9ae36d29fe3fbe88cd0e2e560f24b7e436d",
       "tile": [
         24,
@@ -22,10 +27,12 @@
       ]
     },
     {
+      "key": "base:001",
+      "source": "base",
       "index": 1,
       "name": "關羽",
       "portrait": 2,
-      "file": "F002.png",
+      "file": "hd-assets/F002.png",
       "sha256": "725d0b029cd0aaa37c420bed581dff13697cb05f1845a479097a3a1e537dce96",
       "tile": [
         184,
@@ -35,10 +42,12 @@
       ]
     },
     {
+      "key": "base:002",
+      "source": "base",
       "index": 2,
       "name": "張飛",
       "portrait": 12,
-      "file": "F012.png",
+      "file": "hd-assets/F012.png",
       "sha256": "02a776797ce57c4ca5ea93b1f012c3d6d19d7341850a9215d4473f686487decf",
       "tile": [
         344,
@@ -48,10 +57,12 @@
       ]
     },
     {
+      "key": "base:003",
+      "source": "base",
       "index": 3,
       "name": "趙雲",
       "portrait": 13,
-      "file": "F013.png",
+      "file": "hd-assets/F013.png",
       "sha256": "496bf2bc55d1da8932cf4cb67f1e1f18802a6a901aeabe4cca3412e75466a108",
       "tile": [
         504,
@@ -61,10 +72,12 @@
       ]
     },
     {
+      "key": "base:004",
+      "source": "base",
       "index": 4,
       "name": "馬超",
       "portrait": 255,
-      "file": "F255.png",
+      "file": "hd-assets/F255.png",
       "sha256": "91bae9628b15ae75782db9f65d443b2f6d224d85ac98b75ecaf1e6f1a745b2f3",
       "tile": [
         664,
@@ -74,10 +87,12 @@
       ]
     },
     {
+      "key": "base:005",
+      "source": "base",
       "index": 5,
       "name": "黃忠",
       "portrait": 62,
-      "file": "F062.png",
+      "file": "hd-assets/F062.png",
       "sha256": "7846ff87e39e4025031519a237f40859064c012f7c01c89f17defe65fdb82c90",
       "tile": [
         824,
@@ -87,10 +102,12 @@
       ]
     },
     {
+      "key": "base:006",
+      "source": "base",
       "index": 6,
       "name": "諸葛亮",
       "portrait": 4,
-      "file": "F004.png",
+      "file": "hd-assets/F004.png",
       "sha256": "1c93642fda3a35f791384c940aaeddee610cc62a1cf7bcfcde024e327f5f6884",
       "tile": [
         984,
@@ -100,10 +117,12 @@
       ]
     },
     {
+      "key": "base:007",
+      "source": "base",
       "index": 7,
       "name": "龐統",
       "portrait": 7,
-      "file": "F007.png",
+      "file": "hd-assets/F007.png",
       "sha256": "fe9668a7f176cd48863c63fee273dbf3633fe28c634bf345bb0f54cd1b5279b7",
       "tile": [
         1144,
@@ -113,10 +132,12 @@
       ]
     },
     {
+      "key": "base:008",
+      "source": "base",
       "index": 8,
       "name": "魏延",
       "portrait": 61,
-      "file": "F061.png",
+      "file": "hd-assets/F061.png",
       "sha256": "f2f6c5543a1d708c53121f76c84a06ff012a55f7ca77c1f7ed09837eac410fae",
       "tile": [
         1304,
@@ -126,10 +147,12 @@
       ]
     },
     {
+      "key": "base:009",
+      "source": "base",
       "index": 9,
       "name": "馬岱",
       "portrait": 30,
-      "file": "F030.png",
+      "file": "hd-assets/F030.png",
       "sha256": "a2952a650e49487b4803eb01f52f51e2f90471f4d5b63750010585abe82a776a",
       "tile": [
         1464,
@@ -139,10 +162,12 @@
       ]
     },
     {
+      "key": "base:010",
+      "source": "base",
       "index": 10,
       "name": "法正",
       "portrait": 198,
-      "file": "F198.png",
+      "file": "hd-assets/F198.png",
       "sha256": "32f4701a813659f19d63a809da5902267fa56eb2611b13b8fd5d5274ebbb05b1",
       "tile": [
         1624,
@@ -152,10 +177,12 @@
       ]
     },
     {
+      "key": "base:011",
+      "source": "base",
       "index": 11,
       "name": "孟達",
       "portrait": 36,
-      "file": "F036.png",
+      "file": "hd-assets/F036.png",
       "sha256": "ba5bf920d1339cf2a0fb6d124d669a02206a195d32734c3d5164267c524c5925",
       "tile": [
         1784,
@@ -165,10 +192,12 @@
       ]
     },
     {
+      "key": "base:012",
+      "source": "base",
       "index": 12,
       "name": "劉焉",
       "portrait": 142,
-      "file": "F142.png",
+      "file": "hd-assets/F142.png",
       "sha256": "ee07668e4ef9992c9ac71dce0f166aeac6f2ed9eadf89e8dbe9f1b6ea39e0300",
       "tile": [
         1944,
@@ -178,10 +207,12 @@
       ]
     },
     {
+      "key": "base:013",
+      "source": "base",
       "index": 13,
       "name": "曹操",
       "portrait": 0,
-      "file": "F000.png",
+      "file": "hd-assets/F000.png",
       "sha256": "aa7cfa45cfef7392290d664061bdb1ccb5bef218c1200ba8538ff04bfdcaff7c",
       "tile": [
         2104,
@@ -191,10 +222,12 @@
       ]
     },
     {
+      "key": "base:014",
+      "source": "base",
       "index": 14,
       "name": "董卓",
       "portrait": 77,
-      "file": "F077.png",
+      "file": "hd-assets/F077.png",
       "sha256": "00021fc9b5f0328c592230ad461d6bdd8f3a417db242d1b690d6409057c7e225",
       "tile": [
         2264,
@@ -204,10 +237,12 @@
       ]
     },
     {
+      "key": "base:015",
+      "source": "base",
       "index": 15,
       "name": "孫堅",
       "portrait": 41,
-      "file": "F041.png",
+      "file": "hd-assets/F041.png",
       "sha256": "9bb2159145611bfdb485ea23e7ecdbf5c0a263369ffb88897a11dfa0c697c2a6",
       "tile": [
         2424,
@@ -217,10 +252,12 @@
       ]
     },
     {
+      "key": "base:016",
+      "source": "base",
       "index": 16,
       "name": "袁紹",
       "portrait": 53,
-      "file": "F053.png",
+      "file": "hd-assets/F053.png",
       "sha256": "1e2e4c12619bc201ef4185069de9f8b82b010e267b1a6d0db682f6888b30e1fe",
       "tile": [
         24,
@@ -230,10 +267,12 @@
       ]
     },
     {
+      "key": "base:017",
+      "source": "base",
       "index": 17,
       "name": "李傕",
       "portrait": 97,
-      "file": "F097.png",
+      "file": "hd-assets/F097.png",
       "sha256": "41126cec547fc1fa2aee8b624c77783d86b769279db59bccb05bb49bfdfdf086",
       "tile": [
         184,
@@ -243,10 +282,12 @@
       ]
     },
     {
+      "key": "base:018",
+      "source": "base",
       "index": 18,
       "name": "郭汜",
       "portrait": 96,
-      "file": "F096.png",
+      "file": "hd-assets/F096.png",
       "sha256": "fa88e998a93dbf501c20e7bf389fa9fca3fa69387ca23b541d32e0b30bc445c4",
       "tile": [
         344,
@@ -256,10 +297,12 @@
       ]
     },
     {
+      "key": "base:019",
+      "source": "base",
       "index": 19,
       "name": "張濟",
       "portrait": 185,
-      "file": "F185.png",
+      "file": "hd-assets/F185.png",
       "sha256": "d5854e83c87cbf8a3d875137cd88d6feb95405523dcbbe60450798b2783b9d30",
       "tile": [
         504,
@@ -269,10 +312,12 @@
       ]
     },
     {
+      "key": "base:020",
+      "source": "base",
       "index": 20,
       "name": "樊稠",
       "portrait": 179,
-      "file": "F179.png",
+      "file": "hd-assets/F179.png",
       "sha256": "002af71c20610a0a89581ede6210442da2cda759923e5b07cc0a8e2c224bafa5",
       "tile": [
         664,
@@ -282,10 +327,12 @@
       ]
     },
     {
+      "key": "base:021",
+      "source": "base",
       "index": 21,
       "name": "李儒",
       "portrait": 76,
-      "file": "F076.png",
+      "file": "hd-assets/F076.png",
       "sha256": "07aa4001a708fb924eb755baa0d39465d3966dcad0f6e260894bbbe57df625a4",
       "tile": [
         824,
@@ -295,10 +342,12 @@
       ]
     },
     {
+      "key": "base:022",
+      "source": "base",
       "index": 22,
       "name": "袁術",
       "portrait": 54,
-      "file": "F054.png",
+      "file": "hd-assets/F054.png",
       "sha256": "b0460e1442a3b8e6518d4349864d35b93316f7e7ec23a621b66383c2e6a35904",
       "tile": [
         984,
@@ -308,10 +357,12 @@
       ]
     },
     {
+      "key": "base:023",
+      "source": "base",
       "index": 23,
       "name": "呂布",
       "portrait": 6,
-      "file": "F006.png",
+      "file": "hd-assets/F006.png",
       "sha256": "60b4bb3fb07718e6b1ed4cd570f79f00eefe8b8f393d3c94a344b7745d8bf398",
       "tile": [
         1144,
@@ -321,10 +372,12 @@
       ]
     },
     {
+      "key": "base:024",
+      "source": "base",
       "index": 24,
       "name": "李肅",
       "portrait": 32,
-      "file": "F032.png",
+      "file": "hd-assets/F032.png",
       "sha256": "7ccebcbef802756d018a5a9d2a7cc8dbb3db3e0e5a25c62ab237d89626188842",
       "tile": [
         1304,
@@ -334,10 +387,12 @@
       ]
     },
     {
+      "key": "base:025",
+      "source": "base",
       "index": 25,
       "name": "董旻",
       "portrait": 134,
-      "file": "F134.png",
+      "file": "hd-assets/F134.png",
       "sha256": "167c85390003ac6fa19e1f3b51fdf3aa3f8cf14bddd6636abac3c716b512f175",
       "tile": [
         1464,
@@ -347,10 +402,12 @@
       ]
     },
     {
+      "key": "base:026",
+      "source": "base",
       "index": 26,
       "name": "陳宮",
       "portrait": 112,
-      "file": "F112.png",
+      "file": "hd-assets/F112.png",
       "sha256": "5e19257b879eeee748fbe41c26711c87e089558b152d124d4b4da336b6f6696c",
       "tile": [
         1624,
@@ -360,10 +417,12 @@
       ]
     },
     {
+      "key": "base:027",
+      "source": "base",
       "index": 27,
       "name": "樂進",
       "portrait": 125,
-      "file": "F125.png",
+      "file": "hd-assets/F125.png",
       "sha256": "0d700308fb3670743fb24c4903cbb29b7460d2ef85c566fdfadfc3812d4e4580",
       "tile": [
         1784,
@@ -373,10 +432,12 @@
       ]
     },
     {
+      "key": "base:028",
+      "source": "base",
       "index": 28,
       "name": "李典",
       "portrait": 248,
-      "file": "F248.png",
+      "file": "hd-assets/F248.png",
       "sha256": "9ceb01afa51c1a927e567abd765df917dc1692c1c58a354439acb54afb4758b9",
       "tile": [
         1944,
@@ -386,10 +447,12 @@
       ]
     },
     {
+      "key": "base:029",
+      "source": "base",
       "index": 29,
       "name": "夏侯惇",
       "portrait": 184,
-      "file": "F184.png",
+      "file": "hd-assets/F184.png",
       "sha256": "723287dbc902a369735fad8314b463eb5499df3ce41b71e979b224b40c43d67e",
       "tile": [
         2104,
@@ -399,10 +462,12 @@
       ]
     },
     {
+      "key": "base:030",
+      "source": "base",
       "index": 30,
       "name": "夏侯淵",
       "portrait": 155,
-      "file": "F155.png",
+      "file": "hd-assets/F155.png",
       "sha256": "2ec0255a94c2a87dfc54e4c88dcf40b7d7d88625048c159c21f19e757ee6300b",
       "tile": [
         2264,
@@ -412,10 +477,12 @@
       ]
     },
     {
+      "key": "base:031",
+      "source": "base",
       "index": 31,
       "name": "張邈",
       "portrait": 131,
-      "file": "F131.png",
+      "file": "hd-assets/F131.png",
       "sha256": "43d4aa4e4b642cb5247c21e09c961f381cb0bd0decd8784e816a469d2a77f30a",
       "tile": [
         2424,
@@ -425,10 +492,12 @@
       ]
     },
     {
+      "key": "base:032",
+      "source": "base",
       "index": 32,
       "name": "孔融",
       "portrait": 117,
-      "file": "F117.png",
+      "file": "hd-assets/F117.png",
       "sha256": "f4a4620c121b3ba32063360c18eac069d023ae505586d2113d97ebd72e0b4a15",
       "tile": [
         24,
@@ -438,10 +507,12 @@
       ]
     },
     {
+      "key": "base:033",
+      "source": "base",
       "index": 33,
       "name": "陶謙",
       "portrait": 114,
-      "file": "F114.png",
+      "file": "hd-assets/F114.png",
       "sha256": "b75578beadb972ba5769aa5197c8d90b0b4582be08b137b16463220db68feda6",
       "tile": [
         184,
@@ -451,10 +522,12 @@
       ]
     },
     {
+      "key": "base:034",
+      "source": "base",
       "index": 34,
       "name": "馬騰",
       "portrait": 192,
-      "file": "F192.png",
+      "file": "hd-assets/F192.png",
       "sha256": "61020861e662ca1ab394e38629284274784ce8a507110c85f7466212f05b8ab0",
       "tile": [
         344,
@@ -464,10 +537,12 @@
       ]
     },
     {
+      "key": "base:035",
+      "source": "base",
       "index": 35,
       "name": "公孫瓚",
       "portrait": 63,
-      "file": "F063.png",
+      "file": "hd-assets/F063.png",
       "sha256": "d8a9bdef90274743e568e94ec2525b3f8e8947e2d1af6e15780c79c43df40f60",
       "tile": [
         504,
@@ -477,10 +552,12 @@
       ]
     },
     {
+      "key": "base:036",
+      "source": "base",
       "index": 36,
       "name": "華雄",
       "portrait": 52,
-      "file": "F052.png",
+      "file": "hd-assets/F052.png",
       "sha256": "b6a345f0ecec4d435f850e2d794cccd2c776f728b2397cc39110445331404c9f",
       "tile": [
         664,
@@ -490,10 +567,12 @@
       ]
     },
     {
+      "key": "base:037",
+      "source": "base",
       "index": 37,
       "name": "程普",
       "portrait": 241,
-      "file": "F241.png",
+      "file": "hd-assets/F241.png",
       "sha256": "ebe0cc8c0bfaf406d3b2f4aaac347a74971681a7843e6bf16047ea83ea374d2d",
       "tile": [
         824,
@@ -503,10 +582,12 @@
       ]
     },
     {
+      "key": "base:038",
+      "source": "base",
       "index": 38,
       "name": "韓當",
       "portrait": 94,
-      "file": "F094.png",
+      "file": "hd-assets/F094.png",
       "sha256": "8aa1b03c28f0d31518debdb355886f149d1b6f752b22475a145fe06cc3ae8516",
       "tile": [
         984,
@@ -516,10 +597,12 @@
       ]
     },
     {
+      "key": "base:039",
+      "source": "base",
       "index": 39,
       "name": "黃蓋",
       "portrait": 55,
-      "file": "F055.png",
+      "file": "hd-assets/F055.png",
       "sha256": "02c3158bcfb6a86a1ad66182a170aab6d9a14b323fb28f1acc602605d3a76496",
       "tile": [
         1144,
@@ -529,10 +612,12 @@
       ]
     },
     {
+      "key": "base:040",
+      "source": "base",
       "index": 40,
       "name": "祖茂",
       "portrait": 244,
-      "file": "F244.png",
+      "file": "hd-assets/F244.png",
       "sha256": "305a8baa656e98527e8a36d425c7eb13022a56c674e880ff03155a1492bd3e44",
       "tile": [
         1304,
@@ -542,10 +627,12 @@
       ]
     },
     {
+      "key": "base:041",
+      "source": "base",
       "index": 41,
       "name": "顏良",
       "portrait": 47,
-      "file": "F047.png",
+      "file": "hd-assets/F047.png",
       "sha256": "074797d2b6550bcdc655cedddea76129146a8ee14b8834e70aab2521079ddd96",
       "tile": [
         1464,
@@ -555,10 +642,12 @@
       ]
     },
     {
+      "key": "base:042",
+      "source": "base",
       "index": 42,
       "name": "文醜",
       "portrait": 102,
-      "file": "F102.png",
+      "file": "hd-assets/F102.png",
       "sha256": "611239bddc7e2a839d2f5f954e0e7b6c099d7b748015787e09c70d3c2ac59f48",
       "tile": [
         1624,
@@ -568,10 +657,12 @@
       ]
     },
     {
+      "key": "base:043",
+      "source": "base",
       "index": 43,
       "name": "徐榮",
       "portrait": 116,
-      "file": "F116.png",
+      "file": "hd-assets/F116.png",
       "sha256": "1396317b67869fbd4c20ff5b3f900838ccb630a5fa7f92e8eb403078294c7a50",
       "tile": [
         1784,
@@ -581,10 +672,12 @@
       ]
     },
     {
+      "key": "base:044",
+      "source": "base",
       "index": 44,
       "name": "劉表",
       "portrait": 81,
-      "file": "F081.png",
+      "file": "hd-assets/F081.png",
       "sha256": "181671089c4aa1b6fca84686f2b56131996b26845e86807a104fee816d2fcad2",
       "tile": [
         1944,
@@ -594,10 +687,12 @@
       ]
     },
     {
+      "key": "base:045",
+      "source": "base",
       "index": 45,
       "name": "蒯良",
       "portrait": 91,
-      "file": "F091.png",
+      "file": "hd-assets/F091.png",
       "sha256": "0aa8a5d031d7429961fef8232935367f67b563f68e7987087e0120f839db6d4b",
       "tile": [
         2104,
@@ -607,10 +702,12 @@
       ]
     },
     {
+      "key": "base:046",
+      "source": "base",
       "index": 46,
       "name": "蒯越",
       "portrait": 92,
-      "file": "F092.png",
+      "file": "hd-assets/F092.png",
       "sha256": "51a41e512d2de2b233701d3a41451390aefb7d03632347ecfd726e5633a220a7",
       "tile": [
         2264,
@@ -620,10 +717,12 @@
       ]
     },
     {
+      "key": "base:047",
+      "source": "base",
       "index": 47,
       "name": "蔡瑁",
       "portrait": 246,
-      "file": "F246.png",
+      "file": "hd-assets/F246.png",
       "sha256": "b58f318a3cb01e3a09cb5d5133931866efd7015921d93b4f660338728848b926",
       "tile": [
         2424,
@@ -633,10 +732,12 @@
       ]
     },
     {
+      "key": "base:048",
+      "source": "base",
       "index": 48,
       "name": "逢紀",
       "portrait": 111,
-      "file": "F111.png",
+      "file": "hd-assets/F111.png",
       "sha256": "e4a8ce3e2a6a4a0037571d903e699b6e2a608f7c6b0bfae23e31e4d77ad4e894",
       "tile": [
         24,
@@ -646,10 +747,12 @@
       ]
     },
     {
+      "key": "base:049",
+      "source": "base",
       "index": 49,
       "name": "荀諶",
       "portrait": 93,
-      "file": "F093.png",
+      "file": "hd-assets/F093.png",
       "sha256": "760b13493cdac62c9d41de4bf4a4fefb3927d9faafa7af1df67dd47c612740d9",
       "tile": [
         184,
@@ -659,10 +762,12 @@
       ]
     },
     {
+      "key": "base:050",
+      "source": "base",
       "index": 50,
       "name": "辛評",
       "portrait": 80,
-      "file": "F080.png",
+      "file": "hd-assets/F080.png",
       "sha256": "7794f3ad3cb96b433a94d5defa9c147062d19f568cc9a2c82cbc5b2281a29a42",
       "tile": [
         344,
@@ -672,10 +777,12 @@
       ]
     },
     {
+      "key": "base:051",
+      "source": "base",
       "index": 51,
       "name": "田豐",
       "portrait": 249,
-      "file": "F249.png",
+      "file": "hd-assets/F249.png",
       "sha256": "9d3397e873b16961dec96641c7a08d2849d36c4208a4ecf29676ac2c21358f67",
       "tile": [
         504,
@@ -685,10 +792,12 @@
       ]
     },
     {
+      "key": "base:052",
+      "source": "base",
       "index": 52,
       "name": "沮授",
       "portrait": 113,
-      "file": "F113.png",
+      "file": "hd-assets/F113.png",
       "sha256": "ebe48bdcd740003700d1cb6b9b7ba00155f69728866592ad2c6d2a85a99b9686",
       "tile": [
         664,
@@ -698,10 +807,12 @@
       ]
     },
     {
+      "key": "base:053",
+      "source": "base",
       "index": 53,
       "name": "許攸",
       "portrait": 168,
-      "file": "F168.png",
+      "file": "hd-assets/F168.png",
       "sha256": "4bbfbe06471134a287e769f3bfcc31e8854cc4c044ff05156834c6eeb0ace922",
       "tile": [
         824,
@@ -711,10 +822,12 @@
       ]
     },
     {
+      "key": "base:054",
+      "source": "base",
       "index": 54,
       "name": "公孫越",
       "portrait": 199,
-      "file": "F199.png",
+      "file": "hd-assets/F199.png",
       "sha256": "43dc7af1f52efde35c64fc0838638273cd38850dbe4c44c68a27c623bff08ef4",
       "tile": [
         984,
@@ -724,10 +837,12 @@
       ]
     },
     {
+      "key": "base:055",
+      "source": "base",
       "index": 55,
       "name": "孫策",
       "portrait": 164,
-      "file": "F164.png",
+      "file": "hd-assets/F164.png",
       "sha256": "a0430ffee0f0f0cd94fa354f5cf75d6c415129e364a559bba4208ee69b1bf093",
       "tile": [
         1144,
@@ -737,10 +852,12 @@
       ]
     },
     {
+      "key": "base:056",
+      "source": "base",
       "index": 56,
       "name": "孫權",
       "portrait": 8,
-      "file": "F008.png",
+      "file": "hd-assets/F008.png",
       "sha256": "94c5eb3b2bbeac43e40bc70a254ff825b3a7b79f355c52a11e6864b8a1437efa",
       "tile": [
         1304,
@@ -750,10 +867,12 @@
       ]
     },
     {
+      "key": "base:057",
+      "source": "base",
       "index": 57,
       "name": "孫翊",
       "portrait": 110,
-      "file": "F110.png",
+      "file": "hd-assets/F110.png",
       "sha256": "eb372d51a4a800aee1a4a3ed7f2a75482dc723c3f292d0d22cbab8b6659b8391",
       "tile": [
         1464,
@@ -763,10 +882,12 @@
       ]
     },
     {
+      "key": "base:058",
+      "source": "base",
       "index": 58,
       "name": "孫匡",
       "portrait": 150,
-      "file": "F150.png",
+      "file": "hd-assets/F150.png",
       "sha256": "1a3ba3f968d3976da595dffb3f72e0215bc51987f60409cbf98068d69e381719",
       "tile": [
         1624,
@@ -776,10 +897,12 @@
       ]
     },
     {
+      "key": "base:059",
+      "source": "base",
       "index": 59,
       "name": "黃祖",
       "portrait": 169,
-      "file": "F169.png",
+      "file": "hd-assets/F169.png",
       "sha256": "04b5aa1f05fbbddea703e67466af6cfcdbac27bd065a0cf103596bce0f31b0ac",
       "tile": [
         1784,
@@ -789,10 +912,12 @@
       ]
     },
     {
+      "key": "base:060",
+      "source": "base",
       "index": 60,
       "name": "陳生",
       "portrait": 243,
-      "file": "F243.png",
+      "file": "hd-assets/F243.png",
       "sha256": "006fe55ffa7e5d3330660cb9985cff5d9f9bbf7e6db95a883f10bb6d3f279602",
       "tile": [
         1944,
@@ -802,10 +927,12 @@
       ]
     },
     {
+      "key": "base:061",
+      "source": "base",
       "index": 61,
       "name": "呂公",
       "portrait": 240,
-      "file": "F240.png",
+      "file": "hd-assets/F240.png",
       "sha256": "3e8f1c2e3fbea751f10b3241affa05d106b118d55a3d8226801ef29a90a50177",
       "tile": [
         2104,
@@ -815,10 +942,12 @@
       ]
     },
     {
+      "key": "base:062",
+      "source": "base",
       "index": 62,
       "name": "董璜",
       "portrait": 170,
-      "file": "F170.png",
+      "file": "hd-assets/F170.png",
       "sha256": "1857b52b3fa020fcca08fa483ccc625c75fb8b11cacefe2ea1baee78d35e1f27",
       "tile": [
         2264,
@@ -828,10 +957,12 @@
       ]
     },
     {
+      "key": "base:063",
+      "source": "base",
       "index": 63,
       "name": "賈詡",
       "portrait": 160,
-      "file": "F160.png",
+      "file": "hd-assets/F160.png",
       "sha256": "d8df2814ee811c41bba42fe4ed0903fed5a1ed868e45d7b496714a0b21a7f299",
       "tile": [
         2424,
@@ -841,10 +972,12 @@
       ]
     },
     {
+      "key": "base:064",
+      "source": "base",
       "index": 64,
       "name": "韓遂",
       "portrait": 188,
-      "file": "F188.png",
+      "file": "hd-assets/F188.png",
       "sha256": "75e9faafcb5bfc0eb1ab4d10576bed756b485bfe740c48fcc95c93d205929e95",
       "tile": [
         24,
@@ -854,10 +987,12 @@
       ]
     },
     {
+      "key": "base:065",
+      "source": "base",
       "index": 65,
       "name": "荀彧",
       "portrait": 172,
-      "file": "F172.png",
+      "file": "hd-assets/F172.png",
       "sha256": "6ca68c493c65b6b92bf094633b7f592bcce78aa12d6fba4448dc31a7b9740838",
       "tile": [
         184,
@@ -867,10 +1002,12 @@
       ]
     },
     {
+      "key": "base:066",
+      "source": "base",
       "index": 66,
       "name": "荀攸",
       "portrait": 215,
-      "file": "F215.png",
+      "file": "hd-assets/F215.png",
       "sha256": "ba36ba7e781c0b92a4f54f291ffdbf444d75aeb07ab51e9c4151bef5221efbe9",
       "tile": [
         344,
@@ -880,10 +1017,12 @@
       ]
     },
     {
+      "key": "base:067",
+      "source": "base",
       "index": 67,
       "name": "程昱",
       "portrait": 176,
-      "file": "F176.png",
+      "file": "hd-assets/F176.png",
       "sha256": "86e19db0e28bb85535d85c6b34bbc4dbf574abf4209768640bfd34cd392d3d36",
       "tile": [
         504,
@@ -893,10 +1032,12 @@
       ]
     },
     {
+      "key": "base:068",
+      "source": "base",
       "index": 68,
       "name": "郭嘉",
       "portrait": 143,
-      "file": "F143.png",
+      "file": "hd-assets/F143.png",
       "sha256": "157721735b9fdf98c978b974750ca8ced82ee7b2e8acd2bfce8f5858239f01cb",
       "tile": [
         664,
@@ -906,10 +1047,12 @@
       ]
     },
     {
+      "key": "base:069",
+      "source": "base",
       "index": 69,
       "name": "劉曄",
       "portrait": 180,
-      "file": "F180.png",
+      "file": "hd-assets/F180.png",
       "sha256": "58f8af1cf9fd21367edbf245644bd225fcafbea08d84e892de637e7e7eec89b3",
       "tile": [
         824,
@@ -919,10 +1062,12 @@
       ]
     },
     {
+      "key": "base:070",
+      "source": "base",
       "index": 70,
       "name": "滿寵",
       "portrait": 162,
-      "file": "F162.png",
+      "file": "hd-assets/F162.png",
       "sha256": "105a77431aef8f3bcee4a540f0ff74302bfb84cccb53a435d572182d5fee2764",
       "tile": [
         984,
@@ -932,10 +1077,12 @@
       ]
     },
     {
+      "key": "base:071",
+      "source": "base",
       "index": 71,
       "name": "呂虔",
       "portrait": 196,
-      "file": "F196.png",
+      "file": "hd-assets/F196.png",
       "sha256": "621ed8b6900dc1106462a9b0be6fda285817e03450fae3a9eb3f1277bbb8107e",
       "tile": [
         1144,
@@ -945,10 +1092,12 @@
       ]
     },
     {
+      "key": "base:072",
+      "source": "base",
       "index": 72,
       "name": "于禁",
       "portrait": 49,
-      "file": "F049.png",
+      "file": "hd-assets/F049.png",
       "sha256": "ddc6a7e5a7d6e724593d57454f88fa33454403193da33dc097e74cfbd3fab1c2",
       "tile": [
         1304,
@@ -958,10 +1107,12 @@
       ]
     },
     {
+      "key": "base:073",
+      "source": "base",
       "index": 73,
       "name": "毛玠",
       "portrait": 58,
-      "file": "F058.png",
+      "file": "hd-assets/F058.png",
       "sha256": "e489c9cb269c0dd2abf7f2fa19f6a1ab1942bd819f62053d2a2bea11ef8b81ac",
       "tile": [
         1464,
@@ -971,10 +1122,12 @@
       ]
     },
     {
+      "key": "base:074",
+      "source": "base",
       "index": 74,
       "name": "典韋",
       "portrait": 146,
-      "file": "F146.png",
+      "file": "hd-assets/F146.png",
       "sha256": "c476ecdbffbf18723bca25334929b7485e30d2017381c25cc2f6d3cc1cfbdaab",
       "tile": [
         1624,
@@ -984,10 +1137,12 @@
       ]
     },
     {
+      "key": "base:075",
+      "source": "base",
       "index": 75,
       "name": "麋竺",
       "portrait": 173,
-      "file": "F173.png",
+      "file": "hd-assets/F173.png",
       "sha256": "9cb4fd49368b62d41c271bc0f77e6aa527c49a24299a158cea4732a35f0bf6cf",
       "tile": [
         1784,
@@ -997,10 +1152,12 @@
       ]
     },
     {
+      "key": "base:076",
+      "source": "base",
       "index": 76,
       "name": "陳登",
       "portrait": 181,
-      "file": "F181.png",
+      "file": "hd-assets/F181.png",
       "sha256": "9644459e8a64fdffebb30aadab0978c73ef928f4682481343f282c5556098e71",
       "tile": [
         1944,
@@ -1010,10 +1167,12 @@
       ]
     },
     {
+      "key": "base:077",
+      "source": "base",
       "index": 77,
       "name": "太史慈",
       "portrait": 21,
-      "file": "F021.png",
+      "file": "hd-assets/F021.png",
       "sha256": "9f10760612063b1c2e838691538e463f1f58902d739c4139aa494782f8eaec47",
       "tile": [
         2104,
@@ -1023,10 +1182,12 @@
       ]
     },
     {
+      "key": "base:078",
+      "source": "base",
       "index": 78,
       "name": "劉繇",
       "portrait": 166,
-      "file": "F166.png",
+      "file": "hd-assets/F166.png",
       "sha256": "8ccde70c704c026f3ecd0e044342ccc869a2892fb860eccdcb543e63f993ceb2",
       "tile": [
         2264,
@@ -1036,10 +1197,12 @@
       ]
     },
     {
+      "key": "base:079",
+      "source": "base",
       "index": 79,
       "name": "張遼",
       "portrait": 101,
-      "file": "F101.png",
+      "file": "hd-assets/F101.png",
       "sha256": "1a88c5aba7ff72a2954a4e6f99ceba78e85de02ec3397a8808f7514b103573a5",
       "tile": [
         2424,
@@ -1049,10 +1212,12 @@
       ]
     },
     {
+      "key": "base:080",
+      "source": "base",
       "index": 80,
       "name": "臧霸",
       "portrait": 57,
-      "file": "F057.png",
+      "file": "hd-assets/F057.png",
       "sha256": "79115947e62da37077293e7864799d8aab32596343af208a0722a41057fb41a6",
       "tile": [
         24,
@@ -1062,10 +1227,12 @@
       ]
     },
     {
+      "key": "base:081",
+      "source": "base",
       "index": 81,
       "name": "郝萌",
       "portrait": 238,
-      "file": "F238.png",
+      "file": "hd-assets/F238.png",
       "sha256": "645c269ba4fac53c289c993c54ae91d2f88c1e14e2a2d60dfafaea01125ed924",
       "tile": [
         184,
@@ -1075,10 +1242,12 @@
       ]
     },
     {
+      "key": "base:082",
+      "source": "base",
       "index": 82,
       "name": "曹性",
       "portrait": 73,
-      "file": "F073.png",
+      "file": "hd-assets/F073.png",
       "sha256": "b03914a2e89fd4797a43d9dbc075ed221bc5577759674331b4f198efa543c6d2",
       "tile": [
         344,
@@ -1088,10 +1257,12 @@
       ]
     },
     {
+      "key": "base:083",
+      "source": "base",
       "index": 83,
       "name": "成廉",
       "portrait": 234,
-      "file": "F234.png",
+      "file": "hd-assets/F234.png",
       "sha256": "e988ccd3fe7fd829bd66ef98337e31f8569616dd9be68815906a40354123a827",
       "tile": [
         504,
@@ -1101,10 +1272,12 @@
       ]
     },
     {
+      "key": "base:084",
+      "source": "base",
       "index": 84,
       "name": "魏續",
       "portrait": 228,
-      "file": "F228.png",
+      "file": "hd-assets/F228.png",
       "sha256": "5f56fb205263cbc33905f1b5a470dea86ac14358eaf6979a087f7db39794c395",
       "tile": [
         664,
@@ -1114,10 +1287,12 @@
       ]
     },
     {
+      "key": "base:085",
+      "source": "base",
       "index": 85,
       "name": "宋憲",
       "portrait": 99,
-      "file": "F099.png",
+      "file": "hd-assets/F099.png",
       "sha256": "99a903c913145214bf7fc59c3eb796a1f142212af8ba2cc60475d7cacb63cdf0",
       "tile": [
         824,
@@ -1127,10 +1302,12 @@
       ]
     },
     {
+      "key": "base:086",
+      "source": "base",
       "index": 86,
       "name": "侯成",
       "portrait": 85,
-      "file": "F085.png",
+      "file": "hd-assets/F085.png",
       "sha256": "b18dd0fada3490cd123e5ee5b610ce248971c1ff5eb0731f896336afdf6bb889",
       "tile": [
         984,
@@ -1140,10 +1317,12 @@
       ]
     },
     {
+      "key": "base:087",
+      "source": "base",
       "index": 87,
       "name": "孫乾",
       "portrait": 186,
-      "file": "F186.png",
+      "file": "hd-assets/F186.png",
       "sha256": "3f3bdbbf1d9d1f1e24beb5edc640eae4ec1ef52f507d5ce592d26afce46e04bc",
       "tile": [
         1144,
@@ -1153,10 +1332,12 @@
       ]
     },
     {
+      "key": "base:088",
+      "source": "base",
       "index": 88,
       "name": "許褚",
       "portrait": 156,
-      "file": "F156.png",
+      "file": "hd-assets/F156.png",
       "sha256": "cdd860c087882d3cd1332e2c0fba5986a5167b2eaff32c959fc7010df3514f44",
       "tile": [
         1304,
@@ -1166,10 +1347,12 @@
       ]
     },
     {
+      "key": "base:089",
+      "source": "base",
       "index": 89,
       "name": "審配",
       "portrait": 178,
-      "file": "F178.png",
+      "file": "hd-assets/F178.png",
       "sha256": "bb1bf54388d58e168f041bdc45e7b56f24112881914ef3179d29cd2eb5ba3c32",
       "tile": [
         1464,
@@ -1179,10 +1362,12 @@
       ]
     },
     {
+      "key": "base:090",
+      "source": "base",
       "index": 90,
       "name": "楊奉",
       "portrait": 128,
-      "file": "F128.png",
+      "file": "hd-assets/F128.png",
       "sha256": "f999be1e7073dc1f0bd66919c83ccff4e537bb4de2efe28b0d33009c258378e0",
       "tile": [
         1624,
@@ -1192,10 +1377,12 @@
       ]
     },
     {
+      "key": "base:091",
+      "source": "base",
       "index": 91,
       "name": "徐晃",
       "portrait": 29,
-      "file": "F029.png",
+      "file": "hd-assets/F029.png",
       "sha256": "c351f701b0b875e42b46b8756f6a71536ad90de9908804008b2a21d9d17638a8",
       "tile": [
         1784,
@@ -1205,10 +1392,12 @@
       ]
     },
     {
+      "key": "base:092",
+      "source": "base",
       "index": 92,
       "name": "董昭",
       "portrait": 181,
-      "file": "F181.png",
+      "file": "hd-assets/F181.png",
       "sha256": "9644459e8a64fdffebb30aadab0978c73ef928f4682481343f282c5556098e71",
       "tile": [
         1944,
@@ -1218,10 +1407,12 @@
       ]
     },
     {
+      "key": "base:093",
+      "source": "base",
       "index": 93,
       "name": "紀靈",
       "portrait": 165,
-      "file": "F165.png",
+      "file": "hd-assets/F165.png",
       "sha256": "4397e6fd6d27db8a89210e08a1622ee5aae669ed87a1bd03fd85c2c42b5a1431",
       "tile": [
         2104,
@@ -1231,10 +1422,12 @@
       ]
     },
     {
+      "key": "base:094",
+      "source": "base",
       "index": 94,
       "name": "朱治",
       "portrait": 189,
-      "file": "F189.png",
+      "file": "hd-assets/F189.png",
       "sha256": "e974c8bad742dd514a86f77188850d63f11b002ad9fa608bddf1835f223908ab",
       "tile": [
         2264,
@@ -1244,10 +1437,12 @@
       ]
     },
     {
+      "key": "base:095",
+      "source": "base",
       "index": 95,
       "name": "呂範",
       "portrait": 177,
-      "file": "F177.png",
+      "file": "hd-assets/F177.png",
       "sha256": "af30581b0d48b4caadbc0e829f41406346667d462c56597f3c5c64f578cba4de",
       "tile": [
         2424,
@@ -1257,10 +1452,12 @@
       ]
     },
     {
+      "key": "base:096",
+      "source": "base",
       "index": 96,
       "name": "周瑜",
       "portrait": 14,
-      "file": "F014.png",
+      "file": "hd-assets/F014.png",
       "sha256": "6574cd67cf5b847ed8f311d1c407b60bdafa1212e192393ab58c63d69e9bb664",
       "tile": [
         24,
@@ -1270,10 +1467,12 @@
       ]
     },
     {
+      "key": "base:097",
+      "source": "base",
       "index": 97,
       "name": "張昭",
       "portrait": 144,
-      "file": "F144.png",
+      "file": "hd-assets/F144.png",
       "sha256": "5517a444e182acbeab6cdc0cf20ff994f17627e5cf7fabaf0ea6b1d4a504e018",
       "tile": [
         184,
@@ -1283,10 +1482,12 @@
       ]
     },
     {
+      "key": "base:098",
+      "source": "base",
       "index": 98,
       "name": "張紘",
       "portrait": 216,
-      "file": "F216.png",
+      "file": "hd-assets/F216.png",
       "sha256": "e7970da21e78016541f4b1b36bf0b88aebe7713f4c9b23afdb90ae76347edb68",
       "tile": [
         344,
@@ -1296,10 +1497,12 @@
       ]
     },
     {
+      "key": "base:099",
+      "source": "base",
       "index": 99,
       "name": "蔣欽",
       "portrait": 84,
-      "file": "F084.png",
+      "file": "hd-assets/F084.png",
       "sha256": "fb38804033e4cd9475c3841791b541579d37327471b5b2bb9372b434b84f0711",
       "tile": [
         504,
@@ -1309,10 +1512,12 @@
       ]
     },
     {
+      "key": "base:100",
+      "source": "base",
       "index": 100,
       "name": "周泰",
       "portrait": 31,
-      "file": "F031.png",
+      "file": "hd-assets/F031.png",
       "sha256": "aad91551f403453d1fbddc046524bd20382710026709392e994b6dcbe3286516",
       "tile": [
         664,
@@ -1322,10 +1527,12 @@
       ]
     },
     {
+      "key": "base:101",
+      "source": "base",
       "index": 101,
       "name": "陳武",
       "portrait": 226,
-      "file": "F226.png",
+      "file": "hd-assets/F226.png",
       "sha256": "e534274ae0042d7598341f2ec42b7a35629ab4d69ab697954f25e2cc6da33ffd",
       "tile": [
         824,
@@ -1335,10 +1542,12 @@
       ]
     },
     {
+      "key": "base:102",
+      "source": "base",
       "index": 102,
       "name": "凌操",
       "portrait": 204,
-      "file": "F204.png",
+      "file": "hd-assets/F204.png",
       "sha256": "01601411d814cbf4906ec8654189e4ca5b670f4e4ab978bb5bde3e962b9a0ed9",
       "tile": [
         984,
@@ -1348,10 +1557,12 @@
       ]
     },
     {
+      "key": "base:103",
+      "source": "base",
       "index": 103,
       "name": "王朗",
       "portrait": 209,
-      "file": "F209.png",
+      "file": "hd-assets/F209.png",
       "sha256": "f4115341f02f7a95c5e54c159f7536dd0030d88eefe3683181e5873f7eafe3ed",
       "tile": [
         1144,
@@ -1361,10 +1572,12 @@
       ]
     },
     {
+      "key": "base:104",
+      "source": "base",
       "index": 104,
       "name": "虞翻",
       "portrait": 213,
-      "file": "F213.png",
+      "file": "hd-assets/F213.png",
       "sha256": "d3a9b1028528b923293a034dee9cace8d8600b9160defe6c849212663d0cb2ff",
       "tile": [
         1304,
@@ -1374,10 +1587,12 @@
       ]
     },
     {
+      "key": "base:105",
+      "source": "base",
       "index": 105,
       "name": "董襲",
       "portrait": 195,
-      "file": "F195.png",
+      "file": "hd-assets/F195.png",
       "sha256": "3467385143b7b05c820ee212b6747962a40d06c6b919c9ad541ff7134fdfbcaf",
       "tile": [
         1464,
@@ -1387,10 +1602,12 @@
       ]
     },
     {
+      "key": "base:106",
+      "source": "base",
       "index": 106,
       "name": "張勳",
       "portrait": 191,
-      "file": "F191.png",
+      "file": "hd-assets/F191.png",
       "sha256": "1e6d39c1deed70c12f5ab02d5c0710434138148c31b40e224ed6fc71a7257efc",
       "tile": [
         1624,
@@ -1400,10 +1617,12 @@
       ]
     },
     {
+      "key": "base:107",
+      "source": "base",
       "index": 107,
       "name": "雷薄",
       "portrait": 188,
-      "file": "F188.png",
+      "file": "hd-assets/F188.png",
       "sha256": "75e9faafcb5bfc0eb1ab4d10576bed756b485bfe740c48fcc95c93d205929e95",
       "tile": [
         1784,
@@ -1413,10 +1632,12 @@
       ]
     },
     {
+      "key": "base:108",
+      "source": "base",
       "index": 108,
       "name": "陳蘭",
       "portrait": 185,
-      "file": "F185.png",
+      "file": "hd-assets/F185.png",
       "sha256": "d5854e83c87cbf8a3d875137cd88d6feb95405523dcbbe60450798b2783b9d30",
       "tile": [
         1944,
@@ -1426,10 +1647,12 @@
       ]
     },
     {
+      "key": "base:109",
+      "source": "base",
       "index": 109,
       "name": "橋蕤",
       "portrait": 69,
-      "file": "F069.png",
+      "file": "hd-assets/F069.png",
       "sha256": "7ec1169fe6f56d5a883e9e00018e5245df200d498becb686f6d364beb5b4239c",
       "tile": [
         2104,
@@ -1439,10 +1662,12 @@
       ]
     },
     {
+      "key": "base:110",
+      "source": "base",
       "index": 110,
       "name": "陳珪",
       "portrait": 236,
-      "file": "F236.png",
+      "file": "hd-assets/F236.png",
       "sha256": "b5595df0dd4f274c72a235a1ba1b88c8792dfd4615381df161fabb189a397efd",
       "tile": [
         2264,
@@ -1452,10 +1677,12 @@
       ]
     },
     {
+      "key": "base:111",
+      "source": "base",
       "index": 111,
       "name": "張繡",
       "portrait": 147,
-      "file": "F147.png",
+      "file": "hd-assets/F147.png",
       "sha256": "d8758eb7d1bc3f7d52e7b8ae83d8e8e3e1a93dc126fd1cb6ec24e0cbd0d0f4d2",
       "tile": [
         2424,
@@ -1465,10 +1692,12 @@
       ]
     },
     {
+      "key": "base:112",
+      "source": "base",
       "index": 112,
       "name": "曹純",
       "portrait": 190,
-      "file": "F190.png",
+      "file": "hd-assets/F190.png",
       "sha256": "e8a95bcc96f58ac6a2c51ed8095808c00065db5addfe985c27afd1871938ff06",
       "tile": [
         24,
@@ -1478,10 +1707,12 @@
       ]
     },
     {
+      "key": "base:113",
+      "source": "base",
       "index": 113,
       "name": "簡雍",
       "portrait": 154,
-      "file": "F154.png",
+      "file": "hd-assets/F154.png",
       "sha256": "a6e136d2be397aa11bcd7af98dd617d5a227a4a8d23706ba1ba6a463794710d7",
       "tile": [
         184,
@@ -1491,10 +1722,12 @@
       ]
     },
     {
+      "key": "base:114",
+      "source": "base",
       "index": 114,
       "name": "劉璋",
       "portrait": 237,
-      "file": "F237.png",
+      "file": "hd-assets/F237.png",
       "sha256": "e2abf0d07b89d502929974b048d9257bb5b36cdfd05604276dda620820f5ca24",
       "tile": [
         344,
@@ -1504,10 +1737,12 @@
       ]
     },
     {
+      "key": "base:115",
+      "source": "base",
       "index": 115,
       "name": "張魯",
       "portrait": 227,
-      "file": "F227.png",
+      "file": "hd-assets/F227.png",
       "sha256": "2d4d94684309da7140f0b2bcbfff579dee19666e2330d115849382cb27496688",
       "tile": [
         504,
@@ -1517,10 +1752,12 @@
       ]
     },
     {
+      "key": "base:116",
+      "source": "base",
       "index": 116,
       "name": "郭圖",
       "portrait": 129,
-      "file": "F129.png",
+      "file": "hd-assets/F129.png",
       "sha256": "c064c53c39f578122936844657173e91e19cc45f78ada0ea0623efeb269ab944",
       "tile": [
         664,
@@ -1530,10 +1767,12 @@
       ]
     },
     {
+      "key": "base:117",
+      "source": "base",
       "index": 117,
       "name": "陳琳",
       "portrait": 148,
-      "file": "F148.png",
+      "file": "hd-assets/F148.png",
       "sha256": "8a4134fd75cc39c6a402305179cf704e73670d037bf9c84b0169e5310f20a787",
       "tile": [
         824,
@@ -1543,10 +1782,12 @@
       ]
     },
     {
+      "key": "base:118",
+      "source": "base",
       "index": 118,
       "name": "高覽",
       "portrait": 179,
-      "file": "F179.png",
+      "file": "hd-assets/F179.png",
       "sha256": "002af71c20610a0a89581ede6210442da2cda759923e5b07cc0a8e2c224bafa5",
       "tile": [
         984,
@@ -1556,10 +1797,12 @@
       ]
     },
     {
+      "key": "base:119",
+      "source": "base",
       "index": 119,
       "name": "張郃",
       "portrait": 233,
-      "file": "F233.png",
+      "file": "hd-assets/F233.png",
       "sha256": "0c455dcb94c0e948a6c6cc938bde279f25b79c6c84e44be65df5de6dde26d7c8",
       "tile": [
         1144,
@@ -1569,10 +1812,12 @@
       ]
     },
     {
+      "key": "base:120",
+      "source": "base",
       "index": 120,
       "name": "麋芳",
       "portrait": 103,
-      "file": "F103.png",
+      "file": "hd-assets/F103.png",
       "sha256": "b3b22efee97ee7618ceb65df4cc171d6bda19684230657b8c22c62668840f4c8",
       "tile": [
         1304,
@@ -1582,10 +1827,12 @@
       ]
     },
     {
+      "key": "base:121",
+      "source": "base",
       "index": 121,
       "name": "蔡陽",
       "portrait": 171,
-      "file": "F171.png",
+      "file": "hd-assets/F171.png",
       "sha256": "4c848e0fdc7e234c2adde51415c1903924274ea2b472340fd077feb64684ed23",
       "tile": [
         1464,
@@ -1595,10 +1842,12 @@
       ]
     },
     {
+      "key": "base:122",
+      "source": "base",
       "index": 122,
       "name": "廖化",
       "portrait": 243,
-      "file": "F243.png",
+      "file": "hd-assets/F243.png",
       "sha256": "006fe55ffa7e5d3330660cb9985cff5d9f9bbf7e6db95a883f10bb6d3f279602",
       "tile": [
         1624,
@@ -1608,10 +1857,12 @@
       ]
     },
     {
+      "key": "base:123",
+      "source": "base",
       "index": 123,
       "name": "周倉",
       "portrait": 39,
-      "file": "F039.png",
+      "file": "hd-assets/F039.png",
       "sha256": "14f049fe8ffc887235980a2256a3ba03f309010498c8078148b0e48d449c02f4",
       "tile": [
         1784,
@@ -1621,10 +1872,12 @@
       ]
     },
     {
+      "key": "base:124",
+      "source": "base",
       "index": 124,
       "name": "關平",
       "portrait": 252,
-      "file": "F252.png",
+      "file": "hd-assets/F252.png",
       "sha256": "8d77b8711a21c68a9839e79b464fef979b7ed0aaa64b7d407122a9cfbae83511",
       "tile": [
         1944,
@@ -1634,10 +1887,12 @@
       ]
     },
     {
+      "key": "base:125",
+      "source": "base",
       "index": 125,
       "name": "華歆",
       "portrait": 118,
-      "file": "F118.png",
+      "file": "hd-assets/F118.png",
       "sha256": "5b990419425738507d39af87681e3682d5597174d5be7d7e0cb45b9c06b58055",
       "tile": [
         2104,
@@ -1647,10 +1902,12 @@
       ]
     },
     {
+      "key": "base:126",
+      "source": "base",
       "index": 126,
       "name": "魯肅",
       "portrait": 132,
-      "file": "F132.png",
+      "file": "hd-assets/F132.png",
       "sha256": "ef13ab512dea9be988b42b0185eccb0a361b6f6120b1565aed7e5d1be32d50d3",
       "tile": [
         2264,
@@ -1660,10 +1917,12 @@
       ]
     },
     {
+      "key": "base:127",
+      "source": "base",
       "index": 127,
       "name": "諸葛瑾",
       "portrait": 159,
-      "file": "F159.png",
+      "file": "hd-assets/F159.png",
       "sha256": "f484f524d107ae138b2ad9a128bc521bea11f1dec937aef6ce754d741c96e834",
       "tile": [
         2424,
@@ -1673,10 +1932,12 @@
       ]
     },
     {
+      "key": "base:128",
+      "source": "base",
       "index": 128,
       "name": "顧雍",
       "portrait": 153,
-      "file": "F153.png",
+      "file": "hd-assets/F153.png",
       "sha256": "59fb1e6b3b42a7cf4f9eab056fd2b173918969cdf8894f56195cc10b371ed35c",
       "tile": [
         24,
@@ -1686,10 +1947,12 @@
       ]
     },
     {
+      "key": "base:129",
+      "source": "base",
       "index": 129,
       "name": "袁譚",
       "portrait": 126,
-      "file": "F126.png",
+      "file": "hd-assets/F126.png",
       "sha256": "21a977c75e16467b2cb32d05563f77242fb6b60b96c4958a582bb5cd4e506455",
       "tile": [
         184,
@@ -1699,10 +1962,12 @@
       ]
     },
     {
+      "key": "base:130",
+      "source": "base",
       "index": 130,
       "name": "袁熙",
       "portrait": 89,
-      "file": "F089.png",
+      "file": "hd-assets/F089.png",
       "sha256": "f4843ddebfdd377447d2384ced0684512236963150a23991118810197a530f95",
       "tile": [
         344,
@@ -1712,10 +1977,12 @@
       ]
     },
     {
+      "key": "base:131",
+      "source": "base",
       "index": 131,
       "name": "袁尚",
       "portrait": 22,
-      "file": "F022.png",
+      "file": "hd-assets/F022.png",
       "sha256": "a06f42b8471a14f89d20ea2ebb295295f49103a00e8e4a17deb30bd7f2663883",
       "tile": [
         504,
@@ -1725,10 +1992,12 @@
       ]
     },
     {
+      "key": "base:132",
+      "source": "base",
       "index": 132,
       "name": "呂曠",
       "portrait": 190,
-      "file": "F190.png",
+      "file": "hd-assets/F190.png",
       "sha256": "e8a95bcc96f58ac6a2c51ed8095808c00065db5addfe985c27afd1871938ff06",
       "tile": [
         664,
@@ -1738,10 +2007,12 @@
       ]
     },
     {
+      "key": "base:133",
+      "source": "base",
       "index": 133,
       "name": "辛毗",
       "portrait": 151,
-      "file": "F151.png",
+      "file": "hd-assets/F151.png",
       "sha256": "d23a3476b7b1c8970f09ff0c2b28965085db92e347ce6b8f8e99f40c0203851e",
       "tile": [
         824,
@@ -1751,10 +2022,12 @@
       ]
     },
     {
+      "key": "base:134",
+      "source": "base",
       "index": 134,
       "name": "呂翔",
       "portrait": 197,
-      "file": "F197.png",
+      "file": "hd-assets/F197.png",
       "sha256": "1a578309fb39d9baa9fae84acb7c73b470380e2139663d8056af26b3534f5a40",
       "tile": [
         984,
@@ -1764,10 +2037,12 @@
       ]
     },
     {
+      "key": "base:135",
+      "source": "base",
       "index": 135,
       "name": "曹丕",
       "portrait": 229,
-      "file": "F229.png",
+      "file": "hd-assets/F229.png",
       "sha256": "76395569a08d9f8360de73d361e15cf3a98c64ecc23914af18bbab35eb0adf86",
       "tile": [
         1144,
@@ -1777,10 +2052,12 @@
       ]
     },
     {
+      "key": "base:136",
+      "source": "base",
       "index": 136,
       "name": "曹植",
       "portrait": 127,
-      "file": "F127.png",
+      "file": "hd-assets/F127.png",
       "sha256": "ba4b7cb7518463c511566c0213c8463dc907e22be6ba0df4075c2b256210161d",
       "tile": [
         1304,
@@ -1790,10 +2067,12 @@
       ]
     },
     {
+      "key": "base:137",
+      "source": "base",
       "index": 137,
       "name": "伊籍",
       "portrait": 130,
-      "file": "F130.png",
+      "file": "hd-assets/F130.png",
       "sha256": "793f2dbd21c9da4132f6eebea8f514b5dd5805b51645457df2036a220e707bf6",
       "tile": [
         1464,
@@ -1803,10 +2082,12 @@
       ]
     },
     {
+      "key": "base:138",
+      "source": "base",
       "index": 138,
       "name": "劉琦",
       "portrait": 141,
-      "file": "F141.png",
+      "file": "hd-assets/F141.png",
       "sha256": "d8b04f3d2d4f2280621d6a9687d065ccad08641d174215a33100396cb4b9908c",
       "tile": [
         1624,
@@ -1816,10 +2097,12 @@
       ]
     },
     {
+      "key": "base:139",
+      "source": "base",
       "index": 139,
       "name": "劉琮",
       "portrait": 122,
-      "file": "F122.png",
+      "file": "hd-assets/F122.png",
       "sha256": "c427465130c2a5b725776ee7583b68200ea6b5f2360035447a7928fad89cdb1f",
       "tile": [
         1784,
@@ -1829,10 +2112,12 @@
       ]
     },
     {
+      "key": "base:140",
+      "source": "base",
       "index": 140,
       "name": "蔡和",
       "portrait": 205,
-      "file": "F205.png",
+      "file": "hd-assets/F205.png",
       "sha256": "c8b42b9e023cbe7f3b9470ab7501ffd29500ed2a8c664f574fa16c9186cd6aa6",
       "tile": [
         1944,
@@ -1842,10 +2127,12 @@
       ]
     },
     {
+      "key": "base:141",
+      "source": "base",
       "index": 141,
       "name": "蔡中",
       "portrait": 206,
-      "file": "F206.png",
+      "file": "hd-assets/F206.png",
       "sha256": "a9991b1df22012a3f86e8fc85cf75c5f8c94a4220bff0b07f643d80620076c76",
       "tile": [
         2104,
@@ -1855,10 +2142,12 @@
       ]
     },
     {
+      "key": "base:142",
+      "source": "base",
       "index": 142,
       "name": "蔡勳",
       "portrait": 207,
-      "file": "F207.png",
+      "file": "hd-assets/F207.png",
       "sha256": "bebdf0ab3cb47d9acc40dfac7b8b34db0c1a2261ba97578003b629c1af0beac5",
       "tile": [
         2264,
@@ -1868,10 +2157,12 @@
       ]
     },
     {
+      "key": "base:143",
+      "source": "base",
       "index": 143,
       "name": "文聘",
       "portrait": 167,
-      "file": "F167.png",
+      "file": "hd-assets/F167.png",
       "sha256": "e1691032f2befdcc97112977e7caadd8e700047b6da2b9ce46f9fca027a00a3b",
       "tile": [
         2424,
@@ -1881,10 +2172,12 @@
       ]
     },
     {
+      "key": "base:144",
+      "source": "base",
       "index": 144,
       "name": "闞澤",
       "portrait": 157,
-      "file": "F157.png",
+      "file": "hd-assets/F157.png",
       "sha256": "34f33d173e2679e2c2f4c78029d114d73216cf5378821b475a8b9d5ae842b5fd",
       "tile": [
         24,
@@ -1894,10 +2187,12 @@
       ]
     },
     {
+      "key": "base:145",
+      "source": "base",
       "index": 145,
       "name": "劉封",
       "portrait": 45,
-      "file": "F045.png",
+      "file": "hd-assets/F045.png",
       "sha256": "8073f383b9d924b6d23df5d7535b9174c1a6ffa926862c0d604f231afda7876d",
       "tile": [
         184,
@@ -1907,10 +2202,12 @@
       ]
     },
     {
+      "key": "base:146",
+      "source": "base",
       "index": 146,
       "name": "徐庶",
       "portrait": 120,
-      "file": "F120.png",
+      "file": "hd-assets/F120.png",
       "sha256": "f904723497dc866230f8dd81d0130e0af88aa40e4041a1d731d3b76ce77a0395",
       "tile": [
         344,
@@ -1920,10 +2217,12 @@
       ]
     },
     {
+      "key": "base:147",
+      "source": "base",
       "index": 147,
       "name": "程秉",
       "portrait": 152,
-      "file": "F152.png",
+      "file": "hd-assets/F152.png",
       "sha256": "2ae5419735064d1dac7e243c9c60ba06678c59245a7c626a992d673da8583fe0",
       "tile": [
         504,
@@ -1933,10 +2232,12 @@
       ]
     },
     {
+      "key": "base:148",
+      "source": "base",
       "index": 148,
       "name": "朱桓",
       "portrait": 135,
-      "file": "F135.png",
+      "file": "hd-assets/F135.png",
       "sha256": "d1b3d5bc4b36c833eb69e57c1a70a6148831bd4260cdb678e321c3eefdfad472",
       "tile": [
         664,
@@ -1946,10 +2247,12 @@
       ]
     },
     {
+      "key": "base:149",
+      "source": "base",
       "index": 149,
       "name": "張溫",
       "portrait": 87,
-      "file": "F087.png",
+      "file": "hd-assets/F087.png",
       "sha256": "f4e172ef2c2eeb5ec2791364c65d3626a1f8664f81b00f2579a3ab410fbd91cc",
       "tile": [
         824,
@@ -1959,10 +2262,12 @@
       ]
     },
     {
+      "key": "base:150",
+      "source": "base",
       "index": 150,
       "name": "凌統",
       "portrait": 51,
-      "file": "F051.png",
+      "file": "hd-assets/F051.png",
       "sha256": "fe1dc5bbe07a573d52f1f1fe7169ec13736b7e9201355bc4cc42e9b8dd158ad8",
       "tile": [
         984,
@@ -1972,10 +2277,12 @@
       ]
     },
     {
+      "key": "base:151",
+      "source": "base",
       "index": 151,
       "name": "呂蒙",
       "portrait": 28,
-      "file": "F028.png",
+      "file": "hd-assets/F028.png",
       "sha256": "6fc3e0dd5534d80ca7aa4a1010bebfab30576fdae4f0e7b903c1ae1e745a8977",
       "tile": [
         1144,
@@ -1985,10 +2292,12 @@
       ]
     },
     {
+      "key": "base:152",
+      "source": "base",
       "index": 152,
       "name": "陸遜",
       "portrait": 254,
-      "file": "F254.png",
+      "file": "hd-assets/F254.png",
       "sha256": "681194625db7306acbc3c5a455a093c84fdc9eeeaa85802aede6414cfd40296b",
       "tile": [
         1304,
@@ -1998,10 +2307,12 @@
       ]
     },
     {
+      "key": "base:153",
+      "source": "base",
       "index": 153,
       "name": "徐盛",
       "portrait": 234,
-      "file": "F234.png",
+      "file": "hd-assets/F234.png",
       "sha256": "e988ccd3fe7fd829bd66ef98337e31f8569616dd9be68815906a40354123a827",
       "tile": [
         1464,
@@ -2011,10 +2322,12 @@
       ]
     },
     {
+      "key": "base:154",
+      "source": "base",
       "index": 154,
       "name": "潘璋",
       "portrait": 174,
-      "file": "F174.png",
+      "file": "hd-assets/F174.png",
       "sha256": "860ad9ee24715c8d23bb55ea3fab1d32de53669f3fd7627d67e5fe15a96413da",
       "tile": [
         1624,
@@ -2024,10 +2337,12 @@
       ]
     },
     {
+      "key": "base:155",
+      "source": "base",
       "index": 155,
       "name": "丁奉",
       "portrait": 100,
-      "file": "F100.png",
+      "file": "hd-assets/F100.png",
       "sha256": "5fffd26b7419bc7236c26d2a41448746be8a5788d556b08f06b9ba5809933cb7",
       "tile": [
         1784,
@@ -2037,10 +2352,12 @@
       ]
     },
     {
+      "key": "base:156",
+      "source": "base",
       "index": 156,
       "name": "甘寧",
       "portrait": 251,
-      "file": "F251.png",
+      "file": "hd-assets/F251.png",
       "sha256": "acbfe6d87945dd233ef45a8c467ff19be9d3250aa7ebfe1554c988e77a129650",
       "tile": [
         1944,
@@ -2050,10 +2367,12 @@
       ]
     },
     {
+      "key": "base:157",
+      "source": "base",
       "index": 157,
       "name": "司馬懿",
       "portrait": 10,
-      "file": "F010.png",
+      "file": "hd-assets/F010.png",
       "sha256": "5b8218aba015f4d3a0970167da55dc2752e38dc8689ff91390d9a4c5b7bfc555",
       "tile": [
         2104,
@@ -2063,10 +2382,12 @@
       ]
     },
     {
+      "key": "base:158",
+      "source": "base",
       "index": 158,
       "name": "傅巽",
       "portrait": 75,
-      "file": "F075.png",
+      "file": "hd-assets/F075.png",
       "sha256": "49d43185836e818f3af376f2035c66aaebe3d50127a0cf65e31ea6b34bc77ca3",
       "tile": [
         2264,
@@ -2076,10 +2397,12 @@
       ]
     },
     {
+      "key": "base:159",
+      "source": "base",
       "index": 159,
       "name": "王粲",
       "portrait": 74,
-      "file": "F074.png",
+      "file": "hd-assets/F074.png",
       "sha256": "5dd0387723baf1e2c5513c19aa22b1b5aa5c3acba0265cc7fe6f198f1f7f6e93",
       "tile": [
         2424,
@@ -2089,10 +2412,12 @@
       ]
     },
     {
+      "key": "base:160",
+      "source": "base",
       "index": 160,
       "name": "韓玄",
       "portrait": 46,
-      "file": "F046.png",
+      "file": "hd-assets/F046.png",
       "sha256": "d2d3648f0ebb4a628b7ddaabec1b33c31e05aa132856e5f1667ae70ebebd03b0",
       "tile": [
         24,
@@ -2102,10 +2427,12 @@
       ]
     },
     {
+      "key": "base:161",
+      "source": "base",
       "index": 161,
       "name": "步騭",
       "portrait": 175,
-      "file": "F175.png",
+      "file": "hd-assets/F175.png",
       "sha256": "e65063fd81d630e2ce7a3b731880587e9c2b073ef5a118b9127fe116b47617af",
       "tile": [
         184,
@@ -2115,10 +2442,12 @@
       ]
     },
     {
+      "key": "base:162",
+      "source": "base",
       "index": 162,
       "name": "蔣幹",
       "portrait": 67,
-      "file": "F067.png",
+      "file": "hd-assets/F067.png",
       "sha256": "4a794f39e682976c954841df19f1c18b0edbecc1f922d2c84edb016d2dee2b75",
       "tile": [
         344,
@@ -2128,10 +2457,12 @@
       ]
     },
     {
+      "key": "base:163",
+      "source": "base",
       "index": 163,
       "name": "牛金",
       "portrait": 33,
-      "file": "F033.png",
+      "file": "hd-assets/F033.png",
       "sha256": "29f6ead8120bfc6d0a729f21e68421f050b6ae59ac5acc8fdc4e8b9df2217b2a",
       "tile": [
         504,
@@ -2141,10 +2472,12 @@
       ]
     },
     {
+      "key": "base:164",
+      "source": "base",
       "index": 164,
       "name": "陳矯",
       "portrait": 202,
-      "file": "F202.png",
+      "file": "hd-assets/F202.png",
       "sha256": "f972d6ae2ff5805a0b9026635eed688eb40270c702143b9a717433d03e551ad5",
       "tile": [
         664,
@@ -2154,10 +2487,12 @@
       ]
     },
     {
+      "key": "base:165",
+      "source": "base",
       "index": 165,
       "name": "馬良",
       "portrait": 214,
-      "file": "F214.png",
+      "file": "hd-assets/F214.png",
       "sha256": "dd514168e65a55b55b77516399662b296d5043d3a6fe0729d6b7024abe297bb3",
       "tile": [
         824,
@@ -2167,10 +2502,12 @@
       ]
     },
     {
+      "key": "base:166",
+      "source": "base",
       "index": 166,
       "name": "馬謖",
       "portrait": 60,
-      "file": "F060.png",
+      "file": "hd-assets/F060.png",
       "sha256": "1b70cebf9738c45b81e07aa3c696dc2d54fe0b5ab3cafa5cf56200915eaf3f28",
       "tile": [
         984,
@@ -2180,10 +2517,12 @@
       ]
     },
     {
+      "key": "base:167",
+      "source": "base",
       "index": 167,
       "name": "劉度",
       "portrait": 78,
-      "file": "F078.png",
+      "file": "hd-assets/F078.png",
       "sha256": "454b692f63de54af58b5241574bd2c2f2aee6f469b1d2ea4650c30a745d274e7",
       "tile": [
         1144,
@@ -2193,10 +2532,12 @@
       ]
     },
     {
+      "key": "base:168",
+      "source": "base",
       "index": 168,
       "name": "劉賢",
       "portrait": 70,
-      "file": "F070.png",
+      "file": "hd-assets/F070.png",
       "sha256": "7e744e8b3bd76326c47c9ae87c1240ab424bee6e3c4a9d0b3ee2a744fb4a4e7e",
       "tile": [
         1304,
@@ -2206,10 +2547,12 @@
       ]
     },
     {
+      "key": "base:169",
+      "source": "base",
       "index": 169,
       "name": "刑道榮",
       "portrait": 64,
-      "file": "F064.png",
+      "file": "hd-assets/F064.png",
       "sha256": "dd5e428113bad5780a9c014ef6ee161f9638f8812c44407f3c92c5483b11f522",
       "tile": [
         1464,
@@ -2219,10 +2562,12 @@
       ]
     },
     {
+      "key": "base:170",
+      "source": "base",
       "index": 170,
       "name": "趙範",
       "portrait": 98,
-      "file": "F098.png",
+      "file": "hd-assets/F098.png",
       "sha256": "7e10c5697c668a553a0d826076735c9a021cdf3b21951b648615bcf9e7206454",
       "tile": [
         1624,
@@ -2232,10 +2577,12 @@
       ]
     },
     {
+      "key": "base:171",
+      "source": "base",
       "index": 171,
       "name": "陳應",
       "portrait": 165,
-      "file": "F165.png",
+      "file": "hd-assets/F165.png",
       "sha256": "4397e6fd6d27db8a89210e08a1622ee5aae669ed87a1bd03fd85c2c42b5a1431",
       "tile": [
         1784,
@@ -2245,10 +2592,12 @@
       ]
     },
     {
+      "key": "base:172",
+      "source": "base",
       "index": 172,
       "name": "鮑龍",
       "portrait": 177,
-      "file": "F177.png",
+      "file": "hd-assets/F177.png",
       "sha256": "af30581b0d48b4caadbc0e829f41406346667d462c56597f3c5c64f578cba4de",
       "tile": [
         1944,
@@ -2258,10 +2607,12 @@
       ]
     },
     {
+      "key": "base:173",
+      "source": "base",
       "index": 173,
       "name": "金旋",
       "portrait": 24,
-      "file": "F024.png",
+      "file": "hd-assets/F024.png",
       "sha256": "6fabcc5e5c29349dc8aba9dbc0d4e6b8f40abe6562090b5921da60e3b1d39156",
       "tile": [
         2104,
@@ -2271,10 +2622,12 @@
       ]
     },
     {
+      "key": "base:174",
+      "source": "base",
       "index": 174,
       "name": "鞏志",
       "portrait": 72,
-      "file": "F072.png",
+      "file": "hd-assets/F072.png",
       "sha256": "919efd835899e61d044c992fffcb3d5002aa1ed7b0c13c6ebd0212256cb883d2",
       "tile": [
         2264,
@@ -2284,10 +2637,12 @@
       ]
     },
     {
+      "key": "base:175",
+      "source": "base",
       "index": 175,
       "name": "劉磐",
       "portrait": 196,
-      "file": "F196.png",
+      "file": "hd-assets/F196.png",
       "sha256": "621ed8b6900dc1106462a9b0be6fda285817e03450fae3a9eb3f1277bbb8107e",
       "tile": [
         2424,
@@ -2297,10 +2652,12 @@
       ]
     },
     {
+      "key": "base:176",
+      "source": "base",
       "index": 176,
       "name": "楊齡",
       "portrait": 108,
-      "file": "F108.png",
+      "file": "hd-assets/F108.png",
       "sha256": "2659f9830249836158aa4ea46e08f2ad01ad78542bc5b73a15da438fd70f7fb7",
       "tile": [
         24,
@@ -2310,10 +2667,12 @@
       ]
     },
     {
+      "key": "base:177",
+      "source": "base",
       "index": 177,
       "name": "宋謙",
       "portrait": 171,
-      "file": "F171.png",
+      "file": "hd-assets/F171.png",
       "sha256": "4c848e0fdc7e234c2adde51415c1903924274ea2b472340fd077feb64684ed23",
       "tile": [
         184,
@@ -2323,10 +2682,12 @@
       ]
     },
     {
+      "key": "base:178",
+      "source": "base",
       "index": 178,
       "name": "賈華",
       "portrait": 43,
-      "file": "F043.png",
+      "file": "hd-assets/F043.png",
       "sha256": "fd4738ccc58f58c45d719ce6325373eba79098a7ac5fdf80546fe163a6613c13",
       "tile": [
         344,
@@ -2336,10 +2697,12 @@
       ]
     },
     {
+      "key": "base:179",
+      "source": "base",
       "index": 179,
       "name": "曹休",
       "portrait": 167,
-      "file": "F167.png",
+      "file": "hd-assets/F167.png",
       "sha256": "e1691032f2befdcc97112977e7caadd8e700047b6da2b9ce46f9fca027a00a3b",
       "tile": [
         504,
@@ -2349,10 +2712,12 @@
       ]
     },
     {
+      "key": "base:180",
+      "source": "base",
       "index": 180,
       "name": "鍾繇",
       "portrait": 201,
-      "file": "F201.png",
+      "file": "hd-assets/F201.png",
       "sha256": "6baeca2a61ed76acd49a841b4d2a2af58b6843f2ece115c106f2b6e351ddc299",
       "tile": [
         664,
@@ -2362,10 +2727,12 @@
       ]
     },
     {
+      "key": "base:181",
+      "source": "base",
       "index": 181,
       "name": "馬鐵",
       "portrait": 194,
-      "file": "F194.png",
+      "file": "hd-assets/F194.png",
       "sha256": "ccc82536ca822a9343f9201065127be5ba434619f928ca777536f43593d3602e",
       "tile": [
         824,
@@ -2375,10 +2742,12 @@
       ]
     },
     {
+      "key": "base:182",
+      "source": "base",
       "index": 182,
       "name": "馬休",
       "portrait": 195,
-      "file": "F195.png",
+      "file": "hd-assets/F195.png",
       "sha256": "3467385143b7b05c820ee212b6747962a40d06c6b919c9ad541ff7134fdfbcaf",
       "tile": [
         984,
@@ -2388,10 +2757,12 @@
       ]
     },
     {
+      "key": "base:183",
+      "source": "base",
       "index": 183,
       "name": "陳群",
       "portrait": 68,
-      "file": "F068.png",
+      "file": "hd-assets/F068.png",
       "sha256": "0ed217b157da3c6fdcfd2c53c960326ca54fbad655b75e474264d275ac353fae",
       "tile": [
         1144,
@@ -2401,10 +2772,12 @@
       ]
     },
     {
+      "key": "base:184",
+      "source": "base",
       "index": 184,
       "name": "龐德",
       "portrait": 138,
-      "file": "F138.png",
+      "file": "hd-assets/F138.png",
       "sha256": "2127445d92c6e7a3e4ad5ae2ba7e42ca8838ec6dd500e26af92400b3740aa302",
       "tile": [
         1304,
@@ -2414,10 +2787,12 @@
       ]
     },
     {
+      "key": "base:185",
+      "source": "base",
       "index": 185,
       "name": "侯選",
       "portrait": 185,
-      "file": "F185.png",
+      "file": "hd-assets/F185.png",
       "sha256": "d5854e83c87cbf8a3d875137cd88d6feb95405523dcbbe60450798b2783b9d30",
       "tile": [
         1464,
@@ -2427,10 +2802,12 @@
       ]
     },
     {
+      "key": "base:186",
+      "source": "base",
       "index": 186,
       "name": "程銀",
       "portrait": 191,
-      "file": "F191.png",
+      "file": "hd-assets/F191.png",
       "sha256": "1e6d39c1deed70c12f5ab02d5c0710434138148c31b40e224ed6fc71a7257efc",
       "tile": [
         1624,
@@ -2440,10 +2817,12 @@
       ]
     },
     {
+      "key": "base:187",
+      "source": "base",
       "index": 187,
       "name": "李堪",
       "portrait": 162,
-      "file": "F162.png",
+      "file": "hd-assets/F162.png",
       "sha256": "105a77431aef8f3bcee4a540f0ff74302bfb84cccb53a435d572182d5fee2764",
       "tile": [
         1784,
@@ -2453,10 +2832,12 @@
       ]
     },
     {
+      "key": "base:188",
+      "source": "base",
       "index": 188,
       "name": "張橫",
       "portrait": 161,
-      "file": "F161.png",
+      "file": "hd-assets/F161.png",
       "sha256": "05be3bc632b7cecfdc589b7029abc71e8501510b73b4d881c1af74fa43e32e46",
       "tile": [
         1944,
@@ -2466,10 +2847,12 @@
       ]
     },
     {
+      "key": "base:189",
+      "source": "base",
       "index": 189,
       "name": "梁興",
       "portrait": 197,
-      "file": "F197.png",
+      "file": "hd-assets/F197.png",
       "sha256": "1a578309fb39d9baa9fae84acb7c73b470380e2139663d8056af26b3534f5a40",
       "tile": [
         2104,
@@ -2479,10 +2862,12 @@
       ]
     },
     {
+      "key": "base:190",
+      "source": "base",
       "index": 190,
       "name": "成宜",
       "portrait": 166,
-      "file": "F166.png",
+      "file": "hd-assets/F166.png",
       "sha256": "8ccde70c704c026f3ecd0e044342ccc869a2892fb860eccdcb543e63f993ceb2",
       "tile": [
         2264,
@@ -2492,10 +2877,12 @@
       ]
     },
     {
+      "key": "base:191",
+      "source": "base",
       "index": 191,
       "name": "馬玩",
       "portrait": 150,
-      "file": "F150.png",
+      "file": "hd-assets/F150.png",
       "sha256": "1a3ba3f968d3976da595dffb3f72e0215bc51987f60409cbf98068d69e381719",
       "tile": [
         2424,
@@ -2505,10 +2892,12 @@
       ]
     },
     {
+      "key": "base:192",
+      "source": "base",
       "index": 192,
       "name": "楊秋",
       "portrait": 151,
-      "file": "F151.png",
+      "file": "hd-assets/F151.png",
       "sha256": "d23a3476b7b1c8970f09ff0c2b28965085db92e347ce6b8f8e99f40c0203851e",
       "tile": [
         24,
@@ -2518,10 +2907,12 @@
       ]
     },
     {
+      "key": "base:193",
+      "source": "base",
       "index": 193,
       "name": "鍾進",
       "portrait": 157,
-      "file": "F157.png",
+      "file": "hd-assets/F157.png",
       "sha256": "34f33d173e2679e2c2f4c78029d114d73216cf5378821b475a8b9d5ae842b5fd",
       "tile": [
         184,
@@ -2531,10 +2922,12 @@
       ]
     },
     {
+      "key": "base:194",
+      "source": "base",
       "index": 194,
       "name": "楊阜",
       "portrait": 159,
-      "file": "F159.png",
+      "file": "hd-assets/F159.png",
       "sha256": "f484f524d107ae138b2ad9a128bc521bea11f1dec937aef6ce754d741c96e834",
       "tile": [
         344,
@@ -2544,10 +2937,12 @@
       ]
     },
     {
+      "key": "base:195",
+      "source": "base",
       "index": 195,
       "name": "張衛",
       "portrait": 96,
-      "file": "F096.png",
+      "file": "hd-assets/F096.png",
       "sha256": "fa88e998a93dbf501c20e7bf389fa9fca3fa69387ca23b541d32e0b30bc445c4",
       "tile": [
         504,
@@ -2557,10 +2952,12 @@
       ]
     },
     {
+      "key": "base:196",
+      "source": "base",
       "index": 196,
       "name": "張松",
       "portrait": 163,
-      "file": "F163.png",
+      "file": "hd-assets/F163.png",
       "sha256": "9c6545d52f5ae2a1e842c9d5989e0be9b12cbe7b4a8dcd42fe0a19f701790aed",
       "tile": [
         664,
@@ -2570,10 +2967,12 @@
       ]
     },
     {
+      "key": "base:197",
+      "source": "base",
       "index": 197,
       "name": "楊修",
       "portrait": 56,
-      "file": "F056.png",
+      "file": "hd-assets/F056.png",
       "sha256": "dc74f5fbee926b6b9dedf94768782b6ea948f1271609975a13627c637531120c",
       "tile": [
         824,
@@ -2583,10 +2982,12 @@
       ]
     },
     {
+      "key": "base:198",
+      "source": "base",
       "index": 198,
       "name": "黃權",
       "portrait": 88,
-      "file": "F088.png",
+      "file": "hd-assets/F088.png",
       "sha256": "47c6ecc2abd290e186161570291b10704981ca1851487268ec0089465b0b8ef8",
       "tile": [
         984,
@@ -2596,10 +2997,12 @@
       ]
     },
     {
+      "key": "base:199",
+      "source": "base",
       "index": 199,
       "name": "李恢",
       "portrait": 71,
-      "file": "F071.png",
+      "file": "hd-assets/F071.png",
       "sha256": "b4f909dc00bd6880385c91711b8e6770694a9155c6657a2b9afc5fa92f282301",
       "tile": [
         1144,
@@ -2609,10 +3012,12 @@
       ]
     },
     {
+      "key": "base:200",
+      "source": "base",
       "index": 200,
       "name": "王累",
       "portrait": 225,
-      "file": "F225.png",
+      "file": "hd-assets/F225.png",
       "sha256": "d03f24a7fabb6d90335c693f60e3ee7c2b9d03ebfd0312a023cb9785668f7c6f",
       "tile": [
         1304,
@@ -2622,10 +3027,12 @@
       ]
     },
     {
+      "key": "base:201",
+      "source": "base",
       "index": 201,
       "name": "劉貴",
       "portrait": 73,
-      "file": "F073.png",
+      "file": "hd-assets/F073.png",
       "sha256": "b03914a2e89fd4797a43d9dbc075ed221bc5577759674331b4f198efa543c6d2",
       "tile": [
         1464,
@@ -2635,10 +3042,12 @@
       ]
     },
     {
+      "key": "base:202",
+      "source": "base",
       "index": 202,
       "name": "冷苞",
       "portrait": 27,
-      "file": "F027.png",
+      "file": "hd-assets/F027.png",
       "sha256": "a5a5154eabee87476160d4721adedc911fc82a3f60bd54ed6dc90745f85aa270",
       "tile": [
         1624,
@@ -2648,10 +3057,12 @@
       ]
     },
     {
+      "key": "base:203",
+      "source": "base",
       "index": 203,
       "name": "張任",
       "portrait": 218,
-      "file": "F218.png",
+      "file": "hd-assets/F218.png",
       "sha256": "d1bf501b9fc1fa14e937abf08cee042a11a7ce2ad98228f02fabd60d4f6421cb",
       "tile": [
         1784,
@@ -2661,10 +3072,12 @@
       ]
     },
     {
+      "key": "base:204",
+      "source": "base",
       "index": 204,
       "name": "鄧賢",
       "portrait": 126,
-      "file": "F126.png",
+      "file": "hd-assets/F126.png",
       "sha256": "21a977c75e16467b2cb32d05563f77242fb6b60b96c4958a582bb5cd4e506455",
       "tile": [
         1944,
@@ -2674,10 +3087,12 @@
       ]
     },
     {
+      "key": "base:205",
+      "source": "base",
       "index": 205,
       "name": "楊懷",
       "portrait": 90,
-      "file": "F090.png",
+      "file": "hd-assets/F090.png",
       "sha256": "d05d987b035a5651b4d0473cdf12ea8ed12c6dd8234d9c503749d9c5e6fc5b2d",
       "tile": [
         2104,
@@ -2687,10 +3102,12 @@
       ]
     },
     {
+      "key": "base:206",
+      "source": "base",
       "index": 206,
       "name": "高沛",
       "portrait": 161,
-      "file": "F161.png",
+      "file": "hd-assets/F161.png",
       "sha256": "05be3bc632b7cecfdc589b7029abc71e8501510b73b4d881c1af74fa43e32e46",
       "tile": [
         2264,
@@ -2700,10 +3117,12 @@
       ]
     },
     {
+      "key": "base:207",
+      "source": "base",
       "index": 207,
       "name": "劉巴",
       "portrait": 121,
-      "file": "F121.png",
+      "file": "hd-assets/F121.png",
       "sha256": "b476101ca7901de52addc64f729342e751eebc9a6db741bdd6af21dc37378440",
       "tile": [
         2424,
@@ -2713,10 +3132,12 @@
       ]
     },
     {
+      "key": "base:208",
+      "source": "base",
       "index": 208,
       "name": "張肅",
       "portrait": 133,
-      "file": "F133.png",
+      "file": "hd-assets/F133.png",
       "sha256": "d5c3deefe13455ec8b25aa83748b1cacbc8d0302fdce426b9c581a11a800c8b7",
       "tile": [
         24,
@@ -2726,10 +3147,12 @@
       ]
     },
     {
+      "key": "base:209",
+      "source": "base",
       "index": 209,
       "name": "劉循",
       "portrait": 125,
-      "file": "F125.png",
+      "file": "hd-assets/F125.png",
       "sha256": "0d700308fb3670743fb24c4903cbb29b7460d2ef85c566fdfadfc3812d4e4580",
       "tile": [
         184,
@@ -2739,10 +3162,12 @@
       ]
     },
     {
+      "key": "base:210",
+      "source": "base",
       "index": 210,
       "name": "吳懿",
       "portrait": 187,
-      "file": "F187.png",
+      "file": "hd-assets/F187.png",
       "sha256": "016a75000055e0257fb27faf40050590e4d0f1e9cff5deb0cce697046b2d9c0b",
       "tile": [
         344,
@@ -2752,10 +3177,12 @@
       ]
     },
     {
+      "key": "base:211",
+      "source": "base",
       "index": 211,
       "name": "吳蘭",
       "portrait": 79,
-      "file": "F079.png",
+      "file": "hd-assets/F079.png",
       "sha256": "76bff26c6b72602dbe1650943b16f2c1e0acadda3eae2b73e0100e1da4a09af1",
       "tile": [
         504,
@@ -2765,10 +3192,12 @@
       ]
     },
     {
+      "key": "base:212",
+      "source": "base",
       "index": 212,
       "name": "雷同",
       "portrait": 204,
-      "file": "F204.png",
+      "file": "hd-assets/F204.png",
       "sha256": "01601411d814cbf4906ec8654189e4ca5b670f4e4ab978bb5bde3e962b9a0ed9",
       "tile": [
         664,
@@ -2778,10 +3207,12 @@
       ]
     },
     {
+      "key": "base:213",
+      "source": "base",
       "index": 213,
       "name": "霍峻",
       "portrait": 182,
-      "file": "F182.png",
+      "file": "hd-assets/F182.png",
       "sha256": "ff45c0840b386224b5c8a5be6db9d554fc24fed59feebe640fbf6ac6bd3bbb2d",
       "tile": [
         824,
@@ -2791,10 +3222,12 @@
       ]
     },
     {
+      "key": "base:214",
+      "source": "base",
       "index": 214,
       "name": "彭羕",
       "portrait": 86,
-      "file": "F086.png",
+      "file": "hd-assets/F086.png",
       "sha256": "abc4f70c50627113107c6919d977a2fcc55011c1fc0f8ca05030893c14df24b4",
       "tile": [
         984,
@@ -2804,10 +3237,12 @@
       ]
     },
     {
+      "key": "base:215",
+      "source": "base",
       "index": 215,
       "name": "向朗",
       "portrait": 109,
-      "file": "F109.png",
+      "file": "hd-assets/F109.png",
       "sha256": "2c12fff3e50731b4315df802b35dc732f9db2ac5b1572c5a780e01856935fc58",
       "tile": [
         1144,
@@ -2817,10 +3252,12 @@
       ]
     },
     {
+      "key": "base:216",
+      "source": "base",
       "index": 216,
       "name": "蔣琬",
       "portrait": 140,
-      "file": "F140.png",
+      "file": "hd-assets/F140.png",
       "sha256": "8561fcb483e0a1761ed1c39b402b58c6581070645f1422f5741b8862988836f5",
       "tile": [
         1304,
@@ -2830,10 +3267,12 @@
       ]
     },
     {
+      "key": "base:217",
+      "source": "base",
       "index": 217,
       "name": "嚴顏",
       "portrait": 20,
-      "file": "F020.png",
+      "file": "hd-assets/F020.png",
       "sha256": "46963132ca58679dd44f7e18137d68cabdb748fb9400d62d28d9db1a19540772",
       "tile": [
         1464,
@@ -2843,10 +3282,12 @@
       ]
     },
     {
+      "key": "base:218",
+      "source": "base",
       "index": 218,
       "name": "費觀",
       "portrait": 131,
-      "file": "F131.png",
+      "file": "hd-assets/F131.png",
       "sha256": "43d4aa4e4b642cb5247c21e09c961f381cb0bd0decd8784e816a469d2a77f30a",
       "tile": [
         1624,
@@ -2856,10 +3297,12 @@
       ]
     },
     {
+      "key": "base:219",
+      "source": "base",
       "index": 219,
       "name": "李嚴",
       "portrait": 106,
-      "file": "F106.png",
+      "file": "hd-assets/F106.png",
       "sha256": "771f780aa0efcdcaa11feef5d56530ee3fdf9edc167ef602be54a0a97d767bd2",
       "tile": [
         1784,
@@ -2869,10 +3312,12 @@
       ]
     },
     {
+      "key": "base:220",
+      "source": "base",
       "index": 220,
       "name": "楊柏",
       "portrait": 134,
-      "file": "F134.png",
+      "file": "hd-assets/F134.png",
       "sha256": "167c85390003ac6fa19e1f3b51fdf3aa3f8cf14bddd6636abac3c716b512f175",
       "tile": [
         1944,
@@ -2882,10 +3327,12 @@
       ]
     },
     {
+      "key": "base:221",
+      "source": "base",
       "index": 221,
       "name": "楊松",
       "portrait": 145,
-      "file": "F145.png",
+      "file": "hd-assets/F145.png",
       "sha256": "c6ef00f98500ac97d18fd6ec34b5caf5ac658b59e7838357a4e5fec5caec7de9",
       "tile": [
         2104,
@@ -2895,10 +3342,12 @@
       ]
     },
     {
+      "key": "base:222",
+      "source": "base",
       "index": 222,
       "name": "譙周",
       "portrait": 183,
-      "file": "F183.png",
+      "file": "hd-assets/F183.png",
       "sha256": "21e5e082810263f75fe47c44c1e6031051c422f0a3a6cd1279f7c0697fce60b0",
       "tile": [
         2264,
@@ -2908,10 +3357,12 @@
       ]
     },
     {
+      "key": "base:223",
+      "source": "base",
       "index": 223,
       "name": "秦宓",
       "portrait": 95,
-      "file": "F095.png",
+      "file": "hd-assets/F095.png",
       "sha256": "c17f585a0ce35d863fe2d99308f30bfae7da7d07252e4aa72c8c9a312dfdc441",
       "tile": [
         2424,
@@ -2921,10 +3372,12 @@
       ]
     },
     {
+      "key": "base:224",
+      "source": "base",
       "index": 224,
       "name": "許靖",
       "portrait": 83,
-      "file": "F083.png",
+      "file": "hd-assets/F083.png",
       "sha256": "20164c42307c6cb2e862c9eb6ebc96fa7944109175b08bfadacc96343faa6d06",
       "tile": [
         24,
@@ -2934,10 +3387,12 @@
       ]
     },
     {
+      "key": "base:225",
+      "source": "base",
       "index": 225,
       "name": "張翼",
       "portrait": 149,
-      "file": "F149.png",
+      "file": "hd-assets/F149.png",
       "sha256": "ad209314dd41e0b77b180ff3b6a97ba83236b4ef44c58ab575afc78962f1795b",
       "tile": [
         184,
@@ -2947,10 +3402,12 @@
       ]
     },
     {
+      "key": "base:226",
+      "source": "base",
       "index": 226,
       "name": "鄧芝",
       "portrait": 239,
-      "file": "F239.png",
+      "file": "hd-assets/F239.png",
       "sha256": "b6f7f49fcf5a176d4d722eae728851f1a653a5078eea70b5f6787a25ad2dc4f3",
       "tile": [
         344,
@@ -2960,10 +3417,12 @@
       ]
     },
     {
+      "key": "base:227",
+      "source": "base",
       "index": 227,
       "name": "楊洪",
       "portrait": 128,
-      "file": "F128.png",
+      "file": "hd-assets/F128.png",
       "sha256": "f999be1e7073dc1f0bd66919c83ccff4e537bb4de2efe28b0d33009c258378e0",
       "tile": [
         504,
@@ -2973,10 +3432,12 @@
       ]
     },
     {
+      "key": "base:228",
+      "source": "base",
       "index": 228,
       "name": "費褘",
       "portrait": 107,
-      "file": "F107.png",
+      "file": "hd-assets/F107.png",
       "sha256": "8ca738ef18b0933067b795f41c9f5a1641ed7bced75909cba31b5deebe7f1238",
       "tile": [
         664,
@@ -2986,10 +3447,12 @@
       ]
     },
     {
+      "key": "base:229",
+      "source": "base",
       "index": 229,
       "name": "費詩",
       "portrait": 44,
-      "file": "F044.png",
+      "file": "hd-assets/F044.png",
       "sha256": "badf4234a4e3fcb10c3ff4ab02219f9572861cbee21ee21b4c0ef648acc6e596",
       "tile": [
         824,
@@ -2999,10 +3462,12 @@
       ]
     },
     {
+      "key": "base:230",
+      "source": "base",
       "index": 230,
       "name": "閻圃",
       "portrait": 104,
-      "file": "F104.png",
+      "file": "hd-assets/F104.png",
       "sha256": "af4d871243ac5dd6ea2fd5ea5c47f5b7123975f906ddcd068c5e7703b93b2f6e",
       "tile": [
         984,
@@ -3012,10 +3477,12 @@
       ]
     },
     {
+      "key": "base:231",
+      "source": "base",
       "index": 231,
       "name": "曹彰",
       "portrait": 244,
-      "file": "F244.png",
+      "file": "hd-assets/F244.png",
       "sha256": "305a8baa656e98527e8a36d425c7eb13022a56c674e880ff03155a1492bd3e44",
       "tile": [
         1144,
@@ -3025,10 +3492,12 @@
       ]
     },
     {
+      "key": "base:232",
+      "source": "base",
       "index": 232,
       "name": "曹熊",
       "portrait": 127,
-      "file": "F127.png",
+      "file": "hd-assets/F127.png",
       "sha256": "ba4b7cb7518463c511566c0213c8463dc907e22be6ba0df4075c2b256210161d",
       "tile": [
         1304,
@@ -3038,10 +3507,12 @@
       ]
     },
     {
+      "key": "base:233",
+      "source": "base",
       "index": 233,
       "name": "郭淮",
       "portrait": 139,
-      "file": "F139.png",
+      "file": "hd-assets/F139.png",
       "sha256": "c9dd34fa556c818e55cd9f3ab1b2dcd6f7e1f8bec31b7723de1ad0e730ce8b0a",
       "tile": [
         1464,
@@ -3051,10 +3522,12 @@
       ]
     },
     {
+      "key": "base:234",
+      "source": "base",
       "index": 234,
       "name": "夏侯尚",
       "portrait": 103,
-      "file": "F103.png",
+      "file": "hd-assets/F103.png",
       "sha256": "b3b22efee97ee7618ceb65df4cc171d6bda19684230657b8c22c62668840f4c8",
       "tile": [
         1624,
@@ -3064,10 +3537,12 @@
       ]
     },
     {
+      "key": "base:235",
+      "source": "base",
       "index": 235,
       "name": "夏侯德",
       "portrait": 115,
-      "file": "F115.png",
+      "file": "hd-assets/F115.png",
       "sha256": "81a552e650f52e7ef49a65463773fc3df70454f54e3cc8c9711cf46508e0ba4d",
       "tile": [
         1784,
@@ -3077,10 +3552,12 @@
       ]
     },
     {
+      "key": "base:236",
+      "source": "base",
       "index": 236,
       "name": "陳式",
       "portrait": 106,
-      "file": "F106.png",
+      "file": "hd-assets/F106.png",
       "sha256": "771f780aa0efcdcaa11feef5d56530ee3fdf9edc167ef602be54a0a97d767bd2",
       "tile": [
         1944,
@@ -3090,10 +3567,12 @@
       ]
     },
     {
+      "key": "base:237",
+      "source": "base",
       "index": 237,
       "name": "張著",
       "portrait": 105,
-      "file": "F105.png",
+      "file": "hd-assets/F105.png",
       "sha256": "fa557a37f430ce8699fd0299267804ff7cc55f034f62fe6860f1cdb18c6c55f2",
       "tile": [
         2104,
@@ -3103,10 +3582,12 @@
       ]
     },
     {
+      "key": "base:238",
+      "source": "base",
       "index": 238,
       "name": "王平",
       "portrait": 238,
-      "file": "F238.png",
+      "file": "hd-assets/F238.png",
       "sha256": "645c269ba4fac53c289c993c54ae91d2f88c1e14e2a2d60dfafaea01125ed924",
       "tile": [
         2264,
@@ -3116,10 +3597,12 @@
       ]
     },
     {
+      "key": "base:239",
+      "source": "base",
       "index": 239,
       "name": "劉禪",
       "portrait": 253,
-      "file": "F253.png",
+      "file": "hd-assets/F253.png",
       "sha256": "91cf8d5742dcdea558cfdd3490e43f88deb00592a9d6630bd07c6d537aa4f7ad",
       "tile": [
         2424,
@@ -3129,10 +3612,12 @@
       ]
     },
     {
+      "key": "base:240",
+      "source": "base",
       "index": 240,
       "name": "傅士仁",
       "portrait": 193,
-      "file": "F193.png",
+      "file": "hd-assets/F193.png",
       "sha256": "d7130d7f707aa32b9cc5340a1e0aabe083462ffe8d3a625f65b6e054813ce214",
       "tile": [
         24,
@@ -3142,10 +3627,12 @@
       ]
     },
     {
+      "key": "base:241",
+      "source": "base",
       "index": 241,
       "name": "關興",
       "portrait": 17,
-      "file": "F017.png",
+      "file": "hd-assets/F017.png",
       "sha256": "4c4deb7cfc1969b494490b6dd619ea569950592ac7616c39cfe2ea467ac4b9bd",
       "tile": [
         184,
@@ -3155,10 +3642,12 @@
       ]
     },
     {
+      "key": "base:242",
+      "source": "base",
       "index": 242,
       "name": "孫皎",
       "portrait": 112,
-      "file": "F112.png",
+      "file": "hd-assets/F112.png",
       "sha256": "5e19257b879eeee748fbe41c26711c87e089558b152d124d4b4da336b6f6696c",
       "tile": [
         344,
@@ -3168,10 +3657,12 @@
       ]
     },
     {
+      "key": "base:243",
+      "source": "base",
       "index": 243,
       "name": "朱然",
       "portrait": 113,
-      "file": "F113.png",
+      "file": "hd-assets/F113.png",
       "sha256": "ebe48bdcd740003700d1cb6b9b7ba00155f69728866592ad2c6d2a85a99b9686",
       "tile": [
         504,
@@ -3181,10 +3672,12 @@
       ]
     },
     {
+      "key": "base:244",
+      "source": "base",
       "index": 244,
       "name": "賈逵",
       "portrait": 82,
-      "file": "F082.png",
+      "file": "hd-assets/F082.png",
       "sha256": "4c6e7fd3edcbe822791be0ac6f6b8735f58bbf5b1795a2bbe13ceaff698d06ae",
       "tile": [
         664,
@@ -3194,10 +3687,12 @@
       ]
     },
     {
+      "key": "base:245",
+      "source": "base",
       "index": 245,
       "name": "張裔",
       "portrait": 124,
-      "file": "F124.png",
+      "file": "hd-assets/F124.png",
       "sha256": "6e2e25785a62e081ee56f46b3e788938a7ef9df569760205ed60bdc92622d7db",
       "tile": [
         824,
@@ -3207,10 +3702,12 @@
       ]
     },
     {
+      "key": "base:246",
+      "source": "base",
       "index": 246,
       "name": "傅彤",
       "portrait": 34,
-      "file": "F034.png",
+      "file": "hd-assets/F034.png",
       "sha256": "e81e375d1c0b9faf7d98d646e1dfd03e8cd5a8b716dcdd049a1ee795b4ab4a0e",
       "tile": [
         984,
@@ -3220,10 +3717,12 @@
       ]
     },
     {
+      "key": "base:247",
+      "source": "base",
       "index": 247,
       "name": "范疆",
       "portrait": 89,
-      "file": "F089.png",
+      "file": "hd-assets/F089.png",
       "sha256": "f4843ddebfdd377447d2384ced0684512236963150a23991118810197a530f95",
       "tile": [
         1144,
@@ -3233,10 +3732,12 @@
       ]
     },
     {
+      "key": "base:248",
+      "source": "base",
       "index": 248,
       "name": "張達",
       "portrait": 94,
-      "file": "F094.png",
+      "file": "hd-assets/F094.png",
       "sha256": "8aa1b03c28f0d31518debdb355886f149d1b6f752b22475a145fe06cc3ae8516",
       "tile": [
         1304,
@@ -3246,10 +3747,12 @@
       ]
     },
     {
+      "key": "base:249",
+      "source": "base",
       "index": 249,
       "name": "吳班",
       "portrait": 124,
-      "file": "F124.png",
+      "file": "hd-assets/F124.png",
       "sha256": "6e2e25785a62e081ee56f46b3e788938a7ef9df569760205ed60bdc92622d7db",
       "tile": [
         1464,
@@ -3259,10 +3762,12 @@
       ]
     },
     {
+      "key": "base:250",
+      "source": "base",
       "index": 250,
       "name": "張苞",
       "portrait": 235,
-      "file": "F235.png",
+      "file": "hd-assets/F235.png",
       "sha256": "05be293d9e9721d7baf2ced92c360d713443969ac5ff504634893a21ccdf347a",
       "tile": [
         1624,
@@ -3272,10 +3777,12 @@
       ]
     },
     {
+      "key": "base:251",
+      "source": "base",
       "index": 251,
       "name": "孫桓",
       "portrait": 112,
-      "file": "F112.png",
+      "file": "hd-assets/F112.png",
       "sha256": "5e19257b879eeee748fbe41c26711c87e089558b152d124d4b4da336b6f6696c",
       "tile": [
         1784,
@@ -3285,10 +3792,12 @@
       ]
     },
     {
+      "key": "base:252",
+      "source": "base",
       "index": 252,
       "name": "王雙",
       "portrait": 194,
-      "file": "F194.png",
+      "file": "hd-assets/F194.png",
       "sha256": "ccc82536ca822a9343f9201065127be5ba434619f928ca777536f43593d3602e",
       "tile": [
         1944,
@@ -3298,10 +3807,12 @@
       ]
     },
     {
+      "key": "base:253",
+      "source": "base",
       "index": 253,
       "name": "孟獲",
       "portrait": 119,
-      "file": "F119.png",
+      "file": "hd-assets/F119.png",
       "sha256": "acc6fb6f897b4e1653051b672f10fcd3e8eb00516fea74023b810c2deef7f0e9",
       "tile": [
         2104,
@@ -3311,10 +3822,12 @@
       ]
     },
     {
+      "key": "base:254",
+      "source": "base",
       "index": 254,
       "name": "曹真",
       "portrait": 48,
-      "file": "F048.png",
+      "file": "hd-assets/F048.png",
       "sha256": "7b666456f4976076dfc486b38cff04877a4661c935132a15b8207778baada90f",
       "tile": [
         2264,
@@ -3324,10 +3837,12 @@
       ]
     },
     {
+      "key": "base:255",
+      "source": "base",
       "index": 255,
       "name": "蔣濟",
       "portrait": 117,
-      "file": "F117.png",
+      "file": "hd-assets/F117.png",
       "sha256": "f4a4620c121b3ba32063360c18eac069d023ae505586d2113d97ebd72e0b4a15",
       "tile": [
         2424,
@@ -3337,10 +3852,12 @@
       ]
     },
     {
+      "key": "base:256",
+      "source": "base",
       "index": 256,
       "name": "雍闓",
       "portrait": 109,
-      "file": "F109.png",
+      "file": "hd-assets/F109.png",
       "sha256": "2c12fff3e50731b4315df802b35dc732f9db2ac5b1572c5a780e01856935fc58",
       "tile": [
         24,
@@ -3350,10 +3867,12 @@
       ]
     },
     {
+      "key": "base:257",
+      "source": "base",
       "index": 257,
       "name": "朱褒",
       "portrait": 85,
-      "file": "F085.png",
+      "file": "hd-assets/F085.png",
       "sha256": "b18dd0fada3490cd123e5ee5b610ce248971c1ff5eb0731f896336afdf6bb889",
       "tile": [
         184,
@@ -3363,10 +3882,12 @@
       ]
     },
     {
+      "key": "base:258",
+      "source": "base",
       "index": 258,
       "name": "高定",
       "portrait": 98,
-      "file": "F098.png",
+      "file": "hd-assets/F098.png",
       "sha256": "7e10c5697c668a553a0d826076735c9a021cdf3b21951b648615bcf9e7206454",
       "tile": [
         344,
@@ -3376,10 +3897,12 @@
       ]
     },
     {
+      "key": "base:259",
+      "source": "base",
       "index": 259,
       "name": "王伉",
       "portrait": 158,
-      "file": "F158.png",
+      "file": "hd-assets/F158.png",
       "sha256": "f8a6e28168aa1300f01fd3e924609fa0382e9ffe78d8751da9aa51660297efa2",
       "tile": [
         504,
@@ -3389,10 +3912,12 @@
       ]
     },
     {
+      "key": "base:260",
+      "source": "base",
       "index": 260,
       "name": "呂凱",
       "portrait": 38,
-      "file": "F038.png",
+      "file": "hd-assets/F038.png",
       "sha256": "24f507eaed9c7d42bc81d7718a1d7d5b3af82f53f4ef2e2625f41a5c64ff879a",
       "tile": [
         664,
@@ -3402,10 +3927,12 @@
       ]
     },
     {
+      "key": "base:261",
+      "source": "base",
       "index": 261,
       "name": "關索",
       "portrait": 42,
-      "file": "F042.png",
+      "file": "hd-assets/F042.png",
       "sha256": "d1d74e551885e34f566085bfd6ca317a4beb01c864cf621f71475bdb7564d222",
       "tile": [
         824,
@@ -3415,10 +3942,12 @@
       ]
     },
     {
+      "key": "base:262",
+      "source": "base",
       "index": 262,
       "name": "張嶷",
       "portrait": 64,
-      "file": "F064.png",
+      "file": "hd-assets/F064.png",
       "sha256": "dd5e428113bad5780a9c014ef6ee161f9638f8812c44407f3c92c5483b11f522",
       "tile": [
         984,
@@ -3428,10 +3957,12 @@
       ]
     },
     {
+      "key": "base:263",
+      "source": "base",
       "index": 263,
       "name": "鄂煥",
       "portrait": 195,
-      "file": "F195.png",
+      "file": "hd-assets/F195.png",
       "sha256": "3467385143b7b05c820ee212b6747962a40d06c6b919c9ad541ff7134fdfbcaf",
       "tile": [
         1144,
@@ -3441,10 +3972,12 @@
       ]
     },
     {
+      "key": "base:264",
+      "source": "base",
       "index": 264,
       "name": "孟優",
       "portrait": 105,
-      "file": "F105.png",
+      "file": "hd-assets/F105.png",
       "sha256": "fa557a37f430ce8699fd0299267804ff7cc55f034f62fe6860f1cdb18c6c55f2",
       "tile": [
         1304,
@@ -3454,10 +3987,12 @@
       ]
     },
     {
+      "key": "base:265",
+      "source": "base",
       "index": 265,
       "name": "曹叡",
       "portrait": 40,
-      "file": "F040.png",
+      "file": "hd-assets/F040.png",
       "sha256": "2a1691cc081b3ebcc50b69dead7f80ca461e23087787ea681018d6ab2d6e1e0a",
       "tile": [
         1464,
@@ -3467,10 +4002,12 @@
       ]
     },
     {
+      "key": "base:266",
+      "source": "base",
       "index": 266,
       "name": "向寵",
       "portrait": 23,
-      "file": "F023.png",
+      "file": "hd-assets/F023.png",
       "sha256": "1fbf9bf0400af423e1df62772f842ee153a9823e75cdb52bf2e71bb2e8a195dc",
       "tile": [
         1624,
@@ -3480,10 +4017,12 @@
       ]
     },
     {
+      "key": "base:267",
+      "source": "base",
       "index": 267,
       "name": "楊儀",
       "portrait": 136,
-      "file": "F136.png",
+      "file": "hd-assets/F136.png",
       "sha256": "bd6aec1b01d0205ab3133530701021e9a1d8bb3260cde6c818a749ccf193aad7",
       "tile": [
         1784,
@@ -3493,10 +4032,12 @@
       ]
     },
     {
+      "key": "base:268",
+      "source": "base",
       "index": 268,
       "name": "夏侯楙",
       "portrait": 240,
-      "file": "F240.png",
+      "file": "hd-assets/F240.png",
       "sha256": "3e8f1c2e3fbea751f10b3241affa05d106b118d55a3d8226801ef29a90a50177",
       "tile": [
         1944,
@@ -3506,10 +4047,12 @@
       ]
     },
     {
+      "key": "base:269",
+      "source": "base",
       "index": 269,
       "name": "韓德",
       "portrait": 94,
-      "file": "F094.png",
+      "file": "hd-assets/F094.png",
       "sha256": "8aa1b03c28f0d31518debdb355886f149d1b6f752b22475a145fe06cc3ae8516",
       "tile": [
         2104,
@@ -3519,10 +4062,12 @@
       ]
     },
     {
+      "key": "base:270",
+      "source": "base",
       "index": 270,
       "name": "程武",
       "portrait": 200,
-      "file": "F200.png",
+      "file": "hd-assets/F200.png",
       "sha256": "f0b65a2f826d9fd5ddd02db63102b77f6d113d65704aa54c859cfe9593ea6c82",
       "tile": [
         2264,
@@ -3532,10 +4077,12 @@
       ]
     },
     {
+      "key": "base:271",
+      "source": "base",
       "index": 271,
       "name": "姜維",
       "portrait": 19,
-      "file": "F019.png",
+      "file": "hd-assets/F019.png",
       "sha256": "e9649addd9bd11419530ab3a3fab7544384d6b8bef5347c059608bcb37d3caaa",
       "tile": [
         2424,
@@ -3545,10 +4092,12 @@
       ]
     },
     {
+      "key": "base:272",
+      "source": "base",
       "index": 272,
       "name": "曹遵",
       "portrait": 81,
-      "file": "F081.png",
+      "file": "hd-assets/F081.png",
       "sha256": "181671089c4aa1b6fca84686f2b56131996b26845e86807a104fee816d2fcad2",
       "tile": [
         24,
@@ -3558,10 +4107,12 @@
       ]
     },
     {
+      "key": "base:273",
+      "source": "base",
       "index": 273,
       "name": "司馬師",
       "portrait": 37,
-      "file": "F037.png",
+      "file": "hd-assets/F037.png",
       "sha256": "dc9d61582eb35e7934bddd0cc8ec91025d7aad48346e7589367ed75a67450ad0",
       "tile": [
         184,
@@ -3571,10 +4122,12 @@
       ]
     },
     {
+      "key": "base:274",
+      "source": "base",
       "index": 274,
       "name": "司馬昭",
       "portrait": 208,
-      "file": "F208.png",
+      "file": "hd-assets/F208.png",
       "sha256": "e86518d937b8b5d0141991492c43f6b3a9b87cc690b6996a997d3b05e23f7566",
       "tile": [
         344,
@@ -3584,10 +4137,12 @@
       ]
     },
     {
+      "key": "base:275",
+      "source": "base",
       "index": 275,
       "name": "郝昭",
       "portrait": 242,
-      "file": "F242.png",
+      "file": "hd-assets/F242.png",
       "sha256": "2ef4505a307ed38c32a665321ce763d6997d1a4f478d5206027b685519708fe8",
       "tile": [
         504,
@@ -3597,10 +4152,12 @@
       ]
     },
     {
+      "key": "base:276",
+      "source": "base",
       "index": 276,
       "name": "周魴",
       "portrait": 230,
-      "file": "F230.png",
+      "file": "hd-assets/F230.png",
       "sha256": "c8ded85d5c33238a4ab02c80b24e5c080689a0bbc059cd3c27282b1c93734e47",
       "tile": [
         664,
@@ -3610,10 +4167,12 @@
       ]
     },
     {
+      "key": "base:277",
+      "source": "base",
       "index": 277,
       "name": "趙統",
       "portrait": 247,
-      "file": "F247.png",
+      "file": "hd-assets/F247.png",
       "sha256": "4a0b87669bc7c9674cc085ffacce54683ebcd6c932cc7ac0b225ba9f52e99033",
       "tile": [
         824,
@@ -3623,10 +4182,12 @@
       ]
     },
     {
+      "key": "base:278",
+      "source": "base",
       "index": 278,
       "name": "諸葛恪",
       "portrait": 35,
-      "file": "F035.png",
+      "file": "hd-assets/F035.png",
       "sha256": "c9e2e84485165de45149a7270881edca6d6655074c4af4c9fc153ead3b802d6b",
       "tile": [
         984,
@@ -3636,10 +4197,12 @@
       ]
     },
     {
+      "key": "base:279",
+      "source": "base",
       "index": 279,
       "name": "曹爽",
       "portrait": 137,
-      "file": "F137.png",
+      "file": "hd-assets/F137.png",
       "sha256": "6cf90d95ab39ef39dcce2307d98db6b8f30ff2bbbbfe1944d2d476414ee3316f",
       "tile": [
         1144,
@@ -3649,10 +4212,12 @@
       ]
     },
     {
+      "key": "base:280",
+      "source": "base",
       "index": 280,
       "name": "曹芳",
       "portrait": 107,
-      "file": "F107.png",
+      "file": "hd-assets/F107.png",
       "sha256": "8ca738ef18b0933067b795f41c9f5a1641ed7bced75909cba31b5deebe7f1238",
       "tile": [
         1304,
@@ -3662,10 +4227,12 @@
       ]
     },
     {
+      "key": "base:281",
+      "source": "base",
       "index": 281,
       "name": "鍾會",
       "portrait": 26,
-      "file": "F026.png",
+      "file": "hd-assets/F026.png",
       "sha256": "17773b592cd181cc4d6a446f7ef86870cef221583c714be7bf040748ac1c3f8a",
       "tile": [
         1464,
@@ -3675,10 +4242,12 @@
       ]
     },
     {
+      "key": "base:282",
+      "source": "base",
       "index": 282,
       "name": "鍾毓",
       "portrait": 212,
-      "file": "F212.png",
+      "file": "hd-assets/F212.png",
       "sha256": "6b806dfd315fd6ec2c7d864cebfd26aab159f6a58353c5f8c0d50fc2ea2ca5ac",
       "tile": [
         1624,
@@ -3688,10 +4257,12 @@
       ]
     },
     {
+      "key": "base:283",
+      "source": "base",
       "index": 283,
       "name": "鄧艾",
       "portrait": 16,
-      "file": "F016.png",
+      "file": "hd-assets/F016.png",
       "sha256": "60e3a73a167623cc329ce3f24a180db6ec2a9827ed99c460f31f2cabc855293b",
       "tile": [
         1784,
@@ -3701,10 +4272,12 @@
       ]
     },
     {
+      "key": "base:284",
+      "source": "base",
       "index": 284,
       "name": "曹髦",
       "portrait": 80,
-      "file": "F080.png",
+      "file": "hd-assets/F080.png",
       "sha256": "7794f3ad3cb96b433a94d5defa9c147062d19f568cc9a2c82cbc5b2281a29a42",
       "tile": [
         1944,
@@ -3714,10 +4287,12 @@
       ]
     },
     {
+      "key": "base:285",
+      "source": "base",
       "index": 285,
       "name": "文欽",
       "portrait": 59,
-      "file": "F059.png",
+      "file": "hd-assets/F059.png",
       "sha256": "9de5434796bd96ff0c69249013b824f32161dad71bf374441e0a524d64d5e862",
       "tile": [
         2104,
@@ -3727,10 +4302,12 @@
       ]
     },
     {
+      "key": "base:286",
+      "source": "base",
       "index": 286,
       "name": "文鴛",
       "portrait": 245,
-      "file": "F245.png",
+      "file": "hd-assets/F245.png",
       "sha256": "19de9205f7109dbdb09c147c2092ea7e8f8f9da106396133a4b0195c6f89db08",
       "tile": [
         2264,
@@ -3740,10 +4317,12 @@
       ]
     },
     {
+      "key": "base:287",
+      "source": "base",
       "index": 287,
       "name": "諸葛誕",
       "portrait": 203,
-      "file": "F203.png",
+      "file": "hd-assets/F203.png",
       "sha256": "a36c122cb7a9c3ccc71b64779c389a8a1642042da9d79792c17f05e0b7ae8beb",
       "tile": [
         2424,
@@ -3753,10 +4332,12 @@
       ]
     },
     {
+      "key": "base:288",
+      "source": "base",
       "index": 288,
       "name": "文虎",
       "portrait": 84,
-      "file": "F084.png",
+      "file": "hd-assets/F084.png",
       "sha256": "fb38804033e4cd9475c3841791b541579d37327471b5b2bb9372b434b84f0711",
       "tile": [
         24,
@@ -3766,10 +4347,12 @@
       ]
     },
     {
+      "key": "base:289",
+      "source": "base",
       "index": 289,
       "name": "牛輔",
       "portrait": 73,
-      "file": "F073.png",
+      "file": "hd-assets/F073.png",
       "sha256": "b03914a2e89fd4797a43d9dbc075ed221bc5577759674331b4f198efa543c6d2",
       "tile": [
         184,
@@ -3779,10 +4362,12 @@
       ]
     },
     {
+      "key": "base:290",
+      "source": "base",
       "index": 290,
       "name": "淳于瓊",
       "portrait": 50,
-      "file": "F050.png",
+      "file": "hd-assets/F050.png",
       "sha256": "349f0b39a661a43e545808b368aa860393bd726d126b71d50c9b60dcbfb29ed8",
       "tile": [
         344,
@@ -3792,10 +4377,12 @@
       ]
     },
     {
+      "key": "base:291",
+      "source": "base",
       "index": 291,
       "name": "楊彪",
       "portrait": 231,
-      "file": "F231.png",
+      "file": "hd-assets/F231.png",
       "sha256": "dc9f0d2d7fd37d2c6541eab328fe5f9c1ee9a03dd05a7abc20a4b531dee03974",
       "tile": [
         504,
@@ -3805,10 +4392,12 @@
       ]
     },
     {
+      "key": "base:292",
+      "source": "base",
       "index": 292,
       "name": "鮑信",
       "portrait": 211,
-      "file": "F211.png",
+      "file": "hd-assets/F211.png",
       "sha256": "e47529649ed3cbe1fc0a8026489b7a9d1d9cc52b477cac1b788eb1f0b3391658",
       "tile": [
         664,
@@ -3818,10 +4407,12 @@
       ]
     },
     {
+      "key": "base:293",
+      "source": "base",
       "index": 293,
       "name": "劉岱",
       "portrait": 92,
-      "file": "F092.png",
+      "file": "hd-assets/F092.png",
       "sha256": "51a41e512d2de2b233701d3a41451390aefb7d03632347ecfd726e5633a220a7",
       "tile": [
         824,
@@ -3831,10 +4422,12 @@
       ]
     },
     {
+      "key": "base:294",
+      "source": "base",
       "index": 294,
       "name": "胡軫",
       "portrait": 93,
-      "file": "F093.png",
+      "file": "hd-assets/F093.png",
       "sha256": "760b13493cdac62c9d41de4bf4a4fefb3927d9faafa7af1df67dd47c612740d9",
       "tile": [
         984,
@@ -3844,10 +4437,12 @@
       ]
     },
     {
+      "key": "base:295",
+      "source": "base",
       "index": 295,
       "name": "趙岑",
       "portrait": 223,
-      "file": "F223.png",
+      "file": "hd-assets/F223.png",
       "sha256": "5dc62c868d687e92223a27bea3907ec1c3b3c10b84f011f945de975e9440f525",
       "tile": [
         1144,
@@ -3857,10 +4452,12 @@
       ]
     },
     {
+      "key": "base:296",
+      "source": "base",
       "index": 296,
       "name": "鮑忠",
       "portrait": 228,
-      "file": "F228.png",
+      "file": "hd-assets/F228.png",
       "sha256": "5f56fb205263cbc33905f1b5a470dea86ac14358eaf6979a087f7db39794c395",
       "tile": [
         1304,
@@ -3870,10 +4467,12 @@
       ]
     },
     {
+      "key": "base:297",
+      "source": "base",
       "index": 297,
       "name": "麴義",
       "portrait": 175,
-      "file": "F175.png",
+      "file": "hd-assets/F175.png",
       "sha256": "e65063fd81d630e2ce7a3b731880587e9c2b073ef5a118b9127fe116b47617af",
       "tile": [
         1464,
@@ -3883,10 +4482,12 @@
       ]
     },
     {
+      "key": "base:298",
+      "source": "base",
       "index": 298,
       "name": "嚴綱",
       "portrait": 73,
-      "file": "F073.png",
+      "file": "hd-assets/F073.png",
       "sha256": "b03914a2e89fd4797a43d9dbc075ed221bc5577759674331b4f198efa543c6d2",
       "tile": [
         1624,
@@ -3896,10 +4497,12 @@
       ]
     },
     {
+      "key": "base:299",
+      "source": "base",
       "index": 299,
       "name": "張闓",
       "portrait": 50,
-      "file": "F050.png",
+      "file": "hd-assets/F050.png",
       "sha256": "349f0b39a661a43e545808b368aa860393bd726d126b71d50c9b60dcbfb29ed8",
       "tile": [
         1784,
@@ -3909,10 +4512,12 @@
       ]
     },
     {
+      "key": "base:300",
+      "source": "base",
       "index": 300,
       "name": "曹豹",
       "portrait": 66,
-      "file": "F066.png",
+      "file": "hd-assets/F066.png",
       "sha256": "bd38cfb33be89f68006d1e9ca6725be42d5318756236eab0db9762cb18c0df40",
       "tile": [
         1944,
@@ -3922,10 +4527,12 @@
       ]
     },
     {
+      "key": "base:301",
+      "source": "base",
       "index": 301,
       "name": "薛蘭",
       "portrait": 18,
-      "file": "F018.png",
+      "file": "hd-assets/F018.png",
       "sha256": "174d5981be9cf5b80a3eeca35bb0ff36ccb6f5b03f3ec09db6f8d4dbfcddfe2b",
       "tile": [
         2104,
@@ -3935,10 +4542,12 @@
       ]
     },
     {
+      "key": "base:302",
+      "source": "base",
       "index": 302,
       "name": "李封",
       "portrait": 32,
-      "file": "F032.png",
+      "file": "hd-assets/F032.png",
       "sha256": "7ccebcbef802756d018a5a9d2a7cc8dbb3db3e0e5a25c62ab237d89626188842",
       "tile": [
         2264,
@@ -3948,10 +4557,12 @@
       ]
     },
     {
+      "key": "base:303",
+      "source": "base",
       "index": 303,
       "name": "高順",
       "portrait": 41,
-      "file": "F041.png",
+      "file": "hd-assets/F041.png",
       "sha256": "9bb2159145611bfdb485ea23e7ecdbf5c0a263369ffb88897a11dfa0c697c2a6",
       "tile": [
         2424,
@@ -3961,10 +4572,12 @@
       ]
     },
     {
+      "key": "base:304",
+      "source": "base",
       "index": 304,
       "name": "任峻",
       "portrait": 207,
-      "file": "F207.png",
+      "file": "hd-assets/F207.png",
       "sha256": "bebdf0ab3cb47d9acc40dfac7b8b34db0c1a2261ba97578003b629c1af0beac5",
       "tile": [
         24,
@@ -3974,10 +4587,12 @@
       ]
     },
     {
+      "key": "base:305",
+      "source": "base",
       "index": 305,
       "name": "荀正",
       "portrait": 66,
-      "file": "F066.png",
+      "file": "hd-assets/F066.png",
       "sha256": "bd38cfb33be89f68006d1e9ca6725be42d5318756236eab0db9762cb18c0df40",
       "tile": [
         184,
@@ -3987,10 +4602,12 @@
       ]
     },
     {
+      "key": "base:306",
+      "source": "base",
       "index": 306,
       "name": "陳紀",
       "portrait": 205,
-      "file": "F205.png",
+      "file": "hd-assets/F205.png",
       "sha256": "c8b42b9e023cbe7f3b9470ab7501ffd29500ed2a8c664f574fa16c9186cd6aa6",
       "tile": [
         344,
@@ -4000,10 +4617,12 @@
       ]
     },
     {
+      "key": "base:307",
+      "source": "base",
       "index": 307,
       "name": "梁剛",
       "portrait": 33,
-      "file": "F033.png",
+      "file": "hd-assets/F033.png",
       "sha256": "29f6ead8120bfc6d0a729f21e68421f050b6ae59ac5acc8fdc4e8b9df2217b2a",
       "tile": [
         504,
@@ -4013,10 +4632,12 @@
       ]
     },
     {
+      "key": "base:308",
+      "source": "base",
       "index": 308,
       "name": "李豐",
       "portrait": 67,
-      "file": "F067.png",
+      "file": "hd-assets/F067.png",
       "sha256": "4a794f39e682976c954841df19f1c18b0edbecc1f922d2c84edb016d2dee2b75",
       "tile": [
         664,
@@ -4026,10 +4647,12 @@
       ]
     },
     {
+      "key": "base:309",
+      "source": "base",
       "index": 309,
       "name": "雷敘",
       "portrait": 49,
-      "file": "F049.png",
+      "file": "hd-assets/F049.png",
       "sha256": "ddc6a7e5a7d6e724593d57454f88fa33454403193da33dc097e74cfbd3fab1c2",
       "tile": [
         824,
@@ -4039,10 +4662,12 @@
       ]
     },
     {
+      "key": "base:310",
+      "source": "base",
       "index": 310,
       "name": "張先",
       "portrait": 30,
-      "file": "F030.png",
+      "file": "hd-assets/F030.png",
       "sha256": "a2952a650e49487b4803eb01f52f51e2f90471f4d5b63750010585abe82a776a",
       "tile": [
         984,
@@ -4052,10 +4677,12 @@
       ]
     },
     {
+      "key": "base:311",
+      "source": "base",
       "index": 311,
       "name": "李通",
       "portrait": 99,
-      "file": "F099.png",
+      "file": "hd-assets/F099.png",
       "sha256": "99a903c913145214bf7fc59c3eb796a1f142212af8ba2cc60475d7cacb63cdf0",
       "tile": [
         1144,
@@ -4065,10 +4692,12 @@
       ]
     },
     {
+      "key": "base:312",
+      "source": "base",
       "index": 312,
       "name": "許氾",
       "portrait": 206,
-      "file": "F206.png",
+      "file": "hd-assets/F206.png",
       "sha256": "a9991b1df22012a3f86e8fc85cf75c5f8c94a4220bff0b07f643d80620076c76",
       "tile": [
         1304,
@@ -4078,10 +4707,12 @@
       ]
     },
     {
+      "key": "base:313",
+      "source": "base",
       "index": 313,
       "name": "王楷",
       "portrait": 210,
-      "file": "F210.png",
+      "file": "hd-assets/F210.png",
       "sha256": "de4b453c43b9d9089f5d99c78348eebdcb809e8fde67e6ebf62ea1503c2acd99",
       "tile": [
         1464,
@@ -4091,10 +4722,12 @@
       ]
     },
     {
+      "key": "base:314",
+      "source": "base",
       "index": 314,
       "name": "劉延",
       "portrait": 48,
-      "file": "F048.png",
+      "file": "hd-assets/F048.png",
       "sha256": "7b666456f4976076dfc486b38cff04877a4661c935132a15b8207778baada90f",
       "tile": [
         1624,
@@ -4104,10 +4737,12 @@
       ]
     },
     {
+      "key": "base:315",
+      "source": "base",
       "index": 315,
       "name": "劉辟",
       "portrait": 74,
-      "file": "F074.png",
+      "file": "hd-assets/F074.png",
       "sha256": "5dd0387723baf1e2c5513c19aa22b1b5aa5c3acba0265cc7fe6f198f1f7f6e93",
       "tile": [
         1784,
@@ -4117,10 +4752,12 @@
       ]
     },
     {
+      "key": "base:316",
+      "source": "base",
       "index": 316,
       "name": "龔都",
       "portrait": 22,
-      "file": "F022.png",
+      "file": "hd-assets/F022.png",
       "sha256": "a06f42b8471a14f89d20ea2ebb295295f49103a00e8e4a17deb30bd7f2663883",
       "tile": [
         1944,
@@ -4130,10 +4767,12 @@
       ]
     },
     {
+      "key": "base:317",
+      "source": "base",
       "index": 317,
       "name": "高幹",
       "portrait": 137,
-      "file": "F137.png",
+      "file": "hd-assets/F137.png",
       "sha256": "6cf90d95ab39ef39dcce2307d98db6b8f30ff2bbbbfe1944d2d476414ee3316f",
       "tile": [
         2104,
@@ -4143,10 +4782,12 @@
       ]
     },
     {
+      "key": "base:318",
+      "source": "base",
       "index": 318,
       "name": "王修",
       "portrait": 224,
-      "file": "F224.png",
+      "file": "hd-assets/F224.png",
       "sha256": "b13282a2641e0dd77d56db40878aaa345ca30e0f387ce7d51b3bdf096792a633",
       "tile": [
         2264,
@@ -4156,10 +4797,12 @@
       ]
     },
     {
+      "key": "base:319",
+      "source": "base",
       "index": 319,
       "name": "馬延",
       "portrait": 45,
-      "file": "F045.png",
+      "file": "hd-assets/F045.png",
       "sha256": "8073f383b9d924b6d23df5d7535b9174c1a6ffa926862c0d604f231afda7876d",
       "tile": [
         2424,
@@ -4169,10 +4812,12 @@
       ]
     },
     {
+      "key": "base:320",
+      "source": "base",
       "index": 320,
       "name": "張顗",
       "portrait": 71,
-      "file": "F071.png",
+      "file": "hd-assets/F071.png",
       "sha256": "b4f909dc00bd6880385c91711b8e6770694a9155c6657a2b9afc5fa92f282301",
       "tile": [
         24,
@@ -4182,10 +4827,12 @@
       ]
     },
     {
+      "key": "base:321",
+      "source": "base",
       "index": 321,
       "name": "崔琰",
       "portrait": 232,
-      "file": "F232.png",
+      "file": "hd-assets/F232.png",
       "sha256": "5a8a97c1c7c7b5d08d0f8817b788810f9ed94d469369d98165da09b5b505a096",
       "tile": [
         184,
@@ -4195,10 +4842,12 @@
       ]
     },
     {
+      "key": "base:322",
+      "source": "base",
       "index": 322,
       "name": "焦觸",
       "portrait": 128,
-      "file": "F128.png",
+      "file": "hd-assets/F128.png",
       "sha256": "f999be1e7073dc1f0bd66919c83ccff4e537bb4de2efe28b0d33009c258378e0",
       "tile": [
         344,
@@ -4208,10 +4857,12 @@
       ]
     },
     {
+      "key": "base:323",
+      "source": "base",
       "index": 323,
       "name": "張南",
       "portrait": 60,
-      "file": "F060.png",
+      "file": "hd-assets/F060.png",
       "sha256": "1b70cebf9738c45b81e07aa3c696dc2d54fe0b5ab3cafa5cf56200915eaf3f28",
       "tile": [
         504,
@@ -4221,10 +4872,12 @@
       ]
     },
     {
+      "key": "base:324",
+      "source": "base",
       "index": 324,
       "name": "張燕",
       "portrait": 57,
-      "file": "F057.png",
+      "file": "hd-assets/F057.png",
       "sha256": "79115947e62da37077293e7864799d8aab32596343af208a0722a41057fb41a6",
       "tile": [
         664,
@@ -4234,10 +4887,12 @@
       ]
     },
     {
+      "key": "base:325",
+      "source": "base",
       "index": 325,
       "name": "張武",
       "portrait": 31,
-      "file": "F031.png",
+      "file": "hd-assets/F031.png",
       "sha256": "aad91551f403453d1fbddc046524bd20382710026709392e994b6dcbe3286516",
       "tile": [
         824,
@@ -4247,10 +4902,12 @@
       ]
     },
     {
+      "key": "base:326",
+      "source": "base",
       "index": 326,
       "name": "陳孫",
       "portrait": 208,
-      "file": "F208.png",
+      "file": "hd-assets/F208.png",
       "sha256": "e86518d937b8b5d0141991492c43f6b3a9b87cc690b6996a997d3b05e23f7566",
       "tile": [
         984,
@@ -4260,10 +4917,12 @@
       ]
     },
     {
+      "key": "base:327",
+      "source": "base",
       "index": 327,
       "name": "王威",
       "portrait": 51,
-      "file": "F051.png",
+      "file": "hd-assets/F051.png",
       "sha256": "fe1dc5bbe07a573d52f1f1fe7169ec13736b7e9201355bc4cc42e9b8dd158ad8",
       "tile": [
         1144,
@@ -4273,10 +4932,12 @@
       ]
     },
     {
+      "key": "base:328",
+      "source": "base",
       "index": 328,
       "name": "陸績",
       "portrait": 217,
-      "file": "F217.png",
+      "file": "hd-assets/F217.png",
       "sha256": "fbcc2ed229e3f046287e9e409aeebe7394b31e8124e23ec035e203ac512f75e5",
       "tile": [
         1304,
@@ -4286,10 +4947,12 @@
       ]
     },
     {
+      "key": "base:329",
+      "source": "base",
       "index": 329,
       "name": "嚴峻",
       "portrait": 219,
-      "file": "F219.png",
+      "file": "hd-assets/F219.png",
       "sha256": "242078be152788fab648081eda7dde1c23def69eb9c4377cdaf0e2ccbfd9d6ba",
       "tile": [
         1464,
@@ -4299,10 +4962,12 @@
       ]
     },
     {
+      "key": "base:330",
+      "source": "base",
       "index": 330,
       "name": "薛綜",
       "portrait": 72,
-      "file": "F072.png",
+      "file": "hd-assets/F072.png",
       "sha256": "919efd835899e61d044c992fffcb3d5002aa1ed7b0c13c6ebd0212256cb883d2",
       "tile": [
         1624,
@@ -4312,10 +4977,12 @@
       ]
     },
     {
+      "key": "base:331",
+      "source": "base",
       "index": 331,
       "name": "陳就",
       "portrait": 228,
-      "file": "F228.png",
+      "file": "hd-assets/F228.png",
       "sha256": "5f56fb205263cbc33905f1b5a470dea86ac14358eaf6979a087f7db39794c395",
       "tile": [
         1784,
@@ -4325,10 +4992,12 @@
       ]
     },
     {
+      "key": "base:332",
+      "source": "base",
       "index": 332,
       "name": "鄧龍",
       "portrait": 34,
-      "file": "F034.png",
+      "file": "hd-assets/F034.png",
       "sha256": "e81e375d1c0b9faf7d98d646e1dfd03e8cd5a8b716dcdd049a1ee795b4ab4a0e",
       "tile": [
         1944,
@@ -4338,10 +5007,12 @@
       ]
     },
     {
+      "key": "base:333",
+      "source": "base",
       "index": 333,
       "name": "韓浩",
       "portrait": 123,
-      "file": "F123.png",
+      "file": "hd-assets/F123.png",
       "sha256": "cc13e8c85bf1c147c06b67644ff2a35a3dfc57c4171d321527c3dd232edb6d54",
       "tile": [
         2104,
@@ -4351,10 +5022,12 @@
       ]
     },
     {
+      "key": "base:334",
+      "source": "base",
       "index": 334,
       "name": "夏侯霸",
       "portrait": 25,
-      "file": "F025.png",
+      "file": "hd-assets/F025.png",
       "sha256": "916ae9720d60d791d80c0ad398ea1fd51fff7a7cea43aeaec2a3ea5ae9fc5b80",
       "tile": [
         2264,
@@ -4364,10 +5037,12 @@
       ]
     },
     {
+      "key": "base:335",
+      "source": "base",
       "index": 335,
       "name": "張允",
       "portrait": 105,
-      "file": "F105.png",
+      "file": "hd-assets/F105.png",
       "sha256": "fa557a37f430ce8699fd0299267804ff7cc55f034f62fe6860f1cdb18c6c55f2",
       "tile": [
         2424,
@@ -4377,10 +5052,12 @@
       ]
     },
     {
+      "key": "base:336",
+      "source": "base",
       "index": 336,
       "name": "傅幹",
       "portrait": 222,
-      "file": "F222.png",
+      "file": "hd-assets/F222.png",
       "sha256": "ff819db10f6fb560f9afb90ad9c6c29fa64c1a5997cc0534a2492fdfe4a57961",
       "tile": [
         24,
@@ -4390,10 +5067,12 @@
       ]
     },
     {
+      "key": "base:337",
+      "source": "base",
       "index": 337,
       "name": "楊昂",
       "portrait": 59,
-      "file": "F059.png",
+      "file": "hd-assets/F059.png",
       "sha256": "9de5434796bd96ff0c69249013b824f32161dad71bf374441e0a524d64d5e862",
       "tile": [
         184,
@@ -4403,10 +5082,12 @@
       ]
     },
     {
+      "key": "base:338",
+      "source": "base",
       "index": 338,
       "name": "楊任",
       "portrait": 58,
-      "file": "F058.png",
+      "file": "hd-assets/F058.png",
       "sha256": "e489c9cb269c0dd2abf7f2fa19f6a1ab1942bd819f62053d2a2bea11ef8b81ac",
       "tile": [
         344,
@@ -4416,10 +5097,12 @@
       ]
     },
     {
+      "key": "base:339",
+      "source": "base",
       "index": 339,
       "name": "郭攸之",
       "portrait": 220,
-      "file": "F220.png",
+      "file": "hd-assets/F220.png",
       "sha256": "1a80d0f6325379bab2159db18feb2292eb2cd533308f4146a914406a1da8cc2a",
       "tile": [
         504,
@@ -4429,10 +5112,12 @@
       ]
     },
     {
+      "key": "base:340",
+      "source": "base",
       "index": 340,
       "name": "董允",
       "portrait": 221,
-      "file": "F221.png",
+      "file": "hd-assets/F221.png",
       "sha256": "dd368e8982658b8e61eba9ffb1572680de34c8b404909c22c6b01916a134ac56",
       "tile": [
         664,
@@ -4442,10 +5127,12 @@
       ]
     },
     {
+      "key": "base:341",
+      "source": "base",
       "index": 341,
       "name": "全琮",
       "portrait": 226,
-      "file": "F226.png",
+      "file": "hd-assets/F226.png",
       "sha256": "e534274ae0042d7598341f2ec42b7a35629ab4d69ab697954f25e2cc6da33ffd",
       "tile": [
         824,
@@ -4455,10 +5142,12 @@
       ]
     },
     {
+      "key": "base:342",
+      "source": "base",
       "index": 342,
       "name": "袁胤",
       "portrait": 205,
-      "file": "F205.png",
+      "file": "hd-assets/F205.png",
       "sha256": "c8b42b9e023cbe7f3b9470ab7501ffd29500ed2a8c664f574fa16c9186cd6aa6",
       "tile": [
         984,
@@ -4468,10 +5157,12 @@
       ]
     },
     {
+      "key": "base:343",
+      "source": "base",
       "index": 343,
       "name": "曹仁",
       "portrait": 250,
-      "file": "F250.png",
+      "file": "hd-assets/F250.png",
       "sha256": "dee6e91b85717d1913b70943bfec9c48e10e3c02d18c3f0027933a119d5cb9c9",
       "tile": [
         1144,
@@ -4481,10 +5172,12 @@
       ]
     },
     {
+      "key": "base:344",
+      "source": "base",
       "index": 344,
       "name": "曹洪",
       "portrait": 18,
-      "file": "F018.png",
+      "file": "hd-assets/F018.png",
       "sha256": "174d5981be9cf5b80a3eeca35bb0ff36ccb6f5b03f3ec09db6f8d4dbfcddfe2b",
       "tile": [
         1304,
@@ -4494,14 +5187,3316 @@
       ]
     },
     {
+      "key": "base:345",
+      "source": "base",
       "index": 345,
       "name": "王允",
       "portrait": 65,
-      "file": "F065.png",
+      "file": "hd-assets/F065.png",
       "sha256": "4b4f7c2c4be5f2de31a1e866a2802706ab2c9d0a53acadff20886b08448d3c58",
       "tile": [
         1464,
         4840,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:52",
+      "source": "san5",
+      "index": null,
+      "name": "韓馥",
+      "portrait": 52,
+      "file": "hd-assets/X-SAN5-0052.png",
+      "sha256": "78baef2a3040e50188616b470570692cf93d59724eca169ca6ba162da503112b",
+      "tile": [
+        1624,
+        4840,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:53",
+      "source": "san5",
+      "index": null,
+      "name": "喬瑁",
+      "portrait": 53,
+      "file": "hd-assets/X-SAN5-0053.png",
+      "sha256": "02207aed571f1a8eafc757ccc0c0be9a5e85f1e97f0abcc16aaac1b22205f11c",
+      "tile": [
+        1784,
+        4840,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:55",
+      "source": "san5",
+      "index": null,
+      "name": "嚴白虎",
+      "portrait": 55,
+      "file": "hd-assets/X-SAN5-0055.png",
+      "sha256": "b85161261d020a91dfea6e1e8eedc2c14049c3c94459cf3dc36651b75a54e392",
+      "tile": [
+        1944,
+        4840,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:56",
+      "source": "san5",
+      "index": null,
+      "name": "孔岫",
+      "portrait": 56,
+      "file": "hd-assets/X-SAN5-0056.png",
+      "sha256": "d07f14025a210da043a5a565ad2cb4a18c0dccecff5fe6b7d0c6e63be01b1644",
+      "tile": [
+        2104,
+        4840,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:85",
+      "source": "san5",
+      "index": null,
+      "name": "公孫淵",
+      "portrait": 85,
+      "file": "hd-assets/X-SAN5-0085.png",
+      "sha256": "7e22ebf5ca100437f80ba4e44f64eef3bc65dd7f36a72771c27bc732108141fe",
+      "tile": [
+        2264,
+        4840,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:126",
+      "source": "san5",
+      "index": null,
+      "name": "阿會喃",
+      "portrait": 126,
+      "file": "hd-assets/X-SAN5-0126.png",
+      "sha256": "81e2c2a8380b405b7eba9484428c209fed47c7e4a5e97f298a651729d81ffe4f",
+      "tile": [
+        2424,
+        4840,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:127",
+      "source": "san5",
+      "index": null,
+      "name": "越吉",
+      "portrait": 127,
+      "file": "hd-assets/X-SAN5-0127.png",
+      "sha256": "453754e528a025c99c7dcce01b03fce0a1373e6482204892e55b06fbb0bc58c5",
+      "tile": [
+        24,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:128",
+      "source": "san5",
+      "index": null,
+      "name": "俄何燒戈",
+      "portrait": 128,
+      "file": "hd-assets/X-SAN5-0128.png",
+      "sha256": "a46c45d2e127901c3ad2c0eb07b9c2075b5642c830facd7cdd589754794a2cab",
+      "tile": [
+        184,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:129",
+      "source": "san5",
+      "index": null,
+      "name": "雅丹",
+      "portrait": 129,
+      "file": "hd-assets/X-SAN5-0129.png",
+      "sha256": "a04bc84c8847a1906a4544845931770c3b91d9f5baf63d3730e17a5c19fe1a9a",
+      "tile": [
+        344,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:130",
+      "source": "san5",
+      "index": null,
+      "name": "軻比能",
+      "portrait": 130,
+      "file": "hd-assets/X-SAN5-0130.png",
+      "sha256": "1d413a281411d1f4c9069cf891180d11e0b70bf45e2f018b5abf6043d26a195d",
+      "tile": [
+        504,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:131",
+      "source": "san5",
+      "index": null,
+      "name": "金環三結",
+      "portrait": 131,
+      "file": "hd-assets/X-SAN5-0131.png",
+      "sha256": "4e0fff71f379cd99f1f17066486bec14c1cb40b355d6e08963b814dcae581bf4",
+      "tile": [
+        664,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:132",
+      "source": "san5",
+      "index": null,
+      "name": "奚泥",
+      "portrait": 132,
+      "file": "hd-assets/X-SAN5-0132.png",
+      "sha256": "36d4ab0629d270a4ac9dd6d4782dd47c8cc0ac62fb8ae6aa530a0da0ec19ca64",
+      "tile": [
+        824,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:133",
+      "source": "san5",
+      "index": null,
+      "name": "兀突骨",
+      "portrait": 133,
+      "file": "hd-assets/X-SAN5-0133.png",
+      "sha256": "e6af906e36cce146b5c93c0cb38d0cf6a92b7d8fd4aac5007dfb0f1009b5a30a",
+      "tile": [
+        984,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:134",
+      "source": "san5",
+      "index": null,
+      "name": "左賢王",
+      "portrait": 134,
+      "file": "hd-assets/X-SAN5-0134.png",
+      "sha256": "c98d12e9d909138a75255cc642fbc0692ced42ba8c2c8c79d61ac7ba3da761da",
+      "tile": [
+        1144,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:135",
+      "source": "san5",
+      "index": null,
+      "name": "沙摩柯",
+      "portrait": 135,
+      "file": "hd-assets/X-SAN5-0135.png",
+      "sha256": "bbf14a897343a625670b18ccb6af847634a15399c5d7b60f3c5c42f327e3d55d",
+      "tile": [
+        1304,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:136",
+      "source": "san5",
+      "index": null,
+      "name": "祝融夫人",
+      "portrait": 136,
+      "file": "hd-assets/X-SAN5-0136.png",
+      "sha256": "277139212956cf4a31f9415cbbe2137223e1fe3e9492a096aa6b2e81998d1fd5",
+      "tile": [
+        1464,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:137",
+      "source": "san5",
+      "index": null,
+      "name": "帶來洞主",
+      "portrait": 137,
+      "file": "hd-assets/X-SAN5-0137.png",
+      "sha256": "1cbe4c85c31d50b04e9de2bf412430db6e2b94db6c3a43bc711b5f640064322a",
+      "tile": [
+        1624,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:138",
+      "source": "san5",
+      "index": null,
+      "name": "朵思大王",
+      "portrait": 138,
+      "file": "hd-assets/X-SAN5-0138.png",
+      "sha256": "5fc57e3d939723d5ca3f843a481ecabf64cd298a2ad805c5ac1554f67e2473f6",
+      "tile": [
+        1784,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:139",
+      "source": "san5",
+      "index": null,
+      "name": "徹里吉",
+      "portrait": 139,
+      "file": "hd-assets/X-SAN5-0139.png",
+      "sha256": "165a91e2030f0bc4adb795d3ed879c22317e1aecd57e8d0d1a1a9d79dec8a315",
+      "tile": [
+        1944,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:140",
+      "source": "san5",
+      "index": null,
+      "name": "土安",
+      "portrait": 140,
+      "file": "hd-assets/X-SAN5-0140.png",
+      "sha256": "42454e885c9d958378a047f4a019bbc96c6f74467150f7560ca3cce9bb22e39a",
+      "tile": [
+        2104,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:141",
+      "source": "san5",
+      "index": null,
+      "name": "董荼那",
+      "portrait": 141,
+      "file": "hd-assets/X-SAN5-0141.png",
+      "sha256": "27181fa4a4a12e918d771ba9318a1eeb5a72791b28766b1b185bc140b04072ff",
+      "tile": [
+        2264,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:142",
+      "source": "san5",
+      "index": null,
+      "name": "蹋頓",
+      "portrait": 142,
+      "file": "hd-assets/X-SAN5-0142.png",
+      "sha256": "bab22955e0bc621eb1581daed9750b15832ff24228192309f014495b75ba7432",
+      "tile": [
+        2424,
+        5064,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:143",
+      "source": "san5",
+      "index": null,
+      "name": "忙牙長",
+      "portrait": 143,
+      "file": "hd-assets/X-SAN5-0143.png",
+      "sha256": "6561e3e04722bfe69ff3d6b86a95fff556825f9d69d243b58585ac5af8a5b267",
+      "tile": [
+        24,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:144",
+      "source": "san5",
+      "index": null,
+      "name": "木鹿大王",
+      "portrait": 144,
+      "file": "hd-assets/X-SAN5-0144.png",
+      "sha256": "b838893824819f91482626e9e2a6ffee4824c464a9f6c9f1339058aa76be41da",
+      "tile": [
+        184,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:145",
+      "source": "san5",
+      "index": null,
+      "name": "迷當大王",
+      "portrait": 145,
+      "file": "hd-assets/X-SAN5-0145.png",
+      "sha256": "45456dda0b72df698bc6f9b127e10af42c24bc420b94441434c9c0cd288a46be",
+      "tile": [
+        344,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:147",
+      "source": "san5",
+      "index": null,
+      "name": "楊鋒",
+      "portrait": 147,
+      "file": "hd-assets/X-SAN5-0147.png",
+      "sha256": "e21788ca62eea5ddef588dae7f8811c88fb93a954f794a2836630efb78c9e861",
+      "tile": [
+        504,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:148",
+      "source": "san5",
+      "index": null,
+      "name": "陸抗",
+      "portrait": 148,
+      "file": "hd-assets/X-SAN5-0148.png",
+      "sha256": "385979962b40684ce6887a62e82d35289cfe60185c4b488698766e648047c955",
+      "tile": [
+        664,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:149",
+      "source": "san5",
+      "index": null,
+      "name": "王濬",
+      "portrait": 149,
+      "file": "hd-assets/X-SAN5-0149.png",
+      "sha256": "6cea3a8a056876329a27536c988263be451f24990a2dbe4ba8ab590dee082563",
+      "tile": [
+        824,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:171",
+      "source": "san5",
+      "index": null,
+      "name": "毌丘儉",
+      "portrait": 171,
+      "file": "hd-assets/X-SAN5-0171.png",
+      "sha256": "753d9e3859deeee4dfa8efd40a113acb631670a9a2e661be52c8a777bf2fe174",
+      "tile": [
+        984,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:182",
+      "source": "san5",
+      "index": null,
+      "name": "孫異",
+      "portrait": 182,
+      "file": "hd-assets/X-SAN5-0182.png",
+      "sha256": "41e7ff9361b60f24f30b4b21d32e36d8c234a726ebf53d7e97768295f014df1a",
+      "tile": [
+        1144,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:184",
+      "source": "san5",
+      "index": null,
+      "name": "諸葛瞻",
+      "portrait": 184,
+      "file": "hd-assets/X-SAN5-0184.png",
+      "sha256": "e03fd63dcb22657752e52125d33c4a180725d1aaf50e3ea58e179dc67e6c6d90",
+      "tile": [
+        1304,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:186",
+      "source": "san5",
+      "index": null,
+      "name": "曹昂",
+      "portrait": 186,
+      "file": "hd-assets/X-SAN5-0186.png",
+      "sha256": "be3f02995859cedf1d91f697e63ab39a6c9665fa5637f31f0843ec35b190f750",
+      "tile": [
+        1464,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:187",
+      "source": "san5",
+      "index": null,
+      "name": "孫休",
+      "portrait": 187,
+      "file": "hd-assets/X-SAN5-0187.png",
+      "sha256": "9bf97487a9f9ad47dbbc81094929734ee1f4697543814ca6d4a2d4c54d9f4afc",
+      "tile": [
+        1624,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:190",
+      "source": "san5",
+      "index": null,
+      "name": "杜預",
+      "portrait": 190,
+      "file": "hd-assets/X-SAN5-0190.png",
+      "sha256": "afd7e274dd06f7cc54f495e771cbdf445e38f4208129f18df0816e4e5318537c",
+      "tile": [
+        1784,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:191",
+      "source": "san5",
+      "index": null,
+      "name": "羊祜",
+      "portrait": 191,
+      "file": "hd-assets/X-SAN5-0191.png",
+      "sha256": "91d6eee93a30566511a442a48b694402de8847e281efa4c2f735d8e9846935f3",
+      "tile": [
+        1944,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:196",
+      "source": "san5",
+      "index": null,
+      "name": "郤正",
+      "portrait": 196,
+      "file": "hd-assets/X-SAN5-0196.png",
+      "sha256": "e395c97752ac4aa3bd5c3882b7812633188ce3c317353368822a8db304ee972b",
+      "tile": [
+        2104,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:198",
+      "source": "san5",
+      "index": null,
+      "name": "陳泰",
+      "portrait": 198,
+      "file": "hd-assets/X-SAN5-0198.png",
+      "sha256": "15481aa62c3fc0bd6678a7356b01fab20b6110186200553c1c5aa1f050cdbab8",
+      "tile": [
+        2264,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:199",
+      "source": "san5",
+      "index": null,
+      "name": "盧植",
+      "portrait": 199,
+      "file": "hd-assets/X-SAN5-0199.png",
+      "sha256": "cfb87cda7ce805ca752afd80e0aaaf9c264a1fb2c369107dea4835e1859144a6",
+      "tile": [
+        2424,
+        5288,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:200",
+      "source": "san5",
+      "index": null,
+      "name": "皇甫嵩",
+      "portrait": 200,
+      "file": "hd-assets/X-SAN5-0200.png",
+      "sha256": "e4429e5506fc5f1a1728f4281defdfde005d24f2650535f4579df11ec012b472",
+      "tile": [
+        24,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:203",
+      "source": "san5",
+      "index": null,
+      "name": "王基",
+      "portrait": 203,
+      "file": "hd-assets/X-SAN5-0203.png",
+      "sha256": "21c6bbda51262787974d86b81a37df0fe39a80752deefefaa07d133450fc3b24",
+      "tile": [
+        184,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:207",
+      "source": "san5",
+      "index": null,
+      "name": "胡奮",
+      "portrait": 207,
+      "file": "hd-assets/X-SAN5-0207.png",
+      "sha256": "b6d726051ca436ac301dd03c8451def600cdf34fb5223e3b7083a33ad5611f88",
+      "tile": [
+        344,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:208",
+      "source": "san5",
+      "index": null,
+      "name": "司馬炎",
+      "portrait": 208,
+      "file": "hd-assets/X-SAN5-0208.png",
+      "sha256": "b82110759efa038676943cef24ff5605c5ee4655a0a039595c50be57a2659a03",
+      "tile": [
+        504,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:209",
+      "source": "san5",
+      "index": null,
+      "name": "孫冀",
+      "portrait": 209,
+      "file": "hd-assets/X-SAN5-0209.png",
+      "sha256": "ea19b4d81163a175c88bad27a21b5fa7e2aeef771855369f1aa82df5c06b82cd",
+      "tile": [
+        664,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:210",
+      "source": "san5",
+      "index": null,
+      "name": "于詮",
+      "portrait": 210,
+      "file": "hd-assets/X-SAN5-0210.png",
+      "sha256": "42c4cec71cecc67d70f4bbea141b09a5a80d47377d2f1eef66fe495f4e11eb3b",
+      "tile": [
+        824,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:212",
+      "source": "san5",
+      "index": null,
+      "name": "張悌",
+      "portrait": 212,
+      "file": "hd-assets/X-SAN5-0212.png",
+      "sha256": "2c21b1bb1e928178bca9ac5f536953eeb1122a2f9a010a357feba6cd3e39de4a",
+      "tile": [
+        984,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:215",
+      "source": "san5",
+      "index": null,
+      "name": "孫亮",
+      "portrait": 215,
+      "file": "hd-assets/X-SAN5-0215.png",
+      "sha256": "27fd098785721753225b6d71fe0fe5e9a257b9b78109c884d42620598f424f28",
+      "tile": [
+        1144,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:222",
+      "source": "san5",
+      "index": null,
+      "name": "馬忠",
+      "portrait": 222,
+      "file": "hd-assets/X-SAN5-0222.png",
+      "sha256": "ef5a25b09704106e61ac365a3ff275048821266f4ca15e06ff38db189e1f9418",
+      "tile": [
+        1304,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:228",
+      "source": "san5",
+      "index": null,
+      "name": "李異",
+      "portrait": 228,
+      "file": "hd-assets/X-SAN5-0228.png",
+      "sha256": "ee72cf43d0f56d8a738a29225acc5fd402f259efa7d0c917d79ccdf55f0d0acd",
+      "tile": [
+        1464,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:229",
+      "source": "san5",
+      "index": null,
+      "name": "譚雄",
+      "portrait": 229,
+      "file": "hd-assets/X-SAN5-0229.png",
+      "sha256": "ef8c34f6059a3ab0d1a18272ce3254ecbfe5b9910d6254c30729f2a2f58794a3",
+      "tile": [
+        1624,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:230",
+      "source": "san5",
+      "index": null,
+      "name": "滕胤",
+      "portrait": 230,
+      "file": "hd-assets/X-SAN5-0230.png",
+      "sha256": "da67a5ea179d940eb9b732d5b7338c0d07efe98b1ce856abf8a227a6fd5a85b1",
+      "tile": [
+        1784,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:234",
+      "source": "san5",
+      "index": null,
+      "name": "賈充",
+      "portrait": 234,
+      "file": "hd-assets/X-SAN5-0234.png",
+      "sha256": "9ad4e7475d7fee797b67473b80adf0e75971053f6bac32f14d6c8dfb33fd6b3f",
+      "tile": [
+        1944,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:237",
+      "source": "san5",
+      "index": null,
+      "name": "夏侯威",
+      "portrait": 237,
+      "file": "hd-assets/X-SAN5-0237.png",
+      "sha256": "9cedca8a9583cb21d537f73b46246303dcee25ac3364fdb220ad028de846a0cc",
+      "tile": [
+        2104,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:239",
+      "source": "san5",
+      "index": null,
+      "name": "胡遵",
+      "portrait": 239,
+      "file": "hd-assets/X-SAN5-0239.png",
+      "sha256": "54cff0d349eff58077eaa69e4759da1923fe10c024cef3f79ee2d7636b371274",
+      "tile": [
+        2264,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:240",
+      "source": "san5",
+      "index": null,
+      "name": "趙廣",
+      "portrait": 240,
+      "file": "hd-assets/X-SAN5-0240.png",
+      "sha256": "530c3e31d0f2bd254b97e780b94087a3eab471c0c9a1253aa12c619c9195aa1f",
+      "tile": [
+        2424,
+        5512,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:241",
+      "source": "san5",
+      "index": null,
+      "name": "陳震",
+      "portrait": 241,
+      "file": "hd-assets/X-SAN5-0241.png",
+      "sha256": "001bebeaa33c83dc65754f931ac932b0c9b722049f4afb5b8382fa069d34993e",
+      "tile": [
+        24,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:242",
+      "source": "san5",
+      "index": null,
+      "name": "尹默",
+      "portrait": 242,
+      "file": "hd-assets/X-SAN5-0242.png",
+      "sha256": "7a30d7adc961e00f319ad137e9ff9fc4a90d2392d14414cbce271144f2058cfe",
+      "tile": [
+        184,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:244",
+      "source": "san5",
+      "index": null,
+      "name": "夏侯和",
+      "portrait": 244,
+      "file": "hd-assets/X-SAN5-0244.png",
+      "sha256": "a01d1faac2cfb3fa2463fe99cf5be5490e42edc104592990f749a4daf541a173",
+      "tile": [
+        344,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:245",
+      "source": "san5",
+      "index": null,
+      "name": "夏侯惠",
+      "portrait": 245,
+      "file": "hd-assets/X-SAN5-0245.png",
+      "sha256": "31bf24057996443dfa83b306e198511fedcdc51569b100201d783e939c53aebd",
+      "tile": [
+        504,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:246",
+      "source": "san5",
+      "index": null,
+      "name": "夏侯玄",
+      "portrait": 246,
+      "file": "hd-assets/X-SAN5-0246.png",
+      "sha256": "f34da7c51e2ca4ba79d3fd8ce6f5f8444dfe35857f013dfc76994e73dd98092e",
+      "tile": [
+        664,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:249",
+      "source": "san5",
+      "index": null,
+      "name": "韓嵩",
+      "portrait": 249,
+      "file": "hd-assets/X-SAN5-0249.png",
+      "sha256": "257cdbe75e36130b7721c64624b62e520a35ab517edc504bf17b90aa84da3379",
+      "tile": [
+        824,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:250",
+      "source": "san5",
+      "index": null,
+      "name": "張角",
+      "portrait": 250,
+      "file": "hd-assets/X-SAN5-0250.png",
+      "sha256": "43d211ffaa8b9bdc047fc51c55419b91ae78b81e5ecddf4d0dc8b8706b474173",
+      "tile": [
+        984,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:251",
+      "source": "san5",
+      "index": null,
+      "name": "張寶",
+      "portrait": 251,
+      "file": "hd-assets/X-SAN5-0251.png",
+      "sha256": "be0f0c2425f5bcf2dce950dd90346a3402c0d3dcfd2d5c02abd2ee4fa3ec6cd0",
+      "tile": [
+        1144,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:252",
+      "source": "san5",
+      "index": null,
+      "name": "張梁",
+      "portrait": 252,
+      "file": "hd-assets/X-SAN5-0252.png",
+      "sha256": "6664537098acfefa25487ee15e099229bab0ce3ba4b06cec692928b4ed908ffe",
+      "tile": [
+        1304,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:253",
+      "source": "san5",
+      "index": null,
+      "name": "程遠志",
+      "portrait": 253,
+      "file": "hd-assets/X-SAN5-0253.png",
+      "sha256": "2a42e93e85b6755dc459f06a264842ad66310b4d3c1bbf017164318206e02899",
+      "tile": [
+        1464,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:254",
+      "source": "san5",
+      "index": null,
+      "name": "管亥",
+      "portrait": 254,
+      "file": "hd-assets/X-SAN5-0254.png",
+      "sha256": "6e6aaa4d46a44cb30035b2e2b8887ba6351ad2ee54117e947e3d0dbc9deee018",
+      "tile": [
+        1624,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:257",
+      "source": "san5",
+      "index": null,
+      "name": "裴元紹",
+      "portrait": 257,
+      "file": "hd-assets/X-SAN5-0257.png",
+      "sha256": "bbc13a65e3f79e6d6ff80ebc3441904750e5e2ccba5798aa2ac8dae24e492d04",
+      "tile": [
+        1784,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:258",
+      "source": "san5",
+      "index": null,
+      "name": "何進",
+      "portrait": 258,
+      "file": "hd-assets/X-SAN5-0258.png",
+      "sha256": "62c88d41d3b41372b19aa9b3d2aaff8028c6f04e8cfd8a4c9ff9749c49bafe70",
+      "tile": [
+        1944,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:259",
+      "source": "san5",
+      "index": null,
+      "name": "鄒靖",
+      "portrait": 259,
+      "file": "hd-assets/X-SAN5-0259.png",
+      "sha256": "fa9456d247217bfee20fbd9ce7ae57496b9d4ac95673784eba7aa3a3b03109d9",
+      "tile": [
+        2104,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:264",
+      "source": "san5",
+      "index": null,
+      "name": "公孫度",
+      "portrait": 264,
+      "file": "hd-assets/X-SAN5-0264.png",
+      "sha256": "9d94c930a29565a8ae829b922ce3954a24949b8ef4b9a13a3402145d0052ead8",
+      "tile": [
+        2264,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:267",
+      "source": "san5",
+      "index": null,
+      "name": "朱雋",
+      "portrait": 267,
+      "file": "hd-assets/X-SAN5-0267.png",
+      "sha256": "c5e088490085054ff49817b7e6dbb55fb657bf0d251ab04862f4a2f8d2927607",
+      "tile": [
+        2424,
+        5736,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:271",
+      "source": "san5",
+      "index": null,
+      "name": "黃皓",
+      "portrait": 271,
+      "file": "hd-assets/X-SAN5-0271.png",
+      "sha256": "0f41b27e61070abf143a1f09bb097c233b8862b6994ee89984d4532688bebdbf",
+      "tile": [
+        24,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:272",
+      "source": "san5",
+      "index": null,
+      "name": "孫皓",
+      "portrait": 272,
+      "file": "hd-assets/X-SAN5-0272.png",
+      "sha256": "3192515548a1841f927a8f1f5817bc5e82406f60944bf355bca9f861288ac1b3",
+      "tile": [
+        184,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:273",
+      "source": "san5",
+      "index": null,
+      "name": "張休",
+      "portrait": 273,
+      "file": "hd-assets/X-SAN5-0273.png",
+      "sha256": "3d80db2f94aeb81efe8146f2b208b832a23883a6b6e457efe131a53cd042d6b2",
+      "tile": [
+        344,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:277",
+      "source": "san5",
+      "index": null,
+      "name": "曹奐",
+      "portrait": 277,
+      "file": "hd-assets/X-SAN5-0277.png",
+      "sha256": "91d5af8c378eb767ecf2cecc22e21e755e557ec12091a5cee68050c092816ae1",
+      "tile": [
+        504,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:279",
+      "source": "san5",
+      "index": null,
+      "name": "司馬攸",
+      "portrait": 279,
+      "file": "hd-assets/X-SAN5-0279.png",
+      "sha256": "c09266b5b83adbc7408fc879f77e38a1a43fe0fb8e4bc46096ab512bac6f25ed",
+      "tile": [
+        664,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:280",
+      "source": "san5",
+      "index": null,
+      "name": "蔡邕",
+      "portrait": 280,
+      "file": "hd-assets/X-SAN5-0280.png",
+      "sha256": "2fbb7e1d5a31ba3f77e83b5f44804f5136876a02b32019706fb0e4fac7874a9c",
+      "tile": [
+        824,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:282",
+      "source": "san5",
+      "index": null,
+      "name": "劉諶",
+      "portrait": 282,
+      "file": "hd-assets/X-SAN5-0282.png",
+      "sha256": "922f9e1d3f915310abd4413733c596544233733b995ae7d5190024f2ab99bd80",
+      "tile": [
+        984,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:283",
+      "source": "san5",
+      "index": null,
+      "name": "劉永",
+      "portrait": 283,
+      "file": "hd-assets/X-SAN5-0283.png",
+      "sha256": "4779bdfb54668642320c4b8f08b05d00e96756ed98576e708d86670acd9abf30",
+      "tile": [
+        1144,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:284",
+      "source": "san5",
+      "index": null,
+      "name": "劉理",
+      "portrait": 284,
+      "file": "hd-assets/X-SAN5-0284.png",
+      "sha256": "1c9a61a04006415dcbad3eafc138b32bc5137157d6f3c67322f4a31df24689d1",
+      "tile": [
+        1304,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:285",
+      "source": "san5",
+      "index": null,
+      "name": "諸葛尚",
+      "portrait": 285,
+      "file": "hd-assets/X-SAN5-0285.png",
+      "sha256": "9888f07b6bfffc7411563f661447a2f42a2554c5c14f0926446a6f7613dfffd6",
+      "tile": [
+        1464,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:286",
+      "source": "san5",
+      "index": null,
+      "name": "孫登",
+      "portrait": 286,
+      "file": "hd-assets/X-SAN5-0286.png",
+      "sha256": "583ee3008a4ee2d4af3306396f3bc11621bb963ba7ec9af697982f0b750d86d4",
+      "tile": [
+        1624,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:287",
+      "source": "san5",
+      "index": null,
+      "name": "孫和",
+      "portrait": 287,
+      "file": "hd-assets/X-SAN5-0287.png",
+      "sha256": "8172cea29b79f02b426a47b58f4fbd856d393ce1f7882cdf69cd57c624bc8359",
+      "tile": [
+        1784,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:288",
+      "source": "san5",
+      "index": null,
+      "name": "陸凱",
+      "portrait": 288,
+      "file": "hd-assets/X-SAN5-0288.png",
+      "sha256": "3fcd0658041a06b081eefa6a3b538aa89b9134fffc72da0b7aa9e69a0c0a8f94",
+      "tile": [
+        1944,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:289",
+      "source": "san5",
+      "index": null,
+      "name": "岑昏",
+      "portrait": 289,
+      "file": "hd-assets/X-SAN5-0289.png",
+      "sha256": "8a1122b7170d9895a0f17e45a394b5f70a1d23ef5dcf2e2b6ad97f8a18ab92b8",
+      "tile": [
+        2104,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:292",
+      "source": "san5",
+      "index": null,
+      "name": "胡車兒",
+      "portrait": 292,
+      "file": "hd-assets/X-SAN5-0292.png",
+      "sha256": "d7e1943b01258e2c171ebe321bbc25f98930cced106e7a1560c47cf40fe72583",
+      "tile": [
+        2264,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:294",
+      "source": "san5",
+      "index": null,
+      "name": "丁原",
+      "portrait": 294,
+      "file": "hd-assets/X-SAN5-0294.png",
+      "sha256": "2398f497f58aea799b0521ac6f6aebbf19b466f7d10bd5fb806a7742cd5a26cb",
+      "tile": [
+        2424,
+        5960,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:295",
+      "source": "san5",
+      "index": null,
+      "name": "陳壽",
+      "portrait": 295,
+      "file": "hd-assets/X-SAN5-0295.png",
+      "sha256": "d7c789e83d75893a8ca3c4dbce19270fd725061048eaee40a2e000c02f85a810",
+      "tile": [
+        24,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:296",
+      "source": "san5",
+      "index": null,
+      "name": "禰衡",
+      "portrait": 296,
+      "file": "hd-assets/X-SAN5-0296.png",
+      "sha256": "d9d5fd32a23602ecf855489eba33bfa3ce162db27d00eee8d5c4e5274bba3b97",
+      "tile": [
+        184,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:297",
+      "source": "san5",
+      "index": null,
+      "name": "喬玄",
+      "portrait": 297,
+      "file": "hd-assets/X-SAN5-0297.png",
+      "sha256": "fc543ed3869d51d50ee480329fa3c40b1f6916c21df56e0b675504ad3651be4b",
+      "tile": [
+        344,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:298",
+      "source": "san5",
+      "index": null,
+      "name": "諸葛均",
+      "portrait": 298,
+      "file": "hd-assets/X-SAN5-0298.png",
+      "sha256": "411812228d3158cb70a153f51baaa24d01bd1523c63f07e8f64a45a1b6132c27",
+      "tile": [
+        504,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:300",
+      "source": "san5",
+      "index": null,
+      "name": "尹賞",
+      "portrait": 300,
+      "file": "hd-assets/X-SAN5-0300.png",
+      "sha256": "06792c4cbee19332febc340a43e02866d2fc10d64f517670e9f5d3051ab2be8f",
+      "tile": [
+        664,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:301",
+      "source": "san5",
+      "index": null,
+      "name": "尹大目",
+      "portrait": 301,
+      "file": "hd-assets/X-SAN5-0301.png",
+      "sha256": "c73a69ea44dafe9b35202583a0329a8870d6fd8437387add8aecd0e03a7a1d4a",
+      "tile": [
+        824,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:302",
+      "source": "san5",
+      "index": null,
+      "name": "閻宇",
+      "portrait": 302,
+      "file": "hd-assets/X-SAN5-0302.png",
+      "sha256": "66bc768a5439df8b0d5e8da8cbdad4349ef5217eddeb49f9bcd1b6ec00ce8191",
+      "tile": [
+        984,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:303",
+      "source": "san5",
+      "index": null,
+      "name": "王頎",
+      "portrait": 303,
+      "file": "hd-assets/X-SAN5-0303.png",
+      "sha256": "de9d6d0b47012cc4f36f6cea652dd4f10f1d4b408a4a23892dc7a9e6efa67cbd",
+      "tile": [
+        1144,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:304",
+      "source": "san5",
+      "index": null,
+      "name": "王經",
+      "portrait": 304,
+      "file": "hd-assets/X-SAN5-0304.png",
+      "sha256": "8e36437679b42650468e31f70ef7cd354686502a0b6edbac26a3e4ad032c4456",
+      "tile": [
+        1304,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:306",
+      "source": "san5",
+      "index": null,
+      "name": "王渾",
+      "portrait": 306,
+      "file": "hd-assets/X-SAN5-0306.png",
+      "sha256": "463ed0bf92f39a52b668f251947df056cd617dbc837fa1b08ea7514b1f8fb3b2",
+      "tile": [
+        1464,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:308",
+      "source": "san5",
+      "index": null,
+      "name": "王子服",
+      "portrait": 308,
+      "file": "hd-assets/X-SAN5-0308.png",
+      "sha256": "2e12adc5d53ce375baa6a068a8b2081b59841d65c4565d0b20ec6aa5df7ecf42",
+      "tile": [
+        1624,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:309",
+      "source": "san5",
+      "index": null,
+      "name": "王真",
+      "portrait": 309,
+      "file": "hd-assets/X-SAN5-0309.png",
+      "sha256": "ccc72715d60c80fa27f9bc254bfdc35641078cc1596ab7f89ac8ec2c8b5b0f03",
+      "tile": [
+        1784,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:310",
+      "source": "san5",
+      "index": null,
+      "name": "王戎",
+      "portrait": 310,
+      "file": "hd-assets/X-SAN5-0310.png",
+      "sha256": "b62952a3675c212699b694cd852b1f706a75629d8564deaa4daddf7cd04e51c8",
+      "tile": [
+        1944,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:311",
+      "source": "san5",
+      "index": null,
+      "name": "王昶",
+      "portrait": 311,
+      "file": "hd-assets/X-SAN5-0311.png",
+      "sha256": "ad64f640e79dcff67ace79e123f7e441277e26fae7670e3dc4a29461603f1e8f",
+      "tile": [
+        2104,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:312",
+      "source": "san5",
+      "index": null,
+      "name": "王甫",
+      "portrait": 312,
+      "file": "hd-assets/X-SAN5-0312.png",
+      "sha256": "d15f762bd98b6d4532a9c44ec3102da9180db6de0dfcf55c214bc28239b7e809",
+      "tile": [
+        2264,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:313",
+      "source": "san5",
+      "index": null,
+      "name": "華覈",
+      "portrait": 313,
+      "file": "hd-assets/X-SAN5-0313.png",
+      "sha256": "5dc6905e29b83bb9f123890625dfacdf27f93d1e455a367be45d2a012444116d",
+      "tile": [
+        2424,
+        6184,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:314",
+      "source": "san5",
+      "index": null,
+      "name": "何儀",
+      "portrait": 314,
+      "file": "hd-assets/X-SAN5-0314.png",
+      "sha256": "c94c5c9c339ed240b11d2129570f041fd282bc9d032bdb92ff4c6f3bbda3809f",
+      "tile": [
+        24,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:315",
+      "source": "san5",
+      "index": null,
+      "name": "郭奕",
+      "portrait": 315,
+      "file": "hd-assets/X-SAN5-0315.png",
+      "sha256": "77c3a7e3149777a5a5458bc9b76f4813ea4f7e7360282860bec6a31e74e0542d",
+      "tile": [
+        184,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:317",
+      "source": "san5",
+      "index": null,
+      "name": "霍弋",
+      "portrait": 317,
+      "file": "hd-assets/X-SAN5-0317.png",
+      "sha256": "12c5767e743eeadf59312182f3e552f3da30175414123023ce75e0ef40a8cd6e",
+      "tile": [
+        344,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:318",
+      "source": "san5",
+      "index": null,
+      "name": "夏侯恩",
+      "portrait": 318,
+      "file": "hd-assets/X-SAN5-0318.png",
+      "sha256": "536ff20a0b85f967a1b3ec3d998af65c6174f78110e22295d083f6f47863144c",
+      "tile": [
+        504,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:320",
+      "source": "san5",
+      "index": null,
+      "name": "賈範",
+      "portrait": 320,
+      "file": "hd-assets/X-SAN5-0320.png",
+      "sha256": "3cb71a4b7cbe4278e910b9879729e59dee34443801bd13716315a27a6aa3c092",
+      "tile": [
+        664,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:321",
+      "source": "san5",
+      "index": null,
+      "name": "關彞",
+      "portrait": 321,
+      "file": "hd-assets/X-SAN5-0321.png",
+      "sha256": "686d7e92114c0636b603a4d17a5419a820d717074b1df78a22e8af27366a9740",
+      "tile": [
+        824,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:323",
+      "source": "san5",
+      "index": null,
+      "name": "韓暹",
+      "portrait": 323,
+      "file": "hd-assets/X-SAN5-0323.png",
+      "sha256": "f900e943c931d87fc6851feb837bab5169d72dfa2964ce25d9988912d6fe5f1f",
+      "tile": [
+        984,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:324",
+      "source": "san5",
+      "index": null,
+      "name": "韓忠",
+      "portrait": 324,
+      "file": "hd-assets/X-SAN5-0324.png",
+      "sha256": "dcc504255f4c5cf131507e3c971ee392a9aa9e415bc2efc6f494eb4f2d995fb4",
+      "tile": [
+        1144,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:325",
+      "source": "san5",
+      "index": null,
+      "name": "桓範",
+      "portrait": 325,
+      "file": "hd-assets/X-SAN5-0325.png",
+      "sha256": "aeade11c6042a9a7c32a7ce45080d54cbd8608fbf1306034a5881d412619448b",
+      "tile": [
+        1304,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:326",
+      "source": "san5",
+      "index": null,
+      "name": "樂綝",
+      "portrait": 326,
+      "file": "hd-assets/X-SAN5-0326.png",
+      "sha256": "897d647e2518d8ad66566c6c99196ef27cc6446794a15b83b590bcbfe9dfc5b1",
+      "tile": [
+        1464,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:327",
+      "source": "san5",
+      "index": null,
+      "name": "龔景",
+      "portrait": 327,
+      "file": "hd-assets/X-SAN5-0327.png",
+      "sha256": "94653c00694c8df47c4662f9c977b3bec8f8a48ca0cfad3076eda0acb1bacdfe",
+      "tile": [
+        1624,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:329",
+      "source": "san5",
+      "index": null,
+      "name": "許儀",
+      "portrait": 329,
+      "file": "hd-assets/X-SAN5-0329.png",
+      "sha256": "327e1653446fe27c432581f24d94b2c00c0eda4e87bfd58d4989898f43be42e6",
+      "tile": [
+        1784,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:331",
+      "source": "san5",
+      "index": null,
+      "name": "牽弘",
+      "portrait": 331,
+      "file": "hd-assets/X-SAN5-0331.png",
+      "sha256": "05f72a43727640a9769b5387d16afa1b8393b291a9f388206b3430e230374cd1",
+      "tile": [
+        1944,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:334",
+      "source": "san5",
+      "index": null,
+      "name": "嚴政",
+      "portrait": 334,
+      "file": "hd-assets/X-SAN5-0334.png",
+      "sha256": "dff221ae3a04f8fc442c67dea304f983e4375ee03860ce1794dd2989ef3cc1f5",
+      "tile": [
+        2104,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:335",
+      "source": "san5",
+      "index": null,
+      "name": "嚴輿",
+      "portrait": 335,
+      "file": "hd-assets/X-SAN5-0335.png",
+      "sha256": "1634f48e80a402316ee6c4720170a85a5b9ccd6e5c5b903c6e744d5d794c3e17",
+      "tile": [
+        2264,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:337",
+      "source": "san5",
+      "index": null,
+      "name": "耿紀",
+      "portrait": 337,
+      "file": "hd-assets/X-SAN5-0337.png",
+      "sha256": "b0dc45eb599f6c2425ac4c089f9a2cb69a0529442b9eaf556d3c9ddedc77870a",
+      "tile": [
+        2424,
+        6408,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:338",
+      "source": "san5",
+      "index": null,
+      "name": "高翔",
+      "portrait": 338,
+      "file": "hd-assets/X-SAN5-0338.png",
+      "sha256": "6add0da43247ff172de5cc1427c3e64b8e7a4d268480b4722803f8308848b557",
+      "tile": [
+        24,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:339",
+      "source": "san5",
+      "index": null,
+      "name": "高昇",
+      "portrait": 339,
+      "file": "hd-assets/X-SAN5-0339.png",
+      "sha256": "4c6d61b34996b76d0dc93c1c3278e6cbf59c8cd9ec3ca032728ee57e643b5d9f",
+      "tile": [
+        184,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:342",
+      "source": "san5",
+      "index": null,
+      "name": "公孫康",
+      "portrait": 342,
+      "file": "hd-assets/X-SAN5-0342.png",
+      "sha256": "174e962001997320a9941c6f0b71d60913c49b68b3cc7f61cfbd61dd85df6a56",
+      "tile": [
+        344,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:343",
+      "source": "san5",
+      "index": null,
+      "name": "公孫恭",
+      "portrait": 343,
+      "file": "hd-assets/X-SAN5-0343.png",
+      "sha256": "1e7f173d88984d511e3f956303ab1ac39ed117edc327ab00e2ea5dc7c13167a2",
+      "tile": [
+        504,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:346",
+      "source": "san5",
+      "index": null,
+      "name": "胡班",
+      "portrait": 346,
+      "file": "hd-assets/X-SAN5-0346.png",
+      "sha256": "428acca29b9fcdc1b6647b4efcd3c97e5be4eeaa3fc3d6957e91d46ce39c524c",
+      "tile": [
+        664,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:347",
+      "source": "san5",
+      "index": null,
+      "name": "胡烈",
+      "portrait": 347,
+      "file": "hd-assets/X-SAN5-0347.png",
+      "sha256": "5cc96bf122f8cb6e1413403b19ac78c8e50eabfddbc9fd4f470d2aa642015824",
+      "tile": [
+        824,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:348",
+      "source": "san5",
+      "index": null,
+      "name": "吾彥",
+      "portrait": 348,
+      "file": "hd-assets/X-SAN5-0348.png",
+      "sha256": "c57352000643207affd28cd7505d4933e38871b37b0a53afc8968570eace5a02",
+      "tile": [
+        984,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:349",
+      "source": "san5",
+      "index": null,
+      "name": "吳綱",
+      "portrait": 349,
+      "file": "hd-assets/X-SAN5-0349.png",
+      "sha256": "d525b0f0d72c95fb4cf81d71a77c6db3a6e330fbce4af8673f2e38780b4e2558",
+      "tile": [
+        1144,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:350",
+      "source": "san5",
+      "index": null,
+      "name": "吳質",
+      "portrait": 350,
+      "file": "hd-assets/X-SAN5-0350.png",
+      "sha256": "2df840926d5b6cc54595ac07e53d46cfee55e14db7a4f4777793c1991cf614e9",
+      "tile": [
+        1304,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:353",
+      "source": "san5",
+      "index": null,
+      "name": "笮融",
+      "portrait": 353,
+      "file": "hd-assets/X-SAN5-0353.png",
+      "sha256": "96d80f7b94227541ccbe140a1fc9b2f74fcfb81404a1e86e3813c62ce7bea569",
+      "tile": [
+        1464,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:354",
+      "source": "san5",
+      "index": null,
+      "name": "謝旌",
+      "portrait": 354,
+      "file": "hd-assets/X-SAN5-0354.png",
+      "sha256": "b4dbc60b9239907ec8da34d63568adc412d65a8922075baf4421e6a32a6c93a7",
+      "tile": [
+        1624,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:355",
+      "source": "san5",
+      "index": null,
+      "name": "車冑",
+      "portrait": 355,
+      "file": "hd-assets/X-SAN5-0355.png",
+      "sha256": "8569146373985d12301dd1e1e86c4b6175a0f5e79146ebcc98b2b83c09d15ae2",
+      "tile": [
+        1784,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:356",
+      "source": "san5",
+      "index": null,
+      "name": "朱異",
+      "portrait": 356,
+      "file": "hd-assets/X-SAN5-0356.png",
+      "sha256": "84e3beb5077a75c876ee45cb0e1aa0865729793f9e533a42a920d4d6613442b6",
+      "tile": [
+        1944,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:357",
+      "source": "san5",
+      "index": null,
+      "name": "周昕",
+      "portrait": 357,
+      "file": "hd-assets/X-SAN5-0357.png",
+      "sha256": "6f53c45b33d0d3caf277b5f73c9da8ddabb3810ef7127cf678214e090f0a48a2",
+      "tile": [
+        2104,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:358",
+      "source": "san5",
+      "index": null,
+      "name": "周旨",
+      "portrait": 358,
+      "file": "hd-assets/X-SAN5-0358.png",
+      "sha256": "56630bd9c5feeb85825b65578ec8c367952af4501e1ec3ea86eea519aa2e6e2b",
+      "tile": [
+        2264,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:359",
+      "source": "san5",
+      "index": null,
+      "name": "州泰",
+      "portrait": 359,
+      "file": "hd-assets/X-SAN5-0359.png",
+      "sha256": "b0032a99dc60d30327e9320afc9df6464eff549d2862176b22dc770916399297",
+      "tile": [
+        2424,
+        6632,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:363",
+      "source": "san5",
+      "index": null,
+      "name": "朱靈",
+      "portrait": 363,
+      "file": "hd-assets/X-SAN5-0363.png",
+      "sha256": "6f7776f24680ed1e073c7a8efac8d089577d84d29586f67c3e33736ac25cfadd",
+      "tile": [
+        24,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:365",
+      "source": "san5",
+      "index": null,
+      "name": "蔣義渠",
+      "portrait": 365,
+      "file": "hd-assets/X-SAN5-0365.png",
+      "sha256": "70616533287b21f089e04375cbbf2f7002a731a389c303b725e9cc2956e88af6",
+      "tile": [
+        184,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:367",
+      "source": "san5",
+      "index": null,
+      "name": "蔣舒",
+      "portrait": 367,
+      "file": "hd-assets/X-SAN5-0367.png",
+      "sha256": "3f03df4a7edfc1435218c73b997319d8282ac0cc8357e2e0b5e23603b4d2d08d",
+      "tile": [
+        344,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:369",
+      "source": "san5",
+      "index": null,
+      "name": "諸葛靚",
+      "portrait": 369,
+      "file": "hd-assets/X-SAN5-0369.png",
+      "sha256": "3bb1292b0ac1cbc8e5a9c41f9f0a02c309e63e1ea01ac8ac43c31a4980f2bbcf",
+      "tile": [
+        504,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:370",
+      "source": "san5",
+      "index": null,
+      "name": "師纂",
+      "portrait": 370,
+      "file": "hd-assets/X-SAN5-0370.png",
+      "sha256": "11f473d016837753360a087657f8ec33ec58de8594719dd52884b25ddd23989c",
+      "tile": [
+        664,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:371",
+      "source": "san5",
+      "index": null,
+      "name": "司馬孚",
+      "portrait": 371,
+      "file": "hd-assets/X-SAN5-0371.png",
+      "sha256": "393e9acae926130ca450256b59110f3ed9fcb608735300adda6984717c82f98b",
+      "tile": [
+        824,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:372",
+      "source": "san5",
+      "index": null,
+      "name": "司馬望",
+      "portrait": 372,
+      "file": "hd-assets/X-SAN5-0372.png",
+      "sha256": "a602646da93b6eebea35bb7a525870a34ead4a3353db1818081d83f9fda4a380",
+      "tile": [
+        984,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:373",
+      "source": "san5",
+      "index": null,
+      "name": "司馬朗",
+      "portrait": 373,
+      "file": "hd-assets/X-SAN5-0373.png",
+      "sha256": "fe121d80dd02cb448d0ecba7917adc247418f92bc41651f2ca4fa7750f8b6e56",
+      "tile": [
+        1144,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:374",
+      "source": "san5",
+      "index": null,
+      "name": "沈瑩",
+      "portrait": 374,
+      "file": "hd-assets/X-SAN5-0374.png",
+      "sha256": "ef25f6c6a645e57d65d3f5b572b3314bd5090e7b1d9e96b50663f054edc8825f",
+      "tile": [
+        1304,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:375",
+      "source": "san5",
+      "index": null,
+      "name": "申耽",
+      "portrait": 375,
+      "file": "hd-assets/X-SAN5-0375.png",
+      "sha256": "47949957b182935ffce96fe32cd842ce4e6f2f462223a03e1df167b0cb96aa91",
+      "tile": [
+        1464,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:377",
+      "source": "san5",
+      "index": null,
+      "name": "徐質",
+      "portrait": 377,
+      "file": "hd-assets/X-SAN5-0377.png",
+      "sha256": "e6fe8521c4f9c0b3a2f9a4b1cbfb1dc1a8f1e1dbf986f3deb924269d46d2736b",
+      "tile": [
+        1624,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:379",
+      "source": "san5",
+      "index": null,
+      "name": "薛瑩",
+      "portrait": 379,
+      "file": "hd-assets/X-SAN5-0379.png",
+      "sha256": "037b1f2fd7e46993027d3c76462bf14bb9a4fb145acd372458932645c359071b",
+      "tile": [
+        1784,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:381",
+      "source": "san5",
+      "index": null,
+      "name": "全禕",
+      "portrait": 381,
+      "file": "hd-assets/X-SAN5-0381.png",
+      "sha256": "cd7ed4da23a404f09cc99a22cc34a76e4372c1b1eeffb26db28b24af3eea2620",
+      "tile": [
+        1944,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:382",
+      "source": "san5",
+      "index": null,
+      "name": "全懌",
+      "portrait": 382,
+      "file": "hd-assets/X-SAN5-0382.png",
+      "sha256": "9bb1bc77041eab55c656bc66fe4b938af5b1feac5c756e55f1f0ca004d0905f5",
+      "tile": [
+        2104,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:383",
+      "source": "san5",
+      "index": null,
+      "name": "全端",
+      "portrait": 383,
+      "file": "hd-assets/X-SAN5-0383.png",
+      "sha256": "d010e49a3b90a09e9cba67264f8b04f8db79221cce81a5a58433da3e1e092291",
+      "tile": [
+        2264,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:384",
+      "source": "san5",
+      "index": null,
+      "name": "曹宇",
+      "portrait": 384,
+      "file": "hd-assets/X-SAN5-0384.png",
+      "sha256": "a058507d90ad28ad4de7721da96c32b95a0611b76f30f222f70a7d7dcaa0807a",
+      "tile": [
+        2424,
+        6856,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:385",
+      "source": "san5",
+      "index": null,
+      "name": "曹羲",
+      "portrait": 385,
+      "file": "hd-assets/X-SAN5-0385.png",
+      "sha256": "16d4656095e99d093157bb5618fc1d79a7b68458d1f9c6927e6bcb07ca218b7a",
+      "tile": [
+        24,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:386",
+      "source": "san5",
+      "index": null,
+      "name": "曹訓",
+      "portrait": 386,
+      "file": "hd-assets/X-SAN5-0386.png",
+      "sha256": "e22ab23926dfb80d9cb585ac9380cfff091db9f68f3981873946b547b389f038",
+      "tile": [
+        184,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:390",
+      "source": "san5",
+      "index": null,
+      "name": "沮鵠",
+      "portrait": 390,
+      "file": "hd-assets/X-SAN5-0390.png",
+      "sha256": "251104221015257a50c23eb58e44de44e3ab7de4ac98d1e8a3dc574d00395acd",
+      "tile": [
+        344,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:391",
+      "source": "san5",
+      "index": null,
+      "name": "蘇飛",
+      "portrait": 391,
+      "file": "hd-assets/X-SAN5-0391.png",
+      "sha256": "2eb44d2ec3247ebc4e7a2413f5ade3d3a80645833b6cba9db1bca2ea7e8727cf",
+      "tile": [
+        504,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:394",
+      "source": "san5",
+      "index": null,
+      "name": "孫歆",
+      "portrait": 394,
+      "file": "hd-assets/X-SAN5-0394.png",
+      "sha256": "00c5bfef51b36d44f89416430f4b320630d97b1b50995dedc87427b828c7cc69",
+      "tile": [
+        664,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:395",
+      "source": "san5",
+      "index": null,
+      "name": "孫峻",
+      "portrait": 395,
+      "file": "hd-assets/X-SAN5-0395.png",
+      "sha256": "da4ab0198b586628ada44caf632417161af466c3c46d9c554d7f4bb66e597935",
+      "tile": [
+        824,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:396",
+      "source": "san5",
+      "index": null,
+      "name": "孫秀",
+      "portrait": 396,
+      "file": "hd-assets/X-SAN5-0396.png",
+      "sha256": "0d8dce5d425a59636980ad2b8decc8365ce5283c9bb9f3da099cf0deafa37aa7",
+      "tile": [
+        984,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:397",
+      "source": "san5",
+      "index": null,
+      "name": "孫韶",
+      "portrait": 397,
+      "file": "hd-assets/X-SAN5-0397.png",
+      "sha256": "048cb829751d179a629d0f0862ef3c5b08fba1208ec8550700a38a25724e5924",
+      "tile": [
+        1144,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:398",
+      "source": "san5",
+      "index": null,
+      "name": "孫靜",
+      "portrait": 398,
+      "file": "hd-assets/X-SAN5-0398.png",
+      "sha256": "d5b4922434808ac8962034dd719b83d369c53acfc201771727d8aa5e81bdd742",
+      "tile": [
+        1304,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:399",
+      "source": "san5",
+      "index": null,
+      "name": "孫仲",
+      "portrait": 399,
+      "file": "hd-assets/X-SAN5-0399.png",
+      "sha256": "1401e982b1539e2638bd1a83457a7d47f95e109e2878bac3cab8d6c38e8bce4e",
+      "tile": [
+        1464,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:400",
+      "source": "san5",
+      "index": null,
+      "name": "孫綝",
+      "portrait": 400,
+      "file": "hd-assets/X-SAN5-0400.png",
+      "sha256": "2fb826b8224c7dfc1a3d953fba6d6b192b599b015e405bfebef74a90d1d63a46",
+      "tile": [
+        1624,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:401",
+      "source": "san5",
+      "index": null,
+      "name": "孫瑜",
+      "portrait": 401,
+      "file": "hd-assets/X-SAN5-0401.png",
+      "sha256": "ab2b4eb882b309e879d8cb9858fb4e13903f24dd6d3bb6ef9c0d447f5fbef4f0",
+      "tile": [
+        1784,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:402",
+      "source": "san5",
+      "index": null,
+      "name": "孫禮",
+      "portrait": 402,
+      "file": "hd-assets/X-SAN5-0402.png",
+      "sha256": "2cbcd5f574d81fac14219b8c76979fc8b250efeac2f49c0d8e8417db66470855",
+      "tile": [
+        1944,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:403",
+      "source": "san5",
+      "index": null,
+      "name": "孫朗",
+      "portrait": 403,
+      "file": "hd-assets/X-SAN5-0403.png",
+      "sha256": "3c21f9e14890ff75581e62f70fa398eb7a39fe17d50c1d9d4b1c40a8d225fc69",
+      "tile": [
+        2104,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:404",
+      "source": "san5",
+      "index": null,
+      "name": "卓膺",
+      "portrait": 404,
+      "file": "hd-assets/X-SAN5-0404.png",
+      "sha256": "b81df45bc13e1132d93210a7590d88a231dcb6406654a9c20b41048d09df1188",
+      "tile": [
+        2264,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:407",
+      "source": "san5",
+      "index": null,
+      "name": "張英",
+      "portrait": 407,
+      "file": "hd-assets/X-SAN5-0407.png",
+      "sha256": "e1e5f56551e72175510b52f12ce9f5d2ee7f116d0efe038a31be5bb3331b6b1d",
+      "tile": [
+        2424,
+        7080,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:410",
+      "source": "san5",
+      "index": null,
+      "name": "張華",
+      "portrait": 410,
+      "file": "hd-assets/X-SAN5-0410.png",
+      "sha256": "9a1b6153cb15f01a663a9e6d5d716819ab77ea1a12f93d6b5fca06b3789b7841",
+      "tile": [
+        24,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:413",
+      "source": "san5",
+      "index": null,
+      "name": "張虎",
+      "portrait": 413,
+      "file": "hd-assets/X-SAN5-0413.png",
+      "sha256": "25baa3d41128ff7f04a441bc508f848d38f0d4e64b73d16c14b3355ef9a428e5",
+      "tile": [
+        184,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:414",
+      "source": "san5",
+      "index": null,
+      "name": "趙弘",
+      "portrait": 414,
+      "file": "hd-assets/X-SAN5-0414.png",
+      "sha256": "bcbaf99019941f10c39a7bd403c01105220b431ff89574c8fcf7ac8b85b2af64",
+      "tile": [
+        344,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:416",
+      "source": "san5",
+      "index": null,
+      "name": "張象",
+      "portrait": 416,
+      "file": "hd-assets/X-SAN5-0416.png",
+      "sha256": "3d9fc865865e3792cbcebea01c1dbed75e3678862efb040c35be1238fe0e9c12",
+      "tile": [
+        504,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:417",
+      "source": "san5",
+      "index": null,
+      "name": "張紹",
+      "portrait": 417,
+      "file": "hd-assets/X-SAN5-0417.png",
+      "sha256": "b1fb0c6ec62dc102ac9a79a41be371e8338770fad0845f08232c6ff82327be2b",
+      "tile": [
+        664,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:418",
+      "source": "san5",
+      "index": null,
+      "name": "張節",
+      "portrait": 418,
+      "file": "hd-assets/X-SAN5-0418.png",
+      "sha256": "d49cfc87829cfd4a6a1068f7fce633936ac38ec067d5b76f3810c73581dc603e",
+      "tile": [
+        824,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:420",
+      "source": "san5",
+      "index": null,
+      "name": "張布",
+      "portrait": 420,
+      "file": "hd-assets/X-SAN5-0420.png",
+      "sha256": "db6c8924b0e3571c9f279a19d8797a91bdde28e44450bc730e5105650996cd3b",
+      "tile": [
+        984,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:421",
+      "source": "san5",
+      "index": null,
+      "name": "趙累",
+      "portrait": 421,
+      "file": "hd-assets/X-SAN5-0421.png",
+      "sha256": "88aeb220040414795199482a8456ed185a53f8a1b7e459871e0b1e06f17530fd",
+      "tile": [
+        1144,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:422",
+      "source": "san5",
+      "index": null,
+      "name": "陳橫",
+      "portrait": 422,
+      "file": "hd-assets/X-SAN5-0422.png",
+      "sha256": "2c23b80ee6d8efd552cd263445cfa1156a47705a46f05cddb87b2f1d5344dfaa",
+      "tile": [
+        1304,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:423",
+      "source": "san5",
+      "index": null,
+      "name": "陳騫",
+      "portrait": 423,
+      "file": "hd-assets/X-SAN5-0423.png",
+      "sha256": "a86fe2611a53bbc6dfe1e83ddf3caccc362d1794f264c309ffa5dabbbdf89460",
+      "tile": [
+        1464,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:429",
+      "source": "san5",
+      "index": null,
+      "name": "田續",
+      "portrait": 429,
+      "file": "hd-assets/X-SAN5-0429.png",
+      "sha256": "f793d5f1933cdbaa00044ef96beb963d1b722cfd5f29652f7c1506cd18b5c9f2",
+      "tile": [
+        1624,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:430",
+      "source": "san5",
+      "index": null,
+      "name": "田疇",
+      "portrait": 430,
+      "file": "hd-assets/X-SAN5-0430.png",
+      "sha256": "9bb0d1baeca07d2c68e59114cfe835a886829651f21944b4b1347036a7eb1b85",
+      "tile": [
+        1784,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:431",
+      "source": "san5",
+      "index": null,
+      "name": "党均",
+      "portrait": 431,
+      "file": "hd-assets/X-SAN5-0431.png",
+      "sha256": "22210d606d987c815ee2d875487ec3f60f4010980a7c26c08a5d1e01530fb4e8",
+      "tile": [
+        1944,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:432",
+      "source": "san5",
+      "index": null,
+      "name": "董厥",
+      "portrait": 432,
+      "file": "hd-assets/X-SAN5-0432.png",
+      "sha256": "16efb20d663d111d3e8fa202e65c2cbad5f160cc7261076588b649a4bf44bf91",
+      "tile": [
+        2104,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:434",
+      "source": "san5",
+      "index": null,
+      "name": "董衡",
+      "portrait": 434,
+      "file": "hd-assets/X-SAN5-0434.png",
+      "sha256": "ddffe49c5090bfa938d1ec63f59bc1981e8ee1746b53e0c9e9c006f8bdc07d6c",
+      "tile": [
+        2264,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:435",
+      "source": "san5",
+      "index": null,
+      "name": "唐咨",
+      "portrait": 435,
+      "file": "hd-assets/X-SAN5-0435.png",
+      "sha256": "adf5ed9ceb551a81397bd7b1e47886aaa39a9b3a1349e4a3857d07aa93902cea",
+      "tile": [
+        2424,
+        7304,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:436",
+      "source": "san5",
+      "index": null,
+      "name": "陶濬",
+      "portrait": 436,
+      "file": "hd-assets/X-SAN5-0436.png",
+      "sha256": "1b9c20821f9c99750a9d557475fb8f79f94f499898bf8948467adec574e7b88b",
+      "tile": [
+        24,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:437",
+      "source": "san5",
+      "index": null,
+      "name": "董承",
+      "portrait": 437,
+      "file": "hd-assets/X-SAN5-0437.png",
+      "sha256": "ad8a2f5db47c1a30f5241c91ce2e37d1ce89a02be3e9f034054ede957f427b7e",
+      "tile": [
+        184,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:438",
+      "source": "san5",
+      "index": null,
+      "name": "鄧忠",
+      "portrait": 438,
+      "file": "hd-assets/X-SAN5-0438.png",
+      "sha256": "b9404f4b95b743a0fdd7e1b0e9cdd84b10d8cdf1dc606c3096331b2af0611e36",
+      "tile": [
+        344,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:440",
+      "source": "san5",
+      "index": null,
+      "name": "鄧茂",
+      "portrait": 440,
+      "file": "hd-assets/X-SAN5-0440.png",
+      "sha256": "7b1f4b89c0ef0240a99ed797ec275b0af55c5171ce0b3345fb1aae0c27df009d",
+      "tile": [
+        504,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:441",
+      "source": "san5",
+      "index": null,
+      "name": "董和",
+      "portrait": 441,
+      "file": "hd-assets/X-SAN5-0441.png",
+      "sha256": "7c5078578f149894ad90c2a4401e43b4423d98ef9d4ca3e61f23cf5169b4f4c1",
+      "tile": [
+        664,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:442",
+      "source": "san5",
+      "index": null,
+      "name": "杜遠",
+      "portrait": 442,
+      "file": "hd-assets/X-SAN5-0442.png",
+      "sha256": "54e7dab0883d3f76eeadd1e62e8e43ef8369af829abeba654979bfd9b866fadf",
+      "tile": [
+        824,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:443",
+      "source": "san5",
+      "index": null,
+      "name": "裴秀",
+      "portrait": 443,
+      "file": "hd-assets/X-SAN5-0443.png",
+      "sha256": "32afb815155d60452d5eab2dc3a316c0036ff4f8d7fb318f6c370a35eaa70d0f",
+      "tile": [
+        984,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:445",
+      "source": "san5",
+      "index": null,
+      "name": "樊建",
+      "portrait": 445,
+      "file": "hd-assets/X-SAN5-0445.png",
+      "sha256": "80c6a09c6a745ddc0369fe2c4eaccd22e346d2d84deb3f584f4f6273e7a38807",
+      "tile": [
+        1144,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:446",
+      "source": "san5",
+      "index": null,
+      "name": "潘濬",
+      "portrait": 446,
+      "file": "hd-assets/X-SAN5-0446.png",
+      "sha256": "a29f174fed0a21210562d6447355ae5661e1043fd0948b15f7351bc39ac43331",
+      "tile": [
+        1304,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:448",
+      "source": "san5",
+      "index": null,
+      "name": "潘鳳",
+      "portrait": 448,
+      "file": "hd-assets/X-SAN5-0448.png",
+      "sha256": "59a204c9bcff01dc547781c7f96bf4058541737340c729e563169ddf3896dcc8",
+      "tile": [
+        1464,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:451",
+      "source": "san5",
+      "index": null,
+      "name": "馬遵",
+      "portrait": 451,
+      "file": "hd-assets/X-SAN5-0451.png",
+      "sha256": "20e0ecad7ef840dcaef3815b066e0424b7233650b972ba3eabb4dc530ebdbf59",
+      "tile": [
+        1624,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:452",
+      "source": "san5",
+      "index": null,
+      "name": "馬忠",
+      "portrait": 452,
+      "file": "hd-assets/X-SAN5-0452.png",
+      "sha256": "e8109add182fcd18f41eb7e2883d4cef0b4baa955f4324d142a6a9b78003af3d",
+      "tile": [
+        1784,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:454",
+      "source": "san5",
+      "index": null,
+      "name": "馬邈",
+      "portrait": 454,
+      "file": "hd-assets/X-SAN5-0454.png",
+      "sha256": "e282fd30a7462efbface751bd3e2e559a1308998579df0f4c809420b17dfb453",
+      "tile": [
+        1944,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:455",
+      "source": "san5",
+      "index": null,
+      "name": "万彧",
+      "portrait": 455,
+      "file": "hd-assets/X-SAN5-0455.png",
+      "sha256": "0df7255b78171be46ebee900412dc561bd051fcc676a3d122414eb19c5c6b1ad",
+      "tile": [
+        2104,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:456",
+      "source": "san5",
+      "index": null,
+      "name": "卑衍",
+      "portrait": 456,
+      "file": "hd-assets/X-SAN5-0456.png",
+      "sha256": "98f2176a66856959025f67eb9ab3eb061c3c70b36ea628a7eabc7c2fd7ea7f78",
+      "tile": [
+        2264,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:458",
+      "source": "san5",
+      "index": null,
+      "name": "馮習",
+      "portrait": 458,
+      "file": "hd-assets/X-SAN5-0458.png",
+      "sha256": "8b1b3822a9e3c3944afc351105f927363fbe2430c5053899fc0c01914a713be4",
+      "tile": [
+        2424,
+        7528,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:459",
+      "source": "san5",
+      "index": null,
+      "name": "傅嬰",
+      "portrait": 459,
+      "file": "hd-assets/X-SAN5-0459.png",
+      "sha256": "e8dc401d0ce1799bb5f6f08bc1bb374ebeca32871d8147f5b73e27985e0b1c7a",
+      "tile": [
+        24,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:462",
+      "source": "san5",
+      "index": null,
+      "name": "傅僉",
+      "portrait": 462,
+      "file": "hd-assets/X-SAN5-0462.png",
+      "sha256": "18166c3f2857260a1a6ed6127f7127808eb8842747771d797d829523a846415f",
+      "tile": [
+        184,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:465",
+      "source": "san5",
+      "index": null,
+      "name": "武安國",
+      "portrait": 465,
+      "file": "hd-assets/X-SAN5-0465.png",
+      "sha256": "e847a4f6e347d25a671edc2931e7b61ad8e2c21c0768c80761a70c9720cbe173",
+      "tile": [
+        344,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:466",
+      "source": "san5",
+      "index": null,
+      "name": "卞喜",
+      "portrait": 466,
+      "file": "hd-assets/X-SAN5-0466.png",
+      "sha256": "1fd0ccecac48e93af0923ca6e2a7fe7f97f4c1ef19232dec7d0e7414e76cc64b",
+      "tile": [
+        504,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:467",
+      "source": "san5",
+      "index": null,
+      "name": "龐義",
+      "portrait": 467,
+      "file": "hd-assets/X-SAN5-0467.png",
+      "sha256": "0559a9c3a3d8eb4663fd45782a7263d816832b2073531500aed9c05a43de5936",
+      "tile": [
+        664,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:469",
+      "source": "san5",
+      "index": null,
+      "name": "濮陽興",
+      "portrait": 469,
+      "file": "hd-assets/X-SAN5-0469.png",
+      "sha256": "68a9734f914b622629a246afc4d7364aa45cdb79cbd790f52a74ea0a1a15e655",
+      "tile": [
+        824,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:472",
+      "source": "san5",
+      "index": null,
+      "name": "楊濟",
+      "portrait": 472,
+      "file": "hd-assets/X-SAN5-0472.png",
+      "sha256": "1a250ce0085980d8931aee2ac8722629f085143ace700c2989ed0f0ef03b18c2",
+      "tile": [
+        984,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:475",
+      "source": "san5",
+      "index": null,
+      "name": "楊祚",
+      "portrait": 475,
+      "file": "hd-assets/X-SAN5-0475.png",
+      "sha256": "aba4f9bdc32ca4a03310e4e6afd024ef561f106ba7ce5c4763cac29cc03be268",
+      "tile": [
+        1144,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:478",
+      "source": "san5",
+      "index": null,
+      "name": "駱統",
+      "portrait": 478,
+      "file": "hd-assets/X-SAN5-0478.png",
+      "sha256": "503c587fd30acc7499787830214f7c949bd7314315cf6b5b6e974e0d6dda3bef",
+      "tile": [
+        1304,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:482",
+      "source": "san5",
+      "index": null,
+      "name": "留略",
+      "portrait": 482,
+      "file": "hd-assets/X-SAN5-0482.png",
+      "sha256": "1e1df4ebe2a17ce8fd9f5f45764583cf4f80734b16301e819fc9f1522d0fa145",
+      "tile": [
+        1464,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:483",
+      "source": "san5",
+      "index": null,
+      "name": "呂威璜",
+      "portrait": 483,
+      "file": "hd-assets/X-SAN5-0483.png",
+      "sha256": "8c9b4e8989d97113905f07649062aaa093ce58d47a92da6972f4155b815dbee0",
+      "tile": [
+        1624,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:485",
+      "source": "san5",
+      "index": null,
+      "name": "呂義",
+      "portrait": 485,
+      "file": "hd-assets/X-SAN5-0485.png",
+      "sha256": "948db497fe2b9ed3007feb5052ef4146a6bd9d76e92c7906fd763ff5015142ec",
+      "tile": [
+        1784,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:489",
+      "source": "san5",
+      "index": null,
+      "name": "李鵬",
+      "portrait": 489,
+      "file": "hd-assets/X-SAN5-0489.png",
+      "sha256": "124182e680b245773edd5b14617f2765f294e67d5c0486ae4cd3c7a772bb8148",
+      "tile": [
+        1944,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:491",
+      "source": "san5",
+      "index": null,
+      "name": "倫直",
+      "portrait": 491,
+      "file": "hd-assets/X-SAN5-0491.png",
+      "sha256": "72c3736e7cbb037f9e450ec3d80e95324f48d6f11332b97d333fd556be929c39",
+      "tile": [
+        2104,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:492",
+      "source": "san5",
+      "index": null,
+      "name": "華佗",
+      "portrait": 492,
+      "file": "hd-assets/X-SAN5-0492.png",
+      "sha256": "104090ece088f21a5285909cc477abbd6744868ded0266b0bd3dd3201cacebaf",
+      "tile": [
+        2264,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:493",
+      "source": "san5",
+      "index": null,
+      "name": "司馬徽",
+      "portrait": 493,
+      "file": "hd-assets/X-SAN5-0493.png",
+      "sha256": "8a9e920360346b7b2f377611f651d5f1587cba5bf25362755f01171cd4627c6d",
+      "tile": [
+        2424,
+        7752,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:494",
+      "source": "san5",
+      "index": null,
+      "name": "許子將",
+      "portrait": 494,
+      "file": "hd-assets/X-SAN5-0494.png",
+      "sha256": "42affcd34921076fe94c6e86f8e402cfe21f94f2de279e7f5ca2d1db95465590",
+      "tile": [
+        24,
+        7976,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:495",
+      "source": "san5",
+      "index": null,
+      "name": "于吉",
+      "portrait": 495,
+      "file": "hd-assets/X-SAN5-0495.png",
+      "sha256": "83f5e801fb6220b80d41e1b3adedb9fa3031d713df7151e7837d7cea8d6b7964",
+      "tile": [
+        184,
+        7976,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:496",
+      "source": "san5",
+      "index": null,
+      "name": "左慈",
+      "portrait": 496,
+      "file": "hd-assets/X-SAN5-0496.png",
+      "sha256": "ec49ec3b412990e906e68cd65a6f6188e534c6632657415193a013c96c3ded71",
+      "tile": [
+        344,
+        7976,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:497",
+      "source": "san5",
+      "index": null,
+      "name": "管輅",
+      "portrait": 497,
+      "file": "hd-assets/X-SAN5-0497.png",
+      "sha256": "722084eaa59058f7740490f1e68108a7f59be656a2efb05b7f5780610ba8eba5",
+      "tile": [
+        504,
+        7976,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:498",
+      "source": "san5",
+      "index": null,
+      "name": "紫虛上人",
+      "portrait": 498,
+      "file": "hd-assets/X-SAN5-0498.png",
+      "sha256": "302ef5bb5c9e59a7e90419d4d9d70b1db2e87d0c0a4b0342c11eebfa0d699b9a",
+      "tile": [
+        664,
+        7976,
+        160,
+        224
+      ]
+    },
+    {
+      "key": "san5:499",
+      "source": "san5",
+      "index": null,
+      "name": "南華老仙",
+      "portrait": 499,
+      "file": "hd-assets/X-SAN5-0499.png",
+      "sha256": "2a252fb7a7b494e56a1f6a1fec3ff6ac5eb788b3fd4d55bdc8c972c94e6453cc",
+      "tile": [
+        824,
+        7976,
         160,
         224
       ]

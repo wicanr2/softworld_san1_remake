@@ -221,6 +221,10 @@ type General struct {
 	// Rewarded 記這個月被賞賜過了沒。原版是每郡每月可賞每人一次
 	// （說明書 p.23）。
 	Rewarded bool
+
+	// 規格 022：來源與政治只供識別、圖鑑及完整存檔，不參與原版能力公式。
+	Source   *GeneralSource `json:"source,omitempty"`
+	Politics uint8          `json:"politics,omitempty"`
 }
 
 // Employed 回報這位人物有沒有效力對象。
@@ -380,6 +384,7 @@ type State struct {
 
 	// 開局時三張表的原始位元組。存檔要用它保住還沒解出來的欄位（tables.go）。
 	rawMas, rawSta, rawGen []byte
+	rosterVersion          int
 
 	// DeathLog 數每一種死法（老死／斬首／戰死／單挑…）發生幾次。
 	// **不進存檔**：這是普查與對拍要看的計數，不是局面。

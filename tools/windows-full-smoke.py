@@ -57,7 +57,8 @@ try:
                     '-scale', '1', '-music=false', '-sound=false'], env=env, cwd=game, stdout=log, stderr=log)
                 processes.append(proc)
                 window = None
-                for _ in range(120):
+                deadline = time.monotonic() + 90
+                while time.monotonic() < deadline:
                     assert proc.poll() is None, (edition, proc.returncode)
                     query = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', '三國演義 remake'],
                                            env=env, capture_output=True, text=True)

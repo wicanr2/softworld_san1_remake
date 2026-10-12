@@ -35,6 +35,77 @@ def owned(path):
             raise RuntimeError(f'輸出路徑擁有權不符：{path}')
 
 
+def stage_hd(source, target):
+    """沿用已驗收 B 包，附上目前的獨立新增肖像及生成紀錄。"""
+    entries = sorted(source.rglob('*'))
+    if any(p.is_symlink() or not (p.is_file() or p.is_dir()) for p in entries):
+        raise RuntimeError('高清包包含非一般檔案')
+    shutil.copytree(source, target)
+    expanded = ROOT / 'hd-assets/expanded-portraits.json'
+    if not expanded.is_file():
+        return 0
+    m = json.loads(expanded.read_text())
+    if m.get('schema') != 1 or len(m.get('entries', [])) > 220:
+        raise RuntimeError('新增肖像目錄規格不符')
+    seen = set()
+    for e in m['entries']:
+        n, name = e['portrait'], e['file']
+        if type(n) is not int or not 0 <= n < 1000 or n in seen or name != f'X-SAN5-{n:04d}.png':
+            raise RuntimeError('新增肖像識別或檔名不符')
+        seen.add(n)
+        p = expanded.parent / name
+        if not p.is_file() or p.is_symlink() or sha(p) != e['sha256']:
+            raise RuntimeError(f'新增肖像雜湊不符：{name}')
+        shutil.copy2(p, target / name)
+    for name in ['expanded-portraits.json', 'expanded-portrait-provenance.json']:
+        p = expanded.parent / name
+        if not p.is_file() or p.is_symlink():
+            raise RuntimeError(f'缺少新增肖像紀錄：{name}')
+        shutil.copy2(p, target / name)
+    shutil.copy2(ROOT / 'hd-assets/README.md', target / 'README.md')
+    return len(seen)
+
+
+def stage_overviews(target):
+    """原版及 San5 原圖只進本機包；兩張總覽的名單及位置必須一致。"""
+    hd = ROOT / 'docs/images/hd-generals-overview.json'
+    source = ROOT / 'workplace/asset-overviews/generals-source-overview.json'
+    audits = [json.loads(p.read_text()) for p in (hd, source)]
+    for audit, path in zip(audits, (hd, source)):
+        if (audit.get('schema'), audit.get('count'), audit.get('original_count'), audit.get('expanded_count'), audit.get('portraits')) != (2, 566, 346, 220, 471):
+            raise RuntimeError('武將總覽分母不符')
+        if sha(path.with_suffix('.png')) != audit['image_sha256']:
+            raise RuntimeError('武將總覽圖片雜湊不符')
+        if audit['expanded_data_sha256'] != sha(ROOT / 'internal/game/expanded_roster.json'):
+            raise RuntimeError('武將總覽使用過期名單')
+    if [(p['key'], p['name'], p['tile']) for p in audits[0]['items']] != [(p['key'], p['name'], p['tile']) for p in audits[1]['items']]:
+        raise RuntimeError('兩張總覽的人物或順序不符')
+    if audits[1].get('rights') != 'local_only_original_assets':
+        raise RuntimeError('原圖總覽缺少本機分類')
+    files = {}
+    for path in (hd, hd.with_suffix('.png'), source, source.with_suffix('.png')):
+        dest = target / 'docs/images' / path.name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, dest)
+        files[str(dest.relative_to(target))] = sha(dest)
+    for relative in ['docs/hd-generals.md', 'docs/reference/hd-generals.json', 'docs/spec/022-expanded-roster.md', 'docs/re/14-san5-roster.md']:
+        dest = target / relative
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / relative, dest)
+        files[relative] = sha(dest)
+    readme = target / 'README.md'
+    text = readme.read_text()
+    marker = '<a href="docs/images/hd-generals-overview.png"><img src="docs/images/hd-generals-overview.png" width="840" alt="原版 346 位與 San5 新增 220 位，共 566 位人物的 HD 武將總覽，每張頭像標示姓名與來源編號"></a>'
+    if text.count(marker) != 1:
+        raise RuntimeError('README 武將總覽入口不符')
+    text = text.replace(marker, '| 原版＋San5 原圖 | HD 肖像 |\n|---|---|\n'
+        '| <a href="docs/images/generals-source-overview.png"><img src="docs/images/generals-source-overview.png" width="420" alt="566 位人物的原版與 San5 原圖對照總覽"></a> '
+        '| <a href="docs/images/hd-generals-overview.png"><img src="docs/images/hd-generals-overview.png" width="420" alt="相同順序的 566 位 HD 武將總覽"></a> |')
+    readme.write_text(text)
+    files['README.md'] = sha(readme)
+    return files
+
+
 def safe_extract(archive, target, top):
     if archive.suffix == '.zip':
         with zipfile.ZipFile(archive) as z:
@@ -86,7 +157,9 @@ def main():
         if not files or any(p.is_symlink() or not (p.is_file() or p.is_dir()) for p in entries):
             raise RuntimeError(f'原版目錄包含非一般檔案：{source}')
         originals[edition] = {str(p.relative_to(source)): sha(p) for p in files}
-    hd_source = Path('/hdpack')
+    hd_source = stage / 'hd-assets'
+    expanded_count = stage_hd(Path('/hdpack'), hd_source)
+    subprocess.run(['go', 'run', 'tools/hd-pack-check.go', str(hd_source), str(ORIG)], cwd=ROOT, check=True)
     hd_entries = sorted(hd_source.rglob('*'))
     if any(p.is_symlink() or not (p.is_file() or p.is_dir()) for p in hd_entries):
         raise RuntimeError('高清包包含非一般檔案')
@@ -97,6 +170,7 @@ def main():
     (stage / 'packages').mkdir(parents=True)
     (stage / 'output').mkdir()
     epoch = int(manifest['source_date_epoch'])
+    overview_files = {}
     for platform in PLATFORMS:
         top = f'san1-{version}-{platform}'
         suffix = '.zip' if platform.startswith('windows-') else '.tar.gz'
@@ -110,12 +184,14 @@ def main():
         for edition, source in SOURCES.items():
             shutil.copytree(source, package_dir / 'game' / edition)
         shutil.copytree(hd_source, package_dir / 'hd-assets')
+        overview_files[platform] = stage_overviews(package_dir)
         explanation = (
             f'三國演義 remake {version}\n此封包含原版與加強版遊戲資料，僅供本機保存，禁止公開上傳或再散布。\n'
             'Linux／macOS：執行 ./play-base.sh 或 ./play-plus.sh；Windows：執行 play-base.cmd 或 play-plus.cmd。\n'
             '每次預設原貌。按 Esc 或把滑鼠移到視窗上緣，從選項列切換 B 高清、語言及 AI。\n'
             '左鍵點選選單、人物、郡與戰場；右鍵返回；金額與兵數使用畫面數字鍵盤，鍵盤操作仍可使用。\n'
             '存檔寫在封包目錄的 saves/，不會改動 game/ 內的原版檔案。\n')
+        explanation += 'README.md 並列原版＋San5 與 HD 的 566 人武將總覽；完整圖片及來源索引在 docs/images/。\n'
         (package_dir / '本機完整版說明.txt').write_bytes(
             (b'\xef\xbb\xbf' + explanation.replace('\n', '\r\n').encode('utf-8'))
             if platform.startswith('windows-') else explanation.encode('utf-8'))
@@ -157,6 +233,8 @@ def main():
                 if any(not i.flag_bits & 0x800 for i in z.infolist() if not i.filename.isascii()):
                     raise RuntimeError('Windows ZIP 非 ASCII 成員缺少 UTF-8 旗標')
                 assert z.read(top + '/本機完整版說明.txt').startswith(b'\xef\xbb\xbf')
+                for relative, digest in overview_files[platform].items():
+                    assert hashlib.sha256(z.read(f'{top}/{relative}')).hexdigest() == digest
                 for relative, digest in hd_files.items():
                     assert hashlib.sha256(z.read(f'{top}/hd-assets/{relative}')).hexdigest() == digest
                 for edition, files in originals.items():
@@ -166,6 +244,8 @@ def main():
                             raise RuntimeError(f'封包原版資料不符：{member}')
         else:
             with tarfile.open(output, 'r:gz') as t:
+                for relative, digest in overview_files[platform].items():
+                    assert hashlib.sha256(t.extractfile(f'{top}/{relative}').read()).hexdigest() == digest
                 for relative, digest in hd_files.items():
                     assert hashlib.sha256(t.extractfile(f'{top}/hd-assets/{relative}').read()).hexdigest() == digest
                 for edition, files in originals.items():
@@ -199,8 +279,12 @@ def main():
         json.dumps({'version': version, 'original_assets_sha256': originals}, ensure_ascii=False,
                    indent=2, sort_keys=True) + '\n', encoding='utf-8')
     (dest / 'HD-SHA256.json').write_text(json.dumps(
-        {'version': version, 'entries': 904, 'per_edition': 452, 'style': 'b', 'scale': 4,
+        {'version': version, 'entries': 904, 'per_edition': 452, 'expanded_portraits': expanded_count, 'style': 'b', 'scale': 4,
          'rights': 'local_only_original_derived_art', 'files': hd_files},
+        ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    (dest / 'GENERALS-SHA256.json').write_text(json.dumps(
+        {'version': version, 'count': 566, 'original_count': 346, 'expanded_count': 220,
+         'rights': 'local_only_original_assets', 'platform_files': overview_files},
         ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     smoke_dir = release / 'smoke'
     for edition in SOURCES:

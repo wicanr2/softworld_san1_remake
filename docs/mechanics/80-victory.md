@@ -1,5 +1,25 @@
 # 勝負：統一判定與玉璽
 
+## Remake 新增勢力與戰敗繼承
+
+明示 remake 契約，適用 `[both]`，具體配置見 [規格 022](../spec/022-expanded-roster.md)。
+新增勢力由索引 16 起，僅分配已確認的無主郡；保留既有勢力及原有駐軍。
+來源已有繼承勢力時沿用本作現任君主。原君主已故且沒有繼承勢力時，新部下在野。
+195 年原有在野王朗移至無主吳郡任君主，是已確認的唯一原有人物身分與位置例外。
+統一與所有玩家絕嗣的既有判準套用完整勢力集合。
+
+戰後先完成俘虜處置與勝方安置，再處理退場君主及繼承，依
+[020 §1](../spec/020-player-battle-settlement.md) 的既有 `L0`、`[both]` 契約。
+2026-10-12 修正原先過早選繼承人造成的在野或敵方引用。
+remake 遇到待選繼承人、太守即暫停回合推進，所有玩家絕嗣於月底結束。
+兩版有／無其他繼承人的四組回歸及正常新局驗證通過；見
+[人物回歸](../../internal/game/expanded_test.go)與
+[回合回歸](../../internal/session/expanded_test.go)。
+
+本輪 `L1` 原版重跑限 TestZZHeirMatchesTheOriginal、TestZZNoHeirReleasesTerritory
+兩項 `[base]`，及 TestZZPlayerSettlementTables、TestZZPlayerSettlementTablesPlus
+兩版戰後人物／州郡表。收據及雜湊見規格 022，不擴大為全戰役或新增名單 parity。
+
 ## 1. 統一的條件（`L0`、`[base]`、`0x15852`）
 
 只有一條：**所有有主的郡屬於同一個勢力**。

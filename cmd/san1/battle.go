@@ -771,7 +771,7 @@ func (a *app) unitPanels(units [2]*battle.Unit) *[2]ui.UnitPanel {
 		}
 		if head := u.Head(); head != nil {
 			if x := a.s.G.General(head.Index); x != nil {
-				panels[i].Portrait = int(x.Portrait)
+				panels[i].Portrait = x.PortraitID()
 				if lord := a.s.G.Lord(x.Faction); lord != nil {
 					panels[i].Lord = lord.Name
 				}
@@ -803,7 +803,7 @@ func (a *app) battleInfo() ui.ArtBattleInfo {
 			continue
 		}
 		info.Commander[i] = who.Name
-		info.Portrait[i] = int(who.Portrait)
+		info.Portrait[i] = who.PortraitID()
 		if lord := a.s.G.Lord(who.Faction); lord != nil {
 			info.Lord[i] = lord.Name
 		}
@@ -834,7 +834,7 @@ func (a *app) battleInfo() ui.ArtBattleInfo {
 		if head := u.Head(); head != nil {
 			ins := &ui.InspectPanel{Leader: head, Side: u.Side, Portrait: -1}
 			if x := a.s.G.General(head.Index); x != nil {
-				ins.Portrait = int(x.Portrait)
+				ins.Portrait = x.PortraitID()
 			}
 			info.Inspect = ins
 		}

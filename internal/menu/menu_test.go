@@ -66,7 +66,7 @@ func TestStartsANewGame(t *testing.T) {
 		t.Fatalf("選年代那一層有 %d 項（stage %d）", len(s.Items()), s.Stage())
 	}
 	s.Confirm(0) // 第一個劇本
-	if s.Stage() != PlayerCount || len(s.Items()) != len(s.lords)+1 || s.Sel() != 1 {
+	if s.Stage() != PlayerCount || len(s.Items()) != min(16, len(s.lords))+1 || s.Sel() != 1 {
 		t.Fatalf("人數那一層有 %d 項、預設 %d（stage %d）", len(s.Items()), s.Sel(), s.Stage())
 	}
 	s.Confirm(1) // 1 人
@@ -324,7 +324,8 @@ func TestPicksACustomLord(t *testing.T) {
 // 全部名額須走得完設定與出現對白，肖像及玩家身份也須存讀得回來。
 func TestAllCustomLordsStartAndSaveAcrossScenarios(t *testing.T) {
 	for _, edition := range []state.Edition{state.EditionBase, state.EditionPlus} {
-		for scenario, count := range []int{2, 1, 4, 4, 2, 4} {
+		// 劇本 006 的四個原始範本保持；徹里吉取得無主郡後剩三郡可自創。
+		for scenario, count := range []int{2, 1, 4, 4, 2, 3} {
 			t.Run(fmt.Sprintf("%s/%03d", edition, scenario+1), func(t *testing.T) {
 				s := newScreenEdition(t, edition)
 				s.Confirm(0)

@@ -181,7 +181,7 @@ func DrawPersonCard(c *Canvas, a *ArtScreen, g *game.State, index int) {
 		if a.havePanel {
 			drawSideFrame(c, a.cardPanel, cardX0, cardY0, cardX1-cardX0+1, cardY1-cardY0+1, cardPaper)
 		}
-		if face := a.Portrait(int(x.Portrait)); face != nil {
+		if face := a.Portrait(x.PortraitID()); face != nil {
 			drawImageAt(c, face, cardFaceX, cardFaceY)
 		}
 		if a.havePanel {
@@ -197,8 +197,12 @@ func DrawPersonCard(c *Canvas, a *ArtScreen, g *game.State, index int) {
 	// 所以從 440 起）；譯名（拼音）改一倍字垂直置中，槽位到肖像框前。
 	if name := PersonName(x.Name); artAllWide(name) {
 		px := cardNameX
+		scale := 2
+		if cells.Width(name) > 6 {
+			scale = 1
+		}
 		for _, r := range paddedName(name) {
-			px += c.DrawRuneScaledPx(px, cardNameY, r, ink(14), 2, 2)
+			px += c.DrawRuneScaledPx(px, cardNameY, r, ink(14), scale, 2)
 		}
 	} else {
 		artBigName(c, cardNameX, cardNameY, cardFaceX-8-cardNameX, name, ink(14))

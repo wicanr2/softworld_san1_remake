@@ -60,6 +60,7 @@ type HDPack struct {
 	mapCursor        *image.RGBA
 	mapCursorKey     [32]byte
 	Count            int
+	ExpandedCount    int
 	Warnings         []string
 }
 
@@ -158,6 +159,7 @@ func LoadHDPack(dir, edition string, containers map[string]*assets.Container) (*
 		}
 		p.Count++
 	}
+	p.loadExpandedPortraits(dir)
 	return p, nil
 }
 

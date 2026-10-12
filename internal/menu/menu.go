@@ -317,7 +317,7 @@ func (s *Screen) pickLord() {
 		s.note(i18n.S("title.pickLord"), err.Error())
 		return
 	}
-	g, err := game.New(sc, 0, 5, s.edition)
+	g, err := game.NewExpanded(sc, 0, 5, s.edition)
 	if err != nil {
 		s.note(i18n.S("title.pickLord"), err.Error())
 		return
@@ -339,7 +339,14 @@ func (s *Screen) pickLord() {
 	// **空的新君主欄也要列出來**：原版的「選角色」那一層就有它們
 	//（劇本 001 是十六個槽裡的兩個，手冊 p.7 寫「16（含 2 個新君主欄）」）。
 	// 不列的話玩家永遠選不到自創君主。
-	for _, f := range sc.CustomLordSlots() {
+	blanks := 0
+	for _, p := range g.Prefectures() {
+		if !p.Owned() {
+			blanks++
+		}
+	}
+	customSlots := sc.CustomLordSlots()
+	for _, f := range customSlots[:min(len(customSlots), blanks)] {
 		s.items = append(s.items, i18n.Sf("title.newLordLine", len(s.lords)+1))
 		s.lords = append(s.lords, f)
 		s.customs = append(s.customs, f)
@@ -347,16 +354,17 @@ func (s *Screen) pickLord() {
 	s.lordItems = s.items
 	// 先問幾人玩（`0x12072`）：0 … 候選數，預設 1。
 	s.stage, s.pick = PlayerCount, 1
-	s.title = i18n.Sf("title.playerCount", len(s.lords))
+	maxPlayers := min(16, len(s.lords))
+	s.title = i18n.Sf("title.playerCount", maxPlayers)
 	s.items = nil
-	for k := 0; k <= len(s.lords); k++ {
+	for k := 0; k <= maxPlayers; k++ {
 		s.items = append(s.items, fmt.Sprintf("%d", k))
 	}
 }
 
 // pickPlayers 收玩家人數：0 人進示範模式，否則逐位選君主。
 func (s *Screen) pickPlayers(n int) {
-	if n < 0 || n > len(s.lords) {
+	if n < 0 || n > min(16, len(s.lords)) {
 		return
 	}
 	s.playerCount, s.players = n, nil
@@ -485,7 +493,7 @@ func (s *Screen) start() *session.Session {
 	for i, f := range s.players {
 		players[i] = state.FactionID(f)
 	}
-	g, err := game.NewPlayers(sc, players, s.difficulty, s.edition)
+	g, err := game.NewExpandedPlayers(sc, players, s.difficulty, s.edition)
 	if err != nil {
 		s.note(i18n.S("title.pickScenario"), err.Error())
 		return nil

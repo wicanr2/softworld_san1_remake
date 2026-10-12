@@ -810,6 +810,20 @@ func (g *State) settle(p *Pending) *BattleResult {
 	// 原版的 `0x26c08` 只在君主實際退場後執行。被擒名單本身不是
 	// 分贓條件：釋放到其他郡的君主仍在位，不能搬他的寶庫。
 	var fallenLord state.FactionID = state.NoFaction
+	var retiredLords []struct {
+		faction state.FactionID
+		at      int
+	}
+	retire := func(x *General, cause string) {
+		deferred := !p.autoAI && x.Status == state.StatusLord
+		if deferred {
+			retiredLords = append(retiredLords, struct {
+				faction state.FactionID
+				at      int
+			}{x.Faction, x.Location})
+		}
+		g.retireByWithSuccession(x, cause, deferred)
+	}
 	for _, u := range b.Units {
 		for _, l := range u.Leaders {
 			x := byIndex[l.Index]
@@ -837,7 +851,7 @@ func (g *State) settle(p *Pending) *BattleResult {
 				if !p.autoAI && x.Status == state.StatusLord {
 					fallenLord = x.Faction
 				}
-				g.retireBy(x, "battle")
+				retire(x, "battle")
 			case l.Captured && l.Fate != battle.FateNone:
 				// 在戰場上已經處置完（`battle.capture`），這裡只把下場搬回
 				// 人物表。玩家當場處置的照樣列進被擒名單，君主與他的勢力先
@@ -850,7 +864,13 @@ func (g *State) settle(p *Pending) *BattleResult {
 					(l.Fate == battle.Executed || l.Fate == battle.Released && l.ReleasedTo < 0) {
 					fallenLord = x.Faction
 				}
-				g.applyFate(p, x, l, factions[l.CapturedBy])
+				if !p.autoAI && x.Status == state.StatusLord && l.Fate == battle.Released && l.ReleasedTo < 0 {
+					retiredLords = append(retiredLords, struct {
+						faction state.FactionID
+						at      int
+					}{x.Faction, x.Location})
+				}
+				g.applyFateWithRetirement(p, x, l, factions[l.CapturedBy], retire)
 			case l.Captured:
 				r.Captives = append(r.Captives, Captive{General: l.Index, Name: l.Name})
 			case l.Fate == battle.Defected:
@@ -906,6 +926,9 @@ func (g *State) settle(p *Pending) *BattleResult {
 		r.PrefectureTook = r.AttackerWon && dst != nil && dst.Owner == by
 		// 玩家戰術層在 `0x23d17` 將勝方勢力交給同一支分贓常式；
 		// 電腦對電腦由 `placeAfterAIBattle` 內的退場事件執行，不能重複。
+		for _, lord := range retiredLords {
+			g.finishLordRetirement(lord.faction, lord.at)
+		}
 		winner := by
 		if !r.AttackerWon {
 			winner = p.factions[battle.MainDefender]
@@ -1015,6 +1038,10 @@ func (g *State) FinishAttack(p *Pending) *BattleResult {
 //
 // 囚禁與釋放不寫忠誠與兵（原版那幾支只寫身分、所屬、所在三格）。
 func (g *State) applyFate(p *Pending, x *General, l battle.Leader, captor state.FactionID) {
+	g.applyFateWithRetirement(p, x, l, captor, g.retireBy)
+}
+
+func (g *State) applyFateWithRetirement(p *Pending, x *General, l battle.Leader, captor state.FactionID, retire func(*General, string)) {
 	at := p.to
 	dropChief := func() {
 		if x.Status == state.StatusChief {
@@ -1025,7 +1052,7 @@ func (g *State) applyFate(p *Pending, x *General, l battle.Leader, captor state.
 	}
 	switch l.Fate {
 	case battle.Executed:
-		g.retireBy(x, "beheaded")
+		retire(x, "beheaded")
 	case battle.Jailed:
 		dropChief()
 		x.Status, x.Faction, x.Location = state.StatusStranded, state.NoFaction, at

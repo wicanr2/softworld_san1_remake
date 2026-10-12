@@ -526,6 +526,28 @@ QA 入口為 `promo/story-gameplay-20261010-r9/QA.json`、`redub-voice-review.js
 舊片保留，現行清單改指修正版。人物語音仍未做人耳驗收；音訊波形檢查與畫面檢查分列。
 影片、原版音樂／語音與完整版都只留本機。
 
+## v.1.2.0 擴充武將與總覽打包契約
+
+狀態：`READY`。使用者於 2026-10-12 明確選定 `v.1.2.0-20261012`，要求重建
+四平台本機包，另要求更新「原版＋San5 與 HD」武將總覽。正式來源包含已驗收的
+021 §6.65 向量楷書／隸書、022 擴充名單、220 張原創肖像及格式 2 存檔。
+
+| 項目 | 契約與驗收 |
+|---|---|
+| 交付 | `dist-all/v.1.2.0-20261012/full-local/`，Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon 各一 tar.gz；保留 Linux tar 作可重生輸入 |
+| 原有資料 | 每包保留兩版共 66 個原版檔、原 HD manifest 904 筆；新增肖像使用獨立目錄 220 筆，逐檔核對兩份 manifest 及生成紀錄 |
+| 武將總覽 | 原版 346＋San5 新增 220，共 566 人；原圖與 HD 各一張，來源識別及排列一致，兩位馬忠分列，四字姓名完整 |
+| 本機文件 | README 並列兩張總覽，附逐格索引及圖鑑；San5 原圖總覽只放本機包，Git 與引擎包不收錄 |
+| 平台檢查 | 四平台檔案、架構、完整版本、授權、字型、SHA-256；Linux 兩版 AppRun 及正式封包新局、人物卡、HD 切換、格式 2 存讀檔；Windows 兩版 Wine 啟動 |
+| 驗證界線 | macOS／Windows 原生試玩、FUSE 掛載、簽章與公證仍未驗；既有音訊與影片收據沿用，不列為本輪重錄 |
+
+入口沿用 [release.sh](../../tools/release.sh)、[full-local.sh](../../tools/full-local.sh)、
+[complete-local-delivery.py](../../tools/complete-local-delivery.py) 與上方固定 AppImage
+runtime。總覽重生與來源界線見 [RE 14](../re/14-san5-roster.md#原版與-san5-武將原圖總覽)。
+完整包由 `full-local-inner.py` 逐包回讀圖檔與文件雜湊，另存
+`full-local/GENERALS-SHA256.json`。原版素材、San5 原圖總覽及完整包只留本機。
+本輪不新增公開 tag／Release，不覆寫既有交付。
+
 ## 高清重新配音樣音
 
 使用者確認全遊戲提供原版／高清語音切換，並要求先確認樣音。目前僅完成

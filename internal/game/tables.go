@@ -181,6 +181,13 @@ func (g *State) Tables() (mas, sta, gen []byte, err error) {
 	}
 
 	for i := range g.generals {
+		// 格式 2 的原表僅是相容投影。新增人物必須由完整 Snapshot 保存。
+		if i >= len(gen)/genRecord {
+			if !g.Expanded() {
+				return nil, nil, nil, fmt.Errorf("game: 人物超出原表且沒有擴充快照")
+			}
+			break
+		}
 		x := &g.generals[i]
 		rec := gen[i*genRecord:]
 		rec[genAge] = x.Age

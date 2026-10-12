@@ -133,7 +133,7 @@ func DrawBubble(c *Canvas, a *ArtScreen, g *game.State, b *game.Bubble) {
 	portrait := -1
 	if x := g.General(b.Speaker); x != nil {
 		name = i18n.PersonName(x.Name)
-		portrait = int(x.Portrait)
+		portrait = x.PortraitID()
 	}
 	DrawBubbleAs(c, a, b, name, portrait)
 }
@@ -172,16 +172,22 @@ func DrawBubbleAs(c *Canvas, a *ArtScreen, b *game.Bubble, name string, portrait
 		nx, ink = x2-55, bubbleNameRight
 	}
 	ny := y1 + bubblePortraitH
-	c.FillRect(nx, ny, nx+3*CellW*2, ny+CellH, bubbleBlack)
-	label := name
-	if w := cells.Width(label); w < 6 {
-		pad := (6 - w) / 2
-		label = cells.Pad(spaces(pad)+label, 6)
-	}
-	if i18n.Current != i18n.En || cells.Width(name) <= 6 || !c.FitsSmall(name) {
-		c.DrawTextPx(nx, ny, cells.Truncate(label, 6), ink)
+	// 規格 022 的四字中文姓名使用肖像的完整 64 像素寬，不截成三字。
+	if artAllWide(name) && cells.Width(name) == 8 {
+		c.FillRect(px, ny, px+bubblePortraitW, ny+CellH, bubbleBlack)
+		c.DrawTextPx(px, ny, name, ink)
 	} else {
-		c.drawBubbleName(nx, ny, name, ink)
+		c.FillRect(nx, ny, nx+3*CellW*2, ny+CellH, bubbleBlack)
+		label := name
+		if w := cells.Width(label); w < 6 {
+			pad := (6 - w) / 2
+			label = cells.Pad(spaces(pad)+label, 6)
+		}
+		if i18n.Current != i18n.En || cells.Width(name) <= 6 || !c.FitsSmall(name) {
+			c.DrawTextPx(nx, ny, cells.Truncate(label, 6), ink)
+		} else {
+			c.drawBubbleName(nx, ny, name, ink)
+		}
 	}
 
 	// 泡泡：白底、上下各多一條、左右各一條（四角因此是圓的），

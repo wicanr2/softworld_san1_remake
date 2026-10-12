@@ -40,6 +40,7 @@ def main():
     if 'files' in hd:
         hd = hd['files']
     assert isinstance(hd, dict)
+    generals = json.loads((release / 'full-local/GENERALS-SHA256.json').read_text()) if (release / 'full-local/GENERALS-SHA256.json').exists() else None
     rows = []
     for platform in ['linux-amd64', 'windows-amd64', 'darwin-amd64', 'darwin-arm64']:
         top = f'san1-{args.version}-{platform}'
@@ -64,6 +65,10 @@ def main():
                     assert hashlib.sha256(read(f'{top}/game/{edition}/{name}')).hexdigest() == digest
             for name, digest in hd.items():
                 assert hashlib.sha256(read(f'{top}/hd-assets/{name}')).hexdigest() == digest
+            if generals:
+                assert generals['count'] == 566
+                for name, digest in generals['platform_files'][platform].items():
+                    assert hashlib.sha256(read(f'{top}/{name}')).hexdigest() == digest
             assert f'{top}/LICENSE' in members
             binary = read(f'{top}/san1' + ('.exe' if platform.startswith('windows') else ''))
             assert args.version.encode() in binary
@@ -77,6 +82,7 @@ def main():
                 assert struct.unpack_from('<I', binary, 4)[0] == (0x01000007 if platform.endswith('amd64') else 0x0100000c)
             rows.append({'platform': platform, 'file': relative, 'sha256': expected['sha256'],
                          'original_files': sum(len(x) for x in originals.values()), 'hd_files': len(hd),
+                         'general_overview_people': generals['count'] if generals else None,
                          'binary_sha256': hashlib.sha256(binary).hexdigest(), 'passed': True})
     appdir = stage / 'AppDir'
     assert not appdir.exists()

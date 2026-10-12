@@ -1,8 +1,9 @@
 # HD 素材包
 
-本目錄是遊戲目前使用的 B 寫實手繪 4× 素材包，包含 437 張 PNG 與
+本目錄是遊戲目前使用的 B 寫實手繪 4× 素材包，既有素材包含 437 張 PNG 與
 `manifest.json`。原版及加強版各對應 452 筆資源，共 904 筆；部分資源共用圖片。
 人物、場景、地形、天候、旗幟、面板、圖框、選單、片頭與製作群均收錄於此。
+另收錄 220 張新增人物肖像，使用下方的獨立肖像目錄。
 
 從專案根目錄啟動時，加上 `-hd-assets hd-assets`。使用下載的引擎包時，
 把整個 `hd-assets/` 複製到執行檔旁，或用 `-hd-assets <完整路徑>` 指定：
@@ -35,6 +36,21 @@ bash tools/asset-overviews.sh
 [`docs/reference/hd-generals.json`](../docs/reference/hd-generals.json)，表字不寫入遊戲。
 映像檔預設為 `eob-remake-go:1.26.7-ebiten2.9.9-20261008-r2` 及
 `eob-audio-capture:20261009-r3`，可用 `SAN1_GO_IMAGE`、`SAN1_ART_IMAGE` 指定既有相容映像檔。
+
+規格 022 的新增人物使用獨立[肖像目錄](expanded-portraits.json)，220／220 張已完成。
+五位特殊人物、新增君主及其餘新增人物均已納入。使用者提供的素材包若缺圖或圖檔
+驗證失敗，會使用通用人物像。
+原版的 904 筆目錄保持。
+[生成紀錄](expanded-portrait-provenance.json)保存完整請求、參考及輸出雜湊，
+[圖鑑新增人物表](../docs/hd-generals.md#新增人物)列出來源識別及政治值。
+這些面貌是原創插畫設計，沒有宣稱史實容貌。驗收及限制見
+[規格 022](../docs/spec/022-expanded-roster.md)。
+
+後續原圖以 [匯入工具](../tools/import-expanded-portraits.py)在既有 Go／Ebiten Docker
+映像檔內保存。輸入批次 JSON 包含人物識別、姓名、完整提示詞及生成原圖路徑；
+工具核對 PNG、雜湊及擁有權後，追加肖像目錄與生成紀錄，並輸出驗證縮圖。
+本機完整版的 [組包工具](../tools/full-local-inner.py)會把此目錄的新增肖像疊入原素材包，
+再以正式載入器驗證。此流程尚未重建既有發行包。
 
 專案授權見 [LICENSE](../LICENSE)。原版素材著作權仍屬智冠科技，原版參照縮圖
 不納入本專案授權。生成母圖、未採用候選與製作暫存未收錄於本目錄。

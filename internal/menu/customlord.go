@@ -52,9 +52,14 @@ func (s *Screen) pickCustomLord(faction int) {
 		return
 	}
 	var blanks []state.Prefecture
+	preview, err := game.NewExpanded(sc, state.NoFaction, s.difficulty, s.edition)
+	if err != nil {
+		s.note(i18n.S("title.newLord"), err.Error())
+		return
+	}
 	for _, p := range sc.Prefectures() {
 		// 第 0 筆是原版的啞元，跳過。
-		if p.ID > 0 && !p.Owned() {
+		if p.ID > 0 && !p.Owned() && preview.Prefecture(p.ID) != nil && !preview.Prefecture(p.ID).Owned() {
 			blanks = append(blanks, p)
 		}
 	}
@@ -163,7 +168,7 @@ func (s *Screen) confirmCustom(i int) {
 		s.note(i18n.S("title.newLord"), err.Error())
 		return
 	}
-	g, err := game.New(sc, state.FactionID(c.faction), s.difficulty, s.edition)
+	g, err := game.NewExpanded(sc, state.FactionID(c.faction), s.difficulty, s.edition)
 	if err != nil {
 		s.note(i18n.S("title.newLord"), err.Error())
 		return

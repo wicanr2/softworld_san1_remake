@@ -1,8 +1,8 @@
 # HD 武將圖鑑
 
-收錄遊戲的 346 位具名人物，使用正式 HD 素材。251 張肖像由不同人物共用；同一張臉不代表同一個人。點頭像可看原圖。
+收錄原版 346 位與 San5 新增 220 位，共 566 位人物，使用 471 張正式 HD 肖像。共用肖像的人物各自列出，兩位馬忠依來源編號區分。點頭像可看原圖。
 
-姓名、人物槽、肖像與能力值直接取自兩版劇本 001，逐筆相同。未登場人物也列入；這些數值不代表所有年代或遊戲中的即時狀態。體能、戰力、謀略、魅力沿用遊戲用語。
+原有 346 人的姓名、人物槽、肖像與能力值直接取自兩版劇本 001，逐筆相同；新增 220 人依規格 022 的已核對資料列出。未登場人物也列入；這些數值不代表所有年代或遊戲中的即時狀態。體能、戰力、謀略、魅力沿用遊戲用語。
 
 表字是外部查考資料，不是原版人物表欄位，也不寫入遊戲。各項附出處；「二手」表示採用百科資料，尚未由史書原文核實。史書、演義或姓名異文另註，未核得或同名難辨者保留「待考」。
 
@@ -356,3 +356,234 @@
 | <a href="../hd-assets/F250.png"><img src="../hd-assets/F250.png" width="80" alt="曹仁 HD 肖像"></a> | 曹仁 | [子孝](https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283) | 84 | 84 | 69 | 51 | 山陸 | 343 | F250 |
 | <a href="../hd-assets/F018.png"><img src="../hd-assets/F018.png" width="80" alt="曹洪 HD 肖像"></a> | 曹洪 | [子廉](https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B709&oldid=2274283) | 81 | 76 | 34 | 43 | 山陸 | 344 | F018 |
 | <a href="../hd-assets/F065.png"><img src="../hd-assets/F065.png" width="80" alt="王允 HD 肖像"></a> | 王允 | [子師](https://zh.wikipedia.org/w/index.php?title=%E4%B8%89%E5%9B%BD%E6%BC%94%E4%B9%89%E8%A7%92%E8%89%B2%E5%88%97%E8%A1%A8&oldid=89454572)（二手） | 51 | 12 | 87 | 72 | 陸 | 345 | F065 |
+
+## 新增人物
+
+規格 022 的 remake 擴充共 220 位，以 San5 來源識別區分同名人物。原有 346 人的姓名與能力保持。六劇本依年代分別加入 220／207／198／180／175／168 位；本表列出第一劇本的完整候選，不表示所有人開局已登場。
+
+新增人物體能 80，戰力、謀略、魅力取自已核對來源。政治只供圖鑑查閱，不參與本作規則。220 張原創肖像已齊備；遊戲遇到缺圖或損毀時使用通用人物像。
+
+[擴充規格](spec/022-expanded-roster.md) · [來源核對](re/14-san5-roster.md) · [六劇本資料](../internal/game/expanded_roster.json) · [肖像目錄](../hd-assets/expanded-portraits.json) · [生成紀錄](../hd-assets/expanded-portrait-provenance.json)
+
+| 頭像 | 姓名 | 體能 | 戰力 | 謀略 | 政治 | 魅力 | 來源識別 |
+|---|---|---:|---:|---:|---:|---:|---|
+| <a href="../hd-assets/X-SAN5-0052.png"><img src="../hd-assets/X-SAN5-0052.png" width="80" alt="韓馥 HD 肖像"></a> | 韓馥 | 80 | 69 | 44 | 39 | 66 | san5:52 |
+| <a href="../hd-assets/X-SAN5-0053.png"><img src="../hd-assets/X-SAN5-0053.png" width="80" alt="喬瑁 HD 肖像"></a> | 喬瑁 | 80 | 63 | 58 | 40 | 39 | san5:53 |
+| <a href="../hd-assets/X-SAN5-0055.png"><img src="../hd-assets/X-SAN5-0055.png" width="80" alt="嚴白虎 HD 肖像"></a> | 嚴白虎 | 80 | 78 | 44 | 44 | 49 | san5:55 |
+| <a href="../hd-assets/X-SAN5-0056.png"><img src="../hd-assets/X-SAN5-0056.png" width="80" alt="孔岫 HD 肖像"></a> | 孔岫 | 80 | 32 | 81 | 53 | 44 | san5:56 |
+| <a href="../hd-assets/X-SAN5-0085.png"><img src="../hd-assets/X-SAN5-0085.png" width="80" alt="公孫淵 HD 肖像"></a> | 公孫淵 | 80 | 83 | 59 | 67 | 74 | san5:85 |
+| <a href="../hd-assets/X-SAN5-0126.png"><img src="../hd-assets/X-SAN5-0126.png" width="80" alt="阿會喃 HD 肖像"></a> | 阿會喃 | 80 | 78 | 29 | 23 | 19 | san5:126 |
+| <a href="../hd-assets/X-SAN5-0127.png"><img src="../hd-assets/X-SAN5-0127.png" width="80" alt="越吉 HD 肖像"></a> | 越吉 | 80 | 80 | 15 | 13 | 33 | san5:127 |
+| <a href="../hd-assets/X-SAN5-0128.png"><img src="../hd-assets/X-SAN5-0128.png" width="80" alt="俄何燒戈 HD 肖像"></a> | 俄何燒戈 | 80 | 74 | 16 | 13 | 14 | san5:128 |
+| <a href="../hd-assets/X-SAN5-0129.png"><img src="../hd-assets/X-SAN5-0129.png" width="80" alt="雅丹 HD 肖像"></a> | 雅丹 | 80 | 79 | 60 | 54 | 18 | san5:129 |
+| <a href="../hd-assets/X-SAN5-0130.png"><img src="../hd-assets/X-SAN5-0130.png" width="80" alt="軻比能 HD 肖像"></a> | 軻比能 | 80 | 84 | 38 | 22 | 35 | san5:130 |
+| <a href="../hd-assets/X-SAN5-0131.png"><img src="../hd-assets/X-SAN5-0131.png" width="80" alt="金環三結 HD 肖像"></a> | 金環三結 | 80 | 78 | 16 | 19 | 20 | san5:131 |
+| <a href="../hd-assets/X-SAN5-0132.png"><img src="../hd-assets/X-SAN5-0132.png" width="80" alt="奚泥 HD 肖像"></a> | 奚泥 | 80 | 80 | 11 | 25 | 17 | san5:132 |
+| <a href="../hd-assets/X-SAN5-0133.png"><img src="../hd-assets/X-SAN5-0133.png" width="80" alt="兀突骨 HD 肖像"></a> | 兀突骨 | 80 | 88 | 10 | 9 | 36 | san5:133 |
+| <a href="../hd-assets/X-SAN5-0134.png"><img src="../hd-assets/X-SAN5-0134.png" width="80" alt="左賢王 HD 肖像"></a> | 左賢王 | 80 | 66 | 79 | 49 | 81 | san5:134 |
+| <a href="../hd-assets/X-SAN5-0135.png"><img src="../hd-assets/X-SAN5-0135.png" width="80" alt="沙摩柯 HD 肖像"></a> | 沙摩柯 | 80 | 92 | 17 | 13 | 46 | san5:135 |
+| <a href="../hd-assets/X-SAN5-0136.png"><img src="../hd-assets/X-SAN5-0136.png" width="80" alt="祝融夫人 HD 肖像"></a> | 祝融夫人 | 80 | 81 | 14 | 14 | 54 | san5:136 |
+| <a href="../hd-assets/X-SAN5-0137.png"><img src="../hd-assets/X-SAN5-0137.png" width="80" alt="帶來洞主 HD 肖像"></a> | 帶來洞主 | 80 | 69 | 20 | 36 | 34 | san5:137 |
+| <a href="../hd-assets/X-SAN5-0138.png"><img src="../hd-assets/X-SAN5-0138.png" width="80" alt="朵思大王 HD 肖像"></a> | 朵思大王 | 80 | 81 | 67 | 39 | 48 | san5:138 |
+| <a href="../hd-assets/X-SAN5-0139.png"><img src="../hd-assets/X-SAN5-0139.png" width="80" alt="徹里吉 HD 肖像"></a> | 徹里吉 | 80 | 81 | 49 | 29 | 53 | san5:139 |
+| <a href="../hd-assets/X-SAN5-0140.png"><img src="../hd-assets/X-SAN5-0140.png" width="80" alt="土安 HD 肖像"></a> | 土安 | 80 | 78 | 13 | 20 | 19 | san5:140 |
+| <a href="../hd-assets/X-SAN5-0141.png"><img src="../hd-assets/X-SAN5-0141.png" width="80" alt="董荼那 HD 肖像"></a> | 董荼那 | 80 | 73 | 32 | 20 | 26 | san5:141 |
+| <a href="../hd-assets/X-SAN5-0142.png"><img src="../hd-assets/X-SAN5-0142.png" width="80" alt="蹋頓 HD 肖像"></a> | 蹋頓 | 80 | 75 | 36 | 20 | 44 | san5:142 |
+| <a href="../hd-assets/X-SAN5-0143.png"><img src="../hd-assets/X-SAN5-0143.png" width="80" alt="忙牙長 HD 肖像"></a> | 忙牙長 | 80 | 68 | 24 | 18 | 17 | san5:143 |
+| <a href="../hd-assets/X-SAN5-0144.png"><img src="../hd-assets/X-SAN5-0144.png" width="80" alt="木鹿大王 HD 肖像"></a> | 木鹿大王 | 80 | 74 | 61 | 31 | 45 | san5:144 |
+| <a href="../hd-assets/X-SAN5-0145.png"><img src="../hd-assets/X-SAN5-0145.png" width="80" alt="迷當大王 HD 肖像"></a> | 迷當大王 | 80 | 80 | 33 | 19 | 38 | san5:145 |
+| <a href="../hd-assets/X-SAN5-0147.png"><img src="../hd-assets/X-SAN5-0147.png" width="80" alt="楊鋒 HD 肖像"></a> | 楊鋒 | 80 | 70 | 34 | 31 | 34 | san5:147 |
+| <a href="../hd-assets/X-SAN5-0148.png"><img src="../hd-assets/X-SAN5-0148.png" width="80" alt="陸抗 HD 肖像"></a> | 陸抗 | 80 | 78 | 94 | 84 | 87 | san5:148 |
+| <a href="../hd-assets/X-SAN5-0149.png"><img src="../hd-assets/X-SAN5-0149.png" width="80" alt="王濬 HD 肖像"></a> | 王濬 | 80 | 84 | 80 | 64 | 80 | san5:149 |
+| <a href="../hd-assets/X-SAN5-0171.png"><img src="../hd-assets/X-SAN5-0171.png" width="80" alt="毌丘儉 HD 肖像"></a> | 毌丘儉 | 80 | 76 | 79 | 47 | 62 | san5:171 |
+| <a href="../hd-assets/X-SAN5-0182.png"><img src="../hd-assets/X-SAN5-0182.png" width="80" alt="孫異 HD 肖像"></a> | 孫異 | 80 | 68 | 58 | 45 | 65 | san5:182 |
+| <a href="../hd-assets/X-SAN5-0184.png"><img src="../hd-assets/X-SAN5-0184.png" width="80" alt="諸葛瞻 HD 肖像"></a> | 諸葛瞻 | 80 | 70 | 79 | 32 | 81 | san5:184 |
+| <a href="../hd-assets/X-SAN5-0186.png"><img src="../hd-assets/X-SAN5-0186.png" width="80" alt="曹昂 HD 肖像"></a> | 曹昂 | 80 | 67 | 52 | 43 | 74 | san5:186 |
+| <a href="../hd-assets/X-SAN5-0187.png"><img src="../hd-assets/X-SAN5-0187.png" width="80" alt="孫休 HD 肖像"></a> | 孫休 | 80 | 39 | 61 | 67 | 80 | san5:187 |
+| <a href="../hd-assets/X-SAN5-0190.png"><img src="../hd-assets/X-SAN5-0190.png" width="80" alt="杜預 HD 肖像"></a> | 杜預 | 80 | 85 | 85 | 75 | 80 | san5:190 |
+| <a href="../hd-assets/X-SAN5-0191.png"><img src="../hd-assets/X-SAN5-0191.png" width="80" alt="羊祜 HD 肖像"></a> | 羊祜 | 80 | 83 | 82 | 80 | 86 | san5:191 |
+| <a href="../hd-assets/X-SAN5-0196.png"><img src="../hd-assets/X-SAN5-0196.png" width="80" alt="郤正 HD 肖像"></a> | 郤正 | 80 | 22 | 77 | 58 | 71 | san5:196 |
+| <a href="../hd-assets/X-SAN5-0198.png"><img src="../hd-assets/X-SAN5-0198.png" width="80" alt="陳泰 HD 肖像"></a> | 陳泰 | 80 | 83 | 78 | 63 | 69 | san5:198 |
+| <a href="../hd-assets/X-SAN5-0199.png"><img src="../hd-assets/X-SAN5-0199.png" width="80" alt="盧植 HD 肖像"></a> | 盧植 | 80 | 69 | 84 | 75 | 85 | san5:199 |
+| <a href="../hd-assets/X-SAN5-0200.png"><img src="../hd-assets/X-SAN5-0200.png" width="80" alt="皇甫嵩 HD 肖像"></a> | 皇甫嵩 | 80 | 68 | 73 | 77 | 82 | san5:200 |
+| <a href="../hd-assets/X-SAN5-0203.png"><img src="../hd-assets/X-SAN5-0203.png" width="80" alt="王基 HD 肖像"></a> | 王基 | 80 | 76 | 69 | 48 | 61 | san5:203 |
+| <a href="../hd-assets/X-SAN5-0207.png"><img src="../hd-assets/X-SAN5-0207.png" width="80" alt="胡奮 HD 肖像"></a> | 胡奮 | 80 | 76 | 59 | 24 | 60 | san5:207 |
+| <a href="../hd-assets/X-SAN5-0208.png"><img src="../hd-assets/X-SAN5-0208.png" width="80" alt="司馬炎 HD 肖像"></a> | 司馬炎 | 80 | 85 | 71 | 43 | 86 | san5:208 |
+| <a href="../hd-assets/X-SAN5-0209.png"><img src="../hd-assets/X-SAN5-0209.png" width="80" alt="孫冀 HD 肖像"></a> | 孫冀 | 80 | 70 | 50 | 28 | 52 | san5:209 |
+| <a href="../hd-assets/X-SAN5-0210.png"><img src="../hd-assets/X-SAN5-0210.png" width="80" alt="于詮 HD 肖像"></a> | 于詮 | 80 | 58 | 44 | 51 | 62 | san5:210 |
+| <a href="../hd-assets/X-SAN5-0212.png"><img src="../hd-assets/X-SAN5-0212.png" width="80" alt="張悌 HD 肖像"></a> | 張悌 | 80 | 60 | 67 | 78 | 79 | san5:212 |
+| <a href="../hd-assets/X-SAN5-0215.png"><img src="../hd-assets/X-SAN5-0215.png" width="80" alt="孫亮 HD 肖像"></a> | 孫亮 | 80 | 16 | 82 | 57 | 90 | san5:215 |
+| <a href="../hd-assets/X-SAN5-0222.png"><img src="../hd-assets/X-SAN5-0222.png" width="80" alt="馬忠 HD 肖像"></a> | 馬忠 | 80 | 73 | 54 | 30 | 59 | san5:222 |
+| <a href="../hd-assets/X-SAN5-0228.png"><img src="../hd-assets/X-SAN5-0228.png" width="80" alt="李異 HD 肖像"></a> | 李異 | 80 | 77 | 23 | 18 | 29 | san5:228 |
+| <a href="../hd-assets/X-SAN5-0229.png"><img src="../hd-assets/X-SAN5-0229.png" width="80" alt="譚雄 HD 肖像"></a> | 譚雄 | 80 | 78 | 21 | 20 | 22 | san5:229 |
+| <a href="../hd-assets/X-SAN5-0230.png"><img src="../hd-assets/X-SAN5-0230.png" width="80" alt="滕胤 HD 肖像"></a> | 滕胤 | 80 | 21 | 67 | 76 | 63 | san5:230 |
+| <a href="../hd-assets/X-SAN5-0234.png"><img src="../hd-assets/X-SAN5-0234.png" width="80" alt="賈充 HD 肖像"></a> | 賈充 | 80 | 24 | 90 | 90 | 51 | san5:234 |
+| <a href="../hd-assets/X-SAN5-0237.png"><img src="../hd-assets/X-SAN5-0237.png" width="80" alt="夏侯威 HD 肖像"></a> | 夏侯威 | 80 | 77 | 70 | 61 | 70 | san5:237 |
+| <a href="../hd-assets/X-SAN5-0239.png"><img src="../hd-assets/X-SAN5-0239.png" width="80" alt="胡遵 HD 肖像"></a> | 胡遵 | 80 | 64 | 47 | 48 | 60 | san5:239 |
+| <a href="../hd-assets/X-SAN5-0240.png"><img src="../hd-assets/X-SAN5-0240.png" width="80" alt="趙廣 HD 肖像"></a> | 趙廣 | 80 | 74 | 55 | 43 | 66 | san5:240 |
+| <a href="../hd-assets/X-SAN5-0241.png"><img src="../hd-assets/X-SAN5-0241.png" width="80" alt="陳震 HD 肖像"></a> | 陳震 | 80 | 57 | 60 | 71 | 54 | san5:241 |
+| <a href="../hd-assets/X-SAN5-0242.png"><img src="../hd-assets/X-SAN5-0242.png" width="80" alt="尹默 HD 肖像"></a> | 尹默 | 80 | 17 | 73 | 85 | 47 | san5:242 |
+| <a href="../hd-assets/X-SAN5-0244.png"><img src="../hd-assets/X-SAN5-0244.png" width="80" alt="夏侯和 HD 肖像"></a> | 夏侯和 | 80 | 60 | 84 | 77 | 78 | san5:244 |
+| <a href="../hd-assets/X-SAN5-0245.png"><img src="../hd-assets/X-SAN5-0245.png" width="80" alt="夏侯惠 HD 肖像"></a> | 夏侯惠 | 80 | 61 | 85 | 73 | 79 | san5:245 |
+| <a href="../hd-assets/X-SAN5-0246.png"><img src="../hd-assets/X-SAN5-0246.png" width="80" alt="夏侯玄 HD 肖像"></a> | 夏侯玄 | 80 | 26 | 73 | 91 | 73 | san5:246 |
+| <a href="../hd-assets/X-SAN5-0249.png"><img src="../hd-assets/X-SAN5-0249.png" width="80" alt="韓嵩 HD 肖像"></a> | 韓嵩 | 80 | 28 | 70 | 85 | 51 | san5:249 |
+| <a href="../hd-assets/X-SAN5-0250.png"><img src="../hd-assets/X-SAN5-0250.png" width="80" alt="張角 HD 肖像"></a> | 張角 | 80 | 50 | 95 | 88 | 99 | san5:250 |
+| <a href="../hd-assets/X-SAN5-0251.png"><img src="../hd-assets/X-SAN5-0251.png" width="80" alt="張寶 HD 肖像"></a> | 張寶 | 80 | 82 | 72 | 42 | 91 | san5:251 |
+| <a href="../hd-assets/X-SAN5-0252.png"><img src="../hd-assets/X-SAN5-0252.png" width="80" alt="張梁 HD 肖像"></a> | 張梁 | 80 | 84 | 60 | 46 | 89 | san5:252 |
+| <a href="../hd-assets/X-SAN5-0253.png"><img src="../hd-assets/X-SAN5-0253.png" width="80" alt="程遠志 HD 肖像"></a> | 程遠志 | 80 | 78 | 41 | 16 | 43 | san5:253 |
+| <a href="../hd-assets/X-SAN5-0254.png"><img src="../hd-assets/X-SAN5-0254.png" width="80" alt="管亥 HD 肖像"></a> | 管亥 | 80 | 93 | 41 | 23 | 47 | san5:254 |
+| <a href="../hd-assets/X-SAN5-0257.png"><img src="../hd-assets/X-SAN5-0257.png" width="80" alt="裴元紹 HD 肖像"></a> | 裴元紹 | 80 | 76 | 37 | 32 | 37 | san5:257 |
+| <a href="../hd-assets/X-SAN5-0258.png"><img src="../hd-assets/X-SAN5-0258.png" width="80" alt="何進 HD 肖像"></a> | 何進 | 80 | 77 | 43 | 67 | 91 | san5:258 |
+| <a href="../hd-assets/X-SAN5-0259.png"><img src="../hd-assets/X-SAN5-0259.png" width="80" alt="鄒靖 HD 肖像"></a> | 鄒靖 | 80 | 67 | 66 | 47 | 68 | san5:259 |
+| <a href="../hd-assets/X-SAN5-0264.png"><img src="../hd-assets/X-SAN5-0264.png" width="80" alt="公孫度 HD 肖像"></a> | 公孫度 | 80 | 77 | 42 | 23 | 70 | san5:264 |
+| <a href="../hd-assets/X-SAN5-0267.png"><img src="../hd-assets/X-SAN5-0267.png" width="80" alt="朱雋 HD 肖像"></a> | 朱雋 | 80 | 76 | 61 | 74 | 83 | san5:267 |
+| <a href="../hd-assets/X-SAN5-0271.png"><img src="../hd-assets/X-SAN5-0271.png" width="80" alt="黃皓 HD 肖像"></a> | 黃皓 | 80 | 9 | 49 | 74 | 13 | san5:271 |
+| <a href="../hd-assets/X-SAN5-0272.png"><img src="../hd-assets/X-SAN5-0272.png" width="80" alt="孫皓 HD 肖像"></a> | 孫皓 | 80 | 75 | 61 | 10 | 57 | san5:272 |
+| <a href="../hd-assets/X-SAN5-0273.png"><img src="../hd-assets/X-SAN5-0273.png" width="80" alt="張休 HD 肖像"></a> | 張休 | 80 | 31 | 70 | 79 | 75 | san5:273 |
+| <a href="../hd-assets/X-SAN5-0277.png"><img src="../hd-assets/X-SAN5-0277.png" width="80" alt="曹奐 HD 肖像"></a> | 曹奐 | 80 | 17 | 44 | 46 | 64 | san5:277 |
+| <a href="../hd-assets/X-SAN5-0279.png"><img src="../hd-assets/X-SAN5-0279.png" width="80" alt="司馬攸 HD 肖像"></a> | 司馬攸 | 80 | 30 | 81 | 63 | 78 | san5:279 |
+| <a href="../hd-assets/X-SAN5-0280.png"><img src="../hd-assets/X-SAN5-0280.png" width="80" alt="蔡邕 HD 肖像"></a> | 蔡邕 | 80 | 23 | 82 | 87 | 79 | san5:280 |
+| <a href="../hd-assets/X-SAN5-0282.png"><img src="../hd-assets/X-SAN5-0282.png" width="80" alt="劉諶 HD 肖像"></a> | 劉諶 | 80 | 68 | 50 | 67 | 81 | san5:282 |
+| <a href="../hd-assets/X-SAN5-0283.png"><img src="../hd-assets/X-SAN5-0283.png" width="80" alt="劉永 HD 肖像"></a> | 劉永 | 80 | 20 | 65 | 69 | 72 | san5:283 |
+| <a href="../hd-assets/X-SAN5-0284.png"><img src="../hd-assets/X-SAN5-0284.png" width="80" alt="劉理 HD 肖像"></a> | 劉理 | 80 | 21 | 63 | 67 | 71 | san5:284 |
+| <a href="../hd-assets/X-SAN5-0285.png"><img src="../hd-assets/X-SAN5-0285.png" width="80" alt="諸葛尚 HD 肖像"></a> | 諸葛尚 | 80 | 77 | 61 | 25 | 71 | san5:285 |
+| <a href="../hd-assets/X-SAN5-0286.png"><img src="../hd-assets/X-SAN5-0286.png" width="80" alt="孫登 HD 肖像"></a> | 孫登 | 80 | 12 | 81 | 70 | 89 | san5:286 |
+| <a href="../hd-assets/X-SAN5-0287.png"><img src="../hd-assets/X-SAN5-0287.png" width="80" alt="孫和 HD 肖像"></a> | 孫和 | 80 | 16 | 71 | 51 | 78 | san5:287 |
+| <a href="../hd-assets/X-SAN5-0288.png"><img src="../hd-assets/X-SAN5-0288.png" width="80" alt="陸凱 HD 肖像"></a> | 陸凱 | 80 | 25 | 71 | 92 | 78 | san5:288 |
+| <a href="../hd-assets/X-SAN5-0289.png"><img src="../hd-assets/X-SAN5-0289.png" width="80" alt="岑昏 HD 肖像"></a> | 岑昏 | 80 | 10 | 46 | 71 | 13 | san5:289 |
+| <a href="../hd-assets/X-SAN5-0292.png"><img src="../hd-assets/X-SAN5-0292.png" width="80" alt="胡車兒 HD 肖像"></a> | 胡車兒 | 80 | 74 | 58 | 10 | 69 | san5:292 |
+| <a href="../hd-assets/X-SAN5-0294.png"><img src="../hd-assets/X-SAN5-0294.png" width="80" alt="丁原 HD 肖像"></a> | 丁原 | 80 | 79 | 55 | 48 | 69 | san5:294 |
+| <a href="../hd-assets/X-SAN5-0295.png"><img src="../hd-assets/X-SAN5-0295.png" width="80" alt="陳壽 HD 肖像"></a> | 陳壽 | 80 | 31 | 88 | 79 | 60 | san5:295 |
+| <a href="../hd-assets/X-SAN5-0296.png"><img src="../hd-assets/X-SAN5-0296.png" width="80" alt="禰衡 HD 肖像"></a> | 禰衡 | 80 | 20 | 92 | 88 | 23 | san5:296 |
+| <a href="../hd-assets/X-SAN5-0297.png"><img src="../hd-assets/X-SAN5-0297.png" width="80" alt="喬玄 HD 肖像"></a> | 喬玄 | 80 | 30 | 52 | 70 | 77 | san5:297 |
+| <a href="../hd-assets/X-SAN5-0298.png"><img src="../hd-assets/X-SAN5-0298.png" width="80" alt="諸葛均 HD 肖像"></a> | 諸葛均 | 80 | 43 | 77 | 60 | 71 | san5:298 |
+| <a href="../hd-assets/X-SAN5-0300.png"><img src="../hd-assets/X-SAN5-0300.png" width="80" alt="尹賞 HD 肖像"></a> | 尹賞 | 80 | 34 | 44 | 68 | 44 | san5:300 |
+| <a href="../hd-assets/X-SAN5-0301.png"><img src="../hd-assets/X-SAN5-0301.png" width="80" alt="尹大目 HD 肖像"></a> | 尹大目 | 80 | 55 | 67 | 70 | 50 | san5:301 |
+| <a href="../hd-assets/X-SAN5-0302.png"><img src="../hd-assets/X-SAN5-0302.png" width="80" alt="閻宇 HD 肖像"></a> | 閻宇 | 80 | 61 | 18 | 47 | 27 | san5:302 |
+| <a href="../hd-assets/X-SAN5-0303.png"><img src="../hd-assets/X-SAN5-0303.png" width="80" alt="王頎 HD 肖像"></a> | 王頎 | 80 | 63 | 42 | 30 | 46 | san5:303 |
+| <a href="../hd-assets/X-SAN5-0304.png"><img src="../hd-assets/X-SAN5-0304.png" width="80" alt="王經 HD 肖像"></a> | 王經 | 80 | 42 | 77 | 63 | 74 | san5:304 |
+| <a href="../hd-assets/X-SAN5-0306.png"><img src="../hd-assets/X-SAN5-0306.png" width="80" alt="王渾 HD 肖像"></a> | 王渾 | 80 | 65 | 60 | 76 | 71 | san5:306 |
+| <a href="../hd-assets/X-SAN5-0308.png"><img src="../hd-assets/X-SAN5-0308.png" width="80" alt="王子服 HD 肖像"></a> | 王子服 | 80 | 68 | 64 | 61 | 78 | san5:308 |
+| <a href="../hd-assets/X-SAN5-0309.png"><img src="../hd-assets/X-SAN5-0309.png" width="80" alt="王真 HD 肖像"></a> | 王真 | 80 | 69 | 28 | 37 | 38 | san5:309 |
+| <a href="../hd-assets/X-SAN5-0310.png"><img src="../hd-assets/X-SAN5-0310.png" width="80" alt="王戎 HD 肖像"></a> | 王戎 | 80 | 44 | 81 | 60 | 55 | san5:310 |
+| <a href="../hd-assets/X-SAN5-0311.png"><img src="../hd-assets/X-SAN5-0311.png" width="80" alt="王昶 HD 肖像"></a> | 王昶 | 80 | 71 | 53 | 42 | 59 | san5:311 |
+| <a href="../hd-assets/X-SAN5-0312.png"><img src="../hd-assets/X-SAN5-0312.png" width="80" alt="王甫 HD 肖像"></a> | 王甫 | 80 | 42 | 75 | 69 | 80 | san5:312 |
+| <a href="../hd-assets/X-SAN5-0313.png"><img src="../hd-assets/X-SAN5-0313.png" width="80" alt="華覈 HD 肖像"></a> | 華覈 | 80 | 24 | 78 | 60 | 71 | san5:313 |
+| <a href="../hd-assets/X-SAN5-0314.png"><img src="../hd-assets/X-SAN5-0314.png" width="80" alt="何儀 HD 肖像"></a> | 何儀 | 80 | 70 | 31 | 19 | 24 | san5:314 |
+| <a href="../hd-assets/X-SAN5-0315.png"><img src="../hd-assets/X-SAN5-0315.png" width="80" alt="郭奕 HD 肖像"></a> | 郭奕 | 80 | 30 | 79 | 82 | 41 | san5:315 |
+| <a href="../hd-assets/X-SAN5-0317.png"><img src="../hd-assets/X-SAN5-0317.png" width="80" alt="霍弋 HD 肖像"></a> | 霍弋 | 80 | 70 | 63 | 47 | 65 | san5:317 |
+| <a href="../hd-assets/X-SAN5-0318.png"><img src="../hd-assets/X-SAN5-0318.png" width="80" alt="夏侯恩 HD 肖像"></a> | 夏侯恩 | 80 | 63 | 55 | 45 | 58 | san5:318 |
+| <a href="../hd-assets/X-SAN5-0320.png"><img src="../hd-assets/X-SAN5-0320.png" width="80" alt="賈範 HD 肖像"></a> | 賈範 | 80 | 48 | 74 | 55 | 77 | san5:320 |
+| <a href="../hd-assets/X-SAN5-0321.png"><img src="../hd-assets/X-SAN5-0321.png" width="80" alt="關彞 HD 肖像"></a> | 關彞 | 80 | 62 | 51 | 33 | 61 | san5:321 |
+| <a href="../hd-assets/X-SAN5-0323.png"><img src="../hd-assets/X-SAN5-0323.png" width="80" alt="韓暹 HD 肖像"></a> | 韓暹 | 80 | 63 | 30 | 19 | 39 | san5:323 |
+| <a href="../hd-assets/X-SAN5-0324.png"><img src="../hd-assets/X-SAN5-0324.png" width="80" alt="韓忠 HD 肖像"></a> | 韓忠 | 80 | 69 | 40 | 14 | 31 | san5:324 |
+| <a href="../hd-assets/X-SAN5-0325.png"><img src="../hd-assets/X-SAN5-0325.png" width="80" alt="桓範 HD 肖像"></a> | 桓範 | 80 | 18 | 82 | 61 | 61 | san5:325 |
+| <a href="../hd-assets/X-SAN5-0326.png"><img src="../hd-assets/X-SAN5-0326.png" width="80" alt="樂綝 HD 肖像"></a> | 樂綝 | 80 | 60 | 44 | 30 | 37 | san5:326 |
+| <a href="../hd-assets/X-SAN5-0327.png"><img src="../hd-assets/X-SAN5-0327.png" width="80" alt="龔景 HD 肖像"></a> | 龔景 | 80 | 34 | 72 | 66 | 69 | san5:327 |
+| <a href="../hd-assets/X-SAN5-0329.png"><img src="../hd-assets/X-SAN5-0329.png" width="80" alt="許儀 HD 肖像"></a> | 許儀 | 80 | 70 | 41 | 28 | 47 | san5:329 |
+| <a href="../hd-assets/X-SAN5-0331.png"><img src="../hd-assets/X-SAN5-0331.png" width="80" alt="牽弘 HD 肖像"></a> | 牽弘 | 80 | 66 | 50 | 52 | 65 | san5:331 |
+| <a href="../hd-assets/X-SAN5-0334.png"><img src="../hd-assets/X-SAN5-0334.png" width="80" alt="嚴政 HD 肖像"></a> | 嚴政 | 80 | 73 | 49 | 11 | 16 | san5:334 |
+| <a href="../hd-assets/X-SAN5-0335.png"><img src="../hd-assets/X-SAN5-0335.png" width="80" alt="嚴輿 HD 肖像"></a> | 嚴輿 | 80 | 76 | 39 | 23 | 39 | san5:335 |
+| <a href="../hd-assets/X-SAN5-0337.png"><img src="../hd-assets/X-SAN5-0337.png" width="80" alt="耿紀 HD 肖像"></a> | 耿紀 | 80 | 32 | 78 | 71 | 72 | san5:337 |
+| <a href="../hd-assets/X-SAN5-0338.png"><img src="../hd-assets/X-SAN5-0338.png" width="80" alt="高翔 HD 肖像"></a> | 高翔 | 80 | 61 | 48 | 44 | 49 | san5:338 |
+| <a href="../hd-assets/X-SAN5-0339.png"><img src="../hd-assets/X-SAN5-0339.png" width="80" alt="高昇 HD 肖像"></a> | 高昇 | 80 | 74 | 30 | 12 | 33 | san5:339 |
+| <a href="../hd-assets/X-SAN5-0342.png"><img src="../hd-assets/X-SAN5-0342.png" width="80" alt="公孫康 HD 肖像"></a> | 公孫康 | 80 | 70 | 48 | 21 | 71 | san5:342 |
+| <a href="../hd-assets/X-SAN5-0343.png"><img src="../hd-assets/X-SAN5-0343.png" width="80" alt="公孫恭 HD 肖像"></a> | 公孫恭 | 80 | 40 | 75 | 60 | 61 | san5:343 |
+| <a href="../hd-assets/X-SAN5-0346.png"><img src="../hd-assets/X-SAN5-0346.png" width="80" alt="胡班 HD 肖像"></a> | 胡班 | 80 | 63 | 52 | 50 | 62 | san5:346 |
+| <a href="../hd-assets/X-SAN5-0347.png"><img src="../hd-assets/X-SAN5-0347.png" width="80" alt="胡烈 HD 肖像"></a> | 胡烈 | 80 | 67 | 41 | 39 | 56 | san5:347 |
+| <a href="../hd-assets/X-SAN5-0348.png"><img src="../hd-assets/X-SAN5-0348.png" width="80" alt="吾彥 HD 肖像"></a> | 吾彥 | 80 | 66 | 48 | 21 | 67 | san5:348 |
+| <a href="../hd-assets/X-SAN5-0349.png"><img src="../hd-assets/X-SAN5-0349.png" width="80" alt="吳綱 HD 肖像"></a> | 吳綱 | 80 | 31 | 60 | 69 | 71 | san5:349 |
+| <a href="../hd-assets/X-SAN5-0350.png"><img src="../hd-assets/X-SAN5-0350.png" width="80" alt="吳質 HD 肖像"></a> | 吳質 | 80 | 34 | 69 | 81 | 69 | san5:350 |
+| <a href="../hd-assets/X-SAN5-0353.png"><img src="../hd-assets/X-SAN5-0353.png" width="80" alt="笮融 HD 肖像"></a> | 笮融 | 80 | 60 | 24 | 61 | 48 | san5:353 |
+| <a href="../hd-assets/X-SAN5-0354.png"><img src="../hd-assets/X-SAN5-0354.png" width="80" alt="謝旌 HD 肖像"></a> | 謝旌 | 80 | 61 | 23 | 29 | 27 | san5:354 |
+| <a href="../hd-assets/X-SAN5-0355.png"><img src="../hd-assets/X-SAN5-0355.png" width="80" alt="車冑 HD 肖像"></a> | 車冑 | 80 | 72 | 61 | 62 | 58 | san5:355 |
+| <a href="../hd-assets/X-SAN5-0356.png"><img src="../hd-assets/X-SAN5-0356.png" width="80" alt="朱異 HD 肖像"></a> | 朱異 | 80 | 50 | 41 | 38 | 26 | san5:356 |
+| <a href="../hd-assets/X-SAN5-0357.png"><img src="../hd-assets/X-SAN5-0357.png" width="80" alt="周昕 HD 肖像"></a> | 周昕 | 80 | 72 | 40 | 27 | 29 | san5:357 |
+| <a href="../hd-assets/X-SAN5-0358.png"><img src="../hd-assets/X-SAN5-0358.png" width="80" alt="周旨 HD 肖像"></a> | 周旨 | 80 | 81 | 47 | 27 | 44 | san5:358 |
+| <a href="../hd-assets/X-SAN5-0359.png"><img src="../hd-assets/X-SAN5-0359.png" width="80" alt="州泰 HD 肖像"></a> | 州泰 | 80 | 65 | 62 | 44 | 57 | san5:359 |
+| <a href="../hd-assets/X-SAN5-0363.png"><img src="../hd-assets/X-SAN5-0363.png" width="80" alt="朱靈 HD 肖像"></a> | 朱靈 | 80 | 63 | 40 | 29 | 41 | san5:363 |
+| <a href="../hd-assets/X-SAN5-0365.png"><img src="../hd-assets/X-SAN5-0365.png" width="80" alt="蔣義渠 HD 肖像"></a> | 蔣義渠 | 80 | 71 | 39 | 42 | 58 | san5:365 |
+| <a href="../hd-assets/X-SAN5-0367.png"><img src="../hd-assets/X-SAN5-0367.png" width="80" alt="蔣舒 HD 肖像"></a> | 蔣舒 | 80 | 58 | 41 | 36 | 15 | san5:367 |
+| <a href="../hd-assets/X-SAN5-0369.png"><img src="../hd-assets/X-SAN5-0369.png" width="80" alt="諸葛靚 HD 肖像"></a> | 諸葛靚 | 80 | 73 | 68 | 52 | 69 | san5:369 |
+| <a href="../hd-assets/X-SAN5-0370.png"><img src="../hd-assets/X-SAN5-0370.png" width="80" alt="師纂 HD 肖像"></a> | 師纂 | 80 | 69 | 30 | 45 | 53 | san5:370 |
+| <a href="../hd-assets/X-SAN5-0371.png"><img src="../hd-assets/X-SAN5-0371.png" width="80" alt="司馬孚 HD 肖像"></a> | 司馬孚 | 80 | 28 | 70 | 81 | 73 | san5:371 |
+| <a href="../hd-assets/X-SAN5-0372.png"><img src="../hd-assets/X-SAN5-0372.png" width="80" alt="司馬望 HD 肖像"></a> | 司馬望 | 80 | 60 | 62 | 80 | 68 | san5:372 |
+| <a href="../hd-assets/X-SAN5-0373.png"><img src="../hd-assets/X-SAN5-0373.png" width="80" alt="司馬朗 HD 肖像"></a> | 司馬朗 | 80 | 24 | 67 | 89 | 79 | san5:373 |
+| <a href="../hd-assets/X-SAN5-0374.png"><img src="../hd-assets/X-SAN5-0374.png" width="80" alt="沈瑩 HD 肖像"></a> | 沈瑩 | 80 | 75 | 56 | 37 | 62 | san5:374 |
+| <a href="../hd-assets/X-SAN5-0375.png"><img src="../hd-assets/X-SAN5-0375.png" width="80" alt="申耽 HD 肖像"></a> | 申耽 | 80 | 68 | 59 | 50 | 61 | san5:375 |
+| <a href="../hd-assets/X-SAN5-0377.png"><img src="../hd-assets/X-SAN5-0377.png" width="80" alt="徐質 HD 肖像"></a> | 徐質 | 80 | 66 | 36 | 47 | 58 | san5:377 |
+| <a href="../hd-assets/X-SAN5-0379.png"><img src="../hd-assets/X-SAN5-0379.png" width="80" alt="薛瑩 HD 肖像"></a> | 薛瑩 | 80 | 14 | 63 | 78 | 63 | san5:379 |
+| <a href="../hd-assets/X-SAN5-0381.png"><img src="../hd-assets/X-SAN5-0381.png" width="80" alt="全禕 HD 肖像"></a> | 全禕 | 80 | 76 | 62 | 35 | 63 | san5:381 |
+| <a href="../hd-assets/X-SAN5-0382.png"><img src="../hd-assets/X-SAN5-0382.png" width="80" alt="全懌 HD 肖像"></a> | 全懌 | 80 | 78 | 63 | 40 | 61 | san5:382 |
+| <a href="../hd-assets/X-SAN5-0383.png"><img src="../hd-assets/X-SAN5-0383.png" width="80" alt="全端 HD 肖像"></a> | 全端 | 80 | 75 | 60 | 31 | 62 | san5:383 |
+| <a href="../hd-assets/X-SAN5-0384.png"><img src="../hd-assets/X-SAN5-0384.png" width="80" alt="曹宇 HD 肖像"></a> | 曹宇 | 80 | 71 | 64 | 71 | 74 | san5:384 |
+| <a href="../hd-assets/X-SAN5-0385.png"><img src="../hd-assets/X-SAN5-0385.png" width="80" alt="曹羲 HD 肖像"></a> | 曹羲 | 80 | 67 | 38 | 44 | 59 | san5:385 |
+| <a href="../hd-assets/X-SAN5-0386.png"><img src="../hd-assets/X-SAN5-0386.png" width="80" alt="曹訓 HD 肖像"></a> | 曹訓 | 80 | 64 | 46 | 52 | 67 | san5:386 |
+| <a href="../hd-assets/X-SAN5-0390.png"><img src="../hd-assets/X-SAN5-0390.png" width="80" alt="沮鵠 HD 肖像"></a> | 沮鵠 | 80 | 57 | 60 | 31 | 64 | san5:390 |
+| <a href="../hd-assets/X-SAN5-0391.png"><img src="../hd-assets/X-SAN5-0391.png" width="80" alt="蘇飛 HD 肖像"></a> | 蘇飛 | 80 | 70 | 40 | 26 | 74 | san5:391 |
+| <a href="../hd-assets/X-SAN5-0394.png"><img src="../hd-assets/X-SAN5-0394.png" width="80" alt="孫歆 HD 肖像"></a> | 孫歆 | 80 | 69 | 39 | 31 | 41 | san5:394 |
+| <a href="../hd-assets/X-SAN5-0395.png"><img src="../hd-assets/X-SAN5-0395.png" width="80" alt="孫峻 HD 肖像"></a> | 孫峻 | 80 | 70 | 50 | 53 | 35 | san5:395 |
+| <a href="../hd-assets/X-SAN5-0396.png"><img src="../hd-assets/X-SAN5-0396.png" width="80" alt="孫秀 HD 肖像"></a> | 孫秀 | 80 | 71 | 40 | 59 | 68 | san5:396 |
+| <a href="../hd-assets/X-SAN5-0397.png"><img src="../hd-assets/X-SAN5-0397.png" width="80" alt="孫韶 HD 肖像"></a> | 孫韶 | 80 | 79 | 59 | 71 | 78 | san5:397 |
+| <a href="../hd-assets/X-SAN5-0398.png"><img src="../hd-assets/X-SAN5-0398.png" width="80" alt="孫靜 HD 肖像"></a> | 孫靜 | 80 | 52 | 51 | 52 | 64 | san5:398 |
+| <a href="../hd-assets/X-SAN5-0399.png"><img src="../hd-assets/X-SAN5-0399.png" width="80" alt="孫仲 HD 肖像"></a> | 孫仲 | 80 | 62 | 30 | 21 | 36 | san5:399 |
+| <a href="../hd-assets/X-SAN5-0400.png"><img src="../hd-assets/X-SAN5-0400.png" width="80" alt="孫綝 HD 肖像"></a> | 孫綝 | 80 | 74 | 22 | 41 | 28 | san5:400 |
+| <a href="../hd-assets/X-SAN5-0401.png"><img src="../hd-assets/X-SAN5-0401.png" width="80" alt="孫瑜 HD 肖像"></a> | 孫瑜 | 80 | 73 | 64 | 51 | 73 | san5:401 |
+| <a href="../hd-assets/X-SAN5-0402.png"><img src="../hd-assets/X-SAN5-0402.png" width="80" alt="孫禮 HD 肖像"></a> | 孫禮 | 80 | 69 | 67 | 64 | 67 | san5:402 |
+| <a href="../hd-assets/X-SAN5-0403.png"><img src="../hd-assets/X-SAN5-0403.png" width="80" alt="孫朗 HD 肖像"></a> | 孫朗 | 80 | 59 | 34 | 53 | 67 | san5:403 |
+| <a href="../hd-assets/X-SAN5-0404.png"><img src="../hd-assets/X-SAN5-0404.png" width="80" alt="卓膺 HD 肖像"></a> | 卓膺 | 80 | 64 | 49 | 36 | 58 | san5:404 |
+| <a href="../hd-assets/X-SAN5-0407.png"><img src="../hd-assets/X-SAN5-0407.png" width="80" alt="張英 HD 肖像"></a> | 張英 | 80 | 71 | 37 | 41 | 51 | san5:407 |
+| <a href="../hd-assets/X-SAN5-0410.png"><img src="../hd-assets/X-SAN5-0410.png" width="80" alt="張華 HD 肖像"></a> | 張華 | 80 | 16 | 77 | 85 | 66 | san5:410 |
+| <a href="../hd-assets/X-SAN5-0413.png"><img src="../hd-assets/X-SAN5-0413.png" width="80" alt="張虎 HD 肖像"></a> | 張虎 | 80 | 69 | 53 | 43 | 60 | san5:413 |
+| <a href="../hd-assets/X-SAN5-0414.png"><img src="../hd-assets/X-SAN5-0414.png" width="80" alt="趙弘 HD 肖像"></a> | 趙弘 | 80 | 71 | 42 | 16 | 29 | san5:414 |
+| <a href="../hd-assets/X-SAN5-0416.png"><img src="../hd-assets/X-SAN5-0416.png" width="80" alt="張象 HD 肖像"></a> | 張象 | 80 | 57 | 21 | 49 | 37 | san5:416 |
+| <a href="../hd-assets/X-SAN5-0417.png"><img src="../hd-assets/X-SAN5-0417.png" width="80" alt="張紹 HD 肖像"></a> | 張紹 | 80 | 45 | 71 | 63 | 68 | san5:417 |
+| <a href="../hd-assets/X-SAN5-0418.png"><img src="../hd-assets/X-SAN5-0418.png" width="80" alt="張節 HD 肖像"></a> | 張節 | 80 | 32 | 44 | 61 | 70 | san5:418 |
+| <a href="../hd-assets/X-SAN5-0420.png"><img src="../hd-assets/X-SAN5-0420.png" width="80" alt="張布 HD 肖像"></a> | 張布 | 80 | 73 | 52 | 40 | 54 | san5:420 |
+| <a href="../hd-assets/X-SAN5-0421.png"><img src="../hd-assets/X-SAN5-0421.png" width="80" alt="趙累 HD 肖像"></a> | 趙累 | 80 | 36 | 60 | 68 | 78 | san5:421 |
+| <a href="../hd-assets/X-SAN5-0422.png"><img src="../hd-assets/X-SAN5-0422.png" width="80" alt="陳橫 HD 肖像"></a> | 陳橫 | 80 | 64 | 48 | 31 | 52 | san5:422 |
+| <a href="../hd-assets/X-SAN5-0423.png"><img src="../hd-assets/X-SAN5-0423.png" width="80" alt="陳騫 HD 肖像"></a> | 陳騫 | 80 | 71 | 56 | 41 | 53 | san5:423 |
+| <a href="../hd-assets/X-SAN5-0429.png"><img src="../hd-assets/X-SAN5-0429.png" width="80" alt="田續 HD 肖像"></a> | 田續 | 80 | 62 | 50 | 29 | 40 | san5:429 |
+| <a href="../hd-assets/X-SAN5-0430.png"><img src="../hd-assets/X-SAN5-0430.png" width="80" alt="田疇 HD 肖像"></a> | 田疇 | 80 | 74 | 52 | 62 | 76 | san5:430 |
+| <a href="../hd-assets/X-SAN5-0431.png"><img src="../hd-assets/X-SAN5-0431.png" width="80" alt="党均 HD 肖像"></a> | 党均 | 80 | 40 | 60 | 40 | 42 | san5:431 |
+| <a href="../hd-assets/X-SAN5-0432.png"><img src="../hd-assets/X-SAN5-0432.png" width="80" alt="董厥 HD 肖像"></a> | 董厥 | 80 | 60 | 71 | 70 | 64 | san5:432 |
+| <a href="../hd-assets/X-SAN5-0434.png"><img src="../hd-assets/X-SAN5-0434.png" width="80" alt="董衡 HD 肖像"></a> | 董衡 | 80 | 70 | 41 | 36 | 70 | san5:434 |
+| <a href="../hd-assets/X-SAN5-0435.png"><img src="../hd-assets/X-SAN5-0435.png" width="80" alt="唐咨 HD 肖像"></a> | 唐咨 | 80 | 61 | 47 | 42 | 50 | san5:435 |
+| <a href="../hd-assets/X-SAN5-0436.png"><img src="../hd-assets/X-SAN5-0436.png" width="80" alt="陶濬 HD 肖像"></a> | 陶濬 | 80 | 62 | 40 | 34 | 44 | san5:436 |
+| <a href="../hd-assets/X-SAN5-0437.png"><img src="../hd-assets/X-SAN5-0437.png" width="80" alt="董承 HD 肖像"></a> | 董承 | 80 | 74 | 61 | 54 | 80 | san5:437 |
+| <a href="../hd-assets/X-SAN5-0438.png"><img src="../hd-assets/X-SAN5-0438.png" width="80" alt="鄧忠 HD 肖像"></a> | 鄧忠 | 80 | 77 | 51 | 40 | 57 | san5:438 |
+| <a href="../hd-assets/X-SAN5-0440.png"><img src="../hd-assets/X-SAN5-0440.png" width="80" alt="鄧茂 HD 肖像"></a> | 鄧茂 | 80 | 76 | 21 | 19 | 42 | san5:440 |
+| <a href="../hd-assets/X-SAN5-0441.png"><img src="../hd-assets/X-SAN5-0441.png" width="80" alt="董和 HD 肖像"></a> | 董和 | 80 | 60 | 66 | 70 | 51 | san5:441 |
+| <a href="../hd-assets/X-SAN5-0442.png"><img src="../hd-assets/X-SAN5-0442.png" width="80" alt="杜遠 HD 肖像"></a> | 杜遠 | 80 | 62 | 19 | 17 | 29 | san5:442 |
+| <a href="../hd-assets/X-SAN5-0443.png"><img src="../hd-assets/X-SAN5-0443.png" width="80" alt="裴秀 HD 肖像"></a> | 裴秀 | 80 | 69 | 65 | 66 | 68 | san5:443 |
+| <a href="../hd-assets/X-SAN5-0445.png"><img src="../hd-assets/X-SAN5-0445.png" width="80" alt="樊建 HD 肖像"></a> | 樊建 | 80 | 29 | 68 | 65 | 68 | san5:445 |
+| <a href="../hd-assets/X-SAN5-0446.png"><img src="../hd-assets/X-SAN5-0446.png" width="80" alt="潘濬 HD 肖像"></a> | 潘濬 | 80 | 12 | 67 | 73 | 40 | san5:446 |
+| <a href="../hd-assets/X-SAN5-0448.png"><img src="../hd-assets/X-SAN5-0448.png" width="80" alt="潘鳳 HD 肖像"></a> | 潘鳳 | 80 | 75 | 19 | 25 | 25 | san5:448 |
+| <a href="../hd-assets/X-SAN5-0451.png"><img src="../hd-assets/X-SAN5-0451.png" width="80" alt="馬遵 HD 肖像"></a> | 馬遵 | 80 | 68 | 53 | 47 | 55 | san5:451 |
+| <a href="../hd-assets/X-SAN5-0452.png"><img src="../hd-assets/X-SAN5-0452.png" width="80" alt="馬忠 HD 肖像"></a> | 馬忠 | 80 | 60 | 51 | 40 | 45 | san5:452 |
+| <a href="../hd-assets/X-SAN5-0454.png"><img src="../hd-assets/X-SAN5-0454.png" width="80" alt="馬邈 HD 肖像"></a> | 馬邈 | 80 | 41 | 40 | 47 | 18 | san5:454 |
+| <a href="../hd-assets/X-SAN5-0455.png"><img src="../hd-assets/X-SAN5-0455.png" width="80" alt="万彧 HD 肖像"></a> | 万彧 | 80 | 44 | 60 | 61 | 62 | san5:455 |
+| <a href="../hd-assets/X-SAN5-0456.png"><img src="../hd-assets/X-SAN5-0456.png" width="80" alt="卑衍 HD 肖像"></a> | 卑衍 | 80 | 69 | 54 | 46 | 61 | san5:456 |
+| <a href="../hd-assets/X-SAN5-0458.png"><img src="../hd-assets/X-SAN5-0458.png" width="80" alt="馮習 HD 肖像"></a> | 馮習 | 80 | 70 | 40 | 21 | 61 | san5:458 |
+| <a href="../hd-assets/X-SAN5-0459.png"><img src="../hd-assets/X-SAN5-0459.png" width="80" alt="傅嬰 HD 肖像"></a> | 傅嬰 | 80 | 68 | 60 | 41 | 62 | san5:459 |
+| <a href="../hd-assets/X-SAN5-0462.png"><img src="../hd-assets/X-SAN5-0462.png" width="80" alt="傅僉 HD 肖像"></a> | 傅僉 | 80 | 82 | 47 | 36 | 46 | san5:462 |
+| <a href="../hd-assets/X-SAN5-0465.png"><img src="../hd-assets/X-SAN5-0465.png" width="80" alt="武安國 HD 肖像"></a> | 武安國 | 80 | 70 | 20 | 19 | 23 | san5:465 |
+| <a href="../hd-assets/X-SAN5-0466.png"><img src="../hd-assets/X-SAN5-0466.png" width="80" alt="卞喜 HD 肖像"></a> | 卞喜 | 80 | 70 | 28 | 36 | 37 | san5:466 |
+| <a href="../hd-assets/X-SAN5-0467.png"><img src="../hd-assets/X-SAN5-0467.png" width="80" alt="龐義 HD 肖像"></a> | 龐義 | 80 | 27 | 55 | 72 | 68 | san5:467 |
+| <a href="../hd-assets/X-SAN5-0469.png"><img src="../hd-assets/X-SAN5-0469.png" width="80" alt="濮陽興 HD 肖像"></a> | 濮陽興 | 80 | 52 | 71 | 81 | 68 | san5:469 |
+| <a href="../hd-assets/X-SAN5-0472.png"><img src="../hd-assets/X-SAN5-0472.png" width="80" alt="楊濟 HD 肖像"></a> | 楊濟 | 80 | 59 | 61 | 43 | 59 | san5:472 |
+| <a href="../hd-assets/X-SAN5-0475.png"><img src="../hd-assets/X-SAN5-0475.png" width="80" alt="楊祚 HD 肖像"></a> | 楊祚 | 80 | 64 | 49 | 30 | 38 | san5:475 |
+| <a href="../hd-assets/X-SAN5-0478.png"><img src="../hd-assets/X-SAN5-0478.png" width="80" alt="駱統 HD 肖像"></a> | 駱統 | 80 | 61 | 60 | 74 | 76 | san5:478 |
+| <a href="../hd-assets/X-SAN5-0482.png"><img src="../hd-assets/X-SAN5-0482.png" width="80" alt="留略 HD 肖像"></a> | 留略 | 80 | 69 | 58 | 32 | 51 | san5:482 |
+| <a href="../hd-assets/X-SAN5-0483.png"><img src="../hd-assets/X-SAN5-0483.png" width="80" alt="呂威璜 HD 肖像"></a> | 呂威璜 | 80 | 66 | 49 | 25 | 42 | san5:483 |
+| <a href="../hd-assets/X-SAN5-0485.png"><img src="../hd-assets/X-SAN5-0485.png" width="80" alt="呂義 HD 肖像"></a> | 呂義 | 80 | 76 | 68 | 48 | 56 | san5:485 |
+| <a href="../hd-assets/X-SAN5-0489.png"><img src="../hd-assets/X-SAN5-0489.png" width="80" alt="李鵬 HD 肖像"></a> | 李鵬 | 80 | 70 | 38 | 40 | 43 | san5:489 |
+| <a href="../hd-assets/X-SAN5-0491.png"><img src="../hd-assets/X-SAN5-0491.png" width="80" alt="倫直 HD 肖像"></a> | 倫直 | 80 | 63 | 59 | 49 | 62 | san5:491 |
+| <a href="../hd-assets/X-SAN5-0492.png"><img src="../hd-assets/X-SAN5-0492.png" width="80" alt="華佗 HD 肖像"></a> | 華佗 | 80 | 17 | 96 | 73 | 79 | san5:492 |
+| <a href="../hd-assets/X-SAN5-0493.png"><img src="../hd-assets/X-SAN5-0493.png" width="80" alt="司馬徽 HD 肖像"></a> | 司馬徽 | 80 | 18 | 96 | 74 | 78 | san5:493 |
+| <a href="../hd-assets/X-SAN5-0494.png"><img src="../hd-assets/X-SAN5-0494.png" width="80" alt="許子將 HD 肖像"></a> | 許子將 | 80 | 19 | 94 | 77 | 79 | san5:494 |
+| <a href="../hd-assets/X-SAN5-0495.png"><img src="../hd-assets/X-SAN5-0495.png" width="80" alt="于吉 HD 肖像"></a> | 于吉 | 80 | 9 | 99 | 23 | 95 | san5:495 |
+| <a href="../hd-assets/X-SAN5-0496.png"><img src="../hd-assets/X-SAN5-0496.png" width="80" alt="左慈 HD 肖像"></a> | 左慈 | 80 | 10 | 99 | 21 | 91 | san5:496 |
+| <a href="../hd-assets/X-SAN5-0497.png"><img src="../hd-assets/X-SAN5-0497.png" width="80" alt="管輅 HD 肖像"></a> | 管輅 | 80 | 14 | 95 | 70 | 73 | san5:497 |
+| <a href="../hd-assets/X-SAN5-0498.png"><img src="../hd-assets/X-SAN5-0498.png" width="80" alt="紫虛上人 HD 肖像"></a> | 紫虛上人 | 80 | 8 | 97 | 22 | 92 | san5:498 |
+| <a href="../hd-assets/X-SAN5-0499.png"><img src="../hd-assets/X-SAN5-0499.png" width="80" alt="南華老仙 HD 肖像"></a> | 南華老仙 | 80 | 8 | 98 | 23 | 95 | san5:499 |

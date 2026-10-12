@@ -314,7 +314,7 @@ func (a *app) Update() error {
 		return nil
 	}
 	// 輪流下令：沒停在玩家的郡就照這個月的順序往下跑，停在下一個玩家的郡。
-	if a.s != nil && a.menu == 0 && a.pick == nil && a.num == nil && a.s.Waiting() == 0 && !a.s.Over {
+	if a.s != nil && a.menu == 0 && a.pick == nil && a.num == nil && a.s.Waiting() == 0 && !a.s.Over && !a.hasPendingRulerChoice() {
 		at := a.s.AdvanceToHuman(0)
 		// 停下來的理由也可能是「聯合出兵要問求不求援」（Issue #99）。
 		if a.s.G.PendingAid() != nil {
@@ -1810,7 +1810,7 @@ func main() {
 		g, brain = s.G, s.Brain
 		f = int(s.Player)
 	} else {
-		g, err = game.New(sc, state.FactionID(f), *difficulty, ed)
+		g, err = game.NewExpanded(sc, state.FactionID(f), *difficulty, ed)
 		if err != nil {
 			die(err)
 		}
@@ -2123,7 +2123,7 @@ func (a *app) currentScene() (key any, pic *assets.Image, kind ui.WipeKind, x, y
 		case b.WipeIn:
 			portrait := -1
 			if x := a.s.G.General(b.Speaker); x != nil {
-				portrait = int(x.Portrait)
+				portrait = x.PortraitID()
 			}
 			return b, ui.SearchPanel(a.art, portrait), ui.WipeKind(b.Style),
 				assets.SceneMainX, assets.SceneMainY, true
@@ -2148,7 +2148,7 @@ func (a *app) startWipe() {
 	if a.s != nil {
 		if b := a.s.Bubble(); b != nil && b.WipeIn {
 			if who := a.s.G.General(b.Speaker); who != nil {
-				high = a.canvas.SearchHighScene(a.art, int(who.Portrait))
+				high = a.canvas.SearchHighScene(a.art, who.PortraitID())
 			}
 		}
 	}
@@ -2675,4 +2675,13 @@ func (a *app) headhunt(sel int) {
 		}, nil)
 	}
 	ask()
+}
+
+// 回合推進不能越過原版要求玩家回答的繼承與太守選擇。
+func (a *app) hasPendingRulerChoice() bool {
+	if a.s == nil {
+		return false
+	}
+	_, heirs := a.s.G.NeedsHeir()
+	return len(heirs) > 0 || a.s.G.NeedsGovernor() != 0
 }

@@ -355,6 +355,12 @@ func (s *Session) AdvanceToHuman(maxCells int) int {
 		if s.Over {
 			return 0
 		}
+		if _, list := s.G.NeedsHeir(); len(list) > 0 {
+			return 0
+		}
+		if s.G.NeedsGovernor() != 0 {
+			return 0
+		}
 		if len(s.MonthOrder) == 43 && s.MonthCursor >= len(s.MonthOrder) {
 			s.reportOrders()
 			s.finishMonth()
@@ -463,12 +469,11 @@ func (s *Session) EndMonth() {
 
 // finishMonth 是月底結算到開月（游標跑完之後）。
 func (s *Session) finishMonth() {
-	wasAlive := s.PlayerAlive()
 	events := s.G.EndMonth()
 	// 開月在結算裡跑完了，順序表換成新的一份。
 	s.shuffleMonth()
 	s.drainBattles()
-	if wasAlive && !s.PlayerAlive() {
+	if !s.PlayerAlive() {
 		s.collect(s.G.GameOverScene())
 		s.say("sess.destroyed")
 		s.Over = true

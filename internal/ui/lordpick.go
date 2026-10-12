@@ -80,7 +80,7 @@ func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, 
 		}
 		portrait := s.Portrait
 		if s.Lord != nil {
-			portrait = int(s.Lord.Portrait)
+			portrait = s.Lord.PortraitID()
 		}
 		if face := a.Portrait(portrait); face != nil {
 			drawImageAt(c, face, x, y)
@@ -95,8 +95,8 @@ func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, 
 		for py := y + 86; py <= y+98; py++ {
 			for px := x + 2; px <= x+13; px++ {
 				col := artFactionColour[s.Faction%len(artFactionColour)]
-				if a.fills != nil {
-					col = a.fills[s.Faction%len(a.fills)].At(px, py)
+				if fill := a.factionFill(s.Faction); fill != nil {
+					col = fill.At(px, py)
 				}
 				c.setClipped(px, py, ink(int(col)))
 			}
@@ -119,6 +119,10 @@ func DrawLordPick(c *Canvas, a *ArtScreen, g *game.State, slots []LordPickSlot, 
 			label = PersonName(s.Lord.Name)
 		}
 		switch {
+		case artAllWide(label) && cells.Width(label) > 6:
+			for j, r := range []rune(label) {
+				c.DrawRuneOutlinedPx(x+16+(j%2)*16, y+84+(j/2)*16, r, white, black, 1, 1)
+			}
 		case artAllWide(label):
 			tx := x + 16
 			for _, r := range paddedName(label) {

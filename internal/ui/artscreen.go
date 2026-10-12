@@ -131,6 +131,12 @@ func NewArtScreen(data3, data1 *assets.Container, data2 ...*assets.Container) (*
 
 // Portrait 取一張肖像；沒有就回 nil。
 func (a *ArtScreen) Portrait(n int) *assets.Image {
+	if n >= 1000 {
+		return assets.ExpandedPortrait(n - 1000)
+	}
+	if a.faces == nil {
+		return nil
+	}
 	i, ok := a.faces.ByName(fmt.Sprintf("F%03d.FAC", n))
 	if !ok {
 		return nil
@@ -238,6 +244,33 @@ var artFactionColour = [...]byte{
 	9, 12, 10, 14, 13, 11, 6, 2, 1, 5, 4, 3, 8, 7, 9, 12,
 }
 
+// 規格 022：新增勢力另用八組斜紋，原有十六組圖樣保持。
+var expandedFactionFills = func() [8]assets.FillPattern {
+	var out [8]assets.FillPattern
+	inks := [...]byte{9, 12, 10, 14, 13, 11, 6, 7}
+	for i := range out {
+		for y := 0; y < 8; y++ {
+			for x := 0; x < 8; x++ {
+				out[i][y*8+x] = 8
+				if (x+y)%8 < 3 {
+					out[i][y*8+x] = inks[i]
+				}
+			}
+		}
+	}
+	return out
+}()
+
+func (a *ArtScreen) factionFill(id int) *assets.FillPattern {
+	if id >= 16 && id < 24 {
+		return &expandedFactionFills[id-16]
+	}
+	if a.fills != nil && id >= 0 && id < len(a.fills) {
+		return &a.fills[id]
+	}
+	return nil
+}
+
 // Compose 依目前局面畫一張 640×408 的圖。
 func (a *ArtScreen) Compose(g *game.State, sel int) *assets.Image {
 	im := a.base.Clone()
@@ -247,8 +280,8 @@ func (a *ArtScreen) Compose(g *game.State, sel int) *assets.Image {
 		}
 		x := int(p.MapX) + assets.MapOriginX
 		y := int(p.MapY) + assets.MapOriginY
-		if a.fills != nil {
-			im.FloodFillPattern(x, y, &a.fills[int(p.Owner)%len(a.fills)])
+		if fill := a.factionFill(int(p.Owner)); fill != nil {
+			im.FloodFillPattern(x, y, fill)
 			continue
 		}
 		im.FloodFill(x, y, artFactionColour[int(p.Owner)%len(artFactionColour)])
@@ -298,7 +331,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 	}
 	if upper == artUpperStatus {
 		if who := g.Governor(sel); who != nil {
-			if face := a.Portrait(int(who.Portrait)); face != nil {
+			if face := a.Portrait(who.PortraitID()); face != nil {
 				im.Blit(face, artPortraitX, artPortraitY)
 			}
 		}
@@ -325,7 +358,7 @@ func DrawArtSession(c *Canvas, a *ArtScreen, g *game.State, log []string, v View
 			c.drawHighPortraitFrame(a.frame, artPortraitX, artPortraitY)
 		}
 		if who := g.Governor(sel); who != nil {
-			c.drawHigh(a.Portrait(int(who.Portrait)), artPortraitX, artPortraitY)
+			c.drawHigh(a.Portrait(who.PortraitID()), artPortraitX, artPortraitY)
 		}
 	}
 

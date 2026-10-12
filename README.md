@@ -58,9 +58,11 @@ HD 素材已收錄於 [`hd-assets/`](hd-assets/README.md)，可搭配下載的�
 
 ### HD 武將圖鑑
 
-[獨立武將圖鑑](docs/hd-generals.md)收錄 346 位人物的頭像、姓名、表字、體能、戰力、謀略、魅力、兵種與原始資料編號。能力值採兩版劇本 001；表字另附來源，未核得者標為「待考」。總覽在每張頭像下方標示姓名，共用肖像的人物分列。
+[獨立武將圖鑑](docs/hd-generals.md)收錄原版 346 位與 San5 新增 220 位，共 566 位人物。原有人物另列表字、體能、戰力、謀略、魅力、兵種與原始資料編號，能力值採兩版劇本 001；表字附來源，未核得者標為「待考」。總覽在每張頭像下方標示姓名，共用肖像的人物分列。
 
-<a href="docs/images/hd-generals-overview.png"><img src="docs/images/hd-generals-overview.png" width="840" alt="346 位人物的 HD 武將總覽，每張頭像下方標示遊戲姓名及資料編號"></a>
+[新增人物](docs/hd-generals.md#新增人物)另列 220 位參考 San5 補入的人物、原創肖像、能力及來源識別。這是 [remake 擴充](docs/spec/022-expanded-roster.md)，各劇本依開局時點採用對應名單。
+
+<a href="docs/images/hd-generals-overview.png"><img src="docs/images/hd-generals-overview.png" width="840" alt="原版 346 位與 San5 新增 220 位，共 566 位人物的 HD 武將總覽，每張頭像標示姓名與來源編號"></a>
 
 ## 現在做到哪裡
 

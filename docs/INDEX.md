@@ -28,6 +28,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 
 | 想知道 | 看哪裡 |
 |---|---|
+| San5 擴充武將、異名、六劇本分郡與格式 2 存檔 | [規格 022](spec/022-expanded-roster.md)、[來源核對 RE 14](re/14-san5-roster.md)、[唯讀審查工具](../tools/inspect-san5-roster.py)、[資料匯出](../tools/export-expanded-roster.py)、[新局入口](../internal/game/expanded.go)、[完整快照](../internal/game/snapshot.go)、[正常玩家驗證器](../tools/verify-expanded-roster-inner.py)、[肖像與生成紀錄入口](../hd-assets/README.md)、[肖像匯入工具](../tools/import-expanded-portraits.py)；限資料、規則、介面、存檔及素材組裝 CONFORMED，220 張肖像完成，戰敗繼承與首回合控制流已修正；既有發行包未重建 |
 | 某個檔案格式怎麼解 | `formats/` |
 | 某條規則的出處與等級 | `mechanics/` |
 | 諸侯記錄哪些位元組原版真的碰過、加強版的月底結算入口在哪 | `re/11` |
@@ -131,7 +132,8 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | README 楷書與隸書實際截圖 | [字體比較](../README.md#楷書與隸書)、[原貌楷書](images/remake-font-kai.png)、[原貌隸書](images/remake-font-li.png)、[HD 楷書](images/remake-font-kai-hd.png)、[HD 隸書](images/remake-font-li-hd.png)；原貌來源見 021 §6.63，現行 HD 向量圖見 §6.65 |
 | HD 楷書與隸書的向量文字 | [021 §6.65](spec/021-hd-art.md#665-hd-楷書與隸書的向量文字)、[使用者選定樣張](images/hd-font-approved-20261011.png)、[來源與決定](reference/hd-font-approved-20261011.json)、[正常開局／人物卡／對白及存讀檔工具](../tools/verify-hd-vector-inner.py)；向量檔為 `fonts/kai.ttf`、`fonts/li.ttf`，授權沿用 `fonts/LICENSE-wangfonts.txt` |
 | HD 武將圖鑑的原始姓名與能力匯出 | [general-catalog.go](../tools/general-catalog.go)，從兩版劇本 001 讀取姓名、肖像與能力 |
-| HD 武將姓名、表字、能力與總覽 | [021 §6.64](spec/021-hd-art.md#664-hd-武將姓名總覽與獨立圖鑑)、[獨立圖鑑](hd-generals.md)、[人物資料與來源](reference/hd-generals.json)、[總覽圖](images/hd-generals-overview.png)、[圖錄索引](images/hd-generals-overview.json)、[產生工具](../tools/render-general-catalog.py) |
+| HD 武將姓名、表字、能力與總覽 | [021 §6.64](spec/021-hd-art.md#664-hd-武將姓名總覽與獨立圖鑑)、[獨立圖鑑](hd-generals.md)、[人物資料與來源](reference/hd-generals.json)、[566 人 HD 總覽圖](images/hd-generals-overview.png)、[圖錄索引](images/hd-generals-overview.json)、[原版＋San5 原圖入口與界線](re/14-san5-roster.md#原版與-san5-武將原圖總覽)、[產生工具](../tools/render-general-catalog.py) |
+| 擴充武將與總覽四平台本機包 | [v.1.2.0 打包契約](release/01-packaging.md#v120-擴充武將與總覽打包契約)；使用者已確認版號與原版＋San5／HD 兩張 566 人總覽，重建進行中 |
 | 自創君主怎麼建、範本在哪 | `spec/013`、`re/08` §3 |
 | 主畫面上的指令表、子選單、分頁畫在哪 | `spec/014`（原版量自 `TestZZSubMenuScreens`）|
 | 原版 oracle 如何不用固定指令數開到主畫面 | `spec/015`（執行期輸入位址、行為停點與失敗上限）|
