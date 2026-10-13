@@ -2451,3 +2451,13 @@ AGENTS.md 的 private 記載不同，已就本次 San5 原圖重繪 220 張是�
 保持，沒有複製 San5 原圖或放大參考。完整 HD 圖鑑重生為 566 人、471 張肖像，
 總覽 SHA-256 為 92af0d3ee0c56d53594bc35d7fe14b140a1e845900e2e42cbd773c782cecd7da，
 與本機核准交付相同。發布範圍與素材入口已改記本次明確授權。
+
+本次素材與文件提交 b572db2 已推送 main，先前 12 個本機提交一併推送。
+使用者另明確允許本次主機 gh 發布與核對。v.1.2.1-20261013 新標籤固定在
+四個引擎包的實際來源 60e2663，未移動既有 tag；最新正式 Release 已發布：
+https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.2.1-20261013 。
+附件只有四個引擎包與 SHA256SUMS-public.json，共 110,078,534 bytes，全部從
+公開網址重新下載，大小及 SHA-256 相符；登錄與下載收據為
+workplace/v121-release-published.json、v121-release-download-verification.json。
+README 下載入口與現況表改記新版本，公開範圍節限本次驗證 CONFORMED。
+本機完整版、原圖來源、舊版與影片保持，未追蹤的 AGENTS.md 未加入提交。

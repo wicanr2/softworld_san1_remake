@@ -6,10 +6,10 @@
 
 | 項目 | 目前狀態 |
 |---|---|
-| 發布範圍整理 | 使用者已授權 commit、push 與 v.1.2.1 Release；公開附件只含四個引擎包與公開雜湊清單，San5 媒體與完整資料不入附件。README 改用[原有 346 人 HD 總覽](docs/images/hd-generals-base-overview.png)，251 張肖像，全部圖格核對通過。儲存庫實際為 public；使用者已明確確認 220 張 San5 HD 重繪公開保留 repo，原圖只留本機。220 張及生成紀錄已同步，原 904 筆素材保持。見[發布契約](docs/release/01-packaging.md#v121-公開引擎包與-repo-展示範圍) |
+| 公開發行 | [v.1.2.1-20261013](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.2.1-20261013) 已發布並設為 latest，四個引擎包與公開雜湊清單共五附件全部下載、大小及 SHA-256 核對通過，San5 媒體與本機完整版不入附件。README 使用[原有 346 人 HD 總覽](docs/images/hd-generals-base-overview.png)，251 張肖像。使用者已明確確認 220 張 San5 HD 重繪公開保留 public repo，原圖只留本機；來源 b572db2 已推送。標籤固定在引擎建包提交 60e2663。見[發布契約與收據](docs/release/01-packaging.md#v121-公開引擎包與-repo-展示範圍) |
 | 新完整版進版 | `v.1.2.1-20261013` 四平台本機完整版完成，已直接收錄核准的 San5 原圖 HD 重繪。README 展示張角原貌／HD 與兩張 566 人總覽，14 張圖片全部隨完整包提供；[契約與交付](docs/release/01-packaging.md#v121-san5-重繪完整版)限封包、Linux 正常抽樣及 Wine CONFORMED |
 | San5 肖像重繪 | 220／220 張完成，Codex 已查看全部原圖／HD 對照；使用者先確認[四張畫風樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)。440 張來源參考、566 格總覽及原有 346 格不變均通過獨立核對。兩版各 452＋220 正式載入零警告，正常新局、張角 HD 人物卡與格式 2 存讀檔通過，33 張唯一 PNG 回讀。已交付[新版總覽及完整本機素材附包](docs/release/01-packaging.md#san5-重繪本機素材附包)；[逐張來源與提示詞](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)、[匯入](tools/import-san5-redraw.py)及[組裝工具](tools/package-san5-redraw.py)可接續使用。022 重繪節限本次範圍 CONFORMED |
-| 現行交付 | `v.1.2.1-20261013`，Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon 各一 tar.gz，包含兩版原始資料、220 張新重繪、向量字、規格 022、格式 2 存檔、總覽及 README 截圖。前一版及素材附包保留，公開 Release 仍為 v.1.1.2 |
+| 現行交付 | `v.1.2.1-20261013`，Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon 各一 tar.gz 本機完整版，包含兩版原始資料、220 張新重繪、向量字、規格 022、格式 2 存檔、總覽及 README 截圖。公開 Release 同版號，只提供四個引擎包與公開清單；前一版及素材附包保留 |
 | 封包驗證 | 新版九個封包的內容、架構及 SHA-256 通過；AppImage 全部 667 個高清檔與 66 個原版檔獨立回讀。Linux 兩版正常新局、人物卡、HD 逐像素核對、格式 2 存讀檔、AppRun 與 Windows 兩版 Wine 通過；46 項正常 GUI 檢查、32 張唯一 GUI 及 37 張 smoke PNG 完整。正式規則與字型輸入相同，沿用 1,891 通過、27 略過與四項原版 oracle 收據 |
 | 配樂 | 每拍刻度改讀表頭 240，補長延遲與速度事件；片頭使用 MUSV，標題使用 MUS 第 0 首 |
 | 配樂驗證 | 兩版原版開機選曲觀測通過；六首時間軸通過；兩版片頭、標題四段正式錄音完整匹配參考 PCM |
@@ -94,8 +94,8 @@ README 已依使用者稿件整合故事背景、玩法及保存理念，改標�
 本輪 AppDir、SquashFS 與重複 AppImage 已清理，釋放 401,168,448 bytes，
 收據為 `workplace/complete-delivery-v1.1.3-20261011/cleanup.json`。
 完整版與影片留本機，原版資料不入 Git。Windows／macOS 原生啟動、簽章、公證、
-FUSE 掛載與人耳仍未驗。[公開 GitHub Release](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.2-20261011)
-保持 `v.1.1.2-20261011`，既有四個引擎包與公開雜湊清單的遠端
+FUSE 掛載與人耳仍未驗。[前一公開 GitHub Release](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.2-20261011)
+`v.1.1.2-20261011` 保留，既有四個引擎包與公開雜湊清單的遠端
 大小及 SHA-256 全部相符；收據為 `workplace/v112-release-published.json`。
 
 上一輪已發布高清版的既有證據如下。英文姓名牌已選 A 原寬縮字，契約見

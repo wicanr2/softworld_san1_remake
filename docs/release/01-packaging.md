@@ -583,7 +583,7 @@ Xvfb 的 PID 1 就緒等待及 AppImage 擷取桌面原點裁切均修正工具�
 
 ## v.1.2.1 公開引擎包與 repo 展示範圍
 
-狀態：`READY`，封包與素材核對完成，待推送及發布。使用者於 2026-10-13 授權
+狀態：`CONFORMED`，限本節公開範圍、推送、標籤及附件核對。使用者於 2026-10-13 授權
 commit、push 與 Release，README 總覽移除 San5，HD 素材保留 repo。
 查證目前 GitHub 儲存庫為 public，與 AGENTS.md 的 private 記載不同。使用者得知後
 明確確認「包含這次 220 張 HD 重繪；San5 原圖只留本機」。因此同步全部 220 張
@@ -607,6 +607,14 @@ Release 採既有 `v.1.2.1-20261013` 的四個 `patch/` 引擎包，正式來源
 [README 圖格收據](../../workplace/readme-base-overview-verification.json)記錄原有 346 格及全部 11 張引用圖片；
 [發行說明母本](../../workplace/v121-release-notes.txt)保存實際來源與原生平台未驗範圍。
 既有 tag／Release 固定，不移動或覆寫。
+
+來源 `b572db274bf86a07d66d3722ceaebfc2edd52174` 已推送主分支；版本標籤固定在
+引擎建包提交 `60e2663db9d9aa062c1586a102fec4b76f5ec372`，兩者的程式、資料與字型輸入相同。
+[Release](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.2.1-20261013)
+已正式發布並設為 latest。五份附件共 110,078,534 bytes，全部公開下載後完整核對
+大小與 SHA-256，與本機公開清單一致。[遠端登錄](../../workplace/v121-release-published.json)及
+[下載驗證](../../workplace/v121-release-download-verification.json)保留可回查收據。
+使用者另明確允許本次用主機已登入的 `gh` 發布與核對；未將主機憑證移入 Docker。
 
 ## v.1.2.1 San5 重繪完整版
 
