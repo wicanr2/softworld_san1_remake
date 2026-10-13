@@ -115,15 +115,16 @@ def stage_overviews(target, hd_source):
         files[relative] = sha(dest)
     catalog = target / 'docs/hd-generals.md'
     text = catalog.read_text()
-    start = text.index('本頁圖片保留原 v.1.2.0 套件的肖像版本。')
-    end = text.index('\n\n', start)
-    text = text[:start] + '本包新增 220 人採已確認的 San5 原圖 HD 重繪，原有 346 人肖像保持。' + text[end:]
+    start = text.find('本頁圖片保留原 v.1.2.0 套件的肖像版本。')
+    if start >= 0:
+        end = text.index('\n\n', start)
+        text = text[:start] + '本包新增 220 人採已確認的 San5 原圖 HD 重繪，原有 346 人肖像保持。' + text[end:]
     catalog.write_text(text)
     files['docs/hd-generals.md'] = sha(catalog)
     readme = target / 'README.md'
     shutil.copy2(ROOT / 'README.md', readme)
     text = readme.read_text()
-    begin, end = '<!-- LOCAL_SAN5_PREVIEW_BEGIN -->', '<!-- LOCAL_SAN5_PREVIEW_END -->'
+    begin, end = '<!-- GENERAL_OVERVIEW_BEGIN -->', '<!-- GENERAL_OVERVIEW_END -->'
     if text.count(begin) != 1 or text.count(end) != 1:
         raise RuntimeError('README 武將總覽入口不符')
     gui = json.loads((redraw / 'gui-verification.json').read_text())

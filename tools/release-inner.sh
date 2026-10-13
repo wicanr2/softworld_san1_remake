@@ -70,8 +70,9 @@ import sys
 p = Path(sys.argv[1])
 s = p.read_text()
 begin, end = '<!-- LOCAL_SAN5_PREVIEW_BEGIN -->', '<!-- LOCAL_SAN5_PREVIEW_END -->'
-assert s.count(begin) == s.count(end) == 1
-s = s[:s.index(begin)] + 'San5 重繪人物卡與原圖／HD 總覽僅隨本機完整版提供。' + s[s.index(end) + len(end):]
+assert s.count(begin) == s.count(end) and s.count(begin) <= 1
+if begin in s:
+    s = s[:s.index(begin)] + 'San5 重繪人物卡與原圖／HD 總覽僅隨本機完整版提供。' + s[s.index(end) + len(end):]
 p.write_text(s)
 PY
       cp /src/docs/images/remake-main.png "$dir/docs/images/"

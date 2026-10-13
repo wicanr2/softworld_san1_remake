@@ -62,17 +62,15 @@ HD 素材已收錄於 [`hd-assets/`](hd-assets/README.md)，可搭配下載的�
 
 [新增人物](docs/hd-generals.md#新增人物)另列 220 位參考 San5 補入的人物、能力及來源識別。這是 [remake 擴充](docs/spec/022-expanded-roster.md)，各劇本依開局時點採用對應名單。
 
-San5 新增人物已依原圖完成 220 張 HD 重繪，保留原圖臉型、服飾與主要配色，原有 346 人肖像保持。使用者已確認這一版 HD，納入 `v.1.2.1-20261013` 本機完整版。下列 San5 衍生圖片在本機及完整版可見，來源與驗收見[新版打包契約](docs/release/01-packaging.md#v121-san5-重繪完整版)。
+San5 新增人物已依原圖完成 220 張 HD 重繪，原有 346 人肖像保持。原圖對照、張角人物卡與完整 566 人總覽隨 `v.1.2.1-20261013` 本機完整版提供，來源與驗收見[新版打包契約](docs/release/01-packaging.md#v121-san5-重繪完整版)。HD 素材仍保留於 [`hd-assets/`](hd-assets/README.md)。
 
-<!-- LOCAL_SAN5_PREVIEW_BEGIN -->
-| 張角人物卡，原貌 | 張角人物卡，San5 原圖 HD 重繪 |
-|---|---|
-| <a href="dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/base-001-person.png"><img src="dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/base-001-person.png" width="420" alt="正常新局的張角人物卡，原貌顯示"></a> | <a href="dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/base-001-hd-person.png"><img src="dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/base-001-hd-person.png" width="420" alt="相同人物卡切換高清，顯示以 San5 原圖重繪的張角肖像"></a> |
+<!-- GENERAL_OVERVIEW_BEGIN -->
+本頁武將總覽只展示原有 346 人，共 251 張 HD 肖像。
 
-| 原版＋San5 原圖，566 人 | HD 武將總覽，566 人 |
-|---|---|
-| <a href="dist-all/v.1.2.0-20261012/full-local/generals-source-overview.png"><img src="dist-all/v.1.2.0-20261012/full-local/generals-source-overview.png" width="420" alt="原有 346 人與 San5 新增 220 人的原圖總覽"></a> | <a href="dist-all/v.1.2.0-20261012/full-local/hd-generals-overview-san5-redraw-20261013-r1.png"><img src="dist-all/v.1.2.0-20261012/full-local/hd-generals-overview-san5-redraw-20261013-r1.png" width="420" alt="相同順序的 566 人高清總覽，新增 220 人採 San5 原圖重繪"></a> |
-<!-- LOCAL_SAN5_PREVIEW_END -->
+<a href="docs/images/hd-generals-base-overview.png"><img src="docs/images/hd-generals-base-overview.png" width="840" alt="智冠原有 346 位人物的 HD 姓名總覽，共 251 張肖像"></a>
+
+[總覽索引](docs/images/hd-generals-base-overview.json)
+<!-- GENERAL_OVERVIEW_END -->
 
 ## 現在做到哪裡
 

@@ -581,6 +581,33 @@ Xvfb 的 PID 1 就緒等待及 AppImage 擷取桌面原點裁切均修正工具�
 2,411,536,952 bytes，收據為
 `workplace/complete-delivery-v1.2.0-20261012/cleanup.json`。
 
+## v.1.2.1 公開引擎包與 repo 展示範圍
+
+狀態：`READY`，封包與素材核對完成，待推送及發布。使用者於 2026-10-13 授權
+commit、push 與 Release，README 總覽移除 San5，HD 素材保留 repo。
+查證目前 GitHub 儲存庫為 public，與 AGENTS.md 的 private 記載不同。使用者得知後
+明確確認「包含這次 220 張 HD 重繪；San5 原圖只留本機」。因此同步全部 220 張
+重繪及生成紀錄到 repo，San5 原圖、放大參考及來源總覽只留本機。
+
+README 使用[原有 346 人 HD 總覽](../images/hd-generals-base-overview.png)與
+[索引](../images/hd-generals-base-overview.json)，共 251 張肖像；與完整總覽的前 346 格
+逐像素相同。San5 原圖對照與張角截圖從 README 移除，本機完整包保留既有內容。
+[總覽工具](../../tools/render-general-catalog.py)的 `--base-overview-only` 重生此圖，
+完整 566 人 HD 圖鑑另保留於 repo，已改用最新 220 張重繪。
+[素材同步收據](../../workplace/v121-repo-hd-verification.json)核對全部 220 張與本機核准版本相同，
+原 manifest 904 筆保持，San5 原始媒體複製數為零。
+
+Release 採既有 `v.1.2.1-20261013` 的四個 `patch/` 引擎包，正式來源為
+`60e2663db9d9aa062c1586a102fec4b76f5ec372`；同名 tag 固定在該建包提交。
+四包逐檔 allowlist、完整壓縮檔及 SHA-256 核對通過，沒有 San5 原始或高清媒體檔，
+也沒有 `game/`、`hd-assets/` 或本機完整版。編譯進引擎的擴充規則與人物資料保持。
+
+只發布四包及 `patch/SHA256SUMS-public.json`，不發布版本總清單、本機包或影片。
+公開清單與[附件稽核收據](../../workplace/v121-public-package-verification.json)已備妥；
+[README 圖格收據](../../workplace/readme-base-overview-verification.json)記錄原有 346 格及全部 11 張引用圖片；
+[發行說明母本](../../workplace/v121-release-notes.txt)保存實際來源與原生平台未驗範圍。
+既有 tag／Release 固定，不移動或覆寫。
+
 ## v.1.2.1 San5 重繪完整版
 
 狀態：`CONFORMED`，限封包內容、Linux 正常抽樣及 Windows Wine 啟動。

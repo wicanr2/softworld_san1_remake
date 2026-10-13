@@ -8,9 +8,6 @@
 
 [武將姓名總覽原圖](images/hd-generals-overview.png) · [完整資料與來源](reference/hd-generals.json) · [HD 素材包](../hd-assets/README.md)
 
-本頁圖片保留原 v.1.2.0 套件的肖像版本。San5 新增 220 人已按原圖重新繪製 HD，
-新版 566 人總覽與完整素材另見[本機素材附包](release/01-packaging.md#san5-重繪本機素材附包)。
-
 | 頭像 | 姓名 | 表字與出處 | 體能 | 戰力 | 謀略 | 魅力 | 兵種 | 人物槽 | 肖像 |
 |---|---|---|---:|---:|---:|---:|---|---:|---|
 | <a href="../hd-assets/F005.png"><img src="../hd-assets/F005.png" width="80" alt="劉備 HD 肖像"></a> | 劉備 | [玄德](https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B732&oldid=2583378) | 85 | 73 | 87 | 100 | 強力 | 000 | F005 |
@@ -364,7 +361,7 @@
 
 規格 022 的 remake 擴充共 220 位，以 San5 來源識別區分同名人物。原有 346 人的姓名與能力保持。六劇本依年代分別加入 220／207／198／180／175／168 位；本表列出第一劇本的完整候選，不表示所有人開局已登場。
 
-新增人物體能 80，戰力、謀略、魅力取自已核對來源。政治只供圖鑑查閱，不參與本作規則。220 張原創肖像已齊備；遊戲遇到缺圖或損毀時使用通用人物像。
+新增人物體能 80，戰力、謀略、魅力取自已核對來源。政治只供圖鑑查閱，不參與本作規則。220 張 HD 肖像已齊備；遊戲遇到缺圖或損毀時使用通用人物像。
 
 [擴充規格](spec/022-expanded-roster.md) · [來源核對](re/14-san5-roster.md) · [六劇本資料](../internal/game/expanded_roster.json) · [肖像目錄](../hd-assets/expanded-portraits.json) · [生成紀錄](../hd-assets/expanded-portrait-provenance.json)
 

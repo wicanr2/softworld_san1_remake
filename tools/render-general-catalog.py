@@ -52,8 +52,14 @@ def render_sheet(root, people, labels, portraits, original_exports=None, san5_da
     draw = ImageDraw.Draw(canvas)
     title = '原版＋San5 武將姓名總覽' if source else '三國演義　HD 武將姓名總覽'
     labels.heading(canvas, (margin, 22), title, scale=3)
-    labels.heading(canvas, (margin, 80), '原版 346 位＋San5 新增 220 位＝566 位　同名人物依來源識別分列　未登場候選也收錄', scale=1)
-    labels.heading(canvas, (margin, 106), '原圖供本機對照，San5 色盤採外部格式參考' if source else '471 張肖像　原版人物槽與 San5 來源編號分開標示　能力與來源見獨立圖鑑', scale=1)
+    base_only = all(p['source'] == 'base' for p in people)
+    description = ('原有 346 位人物　共用肖像的人物分列　姓名與人物槽依兩版劇本資料' if base_only else
+                   '原版 346 位＋San5 新增 220 位＝566 位　同名人物依來源識別分列　未登場候選也收錄')
+    detail = ('251 張 HD 肖像　人物槽與肖像編號並列　能力與來源見獨立圖鑑' if base_only else
+              '原圖供本機對照，San5 色盤採外部格式參考' if source else
+              '471 張肖像　原版人物槽與 San5 來源編號分開標示　能力與來源見獨立圖鑑')
+    labels.heading(canvas, (margin, 80), description, scale=1)
+    labels.heading(canvas, (margin, 106), detail, scale=1)
     tiles, cached = [], {}
     for i, p in enumerate(people):
         key = p['key']
@@ -101,7 +107,7 @@ def expanded_section(root):
         assert sha(root / 'hd-assets' / e['file']) == e['sha256']
     lines = ['', '## 新增人物', '',
         '規格 022 的 remake 擴充共 220 位，以 San5 來源識別區分同名人物。原有 346 人的姓名與能力保持。六劇本依年代分別加入 220／207／198／180／175／168 位；本表列出第一劇本的完整候選，不表示所有人開局已登場。', '',
-        '新增人物體能 80，戰力、謀略、魅力取自已核對來源。政治只供圖鑑查閱，不參與本作規則。220 張原創肖像已齊備；遊戲遇到缺圖或損毀時使用通用人物像。', '',
+        '新增人物體能 80，戰力、謀略、魅力取自已核對來源。政治只供圖鑑查閱，不參與本作規則。220 張 HD 肖像已齊備；遊戲遇到缺圖或損毀時使用通用人物像。', '',
         '[擴充規格](spec/022-expanded-roster.md) · [來源核對](re/14-san5-roster.md) · [六劇本資料](../internal/game/expanded_roster.json) · [肖像目錄](../hd-assets/expanded-portraits.json) · [生成紀錄](../hd-assets/expanded-portrait-provenance.json)', '',
         '| 頭像 | 姓名 | 體能 | 戰力 | 謀略 | 政治 | 魅力 | 來源識別 |',
         '|---|---|---:|---:|---:|---:|---:|---|']
@@ -119,10 +125,38 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path('/src'))
     parser.add_argument('--expanded-only', action='store_true', help='只更新新增人物表，保留既有總覽圖')
+    parser.add_argument('--base-overview-only', action='store_true', help='只產生 README 用的原有 346 人 HD 總覽，不改完整圖鑑')
     parser.add_argument('--san5-kaodata', type=Path, help='本機唯讀 KAODATA.S5；另製原版＋San5 對照總覽')
     parser.add_argument('--original-exports', type=Path, help='san1assets 匯出的原版資料，預設 workplace/asset-overviews/base')
     args = parser.parse_args()
     root = args.root
+    if args.base_overview_only:
+        assert not args.expanded_only and not args.san5_kaodata
+        people = json.loads((root / 'docs/reference/hd-generals.json').read_text())['people']
+        assert len(people) == 346
+        combined = [dict(p, source='base', key=f"base:{p['index']:03}") for p in people]
+        spec = importlib.util.spec_from_file_location('overviews', root / 'tools/render-asset-overviews.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        labels = module.Labels(root / 'fonts/unifont.hex.gz')
+        manifest = json.loads((root / 'hd-assets/manifest.json').read_text())
+        portraits = {('base', int(e['name'][1:4])): e for e in manifest['entries']
+                     if e['edition'] == 'base' and e['name'].endswith('.FAC')}
+        canvas, tiles, count = render_sheet(root, combined, labels, portraits)
+        assert count == 251 and all(p['source'] == 'base' for p in tiles)
+        png = root / 'docs/images/hd-generals-base-overview.png'
+        for p in [png, png.with_suffix('.json')]:
+            assert p.parent.stat().st_uid == os.getuid()
+            assert not p.exists() or p.stat().st_uid == os.getuid()
+        canvas.save(png, optimize=True)
+        audit = dict(schema=2, count=346, original_count=346, expanded_count=0,
+                     portraits=count, width=canvas.width, height=canvas.height,
+                     data_sha256=sha(root / 'docs/reference/hd-generals.json'),
+                     manifest_sha256=sha(root / 'hd-assets/manifest.json'),
+                     image_sha256=sha(png), items=tiles)
+        png.with_suffix('.json').write_text(json.dumps(audit, ensure_ascii=False, indent=2) + '\n')
+        print(json.dumps({'people': 346, 'portraits': count, 'image_sha256': sha(png)}))
+        return
     if args.expanded_only:
         md = root / 'docs/hd-generals.md'
         assert md.stat().st_uid == os.getuid()

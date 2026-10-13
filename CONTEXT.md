@@ -6,6 +6,7 @@
 
 | 項目 | 目前狀態 |
 |---|---|
+| 發布範圍整理 | 使用者已授權 commit、push 與 v.1.2.1 Release；公開附件只含四個引擎包與公開雜湊清單，San5 媒體與完整資料不入附件。README 改用[原有 346 人 HD 總覽](docs/images/hd-generals-base-overview.png)，251 張肖像，全部圖格核對通過。儲存庫實際為 public；使用者已明確確認 220 張 San5 HD 重繪公開保留 repo，原圖只留本機。220 張及生成紀錄已同步，原 904 筆素材保持。見[發布契約](docs/release/01-packaging.md#v121-公開引擎包與-repo-展示範圍) |
 | 新完整版進版 | `v.1.2.1-20261013` 四平台本機完整版完成，已直接收錄核准的 San5 原圖 HD 重繪。README 展示張角原貌／HD 與兩張 566 人總覽，14 張圖片全部隨完整包提供；[契約與交付](docs/release/01-packaging.md#v121-san5-重繪完整版)限封包、Linux 正常抽樣及 Wine CONFORMED |
 | San5 肖像重繪 | 220／220 張完成，Codex 已查看全部原圖／HD 對照；使用者先確認[四張畫風樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)。440 張來源參考、566 格總覽及原有 346 格不變均通過獨立核對。兩版各 452＋220 正式載入零警告，正常新局、張角 HD 人物卡與格式 2 存讀檔通過，33 張唯一 PNG 回讀。已交付[新版總覽及完整本機素材附包](docs/release/01-packaging.md#san5-重繪本機素材附包)；[逐張來源與提示詞](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)、[匯入](tools/import-san5-redraw.py)及[組裝工具](tools/package-san5-redraw.py)可接續使用。022 重繪節限本次範圍 CONFORMED |
 | 現行交付 | `v.1.2.1-20261013`，Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon 各一 tar.gz，包含兩版原始資料、220 張新重繪、向量字、規格 022、格式 2 存檔、總覽及 README 截圖。前一版及素材附包保留，公開 Release 仍為 v.1.1.2 |
@@ -13,7 +14,7 @@
 | 配樂 | 每拍刻度改讀表頭 240，補長延遲與速度事件；片頭使用 MUSV，標題使用 MUS 第 0 首 |
 | 配樂驗證 | 兩版原版開機選曲觀測通過；六首時間軸通過；兩版片頭、標題四段正式錄音完整匹配參考 PCM |
 | 滑鼠 | 選單、人物、郡、戰場與數字鍵盤已接入；兩版原貌及高清正常開局、查閱、越界取消與存檔通過，基本版紮寨及行軍通過 |
-| HD 素材入庫 | 原 manifest 維持 904 筆、437 張 PNG，另有 220 張原創肖像及獨立目錄，共 657 張 PNG。兩版各 452 筆既有素材及 220 張新增肖像正式載入零警告。原版 650 格及 HD 437 格素材圖錄保留，武將總覽已擴為 566 人 |
+| HD 素材入庫 | 原 manifest 維持 904 筆、437 張 PNG，另有 220 張 San5 原圖 HD 重繪及獨立目錄，共 657 張 PNG。使用者確認公開保留全部 HD，San5 原圖只留本機。兩版各 452 筆既有素材及 220 張新增肖像正式載入零警告。原版 650 格及 HD 437 格素材圖錄保留，完整武將總覽 566 人；README 總覽只列原有 346 人 |
 | 字體修正 | 最終顯示改用最近鄰縮放；兩版原貌／HD、楷書／隸書、四種寬度共 32 組通過，舊程式負對照有 477 個混色像素。[021 §6.63](docs/spec/021-hd-art.md#663-點陣字的最終顯示縮放) 限本節 CONFORMED |
 | 語音修正 | 兩版改用使用者試聽選定的 8,000 Hz，第一句 2.604 秒；移除直流及各段 3 ms 淡化。90 項專項回歸與正常兩版四段完整 PCM 通過。[008 §11](docs/spec/008-speaker-audio.md#11-pc-喇叭語音速度與接縫修正) 限技術驗證 CONFORMED，優化後人耳另驗 |
 | HD 武將圖鑑 | [獨立 Markdown](docs/hd-generals.md)及[HD 姓名總覽](docs/images/hd-generals-overview.png)收錄原有 346 人＋San5 新增 220 人，共 566 人、471 張肖像。原版＋San5 原圖總覽及索引位於 `workplace/asset-overviews/generals-source-overview.png`、同名 JSON，只進本機完整版；兩張順序一致，兩位馬忠分列。原有人物的姓名及能力來自兩版劇本 001；表字仍為 143 筆史書、70 筆二手與 133 筆待考。來源及重生見 [RE 14](docs/re/14-san5-roster.md#原版與-san5-武將原圖總覽) |

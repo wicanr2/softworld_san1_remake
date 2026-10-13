@@ -43,12 +43,16 @@
 來源為已核對的 KAODATA.S5，SHA-256
 `f942631ced0bc891f796aa6f884461f28aae0769312f0eef90b22b7d7c98e2d6`。
 三平面解碼及外部調色盤參考沿用 [RE 14](../re/14-san5-roster.md#原版與-san5-武將原圖總覽)，
-不宣稱原版執行期色盤或像素 parity。[全部來源、完整提示詞及採用版次](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)只留本機；
-先前四張樣張紀錄另保留於同目錄的 `provenance.json`。
+不宣稱原版執行期色盤或像素 parity。[本機製作進度](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)
+保留全部來源、完整提示詞及採用版次；先前四張樣張紀錄另保留於同目錄的 `provenance.json`。
+公開的[生成紀錄](../../hd-assets/expanded-portrait-provenance.json)保存提示詞、來源路徑及雜湊，沒有內嵌 San5 原圖。
 
 逐批保存原圖、生成識別、參考與輸出雜湊，完整解碼並檢查對照縮圖。220 張已全部完成，
 組裝本機素材後核對來源識別、兩版載入、原有肖像不變及 566 人總覽。
-本次授權涵蓋重繪及本機總覽，不移動既有 tag／Release，也不覆寫 v.1.2.0 封包。
+最初授權涵蓋重繪及本機總覽。使用者於 2026-10-13 得知儲存庫公開後，進一步確認
+「包含這次 220 張 HD 重繪；San5 原圖只留本機」。本次 220 張 HD 及生成紀錄因此
+公開保留 repo；San5 原圖與來源參考只留本機，Release 附件只含引擎包。
+此紀錄說明使用者指定的發布範圍，不代替素材權利聲明。既有 tag／Release 及 v.1.2.0 封包保持。
 
 重繪逐張由 [匯入工具](../../tools/import-san5-redraw.py)保存進度；
 全部完成後使用 [本機組裝工具](../../tools/package-san5-redraw.py)，

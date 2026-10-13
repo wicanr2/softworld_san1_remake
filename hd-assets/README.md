@@ -18,7 +18,7 @@ Windows 執行 `san1.exe`。啟動後按 Esc 展開選項列，將 Theme 切成 
 
 完整預覽見 [README 素材總覽](../README.md#素材總覽)，逐張來源與輸出雜湊見
 [manifest](manifest.json)。[圖錄索引](../docs/images/asset-overviews.json) 另列縮圖的位置與版本。
-[獨立武將圖鑑](../docs/hd-generals.md)列出 346 位人物的頭像、姓名、表字與遊戲能力值；
+[獨立武將圖鑑](../docs/hd-generals.md)列出原有 346 人與新增 220 人的頭像、姓名及遊戲能力值，原有人物另列表字；
 [武將姓名總覽](../docs/images/hd-generals-overview.png)在各張頭像下方標示姓名。
 素材製作及玩家路徑的驗收範圍見 [021 高清規格](../docs/spec/021-hd-art.md)，
 入庫範圍見 [§6.62](../docs/spec/021-hd-art.md#662-hd-素材入庫與總覽)。
@@ -43,14 +43,19 @@ bash tools/asset-overviews.sh
 原版的 904 筆目錄保持。
 [生成紀錄](expanded-portrait-provenance.json)保存完整請求、參考及輸出雜湊，
 [圖鑑新增人物表](../docs/hd-generals.md#新增人物)列出來源識別及政治值。
-這些面貌是原創插畫設計，沒有宣稱史實容貌。驗收及限制見
+目前 220 張依 San5 原圖重新繪製，已取代先前自行設計的面貌，沒有宣稱史實容貌。驗收及限制見
 [規格 022](../docs/spec/022-expanded-roster.md)。
 
-後續原圖以 [匯入工具](../tools/import-expanded-portraits.py)在既有 Go／Ebiten Docker
-映像檔內保存。輸入批次 JSON 包含人物識別、姓名、完整提示詞及生成原圖路徑；
-工具核對 PNG、雜湊及擁有權後，追加肖像目錄與生成紀錄，並輸出驗證縮圖。
+San5 重繪以[匯入工具](../tools/import-san5-redraw.py)保存逐張進度，再由
+[組裝工具](../tools/package-san5-redraw.py)在既有 Go／Ebiten Docker 映像檔內核對
+來源識別、PNG、雜湊及擁有權。生成紀錄保留完整提示詞、參考路徑與雜湊，沒有內嵌 San5 原圖。
 本機完整版的 [組包工具](../tools/full-local-inner.py)會把此目錄的新增肖像疊入原素材包，
-再以正式載入器驗證。此流程尚未重建既有發行包。
+再以正式載入器驗證。`v.1.2.1-20261013` 本機完整版已收錄這批重繪。
+
+使用者於 2026-10-13 明確確認「包含這次 220 張 HD 重繪；San5 原圖只留本機」，
+本目錄因此保留全部 HD。San5 原圖、放大參考與原圖總覽只留本機；公開 Release
+附件只有引擎包與公開雜湊清單，README 總覽只展示原有 346 人。範圍及收據見
+[發布契約](../docs/release/01-packaging.md#v121-公開引擎包與-repo-展示範圍)。
 
 專案授權見 [LICENSE](../LICENSE)。原版素材著作權仍屬智冠科技，原版參照縮圖
 不納入本專案授權。生成母圖、未採用候選與製作暫存未收錄於本目錄。

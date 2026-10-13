@@ -2427,3 +2427,27 @@ AppImage 登錄腳本首次沿用舊暫存目錄名稱，於任何登錄寫入�
 收尾自檢通過：新版文件連結、清單狀態、README 來源 SHA 與擁有權正確，舊版
 版本總清單未改；工作根沒有 root-owned 檔案或誤建 `.md` 目錄，沒有遺留 san1 容器。
 git diff --check 通過，收尾文件納入本機提交，使用者未追蹤的 AGENTS.md 保持。
+
+## 2026-10-13：公開提交與 Release 範圍確認
+
+使用者要求 commit、push 與 Release，公開附件排除 San5 素材，本機完整版可保留，
+README 總覽移除 San5，HD 留 repo。GitHub API 查證儲存庫實際為 public，與
+AGENTS.md 的 private 記載不同，已就本次 San5 原圖重繪 220 張是否公開另詢問；
+未答覆前不匯入或推送這批衍生圖片。既有 HD 資料及素材保持。
+
+新增原有 346 人的獨立 README 總覽與索引，251 張 HD 肖像，全部圖格與既有完整
+圖的前 346 格逐像素相同。README 改用該圖並移除本機 San5 原圖對照及張角截圖，
+現有 11 張圖片皆指向 repo 內實際檔案。CLI 入口為 render-general-catalog.py
+--base-overview-only。公開及本機包的 README 處理改為各自保留相應總覽。
+
+四個既有 v.1.2.1 patch 包已逐檔 allowlist、壓縮格式及 SHA-256 回讀，San5
+原始或 HD 媒體檔為零。引擎中的擴充規則與人物資料保持，沒有改成另一種遊戲。
+公開附件只預備四包與 SHA256SUMS-public.json，總清單與本機包不發布；發行說明
+及稽核收據已寫入 workplace/v121-release-notes.txt、v121-public-package-verification.json。
+來源固定為 60e2663，v.1.2.1 tag／Release 尚不存在，最新已發布版仍為 v.1.1.2。
+
+使用者得知 repo 為 public 後，明確答覆「包含這次 220 張 HD 重繪；San5 原圖
+只留本機」。已同步全部 220 張核准重繪及完整提示詞／雜湊紀錄，原素材 904 筆
+保持，沒有複製 San5 原圖或放大參考。完整 HD 圖鑑重生為 566 人、471 張肖像，
+總覽 SHA-256 為 92af0d3ee0c56d53594bc35d7fe14b140a1e845900e2e42cbd773c782cecd7da，
+與本機核准交付相同。發布範圍與素材入口已改記本次明確授權。
