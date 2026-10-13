@@ -8,6 +8,9 @@
 
 [武將姓名總覽原圖](images/hd-generals-overview.png) · [完整資料與來源](reference/hd-generals.json) · [HD 素材包](../hd-assets/README.md)
 
+本頁圖片保留原 v.1.2.0 套件的肖像版本。San5 新增 220 人已按原圖重新繪製 HD，
+新版 566 人總覽與完整素材另見[本機素材附包](release/01-packaging.md#san5-重繪本機素材附包)。
+
 | 頭像 | 姓名 | 表字與出處 | 體能 | 戰力 | 謀略 | 魅力 | 兵種 | 人物槽 | 肖像 |
 |---|---|---|---:|---:|---:|---:|---|---:|---|
 | <a href="../hd-assets/F005.png"><img src="../hd-assets/F005.png" width="80" alt="劉備 HD 肖像"></a> | 劉備 | [玄德](https://zh.wikisource.org/w/index.php?title=%E4%B8%89%E5%9C%8B%E5%BF%97/%E5%8D%B732&oldid=2583378) | 85 | 73 | 87 | 100 | 強力 | 000 | F005 |

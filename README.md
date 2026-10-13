@@ -62,6 +62,8 @@ HD 素材已收錄於 [`hd-assets/`](hd-assets/README.md)，可搭配下載的�
 
 [新增人物](docs/hd-generals.md#新增人物)另列 220 位參考 San5 補入的人物、原創肖像、能力及來源識別。這是 [remake 擴充](docs/spec/022-expanded-roster.md)，各劇本依開局時點採用對應名單。
 
+San5 新增人物已依原圖完成 220 張 HD 重繪。新版 566 人總覽與完整素材見[本機素材附包](docs/release/01-packaging.md#san5-重繪本機素材附包)；下圖及圖鑑保留原 v.1.2.0 套件的肖像版本。
+
 <a href="docs/images/hd-generals-overview.png"><img src="docs/images/hd-generals-overview.png" width="840" alt="原版 346 位與 San5 新增 220 位，共 566 位人物的 HD 武將總覽，每張頭像標示姓名與來源編號"></a>
 
 ## 現在做到哪裡

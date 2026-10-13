@@ -581,6 +581,50 @@ Xvfb 的 PID 1 就緒等待及 AppImage 擷取桌面原點裁切均修正工具�
 2,411,536,952 bytes，收據為
 `workplace/complete-delivery-v1.2.0-20261012/cleanup.json`。
 
+## San5 重繪本機素材附包
+
+狀態：`CONFORMED`，限素材、總覽、封包回讀及 Linux 兩版正常人物卡抽樣。
+依使用者確認的四張樣張，以 San5 原圖重繪全部 220 位新增人物，原有 346 人肖像保持。
+這是 `v.1.2.0-20261012` 的本機素材附包，不含執行檔。
+
+交付位於本版本的 `full-local/`：
+
+- [完整素材 ZIP](../../dist-all/v.1.2.0-20261012/full-local/san1-v.1.2.0-20261012-san5-hd-redraw-20261013-r1-local.zip)。
+- [新版 HD 武將總覽](../../dist-all/v.1.2.0-20261012/full-local/hd-generals-overview-san5-redraw-20261013-r1.png)及[逐格索引](../../dist-all/v.1.2.0-20261012/full-local/hd-generals-overview-san5-redraw-20261013-r1.json)。
+- [原版＋San5 原圖總覽](../../dist-all/v.1.2.0-20261012/full-local/generals-source-overview.png)。兩張均為 566 人，順序一致。
+- [附包 SHA-256 與逐檔清單](../../dist-all/v.1.2.0-20261012/full-local/san1-v.1.2.0-20261012-san5-hd-redraw-20261013-r1-local-SHA256.json)。
+
+ZIP 為 820,511,556 bytes、1,119 個檔案，SHA-256
+`c5224b34dbab59571b2e2078601dc2e38f41ddc73e76d8eb490fca5c18794419`。
+包含完整 `hd-assets/`，共 437 張既有 PNG 及 220 張重繪；原 manifest 904 筆與
+獨立擴充 manifest 220 筆保持分開。另含 440 張來源參考、完整生成請求、來源索引、
+兩張總覽、LICENSE、使用說明及驗證收據。
+
+解壓縮後，使用遊戲的 `-hd-assets` 指向本包的完整素材目錄，再於視窗選項列切換高清。
+例如 `san1.exe -hd-assets "C:\San1-HD\hd-assets"`，Linux／macOS 使用相同參數及絕對路徑。
+存檔格式與規則沿用 v.1.2.0。
+
+重生入口為 [package-san5-redraw.py](../../tools/package-san5-redraw.py)，在專案 Docker
+容器內執行 `python3 /src/tools/package-san5-redraw.py --workdir
+/src/workplace/asset-overviews/san5-hd-redraw-20261012-r1 --deliver`。
+輸入為同目錄已保存的 220 張生成原圖、來源與驗證紀錄，以及
+`workplace/hd-assets-mapcursor-v50-r1/` 的完整既有素材。工具先核對名單、來源、
+提示詞、雜湊及四份驗證收據，遞迴收入子目錄；ZIP 完整回讀後才交付。
+
+驗證使用既有 v.1.2.0 Linux 執行檔，SHA-256
+`174db208d330333ef1ac9e38a58b85dfbf27597727dda884f25f14165f200f03`。
+兩版正式載入各 452＋220、零警告；正常 189 年難度 1 新局、張角人物卡、HD 切換、
+格式 2 存檔及重啟載入通過。47 項檢查與 33 張唯一 PNG 回讀通過，張角 HD 肖像
+與正式載入器逐像素相同，存檔保留 570 槽及玩家勢力 16。
+[收據與畫面](../../dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/independent-verification.json)
+位於同名 `smoke/` 子目錄；全部 220 人的來源與視覺檢查見 [022](../spec/022-expanded-roster.md#san5-原圖-hd-重繪2026-10-13)。
+[交付獨立回讀](../../dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/delivery-verification.json)
+另核對 ZIP 內全部 904＋220 筆素材、657 張 HD、440 張來源參考及獨立總覽。
+
+San5 原圖及衍生重繪只留本機，不加入 Git 或公開 Release。原有九個封包與四張
+總覽檔的雜湊全數保持，既有 `SHA256SUMS.json` 及 tag／Release 保持；本附包有獨立清單。
+本輪沒有重建四平台執行檔，Windows／macOS 原生試玩仍未驗。
+
 ## 高清重新配音樣音
 
 使用者確認全遊戲提供原版／高清語音切換，並要求先確認樣音。目前僅完成

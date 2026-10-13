@@ -6,8 +6,8 @@
 
 | 項目 | 目前狀態 |
 |---|---|
-| San5 肖像重繪 | 使用者於 2026-10-13 確認[四張原圖／HD 樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)，授權依 San5 原圖重繪全部 220 張並更新總覽。來源參考全數備妥，重繪持續進行；目前數量、逐張來源、提示詞及雜湊以[可接續清單](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)為準，由 [匯入工具](tools/import-san5-redraw.py)逐張保存，完成後用[組裝工具](tools/package-san5-redraw.py)建立本機素材附包與新總覽，再驗證兩版人物卡。既有 v.1.2.0 封包保留 |
-| 現行交付 | `v.1.2.0-20261012` 四個獨立本機完整版，包含向量字、規格 022、220 張新增肖像、格式 2 存檔及兩張 566 人總覽；公開 Release 仍為 v.1.1.2 |
+| San5 肖像重繪 | 220／220 張完成，Codex 已查看全部原圖／HD 對照；使用者先確認[四張畫風樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)。440 張來源參考、566 格總覽及原有 346 格不變均通過獨立核對。兩版各 452＋220 正式載入零警告，正常新局、張角 HD 人物卡與格式 2 存讀檔通過，33 張唯一 PNG 回讀。已交付[新版總覽及完整本機素材附包](docs/release/01-packaging.md#san5-重繪本機素材附包)；[逐張來源與提示詞](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)、[匯入](tools/import-san5-redraw.py)及[組裝工具](tools/package-san5-redraw.py)可接續使用。022 重繪節限本次範圍 CONFORMED |
+| 現行交付 | `v.1.2.0-20261012` 四個獨立本機完整版，另有 San5 原圖重繪素材附包及新版 566 人 HD 總覽。原套件包含向量字、規格 022、220 張先前肖像及格式 2 存檔，使用附包可換成新重繪；公開 Release 仍為 v.1.1.2 |
 | 封包驗證 | 九個封包的內容、架構及 SHA-256 通過；AppImage 全部 667 個高清檔與 66 個原版檔獨立回讀。Linux 兩版正常新局、人物卡、HD 逐像素核對、格式 2 存讀檔、AppRun 與 Windows 兩版 Wine 通過，38 張 PNG 完整。來源合併回歸 1,891 通過、27 略過，四項原版 oracle 通過 |
 | 配樂 | 每拍刻度改讀表頭 240，補長延遲與速度事件；片頭使用 MUSV，標題使用 MUS 第 0 首 |
 | 配樂驗證 | 兩版原版開機選曲觀測通過；六首時間軸通過；兩版片頭、標題四段正式錄音完整匹配參考 PCM |
@@ -19,12 +19,19 @@
 | README 字體截圖 | [楷書與隸書](README.md#楷書與隸書) 四張原貌及 HD 畫面已納入 v.1.2.0 四平台包，HD 兩圖為向量版 |
 | HD 向量字體 | 使用者已選定[樣張](docs/images/hd-font-approved-20261011.png)並確認「用向量字重新製作」。王漢宗顏楷／中隸書已接入 HD 選單、人物卡及對白，並修正新局遺失字體設定；32 組縮放、12 組正常畫面、4 組存讀檔及 189 張唯一 PNG 獨立回讀通過。1,842 項不重複回歸通過、27 略過；[021 §6.65](docs/spec/021-hd-art.md#665-hd-楷書與隸書的向量文字) 限本節 CONFORMED。已納入 v.1.2.0 本機包，既有套件、tag／Release 保持 |
 | 擴充武將 | [規格 022](docs/spec/022-expanded-roster.md) 限資料、規則、介面、存檔及素材組裝 CONFORMED。兩版六劇本新增 220／207／198／180／175／168 人及 8／5／1／0／0／1 個勢力；新局、15 歲登場、玩家選擇、來源識別、缺圖回退與格式 2 完整快照已接通。合併回歸 1,891 項通過、27 項略過；特殊人物登用、任命與兩種戰鬥、兩版六劇本 36 個月 AI 及存讀檔通過。戰敗後繼承已改為全部俘虜處置完成後執行，待選繼承人暫停推進，絕嗣正常結束；格式 2 拒收敵方或已故君主引用，四項原版 oracle 通過。兩版 001／002／006 正常 GUI 通過，001 採難度 1，002／006 採難度 5；張角及徹里吉高清人物卡逐像素相符。220／220 張原創肖像及生成紀錄完整，兩版正式載入零警告；見 [素材入口](hd-assets/README.md)及[新增圖鑑](docs/hd-generals.md#新增人物)。來源 b92f510 已提交，v.1.2.0 四平台本機包完成；既有套件及 Release 保持 |
-| 本輪交付範圍 | `v.1.2.0-20261012` 四平台本機包與兩張獨立武將總覽完成；[打包契約](docs/release/01-packaging.md#v120-擴充武將與總覽打包契約) 限封包內容、Linux 正常抽樣及 Wine 啟動 CONFORMED。既有 tag、Release、套件及影片保持 |
+| 本輪交付範圍 | San5 重繪本機素材附包、來源紀錄與新版 566 人 HD 總覽完成，ZIP 1,119 檔 CRC／SHA-256 回讀通過。[附包契約](docs/release/01-packaging.md#san5-重繪本機素材附包)限素材、封包與 Linux 兩版正常抽樣 CONFORMED。既有四平台程式、九個封包、tag／Release 及影片保持 |
 | 未驗範圍 | Windows／macOS 原生試玩、人耳聽辨、FUSE 掛載、簽章及公證 |
 
 契約與收據入口：[配樂勘誤](docs/spec/009-music.md#7-曲檔時序與片頭曲勘誤2026-10-11)、
 [滑鼠外殼](docs/spec/005-main-screen.md#滑鼠操作外殼2026-10-11)、
 [正式封包驗收](docs/release/01-packaging.md#v120-擴充武將與總覽打包契約)。
+
+最新 San5 重繪交付為 `full-local/san1-v.1.2.0-20261012-san5-hd-redraw-20261013-r1-local.zip`，
+SHA-256 `c5224b34dbab59571b2e2078601dc2e38f41ddc73e76d8eb490fca5c18794419`。
+新 HD 總覽為同目錄 `hd-generals-overview-san5-redraw-20261013-r1.png`，原圖總覽沿用
+`generals-source-overview.png`。驗證集中於 `smoke/san5-hd-redraw-20261013-r1/`。
+完整素材解壓縮後，以 `-hd-assets` 指向本包目錄；原有 346 人及規則保持。
+以下四平台包與未帶重繪後綴的 HD 總覽為原 v.1.2.0 交付，保存原收據。
 
 現行本機版為 `v.1.2.0-20261012`，引擎來源提交
 `b92f5108f49c21b021f68eeaebadca2135614150`，本機封包工具來源為

@@ -83,7 +83,7 @@ def prepare(work, baseline):
         if dest.exists():
             owned(dest)
         shutil.copy2(path, dest)
-    assert len(list(pack.glob('*.png'))) == 657
+    assert len(list(pack.rglob('*.png'))) == 657
     return state, old, pack
 
 
@@ -143,10 +143,24 @@ def deliver(work, pack, png, version):
     if readme.exists():
         owned(readme)
     readme.write_text(text)
-    files = {f'hd-assets/{p.name}': p for p in pack.iterdir() if p.is_file()}
+    files = {f'hd-assets/{p.relative_to(pack).as_posix()}': p
+             for p in pack.rglob('*') if p.is_file()}
     files.update({f'sources/{p.name}': p for p in (work / 'sources').iterdir() if p.is_file()})
     for p in [work / 'source-index.json', work / 'progress.json', readme, ROOT / 'LICENSE', png, png.with_suffix('.json')]:
         files[p.name] = p
+    progress_sha = sha(work / 'progress.json')
+    expanded_sha = sha(pack / 'expanded-portraits.json')
+    for name in ['final-verification.json', 'visual-review.json',
+                 'loader-verification.json', 'gui-verification.json']:
+        path = work / name
+        audit = json.loads(path.read_text())
+        assert audit['passed'] is True, name
+        if name in ['final-verification.json', 'visual-review.json', 'gui-verification.json']:
+            assert audit['progress_sha256'] == progress_sha, name
+        if name in ['loader-verification.json', 'gui-verification.json']:
+            assert audit['expanded_manifest_sha256'] == expanded_sha, name
+        files[f'verification/{name}'] = path
+    files['verification/loader-check.txt'] = work / 'loader-check.txt'
     for ext in ['png', 'json']:
         source = dest / f'generals-source-overview.{ext}'
         assert source.is_file()
@@ -181,7 +195,10 @@ def deliver(work, pack, png, version):
             shutil.copy2(source, target)
     receipt = dict(version=version, rights='local-only San5-based HD redraw',
                    file=archive.name, sha256=sha(archive), bytes=archive.stat().st_size,
-                   member_count=len(hashes), members=hashes, crc_and_hashes_passed=True)
+                   member_count=len(hashes), members=hashes, crc_and_hashes_passed=True,
+                   tool_sha256={name: sha(ROOT / 'tools' / name) for name in
+                                ['package-san5-redraw.py', 'render-general-catalog.py',
+                                 'verify-expanded-roster-inner.py']})
     write_json(dest / f'{stem}-SHA256.json', receipt)
     return {k: receipt[k] for k in ['file', 'sha256', 'bytes', 'member_count']}
 

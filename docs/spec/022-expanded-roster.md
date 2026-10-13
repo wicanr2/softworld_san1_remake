@@ -2,7 +2,8 @@
 
 狀態：**CONFORMED**，限本規格的擴充資料、規則、介面、存檔及素材組裝驗收。
 使用者於 2026-10-12 確認具體配置、王朗例外、初始化、存檔格式 2 及缺圖回退方案。
-六劇本資料及規則驗證、正常玩家路徑抽樣與 220 張肖像已完成；未重建發行包。
+六劇本資料及規則驗證、正常玩家路徑抽樣與 220 張肖像已完成，已納入 v.1.2.0 本機包。
+後續 San5 原圖重繪以獨立本機素材附包交付，見下節。
 原始證據見 [RE 14](../re/14-san5-roster.md)，現況入口為 [CONTEXT](../../CONTEXT.md)。
 
 ## 已確認範圍
@@ -33,7 +34,8 @@
 
 ## San5 原圖 HD 重繪，2026-10-13
 
-本節狀態：**READY**。使用者確認[張角、華佗及兩位馬忠四張樣張](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)，
+本節狀態：**CONFORMED**，限 220 張重繪、來源核對、總覽、兩版載入及正常人物卡抽樣。
+使用者確認[張角、華佗及兩位馬忠四張樣張](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)，
 授權重繪全部 220 張新增人物並更新 HD 武將總覽。使用內建 image_gen，每張直接參考
 該人物的 San5 原圖，保留臉型、年齡、表情、朝向、服飾與主要配色，完成高清手繪細節。
 兩位馬忠以 san5:222、san5:452 分別識別。原有 346 人沿用現行肖像。
@@ -41,10 +43,11 @@
 來源為已核對的 KAODATA.S5，SHA-256
 `f942631ced0bc891f796aa6f884461f28aae0769312f0eef90b22b7d7c98e2d6`。
 三平面解碼及外部調色盤參考沿用 [RE 14](../re/14-san5-roster.md#原版與-san5-武將原圖總覽)，
-不宣稱原版執行期色盤或像素 parity。[來源、完整提示詞及採用版次](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/provenance.json)只留本機。
+不宣稱原版執行期色盤或像素 parity。[全部來源、完整提示詞及採用版次](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)只留本機；
+先前四張樣張紀錄另保留於同目錄的 `provenance.json`。
 
-逐批保存原圖、生成識別、參考與輸出雜湊，完整解碼並檢查對照縮圖。全部完成後
-組裝本機素材，核對 220 個來源識別、兩版載入、原有肖像不變及 566 人總覽。
+逐批保存原圖、生成識別、參考與輸出雜湊，完整解碼並檢查對照縮圖。220 張已全部完成，
+組裝本機素材後核對來源識別、兩版載入、原有肖像不變及 566 人總覽。
 本次授權涵蓋重繪及本機總覽，不移動既有 tag／Release，也不覆寫 v.1.2.0 封包。
 
 重繪逐張由 [匯入工具](../../tools/import-san5-redraw.py)保存進度；
@@ -52,6 +55,22 @@
 沿用 [總覽繪製工具](../../tools/render-general-catalog.py)的 566 人排列。
 [正常人物卡驗證器](../../tools/verify-expanded-roster-inner.py)的 `--hd-assets` 可指定
 重繪後完整素材包，並在收據記錄實際目錄與擴充肖像 manifest 雜湊。
+[本機獨立核對腳本](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/verify-final.py)
+另回讀生成原檔、San5 三平面來源、放大參考與總覽肖像格，與組裝工具分開執行。
+
+| 驗證 | 結果與收據 |
+|---|---|
+| 生成與來源 | 220 張與 image_gen 原檔逐位元組相同；440 張原圖／放大參考及 566 格總覽通過。[獨立核對](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/final-verification.json) |
+| 視覺檢查 | Codex 已查看全部 220 人的原圖／HD 對照，兩位馬忠分別保留；使用者確認的是四張畫風樣張。[逐批紀錄](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/visual-review.json) |
+| 原有素材 | 原 manifest 904 筆全部雜湊保持，437 張舊 PNG 加 220 張重繪，共 657 張；原有 346 人的完整總覽格逐像素不變 |
+| 正式載入 | 原版與加強版各 452 筆既有素材及 220 張重繪，零警告；440 張 HighImage 輸出完整解碼。[載入收據](../../workplace/asset-overviews/san5-hd-redraw-20261012-r1/loader-verification.json) |
+| 正常玩家路徑 | 兩版 189 年難度 1 新局、張角人物卡、HD 切換、格式 2 存檔及重啟載入通過；47 項檢查、33 張唯一 PNG 回讀。[獨立收據](../../dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/independent-verification.json) |
+| 本機交付 | ZIP 1,119 個檔案的 CRC 與逐檔 SHA-256 回讀通過，含完整素材、原圖／HD 總覽、來源紀錄及驗證收據。[附包契約](../release/01-packaging.md#san5-重繪本機素材附包) |
+
+新版 HD 總覽 SHA-256 為 `92af0d3ee0c56d53594bc35d7fe14b140a1e845900e2e42cbd773c782cecd7da`，
+擴充素材 manifest 為 `d1e2c125fa503a2466cef03c466780a5b052405a44b7fc49e402101cfcca4701`。
+生成工具未回報模型版本或 seed。重繪為依原圖製作的插畫，不宣稱史實容貌；正常 GUI
+只抽測張角，不宣稱逐一操作 220 人或原生 Windows／macOS 驗收。
 
 ## 先前原創肖像樣張，已由 San5 重繪方向取代
 
