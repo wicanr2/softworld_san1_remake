@@ -745,6 +745,12 @@ func (g *State) settle(p *Pending) *BattleResult {
 	if !b.Over {
 		b.Auto()
 	}
+	if !p.Player {
+		// 自動戰爭共用既有行軍播放器；兩版及強化 AI 的顯示擴充見 spec/005。
+		// 只讀已結算的郡與天數，不增加亂數或重跑戰鬥。
+		g.pending = append(g.pending, Event{Prefecture: to,
+			Bubble: &Bubble{MapBattle: &MapBattle{Attacker: from, Defender: to, Days: b.Day}}})
+	}
 	r.Days = b.Day
 	r.AttackerWon = b.AttackerWon
 	winMain, winAid := battle.MainDefender, battle.AidDefender

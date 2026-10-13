@@ -6,6 +6,7 @@
 
 | 項目 | 目前狀態 |
 |---|---|
+| 本輪介面修正 | 五項來源修正完成：上方 AI 強化說明、純鍵盤／鍵盤＋滑鼠、Enter 狀態／命令切換、換月場景先清底、自動戰爭行軍與發兵／目標郡標示。[005](docs/spec/005-main-screen.md#主畫面-enter事件清底與自動戰爭播報2026-10-13) 與 [021 選項列](docs/spec/021-hd-art.md#ai-強化說明2026-10-13) 限本輪範圍 CONFORMED。五個相關套件完整通過、UI 十項專測通過；兩版正常新局、存檔保持、自然事件及原貌／高清行軍共 38 項檢查、185 張唯一 PNG 回讀通過。收據 `workplace/ui-controls-20261013-r1/final-audit.json`。未重包，已發布 v.1.2.1 不含這批介面修正 |
 | 公開發行 | [v.1.2.1-20261013](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.2.1-20261013) 已發布並設為 latest，四個引擎包與公開雜湊清單共五附件全部下載、大小及 SHA-256 核對通過，San5 媒體與本機完整版不入附件。README 使用[原有 346 人 HD 總覽](docs/images/hd-generals-base-overview.png)，251 張肖像。使用者已明確確認 220 張 San5 HD 重繪公開保留 public repo，原圖只留本機；來源 b572db2 已推送。標籤固定在引擎建包提交 60e2663。見[發布契約與收據](docs/release/01-packaging.md#v121-公開引擎包與-repo-展示範圍) |
 | 新完整版進版 | `v.1.2.1-20261013` 四平台本機完整版完成，已直接收錄核准的 San5 原圖 HD 重繪。README 展示張角原貌／HD 與兩張 566 人總覽，14 張圖片全部隨完整包提供；[契約與交付](docs/release/01-packaging.md#v121-san5-重繪完整版)限封包、Linux 正常抽樣及 Wine CONFORMED |
 | San5 肖像重繪 | 220／220 張完成，Codex 已查看全部原圖／HD 對照；使用者先確認[四張畫風樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)。440 張來源參考、566 格總覽及原有 346 格不變均通過獨立核對。兩版各 452＋220 正式載入零警告，正常新局、張角 HD 人物卡與格式 2 存讀檔通過，33 張唯一 PNG 回讀。已交付[新版總覽及完整本機素材附包](docs/release/01-packaging.md#san5-重繪本機素材附包)；[逐張來源與提示詞](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)、[匯入](tools/import-san5-redraw.py)及[組裝工具](tools/package-san5-redraw.py)可接續使用。022 重繪節限本次範圍 CONFORMED |

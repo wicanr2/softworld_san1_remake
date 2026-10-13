@@ -84,7 +84,7 @@ def move(wid, x, y):
 
 
 def choose(wid, field, row):
-    x = [100, 270, 470][field]
+    x = [80, 216, 348, 508][field]
     move(wid, x, 16)
     run(['xdotool', 'click', '1'])
     time.sleep(.2)
@@ -95,8 +95,8 @@ def choose(wid, field, row):
 
 def choose_ready(wid, field, row):
     """按住滑鼠直到下拉畫面回應；避免短按被軟體渲染的幀間隔漏掉。"""
-    x = [100, 270, 470][field]
-    probe_x = [10, 202, 378][field]
+    x = [80, 216, 348, 508][field]
+    probe_x = [10, 162, 282, 426][field]
     colors = [bytes([44, 52, 65]), bytes([44, 92, 112])]
     action = len(receipt.setdefault('toolbar_actions', []))
     receipt['toolbar_actions'].append({'field': field, 'row': row})
@@ -183,7 +183,7 @@ def verify_hd_terrain(original, high, restored, pack, tag, edition):
         'scope': '正常截圖中逐像素符合完整原圖的未遮擋格；不注入地圖或 seed'})
 
 
-def launch(edition, missing=False, hd_assets=None, tag=None):
+def launch(edition, missing=False, hd_assets=None, tag=None, startup_seconds=20):
     folder = '三國演義' if edition == 'base' else '三國演義1加強版'
     tag = tag or edition
     t = time.monotonic()
@@ -191,7 +191,7 @@ def launch(edition, missing=False, hd_assets=None, tag=None):
                   '-ai', edition, '-scale', '1', '-music=false', '-sound=false',
                   '-saves', str(OUT / ('saves-' + edition)),
                   '-hd-assets', '/tmp/missing-hd' if missing else str(hd_assets or ROOT / 'workplace/hd-assets')], tag)
-    wid = wait(['xdotool', 'search', '--onlyvisible', '--pid', str(proc.pid), '--name', '三國演義 remake']).splitlines()[0]
+    wid = wait(['xdotool', 'search', '--onlyvisible', '--pid', str(proc.pid), '--name', '三國演義 remake'], seconds=startup_seconds).splitlines()[0]
     move(wid, 320, 200)
     reference = rgb(OUT / 'title-reference.png', '568:160:40:27')
     deadline = time.monotonic() + 45

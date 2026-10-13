@@ -125,6 +125,10 @@ func (a *app) gamePointer(x, y int) image.Point {
 
 func (a *app) updatePointerInput() {
 	a.pointer.pressed = false
+	if !a.gameMouseEnabled() {
+		a.pointer.keys = nil
+		return
+	}
 	owner := a.inputOwner()
 	if a.pointer.owner != owner || len(inpututil.AppendJustPressedKeys(nil)) > 0 {
 		a.pointer.keys = nil
@@ -439,8 +443,12 @@ func pointerField(p image.Point) (col, row int, ok bool) {
 	return col, row, y >= 0 && row >= 0 && row < 10
 }
 
+func (a *app) gameMouseEnabled() bool {
+	return a.windowBar == nil || !a.windowBar.keyboardOnly
+}
+
 func (a *app) drawPointerControls() {
-	if !a.pointer.used || a.pointerModal() || a.wipe != nil {
+	if !a.gameMouseEnabled() || !a.pointer.used || a.pointerModal() || a.wipe != nil {
 		return
 	}
 	c := a.canvas

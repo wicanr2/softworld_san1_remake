@@ -88,7 +88,7 @@ func TestWindowBarRevealAndPin(t *testing.T) {
 }
 
 func TestWindowBarHitAndLocales(t *testing.T) {
-	v := WindowBarView{Menu: 0, Lists: [3][]string{{"繁體中文", "English", "日本語"}, {"原貌", "B 高清 4×"}, {"還原", "強化 1", "強化 2", "強化 3", "強化 4", "強化 5"}}}
+	v := WindowBarView{Menu: 0, Lists: [WindowBarOptionCount][]string{{"繁體中文", "English", "日本語"}, {"原貌", "B 高清 4×"}, {"還原", "強化 1", "強化 2", "強化 3", "強化 4", "強化 5"}, {"1. 純鍵盤", "2. 鍵盤＋滑鼠"}}}
 	if f, r := WindowBarHit(image.Pt(100, WindowBarHeight+WindowBarRow+1), v); f != 0 || r != 1 {
 		t.Fatalf("下拉選取=%d,%d", f, r)
 	}
@@ -100,12 +100,37 @@ func TestWindowBarHitAndLocales(t *testing.T) {
 	for _, l := range i18n.Locales() {
 		i18n.Current = l
 		c := testCanvasPx(t, 640, WindowBarCanvasHeight)
-		for _, field := range []int{-1, 0, 1, 2} {
+		for _, field := range []int{-1, 0, 1, 2, 3} {
 			v.Menu = field
 			DrawWindowBar(c, v)
 			if len(c.Missing) > 0 || c.Clipped > 0 {
 				t.Fatalf("%s 缺字或裁切: %v %d", l, c.Missing, c.Clipped)
 			}
 		}
+	}
+}
+
+func TestWindowBarHelpAndInputHitRegions(t *testing.T) {
+	v := WindowBarView{Menu: 2}
+	v.Lists[2] = make([]string, 6)
+	if f, row := WindowBarHit(image.Pt(20, 32+5*24+12), v); f != 2 || row != 5 {
+		t.Fatalf("加寬 AI 選單未能點選：%d %d", f, row)
+	}
+	if f, row := WindowBarHit(image.Pt(20, 200), v); f != 2 || row != -2 {
+		t.Fatalf("說明區誤選指令：%d %d", f, row)
+	}
+	b := NewWindowBarState()
+	b.Reveal(false, image.Pt(348, 2), 6)
+	b.Menu = 2
+	b.Reveal(false, image.Pt(20, 200), 6)
+	if !b.Visible {
+		t.Fatal("閱讀 AI 說明時選單收起")
+	}
+	v.Menu, v.Lists[3] = 3, []string{"1", "2"}
+	if f, row := WindowBarHit(image.Pt(400, 32+24+12), v); f != 3 || row != 1 {
+		t.Fatalf("操作模式選項未能點選：%d %d", f, row)
+	}
+	if f, row := WindowBarHit(image.Pt(616, 16), v); f != WindowBarOptionCount || row != -1 {
+		t.Fatal("關閉鍵與操作模式混淆")
 	}
 }

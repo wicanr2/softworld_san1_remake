@@ -103,8 +103,8 @@ def option(wid, field, row):
 
 def selected(wid, field, expected, tag):
     reveal(wid)
-    x = [100, 270, 470][field]
-    probe = [10, 202, 378][field]
+    x = [80, 216, 348, 508][field]
+    probe = [10, 162, 282, 426][field]
     gui.move(wid, x, 16)
     gui.run(['xdotool', 'mousedown', '1'])
     try:

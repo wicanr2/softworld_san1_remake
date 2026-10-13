@@ -14,13 +14,14 @@ import (
 )
 
 type windowBar struct {
-	state      ui.WindowBarState
-	canvas     *ui.Canvas
-	image      *ebiten.Image
-	focus      int
-	mode       ai.Mode
-	orders     int
-	aiExplicit bool
+	state        ui.WindowBarState
+	canvas       *ui.Canvas
+	image        *ebiten.Image
+	focus        int
+	mode         ai.Mode
+	orders       int
+	aiExplicit   bool
+	keyboardOnly bool
 }
 
 func newWindowBar(face, small *font.Face) *windowBar {
@@ -65,6 +66,10 @@ func (a *app) barView() ui.WindowBarView {
 		v.Selected[1] = 1
 	}
 	v.Values[0], v.Values[1] = v.Lists[0][v.Selected[0]], v.Lists[1][v.Selected[1]]
+	v.Values[1] = t("window.originalShort")
+	if a.hdTheme {
+		v.Values[1] = t("window.hdShort")
+	}
 	if v.Disabled[1][1] {
 		v.Lists[1][1] = t("window.hdMissing")
 	}
@@ -74,7 +79,10 @@ func (a *app) barView() ui.WindowBarView {
 	}
 	v.Lists[2] = []string{ai.ModeName(faithful)}
 	for n := 1; n <= game.AIOrdersMax; n++ {
-		v.Lists[2] = append(v.Lists[2], tf("window.enhanced", n))
+		v.Lists[2] = append(v.Lists[2], tf("window.aiOrders", n, n))
+	}
+	for i := range v.AIHelp {
+		v.AIHelp[i] = t(fmt.Sprintf("window.aiHelp%d", i+1))
 	}
 	mode, orders := a.windowBar.mode, a.windowBar.orders
 	if a.s != nil {
@@ -83,7 +91,17 @@ func (a *app) barView() ui.WindowBarView {
 	if mode == ai.ModeEnhanced {
 		v.Selected[2] = max(1, orders)
 	}
-	v.Values[2] = v.Lists[2][v.Selected[2]]
+	v.Values[2] = t("window.faithful")
+	if mode == ai.ModeEnhanced {
+		v.Values[2] = tf("window.enhanced", v.Selected[2])
+	}
+	v.Lists[3] = []string{"1. " + t("window.keyboardOnly"), "2. " + t("window.keyboardMouse")}
+	v.Selected[3] = 1
+	v.Values[3] = t("window.keyboardMouseShort")
+	if a.windowBar.keyboardOnly {
+		v.Selected[3] = 0
+		v.Values[3] = t("window.keyboardOnlyShort")
+	}
 	if a.fight != nil {
 		v.Disabled[2] = make([]bool, len(v.Lists[2]))
 		for i := range v.Disabled[2] {
@@ -130,9 +148,11 @@ func (a *app) updateWindowBar() bool {
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		switch {
-		case f == 3:
+		case f == ui.WindowBarOptionCount:
 			b.state.Visible, b.state.Pinned, b.state.Menu = false, false, -1
 			a.resizeBar(true)
+		case row == -2:
+			// 說明區只供閱讀，不選取或關閉。
 		case row >= 0:
 			a.chooseWindowOption(f, row)
 			b.state.Menu = -1
@@ -149,7 +169,7 @@ func (a *app) updateWindowBar() bool {
 		}
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		b.focus = (b.focus + 1) % 3
+		b.focus = (b.focus + 1) % ui.WindowBarOptionCount
 		b.state.Menu = -1
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyDown) || inpututil.IsKeyJustPressed(ebiten.KeyUp) {
@@ -179,7 +199,7 @@ func (a *app) updateWindowBar() bool {
 
 func (a *app) chooseWindowOption(field, row int) {
 	v := a.barView()
-	if field < 0 || field >= 3 || row < 0 || row >= len(v.Lists[field]) {
+	if field < 0 || field >= ui.WindowBarOptionCount || row < 0 || row >= len(v.Lists[field]) {
 		return
 	}
 	if row < len(v.Disabled[field]) && v.Disabled[field][row] {
@@ -221,6 +241,9 @@ func (a *app) chooseWindowOption(field, row int) {
 		if a.menuScreen != nil {
 			_ = a.menuScreen.SetAI(mode, row)
 		}
+	case 3:
+		a.windowBar.keyboardOnly = row == 0
+		a.pointer.keys, a.pointer.pressed = nil, false
 	}
 	a.dirty = true
 }

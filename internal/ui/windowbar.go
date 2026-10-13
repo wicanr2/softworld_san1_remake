@@ -4,12 +4,16 @@ import (
 	"image"
 	"image/color"
 
+	"github.com/wicanr2/softworld_san1_remake/internal/cells"
 	"github.com/wicanr2/softworld_san1_remake/internal/i18n"
 )
 
 const WindowBarHeight = 32
 const WindowBarRow = 24
-const WindowBarCanvasHeight = WindowBarHeight + 6*WindowBarRow
+const WindowBarOptionCount = 4
+const WindowBarAIHelpLines = 5
+const windowBarAIHelpHeight = 16 + WindowBarAIHelpLines*16
+const WindowBarCanvasHeight = WindowBarHeight + 6*WindowBarRow + windowBarAIHelpHeight
 
 // WindowBarHeightDelta 按目前遊戲的顯示倍率計算，寬視窗以高度為準。
 func WindowBarHeightDelta(width, height, gameHeight int, wasVisible bool) int {
@@ -24,8 +28,28 @@ func WindowBarHeightDelta(width, height, gameHeight int, wasVisible bool) int {
 	return int(WindowBarHeight * scale)
 }
 
-var WindowBarFields = [4]image.Rectangle{
-	image.Rect(8, 4, 192, 28), image.Rect(200, 4, 368, 28), image.Rect(376, 4, 592, 28), image.Rect(600, 4, 632, 28),
+var WindowBarFields = [WindowBarOptionCount + 1]image.Rectangle{
+	image.Rect(8, 4, 152, 28), image.Rect(160, 4, 272, 28), image.Rect(280, 4, 416, 28),
+	image.Rect(424, 4, 592, 28), image.Rect(600, 4, 632, 28),
+}
+
+func windowBarListRect(field, rows int) image.Rectangle {
+	r := WindowBarFields[field]
+	r.Min.Y, r.Max.Y = WindowBarHeight, WindowBarHeight+rows*WindowBarRow
+	if field == 2 {
+		r.Min.X, r.Max.X = 8, 632
+	} else if field == 3 {
+		r.Min.X, r.Max.X = 376, 632
+	}
+	return r
+}
+
+func windowBarMenuRect(field, rows int) image.Rectangle {
+	r := windowBarListRect(field, rows)
+	if field == 2 {
+		r.Max.Y += windowBarAIHelpHeight
+	}
+	return r
 }
 
 type WindowBarState struct {
@@ -55,11 +79,8 @@ func (b *WindowBarState) Reveal(escape bool, cursor image.Point, rows int) bool 
 		return false
 	}
 	inside := cursor.X >= 0 && cursor.X < 640 && cursor.Y >= 0 && cursor.Y < WindowBarHeight
-	if b.Menu >= 0 && b.Menu < 3 {
-		r := WindowBarFields[b.Menu]
-		r.Min.Y = WindowBarHeight
-		r.Max.Y = WindowBarHeight + rows*WindowBarRow
-		inside = inside || cursor.In(r)
+	if b.Menu >= 0 && b.Menu < WindowBarOptionCount {
+		inside = inside || cursor.In(windowBarMenuRect(b.Menu, rows))
 	}
 	if b.Visible {
 		b.Visible = inside
@@ -73,21 +94,23 @@ func (b *WindowBarState) Reveal(escape bool, cursor image.Point, rows int) bool 
 }
 
 type WindowBarView struct {
-	Values             [3]string
-	Lists              [3][]string
-	Selected           [3]int
-	Disabled           [3][]bool
+	Values             [WindowBarOptionCount]string
+	Lists              [WindowBarOptionCount][]string
+	Selected           [WindowBarOptionCount]int
+	Disabled           [WindowBarOptionCount][]bool
+	AIHelp             [WindowBarAIHelpLines]string
 	Menu, Hover, Focus int
 }
 
-// WindowBarHit 的 row=-1 是欄位按鈕，field=3 是關閉。
+// WindowBarHit 的 row=-1 是欄位按鈕，row=-2 是說明區，field=4 是關閉。
 func WindowBarHit(p image.Point, v WindowBarView) (field, row int) {
-	if v.Menu >= 0 && v.Menu < 3 {
-		r := WindowBarFields[v.Menu]
-		r.Min.Y = WindowBarHeight
-		r.Max.Y = WindowBarHeight + len(v.Lists[v.Menu])*WindowBarRow
+	if v.Menu >= 0 && v.Menu < WindowBarOptionCount {
+		r := windowBarListRect(v.Menu, len(v.Lists[v.Menu]))
 		if p.In(r) {
 			return v.Menu, (p.Y - WindowBarHeight) / WindowBarRow
+		}
+		if p.In(windowBarMenuRect(v.Menu, len(v.Lists[v.Menu]))) {
+			return v.Menu, -2
 		}
 	}
 	for k, r := range WindowBarFields {
@@ -105,29 +128,29 @@ func DrawWindowBar(c *Canvas, v WindowBarView) {
 	button := color.RGBA{44, 52, 65, 255}
 	active := color.RGBA{44, 92, 112, 255}
 	c.FillRect(0, 0, 640, WindowBarHeight, bg)
-	labels := [3]string{i18n.S("window.language"), i18n.S("window.theme"), i18n.S("window.ai")}
+	labels := [WindowBarOptionCount]string{i18n.S("window.language"), i18n.S("window.theme"), i18n.S("window.ai"), i18n.S("window.input")}
 	for k, r := range WindowBarFields {
 		ink := button
 		if k == v.Focus || k == v.Menu {
 			ink = active
 		}
 		c.FillRect(r.Min.X, r.Min.Y, r.Max.X, r.Max.Y, ink)
-		if k == 3 {
+		if k == WindowBarOptionCount {
 			c.DrawTextPx(r.Min.X+8, 8, "×", fg)
 			continue
 		}
 		text := labels[k] + " " + v.Values[k]
-		if c.FitsSmall(text) && len(text)*SmallW > r.Dx()-28 {
+		if c.FitsSmall(text) && cells.Width(text)*CellW > r.Dx()-32 {
 			c.DrawSmallTextPx(r.Min.X+8, 11, text, fg)
 		} else {
 			c.DrawTextPx(r.Min.X+8, 8, text, fg)
 		}
 		c.DrawTextPx(r.Max.X-16, 8, "▾", fg)
 	}
-	if v.Menu < 0 || v.Menu >= 3 {
+	if v.Menu < 0 || v.Menu >= WindowBarOptionCount {
 		return
 	}
-	r := WindowBarFields[v.Menu]
+	r := windowBarListRect(v.Menu, len(v.Lists[v.Menu]))
 	for row, label := range v.Lists[v.Menu] {
 		y := WindowBarHeight + row*WindowBarRow
 		ink := button
@@ -139,10 +162,17 @@ func DrawWindowBar(c *Canvas, v WindowBarView) {
 		if row < len(v.Disabled[v.Menu]) && v.Disabled[v.Menu][row] {
 			textInk = color.RGBA{133, 143, 158, 255}
 		}
-		if c.FitsSmall(label) && len(label)*SmallW > r.Dx()-16 {
+		if c.FitsSmall(label) && cells.Width(label)*CellW > r.Dx()-16 {
 			c.DrawSmallTextPx(r.Min.X+8, y+7, label, textInk)
 		} else {
 			c.DrawTextPx(r.Min.X+8, y+4, label, textInk)
+		}
+	}
+	if v.Menu == 2 {
+		y := r.Max.Y
+		c.FillRect(r.Min.X, y, r.Max.X, y+windowBarAIHelpHeight, bg)
+		for i, line := range v.AIHelp {
+			c.DrawTextPx(r.Min.X+8, y+8+i*16, line, fg)
 		}
 	}
 }

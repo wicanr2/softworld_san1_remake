@@ -144,7 +144,7 @@ JSON、配樂轉成 OGG。
 三組容器載入、EGA 640×408 畫面輸出，全程無頭、決定性。
 
 ```sh
-# Ebiten 視窗：← → 選郡、0–9 指令、Enter 結束這個月、Shift＋Esc 返回
+# Ebiten 視窗：← → 選郡、0–9 指令、空輸入 Enter 切換狀態／命令、Shift＋Esc 返回
 # 存檔：其他（9）→ 儲存（2）→ 選一格；開場讀檔用 -load
 tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -faction 0 -ai enhanced -hd-assets hd-assets \
     -saves ~/.local/share/san1-remake/saves
@@ -183,7 +183,12 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 
 每次啟動預設原貌，視窗上方的選項列預設隱藏。按 Esc 或把滑鼠移到上緣即可顯示，
 下方保留完整遊戲畫面。選項列可即時切換繁中／英文／日文、原貌／B 高清，以及
-同版本還原 AI／強化 AI 1–5。滑鼠展開後移開會收起；Esc 展開後再按 Esc 收起。
+同版本還原 AI／強化 AI 1–5，以及純鍵盤／鍵盤＋滑鼠。滑鼠展開後移開會收起；Esc 展開後再按 Esc 收起。
+
+AI 下拉選單列出強化內容與每郡每月指令上限。五級共用內政、守備與出兵策略，
+數字 1–5 決定每郡每月最多下幾道指令，指定太守不計道數。
+純鍵盤停用遊戲區的點擊、右鍵與滾輪，上方選單列仍可切換模式。
+主畫面空輸入按 Enter 只切換狀態／命令面板；休息經「內政 → 休息」。
 遊戲內返回或取消使用 Shift＋Esc。AI 設定沿用既有存檔欄位，外觀每次啟動回到原貌。
 
 高清素材可從本儲存庫的 [`hd-assets/`](hd-assets/README.md) 取得，以 `-hd-assets <目錄>`

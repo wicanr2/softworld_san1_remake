@@ -9,7 +9,7 @@
 //	← → ↑ ↓ ／ Tab   在自己的郡之間移動
 //	0–9              指令類別（查看／軍事／兵士／內政／商業／人事／君主／謀略）
 //	1–9              子選單與挑選清單
-//	Enter            這個郡這個月休息，換下一個郡
+//	Enter            空輸入切換狀態／命令；已輸入數字則確認
 //	Esc              展開或收起選項列
 //	Shift+Esc        返回上一層
 //	M                換下一首配樂
@@ -419,6 +419,10 @@ func (a *app) Update() error {
 		}
 		if a.keyPressed(ebiten.KeyEnter) ||
 			a.keyPressed(ebiten.KeyNumpadEnter) {
+			if a.num.main && !a.num.typed {
+				a.toggleMainStatus()
+				return nil
+			}
 			n := a.num
 			cancel := a.cancel
 			a.num, a.cancel = nil, nil
@@ -460,13 +464,7 @@ func (a *app) Update() error {
 	}
 	if a.keyPressed(ebiten.KeyEnter) ||
 		a.keyPressed(ebiten.KeyNumpadEnter) {
-		// 這個郡這個月不下令，換下一個郡（原版主命令的「休息」）。
-		if a.s.Waiting() != 0 {
-			a.s.EndTurn()
-		}
-		a.menu, a.view.Menu, a.view.Items, a.pick = 0, "", nil, nil
-		a.view.Prompt, a.view.Page = "", nil
-		a.dirty = true
+		a.toggleMainStatus()
 		return nil
 	}
 	if a.keyPressed(ebiten.KeyTab) ||
@@ -509,6 +507,18 @@ func (a *app) Update() error {
 		}
 	}
 	return nil
+}
+
+// 主畫面空輸入 Enter 只切換面板，不消耗郡回合（spec/005）。
+func (a *app) toggleMainStatus() {
+	a.menu, a.view.Menu, a.view.Items, a.pick = 0, "", nil, nil
+	a.view.Prompt, a.view.Page = "", nil
+	a.num, a.numPrompt, a.cancel = nil, nil, nil
+	a.view.Status = !a.view.Status
+	if at := a.s.Waiting(); at != 0 {
+		a.mainAsk(at)
+	}
+	a.dirty = true
 }
 
 // cycle 在玩家自己的郡之間移動選取。
@@ -1604,7 +1614,20 @@ func (a *app) paint() {
 					// 示範模式月底的鏡頭：右側面板畫那一郡的資料（`0x32fb:0x70`）。
 					v.Status, v.Sel, v.HasCard, v.Page = true, b.Panel, false, nil
 				}
-				ui.DrawArtSession(a.canvas, a.art, a.s.G, a.s.Log, v)
+				log := a.s.Log
+				if b := a.s.Bubble(); b != nil && b.Scene > 0 {
+					// 拉幕底圖與完成畫面都先移除上一次的命令提示。
+					v.Prompt, v.Menu, v.Items, v.Page = "", "", nil, nil
+					log = nil
+				} else if b != nil && b.MapBattle != nil {
+					mb := b.MapBattle
+					v.Prompt = tf("window.warRoute", mb.Attacker, prefName(a.s.G, mb.Attacker), mb.Defender, prefName(a.s.G, mb.Defender))
+				}
+				ui.DrawArtSession(a.canvas, a.art, a.s.G, log, v)
+				if b := a.s.Bubble(); b != nil && b.Scene > 0 {
+					// 場景只佔上面板的一部分，須在拉幕保存底圖前清掉郡狀態。
+					ui.ClearPanel(a.canvas, 408, 36, 631, 291, assets.EGAPalette[1])
+				}
 				if b := a.s.Bubble(); b != nil && b.Panel != 0 {
 					// 面板就是這一格，不畫泡泡。
 				} else if b != nil && b.MapBattle != nil {
@@ -1612,10 +1635,7 @@ func (a *app) paint() {
 						ui.DrawMarch(a.canvas, p.m)
 					}
 				} else if b != nil && (!b.Wiped() || a.scenePlayed == b) {
-					// 原版在對白之前把右側面板的內部清成藍色（`0x1058:0x27e8`，
-					// 外框留著）；場景圖那一格不清（`0x2c8be` 也清藍，但整張
-					// 176×96 蓋滿那一塊）。還沒拉過的場景圖先不畫：Draw 那一層
-					// 要拿這張當拉幕的底。
+					// 對白清藍；場景的清底已在拉幕判斷之前完成。
 					if b.Scene == 0 {
 						ui.ClearPanel(a.canvas, 408, 36, 631, 291, assets.EGAPalette[1])
 					}

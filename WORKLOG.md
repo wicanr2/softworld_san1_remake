@@ -2461,3 +2461,50 @@ https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.2.1-20261013 �
 workplace/v121-release-published.json、v121-release-download-verification.json。
 README 下載入口與現況表改記新版本，公開範圍節限本次驗證 CONFORMED。
 本機完整版、原圖來源、舊版與影片保持，未追蹤的 AGENTS.md 未加入提交。
+
+## 2026-10-13：Enter、事件清底、戰爭播報與選項列
+
+使用者明確要求 AI 強化說明、Enter 切換狀態／命令、換月事件先清底、
+自動戰爭小動畫及發兵／目標郡、純鍵盤與鍵盤＋滑鼠選項。命中介面還原、
+規格閘門、正常試玩與文件職責路由；沿用已確認範圍，不另開訪談。
+讀取 GitHub #110 的最新內文、留言與狀態，沒有修改 Issue。
+
+修正前裸 Enter 會 EndTurn，場景拉幕保存了未清的郡狀態，自動戰爭動畫只在
+基本版 ComputerAttack 分支排入。依 005 與 021 的 READY 契約改接：
+空輸入 Enter／數字鍵盤 Enter 切換面板；場景在保存拉幕底圖前清空右側內容；
+自動戰爭統一在 settle 排一次行軍，沿用既有播放器與戰果，下面板顯示完整路線。
+玩家親征不另播行軍。四欄選項列加入五行三語 AI 說明、每月指令上限及兩種操作模式。
+純鍵盤停用遊戲區滑鼠並清待送按鍵，上方列仍可操作；不改存檔格式。
+
+| 驗證 | 結果與本機收據 |
+|---|---|
+| 規則與操作回歸 | cmd/san1、game、session、ai 完整通過，兩項既有 game 前提略過；regression.jsonl。i18n 排序格式修正後整套通過；UI 十項專測與排序檢查 11/11 通過，focused-r3.jsonl |
+| Enter 與場景 | 兩版空輸入兩種 Enter、已輸入命令、完整六檔存檔保持；拉幕前、每步、完成、退場完整恢復通過 |
+| 自動戰爭 | 兩版 ComputerAttack／ForceAttack 各一路，恰好一格且在結算對白前；玩家親征控制通過 |
+| 正常玩家路徑 | gui-r4/receipt.json 34/34。兩版正常 001 曹操難度 5、三語 AI、操作模式、年月及完整存檔保持，休息至 190 年 1 月自然 SCG25 清底與 HD 回切；兩版原貌行軍有連續動作 |
+| 高清行軍 | gui-hd-r1/receipt.json 4/4。最終建置由兩版片頭開新局，在 2560×1632 正常換月觀察高清行軍動作及路線 |
+| 獨立回讀 | final-audit.json：兩份成功收據、185 張唯一 PNG、執行檔及工具雜湊相符，三支 Python 語法通過。另已目視兩版三語說明、事件清底與原貌／高清行軍 |
+
+表中收據根目錄為 workplace/ui-controls-20261013-r1。最終開發執行檔
+san1-final 的 SHA-256 為 825ec12456bad5086d771a0d106fefacc469091926c9550fe832b0a2a13f3409。
+gui-r4 使用 2626f4c8 開頭的先前建置；兩者 Go 行為相同，差異僅修正檔首 Enter 操作註解。
+新增驗證器入口為 tools/verify-controls-inner.py，已掛入 005。
+
+首輪因 GOWORK 指向未掛載 dosgolem 而無法編譯，非 oracle 測試改用 GOWORK=off。
+場景測試首次誤把外框也要求為藍色，依既有 ClearPanel 的內部矩形修正斷言。
+翻譯目錄首次以 Python 輸出 JSON，與 Go 的 HTML 逸出契約不同；改用既有 Go
+MarshalIndent 格式後通過。廣泛 UI 長測在未修改的 TestHDMarchAllFramesAndFallback
+達 300 秒逾時，未宣稱全套通過，改以本輪十項 UI 專測與正常高清行軍完成驗收。
+
+GUI r1 缺加強版場景匯出，核對兩版 DATA3 原始 SHA 相同後共用基本版參考並記來源。
+r2 的 20 秒找視窗期限不足；有界觀察確認程序持續載入完整 HD 素材，32.12 秒出窗，
+因此只為本工具設定 60 秒啟動期限，舊呼叫預設保持 20 秒。r3 把 X11 游標收進
+右側面板比較，差異為 16×16 游標；移出比較區後 r4 相同流程通過。失敗收據保留。
+以上為驗證器或環境問題，沒有放寬遊戲行為以通過測試。
+
+005 與 021 新增節限本輪抽樣 CONFORMED，整份 021 保持 READY。
+README、CONTEXT 與驗證矩陣已同步。沒有新原版 oracle、音訊或原生平台聲明，
+本輪未重包；已發布 v.1.2.1 及本機完整包仍為原來源，不含本次介面修正。
+來源提交與推送沿用使用者既有授權；AGENTS.md 保持未暫存，原版及 San5 原圖未入 Git。
+一次性容器均已移除，工作根沒有 root-owned 檔案或誤建 `.md` 目錄；
+新增檔案 UID/GID 為 1000:1000，git diff --check 通過。
