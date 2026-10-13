@@ -60,11 +60,19 @@ HD 素材已收錄於 [`hd-assets/`](hd-assets/README.md)，可搭配下載的�
 
 [獨立武將圖鑑](docs/hd-generals.md)收錄原版 346 位與 San5 新增 220 位，共 566 位人物。原有人物另列表字、體能、戰力、謀略、魅力、兵種與原始資料編號，能力值採兩版劇本 001；表字附來源，未核得者標為「待考」。總覽在每張頭像下方標示姓名，共用肖像的人物分列。
 
-[新增人物](docs/hd-generals.md#新增人物)另列 220 位參考 San5 補入的人物、原創肖像、能力及來源識別。這是 [remake 擴充](docs/spec/022-expanded-roster.md)，各劇本依開局時點採用對應名單。
+[新增人物](docs/hd-generals.md#新增人物)另列 220 位參考 San5 補入的人物、能力及來源識別。這是 [remake 擴充](docs/spec/022-expanded-roster.md)，各劇本依開局時點採用對應名單。
 
-San5 新增人物已依原圖完成 220 張 HD 重繪。新版 566 人總覽與完整素材見[本機素材附包](docs/release/01-packaging.md#san5-重繪本機素材附包)；下圖及圖鑑保留原 v.1.2.0 套件的肖像版本。
+San5 新增人物已依原圖完成 220 張 HD 重繪，保留原圖臉型、服飾與主要配色，原有 346 人肖像保持。使用者已確認這一版 HD，納入 `v.1.2.1-20261013` 本機完整版。下列 San5 衍生圖片在本機及完整版可見，來源與驗收見[新版打包契約](docs/release/01-packaging.md#v121-san5-重繪完整版)。
 
-<a href="docs/images/hd-generals-overview.png"><img src="docs/images/hd-generals-overview.png" width="840" alt="原版 346 位與 San5 新增 220 位，共 566 位人物的 HD 武將總覽，每張頭像標示姓名與來源編號"></a>
+<!-- LOCAL_SAN5_PREVIEW_BEGIN -->
+| 張角人物卡，原貌 | 張角人物卡，San5 原圖 HD 重繪 |
+|---|---|
+| <a href="dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/base-001-person.png"><img src="dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/base-001-person.png" width="420" alt="正常新局的張角人物卡，原貌顯示"></a> | <a href="dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/base-001-hd-person.png"><img src="dist-all/v.1.2.0-20261012/smoke/san5-hd-redraw-20261013-r1/base-001-hd-person.png" width="420" alt="相同人物卡切換高清，顯示以 San5 原圖重繪的張角肖像"></a> |
+
+| 原版＋San5 原圖，566 人 | HD 武將總覽，566 人 |
+|---|---|
+| <a href="dist-all/v.1.2.0-20261012/full-local/generals-source-overview.png"><img src="dist-all/v.1.2.0-20261012/full-local/generals-source-overview.png" width="420" alt="原有 346 人與 San5 新增 220 人的原圖總覽"></a> | <a href="dist-all/v.1.2.0-20261012/full-local/hd-generals-overview-san5-redraw-20261013-r1.png"><img src="dist-all/v.1.2.0-20261012/full-local/hd-generals-overview-san5-redraw-20261013-r1.png" width="420" alt="相同順序的 566 人高清總覽，新增 220 人採 San5 原圖重繪"></a> |
+<!-- LOCAL_SAN5_PREVIEW_END -->
 
 ## 現在做到哪裡
 
@@ -203,7 +211,7 @@ AI HD 化依[工作總表 #104](https://github.com/wicanr2/softworld_san1_remake
 
 下載入口是 [GitHub 最新 Release](https://github.com/wicanr2/softworld_san1_remake/releases/latest)。
 目前已發布的引擎版為 [v.1.1.2-20261011](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.1.2-20261011)，包含完整語音、片頭配樂與滑鼠操作修正。
-最新本機完整版為 `v.1.1.3-20261011`，另含語音速度、字體縮放修正與上述楷書／隸書截圖，見[交付與驗收](docs/release/01-packaging.md#語音與字體修正版打包契約)。
+最新本機完整版為 `v.1.2.1-20261013`，包含 San5 原圖 HD 重繪、擴充武將、向量楷書／隸書、格式 2 存檔及上述人物卡與總覽，見[交付與驗收](docs/release/01-packaging.md#v121-san5-重繪完整版)。
 公開下載的是引擎包；專案本機的現行交付與驗收清單在 `dist-all/<版本>/`，
 建置方式見[`發行包與本機驗收`](docs/release/01-packaging.md)。
 本機完整版按平台分開提供 Linux AppImage、Windows ZIP 與 macOS 雙架構 tar.gz；

@@ -41,7 +41,9 @@ def stage_hd(source, target):
     if any(p.is_symlink() or not (p.is_file() or p.is_dir()) for p in entries):
         raise RuntimeError('高清包包含非一般檔案')
     shutil.copytree(source, target)
-    expanded = ROOT / 'hd-assets/expanded-portraits.json'
+    expanded = source / 'expanded-portraits.json'
+    if not expanded.is_file():
+        expanded = ROOT / 'hd-assets/expanded-portraits.json'
     if not expanded.is_file():
         return 0
     m = json.loads(expanded.read_text())
@@ -66,9 +68,12 @@ def stage_hd(source, target):
     return len(seen)
 
 
-def stage_overviews(target):
+def stage_overviews(target, hd_source):
     """原版及 San5 原圖只進本機包；兩張總覽的名單及位置必須一致。"""
-    hd = ROOT / 'docs/images/hd-generals-overview.json'
+    redraw = Path(os.environ['SAN1_REDRAW_WORK'])
+    if not redraw.is_relative_to(ROOT / 'workplace'):
+        raise RuntimeError('重繪輸入須在 workplace 內')
+    hd = redraw / 'hd-generals-overview.json'
     source = ROOT / 'workplace/asset-overviews/generals-source-overview.json'
     audits = [json.loads(p.read_text()) for p in (hd, source)]
     for audit, path in zip(audits, (hd, source)):
@@ -82,6 +87,8 @@ def stage_overviews(target):
         raise RuntimeError('兩張總覽的人物或順序不符')
     if audits[1].get('rights') != 'local_only_original_assets':
         raise RuntimeError('原圖總覽缺少本機分類')
+    if audits[0]['expanded_manifest_sha256'] != sha(hd_source / 'expanded-portraits.json'):
+        raise RuntimeError('HD 總覽與實際肖像目錄不符')
     files = {}
     for path in (hd, hd.with_suffix('.png'), source, source.with_suffix('.png')):
         dest = target / 'docs/images' / path.name
@@ -93,14 +100,47 @@ def stage_overviews(target):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / relative, dest)
         files[relative] = sha(dest)
+    catalog = target / 'docs/hd-generals.md'
+    text = catalog.read_text()
+    start = text.index('本頁圖片保留原 v.1.2.0 套件的肖像版本。')
+    end = text.index('\n\n', start)
+    text = text[:start] + '本包新增 220 人採已確認的 San5 原圖 HD 重繪，原有 346 人肖像保持。' + text[end:]
+    catalog.write_text(text)
+    files['docs/hd-generals.md'] = sha(catalog)
     readme = target / 'README.md'
+    shutil.copy2(ROOT / 'README.md', readme)
     text = readme.read_text()
-    marker = '<a href="docs/images/hd-generals-overview.png"><img src="docs/images/hd-generals-overview.png" width="840" alt="原版 346 位與 San5 新增 220 位，共 566 位人物的 HD 武將總覽，每張頭像標示姓名與來源編號"></a>'
-    if text.count(marker) != 1:
+    begin, end = '<!-- LOCAL_SAN5_PREVIEW_BEGIN -->', '<!-- LOCAL_SAN5_PREVIEW_END -->'
+    if text.count(begin) != 1 or text.count(end) != 1:
         raise RuntimeError('README 武將總覽入口不符')
-    text = text.replace(marker, '| 原版＋San5 原圖 | HD 肖像 |\n|---|---|\n'
+    gui = json.loads((redraw / 'gui-verification.json').read_text())
+    if not gui['passed'] or gui['expanded_manifest_sha256'] != sha(hd_source / 'expanded-portraits.json'):
+        raise RuntimeError('人物卡截圖未通過本版素材驗證')
+    shots = ROOT / gui['raw_receipt']
+    if sha(shots) != gui['raw_receipt_sha256']:
+        raise RuntimeError('人物卡來源收據不符')
+    captures = {p['file']: p for p in gui['captures']}
+    for name in ['base-001-person.png', 'base-001-hd-person.png']:
+        source_shot = shots.parent / name
+        if sha(source_shot) != captures[name]['sha256']:
+            raise RuntimeError('人物卡截圖雜湊不符')
+        dest = target / 'docs/images' / name
+        shutil.copy2(source_shot, dest)
+        files[str(dest.relative_to(target))] = sha(dest)
+    preview = ('| 張角人物卡，原貌 | 張角人物卡，San5 原圖 HD 重繪 |\n|---|---|\n'
+        '| <a href="docs/images/base-001-person.png"><img src="docs/images/base-001-person.png" width="420" alt="張角人物卡原貌"></a> '
+        '| <a href="docs/images/base-001-hd-person.png"><img src="docs/images/base-001-hd-person.png" width="420" alt="張角人物卡高清重繪"></a> |\n\n'
+        '| 原版＋San5 原圖 | HD 肖像 |\n|---|---|\n'
         '| <a href="docs/images/generals-source-overview.png"><img src="docs/images/generals-source-overview.png" width="420" alt="566 位人物的原版與 San5 原圖對照總覽"></a> '
         '| <a href="docs/images/hd-generals-overview.png"><img src="docs/images/hd-generals-overview.png" width="420" alt="相同順序的 566 位 HD 武將總覽"></a> |')
+    text = text[:text.index(begin)] + preview + text[text.index(end) + len(end):]
+    for relative in set(re.findall(r'<img\s+[^>]*src="([^"]+)"', text)):
+        if not relative.startswith('docs/images/') or '..' in Path(relative).parts:
+            raise RuntimeError(f'README 圖片路徑不符：{relative}')
+        dest = target / relative
+        if not dest.exists():
+            shutil.copy2(ROOT / relative, dest)
+        files[relative] = sha(dest)
     readme.write_text(text)
     files['README.md'] = sha(readme)
     return files
@@ -184,7 +224,7 @@ def main():
         for edition, source in SOURCES.items():
             shutil.copytree(source, package_dir / 'game' / edition)
         shutil.copytree(hd_source, package_dir / 'hd-assets')
-        overview_files[platform] = stage_overviews(package_dir)
+        overview_files[platform] = stage_overviews(package_dir, hd_source)
         explanation = (
             f'三國演義 remake {version}\n此封包含原版與加強版遊戲資料，僅供本機保存，禁止公開上傳或再散布。\n'
             'Linux／macOS：執行 ./play-base.sh 或 ./play-plus.sh；Windows：執行 play-base.cmd 或 play-plus.cmd。\n'

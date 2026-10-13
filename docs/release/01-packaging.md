@@ -581,6 +581,33 @@ Xvfb 的 PID 1 就緒等待及 AppImage 擷取桌面原點裁切均修正工具�
 2,411,536,952 bytes，收據為
 `workplace/complete-delivery-v1.2.0-20261012/cleanup.json`。
 
+## v.1.2.1 San5 重繪完整版
+
+狀態：`READY`。使用者於 2026-10-13 確認本次 HD，要求完整版進版及更新 README。
+版本採 `v.1.2.1-20261013`，沿用既有四平台獨立交付：Linux AppImage、Windows x64 ZIP、
+macOS Intel／Apple Silicon 各一 tar.gz。Linux tar 作重生輸入；原版資料及 San5
+衍生重繪留在本機 `full-local/`，不新增公開 Release。
+
+| 範圍 | 驗收契約 |
+|---|---|
+| HD | 原 manifest 904 筆及 437 張既有 PNG 保持；新增 220 張必須使用已確認的 San5 原圖重繪及其獨立 manifest，不以根目錄舊肖像覆蓋 |
+| README | 本機 README 展示已驗證的張角原貌／HD 人物卡與兩張 566 人總覽；完整版內將圖片改為包內相對路徑，所有 README 圖片須實際收錄並回讀 |
+| 來源追溯 | 逐檔核對素材、兩版 66 個原版檔、字型與授權；保存引擎來源提交、image ID、圖片及工具 SHA-256 |
+| 正常玩家路徑 | 新正式 Linux 包的兩版 189 年難度 1 新局、張角人物卡、HD 切換、格式 2 存檔及重啟讀檔；HD 人物卡與已驗載入器相符 |
+| 平台 | 四平台完整版本與架構；Linux 兩版實際 AppRun、存檔位置與畫面；Windows 兩版 Wine 啟動。原生 Windows／macOS、FUSE、簽章與公證不在本輪聲明範圍 |
+| 保存 | 新版本使用全新 `dist-all/v.1.2.1-20261013/`，舊包、附包、tag／Release 與影片保留；不重製配樂、語音或影片 |
+
+重生使用 [release.sh](../../tools/release.sh)、[full-local.sh](../../tools/full-local.sh)
+及 [complete-local-delivery.py](../../tools/complete-local-delivery.py)。
+`full-local.sh` 的 `SAN1_REDRAW_WORK` 指向
+`workplace/asset-overviews/san5-hd-redraw-20261012-r1`，`SAN1_HD_PACK` 預設使用其中
+`assembled-hd-assets/`。原圖／HD 總覽、已驗人物卡及生成紀錄從該來源核對後收入包內，
+`complete-local-delivery.py --hd-overview` 指定同目錄 `hd-generals-overview.json`。
+San5 衍生圖片在本機 README 可見，原檔不加入 Git；引擎包 README 排除本機圖片區塊。
+
+引擎與規則沿用已驗收版本，本輪只換正式版號及封包素材；資料與原版 oracle 收據沿用
+規格 022，不把打包聲明為新增人物的原版 parity。完成後在本節追加實際交付與收據。
+
 ## San5 重繪本機素材附包
 
 狀態：`CONFORMED`，限素材、總覽、封包回讀及 Linux 兩版正常人物卡抽樣。

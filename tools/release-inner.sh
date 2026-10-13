@@ -64,6 +64,16 @@ case "$phase" in
         cp "$stage/bin/$bin" "$dir/san1"
       fi
       cp /src/LICENSE /src/README.md "$dir/"
+      python3 - "$dir/README.md" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+begin, end = '<!-- LOCAL_SAN5_PREVIEW_BEGIN -->', '<!-- LOCAL_SAN5_PREVIEW_END -->'
+assert s.count(begin) == s.count(end) == 1
+s = s[:s.index(begin)] + 'San5 重繪人物卡與原圖／HD 總覽僅隨本機完整版提供。' + s[s.index(end) + len(end):]
+p.write_text(s)
+PY
       cp /src/docs/images/remake-main.png "$dir/docs/images/"
       cp /src/docs/images/remake-font-{kai,li}{,-hd}.png "$dir/docs/images/"
       cp /src/fonts/unifont.hex.gz /src/fonts/ascii6x10.hex.gz \

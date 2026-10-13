@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--root', type=Path, default=Path('/src'))
     parser.add_argument('--stage', type=Path, required=True)
     parser.add_argument('--version', required=True)
+    parser.add_argument('--hd-overview', type=Path, help='本機重繪 HD 總覽 JSON，須與完整包內索引相同')
     parser.add_argument('--include-overviews', action='store_true', help='另將兩張武將總覽及索引交付至 full-local，並更新總清單')
     args = parser.parse_args()
     assert re.fullmatch(r'v\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}', args.version)
@@ -46,7 +47,8 @@ def main():
         assert generals and generals['count'] == 566
         assert (release / 'full-local').stat().st_uid == os.getuid()
         delivered = []
-        for p in [root / 'docs/images/hd-generals-overview.png', root / 'workplace/asset-overviews/generals-source-overview.png']:
+        hd_overview = args.hd_overview or root / 'docs/images/hd-generals-overview.json'
+        for p in [hd_overview.with_suffix('.png'), root / 'workplace/asset-overviews/generals-source-overview.png']:
             for source in [p, p.with_suffix('.json')]:
                 relative = 'full-local/' + source.name
                 target = release / relative

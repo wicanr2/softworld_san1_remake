@@ -8,10 +8,12 @@ if [[ $# -ne 1 || ! "$1" =~ ^v\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}$ ]]; then
   exit 2
 fi
 VER="$1"
-PACK="${SAN1_HD_PACK:-workplace/hd-assets-mapcursor-v50-r1}"
+REDRAW="${SAN1_REDRAW_WORK:-workplace/asset-overviews/san5-hd-redraw-20261012-r1}"
+[[ "$REDRAW" == workplace/* && "$REDRAW" != *'..'* ]] || { echo '重繪輸入必須在 workplace/ 內' >&2; exit 2; }
+PACK="${SAN1_HD_PACK:-$REDRAW/assembled-hd-assets}"
 [[ "$PACK" == workplace/* && "$PACK" != *'..'* ]] || { echo '素材包必須在 workplace/ 內' >&2; exit 2; }
 IMAGE="${SAN1_RELEASE_IMAGE:-eob-remake-release:1.26.7-ebiten2.9.9-20261008-r2}"
-for d in "$ROOT" "$ROOT/org_game" "$ROOT/dist-all/$VER" "$ROOT/dist-all/$VER/patch" "$ROOT/workplace" "$ROOT/$PACK" "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
+for d in "$ROOT" "$ROOT/org_game" "$ROOT/dist-all/$VER" "$ROOT/dist-all/$VER/patch" "$ROOT/workplace" "$ROOT/$PACK" "$ROOT/$REDRAW" "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"; do
   [[ -d "$d" ]] || { echo "缺少掛載目錄：$d" >&2; exit 1; }
 done
 for d in "$ROOT/org_game/三國演義" "$ROOT/org_game/三國演義1加強版"; do
@@ -28,5 +30,6 @@ timeout 30m docker run --rm --init --name "san1-full-local-$$" --network none --
   -e GOCACHE=/src/workplace/gocache -e GOMODCACHE=/src/workplace/gomodcache \
   -e GOPROXY=file:///src/workplace/gomodcache/cache/download -e GOSUMDB=off \
   -e "SAN1_FULL_LOCAL_SOURCE_COMMIT=$(git -C "$ROOT" rev-parse HEAD)" \
+  -e "SAN1_REDRAW_WORK=/src/$REDRAW" \
   -e LIBGL_ALWAYS_SOFTWARE=1 \
   -w /src "$IMAGE" xvfb-run -a bash -c 'set -euo pipefail; go run tools/hd-pack-check.go /hdpack /src/org_game; python3 tools/full-local-inner.py "$1"' sh "$VER"
