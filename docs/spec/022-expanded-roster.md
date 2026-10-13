@@ -47,6 +47,12 @@
 組裝本機素材，核對 220 個來源識別、兩版載入、原有肖像不變及 566 人總覽。
 本次授權涵蓋重繪及本機總覽，不移動既有 tag／Release，也不覆寫 v.1.2.0 封包。
 
+重繪逐張由 [匯入工具](../../tools/import-san5-redraw.py)保存進度；
+全部完成後使用 [本機組裝工具](../../tools/package-san5-redraw.py)，
+沿用 [總覽繪製工具](../../tools/render-general-catalog.py)的 566 人排列。
+[正常人物卡驗證器](../../tools/verify-expanded-roster-inner.py)的 `--hd-assets` 可指定
+重繪後完整素材包，並在收據記錄實際目錄與擴充肖像 manifest 雜湊。
+
 ## 先前原創肖像樣張，已由 San5 重繪方向取代
 
 [華佗原圖](../images/expanded-hua-tuo-approved-20261011.png)為上一輪生成且由使用者

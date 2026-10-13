@@ -20,7 +20,10 @@ parser.add_argument('--scenarios', nargs='+', type=int, choices=[1, 2, 6], defau
 parser.add_argument('--hd-proof', help='正式載入器輸出的新增肖像驗證圖目錄')
 parser.add_argument('--difficulty', type=int, choices=range(1, 10), default=5)
 parser.add_argument('--package-root', type=Path, help='正式封包的解包根目錄；使用其中的兩版資料、HD 素材與字型')
+parser.add_argument('--hd-assets', type=Path, help='驗證本機替代 HD 素材包，須與 package-root 分開使用')
 args = parser.parse_args()
+if args.package_root and args.hd_assets:
+    parser.error('--package-root 與 --hd-assets 不能同時指定')
 root = Path('/src')
 out = root / args.out
 if not out.resolve().is_relative_to((root / 'workplace/audio').resolve()) or out.exists():
@@ -49,6 +52,20 @@ for source, name in [(root / args.binary, 'san1-window-check'),
 gui.receipt.update(method=__doc__, state_injection=False, seed_injection=False, passed=False,
                    binary_sha256=hashlib.sha256((out / 'san1-window-check').read_bytes()).hexdigest(), samples=[])
 gui.receipt['window_wait_seconds'] = 90
+if args.hd_assets:
+    art = args.hd_assets.resolve()
+    assert all((art / name).is_file() for name in ['manifest.json', 'expanded-portraits.json'])
+    original_art_start = gui.start
+
+    def art_start(command, name):
+        if command[0] == str(out / 'san1-window-check'):
+            command = list(command)
+            command[command.index('-hd-assets') + 1] = str(art)
+        return original_art_start(command, name)
+
+    gui.start = art_start
+    gui.receipt['hd_assets'] = str(art)
+    gui.receipt['expanded_hd_manifest_sha256'] = hashlib.sha256((art / 'expanded-portraits.json').read_bytes()).hexdigest()
 if args.package_root:
     package = args.package_root.resolve()
     assert all((package / path).is_file() for path in ['san1', 'fonts/unifont.hex.gz', 'fonts/kai.ttf', 'fonts/li.ttf', 'hd-assets/expanded-portraits.json'])

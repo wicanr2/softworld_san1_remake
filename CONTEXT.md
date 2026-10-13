@@ -6,7 +6,7 @@
 
 | 項目 | 目前狀態 |
 |---|---|
-| San5 肖像重繪 | 使用者於 2026-10-13 確認[四張原圖／HD 樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)，授權依 San5 原圖重繪全部 220 張並更新總覽。來源參考全數備妥，重繪持續進行；目前數量、逐張來源、提示詞及雜湊以[可接續清單](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)為準，由 [匯入工具](tools/import-san5-redraw.py)逐張保存，完成後組裝本機素材並驗證。既有 v.1.2.0 封包保留 |
+| San5 肖像重繪 | 使用者於 2026-10-13 確認[四張原圖／HD 樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)，授權依 San5 原圖重繪全部 220 張並更新總覽。來源參考全數備妥，重繪持續進行；目前數量、逐張來源、提示詞及雜湊以[可接續清單](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)為準，由 [匯入工具](tools/import-san5-redraw.py)逐張保存，完成後用[組裝工具](tools/package-san5-redraw.py)建立本機素材附包與新總覽，再驗證兩版人物卡。既有 v.1.2.0 封包保留 |
 | 現行交付 | `v.1.2.0-20261012` 四個獨立本機完整版，包含向量字、規格 022、220 張新增肖像、格式 2 存檔及兩張 566 人總覽；公開 Release 仍為 v.1.1.2 |
 | 封包驗證 | 九個封包的內容、架構及 SHA-256 通過；AppImage 全部 667 個高清檔與 66 個原版檔獨立回讀。Linux 兩版正常新局、人物卡、HD 逐像素核對、格式 2 存讀檔、AppRun 與 Windows 兩版 Wine 通過，38 張 PNG 完整。來源合併回歸 1,891 通過、27 略過，四項原版 oracle 通過 |
 | 配樂 | 每拍刻度改讀表頭 240，補長延遲與速度事件；片頭使用 MUSV，標題使用 MUS 第 0 首 |

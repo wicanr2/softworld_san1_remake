@@ -44,7 +44,7 @@ def san5_face(data, portrait):
     return image.convert('RGB'), hashlib.sha256(face).hexdigest()
 
 
-def render_sheet(root, people, labels, portraits, original_exports=None, san5_data=None):
+def render_sheet(root, people, labels, portraits, original_exports=None, san5_data=None, expanded_assets=None):
     source = san5_data is not None
     cols, cell_w, cell_h, margin, header = 16, 160, 224, 24, 136
     canvas = Image.new('RGB', (cols * cell_w + margin * 2,
@@ -65,7 +65,8 @@ def render_sheet(root, people, labels, portraits, original_exports=None, san5_da
                 image, digest = san5_face(san5_data, p['portrait'])
                 cached[art_key] = image.resize((128, 160), Image.Resampling.NEAREST), digest
         else:
-            path = (original_exports / 'img' / entry['container'] / f"F{p['portrait']:03}.png") if source else root / 'hd-assets' / entry['file']
+            art_root = expanded_assets if expanded_assets is not None and p['source'] == 'san5' else root / 'hd-assets'
+            path = (original_exports / 'img' / entry['container'] / f"F{p['portrait']:03}.png") if source else art_root / entry['file']
             path_label = path.relative_to(root).as_posix()
             if art_key not in cached:
                 digest = sha(path)
