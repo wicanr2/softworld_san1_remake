@@ -583,7 +583,8 @@ Xvfb 的 PID 1 就緒等待及 AppImage 擷取桌面原點裁切均修正工具�
 
 ## v.1.2.1 San5 重繪完整版
 
-狀態：`READY`。使用者於 2026-10-13 確認本次 HD，要求完整版進版及更新 README。
+狀態：`CONFORMED`，限封包內容、Linux 正常抽樣及 Windows Wine 啟動。
+使用者於 2026-10-13 確認本次 HD，要求完整版進版及更新 README。
 版本採 `v.1.2.1-20261013`，沿用既有四平台獨立交付：Linux AppImage、Windows x64 ZIP、
 macOS Intel／Apple Silicon 各一 tar.gz。Linux tar 作重生輸入；原版資料及 San5
 衍生重繪留在本機 `full-local/`，不新增公開 Release。
@@ -606,7 +607,46 @@ macOS Intel／Apple Silicon 各一 tar.gz。Linux tar 作重生輸入；原版�
 San5 衍生圖片在本機 README 可見，原檔不加入 Git；引擎包 README 排除本機圖片區塊。
 
 引擎與規則沿用已驗收版本，本輪只換正式版號及封包素材；資料與原版 oracle 收據沿用
-規格 022，不把打包聲明為新增人物的原版 parity。完成後在本節追加實際交付與收據。
+規格 022，不把打包聲明為新增人物的原版 parity。
+
+已完成四平台本機交付，檔案位於 `dist-all/v.1.2.1-20261013/full-local/`：
+
+| 平台與檔案 | bytes |
+|---|---:|
+| [Linux AppImage](../../dist-all/v.1.2.1-20261013/full-local/san1-v.1.2.1-20261013-linux-x86_64.AppImage) | 870,939,128 |
+| [Windows x64 ZIP](../../dist-all/v.1.2.1-20261013/full-local/san1-v.1.2.1-20261013-windows-amd64.zip) | 869,622,982 |
+| [macOS Intel](../../dist-all/v.1.2.1-20261013/full-local/san1-v.1.2.1-20261013-darwin-amd64.tar.gz) | 868,134,966 |
+| [macOS Apple Silicon](../../dist-all/v.1.2.1-20261013/full-local/san1-v.1.2.1-20261013-darwin-arm64.tar.gz) | 867,793,164 |
+
+每包含兩版共 66 個原版檔、904 筆既有素材、220 張 San5 重繪、667 個高清包檔、
+兩張 566 人總覽及 README 全部 14 張圖片。根目錄 README 的本機展示圖片保持在
+忽略目錄，包內 README 則使用隨包提供的相對路徑。完整大小與 SHA-256 見
+[版本總清單](../../dist-all/v.1.2.1-20261013/SHA256SUMS.json)。
+
+引擎由 `60e2663db9d9aa062c1586a102fec4b76f5ec372` 建立，完整包工具來源為
+`6b0497fd99225889bb86358d5cd0fdb19ccab5ac`。與 v.1.2.0 的 b92f510 比較，
+`cmd/`、`internal/`、`translations/`、`fonts/`、go.mod 與 go.sum 完全相同，
+因此沿用既有規則回歸與原版 oracle 收據，本輪另驗新二進位與完整素材。
+
+兩版正常 189 年難度 1 新局、張角人物卡、HD 切換、格式 2 存檔及重啟載入通過，
+HD 肖像逐像素相符，存檔保留 570 槽及玩家 16。14 個必要功能檢查與 32 張唯一 GUI
+圖片均通過，共 46 項檢查。Linux AppImage 兩版實際 AppRun、可寫存檔目錄與完整
+視窗通過，Windows 兩版 Wine 各持續八秒；Windows／macOS 原生試玩仍未驗。
+九個封包、AppImage 全部 667 個高清檔及 66 個原版檔、九個字型／授權檔與
+37 張 smoke PNG 獨立回讀通過。San5 原圖與 HD 總覽順序一致，兩位馬忠分列。
+
+收據入口：[完整稽核](../../dist-all/v.1.2.1-20261013/smoke/final-audit.json)、
+[正常 GUI 獨立核對](../../dist-all/v.1.2.1-20261013/smoke/expanded-package-gui/independent-verification.json)、
+[README 來源圖片](../../dist-all/v.1.2.1-20261013/smoke/readme-source-verification.json)及
+[總覽核對](../../dist-all/v.1.2.1-20261013/smoke/generals-verification.json)。
+本機補充工具為[總稽核腳本](../../workplace/complete-delivery-v1.2.1-20261013/final-audit.py)與
+[AppImage 登錄腳本](../../workplace/complete-delivery-v1.2.1-20261013/register-appimage.py)，
+沿用上方固定 runtime 與平台檢查工具。
+
+確認正式 AppImage 的全部 795 個解包檔與保留副本相同後，移除 AppDir、SquashFS、
+暫存 AppImage 及 GUI 副本，共釋放 2,689,743,274 bytes；
+[清理收據](../../dist-all/v.1.2.1-20261013/smoke/cleanup.json)保存逐檔雜湊。
+舊版、素材附包與影片保持，未新增 tag／Release 或推送。
 
 ## San5 重繪本機素材附包
 

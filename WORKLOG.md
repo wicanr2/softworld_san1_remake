@@ -2385,3 +2385,45 @@ complete-local-delivery 新增可指定 HD 總覽的入口。正式引擎與規�
 四架構引擎已由 60e2663 乾淨重建。組包時核對到包內 HD README 仍描述先前原創外貌，
 於正式 full-local 交付前停止暫存容器，補上本次 San5 原圖重繪、來源與本機權利說明。
 引擎與 README 主檔未改，四份執行檔沿用；完整包工具另以新提交記錄並乾淨重跑。
+
+## 2026-10-13：v.1.2.1 四平台完整版與 README 收尾
+
+引擎來源 60e2663、完整包工具來源 6b0497f。四平台正式版號均為
+v.1.2.1-20261013，Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon
+各自交付；Linux tar 留作重生輸入。原始資料、San5 重繪及完整版只留本機。
+新根目錄為 dist-all/v.1.2.1-20261013，大小、雜湊與來源保存在 SHA256SUMS.json。
+
+每包有兩版 66 個原版檔、904 筆既有資源、220 張核准重繪及共 667 個 HD 檔案。
+README 加入實際張角原貌／HD 人物卡及兩張 566 人總覽，14 張圖片全數在包內提供，
+改成相對路徑後逐包雜湊回讀。根目錄 README 的 San5 展示圖仍留在忽略目錄，
+引擎包 README 排除本機圖片區塊。完整包內的人物圖鑑亦使用新重繪。
+
+Linux 正式包兩版正常 189 年難度 1 新局、張角人物卡、HD 切換、格式 2 存檔及
+重啟讀檔通過。14 個必要功能檢查與 32 張唯一 PNG 全數通過，共 46 項；保存完整
+570 槽與玩家 16，HD 肖像與已核對載入器逐像素相符，沒有局面或 seed 注入。
+AppImage 兩版實際 AppRun、完整視窗及可寫存檔目錄通過；Windows 兩版 Wine
+各持續八秒。macOS／Windows 原生、FUSE、簽章、公證與人耳未驗。
+
+獨立稽核九個封包、AppImage 全部 667 個 HD 檔、66 個原版檔、九個字型／授權檔及
+37 張 smoke PNG 通過。原圖與 HD 總覽各 566 人、471 張肖像，順序與來源識別一致。
+正式程式、型別化資料、譯文及字型輸入與 v.1.2.0 的 b92f510 完全相同，本輪沒有
+重跑無關的全庫測試；先前 1,891 通過、27 略過與四項 oracle 保留其原驗收範圍。
+新驗證收據在本版 smoke/final-audit.json、expanded-package-gui/、appimage-smoke.json、
+windows-wine-smoke.json、generals-verification.json 及 readme-source-verification.json。
+
+AppImage 登錄腳本首次沿用舊暫存目錄名稱，於任何登錄寫入前報缺檔，修正本輪
+兩支補充腳本的工作路徑後以同 image／命令重跑成功。GUI 彙整首次固定要求上一輪
+33 張圖片，但本次選單第一次點選即成功，少了一張重試截圖，實際為 32 張。
+改以兩版共 14 個必要功能檢查集合及全部實際圖片核對，未更動遊戲或操作序列。
+總稽核曾在 GUI 收據歸位前先啟動，補齊正式收據後原命令乾淨重跑通過。
+以上為工具彙整問題，沒有產品失敗或放寬玩家路徑驗收。
+
+正式 AppImage 解包的全部 795 檔與 AppDir 逐檔相同，SquashFS 及暫存 AppImage
+亦有正式保留副本。清理這些暫存及重複 GUI 檔，共釋放 2,689,743,274 bytes，
+逐檔保留關係與 SHA-256 記入 smoke/cleanup.json。根目錄 README、CONTEXT、
+規格 022、打包契約及驗證矩陣同步；打包節限本輪範圍 CONFORMED。
+舊版、素材附包、tag／Release 與影片保持，沒有推送或公開發行。
+
+收尾自檢通過：新版文件連結、清單狀態、README 來源 SHA 與擁有權正確，舊版
+版本總清單未改；工作根沒有 root-owned 檔案或誤建 `.md` 目錄，沒有遺留 san1 容器。
+git diff --check 通過，收尾文件納入本機提交，使用者未追蹤的 AGENTS.md 保持。

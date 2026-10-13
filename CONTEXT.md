@@ -6,10 +6,10 @@
 
 | 項目 | 目前狀態 |
 |---|---|
-| 新完整版進版 | 使用者已確認本輪 HD，授權 `v.1.2.1-20261013` 四平台完整版及 README 截圖更新；[契約](docs/release/01-packaging.md#v121-san5-重繪完整版) READY。正修正打包來源並從乾淨提交重建，新版驗收完成前以既有 v.1.2.0 及素材附包為準 |
+| 新完整版進版 | `v.1.2.1-20261013` 四平台本機完整版完成，已直接收錄核准的 San5 原圖 HD 重繪。README 展示張角原貌／HD 與兩張 566 人總覽，14 張圖片全部隨完整包提供；[契約與交付](docs/release/01-packaging.md#v121-san5-重繪完整版)限封包、Linux 正常抽樣及 Wine CONFORMED |
 | San5 肖像重繪 | 220／220 張完成，Codex 已查看全部原圖／HD 對照；使用者先確認[四張畫風樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)。440 張來源參考、566 格總覽及原有 346 格不變均通過獨立核對。兩版各 452＋220 正式載入零警告，正常新局、張角 HD 人物卡與格式 2 存讀檔通過，33 張唯一 PNG 回讀。已交付[新版總覽及完整本機素材附包](docs/release/01-packaging.md#san5-重繪本機素材附包)；[逐張來源與提示詞](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)、[匯入](tools/import-san5-redraw.py)及[組裝工具](tools/package-san5-redraw.py)可接續使用。022 重繪節限本次範圍 CONFORMED |
-| 現行交付 | `v.1.2.0-20261012` 四個獨立本機完整版，另有 San5 原圖重繪素材附包及新版 566 人 HD 總覽。原套件包含向量字、規格 022、220 張先前肖像及格式 2 存檔，使用附包可換成新重繪；公開 Release 仍為 v.1.1.2 |
-| 封包驗證 | 九個封包的內容、架構及 SHA-256 通過；AppImage 全部 667 個高清檔與 66 個原版檔獨立回讀。Linux 兩版正常新局、人物卡、HD 逐像素核對、格式 2 存讀檔、AppRun 與 Windows 兩版 Wine 通過，38 張 PNG 完整。來源合併回歸 1,891 通過、27 略過，四項原版 oracle 通過 |
+| 現行交付 | `v.1.2.1-20261013`，Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon 各一 tar.gz，包含兩版原始資料、220 張新重繪、向量字、規格 022、格式 2 存檔、總覽及 README 截圖。前一版及素材附包保留，公開 Release 仍為 v.1.1.2 |
+| 封包驗證 | 新版九個封包的內容、架構及 SHA-256 通過；AppImage 全部 667 個高清檔與 66 個原版檔獨立回讀。Linux 兩版正常新局、人物卡、HD 逐像素核對、格式 2 存讀檔、AppRun 與 Windows 兩版 Wine 通過；46 項正常 GUI 檢查、32 張唯一 GUI 及 37 張 smoke PNG 完整。正式規則與字型輸入相同，沿用 1,891 通過、27 略過與四項原版 oracle 收據 |
 | 配樂 | 每拍刻度改讀表頭 240，補長延遲與速度事件；片頭使用 MUSV，標題使用 MUS 第 0 首 |
 | 配樂驗證 | 兩版原版開機選曲觀測通過；六首時間軸通過；兩版片頭、標題四段正式錄音完整匹配參考 PCM |
 | 滑鼠 | 選單、人物、郡、戰場與數字鍵盤已接入；兩版原貌及高清正常開局、查閱、越界取消與存檔通過，基本版紮寨及行軍通過 |
@@ -20,21 +20,28 @@
 | README 字體截圖 | [楷書與隸書](README.md#楷書與隸書) 四張原貌及 HD 畫面已納入 v.1.2.0 四平台包，HD 兩圖為向量版 |
 | HD 向量字體 | 使用者已選定[樣張](docs/images/hd-font-approved-20261011.png)並確認「用向量字重新製作」。王漢宗顏楷／中隸書已接入 HD 選單、人物卡及對白，並修正新局遺失字體設定；32 組縮放、12 組正常畫面、4 組存讀檔及 189 張唯一 PNG 獨立回讀通過。1,842 項不重複回歸通過、27 略過；[021 §6.65](docs/spec/021-hd-art.md#665-hd-楷書與隸書的向量文字) 限本節 CONFORMED。已納入 v.1.2.0 本機包，既有套件、tag／Release 保持 |
 | 擴充武將 | [規格 022](docs/spec/022-expanded-roster.md) 限資料、規則、介面、存檔及素材組裝 CONFORMED。兩版六劇本新增 220／207／198／180／175／168 人及 8／5／1／0／0／1 個勢力；新局、15 歲登場、玩家選擇、來源識別、缺圖回退與格式 2 完整快照已接通。合併回歸 1,891 項通過、27 項略過；特殊人物登用、任命與兩種戰鬥、兩版六劇本 36 個月 AI 及存讀檔通過。戰敗後繼承已改為全部俘虜處置完成後執行，待選繼承人暫停推進，絕嗣正常結束；格式 2 拒收敵方或已故君主引用，四項原版 oracle 通過。兩版 001／002／006 正常 GUI 通過，001 採難度 1，002／006 採難度 5；張角及徹里吉高清人物卡逐像素相符。220／220 張原創肖像及生成紀錄完整，兩版正式載入零警告；見 [素材入口](hd-assets/README.md)及[新增圖鑑](docs/hd-generals.md#新增人物)。來源 b92f510 已提交，v.1.2.0 四平台本機包完成；既有套件及 Release 保持 |
-| 本輪交付範圍 | San5 重繪本機素材附包、來源紀錄與新版 566 人 HD 總覽完成，ZIP 1,119 檔 CRC／SHA-256 回讀通過。[附包契約](docs/release/01-packaging.md#san5-重繪本機素材附包)限素材、封包與 Linux 兩版正常抽樣 CONFORMED。既有四平台程式、九個封包、tag／Release 及影片保持 |
+| 本輪交付範圍 | 核准的 San5 HD 進版為 `v.1.2.1-20261013` 四平台完整版並更新 README 圖片；[打包契約](docs/release/01-packaging.md#v121-san5-重繪完整版)限本輪範圍 CONFORMED。暫存副本清理釋放 2,689,743,274 bytes。舊版、附包、tag／Release 及影片保持 |
 | 未驗範圍 | Windows／macOS 原生試玩、人耳聽辨、FUSE 掛載、簽章及公證 |
 
 契約與收據入口：[配樂勘誤](docs/spec/009-music.md#7-曲檔時序與片頭曲勘誤2026-10-11)、
 [滑鼠外殼](docs/spec/005-main-screen.md#滑鼠操作外殼2026-10-11)、
 [正式封包驗收](docs/release/01-packaging.md#v120-擴充武將與總覽打包契約)。
 
-最新 San5 重繪交付為 `full-local/san1-v.1.2.0-20261012-san5-hd-redraw-20261013-r1-local.zip`，
+現行完整版入口為 `dist-all/v.1.2.1-20261013/`，總清單是 `SHA256SUMS.json`。
+引擎來源為 `60e2663db9d9aa062c1586a102fec4b76f5ec372`，完整包工具來源為
+`6b0497fd99225889bb86358d5cd0fdb19ccab5ac`。四平台已內含核准的 220 張重繪，
+README 全部 14 張圖片與兩張 566 人總覽均可在包內查看。
+九個封包、兩版正常 GUI、AppRun、Wine 及獨立回讀通過，收據在本版 `smoke/`。
+舊版及素材附包保留；以下 v.1.2.0 記錄為前一版證據。
+
+先前 San5 重繪附包為 `full-local/san1-v.1.2.0-20261012-san5-hd-redraw-20261013-r1-local.zip`，
 SHA-256 `c5224b34dbab59571b2e2078601dc2e38f41ddc73e76d8eb490fca5c18794419`。
 新 HD 總覽為同目錄 `hd-generals-overview-san5-redraw-20261013-r1.png`，原圖總覽沿用
 `generals-source-overview.png`。驗證集中於 `smoke/san5-hd-redraw-20261013-r1/`。
 完整素材解壓縮後，以 `-hd-assets` 指向本包目錄；原有 346 人及規則保持。
 以下四平台包與未帶重繪後綴的 HD 總覽為原 v.1.2.0 交付，保存原收據。
 
-現行本機版為 `v.1.2.0-20261012`，引擎來源提交
+前一版本機版為 `v.1.2.0-20261012`，引擎來源提交
 `b92f5108f49c21b021f68eeaebadca2135614150`，本機封包工具來源為
 `2ef8ec2bf858bae2609821d05f0db640ec734024`。後續總覽交付及驗證工具另記 SHA-256。
 四平台獨立交付為 Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon
