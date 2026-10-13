@@ -64,7 +64,20 @@ def stage_hd(source, target):
         if not p.is_file() or p.is_symlink():
             raise RuntimeError(f'缺少新增肖像紀錄：{name}')
         shutil.copy2(p, target / name)
-    shutil.copy2(ROOT / 'hd-assets/README.md', target / 'README.md')
+    (target / 'README.md').write_text(
+        '# 本機 HD 素材包\n\n'
+        '既有 B 寫實手繪素材共 437 張 PNG，原版與加強版各 452 筆資源，原 manifest 共 904 筆。\n'
+        '新增 220 張人物肖像依 San5 原圖重新繪製 HD，使用獨立 manifest，兩位馬忠分別保留。\n'
+        '原有 346 人肖像保持。所有圖片共 657 張 PNG。\n\n'
+        '本包包含原版與 San5 衍生素材，只供本機保存，不得公開上傳或再散布。\n'
+        'San5 素材的原權利不因重繪而移轉；專案 LICENSE 不授予其公開散布權。\n\n'
+        '從完整版的 play-base 或 play-plus 啟動，在視窗選項列切換高清即可。\n'
+        '另用引擎時，以 -hd-assets 指向此目錄；缺圖會逐項回退。\n\n'
+        '既有素材見 [manifest](manifest.json)，新增肖像見 [獨立目錄](expanded-portraits.json)。\n'
+        '[生成紀錄](expanded-portrait-provenance.json)保存來源鍵、完整請求、參考及輸出雜湊。\n'
+        '生成工具未回報模型版本或 seed，不宣稱史實容貌或 San5 像素 parity。\n'
+        '圖片及 566 人總覽見 [完整版 README](../README.md#hd-武將圖鑑)，\n'
+        '驗收與來源界線見 [規格 022](../docs/spec/022-expanded-roster.md)。\n')
     return len(seen)
 
 
