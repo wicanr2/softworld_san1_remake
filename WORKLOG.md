@@ -2582,3 +2582,5 @@ README 八張既有介面／字體圖換成最新畫面，新增兩張選項列�
 使用者要求 HD 音訊保存至 GitHub。盤點確認只有三段 AI 重新配音樣音，原先均位於 Git 忽略的 workplace 與本機 promo。將三個 OGG、三個來源 WAV、原生成及轉檔收據保存至 hd-assets/audio/，新增 README 與 archive.json，並由 HD 素材入口、打包文件及 CONTEXT 連入。全遊戲 HD 配音、聲線定案與人耳確認仍待完成。
 
 沿用 san1-promo:ffmpeg5.1.9-r1，在無網路、非 root、有界 Docker 內核對原收據雜湊並完整解碼六個音訊檔。24 kHz 單聲道、1.84／1.60／6.16 秒、非靜音及峰值檢查全部通過。原版錄音、配樂及混剪影片未入庫。清理前盤點 workplace 為 30,276,909,244 bytes，dist-all 為 18,279,795,911 bytes；原版資料、說明書與本機封包尚未刪除。全工作樹未見 root 擁有檔案或誤建的 .md 目錄，一次性容器已退出。GitHub 保存確認與清理範圍另於本輪核對。
+
+音訊保存提交 4ef51255a68e888f3899781b978f659811f5ade2 已推送 main，git ls-remote 核對相符。從 GitHub 全新 clone，以非 cone sparse-checkout 只取 hd-assets/audio/，再於無網路 Docker 比較全部十個檔案 SHA-256，六個遠端音訊完整解碼通過。較早的 cone 下載因包含父目錄肖像而中止，驗證改用精確音訊目錄並已完成；本輪驗證副本收尾移除。本機原版素材、封包與影片未刪除，清空範圍待使用者說明。
