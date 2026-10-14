@@ -228,6 +228,11 @@ func (a *app) pointerHit(h ui.PointerTarget) {
 		a.dirty = true
 		return
 	}
+	if h.Kind == ui.PointerKey && h.Value == 13 && a.mainPointerPrompt() {
+		// 主提示須點具名指令，不能以通用滑鼠「確定」提交殘留數字。
+		// 明確點選 PointerCommand 仍經 pointerNumber 送進既有數字驗證。
+		return
+	}
 	if a.confirm != nil || (a.fortSpot != nil && a.fortSpot.confirm) {
 		if h.Kind == ui.PointerKey && (h.Value == 'Y' || h.Value == 'N' || h.Value == 27) {
 			a.queuePointer(h.Value)
@@ -447,6 +452,13 @@ func (a *app) gameMouseEnabled() bool {
 	return a.windowBar == nil || !a.windowBar.keyboardOnly
 }
 
+func (a *app) mainPointerPrompt() bool {
+	return a.s != nil && a.s.Waiting() != 0 && a.fight == nil && a.confirm == nil &&
+		a.roster == nil && a.saving == nil && a.fortSpot == nil && a.menu == 0 &&
+		len(a.pick) == 0 && len(a.view.Page) == 0 && a.view.PrefPick == nil &&
+		(a.num == nil || a.num.main)
+}
+
 func (a *app) drawPointerControls() {
 	if !a.gameMouseEnabled() || !a.pointer.used || a.pointerModal() || a.wipe != nil {
 		return
@@ -500,11 +512,13 @@ func (a *app) drawPointerControls() {
 	if a.roster != nil || (a.menuScreen != nil && a.menuScreen.Stage() == menu.Lord) || len(a.view.Page) > 0 || (a.fight != nil && len(a.fight.view.Page) > 0) {
 		button(80, 376, 76, t("mouse.prev"), ui.PointerPrevious)
 		button(160, 376, 76, t("mouse.next"), ui.PointerNext)
-	} else if a.s != nil && a.fight == nil && a.menu == 0 && a.saving == nil && a.fortSpot == nil &&
-		a.view.Status && a.view.PrefPick == nil && (a.num == nil || a.num.main) {
+	} else if a.mainPointerPrompt() && a.view.Status {
 		button(80, 376, 76, t("mouse.commands"), ui.PointerCommands)
 	}
 	button(240, 376, 76, t("mouse.back"), 27)
+	if a.mainPointerPrompt() {
+		return // 主提示只點具名指令，數量、名單及對話各自保留確認。
+	}
 	ok := 13
 	if len(a.view.Page) > 0 || (a.fight != nil && len(a.fight.view.Page) > 0) {
 		ok = 27

@@ -18,6 +18,7 @@ parser.add_argument('--binary', required=True)
 parser.add_argument('--editions', nargs='+', default=['base', 'plus'], choices=['base', 'plus'])
 parser.add_argument('--months', type=int, default=18)
 parser.add_argument('--hd-march-only', action='store_true', help='只驗正常高清換月的行軍與路線')
+parser.add_argument('--command-gate-only', action='store_true', help='只驗明確指令前後的換月條件')
 args = parser.parse_args()
 ROOT = Path('/src')
 OUT = ROOT / args.out
@@ -62,9 +63,11 @@ def toolbar(wid, field, row):
 
 def save(wid, edition):
     # Enter 先回到同一個主提示輸入 owner，再選其他／儲存。
+    folder = OUT / ('saves-' + edition)
+    previous = {p: p.stat().st_mtime_ns for p in folder.glob('**/REMAKE.JSON')}
     gui.key(wid, 'Return', '9', 'Return', '2', '1', 'Return')
-    files = list((OUT / ('saves-' + edition)).glob('**/REMAKE.JSON'))
-    gui.check(edition + '-save-created', bool(files))
+    files = list(folder.glob('**/REMAKE.JSON'))
+    gui.check(edition + '-save-created', bool(files) and any(p.stat().st_mtime_ns != previous.get(p) for p in files))
     data = json.loads(max(files, key=lambda p: p.stat().st_mtime_ns).read_text())
     data.pop('saved_at', None)
     return data
@@ -76,7 +79,7 @@ def command_page(wid):
 
 
 patterns = {}
-for word in ['請對', '出兵中']:
+for word in ['請對', '出兵中', '休息', '是否']:
     patterns[word] = []
     for name in ['unifont.hex.gz', 'kai.hex.gz', 'li.hex.gz']:
         glyphs = {}
@@ -96,7 +99,7 @@ for word in ['請對', '出兵中']:
         patterns[word].append(rows)
 
 
-def has_word(im, word):
+def find_word(im, word):
     area = im.crop((424, 300, 624, 380))
     bits = bytes(int(rgb == (255, 255, 85)) for rgb in area.getdata())
     width, height = area.size
@@ -110,8 +113,74 @@ def has_word(im, word):
                 continue
             if all(bits[(top+y)*width+x:(top+y)*width+x+len(row)] == row
                    for y, row in enumerate(rows)):
-                return True
-    return False
+                return (424+x+len(rows[0])//2, 300+top+8)
+    return None
+
+
+def has_word(im, word):
+    return find_word(im, word) is not None
+
+
+def command_gate(wid, edition):
+    def capture(label):
+        path = gui.shot(wid, label)
+        return path, image(path).resize((640, 408), Image.Resampling.NEAREST)
+
+    def date(im):
+        return im.crop((8, 36, 40, 384)).tobytes()
+
+    for theme, label in [(0, 'original'), (1, 'hd')]:
+        tag = edition + '-gate-' + label
+        toolbar(wid, 1, theme)
+        scale = 4 if theme else 1
+        gui.run(['xdotool', 'windowsize', wid, str(640*scale), str(408*scale)])
+        gui.run(['xdotool', 'windowmove', wid, '0', '0'])
+        before = save(wid, edition)
+        command_page(wid)
+        _, first = capture(tag + '-before')
+        gui.check(tag + '-main-prompt-ready', has_word(first, '請對'))
+        for _ in range(3):
+            gui.key(wid, 'Return', 'KP_Enter')
+        time.sleep(1.5)
+        click(wid, 352, 390)  # 舊通用確定位置；本輪主提示沒有此按鈕。
+        click(wid, 300, 380)  # 遊戲區空白處。
+        click(wid, 448, 68)   # 狀態。
+        click(wid, 112, 390)  # 指令，只顯示命令表。
+        _, untouched = capture(tag + '-after-navigation')
+        gui.check(tag + '-navigation-keeps-date', date(first) == date(untouched))
+        command_page(wid)
+        click(wid, 448, 260)  # 內政。
+        _, child = capture(tag + '-civil-menu')
+        gui.check(tag + '-opening-menu-keeps-date', date(first) == date(child) and has_word(child, '休息'))
+        gui.run(['xdotool', 'click', '3'])  # 取消內政。
+        time.sleep(.4)
+        gui.check(tag + '-navigation-keeps-full-save', before == save(wid, edition))
+        command_page(wid)
+        click(wid, 448, 260)
+        _, child = capture(tag + '-before-rest')
+        position = find_word(child, '休息')
+        gui.check(tag + '-named-rest-visible', position is not None)
+        click(wid, *position)
+        deadline = time.monotonic() + 120
+        step = 0
+        while time.monotonic() < deadline:
+            path, current = capture(tag + '-rest-' + str(step))
+            step += 1
+            # 對白仍可能保留下方舊主提示；須等上面板也回復主畫面。
+            if has_word(current, '請對') and current.getpixel((420, 56)) == first.getpixel((420, 56)) and date(current) != date(first):
+                gui.check(tag + '-named-rest-advances-month', True)
+                gui.receipt.setdefault('command_gates', []).append({'edition': edition, 'theme': label,
+                    'file': path.name, 'method': '明確點選內政、休息及必要 Y 確認後，回到下一月玩家主提示'})
+                break
+            if has_word(current, '是否'):
+                click(wid, 128, 358)  # 明確按「是」。
+            else:
+                gui.key(wid, 'space')  # 只續行已提交指令後的對白。
+        else:
+            raise RuntimeError(tag + ' 明確休息後未回到下一月')
+        after = save(wid, edition)
+        expected = (before['year'] + (before['month'] == 12), before['month'] % 12 + 1)
+        gui.check(tag + '-saved-next-month', (after['year'], after['month']) == expected)
 
 
 scene_refs = {}
@@ -217,6 +286,12 @@ try:
     gui.wait(['xdotool', 'getdisplaygeometry'])
     for edition in args.editions:
         proc, wid = gui.launch(edition, hd_assets=ROOT / 'hd-assets', startup_seconds=60)
+        if args.command_gate_only:
+            toolbar(wid, 2, 1)
+            gui.key(wid, '1', '1', '1', '2', '5')
+            command_gate(wid, edition)
+            gui.stop(proc)
+            continue
         if args.hd_march_only:
             gui.key(wid, '1', '1', '1', '2', '5')
             hd_march(wid, edition)

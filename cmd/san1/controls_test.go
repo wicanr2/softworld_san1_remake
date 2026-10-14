@@ -205,3 +205,126 @@ func TestKeyboardOnlyClearsPointerWithoutChangingInput(t *testing.T) {
 		t.Fatal("未恢復鍵盤＋滑鼠")
 	}
 }
+
+// 把目前等待的郡放在當月最後一格，隔離「一旦耗令就換月」的邊界。
+// 這是控制器 fixture，不當成正常玩家路徑或原版 oracle。
+func controlLastMonthCell(t *testing.T, a *app) int {
+	t.Helper()
+	at := a.s.Waiting()
+	for i, id := range a.s.MonthOrder {
+		if id == at {
+			last := len(a.s.MonthOrder) - 1
+			a.s.MonthOrder[i], a.s.MonthOrder[last] = a.s.MonthOrder[last], id
+			a.s.MonthCursor = last
+			return at
+		}
+	}
+	t.Fatal("等待郡不在當月順序中")
+	return 0
+}
+
+func TestLastCellEnterAndNavigationKeepMonth(t *testing.T) {
+	for _, edition := range []state.Edition{state.EditionBase, state.EditionPlus} {
+		t.Run(string(edition), func(t *testing.T) {
+			a := controlApp(t, edition)
+			at := controlLastMonthCell(t, a)
+			cursor := a.s.MonthCursor
+			before, err := a.s.G.CaptureSnapshot()
+			if err != nil {
+				t.Fatal(err)
+			}
+			dir := t.TempDir()
+			name := a.s.SaveName(1, at, "")
+			if err := a.s.Save(dir, 1, name); err != nil {
+				t.Fatal(err)
+			}
+			files := mainBubbleSaveFiles(t, dir)
+			for i := 0; i < 12; i++ {
+				pressControlKey(t, a, ebiten.KeyEnter)
+				pressControlKey(t, a, ebiten.KeyNumpadEnter)
+				for frame := 0; frame < 8; frame++ {
+					if err := a.Update(); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			a.pointerHit(ui.PointerTarget{Kind: ui.PointerKey, Value: ui.PointerCommands})
+			a.pointerMap(image.Pt(300, 380)) // 地圖外空白處。
+			a.pointerBack()
+			if err := a.Update(); err != nil {
+				t.Fatal(err)
+			}
+			after, err := a.s.G.CaptureSnapshot()
+			if err != nil || !reflect.DeepEqual(before, after) || a.s.Waiting() != at || a.s.MonthCursor != cursor {
+				t.Fatal("Enter、顯示命令、空白點擊或返回推進了末郡")
+			}
+			if err := a.s.Save(dir, 1, name); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(files, mainBubbleSaveFiles(t, dir)) {
+				t.Fatal("末郡的一般操作改變完整存檔")
+			}
+		})
+	}
+}
+
+func TestMainMouseRequiresNamedCommand(t *testing.T) {
+	for _, edition := range []state.Edition{state.EditionBase, state.EditionPlus} {
+		t.Run(string(edition), func(t *testing.T) {
+			a := controlApp(t, edition)
+			at := controlLastMonthCell(t, a)
+			date := a.s.G.Date
+			a.pointer.used = true
+			for _, status := range []bool{true, false} {
+				a.view.Status = status
+				a.paint()
+				if h, ok := a.canvas.PointerAt(image.Pt(352, 390)); ok && h.Kind == ui.PointerKey && h.Value == 13 {
+					t.Fatal("主提示仍提供通用確定按鈕")
+				}
+			}
+			a.num.value, a.num.typed, a.num.digits = 4, true, "4"
+			a.pointerHit(ui.PointerTarget{Kind: ui.PointerKey, Value: 13})
+			if len(a.pointer.keys) != 0 || a.s.Waiting() != at || a.s.G.Date != date {
+				t.Fatal("主提示的一般滑鼠確定接受了待送指令")
+			}
+			// 明確點內政只開子選單，點休息才執行耗令命令。
+			a.pointerHit(ui.PointerTarget{Kind: ui.PointerCommand, Value: '4'})
+			if err := a.Update(); err != nil || a.menu != '4' || a.s.Waiting() != at {
+				t.Fatal("具名主命令沒有開子選單，或提前耗令")
+			}
+			a.pointerHit(ui.PointerTarget{Kind: ui.PointerNumber, Value: 4})
+			if err := a.Update(); err != nil {
+				t.Fatal(err)
+			}
+			// fixture 的劉備未任軍師，休息直接成功。
+			if !a.s.G.Prefecture(at).Commanded || a.s.G.Date != date {
+				t.Fatal("具名休息未耗令，或在命令完成前換月")
+			}
+			if err := a.Update(); err != nil || a.s.G.Date == date {
+				t.Fatal("末郡完成休息後沒有推進月份")
+			}
+		})
+	}
+}
+
+func TestLastCellCancelledAndInvalidCommandKeepMonth(t *testing.T) {
+	for _, edition := range []state.Edition{state.EditionBase, state.EditionPlus} {
+		t.Run(string(edition), func(t *testing.T) {
+			a := controlApp(t, edition)
+			at := controlLastMonthCell(t, a)
+			date, cursor := a.s.G.Date, a.s.MonthCursor
+			pressControlKey(t, a, ebiten.Key4)
+			pressControlKey(t, a, ebiten.KeyEnter)
+			pressControlKey(t, a, ebiten.KeyEscape)
+			a.apply(game.ReliefOrder{At: at, Gold: -1})
+			for frame := 0; frame < 8; frame++ {
+				if err := a.Update(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if a.s.Waiting() != at || a.s.MonthCursor != cursor || a.s.G.Date != date || a.s.G.Prefecture(at).Commanded {
+				t.Fatal("取消或無效命令推進了末郡")
+			}
+		})
+	}
+}

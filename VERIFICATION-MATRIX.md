@@ -291,6 +291,7 @@ grep -rn Tune internal/game internal/battle
 
 | 範圍 | 已驗／分母 | 證據與限制 |
 |---|---:|---|
+| 換月提交條件與五級 AI 文件 | 147/147 相關回歸，零略過／失敗；4/4 正常路徑、42/42 操作與存檔檢查、132/132 唯一 PNG 回讀 | [005 換月契約](docs/spec/005-main-screen.md#換月與明確指令提交2026-10-14) 限本節 CONFORMED。原版手冊四張原始掃描逐頁核對；兩版末郡 Enter、滑鼠具名指令門、取消、錯誤與成功休息回歸通過。兩版原貌／高清正常新局中，一般操作保持完整存檔，明確休息後存檔恰好增加一個月。README 改列五級強化，底層策略未改。收據 `workplace/command-gate-20261014-r1/final-audit.json`；沒有新 oracle、音訊、原生平台或重包聲明 |
 | AI 說明、操作模式、Enter、事件清底與自動戰爭 | 5/5 相關套件完整通過；10/10 UI 專測；38/38 正常 GUI 檢查；185/185 唯一 PNG 回讀 | [005 本輪介面契約](docs/spec/005-main-screen.md#主畫面-enter事件清底與自動戰爭播報2026-10-13) 與 [021 選項列](docs/spec/021-hd-art.md#ai-強化說明2026-10-13) 限本節 CONFORMED。兩版三語 AI、操作切換與完整存檔保持、自然 SCG25 及原貌／高清行軍通過；兩項既有 game 前提略過，廣泛 UI 長測逾時不計全套通過。收據 `workplace/ui-controls-20261013-r1/final-audit.json`。沒有新 oracle、音訊、原生平台或重包聲明；已發布 v.1.2.1 不含本輪修正 |
 | 公開 repo 素材與 README 範圍 | 220/220 核准重繪同步；904/904 原素材目錄保持；346/346 README 圖格保持；11/11 圖片引用有效；4/4 公開引擎包內容及雜湊核對；5/5 遠端附件下載、大小及 SHA-256 相符 | [發布契約](docs/release/01-packaging.md#v121-公開引擎包與-repo-展示範圍) 限本節 CONFORMED。使用者確認全部 220 張 HD 公開留 repo；San5 原圖只留本機，Release 附件沒有 San5 媒體。主分支與固定來源標籤已推送，v.1.2.1 已發布並設為 latest |
 | v.1.2.1 San5 重繪完整版與 README | 4/4 平台完整版、9/9 封包回讀；各包 14/14 README 圖片、220/220 新重繪；2/2 正常新局與存讀檔、14/14 必要功能檢查、32/32 唯一 GUI PNG；2/2 AppRun、2/2 Windows Wine，37/37 smoke PNG 回讀 | [新版打包驗收](docs/release/01-packaging.md#v121-san5-重繪完整版) 限本輪範圍 CONFORMED。AppImage 667 個高清檔、66 個原版檔、九個字型／授權檔及完整 570 槽存檔通過。程式、資料與字型輸入和 v.1.2.0 相同，舊規則及 oracle 收據沿用；Windows／macOS 原生、FUSE、簽章、公證與人耳未驗，完整包只留本機 |
