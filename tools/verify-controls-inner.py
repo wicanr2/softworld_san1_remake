@@ -15,6 +15,7 @@ from PIL import Image
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--out', required=True)
 parser.add_argument('--binary', required=True)
+parser.add_argument('--package-root', type=Path, help='正式封包的解包根目錄，使用包內資料、HD 素材及字型')
 parser.add_argument('--editions', nargs='+', default=['base', 'plus'], choices=['base', 'plus'])
 parser.add_argument('--months', type=int, default=18)
 parser.add_argument('--hd-march-only', action='store_true', help='只驗正常高清換月的行軍與路線')
@@ -33,6 +34,26 @@ gui.receipt.update(method='正式片頭、新局、設定列、鍵盤與滑鼠�
                    source_binary_sha256=hashlib.sha256((ROOT / args.binary).read_bytes()).hexdigest())
 shutil.copy2(ROOT / args.binary, OUT / 'san1-window-check')
 shutil.copy2(ROOT / 'workplace/promo-source/v.1.1.1-20261010/title-reference.png', OUT / 'title-reference.png')
+if args.package_root:
+    package = args.package_root.resolve()
+    assert all((package / name).is_file() for name in
+               ['san1', 'fonts/unifont.hex.gz', 'fonts/kai.ttf', 'fonts/li.ttf', 'hd-assets/expanded-portraits.json'])
+    assert all((package / 'game' / edition).is_dir() for edition in args.editions)
+    assert hashlib.sha256((package / 'san1').read_bytes()).hexdigest() == gui.receipt['source_binary_sha256']
+    original_start = gui.start
+
+    def package_start(command, name):
+        if command[0] == str(OUT / 'san1-window-check'):
+            command = list(command)
+            edition = command[command.index('-edition') + 1]
+            command[command.index('-root') + 1] = str(package / 'game' / edition)
+            command[command.index('-hd-assets') + 1] = str(package / 'hd-assets')
+            command += ['-font', str(package / 'fonts/unifont.hex.gz')]
+        return original_start(command, name)
+
+    gui.start = package_start
+    gui.receipt.update(package_root=str(package), state_injection=False, seed_injection=False,
+                       expanded_hd_manifest_sha256=hashlib.sha256((package / 'hd-assets/expanded-portraits.json').read_bytes()).hexdigest())
 
 
 def image(path):
@@ -285,7 +306,7 @@ try:
     gui.start(['Xvfb', ':99', '-screen', '0', '2800x1900x24', '-nolisten', 'tcp', '-noreset', '-ac'], 'xvfb')
     gui.wait(['xdotool', 'getdisplaygeometry'])
     for edition in args.editions:
-        proc, wid = gui.launch(edition, hd_assets=ROOT / 'hd-assets', startup_seconds=60)
+        proc, wid = gui.launch(edition, hd_assets=ROOT / 'hd-assets', startup_seconds=90 if args.package_root else 60)
         if args.command_gate_only:
             toolbar(wid, 2, 1)
             gui.key(wid, '1', '1', '1', '2', '5')

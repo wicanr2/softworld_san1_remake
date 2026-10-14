@@ -683,6 +683,27 @@ HD 肖像逐像素相符，存檔保留 570 槽及玩家 16。14 個必要功能
 [清理收據](../../dist-all/v.1.2.1-20261013/smoke/cleanup.json)保存逐檔雜湊。
 舊版、素材附包與影片保持，未新增 tag／Release 或推送。
 
+## v.1.2.2 操作修正版完整版
+
+狀態：`READY`。使用者於 2026-10-14 要求重新打包完整版，沿用既定四平台與素材範圍。
+版號為 `v.1.2.2-20261014`，納入 29302a7 與 1ab3998 的操作修正。
+
+| 範圍 | 驗收契約 |
+|---|---|
+| 交付 | 全新 `dist-all/v.1.2.2-20261014/full-local/`；Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon tar.gz；Linux tar 為重生輸入 |
+| 內容 | 每包兩版 66 個原版檔、904 筆既有 HD 項目、220 張核准重繪、667 個高清檔、九個字型與授權檔、兩張 566 人總覽及 README 全部圖片 |
+| 操作修正 | AI 強化 1–5 說明、純鍵盤／鍵盤＋滑鼠、Enter 狀態／命令切換、換月事件清底、自動戰爭行軍及來源／目標郡；主提示須明確提交指令才耗本郡行動 |
+| 正常抽樣 | 正式 Linux 包兩版原貌／HD：Enter、滑鼠導覽與取消保持日期及完整存檔，點選具名休息才換月；另驗兩版正常張角新局、人物卡、HD 肖像及格式 2 存讀檔 |
+| 平台與追溯 | 四平台版本、架構、內容、SHA-256、來源提交及映像；Linux 兩版 AppRun 與存檔位置、Windows 兩版 Wine 啟動 |
+| 邊界 | 完整包與 San5 原圖只留本機；README 公開總覽保持原有 346 人，HD 素材保留 repo。既有 tag／Release 及交付固定，本輪不新增公開 Release。未驗原生 Windows／macOS、FUSE、簽章、公證與人耳 |
+
+重生沿用上節的 [release.sh](../../tools/release.sh)、[full-local.sh](../../tools/full-local.sh)、
+[complete-local-delivery.py](../../tools/complete-local-delivery.py) 與固定 AppImage runtime。
+正式包換月驗證使用 [verify-controls-inner.py](../../tools/verify-controls-inner.py)
+的 `--command-gate-only --package-root`，明確使用包內資料、高清素材與字型。
+本輪資料與規則沿用規格 022；來源已完成的 147 項指令／回合回歸及 38 項介面抽樣
+另見 [005](../spec/005-main-screen.md#換月與明確指令提交2026-10-14)，不把封包檢查稱為新增原版 parity。
+
 ## San5 重繪本機素材附包
 
 狀態：`CONFORMED`，限素材、總覽、封包回讀及 Linux 兩版正常人物卡抽樣。

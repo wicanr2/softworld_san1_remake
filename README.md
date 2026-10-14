@@ -62,7 +62,7 @@ HD 素材已收錄於 [`hd-assets/`](hd-assets/README.md)，可搭配下載的�
 
 [新增人物](docs/hd-generals.md#新增人物)另列 220 位參考 San5 補入的人物、能力及來源識別。這是 [remake 擴充](docs/spec/022-expanded-roster.md)，各劇本依開局時點採用對應名單。
 
-San5 新增人物已依原圖完成 220 張 HD 重繪，原有 346 人肖像保持。原圖對照、張角人物卡與完整 566 人總覽隨 `v.1.2.1-20261013` 本機完整版提供，來源與驗收見[新版打包契約](docs/release/01-packaging.md#v121-san5-重繪完整版)。HD 素材仍保留於 [`hd-assets/`](hd-assets/README.md)。
+San5 新增人物已依原圖完成 220 張 HD 重繪，原有 346 人肖像保持。原圖對照、張角人物卡與完整 566 人總覽隨本機完整版提供，來源與驗收見[打包契約](docs/release/01-packaging.md#v122-操作修正版完整版)。HD 素材仍保留於 [`hd-assets/`](hd-assets/README.md)。
 
 <!-- GENERAL_OVERVIEW_BEGIN -->
 本頁武將總覽只展示原有 346 人，共 251 張 HD 肖像。
@@ -223,7 +223,7 @@ AI 下拉選單另說明內政、補兵、守備與出兵條件。
 
 下載入口是 [GitHub 最新 Release](https://github.com/wicanr2/softworld_san1_remake/releases/latest)。
 目前已發布的引擎版為 [v.1.2.1-20261013](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.2.1-20261013)，包含擴充武將、格式 2 存檔、向量楷書／隸書，以及語音、配樂與滑鼠操作修正。四個引擎包與公開雜湊清單不含 San5 原圖或 HD 肖像。
-最新本機完整版為 `v.1.2.1-20261013`，包含 San5 原圖 HD 重繪、擴充武將、向量楷書／隸書、格式 2 存檔及上述人物卡與總覽，見[交付與驗收](docs/release/01-packaging.md#v121-san5-重繪完整版)。
+本機完整版採 `v.1.2.2-20261014`，包含 San5 原圖 HD 重繪、擴充武將、向量楷書／隸書、格式 2 存檔及完整人物卡與總覽。此版加入 AI 強化說明、操作模式切換、Enter 狀態／命令切換、換月事件清底及自動戰爭行軍，並修正滑鼠明確指令的換月提交，見[交付與驗收](docs/release/01-packaging.md#v122-操作修正版完整版)。
 公開下載的是引擎包；專案本機的現行交付與驗收清單在 `dist-all/<版本>/`，
 建置方式見[`發行包與本機驗收`](docs/release/01-packaging.md)。
 本機完整版按平台分開提供 Linux AppImage、Windows ZIP 與 macOS 雙架構 tar.gz；
