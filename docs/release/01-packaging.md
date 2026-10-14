@@ -685,7 +685,7 @@ HD 肖像逐像素相符，存檔保留 570 槽及玩家 16。14 個必要功能
 
 ## v.1.2.2 操作修正版完整版
 
-狀態：`READY`。使用者於 2026-10-14 要求重新打包完整版，沿用既定四平台與素材範圍。
+狀態：`CONFORMED`，限封包內容、Linux 正常路徑及 Windows Wine 啟動。使用者於 2026-10-14 要求重新打包完整版，沿用既定四平台與素材範圍。
 版號為 `v.1.2.2-20261014`，納入 29302a7 與 1ab3998 的操作修正。
 
 | 範圍 | 驗收契約 |
@@ -703,6 +703,40 @@ HD 肖像逐像素相符，存檔保留 570 槽及玩家 16。14 個必要功能
 的 `--command-gate-only --package-root`，明確使用包內資料、高清素材與字型。
 本輪資料與規則沿用規格 022；來源已完成的 147 項指令／回合回歸及 38 項介面抽樣
 另見 [005](../spec/005-main-screen.md#換月與明確指令提交2026-10-14)，不把封包檢查稱為新增原版 parity。
+
+四平台完整版已完成，檔案位於本版 `full-local/`：
+
+| 平台與檔案 | bytes |
+|---|---:|
+| [Linux AppImage](../../dist-all/v.1.2.2-20261014/full-local/san1-v.1.2.2-20261014-linux-x86_64.AppImage) | 870,947,320 |
+| [Windows x64 ZIP](../../dist-all/v.1.2.2-20261014/full-local/san1-v.1.2.2-20261014-windows-amd64.zip) | 869,627,906 |
+| [macOS Intel](../../dist-all/v.1.2.2-20261014/full-local/san1-v.1.2.2-20261014-darwin-amd64.tar.gz) | 868,141,791 |
+| [macOS Apple Silicon](../../dist-all/v.1.2.2-20261014/full-local/san1-v.1.2.2-20261014-darwin-arm64.tar.gz) | 867,797,930 |
+
+引擎及完整包工具來源均為 `5098f062944ed46f0b5887b07399b6da8f7c20dd`。
+九個封包的內容、架構、完整版本、大小與 SHA-256 通過；AppImage 全部 667 個高清檔、
+66 個原版檔與九個字型／授權檔獨立回讀通過。完整清單見
+[SHA256SUMS.json](../../dist-all/v.1.2.2-20261014/SHA256SUMS.json)。
+
+正式包使用自身程式、兩版資料、HD 素材及字型。兩版原貌／HD 四條正常新局的
+42 項換月操作檢查通過，導覽、Enter 與取消保持日期及完整存檔，明確點選休息後才換月。
+兩版 189 年難度 1 張角新局的 14 項功能、HD 肖像逐像素核對、格式 2 存讀檔通過，
+保留 570 個人物槽及玩家勢力 16；連同 37 張 PNG 回讀共 51 項檢查。
+兩類 GUI 合計 148 張唯一 PNG，全部 smoke 共 154 張 PNG 完整。
+Linux AppImage 兩版實際 AppRun、版本及存檔目錄通過；Windows 兩版 Wine 各八秒通過。
+未驗範圍維持上表，本輪沒有新增原版 oracle 或音訊重錄聲明。
+
+收據入口：[最終稽核](../../dist-all/v.1.2.2-20261014/smoke/final-audit.json)、
+[換月操作](../../dist-all/v.1.2.2-20261014/smoke/command-gate-package-gui/independent-verification.json)、
+[張角新局與存讀檔](../../dist-all/v.1.2.2-20261014/smoke/expanded-package-gui/independent-verification.json)、
+[平台交付](../../dist-all/v.1.2.2-20261014/smoke/platform-delivery.json)、
+[工具鏈](../../dist-all/v.1.2.2-20261014/smoke/toolchain.json)及
+[清理](../../dist-all/v.1.2.2-20261014/smoke/cleanup.json)。
+本機補充工具保存在 `workplace/complete-delivery-v1.2.2-20261014/`：
+[總稽核](../../workplace/complete-delivery-v1.2.2-20261014/final-audit.py)、
+[GUI 稽核](../../workplace/complete-delivery-v1.2.2-20261014/audit-gui.py)、
+[總覽稽核](../../workplace/complete-delivery-v1.2.2-20261014/audit-overviews.py)及
+[核對後清理](../../workplace/complete-delivery-v1.2.2-20261014/cleanup-verified.py)。
 
 ## San5 重繪本機素材附包
 
