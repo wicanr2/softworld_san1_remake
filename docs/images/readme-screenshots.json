@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "version": "v.1.2.2-20261014",
+  "platform": "linux-amd64",
+  "source_commit": "5098f062944ed46f0b5887b07399b6da8f7c20dd",
+  "binary_sha256": "433a7394b2e61a1dbd50278bebb840806bc82e3e630ab70cd6c31e455e15d7fa",
+  "source_archive_sha256": "0857aecdf1e5e6cf3776e279d2549cd34e414f26acb494d8d813e6dabdfa1f85",
+  "capture_tool": "tools/capture-readme-inner.py",
+  "capture_tool_sha256": "875f3ee6cfdd3d3de05f0e5ec5f0b95ef82d165064f64cfc25d88685d9aba7a2",
+  "raw_receipt": "workplace/readme-screens-v122-20261014-r1/receipt.json",
+  "raw_receipt_sha256": "d5b981ac77500f03609fc8b1a7d502e9c2321a40e568dc67086ba7538dd2b7bf",
+  "method": "正式 Linux 完整包：正常片頭、曹操新局、人物卡、出兵紮寨、選項列與字體切換",
+  "scenario": 1,
+  "player": "曹操",
+  "difficulty": 5,
+  "state_injection": false,
+  "seed_injection": false,
+  "clock_injection": false,
+  "scope": "remake 正常畫面展示；同一停點切換原貌與 HD；不是新增原版 oracle 對拍",
+  "images": [
+    {
+      "target": "docs/images/remake-main.png",
+      "sha256": "a21b03a5c3c927e1111c5c5126b1f160b5fa6df2c786219e0cc5237b18a1149d",
+      "width": 640,
+      "height": 408,
+      "theme": "original",
+      "scene": "main-card",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-main-hd.png",
+      "sha256": "3a290fa0446cefca67940e4b2fe3833d57cb40d3003900dae73f36a5d2ea1843",
+      "width": 2560,
+      "height": 1632,
+      "theme": "hd",
+      "scene": "main-card",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-ai-options.png",
+      "sha256": "271404e1b272cd62b0e9eaa93e471ca6ca2b5cc79eb660d5412b2c842f676984",
+      "width": 2560,
+      "height": 1760,
+      "theme": "hd",
+      "scene": "toolbar-ai",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-input-options.png",
+      "sha256": "9999d538477dc78d3acdb4fe0fd8a99e08a6664bf389cb322e6570d718c77c78",
+      "width": 2560,
+      "height": 1760,
+      "theme": "hd",
+      "scene": "toolbar-input",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-battle.png",
+      "sha256": "552ff564ebe21c92356e6d4e33937b5f6c8cce8cf8f82f40c984d0b6cc94f181",
+      "width": 640,
+      "height": 408,
+      "theme": "original",
+      "scene": "battle",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-battle-hd.png",
+      "sha256": "6427b0a9b03358d5662af4c1b2b2b733cebb279b5d3d3b95b95f5f571c80f9bb",
+      "width": 2560,
+      "height": 1632,
+      "theme": "hd",
+      "scene": "battle",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-font-kai.png",
+      "sha256": "41cd242e1d490f914e98e4bece7d345e1ee620cdcdc2a9b25f6412dfad74a38c",
+      "width": 640,
+      "height": 408,
+      "theme": "original",
+      "scene": "font-kai",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-font-kai-hd.png",
+      "sha256": "d00de711a66de4532323a57fb92f09a2ef7232d8c31a65663cf0e3dd955c21d2",
+      "width": 2560,
+      "height": 1632,
+      "theme": "hd",
+      "scene": "font-kai",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-font-li.png",
+      "sha256": "55be10b315c172d00dbaef6a699efd7858d444505d157d9c734a5f2881d66157",
+      "width": 640,
+      "height": 408,
+      "theme": "original",
+      "scene": "font-li",
+      "edition": "base"
+    },
+    {
+      "target": "docs/images/remake-font-li-hd.png",
+      "sha256": "ddddff6c9235c054eb8cabbc2f0367f7b68d2a0dac81e14d7532309b50e719b0",
+      "width": 2560,
+      "height": 1632,
+      "theme": "hd",
+      "scene": "font-li",
+      "edition": "base"
+    }
+  ]
+}

@@ -2567,3 +2567,12 @@ README 改列強化 1–5 與每郡每月 1–5 道上限，還原策略另列�
 九包內容、架構、版本與 SHA-256 通過。每包兩版原版檔 66 個、HD 檔 667 個、新肖像 220 張、字型及授權九檔、README 圖片 14 張、兩張 566 人總覽齊全。正式包兩版原貌／HD 四條正常新局的換月檢查 42 項及 111 張 PNG 通過；張角兩版新局、肖像逐像素核對及格式 2 存讀檔 14 項功能，連同 37 張 PNG 共 51 項通過。存檔保留 570 槽與玩家 16，沒有狀態或 seed 注入。Linux 兩版實際 AppRun 及存檔位置、Windows 兩版 Wine 各八秒通過。全部 154 張 smoke PNG 回讀通過。
 
 限本輪封包及正常抽樣 CONFORMED，README、CONTEXT、驗證矩陣與打包契約已更新。原生 Windows／macOS、FUSE、簽章、公證與人耳未驗；未新增原版 oracle 或重錄音訊。確認正式 AppImage 全部 795 個檔與暫存相同後，清除 AppDir、SquashFS、暫存 AppImage 及已保存的 GUI 副本，共 991 檔、3,232,597,467 bytes；收據在本版 smoke/cleanup.json。舊包、素材附包、tag／Release 與影片保持。
+
+
+## 2026-10-14：README 更新正式包最新截圖
+
+使用者要求 README 放上最新截圖。命中 README 與文件職責路由，沿用重製技能的正常操作與來源契約。使用已驗收 v.1.2.2-20261014 Linux 完整包，二進位 SHA-256 433a7394b2e61a1dbd50278bebb840806bc82e3e630ab70cd6c31e455e15d7fa，從三次正常片頭重拍曹操人物卡、陳留出兵潁川、楷書／隸書及上方 AI／操作模式選單。沒有注入狀態、seed 或 clock；未改正式玩法。相關 Issue #110 維持 OPEN，唯讀核對，沒有寫入。
+
+README 八張既有介面／字體圖換成最新畫面，新增兩張選項列圖及 docs/images/readme-screenshots.json 來源索引；公開總覽保持原有 346 人，沒有加入 San5 原圖。18 項抓圖檢查通過，兩張原生 HD 曹操肖像與包內素材逐像素相符，十張截圖的尺寸、來源與 SHA-256 均通過獨立回讀。全部 13 張 README 圖片完整；實際 HD 主畫面、戰場、兩張選單與楷書／隸書已查看。
+
+重拍入口 tools/capture-readme-inner.py，收據與最終核對位於 workplace/readme-screens-v122-20261014-r1/。本輪只更新 repo 展示、來源工具與文件，既有 v.1.2.2 封包及 tag／Release 保持固定。一次性無網路 Docker 已退出，解包暫存由有界程序清除；未追蹤的 AGENTS.md 未改動。
