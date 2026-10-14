@@ -1,0 +1,63 @@
+{
+  "scope": "disposable redubbing auditions; synthetic AI voices",
+  "original_actor_reference": false,
+  "production_approved": false,
+  "model": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+  "model_revision": "0c0e3051f131929182e2c023b9537f8b1c68adfe",
+  "packages": {
+    "qwen-tts": "0.1.1",
+    "torch": "2.9.1+cpu",
+    "transformers": "4.57.3",
+    "soundfile": "0.13.1"
+  },
+  "seed": 20261010,
+  "samples": [
+    {
+      "file": "adviser-a.wav",
+      "label": "軍師聲線 A",
+      "speaker_preset": "Uncle_Fu",
+      "text": "兵者貴神速。",
+      "instruction": "沉穩、低沉的成熟男聲。像軍師向主公獻策，語速適中，字句清楚，語氣果斷。",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 1.84,
+      "peak": 0.4491819739341736,
+      "rms_db": -21.29711611463825,
+      "generation_seconds": 15.461,
+      "sha256": "c7d0433548040edda70d56d3804ff7106f9def9bddd5aa360869d6b33baee72b",
+      "human_review": "pending"
+    },
+    {
+      "file": "commander-b.wav",
+      "label": "武將聲線 B",
+      "speaker_preset": "Dylan",
+      "text": "兵者貴神速。",
+      "instruction": "成年男性武將，聲音有力量，果斷而清晰，像在軍前下令，避免誇張吼叫。",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 1.6,
+      "peak": 0.3470011353492737,
+      "rms_db": -24.34449015213877,
+      "generation_seconds": 16.54,
+      "sha256": "6c3c298e1c080cbdb07a3d8b65d7899e8d3d902fb5e50c2d220dd652fbb40b09",
+      "human_review": "pending"
+    },
+    {
+      "file": "poem-narration.wav",
+      "label": "卷首詞朗誦樣音",
+      "speaker_preset": "Uncle_Fu",
+      "text": "滾滾長江東逝水，浪花淘盡英雄。",
+      "instruction": "成熟男聲，開闊、沉著，朗誦古典詩詞，停頓自然，語調有歷史滄桑感。",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 6.16,
+      "peak": 0.6929370760917664,
+      "rms_db": -19.710653941418855,
+      "generation_seconds": 48.9,
+      "sha256": "cf846654e7ebdee972c9f197e678e72009f4c9b7abb56b015187806a23aaccfa",
+      "human_review": "pending"
+    }
+  ],
+  "passed": true,
+  "load_seconds": 3.787
+}

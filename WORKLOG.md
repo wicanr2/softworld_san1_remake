@@ -2576,3 +2576,9 @@ README 改列強化 1–5 與每郡每月 1–5 道上限，還原策略另列�
 README 八張既有介面／字體圖換成最新畫面，新增兩張選項列圖及 docs/images/readme-screenshots.json 來源索引；公開總覽保持原有 346 人，沒有加入 San5 原圖。18 項抓圖檢查通過，兩張原生 HD 曹操肖像與包內素材逐像素相符，十張截圖的尺寸、來源與 SHA-256 均通過獨立回讀。全部 13 張 README 圖片完整；實際 HD 主畫面、戰場、兩張選單與楷書／隸書已查看。
 
 重拍入口 tools/capture-readme-inner.py，收據與最終核對位於 workplace/readme-screens-v122-20261014-r1/。本輪只更新 repo 展示、來源工具與文件，既有 v.1.2.2 封包及 tag／Release 保持固定。一次性無網路 Docker 已退出，解包暫存由有界程序清除；未追蹤的 AGENTS.md 未改動。
+
+## 2026-10-14：清空 workspace 前保存 HD 音訊
+
+使用者要求 HD 音訊保存至 GitHub。盤點確認只有三段 AI 重新配音樣音，原先均位於 Git 忽略的 workplace 與本機 promo。將三個 OGG、三個來源 WAV、原生成及轉檔收據保存至 hd-assets/audio/，新增 README 與 archive.json，並由 HD 素材入口、打包文件及 CONTEXT 連入。全遊戲 HD 配音、聲線定案與人耳確認仍待完成。
+
+沿用 san1-promo:ffmpeg5.1.9-r1，在無網路、非 root、有界 Docker 內核對原收據雜湊並完整解碼六個音訊檔。24 kHz 單聲道、1.84／1.60／6.16 秒、非靜音及峰值檢查全部通過。原版錄音、配樂及混剪影片未入庫。清理前盤點 workplace 為 30,276,909,244 bytes，dist-all 為 18,279,795,911 bytes；原版資料、說明書與本機封包尚未刪除。全工作樹未見 root 擁有檔案或誤建的 .md 目錄，一次性容器已退出。GitHub 保存確認與清理範圍另於本輪核對。

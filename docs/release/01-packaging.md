@@ -827,4 +827,13 @@ AI 重新配音試作，正式遊戲語音、設定、存檔與平台包保持�
 
 生成 WAV 僅作來源，獨立樣音以 FFmpeg 5.1.9、Vorbis quality 6、原生 24 kHz
 轉成 OGG。收據為 `generation-receipt.json`、`voice-samples-QA.json`、
-`voice-waveform-review.json` 及 `QA.json`。素材與影片仍限本機，沒有新增公開 Release。
+`voice-waveform-review.json` 及 `QA.json`。影片仍限本機，沒有新增公開 Release。
+
+### HD 樣音入庫（2026-10-14）
+
+使用者要求確認 HD 音訊已保存至 GitHub，再清空 workspace。
+三段獨立 AI 樣音的 OGG、來源 WAV、生成與轉檔收據現保存於
+[hd-assets/audio/](../../hd-assets/audio/README.md)。六個音訊檔與原收據 SHA-256
+全部相符，完整解碼、24 kHz 單聲道、時長及非靜音檢查通過，見
+[保存驗證](../../hd-assets/audio/archive.json)。本次只保存既有樣音，聲線定案、
+全遊戲配音與人耳驗收仍待完成。原版錄音、配樂與混剪影片未納入 Git。

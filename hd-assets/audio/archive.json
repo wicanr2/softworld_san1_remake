@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-14",
+  "scope": "three existing synthetic AI redubbing auditions; source WAV and playback OGG; no original game recordings",
+  "production_approved": false,
+  "human_listening": "pending user audition",
+  "ffmpeg": "ffmpeg version 5.1.9-0+deb12u1 Copyright (c) 2000-2026 the FFmpeg developers",
+  "generation_source": "workplace/redub-voice-samples-20261010-r1",
+  "generation_tool": "tools/redub-voice-samples.py",
+  "ogg_conversion": "ffmpeg -i <source.wav> -c:a libvorbis -q:a 6 <output.ogg>",
+  "files": [
+    {
+      "file": "adviser-a.ogg",
+      "bytes": 17626,
+      "sha256": "61f60d6e8ce6d30669390e57c357acf74e96992e3b77b84dd83d03069d8d6ab3",
+      "codec": "vorbis",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 1.84,
+      "decoded_peak": 0.4680100977420807,
+      "decoded_rms": 0.08654643935550083,
+      "complete_decode": true
+    },
+    {
+      "file": "adviser-a.wav",
+      "bytes": 88364,
+      "sha256": "c7d0433548040edda70d56d3804ff7106f9def9bddd5aa360869d6b33baee72b",
+      "codec": "pcm_s16le",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 1.84,
+      "decoded_peak": 0.449188232421875,
+      "decoded_rms": 0.08612784697931725,
+      "complete_decode": true
+    },
+    {
+      "file": "commander-b.ogg",
+      "bytes": 15499,
+      "sha256": "b73ec9472111b141221ca76910fdeabc462d32a8871117cc4dd693bde3fc5846",
+      "codec": "vorbis",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 1.6,
+      "decoded_peak": 0.3302460014820099,
+      "decoded_rms": 0.06079226097161676,
+      "complete_decode": true
+    },
+    {
+      "file": "commander-b.wav",
+      "bytes": 76844,
+      "sha256": "6c3c298e1c080cbdb07a3d8b65d7899e8d3d902fb5e50c2d220dd652fbb40b09",
+      "codec": "pcm_s16le",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 1.6,
+      "decoded_peak": 0.347015380859375,
+      "decoded_rms": 0.06064230584392059,
+      "complete_decode": true
+    },
+    {
+      "file": "generation-receipt.json",
+      "bytes": 2229,
+      "sha256": "376199cc355da2659b55a914908f0aebf56ab364cda6d088e89bf1e474093435"
+    },
+    {
+      "file": "poem-narration.ogg",
+      "bytes": 51583,
+      "sha256": "61745ecf3b2a1b426792d11e263be5f1a0e89a69910e0493f386b50711a5fae8",
+      "codec": "vorbis",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 6.16,
+      "decoded_peak": 0.6990238428115845,
+      "decoded_rms": 0.1037297846878626,
+      "complete_decode": true
+    },
+    {
+      "file": "poem-narration.wav",
+      "bytes": 295724,
+      "sha256": "cf846654e7ebdee972c9f197e678e72009f4c9b7abb56b015187806a23aaccfa",
+      "codec": "pcm_s16le",
+      "sample_rate": 24000,
+      "channels": 1,
+      "duration_seconds": 6.16,
+      "decoded_peak": 0.692962646484375,
+      "decoded_rms": 0.10338731718914158,
+      "complete_decode": true
+    },
+    {
+      "file": "voice-samples-QA.json",
+      "bytes": 2322,
+      "sha256": "f970feba1f46b4ca358bfa717b3ba805132c8668aae972eedc75f5744c415aad"
+    }
+  ],
+  "passed": true
+}
