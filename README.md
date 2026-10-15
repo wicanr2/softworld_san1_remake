@@ -28,7 +28,7 @@
 
 ## remake 原貌與 HD 畫面
 
-保留原版版面，人物、美術與操作面板採 B 寫實手繪高清化。面板加入高清底紋、飾框與肖像框；大地圖的山林、海面與標題牌也已高清化，郡界、郡號與勢力填色保持。文字及操作位置沿用既有版面。以下畫面來自 Linux 本機完整版 `v.1.2.2-20261014`，以正常新局操作擷取。主畫面與戰場各在同一個玩家停點切換原貌／HD，點圖可看原生尺寸。[截圖來源](docs/images/readme-screenshots.json)
+保留原版版面，人物、美術與操作面板採 B 寫實手繪高清化。面板加入高清底紋、飾框與肖像框；大地圖的山林、海面與標題牌也已高清化，郡界、郡號與勢力填色保持。文字及操作位置沿用既有版面。下方遊戲畫面來自 Linux 本機完整版 `v.1.2.2-20261014`，以正常新局操作擷取。主畫面與戰場各在同一個玩家停點切換原貌／HD，點圖可看原生尺寸。[截圖來源](docs/images/readme-screenshots.json)
 
 | 場景 | remake 原貌，640×408 | B 高清，2560×1632 |
 |---|---|---|
@@ -36,6 +36,12 @@
 | 主戰場，陳留出兵攻潁川 | <a href="docs/images/remake-battle.png"><img src="docs/images/remake-battle.png" width="360" alt="remake 原貌：潁川寬版主戰場的正常指令停點"></a> | <a href="docs/images/remake-battle-hd.png"><img src="docs/images/remake-battle-hd.png" width="360" alt="B 高清：相同主戰場，高清人物、地形、天候與操作面板"></a> |
 
 截圖使用劇本 001、單人曹操、難度 5。原貌讀取本機合法持有的原版美術，HD 使用本機高清素材包，文字使用重製版字庫。操作面板涵蓋主畫面、人物清單、資料卡、存檔及戰場指令，接入與驗證見[操作面板規格](docs/spec/021-hd-art.md#638-操作面板)。**HD 計畫仍在進行**；圖示呈現目前成果，驗收範圍見[高清規格](docs/spec/021-hd-art.md)與[畫面對拍紀錄](docs/playtest/03-screen-parity.md)。
+
+### 啟動與載入
+
+直接開啟主程式後，會先顯示載入階段與動畫，完成後進入片頭。以下為 Windows 正式完整版在 Wine 中讀取高清素材的實際畫面。[截圖來源](docs/images/readme-screenshots.json)
+
+<a href="docs/images/remake-loading.png"><img src="docs/images/remake-loading.png" width="840" alt="啟動載入視窗：正在載入，請稍候，顯示讀取高清素材與移動中的指示條"></a>
 
 ### AI 強化與操作模式
 

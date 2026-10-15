@@ -2623,3 +2623,13 @@ Wine 初次拒絕在 root 擁有的 /tmp 下自建 prefix，改由目前 UID 預
 舊包保留，正式收據與測試存檔已保存至本版 smoke/startup-20261015/。
 工作根未見 root 擁有檔案或誤建的 .md 目錄，擁有權為 1000:1000。
 最後 Docker 列表未留任何 san1 工作容器。
+
+## 2026-10-15：README 加入載入視窗截圖
+
+使用者要求載入視窗截圖加入 README。沿用已驗收的 Windows 正式完整包 Wine 實錄
+hd-loading-a.png，複製至 docs/images/remake-loading.png，不重繪、不改圖。
+截圖為 1280×800，顯示讀取高清素材與指示條；來源、版本、平台、程式及封包
+SHA-256 追加至既有 readme-screenshots.json，保留原十張 Linux 截圖的獨立來源。
+README 新增啟動與載入圖示，CONTEXT 更新入口。所有索引圖片及 README 引用
+圖片完整解碼、尺寸與來源雜湊核對通過。本輪只更新文件與圖片，既有包未重建。
+所有新增與更新檔案擁有權正常，未見 root 檔案或誤建的 .md 目錄；一次性容器已清理。

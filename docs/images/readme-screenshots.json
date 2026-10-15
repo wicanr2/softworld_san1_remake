@@ -108,5 +108,29 @@
       "scene": "font-li",
       "edition": "base"
     }
+  ],
+  "additional_captures": [
+    {
+      "version": "v.1.2.2-20261014",
+      "platform": "windows-amd64-wine",
+      "source_commit": "fc68710b534cbf3e583af0594a52b68b9a220a11",
+      "binary_sha256": "d8b3110e9730780bffa26e84e3bb448308366cdb59c923a6fe51ec6138db6839",
+      "source_archive": "dist-all/v.1.2.2-20261014/full-local/san1-v.1.2.2-20261014-windows-amd64.zip",
+      "source_archive_sha256": "df0aa25f562989cb5099df897d88bd19f6694581b026cb3fc55f7d2e6482df3e",
+      "raw_receipt": "dist-all/v.1.2.2-20261014/smoke/startup-20261015/final-windows-gui-r2/hd-animation.json",
+      "raw_receipt_sha256": "7ce4fa36f6a211c0771804f45477921cd7558d40ed93c18ce4c461b5abfa7f0d",
+      "method": "Windows Wine: sampling the loading window during full HD decode",
+      "scope": "正式 Windows 完整包的載入外殼展示；由 Wine 擷取，不是 Windows 原生驗收",
+      "images": [
+        {
+          "target": "docs/images/remake-loading.png",
+          "source_capture": "dist-all/v.1.2.2-20261014/smoke/startup-20261015/final-windows-gui-r2/hd-loading-a.png",
+          "sha256": "2a0a51825f985a535f1234efbb24c850a9f94486b5740fdd6de2119c0c33cbf5",
+          "width": 1280,
+          "height": 800,
+          "scene": "loading-hd-assets"
+        }
+      ]
+    }
   ]
 }
