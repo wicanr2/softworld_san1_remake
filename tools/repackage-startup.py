@@ -48,6 +48,13 @@ new_intro = (
     '加強版使用 -edition plus，或沿用 play-plus 啟動器。\n'
     '載入期間顯示目前階段；必要資料缺失時會顯示錯誤。\n'
     'AppImage 沿用使用者資料目錄存檔。手動指定的參數優先。\n')
+
+def update_notes(data):
+    text = data.decode('utf-8-sig')
+    text = text.replace('執行時工作目錄下的', '程式所在目錄下的').replace('執行時工作目錄的', '程式旁的')
+    text = text.replace('-root /path/to/三國演義 -faction', '-root /path/to/三國演義 -font fonts/unifont.hex.gz -faction')
+    return (text+new_intro).encode()
+
 for row in m['packages']:
     relative = Path(row['file'])
     source = a.release/relative
@@ -72,7 +79,9 @@ for row in m['packages']:
         shutil.copy2(a.stage/'bin/san1-linux-amd64', appdir/'san1')
         for name in ['README.md', '如何開始.txt']:
             if (appdir/name).exists():
-                with (appdir/name).open('ab') as f: f.write(new_intro.encode())
+                (appdir/name).write_bytes(update_notes((appdir/name).read_bytes()))
+        for name in ['san1', 'README.md', '如何開始.txt']:
+            if (appdir/name).exists(): os.utime(appdir/name, (m['source_date_epoch'], m['source_date_epoch']))
         assert all(sha(appdir/name) == digest for name,digest in old_files.items() if name not in ['san1','README.md','如何開始.txt'])
         output = candidate/relative
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -81,7 +90,7 @@ for row in m['packages']:
             subprocess.run(['/opt/appimage-tools/appimagetool.AppImage', '--appimage-extract'], cwd=tmp, check=True, stdout=subprocess.DEVNULL)
             subprocess.run([str(tmp/'squashfs-root/AppRun'), '--no-appstream', '--runtime-file', str(runtime),
                             '--mksquashfs-opt', '-processors', '--mksquashfs-opt', '2',
-                            str(appdir), str(output)], check=True, env=os.environ|{'ARCH':'x86_64'})
+                            str(appdir), str(output)], check=True, env=os.environ|{'ARCH':'x86_64', 'SOURCE_DATE_EPOCH':str(m['source_date_epoch'])})
         output.chmod(0o755)
         rows.append(dict(row, bytes=output.stat().st_size, sha256=sha(output)))
         validation.append({'file': str(relative), 'platform': 'linux-x86_64', 'unchanged_files': len(old_files)-3,
@@ -108,8 +117,8 @@ for row in m['packages']:
                 data = src.read(info.filename)
                 if name in changed:
                     if changed[name] is not None: data = changed[name]
-                    elif name == 'README.md': data = data + new_intro.encode()
-                    else: data = b'\xef\xbb\xbf'+(data.decode('utf-8-sig')+new_intro).replace('\r\n','\n').replace('\n','\r\n').encode()
+                    elif name == 'README.md': data = update_notes(data)
+                    else: data = b'\xef\xbb\xbf'+update_notes(data).decode().replace('\r\n','\n').replace('\n','\r\n').encode()
                 else: unchanged[name] = hashlib.sha256(data).hexdigest()
                 info.compress_type = zipfile.ZIP_DEFLATED
                 dst.writestr(info, data)
@@ -126,7 +135,7 @@ for row in m['packages']:
                 if info.isdir(): dst.addfile(info); continue
                 data = src.extractfile(info).read()
                 if name in changed:
-                    data = changed[name] if changed[name] is not None else data+new_intro.encode()
+                    data = changed[name] if changed[name] is not None else update_notes(data)
                 else: unchanged[name] = hashlib.sha256(data).hexdigest()
                 info.size = len(data)
                 dst.addfile(info, io.BytesIO(data))
