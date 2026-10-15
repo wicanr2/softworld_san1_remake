@@ -154,7 +154,7 @@ JSON、配樂轉成 OGG。
 ```sh
 # Ebiten 視窗：← → 選郡、0–9 指令、空輸入 Enter 切換狀態／命令、Shift＋Esc 返回
 # 存檔：其他（9）→ 儲存（2）→ 選一格；開場讀檔用 -load
-tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -faction 0 -ai enhanced -hd-assets hd-assets \
+tools/go.sh run ./cmd/san1 -root /path/to/三國演義 -font fonts/unifont.hex.gz -faction 0 -ai enhanced -hd-assets hd-assets \
     -saves ~/.local/share/san1-remake/saves
 
 # 無頭：讓電腦跑 14 個月再把畫面存成 PNG

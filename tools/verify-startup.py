@@ -142,9 +142,24 @@ try:
         files = list(saves.glob('**/REMAKE.JSON'))
         check(edition+'-default-save-beside-exe', any(p.stat().st_mtime_ns != before.get(str(p)) for p in files))
         data = json.loads(max(files, key=lambda p:p.stat().st_mtime_ns).read_text())
+        check(edition+'-saved-correct-edition', data['edition'] == edition)
         receipt.setdefault('saves', {})[edition] = {'file': str(max(files,key=lambda p:p.stat().st_mtime_ns)), 'edition': data.get('edition'), 'keys': list(data)}
         shot(wid, edition+'-saved')
         stop(proc)
+    # 明確路徑及 -load 必須優先於預設值；使用實際正常流程剛寫出的加強版存檔。
+    custom = a.out/'custom-saves'
+    shutil.copytree(a.package/'saves', custom)
+    def argument_path(path):
+        return run(['winepath', '-w', str(path)]) if a.wine else str(path)
+    proc, wid = launch(a.package, 'explicit-load', ['-edition', 'plus',
+        '-root', argument_path(a.package/'game/plus'), '-saves', argument_path(custom),
+        '-font', argument_path(a.package/'fonts/unifont.hex.gz'),
+        '-hd-assets', argument_path(a.out/'missing-optional-hd'), '-load', '1'])
+    wid = window(proc, '三國演義 remake')
+    time.sleep(.3)
+    shot(wid, 'explicit-load')
+    check('explicit-paths-load-saved-game', proc.poll() is None)
+    stop(proc)
     # 必要字型與必要原版資料分別缺失，皆須留下可關閉的錯誤視窗。
     for kind in ['font', 'game']:
         missing = a.out/('missing-'+kind)
