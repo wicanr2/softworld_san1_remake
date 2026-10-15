@@ -45,6 +45,7 @@ dosgolem 對拍  >  執行檔反組譯  >  DOSBox-X 實跑  >  說明書  >  社
 | 存檔的六個項目、年月難度存在哪 | `re/08`、`formats/05` |
 | HD 六槽正常儲存、重啟讀回及 AI 設定 | [021 §6.57](spec/021-hd-art.md#657-正常六槽存讀檔與視窗設定)、[Docker 重跑](../tools/verify-hd-save.sh)、[正常操作](../tools/verify-hd-save-inner.py)、[獨立回讀](../tools/verify-hd-save-readback.go)；限兩版三語正常樣本 CONFORMED，112/112 操作檢查、334/336 回歸通過，兩項既有前提略過 |
 | 主畫面怎麼用原版素材拼出來 | `spec/005` |
+| 三平台直接啟動的預設參數、載入畫面與啟動錯誤 | [005 啟動契約](spec/005-main-screen.md#雙擊啟動與載入視窗2026-10-15)、[啟動入口](../cmd/san1/startup.go) |
 | 主畫面左側年月的位置、空白槽與重生收據 | [spec/005 §2.2](spec/005-main-screen.md#22-左側年月直排)、[re/03 §8.1](re/03-main-program-code-map.md)、[playtest/03](playtest/03-screen-parity.md) |
 | 畫面幾列高、憑什麼是 408 不是 350 | `spec/006` |
 | 主戰場、開場詞、主選單怎麼拼 | `spec/005`（版面）、`re/05` §2.5–2.6（畫的那一端）|

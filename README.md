@@ -248,7 +248,11 @@ AI 下拉選單另說明內政、補兵、守備與出兵條件。
 ./san1 -root /path/to/三國演義1加強版 -edition plus
 ```
 
-Windows 執行 `san1.exe`。存檔預設寫在執行時工作目錄的 `saves/`；
+完整版解壓後，Windows 直接雙擊 `san1.exe`；Linux 與 macOS 執行 `san1`。
+程式預設從自身所在目錄讀取 `game/base`、`fonts` 與 `hd-assets`，
+無須透過 `.cmd` 或 shell 啟動器。加強版使用 `-edition plus`。
+載入時顯示目前階段，必要檔案缺失時顯示錯誤。
+存檔預設寫在程式旁的 `saves/`；AppImage 沿用使用者資料目錄。
 可用 `-saves` 指定其他位置。本機持有兩版原始檔時，可用
 `tools/full-local.sh <完整版號>` 產生含遊戲資料的私人完整版；
 這類封包只留在 `dist-all/<版本>/full-local/`，不會上傳 GitHub。

@@ -1738,7 +1738,7 @@ func (a *app) Layout(int, int) (int, int) {
 
 func main() {
 	showVersion := flag.Bool("version", false, "顯示完整發行版號並離開")
-	root := flag.String("root", "", "原版遊戲目錄（必填，玩家自備）")
+	root := flag.String("root", "", "原版遊戲目錄（預設執行檔旁的 game/base 或 game/plus）")
 	saveDir := flag.String("saves", "saves", "存檔目錄（remake 自己的，不寫回原版）")
 	load := flag.Int("load", 0, "開場就讀第幾個進度（1..6）；0 ＝ 開新局")
 	origLoad := flag.Int("orig-load", 0,
@@ -1775,233 +1775,253 @@ func main() {
 	} else {
 		fmt.Fprintf(os.Stderr, "不認識的語言 %q，用繁體中文\n", *lang)
 	}
-	if *root == "" {
-		fmt.Fprintln(os.Stderr, "san1: 要用 -root 指到原版目錄（本儲存庫不含原版檔案）")
-		flag.Usage()
-		os.Exit(2)
+	executable, err := os.Executable()
+	if err != nil {
+		die(err)
 	}
+	paths := defaultStartupPaths(executable, *edition)
+	explicit := map[string]bool{}
+	flag.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
+	if !explicit["root"] {
+		*root = paths.root
+	}
+	if !explicit["font"] {
+		*fontPath = paths.font
+	}
+	if !explicit["saves"] {
+		*saveDir = paths.saves
+	}
+	if !explicit["hd-assets"] {
+		*hdAssets = paths.hd
+	}
+	loadApp := func(report func(string)) (*preparedApp, error) {
+		if *root == "" {
+			return nil, fmt.Errorf("請指定原版資料目錄：-root")
+		}
+		report("讀取字型")
 
-	fh, err := os.Open(*fontPath)
-	if err != nil {
-		die(err)
-	}
-	face, err := font.ParseHexGz(fh, 16)
-	fh.Close()
-	if err != nil {
-		die(err)
-	}
-	small := loadSmallFace(*fontPath)
+		fh, err := os.Open(*fontPath)
+		if err != nil {
+			return nil, err
+		}
+		face, err := font.ParseHexGz(fh, 16)
+		fh.Close()
+		if err != nil {
+			return nil, err
+		}
+		small := loadSmallFace(*fontPath)
 
-	c, err := openContainer(*root, "DATA2")
-	if err != nil {
-		die(err)
-	}
-	ed, err := state.ParseEdition(*edition)
-	if err != nil {
-		die(err)
-	}
-	sc, err := state.LoadScenario(c, state.Slot(*slot))
-	if err != nil {
-		die(err)
-	}
-	f := *faction
-	if f < 0 {
-		act := sc.ActiveFactions()
-		if len(act) == 0 {
-			die(fmt.Errorf("劇本 %s 裡沒有在用的勢力", *slot))
-		}
-		f = act[0]
-	}
-	var s *session.Session
-	var brain ai.Brain
-	var g *game.State
-	if *origLoad > 0 {
-		s, err = session.LoadOriginal(c, *origLoad, ed, ai.Mode(*aiMode))
+		report("讀取劇本")
+		c, err := openContainer(*root, "DATA2")
 		if err != nil {
-			die(err)
+			return nil, err
 		}
-		g, brain = s.G, s.Brain
-		f = int(s.Player)
-	} else if *load > 0 {
-		s, err = session.Load(*saveDir, *load, ai.Mode(*aiMode))
+		ed, err := state.ParseEdition(*edition)
 		if err != nil {
-			die(err)
+			return nil, err
 		}
-		g, brain = s.G, s.Brain
-		f = int(s.Player)
-	} else {
-		g, err = game.NewExpanded(sc, state.FactionID(f), *difficulty, ed)
+		sc, err := state.LoadScenario(c, state.Slot(*slot))
 		if err != nil {
-			die(err)
+			return nil, err
 		}
-		if err := ai.CheckEdition(ai.Mode(*aiMode), ed); err != nil {
-			die(err)
+		f := *faction
+		if f < 0 {
+			act := sc.ActiveFactions()
+			if len(act) == 0 {
+				return nil, fmt.Errorf("劇本 %s 裡沒有在用的勢力", *slot)
+			}
+			f = act[0]
 		}
-		brain, err = ai.New(ai.Mode(*aiMode))
-		if err != nil {
-			die(err)
-		}
-		s = session.New(g, brain, state.FactionID(f))
-	}
-
-	// 接原版素材：主畫面的底圖與肖像來自玩家自己那一份 `DATA3`。
-	// **讀不到就退回文字版面**，不要讓少一個檔案變成開不起來。
-	var art *ui.ArtScreen
-	var artBattle *ui.ArtBattle
-	var titleScreen *ui.TitleScreen
-	var openArt *opening.Art
-	var marchArt *[ui.MarchArtCount]*assets.Image
-	if *useArt {
-		if c3, err := openContainer(*root, "DATA3"); err == nil {
-			// `DATA1` 給的是小飾框動畫、州郡填色圖樣與主戰場素材。
-			// 讀不到時主選單仍以靜態 MENU3 啟動，其餘各自退回文字版面。
-			c1, _ := openContainer(*root, "DATA1")
-			if titleScreen, err = ui.NewTitleScreen(c3, c1); err != nil {
-				fmt.Fprintln(os.Stderr, "san1：主選單的素材讀不進來：", err)
-				titleScreen = nil
+		var s *session.Session
+		var brain ai.Brain
+		var g *game.State
+		if *origLoad > 0 {
+			s, err = session.LoadOriginal(c, *origLoad, ed, ai.Mode(*aiMode))
+			if err != nil {
+				return nil, err
 			}
-			if art, err = ui.NewArtScreen(c3, c1, c); err != nil {
-				fmt.Fprintln(os.Stderr, "san1：原版素材讀不進來，改用文字版面：", err)
-				art = nil
+			g, brain = s.G, s.Brain
+			f = int(s.Player)
+		} else if *load > 0 {
+			s, err = session.Load(*saveDir, *load, ai.Mode(*aiMode))
+			if err != nil {
+				return nil, err
 			}
-			if art != nil {
-				if ma, err := ui.MarchArt(c3); err == nil {
-					marchArt = &ma
-				} else {
-					fmt.Fprintln(os.Stderr, "san1：大地圖戰役動畫的素材讀不進來：", err)
-				}
-			}
-			if c1 != nil {
-				if i, ok := c1.ByName(speaker.SFXName); ok {
-					sfxSamples = speaker.NewClip(c1.Data(i)).Samples()
-				}
-			}
-			if art != nil && c1 != nil {
-				if artBattle, err = ui.NewArtBattle(c1, c3); err != nil {
-					fmt.Fprintln(os.Stderr, "san1：主戰場的素材讀不進來：", err)
-					artBattle = nil
-				}
-				// 片頭的圖讀不到就不播，直接到主選單。
-				if openArt, err = opening.LoadArt(c1); err != nil {
-					fmt.Fprintln(os.Stderr, "san1：片頭的素材讀不進來：", err)
-					openArt = nil
-				} else {
-					openArt.PoemInk, openArt.PoemMask = opening.FontPoem(face)
-				}
-			}
+			g, brain = s.G, s.Brain
+			f = int(s.Player)
 		} else {
-			fmt.Fprintln(os.Stderr, "san1：沒有 DATA3，改用文字版面：", err)
-		}
-	}
-	cw, ch := ui.Cols*ui.CellW, ui.Rows*ui.CellH
-	if art != nil {
-		cw, ch = assets.ScreenW, assets.ScreenH
-	}
-	a := &app{
-		canvas:  ui.NewCanvasPx(cw, ch, face),
-		screen:  ebiten.NewImage(cw, ch),
-		s:       s,
-		dirty:   true,
-		saveDir: *saveDir,
-		art:     art,
-	}
-	a.canvas.SetSmallFace(small)
-	if *hdAssets == "" {
-		if exe, err := os.Executable(); err == nil {
-			*hdAssets = filepath.Join(filepath.Dir(exe), "hd-assets")
-		}
-	}
-	if art != nil {
-		c3, _ := openContainer(*root, "DATA3")
-		c1, _ := openContainer(*root, "DATA1")
-		pack, err := ui.LoadHDPack(*hdAssets, string(ed), map[string]*assets.Container{"DATA1": c1, "DATA3": c3, "DATA2": c})
-		if err == nil {
-			a.canvas.HD = pack
-			for _, why := range pack.Warnings {
-				fmt.Fprintln(os.Stderr, "san1 HD:", why)
+			g, err = game.NewExpanded(sc, state.FactionID(f), *difficulty, ed)
+			if err != nil {
+				return nil, err
 			}
-		}
-	}
-	a.windowBar = newWindowBar(face, small)
-	a.windowBar.mode, a.windowBar.orders = brain.Mode(), g.Options.AIOrders()
-	// 主選單那兩項字型（Issue #71）與存檔裡記的那一套。
-	a.fontDir = filepath.Dir(*fontPath)
-	a.fontCache = map[int]*font.Face{game.FontDefault: face}
-	if s != nil {
-		a.setFont(s.G.Options.Font)
-	}
-	a.artBattle = artBattle
-	a.marchArt = marchArt
-	a.c2 = c
-	a.edition = ed
-	// **先確認音訊裝置開得起來**（`audioprobe.go`）：Ebiten 把驅動開不起來
-	// 當成致命錯誤，沒有音效卡的機器會連遊戲都開不了。
-	if *music || *sound {
-		if ok, why := audioAvailable(); !ok {
-			fmt.Fprintln(os.Stderr, "san1: 沒有可用的音訊裝置，配樂與音效都關掉：", why)
-			*music, *sound = false, false
-		}
-	}
-	if *music {
-		a.jb = newJukebox(*root)
-	}
-	if *sound {
-		a.sfx = newVoicebox(*root)
-		a.sfx.SetDivisors(0, *voiceDiv)
-		// 開場就把選項接上：載進來的存檔可能本來就關著音效。
-		a.sfx.SetGates(g.Options.SoundOff, g.Options.VoiceOff)
-	}
-	// 片頭 → 主選單 → 遊戲。**指定了劇本以外的東西就直接進遊戲**：
-	// `-load`／`-orig-load` 是「我要那一局」，中間再問一次沒有道理，
-	// 而 `-title=false` 是給截圖與腳本用的。
-	if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
-		a.newMenu = func() *menu.Screen {
-			mode := ai.Mode(*aiMode)
-			if a.s != nil {
-				mode = a.s.Brain.Mode()
+			if err := ai.CheckEdition(ai.Mode(*aiMode), ed); err != nil {
+				return nil, err
 			}
-			if a.s == nil && a.windowBar != nil {
-				mode = a.windowBar.mode
+			brain, err = ai.New(ai.Mode(*aiMode))
+			if err != nil {
+				return nil, err
 			}
-			m := menu.New(c, ed, mode, *saveDir, a.jb.Len())
-			if a.windowBar != nil && a.windowBar.aiExplicit {
-				_ = m.SetAI(mode, a.windowBar.orders)
-			}
-			m.OnFont = a.setMenuFont
-			return m
+			s = session.New(g, brain, state.FactionID(f))
 		}
-		a.startTitle(titleScreen, a.newMenu())
-		if openArt != nil {
-			a.openingArt = openArt
-		}
-	}
-	if a.openingArt == nil {
-		a.jb.Play(0)
-	}
-	if *calendar == "西曆" {
-		g.Options.Calendar = game.Western
-	}
-	a.view.Calendar = g.Options.Calendar
-	if own := s.PlayerTerritory(); len(own) > 0 {
-		sort.Ints(own)
-		a.view.Sel = own[0]
-	}
 
-	// 整數倍放大：CJK 點陣字非整數縮放會糊掉（`CLAUDE.md` §3.3）。
-	if *scale < 1 {
-		*scale = 1
+		// 接原版素材：主畫面的底圖與肖像來自玩家自己那一份 `DATA3`。
+		// **讀不到就退回文字版面**，不要讓少一個檔案變成開不起來。
+		var art *ui.ArtScreen
+		var artBattle *ui.ArtBattle
+		var titleScreen *ui.TitleScreen
+		var openArt *opening.Art
+		var marchArt *[ui.MarchArtCount]*assets.Image
+		report("讀取原版素材")
+		if *useArt {
+			if c3, err := openContainer(*root, "DATA3"); err == nil {
+				// `DATA1` 給的是小飾框動畫、州郡填色圖樣與主戰場素材。
+				// 讀不到時主選單仍以靜態 MENU3 啟動，其餘各自退回文字版面。
+				c1, _ := openContainer(*root, "DATA1")
+				if titleScreen, err = ui.NewTitleScreen(c3, c1); err != nil {
+					fmt.Fprintln(os.Stderr, "san1：主選單的素材讀不進來：", err)
+					titleScreen = nil
+				}
+				if art, err = ui.NewArtScreen(c3, c1, c); err != nil {
+					fmt.Fprintln(os.Stderr, "san1：原版素材讀不進來，改用文字版面：", err)
+					art = nil
+				}
+				if art != nil {
+					if ma, err := ui.MarchArt(c3); err == nil {
+						marchArt = &ma
+					} else {
+						fmt.Fprintln(os.Stderr, "san1：大地圖戰役動畫的素材讀不進來：", err)
+					}
+				}
+				if c1 != nil {
+					if i, ok := c1.ByName(speaker.SFXName); ok {
+						sfxSamples = speaker.NewClip(c1.Data(i)).Samples()
+					}
+				}
+				if art != nil && c1 != nil {
+					if artBattle, err = ui.NewArtBattle(c1, c3); err != nil {
+						fmt.Fprintln(os.Stderr, "san1：主戰場的素材讀不進來：", err)
+						artBattle = nil
+					}
+					// 片頭的圖讀不到就不播，直接到主選單。
+					if openArt, err = opening.LoadArt(c1); err != nil {
+						fmt.Fprintln(os.Stderr, "san1：片頭的素材讀不進來：", err)
+						openArt = nil
+					} else {
+						openArt.PoemInk, openArt.PoemMask = opening.FontPoem(face)
+					}
+				}
+			} else {
+				fmt.Fprintln(os.Stderr, "san1：沒有 DATA3，改用文字版面：", err)
+			}
+		}
+		cw, ch := ui.Cols*ui.CellW, ui.Rows*ui.CellH
+		if art != nil {
+			cw, ch = assets.ScreenW, assets.ScreenH
+		}
+		a := &app{
+			canvas:  ui.NewCanvasPx(cw, ch, face),
+			s:       s,
+			dirty:   true,
+			saveDir: *saveDir,
+			art:     art,
+		}
+		a.canvas.SetSmallFace(small)
+		report("讀取高清素材")
+		if *hdAssets == "" {
+			if exe, err := os.Executable(); err == nil {
+				*hdAssets = filepath.Join(filepath.Dir(exe), "hd-assets")
+			}
+		}
+		if art != nil {
+			c3, _ := openContainer(*root, "DATA3")
+			c1, _ := openContainer(*root, "DATA1")
+			pack, err := ui.LoadHDPack(*hdAssets, string(ed), map[string]*assets.Container{"DATA1": c1, "DATA3": c3, "DATA2": c})
+			if err == nil {
+				a.canvas.HD = pack
+				for _, why := range pack.Warnings {
+					fmt.Fprintln(os.Stderr, "san1 HD:", why)
+				}
+			}
+		}
+		a.windowBar = newWindowBarCanvas(face, small)
+		a.windowBar.mode, a.windowBar.orders = brain.Mode(), g.Options.AIOrders()
+		// 主選單那兩項字型（Issue #71）與存檔裡記的那一套。
+		a.fontDir = filepath.Dir(*fontPath)
+		a.fontCache = map[int]*font.Face{game.FontDefault: face}
+		if s != nil {
+			a.setFont(s.G.Options.Font)
+		}
+		a.artBattle = artBattle
+		a.marchArt = marchArt
+		a.c2 = c
+		a.edition = ed
+		// **先確認音訊裝置開得起來**（`audioprobe.go`）：Ebiten 把驅動開不起來
+		// 當成致命錯誤，沒有音效卡的機器會連遊戲都開不了。
+		report("檢查音訊裝置")
+		if *music || *sound {
+			if ok, why := audioAvailable(); !ok {
+				fmt.Fprintln(os.Stderr, "san1: 沒有可用的音訊裝置，配樂與音效都關掉：", why)
+				*music, *sound = false, false
+			}
+		}
+		return &preparedApp{app: a, activate: func() {
+			a.screen = ebiten.NewImage(cw, ch)
+			a.windowBar.image = ebiten.NewImage(640, ui.WindowBarCanvasHeight)
+			if *music {
+				a.jb = newJukebox(*root)
+			}
+			if *sound {
+				a.sfx = newVoicebox(*root)
+				a.sfx.SetDivisors(0, *voiceDiv)
+				// 開場就把選項接上：載進來的存檔可能本來就關著音效。
+				a.sfx.SetGates(g.Options.SoundOff, g.Options.VoiceOff)
+			}
+			// 片頭 → 主選單 → 遊戲。**指定了劇本以外的東西就直接進遊戲**：
+			// `-load`／`-orig-load` 是「我要那一局」，中間再問一次沒有道理，
+			// 而 `-title=false` 是給截圖與腳本用的。
+			if *showTitle && titleScreen != nil && *load == 0 && *origLoad == 0 {
+				a.newMenu = func() *menu.Screen {
+					mode := ai.Mode(*aiMode)
+					if a.s != nil {
+						mode = a.s.Brain.Mode()
+					}
+					if a.s == nil && a.windowBar != nil {
+						mode = a.windowBar.mode
+					}
+					m := menu.New(c, ed, mode, *saveDir, a.jb.Len())
+					if a.windowBar != nil && a.windowBar.aiExplicit {
+						_ = m.SetAI(mode, a.windowBar.orders)
+					}
+					m.OnFont = a.setMenuFont
+					return m
+				}
+				a.startTitle(titleScreen, a.newMenu())
+				if openArt != nil {
+					a.openingArt = openArt
+				}
+			}
+			if a.openingArt == nil {
+				a.jb.Play(0)
+			}
+			if *calendar == "西曆" {
+				g.Options.Calendar = game.Western
+			}
+			a.view.Calendar = g.Options.Calendar
+			if own := s.PlayerTerritory(); len(own) > 0 {
+				sort.Ints(own)
+				a.view.Sel = own[0]
+			}
+
+		}}, nil
 	}
-	ebiten.SetWindowSize(cw**scale, ch**scale)
+	w := newStartupWindow(*root, *scale, loadApp)
+	ebiten.SetWindowSize(640*w.scale, 400*w.scale)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
-	lord := g.Lord(state.FactionID(f))
-	title := "三國演義 remake"
-	if lord != nil {
-		title = fmt.Sprintf("三國演義 remake ── %s（AI：%s）", lord.Name, brain.Name())
-	}
-	ebiten.SetWindowTitle(title)
-	if err := ebiten.RunGame(a); err != nil {
+	ebiten.SetWindowTitle("三國演義：正在載入")
+	if err := ebiten.RunGame(w); err != nil {
 		die(err)
 	}
+
 }
 
 // startSaving 開存檔那一格（原版「其他 → 儲存進度」，`0x1e440`）：右側面板列六筆

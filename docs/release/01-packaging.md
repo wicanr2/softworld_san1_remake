@@ -837,3 +837,29 @@ AI 重新配音試作，正式遊戲語音、設定、存檔與平台包保持�
 全部相符，完整解碼、24 kHz 單聲道、時長及非靜音檢查通過，見
 [保存驗證](../../hd-assets/audio/archive.json)。本次只保存既有樣音，聲線定案、
 全遊戲配音與人耳驗收仍待完成。原版錄音、配樂與混剪影片未納入 Git。
+
+## v.1.2.2 同版號啟動修正版，2026-10-15
+
+使用者明確要求沿用 v.1.2.2-20261014 重打本機包。這是本機同版號替換，
+不移動 tag、不修改公開 Release。新來源與每包雜湊由本版 SHA256SUMS.json
+記錄，前一批封包及清單保存在 workplace/startup-20261015/previous-packages/。
+
+啟動外殼依 [005 契約](../spec/005-main-screen.md#雙擊啟動與載入視窗2026-10-15)。
+三平台預設從程式旁找資料，原版零參數即可開啟，加強版用 -edition plus。
+載入期間顯示階段及動畫，缺少必要檔案時保留錯誤視窗。
+原有啟動器與 AppImage 使用者資料目錄存檔保持可用。
+
+重建工具 [repackage-startup.py](../../tools/repackage-startup.py) 僅在既有 release
+Docker image 內執行。輸入為已核對雜湊的舊包、新建的四架構程式及來源 commit；
+輸出先放 workplace/startup-20261015/candidate/，驗收後才替換正式檔案。
+工具對其餘封包項目逐檔核對 SHA-256，AppImage 沿用原 runtime 與 AppRun。
+--stage 下的 bin/ 應有 san1-linux-amd64、san1-windows-amd64.exe、
+san1-darwin-amd64、san1-darwin-arm64。容器內的候選建包命令：
+
+    python3 tools/repackage-startup.py --release /src/dist-all/v.1.2.2-20261014 --stage /src/workplace/startup-20261015 --source-commit <建置來源提交>
+
+驗收工具 [verify-startup.py](../../tools/verify-startup.py) 在 Docker/Xvfb 從 /tmp
+啟動完整解包目錄，以兩版正常片頭、新局及存檔確認預設參數，
+另驗載入動畫、同一視窗交接與缺字型／資料錯誤。Windows 使用 --wine，
+其結果與 Windows／macOS 原生驗收分列。入口及結果位於本版 smoke/startup-20261015/；
+正式完成聲明以該處收據為準。

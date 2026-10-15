@@ -25,9 +25,15 @@ type windowBar struct {
 }
 
 func newWindowBar(face, small *font.Face) *windowBar {
+	b := newWindowBarCanvas(face, small)
+	b.image = ebiten.NewImage(640, ui.WindowBarCanvasHeight)
+	return b
+}
+
+func newWindowBarCanvas(face, small *font.Face) *windowBar {
 	c := ui.NewCanvasPx(640, ui.WindowBarCanvasHeight, face)
 	c.SetSmallFace(small)
-	return &windowBar{state: ui.NewWindowBarState(), canvas: c, image: ebiten.NewImage(640, ui.WindowBarCanvasHeight)}
+	return &windowBar{state: ui.NewWindowBarState(), canvas: c}
 }
 
 func (a *app) barVisible() bool { return a.windowBar != nil && a.windowBar.state.Visible }
