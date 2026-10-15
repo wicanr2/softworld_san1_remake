@@ -863,3 +863,11 @@ san1-darwin-amd64、san1-darwin-arm64。容器內的候選建包命令：
 另驗載入動畫、同一視窗交接與缺字型／資料錯誤。Windows 使用 --wine，
 其結果與 Windows／macOS 原生驗收分列。入口及結果位於本版 smoke/startup-20261015/；
 正式完成聲明以該處收據為準。
+
+本輪封包及啟動抽樣已 CONFORMED。正式來源為 fc68710，九包已同版號替換；
+Linux／Wine 正常路徑、AppImage 與完整回讀收據在上述目錄，完成度以
+[驗證矩陣](../../VERIFICATION-MATRIX.md#本輪啟動修正2026-10-15)為準。
+[finalize-startup.py](../../tools/finalize-startup.py) 先核對全部收據、架構與檔案，
+再原子替換各包，最後更新清單；輸入參數為同一個 --release 與 --stage。
+舊包仍可由 previous-packages 回查。完整回歸的 UI 長套件本輪逾時，不宣稱全套通過；
+Windows／macOS 原生、FUSE、簽章與公證未驗。

@@ -9,8 +9,6 @@ import shutil
 import subprocess
 import time
 
-from PIL import Image
-
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--package', type=Path, required=True)
 p.add_argument('--out', type=Path, required=True)
@@ -21,8 +19,13 @@ assert a.out.parent.stat().st_uid == os.getuid() and not a.out.exists()
 a.out.mkdir()
 env = os.environ | {'DISPLAY': ':96', 'LIBGL_ALWAYS_SOFTWARE': '1', 'LP_NUM_THREADS': '2',
                     'WINEDEBUG': '-all', 'WINEPREFIX': '/tmp/san1-startup-wine'}
+if a.wine:
+    prefix = Path(env['WINEPREFIX'])
+    prefix.mkdir(mode=0o700, exist_ok=True)
+    assert prefix.stat().st_uid == os.getuid()
 receipt = {'passed': False, 'method': 'Wine/Xvfb' if a.wine else 'Linux/Xvfb',
            'cwd': '/tmp', 'state_injection': False, 'seed_injection': False, 'checks': [], 'captures': []}
+receipt['script_sha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 procs, logs = [], []
 
 
@@ -49,14 +52,19 @@ def window(proc, title=None, seconds=180):
 
 
 def shot(wid, name):
-    path = a.out/(name+'.png')
+    path = a.out/(name+f'-{len(receipt["captures"]):03d}.png')
     run(['import', '-window', wid, str(path)])
-    with Image.open(path) as im:
-        im.load()
-        image = im.convert('RGB')
+    width, height = map(int, run(['identify', '-format', '%w %h', str(path)]).split())
     receipt['captures'].append({'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
-                                'width': image.width, 'height': image.height})
-    return image
+                                'width': width, 'height': height})
+    return path
+
+
+def pixels(path, crop=None, size=None):
+    command = ['convert', str(path), '-alpha', 'off', '-filter', 'point']
+    if size: command += ['-resize', size]
+    if crop: command += ['-crop', crop, '+repage']
+    return subprocess.run(command+['-depth', '8', 'rgb:-'], env=env, check=True, capture_output=True, timeout=15).stdout
 
 
 def key(wid, *keys):
@@ -101,7 +109,7 @@ try:
     time.sleep(.5)
     binary = a.package/('san1.exe' if a.wine else 'san1')
     receipt['binary_sha256'] = hashlib.sha256(binary.read_bytes()).hexdigest()
-    reference = Image.open('/src/workplace/promo-source/v.1.1.1-20261010/title-reference.png').convert('RGB').crop((40,27,608,187)).tobytes()
+    reference = pixels('/src/workplace/promo-source/v.1.1.1-20261010/title-reference.png', '568x160+40+27')
     for edition in ['base', 'plus']:
         arguments = [] if edition == 'base' else ['-edition', 'plus']
         proc, wid = launch(a.package, edition, arguments)
@@ -109,15 +117,15 @@ try:
         check(edition+'-loading-visible', '載入' in name)
         first = shot(wid, edition+'-loading-1')
         deadline = time.monotonic()+5
-        while first.getpixel((10,10)) != (22,38,40) and time.monotonic() < deadline:
+        while pixels(first, '1x1+10+10') != bytes([22,38,40]) and time.monotonic() < deadline:
             time.sleep(.05)
             first = shot(wid, edition+'-loading-1')
-        check(edition+'-loading-painted', first.getpixel((10,10)) == (22,38,40))
+        check(edition+'-loading-painted', pixels(first, '1x1+10+10') == bytes([22,38,40]))
         time.sleep(.2)
         second = shot(wid, edition+'-loading-2')
         # 只比較指示條，避免將階段文字改變當成動畫證據。
         def indicator(im):
-            return im.resize((640,400), Image.Resampling.NEAREST).crop((40,215,600,219)).tobytes()
+            return pixels(im, '560x4+40+215', '640x400!')
         check(edition+'-loading-animated', indicator(first) != indicator(second))
         game_wid = window(proc, '三國演義 remake')
         check(edition+'-same-window', game_wid == wid)
@@ -128,8 +136,8 @@ try:
         while time.monotonic() < deadline:
             key(wid, 'space')
             capture = shot(wid, edition+'-boot')
-            pixels = capture.crop((40,27,608,187)).tobytes()
-            if len(pixels) == len(reference) and sum(x != y for x,y in zip(pixels,reference)) < len(reference)//100:
+            sample = pixels(capture, '568x160+40+27')
+            if len(sample) == len(reference) and sum(x != y for x,y in zip(sample,reference)) < len(reference)//100:
                 break
         else: raise RuntimeError('未到正常主選單')
         check(edition+'-normal-title', True)

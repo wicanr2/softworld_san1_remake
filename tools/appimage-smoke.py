@@ -46,7 +46,7 @@ try:
                     '-scale', '1', '-music=false', '-sound=false'], env=env, stdout=output, stderr=output, start_new_session=True)
                 procs.append(proc)
                 wid = None
-                deadline = time.monotonic() + 90
+                deadline = time.monotonic() + 180
                 while time.monotonic() < deadline:
                     assert proc.poll() is None
                     search = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', '三國演義 remake'], env=env, capture_output=True, text=True)

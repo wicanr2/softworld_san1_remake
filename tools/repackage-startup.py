@@ -25,6 +25,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--release', type=Path, required=True)
 p.add_argument('--stage', type=Path, required=True)
 p.add_argument('--source-commit', required=True)
+p.add_argument('--resume-appimage', action='store_true', help='重新核對既有候選包，僅重建 AppImage')
 a = p.parse_args()
 root = Path('/src')
 assert a.release.is_relative_to(root/'dist-all') and a.stage.is_relative_to(root/'workplace')
@@ -33,14 +34,16 @@ assert a.stage.stat().st_uid == a.release.stat().st_uid == os.getuid()
 version = a.release.name
 baseline = a.stage/'previous-packages'
 candidate = a.stage/'candidate'
-assert not candidate.exists()
+if candidate.exists() and not a.resume_appimage:
+    assert candidate.is_dir() and not candidate.is_symlink() and candidate.stat().st_uid == os.getuid()
+    shutil.rmtree(candidate)  # 僅清理尚未交付的候選輸出，保留 baseline。
 baseline.mkdir(exist_ok=True)
-candidate.mkdir()
+candidate.mkdir(exist_ok=a.resume_appimage)
 m = json.loads((a.release/'SHA256SUMS.json').read_text())
 assert m['version'] == version
 old_manifest = baseline/'SHA256SUMS.json'
-assert not old_manifest.exists()
-old_manifest.write_text(json.dumps(m, ensure_ascii=False, indent=2)+'\n')
+if old_manifest.exists(): assert json.loads(old_manifest.read_text()) == m
+else: old_manifest.write_text(json.dumps(m, ensure_ascii=False, indent=2)+'\n')
 rows, validation = [], []
 new_intro = (
     '\n直接啟動：Windows 雙擊 san1.exe；Linux／macOS 執行 san1。\n'
@@ -55,14 +58,25 @@ def update_notes(data):
     text = text.replace('-root /path/to/三國演義 -faction', '-root /path/to/三國演義 -font fonts/unifont.hex.gz -faction')
     return (text+new_intro).encode()
 
+def archive_files(path):
+    if path.suffix == '.zip':
+        with zipfile.ZipFile(path) as z:
+            assert z.testzip() is None
+            for info in z.infolist():
+                if not info.is_dir(): yield info.filename, z.read(info.filename)
+    else:
+        with tarfile.open(path, 'r:gz') as t:
+            for info in t:
+                if info.isfile(): yield info.name, t.extractfile(info).read()
+
 for row in m['packages']:
     relative = Path(row['file'])
     source = a.release/relative
     assert source.stat().st_uid == os.getuid() and source.stat().st_size == row['bytes'] and sha(source) == row['sha256']
     saved = baseline/relative
     saved.parent.mkdir(parents=True, exist_ok=True)
-    assert not saved.exists()
-    os.link(source, saved)
+    if saved.exists(): assert sha(saved) == row['sha256']
+    else: os.link(source, saved)
     if relative.suffix == '.AppImage':
         # 沿用既有、已驗證的 runtime bytes 與 AppRun。只換新程式及說明。
         offset = int(subprocess.check_output([str(saved), '--appimage-offset'], text=True).strip())
@@ -73,7 +87,9 @@ for row in m['packages']:
             tmp = Path(tmp)
             subprocess.run([str(saved), '--appimage-extract'], cwd=tmp, check=True, stdout=subprocess.DEVNULL)
             appdir = a.stage/'AppDir'
-            assert not appdir.exists()
+            if appdir.exists():
+                assert a.resume_appimage and appdir.is_dir() and not appdir.is_symlink() and appdir.stat().st_uid == os.getuid()
+                shutil.rmtree(appdir)
             shutil.move(str(tmp/'squashfs-root'), appdir)
         old_files = {str(p.relative_to(appdir)): sha(p) for p in appdir.rglob('*') if p.is_file()}
         shutil.copy2(a.stage/'bin/san1-linux-amd64', appdir/'san1')
@@ -85,12 +101,17 @@ for row in m['packages']:
         assert all(sha(appdir/name) == digest for name,digest in old_files.items() if name not in ['san1','README.md','如何開始.txt'])
         output = candidate/relative
         output.parent.mkdir(parents=True, exist_ok=True)
+        if output.exists():
+            assert a.resume_appimage and output.stat().st_uid == os.getuid()
+            output.unlink()
         with tempfile.TemporaryDirectory(prefix='san1-appimagetool-') as tmp:
             tmp = Path(tmp)
             subprocess.run(['/opt/appimage-tools/appimagetool.AppImage', '--appimage-extract'], cwd=tmp, check=True, stdout=subprocess.DEVNULL)
+            tool_env = os.environ|{'ARCH':'x86_64'}
+            tool_env.pop('SOURCE_DATE_EPOCH', None)  # appimagetool 自行傳入時間戳，避免 mksquashfs 重複指定。
             subprocess.run([str(tmp/'squashfs-root/AppRun'), '--no-appstream', '--runtime-file', str(runtime),
                             '--mksquashfs-opt', '-processors', '--mksquashfs-opt', '2',
-                            str(appdir), str(output)], check=True, env=os.environ|{'ARCH':'x86_64', 'SOURCE_DATE_EPOCH':str(m['source_date_epoch'])})
+                            str(appdir), str(output)], check=True, env=tool_env)
         output.chmod(0o755)
         rows.append(dict(row, bytes=output.stat().st_size, sha256=sha(output)))
         validation.append({'file': str(relative), 'platform': 'linux-x86_64', 'unchanged_files': len(old_files)-3,
@@ -106,6 +127,23 @@ for row in m['packages']:
         changed[name] = None
     output = candidate/relative
     output.parent.mkdir(parents=True, exist_ok=True)
+    if a.resume_appimage:
+        expected = {}
+        for name, data in archive_files(saved):
+            short = Path(*Path(name).parts[1:]).as_posix()
+            if short in changed:
+                if changed[short] is not None: data = changed[short]
+                elif short == '如何開始.txt' and source.suffix == '.zip':
+                    data = b'\xef\xbb\xbf'+update_notes(data).decode().replace('\r\n','\n').replace('\n','\r\n').encode()
+                else: data = update_notes(data)
+            expected[name] = hashlib.sha256(data).hexdigest()
+        actual = {name:hashlib.sha256(data).hexdigest() for name,data in archive_files(output)}
+        assert actual == expected
+        rows.append(dict(row, bytes=output.stat().st_size, sha256=sha(output)))
+        validation.append({'file': str(relative), 'platform': platform, 'verified_files': len(actual),
+                           'binary_sha256': sha(binary), 'passed': True})
+        print(str(relative), 'reverified', len(actual), flush=True)
+        continue
     unchanged = {}
     if source.suffix == '.zip':
         with zipfile.ZipFile(saved) as src, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED, compresslevel=1) as dst:
@@ -113,6 +151,9 @@ for row in m['packages']:
             for info in src.infolist():
                 parts = Path(info.filename).parts
                 assert parts[0] == top and '..' not in parts
+                if info.is_dir():
+                    dst.writestr(info, b'')
+                    continue
                 name = Path(*parts[1:]).as_posix()
                 data = src.read(info.filename)
                 if name in changed:

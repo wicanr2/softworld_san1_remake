@@ -2,7 +2,7 @@
 
 新 session 或對話被壓縮後，先讀這一份。規則在 `CLAUDE.md`，這裡是**現況**。
 
-## 最新收尾狀態（2026-10-14）
+## 最新收尾狀態（2026-10-15）
 
 HD 音訊保存入口：[三段 AI 重新配音樣音](hd-assets/audio/README.md)，包含 OGG、
 來源 WAV、提示詞與生成收據。已推送 GitHub 提交 `4ef5125`，全新遠端下載的十個
@@ -12,14 +12,15 @@ HD 音訊保存入口：[三段 AI 重新配音樣音](hd-assets/audio/README.md
 
 | 項目 | 目前狀態 |
 |---|---|
-| 本次操作修正版 | `v.1.2.2-20261014` 四平台本機完整版完成，來源 `5098f06`，納入 29302a7 與 1ab3998 的介面及換月提交修正。[打包契約](docs/release/01-packaging.md#v122-操作修正版完整版) 限封包、Linux 正常路徑及 Wine CONFORMED；全部收據在本版 `smoke/`。公開 Release 仍為 v.1.2.1 |
+| 本輪啟動修正 | 完成。來源 fc68710，三平台預設從程式旁讀取資料、字型與 HD，原版零參數啟動；載入階段與動畫先顯示，缺必要資料時保留錯誤。已依使用者要求沿用 v.1.2.2-20261014 重打四平台包。Linux、Windows Wine 的兩版正常新局、存讀檔及錯誤路徑通過，AppImage 全檔回讀通過。[005 契約](docs/spec/005-main-screen.md#雙擊啟動與載入視窗2026-10-15)、[正式收據](dist-all/v.1.2.2-20261014/smoke/startup-20261015/final-audit.json) |
+| 本次操作修正版 | 現行 v.1.2.2-20261014 已同版號替換為啟動修正版，來源 fc68710。前批 5098f06 的介面與換月提交修正保持；舊包與清單保存在 workplace/startup-20261015/previous-packages/。公開 Release 仍為 v.1.2.1。 |
 | 換月提交條件與 AI 文件 | 完成。已逐頁核對原版說明書第 5–6、17、22、42 頁，修正 RE 摘要的空 Enter 誤述，見 R92。主提示移除通用滑鼠確定，只點具名指令；空 Enter、一般操作與取消不耗本郡指令。README 改列強化 1–5，還原策略另列。[005 換月契約](docs/spec/005-main-screen.md#換月與明確指令提交2026-10-14) 限本節 CONFORMED。兩版末郡及指令回歸 147 通過、零略過；來源 GUI 42 項與 132 張唯一 PNG 回讀通過，收據 `workplace/command-gate-20261014-r1/final-audit.json`。已納入 v.1.2.2，本版正式包另驗四條正常新局、42 項操作與 111 張唯一 PNG |
 | 2026-10-13 介面修正 | 五項來源修正完成：上方 AI 強化說明、純鍵盤／鍵盤＋滑鼠、Enter 狀態／命令切換、換月場景先清底、自動戰爭行軍與發兵／目標郡標示。[005](docs/spec/005-main-screen.md#主畫面-enter事件清底與自動戰爭播報2026-10-13) 與 [021 選項列](docs/spec/021-hd-art.md#ai-強化說明2026-10-13) 限本輪範圍 CONFORMED。五個相關套件完整通過、UI 十項專測通過；兩版正常新局、存檔保持、自然事件及原貌／高清行軍共 38 項檢查、185 張唯一 PNG 回讀通過。收據 `workplace/ui-controls-20261013-r1/final-audit.json`。已納入 v.1.2.2 本機完整版 |
 | 公開發行 | [v.1.2.1-20261013](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.2.1-20261013) 已發布並設為 latest，四個引擎包與公開雜湊清單共五附件全部下載、大小及 SHA-256 核對通過，San5 媒體與本機完整版不入附件。README 使用[原有 346 人 HD 總覽](docs/images/hd-generals-base-overview.png)，251 張肖像。使用者已明確確認 220 張 San5 HD 重繪公開保留 public repo，原圖只留本機；來源 b572db2 已推送。標籤固定在引擎建包提交 60e2663。見[發布契約與收據](docs/release/01-packaging.md#v121-公開引擎包與-repo-展示範圍) |
 | San5 重繪首次進版 | `v.1.2.1-20261013` 首次完整收錄核准的 San5 原圖 HD 重繪，v.1.2.2 沿用全部素材。包內 README 展示張角原貌／HD 與兩張 566 人總覽，14 張圖片齊全；[前版契約](docs/release/01-packaging.md#v121-san5-重繪完整版)保留 |
 | San5 肖像重繪 | 220／220 張完成，Codex 已查看全部原圖／HD 對照；使用者先確認[四張畫風樣張](workplace/asset-overviews/san5-hd-redraw-20261012-r1/san5-hd-comparison-r1.png)。440 張來源參考、566 格總覽及原有 346 格不變均通過獨立核對。兩版各 452＋220 正式載入零警告，正常新局、張角 HD 人物卡與格式 2 存讀檔通過，33 張唯一 PNG 回讀。已交付[新版總覽及完整本機素材附包](docs/release/01-packaging.md#san5-重繪本機素材附包)；[逐張來源與提示詞](workplace/asset-overviews/san5-hd-redraw-20261012-r1/progress.json)、[匯入](tools/import-san5-redraw.py)及[組裝工具](tools/package-san5-redraw.py)可接續使用。022 重繪節限本次範圍 CONFORMED |
-| 現行交付 | 本機 `v.1.2.2-20261014`，Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon 各一 tar.gz；含兩版原始資料、220 張重繪、向量字、規格 022、格式 2 存檔、總覽、README 截圖及操作修正。公開 Release 保持 v.1.2.1，只有四個引擎包與公開清單；前版及素材附包保留 |
-| 封包驗證 | v.1.2.2 九個封包內容、架構與 SHA-256 通過；AppImage 全部 667 個高清檔、66 個原版檔及九個字型／授權檔獨立回讀。正式包換月 42 項、張角新局 14 項正常功能、HD 逐像素核對及格式 2 存讀檔通過；148 張唯一 GUI、全部 154 張 smoke PNG 完整。Linux 兩版 AppRun、Windows 兩版 Wine 通過。擴充資料與既有 oracle 沿用規格 022，本輪未重跑原版對拍 |
+| 現行交付 | 本機 v.1.2.2-20261014 啟動修正版，Linux AppImage、Windows x64 ZIP、macOS Intel／Apple Silicon 各一 tar.gz；仍含兩版資料、HD、向量字與完整格式 2 存檔能力。直接啟動主程式預設原版，加強版用 -edition plus。公開 Release 保持 v.1.2.1。 |
+| 封包驗證 | 現行九包內容、架構、版號及 SHA-256 通過；Linux 與 Windows Wine 各十九項啟動／正常新局／存讀檔／錯誤檢查通過，長時間 HD 讀取動畫另驗。AppImage 兩版 AppRun 與全部 795 檔回讀通過。前批操作回歸保持原收據，不列為本輪重跑。數字與範圍見驗證矩陣。 |
 | 配樂 | 每拍刻度改讀表頭 240，補長延遲與速度事件；片頭使用 MUSV，標題使用 MUS 第 0 首 |
 | 配樂驗證 | 兩版原版開機選曲觀測通過；六首時間軸通過；兩版片頭、標題四段正式錄音完整匹配參考 PCM |
 | 滑鼠 | 選單、人物、郡、戰場與數字鍵盤已接入；兩版原貌及高清正常開局、查閱、越界取消與存檔通過，基本版紮寨及行軍通過 |
@@ -30,7 +31,7 @@ HD 音訊保存入口：[三段 AI 重新配音樣音](hd-assets/audio/README.md
 | README 最新截圖 | 已從 v.1.2.2 Linux 正式完整包正常操作重拍十張：原貌／HD 主畫面與戰場、AI 強化說明、操作模式、原貌／HD 楷書與隸書。18 項抓圖檢查及十張來源雜湊通過，公開 README 全部 13 張引用圖片完整。[來源索引](docs/images/readme-screenshots.json)記錄版號、二進位、封包、尺寸及重拍工具；武將總覽仍為原有 346 人 |
 | HD 向量字體 | 使用者已選定[樣張](docs/images/hd-font-approved-20261011.png)並確認「用向量字重新製作」。王漢宗顏楷／中隸書已接入 HD 選單、人物卡及對白，並修正新局遺失字體設定；32 組縮放、12 組正常畫面、4 組存讀檔及 189 張唯一 PNG 獨立回讀通過。1,842 項不重複回歸通過、27 略過；[021 §6.65](docs/spec/021-hd-art.md#665-hd-楷書與隸書的向量文字) 限本節 CONFORMED。已納入 v.1.2.0 本機包，既有套件、tag／Release 保持 |
 | 擴充武將 | [規格 022](docs/spec/022-expanded-roster.md) 限資料、規則、介面、存檔及素材組裝 CONFORMED。兩版六劇本新增 220／207／198／180／175／168 人及 8／5／1／0／0／1 個勢力；新局、15 歲登場、玩家選擇、來源識別、缺圖回退與格式 2 完整快照已接通。合併回歸 1,891 項通過、27 項略過；特殊人物登用、任命與兩種戰鬥、兩版六劇本 36 個月 AI 及存讀檔通過。戰敗後繼承已改為全部俘虜處置完成後執行，待選繼承人暫停推進，絕嗣正常結束；格式 2 拒收敵方或已故君主引用，四項原版 oracle 通過。兩版 001／002／006 正常 GUI 通過，001 採難度 1，002／006 採難度 5；張角及徹里吉高清人物卡逐像素相符。220／220 張原創肖像及生成紀錄完整，兩版正式載入零警告；見 [素材入口](hd-assets/README.md)及[新增圖鑑](docs/hd-generals.md#新增人物)。來源 b92f510 已提交，v.1.2.0 四平台本機包完成；既有套件及 Release 保持 |
-| 本輪交付範圍 | `v.1.2.2-20261014` 四平台完整版及 README 現況更新；[打包契約](docs/release/01-packaging.md#v122-操作修正版完整版) 限本輪範圍 CONFORMED。重複暫存清理記錄在本版 `smoke/cleanup.json`。舊版、附包、tag／Release 及影片保持 |
+| 本輪交付範圍 | 同版號重建四平台啟動修正版，原始素材與規則不變；舊包、舊收據、tag／Release 與影片保持。完成收據在 dist-all/v.1.2.2-20261014/smoke/startup-20261015/，建包與驗收入口見 docs/release/01-packaging.md。 |
 | 未驗範圍 | Windows／macOS 原生試玩、人耳聽辨、FUSE 掛載、簽章及公證 |
 
 契約與收據入口：[配樂勘誤](docs/spec/009-music.md#7-曲檔時序與片頭曲勘誤2026-10-11)、
@@ -38,11 +39,12 @@ HD 音訊保存入口：[三段 AI 重新配音樣音](hd-assets/audio/README.md
 [正式封包驗收](docs/release/01-packaging.md#v120-擴充武將與總覽打包契約)。
 
 現行完整版入口為 `dist-all/v.1.2.2-20261014/`，總清單是 `SHA256SUMS.json`。
-引擎與完整包工具來源均為 `5098f062944ed46f0b5887b07399b6da8f7c20dd`。
-四平台已納入操作與換月提交修正、220 張核准重繪、README 全部 14 張圖片及兩張
-566 人總覽。九個封包、兩版正常 GUI、AppRun、Wine 及獨立回讀通過，
-收據在本版 `smoke/`。公開 Release 保持 v.1.2.1；舊版及素材附包保留，
-以下 v.1.2.0 記錄為歷史證據。
+目前引擎來源為 fc68710b534cbf3e583af0594a52b68b9a220a11，四平台已加入預設路徑與
+載入視窗，保留前批操作修正、220 張核准重繪及完整素材。新收據在本版
+smoke/startup-20261015/，前批來源 5098f06 的包與清單保存在
+workplace/startup-20261015/previous-packages/。本輪完整 Go 回歸在未修改的 UI 長套件
+遭外層八分鐘逾時，沒有測試失敗；入口套件與正常 GUI 已完成，不宣稱全套通過。
+公開 Release 保持 v.1.2.1；以下較早版本記錄為歷史證據。
 
 先前 San5 重繪附包為 `full-local/san1-v.1.2.0-20261012-san5-hd-redraw-20261013-r1-local.zip`，
 SHA-256 `c5224b34dbab59571b2e2078601dc2e38f41ddc73e76d8eb490fca5c18794419`。
