@@ -21,6 +21,10 @@ Linux 遠端重建執行檔 SHA-256 與正常玩家路徑使用的版本相同�
 另盤得 895 份與 GitHub 素材相同的工作副本，按硬連結計算可回收 789,958,656 bytes；
 逐檔候選在 workplace/rebuild-audit-20261028/cleanup-candidates.json，本輪僅盤點。
 另有約 0.10 GB 舊 FFmpeg 下載包，舊影片重製尚未重跑；現行約 5.09 GB 正式封包保留。
+使用者後續裁定本機完整版只留最後一版，規則見
+[封包保留政策](docs/release/01-packaging.md#本機封包清理現況2026-10-28)。
+已核對只有 v.1.2.2-20261014 存有五個完整版封包，17 個清單項目雜湊全部相符；
+舊目錄僅留約 0.4 MB 清單及驗收記錄。[本機保留查核收據](workplace/rebuild-audit-20261028/latest-full-retention.json)。
 
 ## 本機資料清理（2026-10-28）
 
