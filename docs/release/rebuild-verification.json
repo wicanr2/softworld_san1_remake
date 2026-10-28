@@ -1,0 +1,301 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "repository": "https://github.com/wicanr2/softworld_san1_remake",
+  "verified_source_commit": "efaf9218c0f352c8b6cd7253771f656a39556d09",
+  "remote_checkout_clean": true,
+  "assets": {
+    "files": 681,
+    "png": 657,
+    "bytes": 811595925,
+    "manifest": "docs/release/rebuild-assets.json",
+    "manifest_sha256": "088567d894f30563278c86dc1cd2a30b20a1cbb05bf926551c8afa28cb76f6ce",
+    "local_vs_remote_sha256": "all_equal",
+    "original_DOS_data_in_repository": false
+  },
+  "toolchain": {
+    "go": "go1.26.7",
+    "linux_base_digest": "sha256:e8c859f5632dcfde7b32d2012b4351728f6437930887c2f6a91ea242459e5514",
+    "debian_snapshot": "20261010T000000Z",
+    "macos_sdk_digest": "sha256:c38b73a6ec52f913c354c3931a472a8645337ca3545ad719af112a9c03b7df8a",
+    "network_during_compilation": "none",
+    "verified_images": {
+      "san1-go:1.26.7-ebiten2.9.9-r1": "sha256:aac706e67af842cea8a6ad6011a1828161722381e1d7e2f21398aa31f28c07a6",
+      "san1-macos:1.26.7-sdk15.5-r1": "sha256:6bfd425aa5a48bccd7b32eb435dc42021c00fec94dba700545494d50d268b662"
+    }
+  },
+  "artifacts": [
+    {
+      "target": "linux-amd64",
+      "bytes": 16339584,
+      "sha256": "db786fe4dae3e55e8e16073086ced4a7f05b3aba82192c03e163e7f3de1a3d2d",
+      "file_type": "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=60233db2ef0299802145d0c8d49108df3446a86a, for GNU/Linux 3.2.0, with debug_info, not stripped",
+      "go_build_info": [
+        "\tpath\tgithub.com/wicanr2/softworld_san1_remake/cmd/san1",
+        "\tmod\tgithub.com/wicanr2/softworld_san1_remake\t(devel)\t",
+        "\tdep\tgithub.com/ebitengine/hideconsole\tv1.0.0\th1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=",
+        "\tdep\tgithub.com/ebitengine/oto/v3\tv3.4.0\th1:br0PgASsEWaoWn38b2Goe7m1GKFYfNgnsjSd5Gg+/bQ=",
+        "\tdep\tgithub.com/ebitengine/purego\tv0.9.0\th1:mh0zpKBIXDceC63hpvPuGLiJ8ZAa3DfrFTudmfi8A4k=",
+        "\tdep\tgithub.com/hajimehoshi/ebiten/v2\tv2.9.9\th1:JdDag6Ndj12iD4lxQGG8kbsrh7ssj4Sbzth6r929H/M=",
+        "\tdep\tgithub.com/jezek/xgb\tv1.1.1\th1:bE/r8ZZtSv7l9gk6nU0mYx51aXrvnyb44892TwSaqS4=",
+        "\tdep\tgolang.org/x/image\tv0.31.0\th1:mLChjE2MV6g1S7oqbXC0/UcKijjm5fnJLUYKIYrLESA=",
+        "\tdep\tgolang.org/x/sync\tv0.17.0\th1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=",
+        "\tdep\tgolang.org/x/sys\tv0.36.0\th1:KVRy2GtZBrk1cBYA7MKu5bEZFxQk4NIDV6RLVcC8o0k=",
+        "\tdep\tgolang.org/x/text\tv0.29.0\th1:1neNs90w9YzJ9BocxfsQNHKuAT4pkghyXc4nhZ6sJvk=",
+        "\tbuild\t-buildmode=exe",
+        "\tbuild\t-compiler=gc",
+        "\tbuild\t-trimpath=true",
+        "\tbuild\tDefaultGODEBUG=containermaxprocs=0,cryptocustomrand=1,decoratemappings=0,tlssecpmlkem=0,tlssha1=1,updatemaxprocs=0,urlstrictcolons=0,x509sha256skid=0",
+        "\tbuild\tCGO_ENABLED=1",
+        "\tbuild\tGOARCH=amd64",
+        "\tbuild\tGOOS=linux",
+        "\tbuild\tGOAMD64=v1"
+      ]
+    },
+    {
+      "target": "windows-amd64",
+      "bytes": 16019456,
+      "sha256": "fd298dd18cb51870cdf25fae416d5ef93410bdbb1eb8a0040d67caf589f82a81",
+      "file_type": "PE32+ executable (console) x86-64, for MS Windows, 16 sections",
+      "go_build_info": [
+        "\tpath\tgithub.com/wicanr2/softworld_san1_remake/cmd/san1",
+        "\tmod\tgithub.com/wicanr2/softworld_san1_remake\t(devel)\t",
+        "\tdep\tgithub.com/ebitengine/hideconsole\tv1.0.0\th1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=",
+        "\tdep\tgithub.com/ebitengine/oto/v3\tv3.4.0\th1:br0PgASsEWaoWn38b2Goe7m1GKFYfNgnsjSd5Gg+/bQ=",
+        "\tdep\tgithub.com/ebitengine/purego\tv0.9.0\th1:mh0zpKBIXDceC63hpvPuGLiJ8ZAa3DfrFTudmfi8A4k=",
+        "\tdep\tgithub.com/hajimehoshi/ebiten/v2\tv2.9.9\th1:JdDag6Ndj12iD4lxQGG8kbsrh7ssj4Sbzth6r929H/M=",
+        "\tdep\tgolang.org/x/image\tv0.31.0\th1:mLChjE2MV6g1S7oqbXC0/UcKijjm5fnJLUYKIYrLESA=",
+        "\tdep\tgolang.org/x/sync\tv0.17.0\th1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=",
+        "\tdep\tgolang.org/x/sys\tv0.36.0\th1:KVRy2GtZBrk1cBYA7MKu5bEZFxQk4NIDV6RLVcC8o0k=",
+        "\tdep\tgolang.org/x/text\tv0.29.0\th1:1neNs90w9YzJ9BocxfsQNHKuAT4pkghyXc4nhZ6sJvk=",
+        "\tbuild\t-buildmode=exe",
+        "\tbuild\t-compiler=gc",
+        "\tbuild\t-trimpath=true",
+        "\tbuild\tDefaultGODEBUG=containermaxprocs=0,cryptocustomrand=1,decoratemappings=0,tlssecpmlkem=0,tlssha1=1,updatemaxprocs=0,urlstrictcolons=0,x509sha256skid=0",
+        "\tbuild\tCGO_ENABLED=0",
+        "\tbuild\tGOARCH=amd64",
+        "\tbuild\tGOOS=windows",
+        "\tbuild\tGOAMD64=v1"
+      ]
+    },
+    {
+      "target": "darwin-amd64",
+      "bytes": 16113368,
+      "sha256": "d365201622e4e31f73f424685bbcb260873844eb3a344037cfc8f466b0b5cae0",
+      "file_type": "Mach-O 64-bit x86_64 executable, flags:<NOUNDEFS|DYLDLINK|TWOLEVEL|PIE>",
+      "go_build_info": [
+        "\tpath\tgithub.com/wicanr2/softworld_san1_remake/cmd/san1",
+        "\tmod\tgithub.com/wicanr2/softworld_san1_remake\t(devel)\t",
+        "\tdep\tgithub.com/ebitengine/hideconsole\tv1.0.0\th1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=",
+        "\tdep\tgithub.com/ebitengine/oto/v3\tv3.4.0\th1:br0PgASsEWaoWn38b2Goe7m1GKFYfNgnsjSd5Gg+/bQ=",
+        "\tdep\tgithub.com/ebitengine/purego\tv0.9.0\th1:mh0zpKBIXDceC63hpvPuGLiJ8ZAa3DfrFTudmfi8A4k=",
+        "\tdep\tgithub.com/hajimehoshi/ebiten/v2\tv2.9.9\th1:JdDag6Ndj12iD4lxQGG8kbsrh7ssj4Sbzth6r929H/M=",
+        "\tdep\tgolang.org/x/image\tv0.31.0\th1:mLChjE2MV6g1S7oqbXC0/UcKijjm5fnJLUYKIYrLESA=",
+        "\tdep\tgolang.org/x/sync\tv0.17.0\th1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=",
+        "\tdep\tgolang.org/x/text\tv0.29.0\th1:1neNs90w9YzJ9BocxfsQNHKuAT4pkghyXc4nhZ6sJvk=",
+        "\tbuild\t-buildmode=exe",
+        "\tbuild\t-compiler=gc",
+        "\tbuild\t-trimpath=true",
+        "\tbuild\tDefaultGODEBUG=containermaxprocs=0,cryptocustomrand=1,decoratemappings=0,tlssecpmlkem=0,tlssha1=1,updatemaxprocs=0,urlstrictcolons=0,x509sha256skid=0",
+        "\tbuild\tCGO_ENABLED=1",
+        "\tbuild\tGOARCH=amd64",
+        "\tbuild\tGOOS=darwin",
+        "\tbuild\tGOAMD64=v1"
+      ]
+    },
+    {
+      "target": "darwin-arm64",
+      "bytes": 15078834,
+      "sha256": "b18ad3306ead7b8ae4b65c2a3d3e2cd0b4bc4c83eb3abb6aaa862e3cb28271a3",
+      "file_type": "Mach-O 64-bit arm64 executable, flags:<NOUNDEFS|DYLDLINK|TWOLEVEL|PIE>",
+      "go_build_info": [
+        "\tpath\tgithub.com/wicanr2/softworld_san1_remake/cmd/san1",
+        "\tmod\tgithub.com/wicanr2/softworld_san1_remake\t(devel)\t",
+        "\tdep\tgithub.com/ebitengine/hideconsole\tv1.0.0\th1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=",
+        "\tdep\tgithub.com/ebitengine/oto/v3\tv3.4.0\th1:br0PgASsEWaoWn38b2Goe7m1GKFYfNgnsjSd5Gg+/bQ=",
+        "\tdep\tgithub.com/ebitengine/purego\tv0.9.0\th1:mh0zpKBIXDceC63hpvPuGLiJ8ZAa3DfrFTudmfi8A4k=",
+        "\tdep\tgithub.com/hajimehoshi/ebiten/v2\tv2.9.9\th1:JdDag6Ndj12iD4lxQGG8kbsrh7ssj4Sbzth6r929H/M=",
+        "\tdep\tgolang.org/x/image\tv0.31.0\th1:mLChjE2MV6g1S7oqbXC0/UcKijjm5fnJLUYKIYrLESA=",
+        "\tdep\tgolang.org/x/sync\tv0.17.0\th1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=",
+        "\tdep\tgolang.org/x/text\tv0.29.0\th1:1neNs90w9YzJ9BocxfsQNHKuAT4pkghyXc4nhZ6sJvk=",
+        "\tbuild\t-buildmode=exe",
+        "\tbuild\t-compiler=gc",
+        "\tbuild\t-trimpath=true",
+        "\tbuild\tDefaultGODEBUG=containermaxprocs=0,cryptocustomrand=1,decoratemappings=0,tlssecpmlkem=0,tlssha1=1,updatemaxprocs=0,urlstrictcolons=0,x509sha256skid=0",
+        "\tbuild\tCGO_ENABLED=1",
+        "\tbuild\tGOARCH=arm64",
+        "\tbuild\tGOOS=darwin",
+        "\tbuild\tGOARM64=v8.0"
+      ]
+    }
+  ],
+  "linux_version": "dev",
+  "normal_player_path": {
+    "passed": true,
+    "checks": 19,
+    "check_results": [
+      {
+        "name": "base-loading-visible",
+        "passed": true
+      },
+      {
+        "name": "base-loading-painted",
+        "passed": true
+      },
+      {
+        "name": "base-loading-animated",
+        "passed": true
+      },
+      {
+        "name": "base-same-window",
+        "passed": true
+      },
+      {
+        "name": "base-normal-title",
+        "passed": true
+      },
+      {
+        "name": "base-default-save-beside-exe",
+        "passed": true
+      },
+      {
+        "name": "base-saved-correct-edition",
+        "passed": true
+      },
+      {
+        "name": "plus-loading-visible",
+        "passed": true
+      },
+      {
+        "name": "plus-loading-painted",
+        "passed": true
+      },
+      {
+        "name": "plus-loading-animated",
+        "passed": true
+      },
+      {
+        "name": "plus-same-window",
+        "passed": true
+      },
+      {
+        "name": "plus-normal-title",
+        "passed": true
+      },
+      {
+        "name": "plus-default-save-beside-exe",
+        "passed": true
+      },
+      {
+        "name": "plus-saved-correct-edition",
+        "passed": true
+      },
+      {
+        "name": "explicit-paths-load-saved-game",
+        "passed": true
+      },
+      {
+        "name": "missing-font-error-stays-visible",
+        "passed": true
+      },
+      {
+        "name": "missing-font-esc-exits",
+        "passed": true
+      },
+      {
+        "name": "missing-game-error-stays-visible",
+        "passed": true
+      },
+      {
+        "name": "missing-game-esc-exits",
+        "passed": true
+      }
+    ],
+    "captures_verified": 112,
+    "representative_captures_retained": 13,
+    "private_inputs": [
+      "legally_held_original_base_and_plus_data",
+      "explicit_normal_title_reference_image"
+    ],
+    "post_remote_build_binary_sha256_matches": true
+  },
+  "tests": {
+    "passed": 52,
+    "skipped": 11,
+    "failed": 0,
+    "skipped_tests": [
+      "TestBattleFieldMatchesTheOriginal",
+      "TestUnitFlagsSitOnCells",
+      "TestFlagComplement",
+      "TestCampMaskMatchesTheOriginal",
+      "TestDosboxXCursorIsACurFrame",
+      "TestDosgolemMenuMatchesDosboxX",
+      "TestTrademarkMatchesDosboxX",
+      "TestMainScreenMatchesTheOriginal",
+      "TestMenuScreenMatchesTheOriginal",
+      "TestMainPanelsMatchTheOriginal",
+      "TestTitleArtMatchesTheOriginal"
+    ],
+    "skip_scope": "original_capture_reference_prerequisites_not_supplied",
+    "original_oracle_parity_rerun": false
+  },
+  "cleanup_inventory": {
+    "action": "inventory_only",
+    "github_identical_workplace_files": 895,
+    "github_identical_workplace_unique_inodes": 565,
+    "github_identical_workplace_reclaimable_bytes": 789958656,
+    "other_items": [
+      {
+        "path": "workplace/promo-toolchain-ffmpeg5.1.9-r1",
+        "allocated_bytes": 101572608,
+        "status": "old FFmpeg download cache; version available in pinned new toolchain; old video regeneration not rerun"
+      },
+      {
+        "path": "dist-all/v.1.2.2-20261014",
+        "allocated_bytes": 5088387072,
+        "status": "preserve current formal full-local packages; original data and private inputs are not in GitHub"
+      }
+    ]
+  },
+  "limits": [
+    "Windows and macOS native playtest not rerun",
+    "ARM64 Docker host not tested",
+    "No signing or notarization",
+    "Current formal AppImage and full-local package regeneration not rerun",
+    "Original DOS data and San5 source images remain private"
+  ],
+  "reproduction_level": "functional rebuild; no claim of bit-identical historical archives or OCI images",
+  "audit_temporary_cleanup": {
+    "removed": [
+      {
+        "directory": "workplace/rebuild-audit-20261028/gui-package",
+        "allocated_bytes_before": 16797696,
+        "reason": "newly_created_clone_build_cache_and_GUI_staging",
+        "source_and_binary_hashes_saved": true
+      },
+      {
+        "directory": "workplace/rebuild-audit-20261028/remote",
+        "allocated_bytes_before": 2584596480,
+        "reason": "newly_created_clone_build_cache_and_GUI_staging",
+        "source_and_binary_hashes_saved": true
+      }
+    ],
+    "existing_project_data_deleted": false,
+    "representative_captures_retained": 13
+  },
+  "workspace_after_audit_bytes": 10841767936,
+  "filesystem_hygiene": {
+    "uid": 1000,
+    "gid": 1000,
+    "root_owned_or_md_directories": []
+  },
+  "docker_cleanup": {
+    "observed_project_containers_after_build_test_and_staging_cleanup": [],
+    "receipt_writer_auto_remove": true,
+    "retained_toolchain_images": [
+      "san1-go:1.26.7-ebiten2.9.9-r1",
+      "san1-macos:1.26.7-sdk15.5-r1"
+    ],
+    "prune_or_rmi_executed": false
+  }
+}

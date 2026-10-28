@@ -13,11 +13,14 @@ GitHub 全新副本 7021a13 的 671 個 HD／配音檔與 10 個字型／授權�
 已補入專案的 [Go 工具鏈](docker/Dockerfile.build)、[macOS 工具鏈](docker/Dockerfile.macos)、
 [工具鏈建置入口](tools/build-toolchain.sh)與[桌面建置入口](tools/build-desktop.sh)，
 取代建置入口對已退役共用 image 的依賴。新電腦步驟見 [SETUP.md](SETUP.md)。
-四平台候選均重建成功；Linux 兩版正常新局、存讀檔、載入與錯誤視窗共 19 項通過。
+已推送 efaf921，隔離副本從 GitHub 重新檢出後工作樹乾淨，四平台再次重建成功。
+Linux 遠端重建執行檔 SHA-256 與正常玩家路徑使用的版本相同；兩版新局、存讀檔、載入與錯誤視窗共 19 項通過。
 字型與素材測試 52 通過、11 項原版截圖前提略過，沒有失敗，不宣稱原版對拍重跑。
-下一步提交工具後由遠端重新檢出再驗。原版 DOS 資料、San5 原圖與說明書維持本機保存規則。
+公開驗證收據在 [rebuild-verification.json](docs/release/rebuild-verification.json)。
+原版 DOS 資料、San5 原圖、說明書與唯一母圖維持本機保存規則，跨機仍須另帶合法原版資料。
 另盤得 895 份與 GitHub 素材相同的工作副本，按硬連結計算可回收 789,958,656 bytes；
 逐檔候選在 workplace/rebuild-audit-20261028/cleanup-candidates.json，本輪僅盤點。
+另有約 0.10 GB 舊 FFmpeg 下載包，舊影片重製尚未重跑；現行約 5.09 GB 正式封包保留。
 
 ## 本機資料清理（2026-10-28）
 

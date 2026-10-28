@@ -5,6 +5,8 @@
 跨機重建見 [SETUP](../SETUP.md)、[素材雜湊清單](release/rebuild-assets.json)及
 [素材核對工具](../tools/verify-rebuild-assets.py)；建置由
 [專案工具鏈](../tools/build-toolchain.sh)與[桌面建置入口](../tools/build-desktop.sh)執行。
+GitHub 乾淨檢出後的四平台重建、素材核對及清理候選摘要見
+[重建驗證收據](release/rebuild-verification.json)。
 **待辦的唯一權威是 GitHub repository 的 open Issues**；`worklist.json` 與
 `VERIFICATION-MATRIX.md` 只保存歷史線索，不得用來推翻 Issue 的最新內文、
 留言或狀態。這一份是「哪份文件放什麼」。

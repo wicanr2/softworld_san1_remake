@@ -76,3 +76,4 @@ bash tools/prepare-go-cache.sh
 Docker build context 由 [.dockerignore](.dockerignore)限縮到鎖檔與 Dockerfile，
 不包含原版資料、素材母圖或交付包。原版資料與正式交付勿因快取可重建而一起刪除。
 本機驗證結果與後續清理候選見 [CONTEXT](CONTEXT.md)及 [WORKLOG](WORKLOG.md)。
+四平台遠端重建與素材核對的實際範圍見 [驗證收據](docs/release/rebuild-verification.json)。
