@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# 快取被移除後，以專案鎖定的 go.mod／go.sum 在 Docker 補回依賴。
+# 由鎖版工具鏈的模組來源離線恢復快取，依 go.mod／go.sum 核對。
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-for directory in "$ROOT" "$ROOT/workplace"; do test -d "$directory"; done
+test -d "$ROOT"
 for file in go.mod go.sum; do test -f "$ROOT/$file"; done
-exec timeout 5m docker run --rm --network bridge --memory 2g --cpus 2 --pids-limit 128 \
+IMAGE="${SAN1_GO_IMAGE:-san1-go:1.26.7-ebiten2.9.9-r1}"
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  bash "$ROOT/tools/build-toolchain.sh" build
+fi
+exec timeout 5m docker run --rm --platform linux/amd64 --network none --name "san1-cache-$$" --memory 2g --cpus 2 --pids-limit 128 \
   --log-opt max-size=10m --log-opt max-file=3 --user "$(id -u):$(id -g)" \
-  --mount "type=bind,src=$ROOT,dst=/src,readonly" \
-  --mount "type=bind,src=$ROOT/workplace,dst=/src/workplace" \
+  --mount "type=bind,src=$ROOT,dst=/src" \
   -e HOME=/tmp -e GOWORK=off -e GOTOOLCHAIN=local -e GOCACHE=/tmp/gocache \
-  -e GOMODCACHE=/src/workplace/gomodcache -e GOPROXY=https://proxy.golang.org \
-  -e GOSUMDB=sum.golang.org -w /tmp "${SAN1_GO_IMAGE:-rich2-go-ebiten:latest}" bash -c '
+  -e GOMODCACHE=/src/workplace/gomodcache -e GOPROXY=file:///go/pkg/mod/cache/download \
+  -e GOSUMDB=off -w /tmp "$IMAGE" bash -c '
     set -euo pipefail
     for path in /src/workplace /src/workplace/gomodcache /src/workplace/gocache; do
       if test -e "$path" && test "$(stat -c %u:%g "$path")" != "$(id -u):$(id -g)"; then

@@ -1,0 +1,26 @@
+# 專案 Go／Ebiten 工具鏈；重建步驟見 SETUP.md。
+FROM golang:1.26.7-bookworm@sha256:e8c859f5632dcfde7b32d2012b4351728f6437930887c2f6a91ea242459e5514
+ARG DEBIAN_SNAPSHOT=20261010T000000Z
+RUN rm -f /etc/apt/sources.list.d/debian.sources \
+    && printf 'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/%s/ bookworm main\ndeb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/%s/ bookworm-security main\n' "$DEBIAN_SNAPSHOT" "$DEBIAN_SNAPSHOT" > /etc/apt/sources.list \
+    && apt-get -o Acquire::Check-Valid-Until=false update \
+    && apt-get install -y --no-install-recommends \
+       gcc libc6-dev pkg-config libgl1-mesa-dev libgl1-mesa-dri libasound2-dev \
+       libx11-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev \
+       xvfb xauth xdotool x11-utils python3 python3-pil python3-numpy \
+       ffmpeg imagemagick zip unzip rsync file squashfs-tools \
+    && mkdir -p /opt/san1-toolchain \
+    && dpkg-query -W -f='${Package}\t${Version}\n' > /opt/san1-toolchain/packages.tsv \
+    && rm -rf /var/lib/apt/lists/* \
+    && install -d -o 1000 -g 1000 /src /go/pkg/mod /opt/san1-toolchain
+COPY --chown=1000:1000 go.mod go.sum /opt/san1-toolchain/
+USER 1000:1000
+WORKDIR /opt/san1-toolchain
+ENV GOTOOLCHAIN=local GOWORK=off GOCACHE=/tmp/gocache LANG=C.UTF-8 LC_ALL=C.UTF-8
+RUN GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org go mod download \
+    && go mod verify && test "$(go env GOVERSION)" = go1.26.7
+ENV GOPROXY=off GOSUMDB=off
+LABEL org.opencontainers.image.title="San1 Go/Ebiten build toolchain" \
+      org.opencontainers.image.version="1.26.7-ebiten2.9.9-r1"
+WORKDIR /src
+CMD ["bash"]

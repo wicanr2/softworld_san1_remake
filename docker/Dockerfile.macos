@@ -1,0 +1,18 @@
+# SDK 與映像只供本機使用，不隨 repo 或 Release 散布。見 SETUP.md。
+ARG SAN1_GO_BASE=san1-go:1.26.7-ebiten2.9.9-r1
+FROM ${SAN1_GO_BASE} AS gobase
+FROM crazymax/osxcross:15.5-debian@sha256:c38b73a6ec52f913c354c3931a472a8645337ca3545ad719af112a9c03b7df8a AS sdk
+FROM ubuntu:24.04@sha256:24737cef17f4e22b1977df7d9a05e77c4e28b7da5b8911f8d8ccda136bf3573c
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    clang lld llvm libxml2 zlib1g liblzma5 libssl3 file ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=sdk /osxcross /osxcross
+RUN echo /osxcross/lib > /etc/ld.so.conf.d/osxcross.conf && ldconfig
+COPY --from=gobase /usr/local/go /usr/local/go
+COPY --from=gobase /go/pkg/mod /go/pkg/mod
+ENV PATH="/osxcross/bin:/usr/local/go/bin:${PATH}" \
+    GOTOOLCHAIN=local GOWORK=off GOPROXY=off GOSUMDB=off \
+    GOCACHE=/tmp/gocache GOMODCACHE=/go/pkg/mod LANG=C.UTF-8
+USER 1000:1000
+WORKDIR /src
+CMD ["bash"]

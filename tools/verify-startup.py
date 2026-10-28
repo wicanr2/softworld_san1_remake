@@ -13,6 +13,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--package', type=Path, required=True)
 p.add_argument('--out', type=Path, required=True)
 p.add_argument('--wine', action='store_true')
+p.add_argument('--title-reference', type=Path, help='正常選單參考圖；跨機驗證時明示提供')
 a = p.parse_args()
 assert a.package.is_absolute() and a.out.is_absolute()
 assert a.out.parent.stat().st_uid == os.getuid() and not a.out.exists()
@@ -109,7 +110,8 @@ try:
     time.sleep(.5)
     binary = a.package/('san1.exe' if a.wine else 'san1')
     receipt['binary_sha256'] = hashlib.sha256(binary.read_bytes()).hexdigest()
-    reference = pixels('/src/workplace/promo-source/v.1.1.1-20261010/title-reference.png', '568x160+40+27')
+    title_reference = a.title_reference or Path('/src/workplace/promo-source/v.1.1.1-20261010/title-reference.png')
+    reference = pixels(str(title_reference), '568x160+40+27')
     for edition in ['base', 'plus']:
         arguments = [] if edition == 'base' else ['-edition', 'plus']
         proc, wid = launch(a.package, edition, arguments)

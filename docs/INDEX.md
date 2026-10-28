@@ -2,9 +2,17 @@
 
 `CONTEXT.md` 是單一入口（現況、術語、已被推翻的斷言）。
 逐輪操作與驗證結果記在根目錄的 [`WORKLOG.md`](../WORKLOG.md)。
+跨機重建見 [SETUP](../SETUP.md)、[素材雜湊清單](release/rebuild-assets.json)及
+[素材核對工具](../tools/verify-rebuild-assets.py)；建置由
+[專案工具鏈](../tools/build-toolchain.sh)與[桌面建置入口](../tools/build-desktop.sh)執行。
 **待辦的唯一權威是 GitHub repository 的 open Issues**；`worklist.json` 與
 `VERIFICATION-MATRIX.md` 只保存歷史線索，不得用來推翻 Issue 的最新內文、
 留言或狀態。這一份是「哪份文件放什麼」。
+
+2026-10-28 使用者核准清理本機歷史產物：v.1.1.2、v.1.1.3 的舊包、舊測試程式及
+部分歷史截圖與錄音已移除。原驗收文字、JSON、日誌及原版研究資料保留；歷史收據中
+列出的原始檔能否回讀，以 [第二輪逐檔清單](../workplace/cleanup-20261028-r2.json)為準。
+現行交付與保留範圍見 [CONTEXT 清理現況](../CONTEXT.md#本機資料清理2026-10-28)。
 
 | 目錄 | 放什麼 | 檔案 |
 |---|---|---|

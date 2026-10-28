@@ -8,8 +8,8 @@ if [[ $# -ne 1 || ! "$1" =~ ^v\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}$ ]]; then
   exit 2
 fi
 VER="$1"
-GO_IMAGE="${SAN1_RELEASE_IMAGE:-eob-remake-release:1.26.7-ebiten2.9.9-20261008-r2}"
-MAC_IMAGE="${SAN1_MAC_IMAGE:-eob-remake-macos:1.26.7-ebiten2.9.9-20261008-r2}"
+GO_IMAGE="${SAN1_RELEASE_IMAGE:-${SAN1_GO_IMAGE:-san1-go:1.26.7-ebiten2.9.9-r1}}"
+MAC_IMAGE="${SAN1_MAC_IMAGE:-san1-macos:1.26.7-sdk15.5-r1}"
 
 # 版號與內容必須可回查同一個 commit；AGENTS.md 等未加入版控的
 # 本機指示不進封包，追蹤檔案有差異則不能建立正式交付。
@@ -22,6 +22,13 @@ while IFS= read -r untracked; do
   }
 done < <(git -C "$ROOT" ls-files --others --exclude-standard)
 COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+if ! docker image inspect "$GO_IMAGE" >/dev/null 2>&1; then
+  SAN1_GO_IMAGE="$GO_IMAGE" bash "$ROOT/tools/build-toolchain.sh" build
+fi
+if ! docker image inspect "$MAC_IMAGE" >/dev/null 2>&1; then
+  SAN1_GO_IMAGE="$GO_IMAGE" SAN1_MAC_IMAGE="$MAC_IMAGE" bash "$ROOT/tools/build-toolchain.sh" macos
+fi
+SAN1_GO_IMAGE="$GO_IMAGE" bash "$ROOT/tools/prepare-go-cache.sh"
 
 # 每個 -v 的主機來源先確認存在且形態正確，防止 dockerd 以 root
 # 建立同名空目錄。原版素材在兩個容器中都另以唯讀掛載蓋住工作樹。
@@ -35,7 +42,7 @@ docker image inspect "$GO_IMAGE" "$MAC_IMAGE" >/dev/null
 GO_ID="$(docker image inspect "$GO_IMAGE" --format '{{.Id}}')"
 MAC_ID="$(docker image inspect "$MAC_IMAGE" --format '{{.Id}}')"
 
-common=(--rm --network none --memory 4g --cpus 2 --pids-limit 256
+common=(--rm --platform linux/amd64 --network none --memory 4g --cpus 2 --pids-limit 256
   --log-opt max-size=10m --log-opt max-file=3
   -u "$(id -u):$(id -g)"
   -v "$ROOT:/src"

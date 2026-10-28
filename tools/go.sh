@@ -15,10 +15,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Ebiten 要連結 X11／GL，純 golang image 沒有那些標頭（會停在
 # 「fatal error: X11/Xlib.h: No such file or directory」）。
-# 用旁邊 remake 專案已經建好的 ebiten image。
-IMAGE="${SAN1_GO_IMAGE:-rich2-go-ebiten:latest}"
-
-mkdir -p "$ROOT/workplace/gocache" "$ROOT/workplace/gomodcache"
+# 缺少時由 repo 的鎖版 Dockerfile 建立，入口見 SETUP.md。
+IMAGE="${SAN1_GO_IMAGE:-san1-go:1.26.7-ebiten2.9.9-r1}"
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  bash "$ROOT/tools/build-toolchain.sh" build
+fi
+bash "$ROOT/tools/prepare-go-cache.sh"
 
 PASS=()
 # 對拍測試讀的環境變數要一起帶進容器。**漏一個不會報錯**——
@@ -26,7 +28,7 @@ PASS=()
 # 而該固定的亂數種子安靜地不固定（`SAN1_SEED` 就這樣漏過一輪）。
 # 所以這裡不維護白名單:**凡 `SAN1_*` 一律帶進去**，只扣掉 go.sh
 # 自己吃掉的那幾個（`SAN1_ORIG` 在下面另外處理成容器內路徑）。
-for v in GOOS GOARCH CGO_ENABLED; do
+for v in GOOS GOARCH CGO_ENABLED GOWORK; do
   [[ -n "${!v:-}" ]] && PASS+=(-e "$v=${!v}")
 done
 for v in $(compgen -v | grep '^SAN1_' || true); do
@@ -70,11 +72,15 @@ ARGS=("$@")
 if [[ "${1:-}" == "test" ]] && [[ ! " $* " == *" -timeout"* ]]; then
   ARGS=("test" "-timeout" "${SAN1_TIMEOUT:-30m}" "${@:2}")
 fi
+COMMAND=(go "${ARGS[@]}")
+if [[ "${1:-}" == "test" ]]; then
+  COMMAND=(xvfb-run -a "${COMMAND[@]}")
+fi
 
 # GOPROXY 指向容器內的本地 module cache。GOPROXY=off 連本地 cache 都不查，
 # 會在「zip 明明就在那裡」的情況下說找不到模組；file:// 讓解析走本地，
 # 而且一樣零網路——容器本來就是 --network none。
-exec timeout "${SAN1_TIMEOUT:-30m}" docker run --rm --network none \
+exec timeout "${SAN1_TIMEOUT:-30m}" docker run --rm --init --platform linux/amd64 --network none --name "san1-go-$$" \
   --memory "${SAN1_MEM:-4g}" --cpus "${SAN1_CPUS:-2}" --pids-limit 256 \
   --log-opt max-size=10m --log-opt max-file=3 \
   -u "$(id -u):$(id -g)" \
@@ -85,4 +91,4 @@ exec timeout "${SAN1_TIMEOUT:-30m}" docker run --rm --network none \
   -e GOPROXY=file:///gomodcache/cache/download \
   -e GOSUMDB=off -e GONOSUMCHECK=1 -e GOPRIVATE='*' \
   -e HOME=/tmp \
-  "${PASS[@]}" "${MOUNTS[@]}" -w /src "$IMAGE" go "${ARGS[@]}"
+  "${PASS[@]}" "${MOUNTS[@]}" -w /src "$IMAGE" "${COMMAND[@]}"

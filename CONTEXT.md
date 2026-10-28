@@ -2,6 +2,42 @@
 
 新 session 或對話被壓縮後，先讀這一份。規則在 `CLAUDE.md`，這裡是**現況**。
 
+## GitHub 素材與跨機重建（2026-10-28）
+
+使用者要求先確認 GitHub 素材與跨機重建，再盤點可清理資料。本輪暫停額外刪除。
+GitHub 全新副本 7021a13 的 671 個 HD／配音檔與 10 個字型／授權檔，共 681 檔、
+657 張 PNG，全部與本機 SHA-256 相符，素材目錄沒有漏追蹤的檔案。
+素材核對清單為 [rebuild-assets.json](docs/release/rebuild-assets.json)，
+工具為 [verify-rebuild-assets.py](tools/verify-rebuild-assets.py)。
+
+已補入專案的 [Go 工具鏈](docker/Dockerfile.build)、[macOS 工具鏈](docker/Dockerfile.macos)、
+[工具鏈建置入口](tools/build-toolchain.sh)與[桌面建置入口](tools/build-desktop.sh)，
+取代建置入口對已退役共用 image 的依賴。新電腦步驟見 [SETUP.md](SETUP.md)。
+四平台候選均重建成功；Linux 兩版正常新局、存讀檔、載入與錯誤視窗共 19 項通過。
+字型與素材測試 52 通過、11 項原版截圖前提略過，沒有失敗，不宣稱原版對拍重跑。
+下一步提交工具後由遠端重新檢出再驗。原版 DOS 資料、San5 原圖與說明書維持本機保存規則。
+另盤得 895 份與 GitHub 素材相同的工作副本，按硬連結計算可回收 789,958,656 bytes；
+逐檔候選在 workplace/rebuild-audit-20261028/cleanup-candidates.json，本輪僅盤點。
+
+## 本機資料清理（2026-10-28）
+
+使用者確認專案已完成，要求清理過期資料，並核准第二輪刪除舊版封包、舊測試程式及歷史測試截圖與錄音。
+
+| 項目 | 清理後現況 |
+|---|---|
+| 專案容量 | 約 31.61 GB 降至 10.8 GB，合計釋放約 20.8 GB；第二輪另釋放約 5.39 GB，以實際配置空間計算 |
+| 第一輪清理 | 清除兩個可重新下載的語音模型權重、啟動修正前的九個舊包、根目錄兩個舊執行檔及七個 Python 快取檔，另完成重複內容合併與 Git 物件壓縮 |
+| 第二輪清理 | 刪除 v.1.1.2、v.1.1.3 的 18 個舊包、85 個舊測試執行檔及 9,217 個歷史截圖與錄音，共 9,320 個檔案；舊包清單與驗收收據保留 |
+| 保留內容 | 現行 v.1.2.2 的九包與完整收據、原版資料、說明書、HD 素材、母圖、生成紀錄、影片、存檔、文字與 JSON 記錄、IDA 資料庫及參考錄音 |
+| 最近驗證 | 現行交付清單 17 個檔案、第二輪其餘 10,075 個檔案完整核對通過；第一輪 Git 11,765 個物件與全部引用保持、完整 fsck 通過，第二輪 Git 掛唯讀 |
+| 工具與收據 | [第二輪工具](workplace/cleanup-20261028-r2.py)、[第二輪逐檔清單與保留快照](workplace/cleanup-20261028-r2.json)；[第一輪工具](workplace/cleanup-20261028.py)及[原收據](workplace/cleanup-20261028.json)保留，均在本機 workplace |
+
+歷史收據保存當時驗證結果；第二輪清單中的原始截圖、錄音、程式與封包已移除，無法直接回讀。
+第一輪建立的硬連結部分已隨第二輪移除；仍保留的共用檔案若需原地修改，先複製成獨立檔案。
+模型重新取得入口為 [prepare-voice-model.py](tools/prepare-voice-model.py)，固定修訂與雜湊保留在
+workplace/voice-model-qwen3-1.7b-20261010/SOURCES.json；使用 `--out <新私人目錄>`。
+詳細操作與 Docker 收尾記錄見 [WORKLOG](WORKLOG.md#2026-10-28第二輪清理舊版封包與歷史擷取檔)。
+
 ## 最新收尾狀態（2026-10-15）
 
 HD 音訊保存入口：[三段 AI 重新配音樣音](hd-assets/audio/README.md)，包含 OGG、
@@ -13,7 +49,7 @@ HD 音訊保存入口：[三段 AI 重新配音樣音](hd-assets/audio/README.md
 | 項目 | 目前狀態 |
 |---|---|
 | 本輪啟動修正 | 完成。來源 fc68710，三平台預設從程式旁讀取資料、字型與 HD，原版零參數啟動；載入階段與動畫先顯示，缺必要資料時保留錯誤。已依使用者要求沿用 v.1.2.2-20261014 重打四平台包。Linux、Windows Wine 的兩版正常新局、存讀檔及錯誤路徑通過，AppImage 全檔回讀通過。[005 契約](docs/spec/005-main-screen.md#雙擊啟動與載入視窗2026-10-15)、[正式收據](dist-all/v.1.2.2-20261014/smoke/startup-20261015/final-audit.json) |
-| 本次操作修正版 | 現行 v.1.2.2-20261014 已同版號替換為啟動修正版，來源 fc68710。前批 5098f06 的介面與換月提交修正保持；舊包與清單保存在 workplace/startup-20261015/previous-packages/。公開 Release 仍為 v.1.2.1。 |
+| 本次操作修正版 | 現行 v.1.2.2-20261014 已同版號替換為啟動修正版，來源 fc68710。前批 5098f06 的介面與換月提交修正保持；啟動修正前的九個舊包已於 2026-10-28 清除，原清單保留在 workplace/startup-20261015/previous-packages/SHA256SUMS.json。公開 Release 仍為 v.1.2.1。 |
 | 換月提交條件與 AI 文件 | 完成。已逐頁核對原版說明書第 5–6、17、22、42 頁，修正 RE 摘要的空 Enter 誤述，見 R92。主提示移除通用滑鼠確定，只點具名指令；空 Enter、一般操作與取消不耗本郡指令。README 改列強化 1–5，還原策略另列。[005 換月契約](docs/spec/005-main-screen.md#換月與明確指令提交2026-10-14) 限本節 CONFORMED。兩版末郡及指令回歸 147 通過、零略過；來源 GUI 42 項與 132 張唯一 PNG 回讀通過，收據 `workplace/command-gate-20261014-r1/final-audit.json`。已納入 v.1.2.2，本版正式包另驗四條正常新局、42 項操作與 111 張唯一 PNG |
 | 2026-10-13 介面修正 | 五項來源修正完成：上方 AI 強化說明、純鍵盤／鍵盤＋滑鼠、Enter 狀態／命令切換、換月場景先清底、自動戰爭行軍與發兵／目標郡標示。[005](docs/spec/005-main-screen.md#主畫面-enter事件清底與自動戰爭播報2026-10-13) 與 [021 選項列](docs/spec/021-hd-art.md#ai-強化說明2026-10-13) 限本輪範圍 CONFORMED。五個相關套件完整通過、UI 十項專測通過；兩版正常新局、存檔保持、自然事件及原貌／高清行軍共 38 項檢查、185 張唯一 PNG 回讀通過。收據 `workplace/ui-controls-20261013-r1/final-audit.json`。已納入 v.1.2.2 本機完整版 |
 | 公開發行 | [v.1.2.1-20261013](https://github.com/wicanr2/softworld_san1_remake/releases/tag/v.1.2.1-20261013) 已發布並設為 latest，四個引擎包與公開雜湊清單共五附件全部下載、大小及 SHA-256 核對通過，San5 媒體與本機完整版不入附件。README 使用[原有 346 人 HD 總覽](docs/images/hd-generals-base-overview.png)，251 張肖像。使用者已明確確認 220 張 San5 HD 重繪公開保留 public repo，原圖只留本機；來源 b572db2 已推送。標籤固定在引擎建包提交 60e2663。見[發布契約與收據](docs/release/01-packaging.md#v121-公開引擎包與-repo-展示範圍) |
@@ -41,8 +77,9 @@ HD 音訊保存入口：[三段 AI 重新配音樣音](hd-assets/audio/README.md
 現行完整版入口為 `dist-all/v.1.2.2-20261014/`，總清單是 `SHA256SUMS.json`。
 目前引擎來源為 fc68710b534cbf3e583af0594a52b68b9a220a11，四平台已加入預設路徑與
 載入視窗，保留前批操作修正、220 張核准重繪及完整素材。新收據在本版
-smoke/startup-20261015/，前批來源 5098f06 的包與清單保存在
-workplace/startup-20261015/previous-packages/。本輪完整 Go 回歸在未修改的 UI 長套件
+smoke/startup-20261015/。前批來源 5098f06 的九個舊包已於 2026-10-28 清除，
+原清單保留在 workplace/startup-20261015/previous-packages/SHA256SUMS.json。
+本輪完整 Go 回歸在未修改的 UI 長套件
 遭外層八分鐘逾時，沒有測試失敗；入口套件與正常 GUI 已完成，不宣稱全套通過。
 公開 Release 保持 v.1.2.1；以下較早版本記錄為歷史證據。
 

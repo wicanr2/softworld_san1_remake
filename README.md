@@ -1,5 +1,8 @@
 # 三國演義 (智冠) Remastered
 
+跨機建置見 [SETUP.md](SETUP.md)。現行 HD、配音樣音與字型均保存在 repo，
+可依 [素材雜湊清單](docs/release/rebuild-assets.json)核對；遊玩仍需自備合法原版資料。
+
 > 滾滾長江東逝水，浪花淘盡英雄。
 > 是非成敗轉頭空。
 > 青山依舊在，幾度夕陽紅。
